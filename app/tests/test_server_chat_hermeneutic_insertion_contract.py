@@ -216,6 +216,157 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
         self.assertNotIn('posture_answer', repr(hermeneutic_injection))
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
+    def test_api_chat_presence_is_exact_local_success_for_stream_and_non_stream(self) -> None:
+        for stream_req in (False, True):
+            with self.subTest(stream_req=stream_req):
+                conversation = {
+                    'id': f'conv-presence-phase14-{stream_req}',
+                    'created_at': '2026-07-23T09:00:00Z',
+                    'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+                }
+                provider_calls: list[dict] = []
+                identity_calls: list[dict] = []
+                observed_events: list[dict] = []
+
+                def forbidden_provider_call(*args, **kwargs):
+                    provider_calls.append({'args': args, 'kwargs': kwargs})
+                    raise AssertionError('main provider must not be called for validated presence')
+
+                observed_state, restore = self._patch_chat_pipeline(
+                    conversation=conversation,
+                    requests_post=forbidden_provider_call,
+                )
+                original_primary_node = self.server.chat_service.primary_node.build_primary_node
+                original_validation_agent = self.server.chat_service.validation_agent.build_validated_output
+                original_insert = self.server.chat_turn_logger.log_store.insert_chat_log_event
+
+                self.server.chat_service.primary_node.build_primary_node = lambda **kwargs: {
+                    'primary_verdict': {
+                        'schema_version': 'v1',
+                        'epistemic_regime': 'certain',
+                        'proof_regime': 'suffisant',
+                        'uncertainty_posture': 'assuree',
+                        'judgment_posture': 'answer',
+                        'discursive_regime': 'simple',
+                        'resituation_level': 'none',
+                        'time_reference_mode': 'atemporal',
+                        'source_priority': [['tour_utilisateur']],
+                        'source_conflicts': [],
+                        'upstream_advisory': {
+                            'schema_version': 'v1',
+                            'recommended_judgment_posture': 'answer',
+                            'proposed_output_regime': 'simple',
+                            'active_signal_families': [],
+                            'active_signal_families_count': 0,
+                            'constraint_present': False,
+                        },
+                        'pipeline_directives_provisional': ['posture_answer'],
+                        'audit': {
+                            'fail_open': False,
+                            'state_used': bool(kwargs.get('existing_node_state')),
+                            'degraded_fields': [],
+                        },
+                    },
+                    'node_state': {'schema_version': 'v1'},
+                }
+                self.server.chat_service.validation_agent.build_validated_output = lambda **_kwargs: (
+                    self.server.chat_service.validation_agent.ValidationAgentResult(
+                        validated_output={
+                            'schema_version': 'v1',
+                            'validation_decision': 'challenge',
+                            'final_judgment_posture': 'answer',
+                            'final_output_regime': 'presence',
+                            'pipeline_directives_final': ['posture_answer', 'regime_presence'],
+                            'arbiter_followed_upstream': False,
+                            'advisory_recommendations_followed': [
+                                'upstream_recommendation_posture',
+                            ],
+                            'advisory_recommendations_overridden': [
+                                'upstream_output_regime_proposed',
+                            ],
+                            'applied_hard_guards': [],
+                            'arbiter_reason': 'reception locale sans poursuite',
+                        },
+                        status='ok',
+                        model='synthetic-validation-model',
+                        decision_source='primary',
+                        reason_code=None,
+                    )
+                )
+                self.server.chat_service._record_identity_entries_for_mode = (
+                    lambda *args, **kwargs: identity_calls.append(
+                        {'args': args, 'kwargs': kwargs}
+                    )
+                )
+                self.server.chat_turn_logger.log_store.insert_chat_log_event = (
+                    lambda event, **_kwargs: observed_events.append(event) or True
+                )
+                try:
+                    response = self.client.post(
+                        '/api/chat',
+                        json={
+                            'message': 'Depot synthetique sans poursuite.',
+                            'stream': stream_req,
+                        },
+                    )
+                    if stream_req:
+                        visible_text, terminal = self.server.chat_stream_control.split_text_and_terminal(
+                            response.data
+                        )
+                    else:
+                        visible_text = response.get_json()['text']
+                        terminal = None
+                finally:
+                    self.server.chat_service.primary_node.build_primary_node = original_primary_node
+                    self.server.chat_service.validation_agent.build_validated_output = original_validation_agent
+                    self.server.chat_turn_logger.log_store.insert_chat_log_event = original_insert
+                    restore()
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(visible_text, '...')
+                if stream_req:
+                    self.assertEqual(response.content_type, 'text/plain; charset=utf-8')
+                    self.assertEqual(terminal['event'], 'done')
+                    self.assertTrue(terminal.get('updated_at'))
+                else:
+                    self.assertTrue(response.get_json()['ok'])
+                    self.assertTrue(response.get_json()['updated_at'])
+                self.assertEqual(provider_calls, [])
+                self.assertEqual(identity_calls, [])
+                self.assertEqual(observed_state['save_new_traces_calls'], [])
+                self.assertEqual(observed_state['node_state_writes'], [])
+                self.assertEqual(len(observed_state['save_calls']), 2)
+                primary_event = next(
+                    event
+                    for event in observed_events
+                    if event.get('stage') == 'primary_node'
+                )
+                self.assertEqual(
+                    primary_event['payload_json']['node_state_write_reason_code'],
+                    'presence_turn_local',
+                )
+                self.assertEqual(
+                    [message['role'] for message in conversation['messages']],
+                    ['system', 'user', 'assistant'],
+                )
+                self.assertEqual(conversation['messages'][-1]['content'], '...')
+                self.assertEqual(
+                    sum(
+                        1
+                        for message in conversation['messages']
+                        if message.get('role') == 'user'
+                    ),
+                    1,
+                )
+                self.assertEqual(
+                    sum(
+                        1
+                        for message in conversation['messages']
+                        if message.get('role') == 'assistant'
+                    ),
+                    1,
+                )
+
     def test_api_chat_persists_and_rehydrates_node_state_across_two_turns(self) -> None:
         observed_events: list[dict] = []
         primary_calls: list[dict] = []

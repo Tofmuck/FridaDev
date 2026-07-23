@@ -26,6 +26,22 @@ Note runtime 2026-05-17:
 - cette discipline reste un geste de relecture: elle ne cree aucun champ de sortie, aucun nouvel objet `interpretive_center`, aucune projection directe dans `[JUGEMENT HERMENEUTIQUE]` et aucune surface d'observabilite nouvelle;
 - les trois questions doivent etre tenues ensemble, sans psychologiser l'utilisateur et sans donner de souverainete speciale au seul `Wozu`.
 
+Note runtime 2026-07-23:
+
+- la presomption de sens, la distinction entre comprendre et adopter et la
+  clarification apres tentative d'interpretation coherente sont desormais des
+  obligations du prompt effectivement consomme par `validation_agent`;
+- `final_output_regime` accepte `presence` uniquement avec
+  `final_judgment_posture=answer`;
+- `presence` est une decision positive locale qui commande la sortie canonique
+  exacte `...`; elle reste distincte de `suspend`, ne peut pas etre produite par
+  un fail-open et n'est pas persistee dans `node_state`;
+- l'aval reutilise `AssistantResponseOverride` et la frontiere commune de
+  succes/persistance, sans appel au provider principal ni second save;
+- le corpus synthetique borne vit dans
+  `app/tests/support/dialogic_regime_corpus.json`; il fixe des oppositions de
+  lecture et de protocole, pas une preuve de comprehension modele.
+
 ## 1. Purpose
 
 Cette spec ouvre la premiere pause normative du Lot 9.
@@ -212,11 +228,21 @@ Taxonomies minimales:
 - `final_output_regime`
   - `simple`
   - `meta`
+  - `presence`
 
 Regles fortes:
 
 - le verdict final vient directement de l'arbitre;
 - `meta` n'est pas une consequence mecanique de `clarify`;
+- `presence` exige `answer` et represente une reception dialogique locale sans
+  contenu propositionnel ni poursuite;
+- `presence` produit exactement `...`, tandis que `suspend` conserve une
+  formulation explicite de la limite epistemique;
+- une question, une demande, une detresse, un risque, un hard guard ou une
+  instruction materielle ambigue interdisent de masquer le tour par
+  `presence`;
+- la ponctuation, une liste de mots ou un signal primaire ne suffit jamais a
+  decider `presence`;
 - un garde-fou lot 5 peut fermer `answer` sans imposer a lui seul `meta`;
 - `validation_decision` peut subsister comme trace legacy derivee, mais elle ne gouverne plus l'aval.
 
@@ -251,6 +277,8 @@ Discipline minimale:
 - le fail-open de validation ne doit pas se maquiller en `confirm`
 - le fail-open de validation sans hard guard ne doit pas devenir une suspension pratique du dialogue
 - une suspension fail-open reste admissible seulement lorsqu'un hard guard deterministe interdit `answer`
+- aucun fail-open, timeout, parse error ou payload invalide ne peut produire
+  `presence`
 - les autres seuils chiffres restent portes par les runtime settings et leurs specs dediees
 
 Modele cible de reference en V1:

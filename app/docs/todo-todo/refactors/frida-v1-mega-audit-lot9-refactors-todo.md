@@ -29,9 +29,40 @@ faire un grand rangement cosmetique.
   utilisateur, payload de provider, identifiant sensible, secret, URL avec
   query ou log brut.
 
+## Prerequis comportemental avant Lot 9.0
+
+Decision produit du 23 juillet 2026:
+
+- le micro-lot autonome `presomption de sens, independance et presence
+  silencieuse` doit etre techniquement livre puis valide dialogiquement par Tof
+  avant l'ouverture de 9.0;
+- il corrige un P2 comportemental avant que les golden tests ne figent la
+  compulsion de reponse, la clarification reflexe ou le ralliement trop rapide;
+- il ajoute `presence` uniquement a l'axe final de sortie du
+  `validation_agent`, distinct de `suspend`, puis reutilise la voie
+  `AssistantResponseOverride` et la frontiere de persistance existantes;
+- il n'ajoute aucun agent, classificateur, heuristique lexicale, route, surface
+  produit ou etat persistant;
+- son corpus synthetique borne vit dans
+  `app/tests/support/dialogic_regime_corpus.json`;
+- les golden tests 9.0 devront figer le regime dialogique corrige apres la
+  validation utilisateur, sans transformer le corpus en mesure generale de
+  l'identite ou de la comprehension.
+
+Statut:
+
+`LIVRAISON TECHNIQUE EFFECTUEE - VALIDATION DIALOGIQUE UTILISATEUR REQUISE`
+
+La fermeture semantique de ce prerequis reste interdite avant le retour
+navigateur authentifie de Tof sur un depot, une question, un desaccord sans
+ralliement immediat et une correction argumentee pouvant justifier un
+deplacement. Aucune case 9.0 n'est cochee et aucun golden test 9.0 n'est
+commence dans ce micro-lot.
+
 ## Gate de priorite et familles de destination
 
-Le seul prochain lot executable est `Lot 9.0 - Golden test harness / preuve
+Apres validation utilisateur et cloture documentaire du prerequis dialogique,
+le seul prochain lot executable reste `Lot 9.0 - Golden test harness / preuve
 avant refactor`. Les numeros 9A-9H classent les destinations de la dette; ils
 ne fixent pas l'ordre d'execution apres 9.0:
 

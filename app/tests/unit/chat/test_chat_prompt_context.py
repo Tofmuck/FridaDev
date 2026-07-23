@@ -166,6 +166,27 @@ class ChatPromptContextTests(unittest.TestCase):
                     block,
                 )
 
+    def test_build_hermeneutic_judgment_block_projects_presence_exactly(self) -> None:
+        block = chat_prompt_context.build_hermeneutic_judgment_block(
+            validated_output={
+                'schema_version': 'v1',
+                'validation_decision': 'challenge',
+                'final_judgment_posture': 'answer',
+                'final_output_regime': 'presence',
+                'pipeline_directives_final': ['posture_answer', 'regime_presence'],
+            }
+        )
+
+        self.assertIn('[JUGEMENT HERMENEUTIQUE]', block)
+        self.assertIn('Posture finale validee: answer.', block)
+        self.assertIn('Regime final valide: presence.', block)
+        self.assertIn(
+            'Consigne de regime: La sortie visible doit etre exactement `...`, sans aucun autre caractere ni ajout.',
+            block,
+        )
+        self.assertIn('Directives finales actives: posture_answer, regime_presence.', block)
+        self.assertNotIn('suspension ou la limite presente', block)
+
     def test_inject_hermeneutic_judgment_block_appends_after_augmented_system(self) -> None:
         base_system = 'BASE SYSTEM'
         judgment_block = '[JUGEMENT HERMENEUTIQUE]\nPosture finale validee: clarify.'

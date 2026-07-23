@@ -11,6 +11,8 @@ Note runtime:
 - le lot 4 runtime explicite maintenant l'amont comme `upstream_advisory` structuree, lue comme recommendation non souveraine.
 - le lot 5 runtime fixe une courte liste de garde-fous durs qui peuvent interdire `answer` sans imposer `meta`.
 - le lot 6 verrouille un corpus stable `answer / clarify / suspend`, des preuves de suivi vs override et la coherence de projection vers `[JUGEMENT HERMENEUTIQUE]`, sans nouvelle filiere de logs.
+- le micro-lot dialogique du 2026-07-23 ajoute `presence` a l'axe final de
+  sortie, sans ajouter de posture epistemique, d'agent ou de classificateur.
 
 ## 1. Purpose
 
@@ -152,6 +154,12 @@ Le `validation_agent` reinstitue est l'institution cible de l'arbitrage final.
 Il doit:
 
 - lire d'abord la matiere dialogique locale;
+- presumer le sens du tour dans cette histoire locale sans inventer
+  d'intention;
+- reconstruire les premisses implicites comme hypotheses et identifier l'acte
+  dialogique avant d'evaluer;
+- distinguer comprendre, integrer une correction etayee, etre convaincu par un
+  argument et adopter une position;
 - lire ensuite les recommandations amont comme indices secondaires;
 - choisir `final_judgment_posture`;
 - choisir `final_output_regime`;
@@ -173,6 +181,14 @@ Regle normative:
 - `meta` devient exceptionnel;
 - `meta` n'est plus une consequence mecanique de `clarify`;
 - `meta` n'est plus un regime ordinaire de gestion des difficultes locales.
+- `clarify` n'est legitime qu'apres echec d'une interpretation coherente sans
+  invention, ou si des lectures incompatibles entraineraient des actions
+  materiellement differentes;
+- un signal lexical ou une recommandation amont ne suffit pas seul a imposer
+  `clarify`;
+- `presence` est un regime final positif et local: il vaut reception sans
+  contenu propositionnel ni poursuite et produit exactement `...`;
+- `presence` exige `answer`; `suspend` reste une limite epistemique explicite.
 
 ## 7. Matiere Principale Et Contextes Secondaires
 
@@ -229,6 +245,9 @@ Regles normatives:
 - si l'arbitre suit l'amont, le bloc projete reflete ce verdict final;
 - si l'arbitre casse l'amont, c'est le verdict final de l'arbitre qui est projete;
 - aucune recommendation amont ne doit redevenir souveraine au moment de la projection finale.
+- si l'arbitre valide `answer/presence`, le bloc projete porte
+  `regime_presence`, puis l'aval canonise `...` par la voie d'override commune;
+  le provider principal n'est pas appele.
 
 ## 10. Contrat Minimal De Sortie Cible
 
@@ -241,6 +260,15 @@ Le futur arbitre final doit produire directement au minimum:
 - `advisory_recommendations_followed`
 - `advisory_recommendations_overridden`
 - `arbiter_reason`
+
+Taxonomie runtime de `final_output_regime`:
+
+- `simple`;
+- `meta`;
+- `presence`, uniquement avec `final_judgment_posture=answer`.
+
+`presence` n'est ni une posture de jugement, ni un alias de `suspend`, ni un
+etat a reutiliser sur le tour suivant. Un fail-open ne peut jamais le produire.
 
 Champ de transition accepte en lot 2:
 

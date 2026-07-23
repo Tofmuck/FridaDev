@@ -10,6 +10,14 @@ Note runtime 2026-05-14:
 - le runtime chat reecrit l'etat derive du verdict final valide par `validation_agent`, pas du verdict primaire pre-validation;
 - l'observabilite reste compacte et ne journalise pas le contenu brut de l'etat.
 
+Note runtime 2026-07-23:
+
+- le regime final local `presence` n'est pas un etat hermeneutique persistant;
+- un verdict valide `answer/presence` ne reecrit pas `node_state`, afin que la
+  presence du tour courant ne puisse pas devenir une inertie automatique;
+- l'evenement reste neanmoins dans l'historique conversationnel canonique via
+  le message assistant exact `...`.
+
 ## 1. Purpose
 
 Elle tranche:
@@ -168,6 +176,8 @@ Regle structurante:
 - `last_answer_output_regime` ne conserve que le dernier regime substantif reutilisable
 - il ne doit pas devenir un mini-historique
 - il n'est mis a jour que lorsque `validated_output.final_judgment_posture = answer`
+- l'exception locale `answer/presence` ne met a jour ni
+  `last_judgment_posture` ni `last_answer_output_regime`
 
 ## 7. Minimal Inertia Rules
 
@@ -177,6 +187,7 @@ Les regles minimales d'inertie retenues sont:
 2. casser immediatement l'inertie si un signal doctrinal nouveau fort apparait
 3. ne jamais laisser un `clarify` ou un `suspend` precedent devenir une norme durable automatique
 4. n'utiliser l'inertie que pour stabiliser la forme de sortie, pas pour ecraser un arbitrage nouveau
+5. ne jamais persister ni reconstituer `presence` depuis l'inertie
 
 Lecture operationnelle minimale:
 

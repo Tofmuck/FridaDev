@@ -34,7 +34,7 @@ RUNTIME_SETTINGS_SECTION = "validation_agent_model"
 
 ALLOWED_VALIDATION_DECISIONS = ("confirm", "challenge", "clarify", "suspend")
 ALLOWED_PRIMARY_JUDGMENT_POSTURES = ("answer", "clarify", "suspend")
-ALLOWED_FINAL_OUTPUT_REGIMES = ("meta", "simple")
+ALLOWED_FINAL_OUTPUT_REGIMES = ("meta", "simple", "presence")
 
 _ALLOWED_PRIMARY_VERDICT_KEYS = {
     "schema_version",
@@ -699,6 +699,8 @@ def _validated_model_verdict(
     final_output_regime = _text(payload.get("final_output_regime"))
     if final_output_regime not in ALLOWED_FINAL_OUTPUT_REGIMES:
         raise _ValidationPayloadError("validation_error")
+    if final_output_regime == "presence" and final_judgment_posture != "answer":
+        raise _ValidationPayloadError("validation_error")
 
     arbiter_reason = _compact_text(_text(payload.get("arbiter_reason")), max_chars=160)
     if not arbiter_reason:
@@ -924,15 +926,26 @@ def _build_messages(
                 "- decide final_judgment_posture\n"
                 "- decide final_output_regime\n"
                 "- relis le dernier enonce et le dialogue comme texte dans la tension Warum / Wofür / Wozu, sans checklist ni sortie dediee\n"
-                "- privilegie la lecture la plus naturelle du tour, la continuite dialogique locale et la reponse simple\n"
+                "- presume que le tour a un sens dans l'histoire locale du dialogue avant de traiter un signal structure secondaire comme une absence de sens\n"
+                "- reconstruis les premisses implicites comme hypotheses interpretatives, sans attribuer une intention ou un etat interieur certain a l'utilisateur\n"
+                "- identifie l'acte dialogique accompli avant d'evaluer: question, affirmation, correction, hypothese, depot, suspension, cloture ou autre\n"
+                "- distingue comprendre la proposition, integrer une correction factuelle etayee, etre convaincue par un argument et adopter une position\n"
+                "- ni l'insistance, ni le desaccord reformule, ni l'intensite affective ne prouvent qu'une position doit etre adoptee\n"
+                "- ne fabrique pas non plus un desaccord pour simuler une independance\n"
+                "- privilegie la lecture la plus coherente du tour, la continuite dialogique locale et la reponse simple\n"
+                "- ne choisis clarify qu'apres l'echec d'une interpretation coherente depuis le contexte, ou si des lectures incompatibles entraineraient des actions materiellement differentes\n"
+                "- un signal lexical, une ponctuation ou une recommandation amont de clarification ne suffit jamais seul a choisir clarify\n"
                 "- si answer reste possible, privilegie final_output_regime = simple\n"
                 "- reserve meta aux cas ou une reprise meta est reellement necessaire\n"
+                "- choisis final_output_regime = presence seulement pour un acte local clairement compris qui appelle reception sans contenu propositionnel ni poursuite\n"
+                "- presence signifie exclusivement une sortie visible exacte de trois points ASCII; ne le choisis jamais pour une question, une demande, une detresse, un risque, une action materielle ambigue ou par simple detection de mots\n"
+                "- presence exige final_judgment_posture = answer; suspend conserve exclusivement son sens epistemique et doit rester explicite\n"
                 "- si un hard guard interdit answer, choisis entre clarify et suspend\n"
                 "- si hard_guard_effect = caveat_required, answer reste possible mais la prudence indiquee est obligatoire\n"
                 "- un hard guard ne force pas a lui seul meta\n"
                 "- validation_decision legacy sera derivee downstream: ne l'invente pas\n"
                 "- reponds en JSON strict uniquement\n"
-                '- schema attendu: {"schema_version":"v1","final_judgment_posture":"answer|clarify|suspend","final_output_regime":"simple|meta","arbiter_reason":"raison_courte_lisible"}'
+                '- schema attendu: {"schema_version":"v1","final_judgment_posture":"answer|clarify|suspend","final_output_regime":"simple|meta|presence","arbiter_reason":"raison_courte_lisible"}'
             ),
         },
     ]

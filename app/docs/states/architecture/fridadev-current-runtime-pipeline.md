@@ -1,7 +1,7 @@
 # FridaDev Current Runtime Pipeline
 
 Statut: reference architecture active
-Date de reference: dimanche 17 mai 2026
+Date de reference: jeudi 23 juillet 2026
 Classement: `app/docs/states/architecture/`
 Portee: schema compact du pipeline chat/runtime courant de `FridaDev`
 
@@ -63,7 +63,11 @@ Portee: schema compact du pipeline chat/runtime courant de `FridaDev`
   |- stimmung_agent
   |- primary_node
   |- validation_agent
+  |    -> presume le sens depuis la fenetre locale avant clarification
+  |    -> distingue comprendre, correction, argument et adoption
+  |    -> final_output_regime = simple | meta | presence
   |- missing secondary prompt -> local fail-open result, no secondary provider call
+  |- fail-open/timeout/parse error -> never presence
   |- build [JUGEMENT HERMENEUTIQUE]
   v
 [Prompt guards + optional context lanes]
@@ -75,6 +79,9 @@ Portee: schema compact du pipeline chat/runtime courant de `FridaDev`
   |- active_document lane, whole or absent, after summary decision
   v
 [Main LLM call / chat_llm_flow + llm_client]
+  |- validated answer/presence -> existing AssistantResponseOverride("...")
+  |    -> no main provider/secret/URL call
+  |    -> no Identity/Memory derivation from assistant dots
   |- OpenRouter caller=llm
   |- final URL resolved by llm_client from runtime main_model.base_url
   |  (central config.OR_BASE fallback only when the runtime value is absent)
@@ -95,6 +102,9 @@ Portee: schema compact du pipeline chat/runtime courant de `FridaDev`
   |- error -> assistant_turn interrupted marker only when the marker save is verified
   |- persist failure -> terminal error conversation_persist_failed without updated_at
   |- interrupted turns excluded from prompt window and traces
+  |- presence -> exact assistant message "..." persisted once on normal success
+  |    -> remains in canonical history
+  |    -> not written to hermeneutic node_state
   v
 [Frontend render + rehydration]
   |- live bubble state machine
@@ -231,6 +241,21 @@ only `ffmpeg` normalization bounded to `306 s`, never a direct Whisper call.
 The normalized WAV duration remains the final decision: it must be known and
 at most `305 s` before `whisper-cli`; if normalization fails for an unknown
 input duration, no raw fallback is allowed.
+
+11. `presence` est un regime de sortie local, pas une suspension epistemique.
+FR: seul un verdict positif `answer/presence` du `validation_agent` autorise
+les trois points. Le runtime ne reconnait aucune phrase utilisateur par regex,
+substring ou liste lexicale. La sortie reutilise la voie d'override et la
+barriere de persistance communes; elle ne survit au tour que comme message de
+conversation canonique, jamais comme inertie `node_state`. Une question, une
+detresse, un risque, un hard guard ou une action materielle ambigue ne doivent
+pas etre masques par ce regime.
+EN: only a positive `answer/presence` verdict from `validation_agent`
+authorizes the three dots. Runtime code recognizes no user phrase through
+regex, substring, or lexical lists. The output reuses the common override and
+persistence barrier; it survives only as a canonical conversation message,
+never as `node_state` inertia. A question, distress, risk, hard guard, or
+ambiguous material action must not be hidden by this regime.
 
 ## References
 

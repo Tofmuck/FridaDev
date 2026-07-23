@@ -503,6 +503,47 @@ class ValidationAgentTests(unittest.TestCase):
             ],
         )
 
+    def test_build_validated_output_accepts_positive_presence_as_answer_output_regime(self) -> None:
+        requests_module = _FakeRequests(
+            [
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="answer",
+                        final_output_regime="presence",
+                        arbiter_reason="reception locale sans poursuite",
+                    )
+                ),
+            ]
+        )
+
+        result = validation_agent.build_validated_output(
+            primary_verdict=_primary_verdict(),
+            justifications={},
+            validation_dialogue_context=_dialogue_context(),
+            canonical_inputs=_canonical_inputs(),
+            requests_module=requests_module,
+        )
+
+        self.assertEqual(result.status, "ok")
+        self.assertEqual(result.decision_source, "primary")
+        self.assertEqual(len(requests_module.calls), 1)
+        self.assertEqual(
+            result.validated_output,
+            _expected_validated_output(
+                validation_decision="challenge",
+                final_judgment_posture="answer",
+                final_output_regime="presence",
+                arbiter_followed_upstream=False,
+                advisory_recommendations_followed=[
+                    "upstream_recommendation_posture",
+                ],
+                advisory_recommendations_overridden=[
+                    "upstream_output_regime_proposed",
+                ],
+                arbiter_reason="reception locale sans poursuite",
+            ),
+        )
+
     def test_build_messages_carries_triadic_reading_without_new_output_fields(self) -> None:
         requests_module = _FakeRequests(
             [
@@ -533,6 +574,46 @@ class ValidationAgentTests(unittest.TestCase):
         for forbidden_key in ("warum", "wofuer", "wozu", "interpretive_center", "triad"):
             self.assertNotIn(forbidden_key, schema_tail)
 
+    def test_build_messages_enforces_dialogic_meaning_independence_and_presence_boundary(self) -> None:
+        requests_module = _FakeRequests(
+            [
+                _FakeResponse(
+                    _arbiter_json(
+                        final_judgment_posture="answer",
+                        final_output_regime="simple",
+                        arbiter_reason="lecture locale suffisante",
+                    )
+                ),
+            ]
+        )
+
+        validation_agent.build_validated_output(
+            primary_verdict=_primary_verdict(judgment_posture="clarify", discursive_regime="meta"),
+            justifications={},
+            validation_dialogue_context=_dialogue_context(),
+            canonical_inputs=_canonical_inputs(
+                ambiguity_present=True,
+                active_signal_families=["referent"],
+            ),
+            requests_module=requests_module,
+        )
+
+        user_message = requests_module.calls[0]["json"]["messages"][1]["content"]
+        for snippet in (
+            "presume que le tour a un sens dans l'histoire locale du dialogue",
+            "premisses implicites comme hypotheses interpretatives",
+            "distingue comprendre la proposition",
+            "ni l'insistance, ni le desaccord reformule, ni l'intensite affective",
+            "ne choisis clarify qu'apres l'echec d'une interpretation coherente",
+            "un signal lexical, une ponctuation ou une recommandation amont",
+            "final_output_regime = presence",
+            "trois points ASCII",
+            "ne le choisis jamais pour une question, une demande, une detresse, un risque",
+            "suspend conserve exclusivement son sens epistemique",
+            '"final_output_regime":"simple|meta|presence"',
+        ):
+            self.assertIn(snippet, user_message)
+
     def test_model_verdict_rejects_triadic_output_fields(self) -> None:
         base_payload = {
             "schema_version": "v1",
@@ -547,6 +628,29 @@ class ValidationAgentTests(unittest.TestCase):
                 payload[forbidden_key] = "champ interdit"
                 with self.assertRaises(validation_agent._ValidationPayloadError):
                     validation_agent._validated_model_verdict(payload)
+
+    def test_model_verdict_rejects_unknown_regime_and_non_answer_presence(self) -> None:
+        with self.assertRaises(validation_agent._ValidationPayloadError):
+            validation_agent._validated_model_verdict(
+                {
+                    "schema_version": "v1",
+                    "final_judgment_posture": "answer",
+                    "final_output_regime": "unknown",
+                    "arbiter_reason": "regime inconnu",
+                }
+            )
+
+        for posture in ("clarify", "suspend"):
+            with self.subTest(posture=posture):
+                with self.assertRaises(validation_agent._ValidationPayloadError):
+                    validation_agent._validated_model_verdict(
+                        {
+                            "schema_version": "v1",
+                            "final_judgment_posture": posture,
+                            "final_output_regime": "presence",
+                            "arbiter_reason": "couplage interdit",
+                        }
+                    )
 
     def test_validation_prompt_prepared_observes_memory_exposure_without_raw_content(self) -> None:
         raw_trace = "RAW TRACE MEMORY SHOULD NEVER APPEAR IN LOGS"
@@ -715,6 +819,7 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertEqual(result.decision_source, "fail_open")
         self.assertEqual(result.reason_code, "invalid_json")
         self.assertEqual(result.validated_output, {})
+        self.assertNotEqual(result.validated_output.get("final_output_regime"), "presence")
 
     def test_fail_open_with_answer_forbidden_hard_guard_keeps_suspend(self) -> None:
         requests_module = _FakeRequests([
@@ -741,6 +846,7 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertEqual(result.decision_source, "fail_open")
         self.assertEqual(result.validated_output["final_judgment_posture"], "suspend")
         self.assertEqual(result.validated_output["final_output_regime"], "simple")
+        self.assertNotEqual(result.validated_output["final_output_regime"], "presence")
         self.assertIn("explicit_url_not_read", result.validated_output["applied_hard_guards"])
 
     def test_build_validated_output_clamps_runtime_settings_max_tokens_to_contractual_cap(self) -> None:
@@ -1291,14 +1397,14 @@ class ValidationAgentTests(unittest.TestCase):
             requests_module.calls[0]["json"]["messages"][1]["content"],
         )
 
-    def test_build_validated_output_retries_when_primary_answer_violates_hard_guard(self) -> None:
+    def test_build_validated_output_retries_when_presence_violates_hard_guard(self) -> None:
         requests_module = _FakeRequests(
             [
                 _FakeResponse(
                     _arbiter_json(
                         final_judgment_posture="answer",
-                        final_output_regime="simple",
-                        arbiter_reason="je reponds quand meme",
+                        final_output_regime="presence",
+                        arbiter_reason="je masque la limite par une presence",
                     )
                 ),
                 _FakeResponse(
@@ -1678,7 +1784,7 @@ class ValidationAgentTests(unittest.TestCase):
             user_message.index("primary_verdict"),
         )
         self.assertIn('"final_judgment_posture":"answer|clarify|suspend"', user_message)
-        self.assertIn('"final_output_regime":"simple|meta"', user_message)
+        self.assertIn('"final_output_regime":"simple|meta|presence"', user_message)
         self.assertIn('"arbiter_reason":"raison_courte_lisible"', user_message)
         self.assertNotIn("validation_decision", user_message.split("schema attendu: ", 1)[1])
 

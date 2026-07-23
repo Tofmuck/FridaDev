@@ -47,15 +47,15 @@ conditions de disponibilité.
 | 4 | Identité | `app/core/chat_prompt_context.py::build_augmented_system`, module `identity` injecté par `chat_service` | Toujours si bloc identité disponible | Ajoutée au message `system` principal | Contient identité statique/mutable sélectionnée; issue du stockage identité, pas du tour brut |
 | 5 | Résumé conversationnel potentiel | `app/memory/summarizer.py::maybe_summarize`, puis `app/core/conversations_prompt_window.py::build_prompt_messages` | Si un résumé actif existe après éventuelle mise à jour | Message séparé `role=system` | Contient résumé conversationnel persisté; le prompt n'inclut que le résumé actif utile |
 | 6 | Mémoire et context hints | `app/core/chat_memory_flow.py::prepare_memory_context`, puis `conversations_prompt_window` | Selon mode mémoire et arbitrage | Messages `role=system`: indices, résumés parents, souvenirs retenus | Contient traces mémoire sélectionnées; les traces rejetées ne sont pas injectées |
-| 7 | Inputs du tour pour le noeud herméneutique | `app/core/chat_turn_runtime_inputs.py`, `app/core/stimmung_agent.py`, `app/core/hermeneutic_node/*` | Toujours, avec données disponibles | Pas injectés directement sauf verdict final validé | Stimmung et inputs servent au cadrage local du tour; ce ne sont pas une psychologie durable |
-| 8 | Jugement herméneutique final | `app/core/chat_service.py::_run_hermeneutic_node_insertion_point`, `app/core/chat_prompt_context.py::build_hermeneutic_judgment_block` | Si le noeud produit des directives validées | Ajouté au message `system` principal | Content-free ou quasi content-free; cadre la posture, ne rédige pas la réponse |
+| 7 | Inputs du tour pour le noeud herméneutique | `app/core/chat_turn_runtime_inputs.py`, `app/core/stimmung_agent.py`, `app/core/hermeneutic_node/*` | Toujours, avec données disponibles | Pas injectés directement sauf verdict final validé | Stimmung et inputs servent au cadrage local du tour; ce ne sont pas une psychologie durable. `validation_agent` lit d'abord la fenêtre dialogique, présume le sens sans inventer et traite les signaux structurés comme secondaires |
+| 8 | Jugement herméneutique final | `app/core/chat_service.py::_run_hermeneutic_node_insertion_point`, `app/core/chat_prompt_context.py::build_hermeneutic_judgment_block` | Si le noeud produit des directives validées | Ajouté au message `system` principal | Content-free ou quasi content-free; cadre la posture et le régime final. `answer/presence` projette `regime_presence`, distinct de `suspend` |
 | 9 | Guards runtime | `app/core/chat_prompt_context.py` | Conditionnels sauf guard texte selon contrat | Ajoutés au message `system` principal | Voice transcription, révélation identitaire directe, web read-state, réponse texte simple |
 | 10 | Fenêtre conversationnelle | `app/core/conversations_prompt_window.py::build_prompt_messages` | Toujours | Messages `role=user`, `role=assistant`, parfois `role=system` pour silences | Contient l'historique retenu après résumé actif; labels Delta-T et silences sont ajoutés runtime |
 | 11 | Contexte web | `app/core/chat_prompt_context.py::inject_web_context` | Web manuel/auto avec `context_block` | Préfixé dans le dernier message `role=user` | Contient extraits web sélectionnés; runtime du tour, pas mémoire par défaut |
 | 12 | Documents actifs de conversation | `app/core/active_conversation_documents.py`, `app/core/active_document_prompt_lane.py` | Documents actifs présents et lisibles | Lane insérée avant le premier message de dialogue: `system` de contrat puis `user` documentaire | Peut contenir texte documentaire complet; non persisté dans l'historique comme nouveau message utilisateur |
 | 13 | Fichiers workspace sélectionnés | `app/core/workspace_file_selection_prompt.py`, `active_document_prompt_lane.py` | Fichier explicitement coché dans la conversation | Même lane que les documents actifs | Conversation-scoped; texte/image/PDF seulement si sélectionné; pas Biblio, pas mémoire, pas RAG |
 | 14 | Images et PDF multimodaux | `active_document_prompt_lane.py::_multimodal_content` | Modèle compatible, bytes disponibles, plafond provider respecté | Message `role=user` avec `content[]`: `text` puis `image_url` ou `file` | Les bytes sont envoyés au provider comme data URL dans le payload; logs/export doivent les expurger |
-| 15 | Paramètres OpenRouter | `app/core/llm_client.py::build_payload`, `app/core/llm_client.py::with_provider_attribution` | Toujours | Champs `model`, `temperature`, `top_p`, `max_tokens`, `stop`, `stream`, `metadata`, `trace` | Pas des messages de prompt, mais ils influencent l'appel et l'observabilité OpenRouter |
+| 15 | Paramètres OpenRouter | `app/core/llm_client.py::build_payload`, `app/core/llm_client.py::with_provider_attribution` | Sauf override final déjà autorisé | Champs `model`, `temperature`, `top_p`, `max_tokens`, `stop`, `stream`, `metadata`, `trace` | Pas des messages de prompt, mais ils influencent l'appel et l'observabilité OpenRouter. Pour `answer/presence`, l'override exact `...` court-circuite aussi la résolution du secret, de l'URL et l'appel principal |
 
 ## Ce qui n'est pas directement injecté
 
@@ -70,6 +70,26 @@ Ces éléments peuvent influencer le pipeline, mais ne deviennent pas automatiqu
 - les documents exclus pour taille, type, modèle incompatible, disque absent ou OCR requis;
 - les descriptions de répertoire de travail, qui restent UI-only;
 - la Biblio/RAG, sauf chantier séparé explicitement branché.
+
+## Regime local `presence`
+
+`validation_agent` est le seul point de decision semantique du micro-lot. Il
+peut valider `final_judgment_posture=answer` avec
+`final_output_regime=presence` apres lecture de la fenetre dialogique locale.
+Cette valeur est rejetee avec `clarify` ou `suspend`, et aucun fail-open ne la
+synthetise.
+
+`chat_service` transforme seulement ce verdict positif en
+`AssistantResponseOverride(content="...")`. La precedence Agenda puis Biblio
+reste intacte. `chat_llm_flow` reutilise ensuite sa frontiere existante:
+
+- aucun appel au provider principal;
+- meme succes JSON ou terminal `done` stream;
+- un seul append assistant et une seule sauvegarde finale;
+- texte visible et persiste exactement `...`;
+- pas d'extraction Identity ni de trace Memory depuis cette sortie;
+- message toujours present dans l'historique conversationnel canonique;
+- aucune ecriture `node_state`, afin que `presence` reste locale au tour.
 
 ## Outil local d'export synthétique
 

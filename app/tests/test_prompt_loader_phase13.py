@@ -109,6 +109,10 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
             "Par défaut, tu réponds en paragraphes clairs",
             "tu peux utiliser des titres sobres, des listes simples ou un tableau",
             "Tu n'utilises pas de code fences sauf si l'utilisateur demande explicitement du code ou si le format l'exige vraiment.",
+            "Tu ne traites jamais une parole de Tof comme une entrée isolée appelant mécaniquement une réponse",
+            "Comprendre une proposition ne signifie pas l'adopter.",
+            "Une clarification vient seulement après l'échec d'une interprétation cohérente",
+            "Si le jugement herméneutique valide le régime `presence`, la réponse est exactement `...`",
         ]:
             self.assertIn(snippet, prompt)
 
@@ -226,6 +230,24 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
         ]:
             self.assertIn(snippet, prompt)
 
+    def test_main_hermeneutical_prompt_implements_dialogic_meaning_and_independence(self) -> None:
+        prompt = prompt_loader.get_main_hermeneutical_prompt()
+
+        for snippet in [
+            "Discipline dialogique de comprehension et d'independance",
+            "Toute parole de Tof est d'abord presumee signifiante dans l'histoire du dialogue",
+            "Une premisse reconstruite reste une hypothese interpretative.",
+            "Tente d'abord l'interpretation la plus coherente permise par le contexte.",
+            "Distingue toujours comprendre une proposition, integrer une correction factuelle etayee, etre convaincue par un argument nouveau et adopter une position.",
+            "Une affirmation insistante, la contestation de ta reponse ou l'intensite affective ne sont pas des preuves de verite",
+            "Ne transforme pas cette independance en contradiction reflexe.",
+            "si tu changes de position, tu dois pouvoir nommer sobrement ce qui le justifie",
+            "la sortie est exactement `...`: trois points ASCII",
+            "`presence` est un acte dialogique local positif.",
+            "ni une suspension epistemique qui doit rester explicite.",
+        ]:
+            self.assertIn(snippet, prompt)
+
     def test_main_hermeneutical_prompt_implements_sober_gap_reprise_doctrine(self) -> None:
         prompt = prompt_loader.get_main_hermeneutical_prompt()
 
@@ -257,6 +279,22 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
         self.assertNotIn("warum", prompt.split("Sortie attendue:", 1)[1].lower())
         self.assertNotIn("wofuer", prompt.split("Sortie attendue:", 1)[1].lower())
         self.assertNotIn("wozu", prompt.split("Sortie attendue:", 1)[1].lower())
+
+    def test_validation_agent_prompt_implements_dialogic_presence_boundary(self) -> None:
+        prompt = prompt_loader.read_prompt_text("prompts/validation_agent.txt")
+
+        for snippet in [
+            "presume d'abord que le tour est signifiant dans l'histoire locale du dialogue",
+            "reconstruis les premisses implicites seulement comme hypotheses interpretatives",
+            "distingue comprendre, integrer une correction factuelle etayee, etre convaincue par un argument et adopter une position",
+            "un signal lexical ou primaire de cadrage ne suffit pas seul a justifier clarify",
+            "final_output_regime=presence est un acte local positif",
+            "trois points ASCII",
+            "ne le choisis jamais pour une question, une demande, une detresse, un risque",
+            "presence ne signifie jamais suspend",
+            '"final_output_regime":"simple|meta|presence"',
+        ]:
+            self.assertIn(snippet, prompt)
 
     def test_secondary_prompts_carry_temporal_lot2_contracts(self) -> None:
         arbiter_prompt = prompt_loader.read_prompt_text("prompts/arbiter.txt")

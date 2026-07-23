@@ -20,6 +20,7 @@ _FINAL_JUDGMENT_INSTRUCTIONS = {
 }
 _FINAL_OUTPUT_REGIME_INSTRUCTIONS = {
     'meta': "Tu peux expliciter le cadre, la limite ou la clarification de facon reflexive si c'est vraiment necessaire",
+    'presence': "La sortie visible doit etre exactement `...`, sans aucun autre caractere ni ajout",
     'simple': 'Reste dans une reprise locale, sobre, dialogique et non meta',
 }
 

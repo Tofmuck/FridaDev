@@ -95,6 +95,8 @@ class ChatLlmFlowTests(unittest.TestCase):
         fail_at: str | None = None,
         fail_failure_observability: bool = False,
         persistence: str = 'success',
+        assistant_text: str = 'Artificial assistant turn marker.',
+        derive_identity_memory: bool = True,
     ) -> dict[str, object]:
         surface_flags = {
             'normal_non_stream': (False, False),
@@ -103,7 +105,6 @@ class ChatLlmFlowTests(unittest.TestCase):
             'override_stream': (True, True),
         }
         is_override, stream_req = surface_flags[surface]
-        assistant_text = 'Artificial assistant turn marker.'
         user_text = 'Artificial user turn marker.'
         assistant_meta = {
             'source': 'synthetic_final_lock' if is_override else 'synthetic_provider',
@@ -282,6 +283,7 @@ class ChatLlmFlowTests(unittest.TestCase):
                 reason_code='synthetic_final_lock_authorized',
                 meta=assistant_meta,
                 observability={'content_present': True, 'content_chars': len(assistant_text)},
+                derive_identity_memory=derive_identity_memory,
             )
 
         result = None
@@ -785,6 +787,7 @@ class ChatLlmFlowTests(unittest.TestCase):
                 }
             ],
         )
+
         self.assertEqual(
             _event_payloads(events, 'AssistantText'),
             [
@@ -812,6 +815,50 @@ class ChatLlmFlowTests(unittest.TestCase):
                 )
             ],
         )
+
+    def test_presence_override_is_exact_single_save_success_without_provider_or_dialogue_derivations(self) -> None:
+        for surface in ('override_non_stream', 'override_stream'):
+            with self.subTest(surface=surface):
+                exercised = self._exercise_post_persistence_surface(
+                    surface=surface,
+                    assistant_text='...',
+                    derive_identity_memory=False,
+                )
+                observed = exercised['observed']
+                result = exercised['result']
+
+                self.assertIsNone(exercised['raised_exception'])
+                self.assertEqual(observed['post_calls'], 0)
+                self.assertEqual(observed['secret_calls'], 0)
+                self.assertEqual(observed['url_calls'], 0)
+                self.assertEqual(observed['save_calls'], 1)
+                self.assertNotIn('memory_traces', observed['post_effect_sequence'])
+                self.assertNotIn('identity_entries', observed['post_effect_sequence'])
+                self.assertEqual(
+                    [message['role'] for message in exercised['conversation']['messages']],
+                    ['user', 'assistant'],
+                )
+                self.assertEqual(exercised['conversation']['messages'][-1]['content'], '...')
+                self.assertEqual(
+                    exercised['conversation']['messages'][-1]['timestamp'],
+                    exercised['timestamp'],
+                )
+                self.assertEqual(
+                    observed['durable_snapshots'][-1][-1]['content'],
+                    '...',
+                )
+                if exercised['stream_req']:
+                    self.assertEqual(exercised['visible_text'], '...')
+                    self.assertEqual(
+                        exercised['terminal'],
+                        {'event': 'done', 'updated_at': exercised['timestamp']},
+                    )
+                else:
+                    self.assertEqual(result['kind'], 'json')
+                    self.assertEqual(result['status'], 200)
+                    self.assertEqual(result['payload']['ok'], True)
+                    self.assertEqual(result['payload']['text'], '...')
+                    self.assertEqual(result['payload']['updated_at'], exercised['timestamp'])
 
     def test_run_llm_exchange_sync_override_bypasses_llm_and_persists_final_message(self) -> None:
         events = []

@@ -31,6 +31,24 @@ test('createStreamControlParser keeps visible prose clean and returns done termi
   assert.equal(visibleText.includes(STREAM_CONTROL_PREFIX), false);
 });
 
+test('createStreamControlParser preserves exact dialogic presence before a normal done terminal', () => {
+  let visibleText = '';
+  const parser = createStreamControlParser({
+    onContent(chunk) {
+      visibleText += chunk;
+    },
+  });
+
+  parser.push('.');
+  parser.push('..');
+  parser.push(`${STREAM_CONTROL_PREFIX}{"kind":"frida-stream-control","event":"done","updated_at":"2026-07-23T10:00:00Z"}\n`);
+
+  const terminal = parser.finish();
+  assert.equal(visibleText, '...');
+  assert.equal(Buffer.from(visibleText, 'ascii').toString('hex'), '2e2e2e');
+  assert.deepEqual(terminal, { event: 'done', updated_at: '2026-07-23T10:00:00Z' });
+});
+
 test('createStreamControlParser preserves terminal final_text without exposing reasoning fields', () => {
   let visibleText = '';
   const parser = createStreamControlParser({

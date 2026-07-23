@@ -248,6 +248,7 @@ _FINAL_NON_ANSWER_OUTPUT_REGIME = {
     'resituation_level': 'none',
     'time_reference_mode': 'atemporal',
 }
+_DIALOGIC_PRESENCE_TEXT = '...'
 
 
 def _read_hermeneutic_node_state(
@@ -343,6 +344,10 @@ def _build_final_hermeneutic_node_state(
 
     final_judgment_posture = _text(validated_output.get('final_judgment_posture'))
     final_output_regime = _text(validated_output.get('final_output_regime'))
+    if final_output_regime == 'presence':
+        if final_judgment_posture != 'answer':
+            return None, 'invalid_presence_judgment_posture'
+        return None, 'presence_turn_local'
     if final_judgment_posture == 'answer':
         if final_output_regime != 'simple':
             return None, 'unsupported_final_output_regime'
@@ -525,6 +530,24 @@ def _agenda_assistant_response_override(result: Any) -> chat_llm_flow.AssistantR
         reason_code=str(getattr(lock, 'reason_code', '') or ''),
         meta=meta_builder() if callable(meta_builder) else None,
         observability=observability_builder() if callable(observability_builder) else {},
+    )
+
+
+def _hermeneutic_presence_assistant_response_override(
+    result: Any,
+) -> chat_llm_flow.AssistantResponseOverride | None:
+    if _text(getattr(result, 'status', '')) != 'ok':
+        return None
+    validated_output = _mapping(getattr(result, 'validated_output', None))
+    if _text(validated_output.get('final_judgment_posture')) != 'answer':
+        return None
+    if _text(validated_output.get('final_output_regime')) != 'presence':
+        return None
+    return chat_llm_flow.AssistantResponseOverride(
+        content=_DIALOGIC_PRESENCE_TEXT,
+        source='hermeneutic_presence',
+        reason_code='validated_dialogic_presence',
+        derive_identity_memory=False,
     )
 
 
@@ -1165,6 +1188,9 @@ def chat_response(
     )
     biblio_final_response_override = _biblio_assistant_response_override(biblio_result)
     agenda_final_response_override = _agenda_assistant_response_override(agenda_result)
+    presence_final_response_override = _hermeneutic_presence_assistant_response_override(
+        validated_result,
+    )
     biblio_assistant_response_meta = _biblio_assistant_response_meta(biblio_result)
     biblio_assistant_response_envelope = _biblio_assistant_response_envelope(biblio_result)
     adobe_before_refs = main_payload_manifest.capture_message_refs(prompt_messages)
@@ -1184,7 +1210,11 @@ def chat_response(
     )
     if adobe_request.active:
         _emit_adobe_prompt_lane_observability(adobe_lane)
-    assistant_response_override = agenda_final_response_override or biblio_final_response_override
+    assistant_response_override = (
+        agenda_final_response_override
+        or biblio_final_response_override
+        or presence_final_response_override
+    )
     continuity_capsule_result = continuity_capsule.resolve_continuity_capsule(
         config_module=config_module,
         final_response_lock_present=assistant_response_override is not None,
