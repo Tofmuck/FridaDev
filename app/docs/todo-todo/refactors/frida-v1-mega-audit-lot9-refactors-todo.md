@@ -434,7 +434,7 @@ Checklist:
 
 Statut:
 
-`OUVERT - MICRO-LOT 9A.2A FERME LE 23 JUILLET 2026`
+`OUVERT - MICRO-LOTS 9A.2A ET 9A.2B FERMES LE 23 JUILLET 2026`
 
 #### Lot 9A.2a - Dossiers, fichiers et OCR
 
@@ -462,6 +462,29 @@ Preuves de fermeture 9A.2a:
 - aucune route Notes, exports ou generated-images modifiee; 9A.2b, 9A.2c et
   9A.2d restent ouverts et non commences.
 
+#### Lot 9A.2b - Notes
+
+`app/workspace_folder_note_routes.py` enregistre les six routes Notes.
+`app/server.py` injecte le service existant et cinq getters explicites qui
+resolvent a chaque requete les modules folders, notes, append, read et runtime
+Nextcloud. Les routes statiques `lookup`, `append` et `prepare` conservent leur
+ordre et leurs endpoints face a la route dynamique `<note_id>`.
+
+Preuves de fermeture 9A.2b:
+
+- route maps simple et riche strictement identiques avant/apres: `122` routes,
+  hash riche content-free
+  `e59cebe6485334027640b166a936fc585b6fa6042afba96179b43ab6d7c21aae`;
+- comparaison AST des six handlers identique apres normalisation des seuls noms
+  injectes, affectations getters et variables locales;
+- six registrations, six endpoint strings uniques, zero handler cible et un
+  seul appel de registre dans `server.py`;
+- suites Python Notes/chat/golden: `34 tests`, `OK`;
+- modules frontend panneau Notes et Notes mode: `7 tests`, `7 pass`;
+- decouverte elargie `test_server_workspace*.py`: `75 tests`, `OK`;
+- aucune route dossiers/fichiers/OCR, exports ou generated-images modifiee;
+  9A.2c et 9A.2d restent ouverts et non commences.
+
 Golden tests prealables:
 
 - `tests.test_server_workspace_folders_contract`;
@@ -488,7 +511,7 @@ Critere de sortie:
 Checklist:
 
 - [x] Extraire folders/files routes.
-- [ ] Extraire notes routes.
+- [x] Extraire notes routes.
 - [ ] Extraire exports routes.
 - [ ] Extraire generated-images routes.
 - [ ] Verifier actions open/download/delete.

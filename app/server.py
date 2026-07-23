@@ -16,6 +16,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 
 import config
 import workspace_folder_file_routes
+import workspace_folder_note_routes
 from core import llm_client as llm
 from core import prompt_loader
 from tools import image_generation
@@ -1057,76 +1058,17 @@ workspace_folder_file_routes.register_workspace_folder_file_routes(
 
 # ── /api/workspace-folders/<id>/notes* ───────────────────────────────────────
 
-@app.get('/api/workspace-folders/<folder_id>/notes')
-def api_list_workspace_folder_notes(folder_id: str):
-    payload, status = workspace_folder_notes_service.list_workspace_folder_notes_response(
-        folder_id,
-        workspace_folders_module=workspace_folders,
-        workspace_folder_notes_module=workspace_folder_notes,
-    )
-    return jsonify(payload), status
-
-
-@app.get('/api/workspace-folders/<folder_id>/notes/lookup')
-def api_lookup_workspace_folder_note(folder_id: str):
-    payload, status = workspace_folder_notes_service.lookup_workspace_folder_note_response(
-        folder_id,
-        workspace_folders_module=workspace_folders,
-        workspace_folder_notes_module=workspace_folder_notes,
-        title=request.args.get("title", ""),
-        note_id=request.args.get("note_id", ""),
-    )
-    return jsonify(payload), status
-
-
-@app.get('/api/workspace-folders/<folder_id>/notes/<note_id>')
-def api_get_workspace_folder_note(folder_id: str, note_id: str):
-    payload, status = workspace_folder_notes_service.lookup_workspace_folder_note_response(
-        folder_id,
-        workspace_folders_module=workspace_folders,
-        workspace_folder_notes_module=workspace_folder_notes,
-        note_id=note_id,
-    )
-    return jsonify(payload), status
-
-
-@app.post('/api/workspace-folders/<folder_id>/notes/<note_id>/append')
-def api_append_workspace_folder_note(folder_id: str, note_id: str):
-    data = request.get_json(silent=True) or {}
-    payload, status = workspace_folder_notes_service.append_workspace_folder_note_response(
-        folder_id,
-        note_id,
-        data,
-        workspace_folders_module=workspace_folders,
-        workspace_folder_notes_module=workspace_folder_notes,
-        notes_append_module=workspace_folder_notes_append,
-    )
-    return jsonify(payload), status
-
-
-@app.post('/api/workspace-folders/<folder_id>/notes/<note_id>/prepare')
-def api_prepare_workspace_folder_note(folder_id: str, note_id: str):
-    payload, status = workspace_folder_notes_service.prepare_workspace_folder_note_response(
-        folder_id,
-        note_id,
-        workspace_folders_module=workspace_folders,
-        workspace_folder_notes_module=workspace_folder_notes,
-        notes_read_module=workspace_folder_notes_read,
-    )
-    return jsonify(payload), status
-
-
-@app.post('/api/workspace-folders/<folder_id>/notes')
-def api_create_workspace_folder_note(folder_id: str):
-    data = request.get_json(silent=True) or {}
-    payload, status = workspace_folder_notes_service.create_workspace_folder_note_response(
-        folder_id,
-        data,
-        workspace_folders_module=workspace_folders,
-        workspace_folder_notes_module=workspace_folder_notes,
-        notes_nextcloud_runtime_module=workspace_folder_note_nextcloud_runtime,
-    )
-    return jsonify(payload), status
+workspace_folder_note_routes.register_workspace_folder_note_routes(
+    app,
+    workspace_folder_notes_service_module=workspace_folder_notes_service,
+    get_workspace_folders_module=lambda: workspace_folders,
+    get_workspace_folder_notes_module=lambda: workspace_folder_notes,
+    get_workspace_folder_notes_append_module=lambda: workspace_folder_notes_append,
+    get_workspace_folder_notes_read_module=lambda: workspace_folder_notes_read,
+    get_workspace_folder_note_nextcloud_runtime_module=(
+        lambda: workspace_folder_note_nextcloud_runtime
+    ),
+)
 
 
 # ── /api/workspace-folders/<id>/exports* ─────────────────────────────────────
