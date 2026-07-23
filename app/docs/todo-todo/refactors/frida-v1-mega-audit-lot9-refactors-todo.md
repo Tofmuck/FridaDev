@@ -432,6 +432,36 @@ Checklist:
 
 ### Lot 9A.2 - Workspace artifact routes extraction
 
+Statut:
+
+`OUVERT - MICRO-LOT 9A.2A FERME LE 23 JUILLET 2026`
+
+#### Lot 9A.2a - Dossiers, fichiers et OCR
+
+`app/workspace_folder_file_routes.py` enregistre les dix routes de transport
+dossiers, fichiers et OCR. `app/server.py` injecte les trois services existants
+et trois getters explicites qui resolvent a chaque requete les modules
+`workspace_folders`, `workspace_files` et
+`workspace_document_nextcloud_runtime`. Le handler global `413` reste dans
+`server.py` et continue d'identifier l'endpoint d'upload conserve.
+
+Preuves de fermeture 9A.2a:
+
+- route maps simple et riche strictement identiques avant/apres: `122` routes,
+  hash riche content-free
+  `e59cebe6485334027640b166a936fc585b6fa6042afba96179b43ab6d7c21aae`;
+- comparaison AST des dix handlers identique apres normalisation des seuls noms
+  de modules injectes et des bindings getters requis;
+- dix registrations, dix endpoint strings uniques, zero handler cible et un
+  seul appel de registre dans `server.py`;
+- hash structurel du handler global `413` inchange;
+- suites Python workspace/multipart/OCR/golden: `31 tests`, `OK`;
+- module frontend workspace folders: `18 tests`, `18 pass`;
+- contrat navigateur workspace folders en namespace sans reseau, loopback
+  local seul: `1 test`, `1 pass`;
+- aucune route Notes, exports ou generated-images modifiee; 9A.2b, 9A.2c et
+  9A.2d restent ouverts et non commences.
+
 Golden tests prealables:
 
 - `tests.test_server_workspace_folders_contract`;
@@ -457,7 +487,7 @@ Critere de sortie:
 
 Checklist:
 
-- [ ] Extraire folders/files routes.
+- [x] Extraire folders/files routes.
 - [ ] Extraire notes routes.
 - [ ] Extraire exports routes.
 - [ ] Extraire generated-images routes.

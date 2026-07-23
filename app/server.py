@@ -15,6 +15,7 @@ from flask import Flask, Response, jsonify, request, send_from_directory, stream
 from werkzeug.exceptions import RequestEntityTooLarge
 
 import config
+import workspace_folder_file_routes
 from core import llm_client as llm
 from core import prompt_loader
 from tools import image_generation
@@ -1041,84 +1042,17 @@ admin_hermeneutics_routes.register_admin_hermeneutics_routes(
 
 # ── /api/workspace-folders* ───────────────────────────────────────────────────
 
-@app.get('/api/workspace-folders')
-def api_list_workspace_folders():
-    payload = workspace_folders_service.list_workspace_folders(
-        request.args,
-        workspace_folders_module=workspace_folders,
-    )
-    return jsonify(payload)
-
-
-@app.post('/api/workspace-folders')
-def api_create_workspace_folder():
-    data = request.get_json(silent=True) or {}
-    payload, status = workspace_folders_service.create_workspace_folder(
-        data,
-        workspace_folders_module=workspace_folders,
-    )
-    return jsonify(payload), status
-
-
-@app.patch('/api/workspace-folders/<folder_id>')
-def api_patch_workspace_folder(folder_id: str):
-    data = request.get_json(silent=True) or {}
-    payload, status = workspace_folders_service.patch_workspace_folder(
-        folder_id,
-        data,
-        workspace_folders_module=workspace_folders,
-    )
-    return jsonify(payload), status
-
-
-@app.delete('/api/workspace-folders/<folder_id>')
-def api_delete_workspace_folder(folder_id: str):
-    payload, status = workspace_folders_service.delete_workspace_folder(
-        folder_id,
-        workspace_folders_module=workspace_folders,
-    )
-    return jsonify(payload), status
-
-
-# ── /api/workspace-folders/<id>/files* ───────────────────────────────────────
-
-@app.get('/api/workspace-folders/<folder_id>/files')
-def api_list_workspace_folder_files(folder_id: str):
-    payload, status = workspace_files_service.list_workspace_files_response(
-        folder_id,
-        workspace_folders_module=workspace_folders,
-        workspace_files_module=workspace_files,
-    )
-    return jsonify(payload), status
-
-
-@app.post('/api/workspace-folders/<folder_id>/files')
-def api_upload_workspace_folder_file(folder_id: str):
-    body_guard = workspace_files_service.upload_body_size_guard_response(request.content_length)
-    if body_guard:
-        payload, status = body_guard
-        return jsonify(payload), status
-
-    payload, status = workspace_files_service.upload_workspace_file_response(
-        folder_id,
-        request.files,
-        workspace_folders_module=workspace_folders,
-        workspace_files_module=workspace_files,
-        documents_nextcloud_runtime_module=workspace_document_nextcloud_runtime,
-    )
-    return jsonify(payload), status
-
-
-@app.delete('/api/workspace-folders/<folder_id>/files/<file_id>')
-def api_delete_workspace_folder_file(folder_id: str, file_id: str):
-    payload, status = workspace_files_service.delete_workspace_file_response(
-        folder_id,
-        file_id,
-        workspace_folders_module=workspace_folders,
-        workspace_files_module=workspace_files,
-        documents_nextcloud_runtime_module=workspace_document_nextcloud_runtime,
-    )
-    return jsonify(payload), status
+workspace_folder_file_routes.register_workspace_folder_file_routes(
+    app,
+    workspace_folders_service_module=workspace_folders_service,
+    workspace_files_service_module=workspace_files_service,
+    workspace_file_ocr_service_module=workspace_file_ocr_service,
+    get_workspace_folders_module=lambda: workspace_folders,
+    get_workspace_files_module=lambda: workspace_files,
+    get_workspace_document_nextcloud_runtime_module=(
+        lambda: workspace_document_nextcloud_runtime
+    ),
+)
 
 
 # ── /api/workspace-folders/<id>/notes* ───────────────────────────────────────
@@ -1331,41 +1265,6 @@ def api_create_workspace_folder_generated_image(folder_id: str):
         workspace_folders_module=workspace_folders,
         generated_images_module=workspace_folder_generated_images,
         generated_images_runtime_module=workspace_folder_generated_image_nextcloud_runtime,
-    )
-    return jsonify(payload), status
-
-
-@app.post('/api/workspace-folders/<folder_id>/files/<file_id>/ocr')
-def api_ocr_workspace_folder_file(folder_id: str, file_id: str):
-    payload, status = workspace_file_ocr_service.ocr_workspace_file_response(
-        folder_id,
-        file_id,
-        workspace_folders_module=workspace_folders,
-        workspace_files_module=workspace_files,
-    )
-    return jsonify(payload), status
-
-
-@app.get('/api/workspace-folders/<folder_id>/files/<file_id>/ocr-markdown')
-def api_get_workspace_folder_file_ocr_markdown(folder_id: str, file_id: str):
-    payload, status = workspace_file_ocr_service.get_ocr_markdown_response(
-        folder_id,
-        file_id,
-        workspace_folders_module=workspace_folders,
-        workspace_files_module=workspace_files,
-    )
-    return jsonify(payload), status
-
-
-@app.patch('/api/workspace-folders/<folder_id>/files/<file_id>/ocr-markdown')
-def api_patch_workspace_folder_file_ocr_markdown(folder_id: str, file_id: str):
-    data = request.get_json(silent=True) or {}
-    payload, status = workspace_file_ocr_service.patch_ocr_markdown_response(
-        folder_id,
-        file_id,
-        data,
-        workspace_folders_module=workspace_folders,
-        workspace_files_module=workspace_files,
     )
     return jsonify(payload), status
 
