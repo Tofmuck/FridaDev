@@ -41,6 +41,10 @@ Decision produit du 23 juillet 2026:
 - il ajoute `presence` uniquement a l'axe final de sortie du
   `validation_agent`, distinct de `suspend`, puis reutilise la voie
   `AssistantResponseOverride` et la frontiere de persistance existantes;
+- son correctif de frontiere conserve les derives Memory/Identity du message
+  utilisateur et exclut seulement l'assistant marque
+  `assistant_turn.status=dialogic_presence`, sans reconnaissance du texte
+  visible ni disparition de l'historique;
 - il n'ajoute aucun agent, classificateur, heuristique lexicale, route, surface
   produit ou etat persistant;
 - son corpus synthetique borne vit dans

@@ -191,6 +191,42 @@ class ConvStoreTimeLabelsTests(unittest.TestCase):
             ],
         )
 
+    def test_build_prompt_messages_keeps_dialogic_presence_in_recent_history(self) -> None:
+        conversation = {
+            "id": "conv-dialogic-presence-marker",
+            "messages": [
+                {"role": "system", "content": "SYSTEM", "timestamp": "2026-07-23T08:59:00Z"},
+                {
+                    "role": "user",
+                    "content": "Dépôt synthétique.",
+                    "timestamp": "2026-07-23T09:00:00Z",
+                },
+                {
+                    "role": "assistant",
+                    "content": "...",
+                    "timestamp": "2026-07-23T09:00:01Z",
+                    "meta": {"assistant_turn": {"status": "dialogic_presence"}},
+                },
+            ],
+        }
+
+        with (
+            mock.patch.object(conv_store, "_get_active_summary", return_value=None),
+            mock.patch.object(conv_store, "count_tokens", return_value=1),
+            mock.patch.object(conv_store.admin_logs, "log_event", return_value=None),
+        ):
+            result = conv_store.build_prompt_messages(
+                conversation,
+                model="fake-model",
+                now="2026-07-23T09:00:02Z",
+                memory_traces=None,
+                context_hints=None,
+            )
+
+        assistant_messages = [message for message in result if message.get("role") == "assistant"]
+        self.assertEqual(len(assistant_messages), 1)
+        self.assertTrue(assistant_messages[0]["content"].endswith("..."))
+
     def test_build_prompt_messages_keeps_recent_dialogue_when_prefix_exceeds_soft_limit(self) -> None:
         conversation = {
             "id": "conv-large-prefix",

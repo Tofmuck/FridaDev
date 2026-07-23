@@ -153,6 +153,134 @@ class MemoryTracesSummariesBlockTests(unittest.TestCase):
             ],
         )
 
+    def test_save_new_traces_keeps_presence_user_and_never_catches_up_marked_assistant(self) -> None:
+        observed_inserts: list[tuple[Any, ...]] = []
+        inserted_message_keys: set[tuple[str, str, str]] = set()
+        original_trace_exists = memory_traces_summaries._trace_exists_for_message
+
+        class FakeCursor:
+            def __enter__(self) -> "FakeCursor":
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def execute(self, query: str, params: tuple[Any, ...]) -> None:
+                if "INSERT INTO traces" in query:
+                    observed_inserts.append(params)
+                    inserted_message_keys.add(
+                        (str(params[1]), str(params[2]), str(params[3] or ""))
+                    )
+
+        class FakeConn:
+            def __enter__(self) -> "FakeConn":
+                return self
+
+            def __exit__(self, exc_type, exc, tb) -> bool:
+                return False
+
+            def cursor(self) -> FakeCursor:
+                return FakeCursor()
+
+            def commit(self) -> None:
+                return None
+
+        conversation = {
+            "id": "conv-presence-traces",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "Dépôt synthétique.",
+                    "timestamp": "2026-07-23T09:00:00Z",
+                },
+                {
+                    "role": "assistant",
+                    "content": "...",
+                    "timestamp": "2026-07-23T09:00:01Z",
+                    "meta": {"assistant_turn": {"status": "dialogic_presence"}},
+                },
+            ],
+        }
+
+        memory_traces_summaries._trace_exists_for_message = (
+            lambda _conversation_id, message, **_kwargs: (
+                str(message.get("role") or ""),
+                str(message.get("content") or ""),
+                str(message.get("timestamp") or ""),
+            )
+            in inserted_message_keys
+        )
+        try:
+            memory_traces_summaries.save_new_traces(
+                conversation,
+                conn_factory=lambda: FakeConn(),
+                embed_fn=lambda *_args, **_kwargs: [0.1, 0.2, 0.3],
+                logger=_NoopLogger(),
+            )
+            conversation = {
+                "id": conversation["id"],
+                "messages": [
+                    {
+                        key: value
+                        for key, value in message.items()
+                        if key != "embedded"
+                    }
+                    for message in conversation["messages"]
+                ],
+            }
+            conversation["messages"].extend(
+                [
+                    {
+                        "role": "user",
+                        "content": "Question synthétique suivante.",
+                        "timestamp": "2026-07-23T09:01:00Z",
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "Réponse synthétique suivante.",
+                        "timestamp": "2026-07-23T09:01:01Z",
+                    },
+                ]
+            )
+            memory_traces_summaries.save_new_traces(
+                conversation,
+                conn_factory=lambda: FakeConn(),
+                embed_fn=lambda *_args, **_kwargs: [0.1, 0.2, 0.3],
+                logger=_NoopLogger(),
+            )
+        finally:
+            memory_traces_summaries._trace_exists_for_message = original_trace_exists
+
+        self.assertEqual(
+            [(params[1], params[2]) for params in observed_inserts],
+            [
+                ("user", "Dépôt synthétique."),
+                ("user", "Question synthétique suivante."),
+                ("assistant", "Réponse synthétique suivante."),
+            ],
+        )
+        self.assertTrue(conversation["messages"][0]["embedded"])
+        self.assertNotIn("embedded", conversation["messages"][1])
+
+    def test_trace_eligibility_uses_presence_meta_not_dot_content(self) -> None:
+        marked_presence = {
+            "role": "assistant",
+            "content": "...",
+            "meta": {"assistant_turn": {"status": "dialogic_presence"}},
+        }
+        ordinary_assistant = {"role": "assistant", "content": "..."}
+        ordinary_user = {"role": "user", "content": "..."}
+        user_with_assistant_meta = {
+            "role": "user",
+            "content": "...",
+            "meta": {"assistant_turn": {"status": "dialogic_presence"}},
+        }
+
+        self.assertFalse(memory_traces_summaries._message_is_trace_eligible(marked_presence))
+        self.assertTrue(memory_traces_summaries._message_is_trace_eligible(ordinary_assistant))
+        self.assertTrue(memory_traces_summaries._message_is_trace_eligible(ordinary_user))
+        self.assertTrue(memory_traces_summaries._message_is_trace_eligible(user_with_assistant_meta))
+
 
 class MemoryContextReadBlockTests(unittest.TestCase):
     def test_get_recent_context_hints_deduplicates_content_norm_and_respects_max_items(self) -> None:

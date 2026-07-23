@@ -329,6 +329,31 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         memory_identity_periodic_agent.mutable_identity_runtime.identity.load_llm_identity = self.original_load_llm
         memory_identity_periodic_agent.mutable_identity_runtime.identity.load_user_identity = self.original_load_user
 
+    def test_staging_keeps_presence_user_and_buffers_empty_assistant_projection(self) -> None:
+        store = _InMemoryIdentityStore()
+
+        summary = memory_identity_periodic_agent.stage_identity_turn_pair(
+            'conv-presence-staging',
+            [
+                {'role': 'user', 'content': 'Dépôt synthétique.'},
+                {'role': 'assistant', 'content': ''},
+            ],
+            arbiter_module=SimpleNamespace(),
+            memory_store_module=store,
+        )
+
+        state = store.get_identity_staging_state('conv-presence-staging')
+        self.assertEqual(summary['status'], 'buffering')
+        self.assertEqual(
+            state['buffer_pairs'],
+            [
+                {
+                    'user': {'role': 'user', 'content': 'Dépôt synthétique.'},
+                    'assistant': {'role': 'assistant', 'content': ''},
+                }
+            ],
+        )
+
     def _run_threshold_window_with_logged_final_turn(
         self,
         *,

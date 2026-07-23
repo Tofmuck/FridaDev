@@ -6,6 +6,7 @@ from typing import Any
 
 ASSISTANT_TURN_META_KEY = 'assistant_turn'
 ASSISTANT_TURN_STATUS_INTERRUPTED = 'interrupted'
+ASSISTANT_TURN_STATUS_DIALOGIC_PRESENCE = 'dialogic_presence'
 
 
 def build_interrupted_assistant_turn_meta(error_code: str | None = None) -> dict[str, dict[str, str]]:
@@ -14,6 +15,14 @@ def build_interrupted_assistant_turn_meta(error_code: str | None = None) -> dict
     if error_code_norm:
         payload['error_code'] = error_code_norm
     return {ASSISTANT_TURN_META_KEY: payload}
+
+
+def build_dialogic_presence_assistant_turn_meta() -> dict[str, dict[str, str]]:
+    return {
+        ASSISTANT_TURN_META_KEY: {
+            'status': ASSISTANT_TURN_STATUS_DIALOGIC_PRESENCE,
+        }
+    }
 
 
 def get_assistant_turn_state(message: Mapping[str, Any] | None) -> dict[str, str] | None:
@@ -36,7 +45,22 @@ def get_assistant_turn_state(message: Mapping[str, Any] | None) -> dict[str, str
 
 
 def is_interrupted_assistant_turn(message: Mapping[str, Any] | None) -> bool:
+    if not isinstance(message, Mapping):
+        return False
+    if str(message.get('role') or '').strip().lower() != 'assistant':
+        return False
     state = get_assistant_turn_state(message)
     if state is None:
         return False
     return state.get('status') == ASSISTANT_TURN_STATUS_INTERRUPTED
+
+
+def is_dialogic_presence_assistant_turn(message: Mapping[str, Any] | None) -> bool:
+    if not isinstance(message, Mapping):
+        return False
+    if str(message.get('role') or '').strip().lower() != 'assistant':
+        return False
+    state = get_assistant_turn_state(message)
+    if state is None:
+        return False
+    return state.get('status') == ASSISTANT_TURN_STATUS_DIALOGIC_PRESENCE

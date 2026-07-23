@@ -81,7 +81,7 @@ Portee: schema compact du pipeline chat/runtime courant de `FridaDev`
 [Main LLM call / chat_llm_flow + llm_client]
   |- validated answer/presence -> existing AssistantResponseOverride("...")
   |    -> no main provider/secret/URL call
-  |    -> no Identity/Memory derivation from assistant dots
+  |    -> server-only assistant_turn.status=dialogic_presence
   |- OpenRouter caller=llm
   |- final URL resolved by llm_client from runtime main_model.base_url
   |  (central config.OR_BASE fallback only when the runtime value is absent)
@@ -104,6 +104,9 @@ Portee: schema compact du pipeline chat/runtime courant de `FridaDev`
   |- interrupted turns excluded from prompt window and traces
   |- presence -> exact assistant message "..." persisted once on normal success
   |    -> remains in canonical history
+  |    -> user message keeps normal Memory and Identity post-save derivations
+  |    -> marked assistant remains in dialogue but is excluded from Memory and
+  |       projected as non-substantive at both Identity boundaries
   |    -> not written to hermeneutic node_state
   v
 [Frontend render + rehydration]
@@ -247,15 +250,23 @@ FR: seul un verdict positif `answer/presence` du `validation_agent` autorise
 les trois points. Le runtime ne reconnait aucune phrase utilisateur par regex,
 substring ou liste lexicale. La sortie reutilise la voie d'override et la
 barriere de persistance communes; elle ne survit au tour que comme message de
-conversation canonique, jamais comme inertie `node_state`. Une question, une
-detresse, un risque, un hard guard ou une action materielle ambigue ne doivent
-pas etre masques par ce regime.
+conversation canonique, jamais comme inertie `node_state`. Le message assistant
+porte le marqueur serveur borne
+`assistant_turn.status=dialogic_presence`: cette meta, et jamais le texte,
+l'exclut durablement des traces Memory et le projette sans contenu substantiel
+vers l'extracteur et le staging Identity. Le message utilisateur conserve les
+derives normaux du tour apres sauvegarde canonique. Une question, une detresse,
+un risque, un hard guard ou une action materielle ambigue ne doivent pas etre
+masques par ce regime.
 EN: only a positive `answer/presence` verdict from `validation_agent`
 authorizes the three dots. Runtime code recognizes no user phrase through
 regex, substring, or lexical lists. The output reuses the common override and
 persistence barrier; it survives only as a canonical conversation message,
-never as `node_state` inertia. A question, distress, risk, hard guard, or
-ambiguous material action must not be hidden by this regime.
+never as `node_state` inertia. A bounded server marker, rather than the visible
+text, durably excludes the assistant presence act from Memory and projects it
+as non-substantive at both Identity boundaries; the user message keeps normal
+post-save derivations. A question, distress, risk, hard guard, or ambiguous
+material action must not be hidden by this regime.
 
 ## References
 

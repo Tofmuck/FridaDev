@@ -6,9 +6,9 @@ Portee: synthese francaise du pipeline complet FridaDev, du navigateur a la repo
 
 ## Vue d'ensemble
 
-FridaDev est aujourd'hui un systeme de conversation outille: un utilisateur ecrit dans l'interface, le serveur construit un tour avec du temps explicite, de l'identite, du contexte recent, de la memoire, un resume actif, du web optionnel, des documents actifs et des signaux hermeneutiques, puis un seul modele principal produit la reponse.
+FridaDev est aujourd'hui un systeme de conversation outille: un utilisateur ecrit dans l'interface, le serveur construit un tour avec du temps explicite, de l'identite, du contexte recent, de la memoire, un resume actif, du web optionnel, des documents actifs et des signaux hermeneutiques. Le modele principal produit les reponses substantives; l'exception locale `answer/presence` est canonisee directement par le serveur en `...` depuis le verdict valide.
 
-Les autres modeles et services ne repondent pas a la place de Frida. Ils preparent, filtrent, cadrent, observent ou alimentent des derives. Ils ne deviennent pas souverains: le modele principal reste le seul auteur direct de la reponse utilisateur.
+Les autres modeles et services preparent, filtrent, cadrent, observent ou alimentent des derives. Le `validation_agent` reste souverain sur le verdict final dans ses garde-fous; il ne redige pas de prose, mais son verdict positif `answer/presence` autorise l'override local exact sans appel au modele principal.
 
 Ce document ne remplace pas les specs vivantes. Il sert de carte lisible pour comprendre comment les pieces travaillent ensemble dans l'etat courant du depot.
 
@@ -23,7 +23,7 @@ FridaDev n'est pas un simple formulaire envoye a un modele. C'est une orchestrat
 - une memoire conversationnelle/RAG avec retrieval, panier pre-arbitre, arbitre memoire et traces persistantes;
 - une identite active composee d'un socle statique et de mutables gouvernes;
 - un resume conversationnel qui compresse les anciens messages quand la fenetre devient trop lourde;
-- un noeud hermeneutique qui cadre la posture finale sans ecrire la reponse;
+- un noeud hermeneutique qui cadre la posture finale et peut autoriser l'acte local canonique `...`, sans rediger de reponse substantive;
 - des surfaces admin et observabilite qui lisent et expliquent le runtime sans remplacer le pipeline.
 
 Le systeme vit sur OVH. Les reglages modeles et certains secrets passent par les runtime settings chiffres. Les surfaces admin sont protegees par le garde proxy/identite attendu cote OVH; le chat public, lui, reste la surface utilisateur.
@@ -195,12 +195,12 @@ Le `validation_agent` relit ensuite:
 Il appelle un modele dedie et doit retourner un JSON court:
 
 - `final_judgment_posture`: `answer`, `clarify` ou `suspend`;
-- `final_output_regime`: `simple` ou `meta`;
+- `final_output_regime`: `simple`, `meta` ou `presence`;
 - une raison compacte.
 
-Si un hard guard interdit une reponse directe, le validation agent doit choisir entre clarification et suspension. S'il echoue, le systeme fail-open vers une suspension simple.
+Si un hard guard interdit une reponse directe, le validation agent doit choisir entre clarification et suspension. Un echec, timeout ou parse error du validation agent ne peut jamais produire `presence`.
 
-Le validation agent ne redige pas la reponse utilisateur. Il cadre la posture finale.
+Le validation agent ne redige pas la prose utilisateur. Il cadre la posture finale et peut autoriser `answer/presence`; le serveur rend alors exactement `...`.
 
 ### Jugement hermeneutique final
 
@@ -210,11 +210,20 @@ Le resultat valide devient un petit bloc `[JUGEMENT HERMENEUTIQUE]` injecte dans
 - demander une clarification breve;
 - suspendre ou nommer une limite.
 
-Il peut aussi orienter le regime: simple ou meta. C'est une consigne de cadrage, pas une reponse pre-ecrite.
+Il peut aussi orienter le regime: simple, meta ou presence. Hors `presence`,
+c'est une consigne de cadrage et non une reponse pre-ecrite.
+
+Pour `answer/presence`, le bloc valide porte le regime local mais le modele
+principal n'est pas appele: `chat_llm_flow` reutilise la voie d'override,
+persiste le message exact et conserve la meme barriere de succes.
 
 ## 5. Modele principal
 
 Le modele principal recoit le prompt final construit par `conv_store.build_prompt_messages()` puis enrichi par web et documents actifs.
+
+Cette voie produit les reponses substantives. Elle est court-circuitee
+uniquement lorsqu'un override final deja autorise existe, notamment
+`answer/presence`.
 
 Il voit notamment:
 
@@ -256,9 +265,9 @@ L'appel principal passe par `chat_llm_flow.run_llm_exchange()` et `llm_client.bu
 
 En non-stream:
 
-1. le serveur appelle le provider;
-2. extrait le texte assistant;
-3. normalise la sortie via `assistant_output_contract`;
+1. le serveur consomme un override final autorise ou appelle le provider;
+2. il obtient le texte assistant depuis cette voie;
+3. il normalise la sortie provider via `assistant_output_contract` quand cette voie s'applique;
 4. ajoute le message assistant a la conversation;
 5. sauvegarde la conversation;
 6. logue `AssistantText`;
@@ -282,6 +291,12 @@ Le frontend affiche les chunks au fil de l'eau, puis utilise le terminal pour sa
 ### Normalisation et sauvegarde
 
 La normalisation assistant sert a eviter certains problemes de sortie, notamment autour des contrats plain text. La sauvegarde canonique reste la barriere centrale: pas de traces memoire ni d'ecritures identitaires derivees tant que le message assistant final n'est pas prouve en base.
+
+Pour `presence`, le message assistant canonique porte une meta serveur
+`assistant_turn.status=dialogic_presence`. Il reste dans l'historique et la
+fenetre de dialogue, mais cette meta l'exclut des traces Memory et le projette
+sans contenu substantiel vers l'extracteur et le staging Identity. Le message
+utilisateur du meme tour conserve ses derives post-save normaux.
 
 Les tours interrompus peuvent etre marques comme tels, mais ils ne valent pas un message assistant complet.
 
@@ -422,8 +437,8 @@ Navigateur
   -> NOW + identity + summary + memory + web + stimmung
   -> primary_node deterministe
   -> validation_agent
-  -> prompt final + documents/images actifs
-  -> modele principal
+  -> answer/presence: override local exact
+     ou prompt final + documents/images actifs -> modele principal
   -> reponse non-stream ou stream
   -> sauvegarde canonique
   -> traces memoire + identity extractor + periodic identity + observabilite

@@ -332,8 +332,15 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
                     self.assertTrue(response.get_json()['ok'])
                     self.assertTrue(response.get_json()['updated_at'])
                 self.assertEqual(provider_calls, [])
-                self.assertEqual(identity_calls, [])
-                self.assertEqual(observed_state['save_new_traces_calls'], [])
+                self.assertEqual(len(identity_calls), 1)
+                self.assertEqual(len(observed_state['save_new_traces_calls']), 1)
+                identity_pair = identity_calls[0]['args'][1]
+                self.assertEqual([message['role'] for message in identity_pair], ['user', 'assistant'])
+                self.assertEqual(identity_pair[-1]['content'], '...')
+                self.assertEqual(
+                    identity_pair[-1]['meta'],
+                    {'assistant_turn': {'status': 'dialogic_presence'}},
+                )
                 self.assertEqual(observed_state['node_state_writes'], [])
                 self.assertEqual(len(observed_state['save_calls']), 2)
                 primary_event = next(
@@ -350,6 +357,10 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
                     ['system', 'user', 'assistant'],
                 )
                 self.assertEqual(conversation['messages'][-1]['content'], '...')
+                self.assertEqual(
+                    conversation['messages'][-1]['meta'],
+                    {'assistant_turn': {'status': 'dialogic_presence'}},
+                )
                 self.assertEqual(
                     sum(
                         1

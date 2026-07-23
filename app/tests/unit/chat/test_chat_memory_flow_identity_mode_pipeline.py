@@ -25,6 +25,148 @@ def _event_payloads(events, name: str):
 
 
 class ChatMemoryFlowIdentityModePipelineTests(unittest.TestCase):
+    def test_presence_projects_only_marked_assistant_out_of_identity_sources(self) -> None:
+        events = []
+        observed = {
+            "extract_turns": None,
+            "persisted": None,
+            "staged_turns": None,
+        }
+        original_stage = chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair
+        canonical_pair = [
+            {"role": "user", "content": "Dépôt synthétique."},
+            {
+                "role": "assistant",
+                "content": "...",
+                "meta": {"assistant_turn": {"status": "dialogic_presence"}},
+            },
+        ]
+
+        def fake_extract(turns):
+            observed["extract_turns"] = [dict(turn) for turn in turns]
+            return [
+                {"subject": turn["role"], "content": turn["content"]}
+                for turn in turns
+                if str(turn.get("content") or "").strip()
+            ]
+
+        def fake_stage(_conversation_id, turn_pair, **_kwargs):
+            observed["staged_turns"] = [dict(turn) for turn in turn_pair]
+            return {
+                "status": "buffering",
+                "reason_code": "below_threshold",
+                "buffer_pairs_count": 1,
+                "buffer_target_pairs": 5,
+                "buffer_cleared": False,
+                "writes_applied": False,
+                "last_agent_status": "buffering",
+                "outcomes": [],
+            }
+
+        arbiter_module = SimpleNamespace(extract_identities=fake_extract)
+        memory_store_module = SimpleNamespace(
+            persist_identity_entries=lambda conversation_id, entries: observed.update(
+                {"persisted": (conversation_id, list(entries))}
+            ),
+            preview_identity_entries=lambda entries: list(entries),
+            record_identity_evidence=lambda *_args, **_kwargs: None,
+        )
+        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
+
+        chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair = fake_stage
+        try:
+            chat_memory_flow.record_identity_entries_for_mode(
+                "conv-presence-identity",
+                canonical_pair,
+                mode="enforced_all",
+                arbiter_module=arbiter_module,
+                memory_store_module=memory_store_module,
+                admin_logs_module=admin_logs_module,
+            )
+        finally:
+            chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair = original_stage
+
+        expected_projected_pair = [
+            {"role": "user", "content": "Dépôt synthétique."},
+            {
+                "role": "assistant",
+                "content": "",
+                "meta": {"assistant_turn": {"status": "dialogic_presence"}},
+            },
+        ]
+        self.assertEqual(observed["extract_turns"], expected_projected_pair)
+        self.assertEqual(observed["staged_turns"], expected_projected_pair)
+        self.assertEqual(
+            observed["persisted"],
+            (
+                "conv-presence-identity",
+                [{"subject": "user", "content": "Dépôt synthétique."}],
+            ),
+        )
+        self.assertEqual(canonical_pair[1]["content"], "...")
+
+    def test_unmarked_dot_messages_remain_identity_sources(self) -> None:
+        observed = {"extract_turns": None}
+        arbiter_module = SimpleNamespace(
+            extract_identities=lambda turns: observed.update(
+                {"extract_turns": [dict(turn) for turn in turns]}
+            )
+            or [],
+        )
+        memory_store_module = SimpleNamespace(
+            preview_identity_entries=lambda entries: list(entries),
+            record_identity_evidence=lambda *_args, **_kwargs: None,
+        )
+        admin_logs_module = SimpleNamespace(log_event=lambda *_args, **_kwargs: None)
+        pair = [
+            {"role": "user", "content": "..."},
+            {"role": "assistant", "content": "..."},
+        ]
+
+        chat_memory_flow.record_identity_entries_for_mode(
+            "conv-unmarked-dots",
+            pair,
+            mode="shadow",
+            arbiter_module=arbiter_module,
+            memory_store_module=memory_store_module,
+            admin_logs_module=admin_logs_module,
+        )
+
+        self.assertEqual(observed["extract_turns"], pair)
+
+    def test_presence_meta_on_user_input_cannot_project_user_content_out(self) -> None:
+        observed = {"extract_turns": None}
+        arbiter_module = SimpleNamespace(
+            extract_identities=lambda turns: observed.update(
+                {"extract_turns": [dict(turn) for turn in turns]}
+            )
+            or [],
+        )
+        memory_store_module = SimpleNamespace(
+            preview_identity_entries=lambda entries: list(entries),
+            record_identity_evidence=lambda *_args, **_kwargs: None,
+        )
+        admin_logs_module = SimpleNamespace(log_event=lambda *_args, **_kwargs: None)
+        pair = [
+            {
+                "role": "user",
+                "content": "Source utilisateur conservée.",
+                "meta": {"assistant_turn": {"status": "dialogic_presence"}},
+            },
+            {"role": "assistant", "content": "Réponse ordinaire."},
+        ]
+
+        chat_memory_flow.record_identity_entries_for_mode(
+            "conv-user-marker-forgery",
+            pair,
+            mode="shadow",
+            arbiter_module=arbiter_module,
+            memory_store_module=memory_store_module,
+            admin_logs_module=admin_logs_module,
+        )
+
+        self.assertEqual(observed["extract_turns"], pair)
+
     def test_record_identity_entries_for_mode_handles_off_and_enforced(self) -> None:
         events = []
         observed = {

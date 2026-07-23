@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Any, Mapping
 
 from core import assistant_output_contract
+from core import assistant_turn_state
 from core import adobe_docs_prompt_lane
 from core import active_conversation_documents
 from core import active_document_prompt_lane
@@ -547,7 +548,7 @@ def _hermeneutic_presence_assistant_response_override(
         content=_DIALOGIC_PRESENCE_TEXT,
         source='hermeneutic_presence',
         reason_code='validated_dialogic_presence',
-        derive_identity_memory=False,
+        meta=assistant_turn_state.build_dialogic_presence_assistant_turn_meta(),
     )
 
 

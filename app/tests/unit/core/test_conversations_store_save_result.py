@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -16,10 +17,82 @@ APP_DIR = _resolve_app_dir()
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
+from core import assistant_turn_state
 from core import conversations_store
 
 
 class ConversationsStoreSaveResultTests(unittest.TestCase):
+    def test_dialogic_presence_meta_survives_storage_and_rehydration(self) -> None:
+        marker = assistant_turn_state.build_dialogic_presence_assistant_turn_meta()
+        normalized = conversations_store.normalize_messages_for_storage(
+            [
+                {
+                    'role': 'assistant',
+                    'content': '...',
+                    'timestamp': '2026-07-23T09:00:01Z',
+                    'meta': marker,
+                }
+            ],
+            ts_to_iso_func=lambda raw: conversations_store.ts_to_iso(
+                raw,
+                now_iso_func=lambda: self.fail('valid timestamp must not use now'),
+            ),
+            coerce_bool_func=conversations_store.coerce_bool,
+        )
+
+        class FakeCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, *_args, **_kwargs):
+                return None
+
+            def fetchall(self):
+                return [
+                    {
+                        'role': normalized[0]['role'],
+                        'content': normalized[0]['content'],
+                        'timestamp': datetime(2026, 7, 23, 9, 0, 1, tzinfo=timezone.utc),
+                        'summarized_by': None,
+                        'embedded': False,
+                        'meta': normalized[0]['meta'],
+                    }
+                ]
+
+        class FakeConn:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self, **_kwargs):
+                return FakeCursor()
+
+        loaded = conversations_store.load_messages_from_db(
+            '11111111-1111-4111-8111-111111111111',
+            normalize_conversation_id_func=lambda raw: str(raw) if raw else None,
+            db_conn_func=lambda: FakeConn(),
+            ts_to_iso_func=lambda raw: conversations_store.ts_to_iso(
+                raw,
+                now_iso_func=lambda: self.fail('persisted timestamp must not use now'),
+            ),
+            logger=type('Logger', (), {'warning': lambda *_args, **_kwargs: None})(),
+        )
+
+        self.assertEqual(loaded[0]['content'], '...')
+        self.assertEqual(loaded[0]['timestamp'], '2026-07-23T09:00:01Z')
+        self.assertEqual(loaded[0]['meta'], marker)
+        self.assertTrue(assistant_turn_state.is_dialogic_presence_assistant_turn(loaded[0]))
+        self.assertFalse(
+            assistant_turn_state.is_dialogic_presence_assistant_turn(
+                {'role': 'user', 'content': '...', 'meta': marker}
+            )
+        )
+
     def test_load_json_conversation_file_logs_read_error_without_raw_exception(self) -> None:
         raw_error = 'ARTIFICIAL_CONVERSATION_SECRET from corrupt json'
         admin_events = []

@@ -19,9 +19,33 @@ if str(APP_DIR) not in sys.path:
 
 from admin import runtime_settings
 from memory import arbiter
+from memory import identity_temporal_guard
 
 
 class IdentityTemporalGuardTests(unittest.TestCase):
+    def test_empty_presence_projection_keeps_user_as_only_admissible_identity_source(self) -> None:
+        projected_pair = [
+            {'role': 'user', 'content': 'Dépôt synthétique.'},
+            {'role': 'assistant', 'content': ''},
+        ]
+
+        admissible, extractor_summary = (
+            identity_temporal_guard.admissible_turns_with_source_summary(projected_pair)
+        )
+        buffered, staging_summary = (
+            identity_temporal_guard.sanitized_buffer_pairs_with_source_summary(
+                [{'user': projected_pair[0], 'assistant': projected_pair[1]}]
+            )
+        )
+
+        self.assertEqual(admissible, [projected_pair[0]])
+        self.assertEqual(extractor_summary['user']['admissible_source_count'], 1)
+        self.assertEqual(extractor_summary['llm']['admissible_source_count'], 0)
+        self.assertEqual(buffered[0]['user']['content'], 'Dépôt synthétique.')
+        self.assertEqual(buffered[0]['assistant']['content'], '')
+        self.assertEqual(staging_summary['user']['admissible_source_count'], 1)
+        self.assertEqual(staging_summary['llm']['admissible_source_count'], 0)
+
     def setUp(self) -> None:
         runtime_settings.invalidate_runtime_settings_cache()
 

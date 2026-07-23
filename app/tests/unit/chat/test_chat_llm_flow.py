@@ -96,7 +96,6 @@ class ChatLlmFlowTests(unittest.TestCase):
         fail_failure_observability: bool = False,
         persistence: str = 'success',
         assistant_text: str = 'Artificial assistant turn marker.',
-        derive_identity_memory: bool = True,
     ) -> dict[str, object]:
         surface_flags = {
             'normal_non_stream': (False, False),
@@ -283,7 +282,6 @@ class ChatLlmFlowTests(unittest.TestCase):
                 reason_code='synthetic_final_lock_authorized',
                 meta=assistant_meta,
                 observability={'content_present': True, 'content_chars': len(assistant_text)},
-                derive_identity_memory=derive_identity_memory,
             )
 
         result = None
@@ -356,7 +354,7 @@ class ChatLlmFlowTests(unittest.TestCase):
         self,
         *,
         surface: str,
-        fail_at: str,
+        fail_at: str | None,
     ) -> list[str]:
         assistant_effect = ['assistant_text_estimation']
         if fail_at != 'assistant_text_estimation':
@@ -816,13 +814,12 @@ class ChatLlmFlowTests(unittest.TestCase):
             ],
         )
 
-    def test_presence_override_is_exact_single_save_success_without_provider_or_dialogue_derivations(self) -> None:
+    def test_presence_override_is_exact_single_save_success_with_normal_dialogue_derivations(self) -> None:
         for surface in ('override_non_stream', 'override_stream'):
             with self.subTest(surface=surface):
                 exercised = self._exercise_post_persistence_surface(
                     surface=surface,
                     assistant_text='...',
-                    derive_identity_memory=False,
                 )
                 observed = exercised['observed']
                 result = exercised['result']
@@ -832,8 +829,15 @@ class ChatLlmFlowTests(unittest.TestCase):
                 self.assertEqual(observed['secret_calls'], 0)
                 self.assertEqual(observed['url_calls'], 0)
                 self.assertEqual(observed['save_calls'], 1)
-                self.assertNotIn('memory_traces', observed['post_effect_sequence'])
-                self.assertNotIn('identity_entries', observed['post_effect_sequence'])
+                self.assertIn('memory_traces', observed['post_effect_sequence'])
+                self.assertIn('identity_entries', observed['post_effect_sequence'])
+                self.assertEqual(
+                    observed['post_effect_sequence'],
+                    self._expected_post_persistence_sequence(
+                        surface=surface,
+                        fail_at=None,
+                    ),
+                )
                 self.assertEqual(
                     [message['role'] for message in exercised['conversation']['messages']],
                     ['user', 'assistant'],

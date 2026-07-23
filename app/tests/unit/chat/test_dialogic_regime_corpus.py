@@ -90,6 +90,23 @@ class DialogicRegimeCorpusTests(unittest.TestCase):
         self.assertNotIn("match", calls)
         self.assertNotIn("findall", calls)
 
+    def test_presence_derivation_boundary_never_compares_visible_dot_content(self) -> None:
+        for relative_path in (
+            "core/chat_service.py",
+            "core/chat_memory_flow.py",
+            "memory/memory_traces_summaries.py",
+        ):
+            tree = ast.parse((APP_DIR / relative_path).read_text(encoding="utf-8"))
+            compared_constants = {
+                node.value
+                for comparison in ast.walk(tree)
+                if isinstance(comparison, ast.Compare)
+                for node in ast.walk(comparison)
+                if isinstance(node, ast.Constant) and isinstance(node.value, str)
+            }
+            with self.subTest(relative_path=relative_path):
+                self.assertNotIn("...", compared_constants)
+
     def test_consumed_prompts_carry_meaning_independence_and_exact_presence(self) -> None:
         main_system = (APP_DIR / "prompts" / "main_system.txt").read_text(encoding="utf-8")
         main_hermeneutical = (APP_DIR / "prompts" / "main_hermeneutical.txt").read_text(

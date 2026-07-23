@@ -78,7 +78,6 @@ class AssistantResponseOverride:
     reason_code: str = ""
     meta: Mapping[str, Any] | None = field(default=None, repr=False, compare=False)
     observability: Mapping[str, Any] = field(default_factory=dict, repr=False, compare=False)
-    derive_identity_memory: bool = True
 
     def to_observability(self) -> dict[str, Any]:
         return {
@@ -169,7 +168,6 @@ def _run_chat_post_persistence_effects(
     record_identity_entries_for_mode: Callable[..., None],
     mode_enforces_identity: Callable[[str], bool],
     traces_after_identity: bool,
-    derive_identity_memory: bool = True,
 ) -> None:
     def record_assistant_text_observability() -> None:
         if assistant_text is None:
@@ -225,13 +223,6 @@ def _run_chat_post_persistence_effects(
             'identity_entries',
             'identity_reactivation',
         )
-    if not derive_identity_memory:
-        effect_order = tuple(
-            effect_name
-            for effect_name in effect_order
-            if effect_name not in {'memory_traces', 'identity_entries'}
-        )
-
     for effect_name in effect_order:
         try:
             effects[effect_name]()
@@ -329,7 +320,6 @@ def _run_assistant_response_override(
             record_identity_entries_for_mode=record_identity_entries_for_mode,
             mode_enforces_identity=mode_enforces_identity,
             traces_after_identity=False,
-            derive_identity_memory=bool(override.derive_identity_memory),
         )
         return True, persisted_at, None
 

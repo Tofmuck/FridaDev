@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable
 
+from core import assistant_turn_state
 from memory import memory_lexical_sql
 from observability import chat_turn_logger
 
@@ -61,8 +62,6 @@ _HYBRID_INTERNAL_LIMIT_MIN = 12
 _HYBRID_INTERNAL_LIMIT_MULTIPLIER = 3
 _SUMMARY_LANE_LIMIT_MAX = 3
 _PRE_ARBITER_TOTAL_LIMIT = 8
-_ASSISTANT_TURN_META_KEY = 'assistant_turn'
-_ASSISTANT_TURN_STATUS_INTERRUPTED = 'interrupted'
 
 
 @dataclass(frozen=True)
@@ -599,18 +598,6 @@ def _embed_with_purpose(
         return embed_fn(text, mode=mode)
 
 
-def _is_interrupted_assistant_turn(message: dict[str, Any]) -> bool:
-    if str(message.get('role') or '').strip() != 'assistant':
-        return False
-    raw_meta = message.get('meta')
-    if not isinstance(raw_meta, dict):
-        return False
-    raw_turn = raw_meta.get(_ASSISTANT_TURN_META_KEY)
-    if not isinstance(raw_turn, dict):
-        return False
-    return str(raw_turn.get('status') or '').strip().lower() == _ASSISTANT_TURN_STATUS_INTERRUPTED
-
-
 def _message_is_trace_eligible(message: dict[str, Any]) -> bool:
     role = str(message.get('role') or '').strip()
     if role not in {'user', 'assistant'}:
@@ -619,8 +606,11 @@ def _message_is_trace_eligible(message: dict[str, Any]) -> bool:
         return False
     if not str(message.get('content') or '').strip():
         return False
-    if role == 'assistant' and _is_interrupted_assistant_turn(message):
-        return False
+    if role == 'assistant':
+        if assistant_turn_state.is_interrupted_assistant_turn(message):
+            return False
+        if assistant_turn_state.is_dialogic_presence_assistant_turn(message):
+            return False
     return True
 
 

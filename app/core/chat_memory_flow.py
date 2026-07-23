@@ -6,6 +6,7 @@ import time
 from typing import Any, Mapping, Sequence
 
 import config as default_config
+from core import assistant_turn_state
 from core.hermeneutic_node.inputs import memory_arbitration_input
 from core.hermeneutic_node.inputs import memory_retrieved_input
 from identity import identity_governance
@@ -656,8 +657,13 @@ def record_identity_entries_for_mode(
         )
         return
 
+    identity_turn_pair = [dict(turn or {}) for turn in list(turn_pair or [])]
+    for turn in identity_turn_pair:
+        if assistant_turn_state.is_dialogic_presence_assistant_turn(turn):
+            turn['content'] = ''
+
     extract_t0 = time.perf_counter()
-    id_entries = arbiter_module.extract_identities(turn_pair)
+    id_entries = arbiter_module.extract_identities(identity_turn_pair)
     _log_stage_latency(
         conversation_id,
         'identity_extractor',
@@ -670,7 +676,7 @@ def record_identity_entries_for_mode(
     )
     guard_filtered_count = len(guard_filtered_entries)
     guard_counts_by_side, guard_reason_codes_by_side = _guard_filtered_summary(guard_filtered_entries)
-    buffered_turn_pair = [dict(turn or {}) for turn in list(turn_pair or [])]
+    buffered_turn_pair = [dict(turn) for turn in identity_turn_pair]
 
     if mode_enforces_identity(mode):
         # This legacy extractor path remains diagnostic/history only; mutable canon
