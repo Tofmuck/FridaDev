@@ -15,6 +15,7 @@ from flask import Flask, Response, jsonify, request, send_from_directory, stream
 from werkzeug.exceptions import RequestEntityTooLarge
 
 import config
+import workspace_folder_export_routes
 import workspace_folder_file_routes
 import workspace_folder_note_routes
 from core import llm_client as llm
@@ -1073,67 +1074,19 @@ workspace_folder_note_routes.register_workspace_folder_note_routes(
 
 # ── /api/workspace-folders/<id>/exports* ─────────────────────────────────────
 
-@app.get('/api/workspace-folders/<folder_id>/exports')
-def api_list_workspace_folder_exports(folder_id: str):
-    payload, status = workspace_folder_exports_service.list_workspace_folder_exports_response(
-        folder_id,
-        workspace_folders_module=workspace_folders,
-        workspace_folder_exports_module=workspace_folder_exports,
-    )
-    return jsonify(payload), status
-
-
-@app.get('/api/workspace-folders/<folder_id>/exports/<export_id>')
-def api_get_workspace_folder_export(folder_id: str, export_id: str):
-    payload, status = workspace_folder_exports_service.get_workspace_folder_export_response(
-        folder_id,
-        export_id,
-        workspace_folders_module=workspace_folders,
-        workspace_folder_exports_module=workspace_folder_exports,
-    )
-    return jsonify(payload), status
-
-
-@app.get('/api/workspace-folders/<folder_id>/exports/<export_id>/download')
-def api_download_workspace_folder_export(folder_id: str, export_id: str):
-    result = workspace_folder_export_content_service.download_workspace_folder_export_response(
-        folder_id,
-        export_id,
-        workspace_folders_module=workspace_folders,
-        workspace_folder_exports_module=workspace_folder_exports,
-        disposition="attachment",
-    )
-    if result.ok:
-        return Response(result.content, status=result.status, headers=dict(result.headers or {}))
-    return jsonify(dict(result.payload or {})), result.status
-
-
-@app.get('/api/workspace-folders/<folder_id>/exports/<export_id>/open')
-def api_open_workspace_folder_export(folder_id: str, export_id: str):
-    result = workspace_folder_export_content_service.download_workspace_folder_export_response(
-        folder_id,
-        export_id,
-        workspace_folders_module=workspace_folders,
-        workspace_folder_exports_module=workspace_folder_exports,
-        disposition="inline",
-    )
-    if result.ok:
-        return Response(result.content, status=result.status, headers=dict(result.headers or {}))
-    return jsonify(dict(result.payload or {})), result.status
-
-
-@app.post('/api/workspace-folders/<folder_id>/exports')
-def api_create_workspace_folder_export(folder_id: str):
-    data = request.get_json(silent=True) or {}
-    payload, status = workspace_folder_exports_service.create_workspace_folder_export_response(
-        folder_id,
-        data,
-        workspace_folders_module=workspace_folders,
-        workspace_folder_exports_module=workspace_folder_exports,
-        exports_nextcloud_runtime_module=workspace_folder_export_nextcloud_runtime,
-        conversation_store_module=conv_store,
-    )
-    return jsonify(payload), status
+workspace_folder_export_routes.register_workspace_folder_export_routes(
+    app,
+    workspace_folder_exports_service_module=workspace_folder_exports_service,
+    workspace_folder_export_content_service_module=(
+        workspace_folder_export_content_service
+    ),
+    get_workspace_folders_module=lambda: workspace_folders,
+    get_workspace_folder_exports_module=lambda: workspace_folder_exports,
+    get_workspace_folder_export_nextcloud_runtime_module=(
+        lambda: workspace_folder_export_nextcloud_runtime
+    ),
+    get_conversation_store_module=lambda: conv_store,
+)
 
 
 # ── /api/workspace-folders/<id>/generated-images* ────────────────────────────

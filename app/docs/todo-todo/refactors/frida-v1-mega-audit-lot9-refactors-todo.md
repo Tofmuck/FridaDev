@@ -434,7 +434,7 @@ Checklist:
 
 Statut:
 
-`OUVERT - MICRO-LOTS 9A.2A ET 9A.2B FERMES LE 23 JUILLET 2026`
+`OUVERT - MICRO-LOTS 9A.2A, 9A.2B ET 9A.2C FERMES LE 23 JUILLET 2026`
 
 #### Lot 9A.2a - Dossiers, fichiers et OCR
 
@@ -485,6 +485,32 @@ Preuves de fermeture 9A.2b:
 - aucune route dossiers/fichiers/OCR, exports ou generated-images modifiee;
   9A.2c et 9A.2d restent ouverts et non commences.
 
+#### Lot 9A.2c - Exports
+
+`app/workspace_folder_export_routes.py` enregistre les cinq routes Exports.
+`app/server.py` injecte les deux services existants et quatre getters
+explicites qui resolvent a chaque requete les modules folders, exports, runtime
+Nextcloud et store de conversations. Les routes `download` et `open` restent
+deux handlers distincts avec leurs dispositions respectives `attachment` et
+`inline`; aucune route `/reuse` n'est exposee.
+
+Preuves de fermeture 9A.2c:
+
+- route maps simple et riche strictement identiques avant/apres: `122` routes,
+  hash riche content-free
+  `e59cebe6485334027640b166a936fc585b6fa6042afba96179b43ab6d7c21aae`;
+- comparaison AST des cinq handlers identique apres normalisation des seuls
+  noms de services injectes, affectations getters et variables locales;
+- cinq registrations, cinq endpoint strings uniques, zero handler cible et un
+  seul appel de registre dans `server.py`;
+- contrats serveur Exports, contenu binaire, reuse et golden: `40 tests`,
+  `OK`; contrats frontend Exports: `7 tests`, `7 pass`, panneau Exports:
+  `9 tests`, `9 pass`, copie/export chat: `4 tests`, `4 pass`;
+- decouverte elargie `test_server_workspace*.py`: `75 tests`, `OK`;
+- la route interdite `/reuse` reste absente et rejetee sans effet aval;
+- aucune route dossiers/fichiers/OCR, Notes ou generated-images modifiee;
+  9A.2d reste ouvert et non commence.
+
 Golden tests prealables:
 
 - `tests.test_server_workspace_folders_contract`;
@@ -512,7 +538,7 @@ Checklist:
 
 - [x] Extraire folders/files routes.
 - [x] Extraire notes routes.
-- [ ] Extraire exports routes.
+- [x] Extraire exports routes.
 - [ ] Extraire generated-images routes.
 - [ ] Verifier actions open/download/delete.
 
