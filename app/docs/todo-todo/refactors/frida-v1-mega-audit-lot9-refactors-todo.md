@@ -371,6 +371,33 @@ Checklist:
 
 ### Lot 9A.1 - Admin logs/dashboard route extraction
 
+Statut:
+
+`FERME LE 23 JUILLET 2026 - EXTRACTION DE TRANSPORT A CONTRAT CONSTANT`
+
+Le module `app/admin/admin_logs_dashboard_routes.py` enregistre et sert les
+douze routes admin logs/dashboard: cinq lectures logs, cinq lectures dashboard,
+la suppression bornee des logs chat et l'export Markdown. `app/server.py`
+injecte explicitement les six modules existants dans un registre appele une
+seule fois; les handlers dereferencent leurs attributs au moment de la requete.
+Le guard global `before_request` reste dans `server.py`, sans garde locale ni
+route concurrente.
+
+Preuves de fermeture:
+
+- route map triee strictement identique avant/apres: `122` routes et hash
+  content-free SHA-256
+  `e59cebe6485334027640b166a936fc585b6fa6042afba96179b43ab6d7c21aae`;
+- compilation hermetique de `server.py` et du nouveau module: `OK`;
+- suites ciblees routes/admin/frontend/golden: `61 tests`, `OK`;
+- run hermetique impose des neuf suites: `94 tests`, avec exactement la
+  baseline conservee de cinq echecs et une erreur preexistants hors 9A.1,
+  sans nouveau cas;
+- zero decorateur cible et zero forwarding wrapper dans `server.py`, douze
+  registrations et douze endpoint strings explicites dans le nouveau module;
+- aucune route chat/workspace, aucun read-model, service, frontend ou guard
+  modifie; 9A.2 reste ouvert et non commence.
+
 Golden tests prealables:
 
 - `tests.test_server_admin_chat_logs_contract`;
@@ -398,10 +425,10 @@ Critere de sortie:
 
 Checklist:
 
-- [ ] Extraire logs routes uniquement.
-- [ ] Extraire dashboard routes uniquement.
-- [ ] Verifier route map identique.
-- [ ] Verifier content-free export/projection.
+- [x] Extraire logs routes uniquement.
+- [x] Extraire dashboard routes uniquement.
+- [x] Verifier route map identique.
+- [x] Verifier content-free export/projection.
 
 ### Lot 9A.2 - Workspace artifact routes extraction
 
