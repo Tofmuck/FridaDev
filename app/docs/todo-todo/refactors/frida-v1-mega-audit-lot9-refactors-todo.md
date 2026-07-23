@@ -29,13 +29,12 @@ faire un grand rangement cosmetique.
   utilisateur, payload de provider, identifiant sensible, secret, URL avec
   query ou log brut.
 
-## Prerequis comportemental avant Lot 9.0
+## Livraison dialogique technique et validation qualitative differee
 
 Decision produit du 23 juillet 2026:
 
 - le micro-lot autonome `presomption de sens, independance et presence
-  silencieuse` doit etre techniquement livre puis valide dialogiquement par Tof
-  avant l'ouverture de 9.0;
+  silencieuse` est techniquement livre;
 - il corrige un P2 comportemental avant que les golden tests ne figent la
   compulsion de reponse, la clarification reflexe ou le ralliement trop rapide;
 - il ajoute `presence` uniquement a l'axe final de sortie du
@@ -49,26 +48,33 @@ Decision produit du 23 juillet 2026:
   produit ou etat persistant;
 - son corpus synthetique borne vit dans
   `app/tests/support/dialogic_regime_corpus.json`;
-- les golden tests 9.0 devront figer le regime dialogique corrige apres la
-  validation utilisateur, sans transformer le corpus en mesure generale de
-  l'identite ou de la comprehension.
+- la sortie exacte `...` apres un depot appelant le silence a ete validee par
+  Tof dans le navigateur authentifie;
+- la reponse a une question, le desaccord sans ralliement immediat et le
+  deplacement apres correction argumentee restent a valider plus tard;
+- cette validation qualitative globale reste ouverte. Elle n'est ni reussie,
+  ni fermee, ni remplacee par les tests;
+- elle ne bloque plus l'execution ou la fermeture technique de 9.0;
+- les golden tests 9.0 figent seulement le regime technique `presence`, sa
+  meta serveur et sa persistence. Ils ne mesurent ni ne prouvent l'identite,
+  la comprehension, l'independance ou la qualite hermeneutique du modele;
+- cette decision n'autorise aucun refactor 9A-9H.
 
 Statut:
 
-`LIVRAISON TECHNIQUE EFFECTUEE - VALIDATION DIALOGIQUE UTILISATEUR REQUISE`
+`LIVRAISON TECHNIQUE FERMEE - VALIDATION QUALITATIVE GLOBALE OUVERTE ET NON BLOQUANTE POUR 9.0`
 
-La fermeture semantique de ce prerequis reste interdite avant le retour
-navigateur authentifie de Tof sur un depot, une question, un desaccord sans
-ralliement immediat et une correction argumentee pouvant justifier un
-deplacement. Aucune case 9.0 n'est cochee et aucun golden test 9.0 n'est
-commence dans ce micro-lot.
+La fermeture semantique globale reste interdite avant les trois retours
+navigateur encore ouverts. La validation deja obtenue sur le depot silencieux
+reste une validation partielle, pas une preuve generale.
 
 ## Gate de priorite et familles de destination
 
-Apres validation utilisateur et cloture documentaire du prerequis dialogique,
-le seul prochain lot executable reste `Lot 9.0 - Golden test harness / preuve
-avant refactor`. Les numeros 9A-9H classent les destinations de la dette; ils
-ne fixent pas l'ordre d'execution apres 9.0:
+Apres la decision operateur ci-dessus, le seul lot executable etait
+`Lot 9.0 - Golden test harness / preuve avant refactor`. Sa fermeture technique
+ne ferme pas la validation dialogique qualitative globale. Les numeros 9A-9H
+classent les destinations de la dette; ils ne fixent pas l'ordre d'execution
+apres 9.0:
 
 - Lot 9A - `server.py` route families;
 - Lot 9B - orchestration chat, echange LLM et frontiere hermeneutique;
@@ -173,6 +179,10 @@ ne dupliquent pas la tache dans une autre famille.
 Objectif:
 figer les contrats qui empechent les refactors d'etre cosmetiques ou dangereux.
 
+Statut:
+
+`FERME LE 23 JUILLET 2026 - TESTS ET DOCUMENTATION UNIQUEMENT`
+
 Fichiers vises:
 
 - `app/tests/support/server_test_bootstrap.py`
@@ -212,36 +222,89 @@ Critere de sortie:
 - au moins une fixture content-free partageable par les lots 9A-9E;
 - pas de runtime modifie.
 
-Commandes de verification:
+Inventaire livre:
+
+| golden | contrat vivant | preuve voisine reutilisee | gap ferme / support commun | lots proteges |
+| --- | --- | --- | --- | --- |
+| chat | protocole stream, persistence canonique et axe technique `answer/presence` | `tests.unit.chat.test_chat_llm_flow`, `tests.test_server_chat_route_transport_contract`, corpus dialogique | `tests.support.server_chat_pipeline`: route Flask non-stream/stream, saves user puis assistant, terminal unique; frontiere LLM success/error, override sans provider principal et meta `dialogic_presence` | 9A, 9B |
+| route map | routes Flask et guards admin/outils du HEAD | contrats `tests.test_server_*` et `tests.test_server_admin_*` | `tests.support.lot9_route_map_contract`: 122 entrees contractuelles construites par familles, methodes, endpoints et classes de garde; mutants retrait/ajout/methode/famille/garde | 9A |
+| manifest/capsule | `main_payload_manifest_v1` et Continuity Capsule V1 | `tests.unit.logs.test_main_payload_manifest`, `tests.unit.continuity.test_runtime_continuity_capsule` | golden borne sur sections, fenetres, cardinalite utile, correspondance capsule/lane et flags raw; aucune copie du prompt ou du contenu capsule | 9B |
+| observabilite | writer guard default-deny et projection admin content-free | `tests.unit.logs.test_observability_payload_guard`, `tests.unit.logs.test_observability_residual_redaction_lot5c` | `tests.support.lot9_content_free_harness.OBSERVABILITY_MATRIX`: formes compactes acceptees, contenu/champ inconnu/type invalide/valeur narrative refuses ou rediges | 9C, 9D |
+| frontend | scripts globaux classiques et panels existants | `tests.unit.frontend_chat.*`, `tests.integration.frontend_chat.test_frontend_chat_contract` | `tests.support.frontend_load_order_contract`: dependances partielles, unicite, execution sequentielle en VM et globals requis; mutants doublon/inversion | 9E |
+| JSONL | preuves et smokes content-free | smokes Biblio/Agenda existants et writer guard | `tests.support.lot9_content_free_harness`: schema test-only `lot9_smoke_v1`, JSON parseable deterministe, codes/counts/IDs bornes, rejet de cle ou sentinel de contenu | 9A-9E |
+
+Runner checkout courant prouve:
+
+- image courante `platform-fridadev-app:local`;
+- checkout `app/` monte en lecture seule sous `/workspace/app`;
+- conteneur ephemere `--rm`, filesystem read-only, `/tmp` tmpfs dedie,
+  `--network none`, aucun volume runtime et aucune variable de secret;
+- frontend Node execute dans un namespace reseau vide via
+  `unshare --net --map-root-user`;
+- aucun rebuild et aucun `docker exec` ne servent de preuve aux nouveaux
+  fichiers.
+
+Commandes golden communes:
 
 ```bash
+docker run --rm --network none --read-only \
+  --tmpfs /tmp:rw,nosuid,nodev,noexec \
+  --mount type=bind,src=/opt/platform/fridadev/app,dst=/workspace/app,readonly \
+  -w /workspace/app -e PYTHONDONTWRITEBYTECODE=1 \
+  platform-fridadev-app:local \
+  python -m unittest -v tests.unit.golden.test_lot9_golden_harness
+
+docker run --rm --network none --read-only \
+  --tmpfs /tmp:rw,nosuid,nodev,noexec \
+  --mount type=bind,src=/opt/platform/fridadev/app,dst=/workspace/app,readonly \
+  -w /workspace/app -e PYTHONDONTWRITEBYTECODE=1 \
+  platform-fridadev-app:local \
+  python -m unittest -v \
+  tests.test_server_chat_route_transport_contract \
+  tests.unit.chat.test_chat_llm_flow \
+  tests.unit.chat.test_chat_stream_control \
+  tests.unit.chat.test_dialogic_regime_corpus \
+  tests.unit.core.test_conversations_store_save_result \
+  tests.unit.logs.test_main_payload_manifest \
+  tests.unit.continuity.test_runtime_continuity_capsule \
+  tests.unit.logs.test_observability_payload_guard \
+  tests.unit.logs.test_observability_residual_redaction_lot5c
+
+unshare --net --map-root-user \
+  node --test app/tests/unit/frontend_chat/*.js
+
 git diff --check
-python3 -m py_compile app/server.py app/core/*.py app/observability/*.py app/tools/*.py
-docker exec platform-fridadev python -m unittest tests.test_server_chat_route_transport_contract
 ```
 
-Note d'execution Lot 9.0:
+Baseline et non-regression du 23 juillet 2026:
 
-- `docker exec platform-fridadev ...` est OK seulement pour les tests deja
-  presents dans l'image courante.
-- Les nouveaux tests ajoutes en Lot 9.0 ne sont pas visibles dans
-  `platform-fridadev` tant que l'image n'est pas reconstruite.
-- Lot 9.0 restant tests/docs-only, ne pas demander de rebuild pour rendre ces
-  nouveaux tests visibles.
-- Lot 9.0 doit donc valider explicitement une strategie de runner avant de
-  compter les nouveaux tests comme preuve: interpreter hote si les dependances
-  repo sont presentes, ou conteneur ephemere avec code courant monte, ou autre
-  methode prouvee.
-- Si un futur lot modifie du runtime Python/JS, le rebuild applicatif redevient
-  obligatoire comme decrit dans les commandes communes.
+- suite Python voisine principale: `111 tests`, `OK` avant patch;
+- frontend Node complet: `121 tests`, `121 pass` avant patch;
+- le run voisin route/admin/frontend/minimal-validation comptait `44 tests`:
+  les 39 contrats route/admin/frontend etaient verts et cinq erreurs
+  preexistantes restaient dans les fixtures historiques
+  `test_minimal_validation_phase9.py` / `phase11.py`; elles ne sont pas
+  requalifiees ni absorbees par 9.0;
+- les formes d'absence/fallback manifest/capsule restent portees par les suites
+  voisines existantes; 9.0 ne les duplique pas.
+
+Preuves de fermeture:
+
+- golden Python 9.0: `7 tests`, `OK`;
+- suite Python voisine principale rejouee: `111 tests`, `OK`;
+- frontend Node complet avec les deux nouveaux goldens: `123 tests`,
+  `123 pass`;
+- les deux fixtures JSON synthetiques du support sont parsees;
+- le run historique de `44 tests` conserve exactement ses cinq erreurs
+  preexistantes et `39` tests passants.
 
 Checklist:
 
-- [ ] Definir la fixture chat synthetic commune.
-- [ ] Definir la route map snapshot par familles.
-- [ ] Definir la matrice content-free JSONL.
-- [ ] Documenter les commandes communes Lot 9.
-- [ ] Prouver absence de contenu brut dans les fixtures.
+- [x] Definir la fixture chat synthetic commune.
+- [x] Definir la route map snapshot par familles.
+- [x] Definir la matrice content-free JSONL.
+- [x] Documenter les commandes communes Lot 9.
+- [x] Prouver absence de contenu brut dans les fixtures.
 
 ## Lot 9A - `server.py` route families
 
