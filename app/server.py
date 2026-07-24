@@ -14,6 +14,7 @@ import requests
 from flask import Flask, Response, jsonify, request, send_from_directory, stream_with_context
 from werkzeug.exceptions import RequestEntityTooLarge
 
+import chat_transcription_routes
 import config
 import workspace_folder_export_routes
 import workspace_folder_file_routes
@@ -743,27 +744,15 @@ class _AdminLogsChatLogProxy:
 # ── /api/chat/transcribe ───────────────────────────────────────────────────────
 
 
-@app.post("/api/chat/transcribe")
-def api_chat_transcribe():
-    body_guard = whisper_transcription_service.request_body_size_guard_response(
-        request.content_length
-    )
-    if body_guard:
-        payload, status = body_guard
-        return jsonify(payload), status
-
-    try:
-        payload, status = whisper_transcription_service.transcribe_http_request(
-            content_type=request.content_type,
-            files=request.files,
-            form=request.form,
-            requests_module=requests,
-            config_module=config,
-            logger_obj=logger,
-        )
-    except whisper_transcription_service.WhisperTranscriptionServiceError as exc:
-        payload, status = exc.as_response()
-    return jsonify(payload), status
+api_chat_transcribe = chat_transcription_routes.register_chat_transcription_route(
+    app,
+    get_request=lambda: request,
+    whisper_transcription_service_module=whisper_transcription_service,
+    requests_module=requests,
+    config_module=config,
+    logger_obj=logger,
+    jsonify_func=jsonify,
+)
 
 
 # ── /api/chat ─────────────────────────────────────────────────────────────────

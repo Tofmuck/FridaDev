@@ -584,6 +584,26 @@ Checklist:
 
 ### Lot 9A.3 - Chat transport route isolation
 
+Statut:
+
+`OUVERT - MICRO-LOT 9A.3A FERME LE 24 JUILLET 2026`
+
+#### Micro-lot 9A.3a - route de transcription
+
+La transcription est extraite separement du handler principal `/api/chat` afin
+de ne toucher ni ses proxies, ni sa finalisation, ni sa persistance, ni son
+protocole stream. `app/chat_transcription_routes.py` enregistre uniquement
+`POST /api/chat/transcribe`; son registre retourne le handler donne a Flask,
+que `app/server.py` reexpose sous le meme objet `api_chat_transcribe`.
+
+Le raccord resout `request` tardivement par un getter appele une fois par
+requete. Le guard global `RequestEntityTooLarge` reste dans `app/server.py` et
+continue de reconnaitre l'endpoint stable `api_chat_transcribe`. Les preuves
+hermetiques couvrent les 36 tests cibles, les contrats chat elargis, l'identite
+de la route map riche a 122 routes et la comparaison differentielle complete.
+Le micro-lot 9A.3b, reserve a la route principale `/api/chat`, n'est pas
+commence.
+
 Golden tests prealables:
 
 - `tests.test_server_chat_route_transport_contract`;
@@ -610,7 +630,7 @@ Critere de sortie:
 Checklist:
 
 - [ ] Isoler `/api/chat`.
-- [ ] Isoler `/api/chat/transcribe`.
+- [x] Isoler `/api/chat/transcribe`.
 - [ ] Verifier stream terminal frame.
 - [ ] Verifier errors content-free.
 
