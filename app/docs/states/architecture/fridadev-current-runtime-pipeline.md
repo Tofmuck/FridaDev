@@ -28,7 +28,7 @@ Portee: schema compact du pipeline chat/runtime courant de `FridaDev`
   |    -> Flask body <= 40 MiB, bounded file read <= 40 MiB + 1 byte observed
   |- scanned PDF active_document OCR V1 -> platform-stirling-pdf when extractor says document_ocr_required
   v
-[server.py / /api/chat]
+[chat_transport_routes.py / POST /api/chat; wiring: server.py]
   |- begin_turn + public chat entrypoint
   v
 [Required main prompt gate / chat_service]
