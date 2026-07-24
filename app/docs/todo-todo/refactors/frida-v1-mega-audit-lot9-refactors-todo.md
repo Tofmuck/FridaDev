@@ -586,7 +586,7 @@ Checklist:
 
 Statut:
 
-`OUVERT - MICRO-LOT 9A.3A FERME LE 24 JUILLET 2026`
+`FERME LE 24 JUILLET 2026 - MICRO-LOTS 9A.3A ET 9A.3B FERMES`
 
 #### Prerequis tests-only du micro-lot 9A.3b
 
@@ -605,6 +605,7 @@ refuse zero appel, deux appels dans un meme fichier ou une duplication entre
 les deux proprietaires. Ses autocontroles synthetiques restent dans le test
 existant, sans ajouter de cas a la suite. Les assertions relatives au secret
 runtime et aux fallbacks historiques sont conservees. Ce prerequis tests-only
+livre par le commit `efa004a06ae94239d39c103df1da81bf7a1bf068`
 ne rejoue pas 9A.3b, ne coche aucune case 9A.3 et ne commence pas le Lot 9B.0.
 
 #### Micro-lot 9A.3a - route de transcription
@@ -620,8 +621,46 @@ requete. Le guard global `RequestEntityTooLarge` reste dans `app/server.py` et
 continue de reconnaitre l'endpoint stable `api_chat_transcribe`. Les preuves
 hermetiques couvrent les 36 tests cibles, les contrats chat elargis, l'identite
 de la route map riche a 122 routes et la comparaison differentielle complete.
-Le micro-lot 9A.3b, reserve a la route principale `/api/chat`, n'est pas
-commence.
+Le micro-lot 9A.3b, reserve a la route principale `/api/chat`, est documente
+separement ci-dessous.
+
+#### Micro-lot 9A.3b - route principale du chat
+
+`app/chat_transport_routes.py` enregistre uniquement `POST /api/chat` et
+retourne le handler donne a Flask; `app/server.py` le reexpose sous le meme
+objet `api_chat`. Les quatre proxies, le classificateur et la finalisation
+restent dans `server.py`, sans wrapper ni second chemin. `request` est resolu
+une fois au debut du handler et la finalisation est resolue tardivement, y
+compris dans le `finally` du generateur stream.
+
+Preuves de fermeture 9A.3b:
+
+- route maps simple et riche strictement identiques avant/apres: `122` routes,
+  hash riche content-free
+  `e59cebe6485334027640b166a936fc585b6fa6042afba96179b43ab6d7c21aae`;
+- identite entre le handler Flask et `server.api_chat`, un seul appel AST
+  `.chat_response(...)` dans le nouveau proprietaire et zero dans
+  `server.py`;
+- corps du handler identique apres normalisation des seuls noms injectes,
+  du getter de requete et des trois resolutions tardives de finalisation;
+  AST des quatre proxies, des deux helpers et des autres fonctions de
+  `server.py` inchange;
+- gate phase5bis/transport/golden: `20 tests`, `OK`; integration chat:
+  `16 tests`, `OK`; unit chat: `127 tests`, `OK`; phase12: `2 tests`, `OK`;
+  controles frontend stream: `15 tests`, `15 pass`;
+- bundle observabilite critique: `49 tests`, avec exactement les `7 echecs`
+  et `1 erreur` historiques, sans nouvel identifiant;
+- matrice synthetique avant/apres identique pour les statuts non-stream,
+  stream paresseux, UTF-8 multioctet, terminal `done`/`error`, terminal
+  absent/duplique, contenu apres terminal, erreur de persistance, headers,
+  finalisation tardive et sentinelle interdite;
+- decouverte chat: `69 tests`, `14 echecs` et `2 erreurs` historiques;
+  decouverte complete differentielle: `2533 tests`, `22 echecs` et
+  `16 erreurs`, memes `38` identifiants et empreinte triee
+  `3cba67198a772d52769947237cda5d9e285037e488a1ef5e3c40c6927e940364`.
+
+Le Lot 9A est ferme: 9A.0, 9A.1, 9A.2 et 9A.3 sont tous fermes. Le Lot 9B.0
+reste entierement ouvert et non commence.
 
 Golden tests prealables:
 
@@ -648,10 +687,10 @@ Critere de sortie:
 
 Checklist:
 
-- [ ] Isoler `/api/chat`.
+- [x] Isoler `/api/chat`.
 - [x] Isoler `/api/chat/transcribe`.
-- [ ] Verifier stream terminal frame.
-- [ ] Verifier errors content-free.
+- [x] Verifier stream terminal frame.
+- [x] Verifier errors content-free.
 
 ## Lot 9B - `chat_service.py` orchestration boundaries
 
