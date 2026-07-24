@@ -588,6 +588,25 @@ Statut:
 
 `OUVERT - MICRO-LOT 9A.3A FERME LE 24 JUILLET 2026`
 
+#### Prerequis tests-only du micro-lot 9A.3b
+
+Statut:
+
+`FERME LE 24 JUILLET 2026 - P3-CEL-LOT9A3-SOURCE-OWNER-TEST-01`
+
+Le test historique de secret runtime imposait par recherche textuelle que
+`chat_service.chat_response(...)` reste physiquement dans `app/server.py`.
+Le contrat structurel porte desormais sur exactement un appel AST
+`.chat_response(...)` parmi les deux seuls proprietaires autorises:
+`app/server.py` et, lorsqu'il existe, `app/chat_transport_routes.py`.
+
+Le detecteur ignore commentaires, chaines et acces d'attribut non appeles; il
+refuse zero appel, deux appels dans un meme fichier ou une duplication entre
+les deux proprietaires. Ses autocontroles synthetiques restent dans le test
+existant, sans ajouter de cas a la suite. Les assertions relatives au secret
+runtime et aux fallbacks historiques sont conservees. Ce prerequis tests-only
+ne rejoue pas 9A.3b, ne coche aucune case 9A.3 et ne commence pas le Lot 9B.0.
+
 #### Micro-lot 9A.3a - route de transcription
 
 La transcription est extraite separement du handler principal `/api/chat` afin
