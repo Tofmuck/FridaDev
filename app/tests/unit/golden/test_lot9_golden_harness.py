@@ -183,9 +183,18 @@ class Lot9GoldenHarnessTests(unittest.TestCase):
                 )
         self.assertEqual(presence_override['visible_text'], '...')
         self.assertEqual(presence_override['assistant_text'], '...')
+        presence_meta = presence_override['conversation']['messages'][-1]['meta']
         self.assertEqual(
-            presence_override['conversation']['messages'][-1]['meta'],
-            assistant_turn_state.build_dialogic_presence_assistant_turn_meta(),
+            presence_meta['assistant_turn'],
+            assistant_turn_state.build_dialogic_presence_assistant_turn_meta()['assistant_turn'],
+        )
+        self.assertEqual(
+            presence_meta['assistant_runtime_provenance'],
+            {
+                'schema_version': 'v1',
+                'response_origin': 'final_lock',
+                'web_context_injected_to_main_model': False,
+            },
         )
         self.assertEqual(presence_override['terminal']['event'], 'done')
 

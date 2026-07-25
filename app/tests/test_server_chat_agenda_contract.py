@@ -362,6 +362,14 @@ class ServerChatAgendaContractTests(unittest.TestCase):
         self.assertIn('timestamp', assistant_message)
         self.assertEqual(assistant_message['meta']['source'], 'agenda_readonly_response')
         self.assertTrue(assistant_message['meta']['content_free_meta'])
+        self.assertEqual(
+            assistant_message['meta']['assistant_runtime_provenance'],
+            {
+                'schema_version': 'v1',
+                'response_origin': 'final_lock',
+                'web_context_injected_to_main_model': False,
+            },
+        )
         self.assertEqual(len(observed_state['save_new_traces_calls']), 1)
         self.assertEqual(observed_state['save_new_traces_calls'][0][-1], assistant_message)
         agenda_events = [item for event, item in events if event == 'agenda']

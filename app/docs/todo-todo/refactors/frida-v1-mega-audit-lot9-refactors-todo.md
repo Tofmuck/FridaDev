@@ -715,6 +715,17 @@ Hors scope:
 
 Sous-lots:
 
+### Prerequis externe P2 avant 9B.0
+
+`P2-CEL-WEB-TURN-PROVENANCE-CONTINUITY-01` reste un prerequis externe au Lot
+9B.0. La correction technique persiste une provenance assistant V1
+content-free, distingue modele principal et final lock, puis la projette au
+tour suivant sans conserver les sources Web ni relancer une recherche.
+
+Statut: correction technique livree; audit independant et validation live par
+Tof encore requis. Le finding P2 reste ouvert et tout le Lot 9B demeure gele
+jusqu'a ces validations. Aucune case 9B n'est cochee par ce correctif.
+
 ### Lot 9B.0 - Golden lane-order / final-lock / capsule
 
 Golden tests prealables:

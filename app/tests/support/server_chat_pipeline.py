@@ -40,6 +40,7 @@ def exercise_chat_llm_surface(
     persistence: str = 'success',
     regime: str = 'answer',
     assistant_text: str | None = None,
+    web_context_injected_to_main_model: bool = False,
 ) -> dict[str, object]:
     """Exercise the real LLM/persistence boundary with bounded synthetic fakes."""
 
@@ -58,13 +59,24 @@ def exercise_chat_llm_surface(
     user_text = 'Artificial user turn marker.'
     if assistant_text is None:
         assistant_text = '...' if regime == 'presence' else 'Artificial assistant turn marker.'
-    assistant_meta = (
+    assistant_input_meta = (
         assistant_turn_state.build_dialogic_presence_assistant_turn_meta()
         if regime == 'presence'
         else {
             'source': 'synthetic_final_lock' if is_override else 'synthetic_provider',
             'final_lock': is_override,
         }
+    )
+    assistant_meta = assistant_turn_state.merge_assistant_message_meta(
+        assistant_input_meta,
+        assistant_turn_state.build_assistant_runtime_provenance_meta(
+            response_origin=(
+                assistant_turn_state.ASSISTANT_RUNTIME_PROVENANCE_ORIGIN_FINAL_LOCK
+                if is_override
+                else assistant_turn_state.ASSISTANT_RUNTIME_PROVENANCE_ORIGIN_MAIN_MODEL
+            ),
+            web_context_injected_to_main_model=False,
+        ),
     )
     timestamp = '2026-07-22T10:00:00Z'
     conversation = {
@@ -256,7 +268,7 @@ def exercise_chat_llm_surface(
             content=assistant_text,
             source=source,
             reason_code=reason_code,
-            meta=assistant_meta,
+            meta=assistant_input_meta,
             observability={'content_present': True, 'content_chars': len(assistant_text)},
         )
 
@@ -305,7 +317,8 @@ def exercise_chat_llm_surface(
                 'X-Conversation-Created-At': conversation['created_at'],
             },
             assistant_response_override=assistant_response_override,
-            assistant_response_meta=assistant_meta,
+            assistant_response_meta=assistant_input_meta,
+            web_context_injected_to_main_model=web_context_injected_to_main_model,
         )
         if stream_req:
             for part in result['stream']:

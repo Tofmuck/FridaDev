@@ -380,4 +380,10 @@ def build_prompt_messages(
                 content = f"[{label}] {content}"
             prev_ts = ts_msg
         result.append({"role": role, "content": content})
+        if role == "assistant":
+            provenance_marker = (
+                assistant_turn_state.build_assistant_runtime_provenance_prompt_marker(msg)
+            )
+            if provenance_marker is not None:
+                result.append(provenance_marker)
     return result

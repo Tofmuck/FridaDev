@@ -262,6 +262,40 @@ provider `user` seulement si le contexte Web a reellement ete injecte par le
 runtime Web, selon un payload structure indiquant une activation `manual` ou
 `auto` et une injection effective.
 
+### Provenance runtime assistant durable
+
+Chaque nouvelle reponse assistant visible porte une meta locale versionnee
+`assistant_runtime_provenance`:
+
+- `schema_version=v1`;
+- `response_origin=main_model|final_lock`;
+- `web_context_injected_to_main_model=true|false`.
+
+La valeur vient exclusivement de l'etat runtime structure du tour. Le toggle,
+une tentative de recherche, une URL, une citation ou le texte assistant ne
+constituent jamais une preuve. `true` exige une activation Web `manual|auto`,
+un statut `ok`, un `context_block` non vide et l'appel effectif du modele
+principal. Un final lock garde toujours `response_origin=final_lock` et
+`web_context_injected_to_main_model=false`, meme si du materiau Web avait ete
+prepare avant sa selection.
+
+La meta est content-free et ne contient ni requete, URL, domaine, titre,
+source, citation, extrait, contenu, hash, modele, provider, secret ou exception.
+Elle est fusionnee avec les metas Biblio, Agenda, Presence et autres metas
+existantes sans les remplacer. Un message interrompu conserve uniquement son
+etat `assistant_turn.status=interrupted`.
+
+Au tour suivant, `conversations_prompt_window` projette une meta valide en un
+court message `system` adjacent au message assistant. Ce marqueur n'est jamais
+persiste dans le contenu, affiche par le frontend, derive par inspection du
+texte, injecte dans Memory/Identity ou duplique lors d'une nouvelle
+reconstruction. Une fausse balise ecrite dans le dialogue ne produit donc
+aucune provenance. L'absence de meta sur un message legacy signifie
+`provenance inconnue`, jamais `Web non utilise`.
+
+Le contenu Web reste transitoire: aucune source n'est conservee et aucune
+recherche n'est automatiquement relancee au tour suivant.
+
 Les roles `identity_stable` et `identity_mutable` ne doivent etre portes par le
 message systeme que si les lanes d'identite correspondantes sont selectionnees
 dans les donnees structurees du tour. Le manifeste ne doit pas dire a la fois

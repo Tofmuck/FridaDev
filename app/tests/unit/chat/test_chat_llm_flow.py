@@ -509,6 +509,11 @@ class ChatLlmFlowTests(unittest.TestCase):
             {
                 'source': 'biblio_read_passages_response',
                 'biblio_render_mode': 'read_passages_llm_response',
+                'assistant_runtime_provenance': {
+                    'schema_version': 'v1',
+                    'response_origin': 'main_model',
+                    'web_context_injected_to_main_model': False,
+                },
             },
         )
         self.assertEqual(
@@ -1189,6 +1194,11 @@ class ChatLlmFlowTests(unittest.TestCase):
             {
                 'source': 'biblio_read_passages_response',
                 'biblio_render_mode': 'read_passages_llm_response',
+                'assistant_runtime_provenance': {
+                    'schema_version': 'v1',
+                    'response_origin': 'main_model',
+                    'web_context_injected_to_main_model': False,
+                },
             },
         )
         self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-03-26T00:11:59Z')
@@ -1279,8 +1289,13 @@ class ChatLlmFlowTests(unittest.TestCase):
             reactivate_identities=lambda _identity_ids: None,
         )
         conv_store_module = SimpleNamespace(
-            append_message=lambda conv, role, content, timestamp=None: conv['messages'].append(
-                {'role': role, 'content': content, 'timestamp': timestamp}
+            append_message=lambda conv, role, content, timestamp=None, meta=None: conv['messages'].append(
+                {
+                    'role': role,
+                    'content': content,
+                    'timestamp': timestamp,
+                    **({'meta': meta} if meta is not None else {}),
+                }
             ),
             save_conversation=lambda *_args, **_kwargs: None,
         )
@@ -1405,8 +1420,13 @@ class ChatLlmFlowTests(unittest.TestCase):
             reactivate_identities=lambda _identity_ids: None,
         )
         conv_store_module = SimpleNamespace(
-            append_message=lambda conv, role, content, timestamp=None: conv['messages'].append(
-                {'role': role, 'content': content, 'timestamp': timestamp}
+            append_message=lambda conv, role, content, timestamp=None, meta=None: conv['messages'].append(
+                {
+                    'role': role,
+                    'content': content,
+                    'timestamp': timestamp,
+                    **({'meta': meta} if meta is not None else {}),
+                }
             ),
             save_conversation=lambda *_args, **_kwargs: None,
         )
@@ -1510,8 +1530,13 @@ class ChatLlmFlowTests(unittest.TestCase):
             reactivate_identities=lambda _identity_ids: observed['sequence'].append('reactivate_identities'),
         )
         conv_store_module = SimpleNamespace(
-            append_message=lambda conv, role, content, timestamp=None: conv['messages'].append(
-                {'role': role, 'content': content, 'timestamp': timestamp}
+            append_message=lambda conv, role, content, timestamp=None, meta=None: conv['messages'].append(
+                {
+                    'role': role,
+                    'content': content,
+                    'timestamp': timestamp,
+                    **({'meta': meta} if meta is not None else {}),
+                }
             ),
             save_conversation=fake_save_conversation,
         )
@@ -1572,7 +1597,16 @@ class ChatLlmFlowTests(unittest.TestCase):
         self.assertNotIn('"nom"', streamed)
         self.assertEqual(terminal, {'event': 'done', 'updated_at': '2026-03-26T00:11:00Z'})
         self.assertEqual(conversation['messages'][-1]['content'], streamed)
-        self.assertNotIn('meta', conversation['messages'][-1])
+        self.assertEqual(
+            conversation['messages'][-1]['meta'],
+            {
+                'assistant_runtime_provenance': {
+                    'schema_version': 'v1',
+                    'response_origin': 'main_model',
+                    'web_context_injected_to_main_model': False,
+                }
+            },
+        )
         self.assertEqual(observed['save_calls'][-1]['updated_at'], '2026-03-26T00:11:00Z')
         self.assertEqual(
             observed['sequence'],

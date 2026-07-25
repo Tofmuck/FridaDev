@@ -287,12 +287,20 @@ def _run_assistant_response_override(
         stream=stream_req,
         **override_observability,
     )
+    assistant_final_meta = assistant_turn_state.merge_assistant_message_meta(
+        override.meta,
+        assistant_turn_state.build_assistant_runtime_provenance_meta(
+            response_origin=assistant_turn_state.ASSISTANT_RUNTIME_PROVENANCE_ORIGIN_FINAL_LOCK,
+            web_context_injected_to_main_model=False,
+        ),
+    )
 
     def persist_and_record() -> tuple[bool, str | None, dict[str, Any] | None]:
         updated_at = now_iso_func()
-        append_kwargs: dict[str, Any] = {"timestamp": updated_at}
-        if override.meta is not None:
-            append_kwargs["meta"] = dict(override.meta)
+        append_kwargs: dict[str, Any] = {
+            "timestamp": updated_at,
+            "meta": assistant_final_meta,
+        }
         conv_store_module.append_message(conversation, "assistant", text, **append_kwargs)
         _mark_next_persist_phase(conv_store_module, "assistant_final")
         save_result = conv_store_module.save_conversation(conversation, updated_at=updated_at)
@@ -300,7 +308,13 @@ def _run_assistant_response_override(
             messages = conversation.get("messages")
             if isinstance(messages, list) and messages:
                 last = messages[-1]
-                if isinstance(last, dict) and last.get("role") == "assistant" and last.get("content") == text:
+                if (
+                    isinstance(last, dict)
+                    and last.get("role") == "assistant"
+                    and last.get("content") == text
+                    and str(last.get("timestamp") or "") == str(updated_at or "")
+                    and last.get("meta") == assistant_final_meta
+                ):
                     messages.pop()
             return False, updated_at, _persistence_failure_payload(save_result)
         persisted_at = _save_result_updated_at(save_result, updated_at)
@@ -390,6 +404,7 @@ def run_llm_exchange(
     conversation_stream_headers_func: Callable[[Mapping[str, Any]], dict[str, str]] | None = None,
     assistant_response_override: AssistantResponseOverride | None = None,
     assistant_response_meta: Mapping[str, Any] | None = None,
+    web_context_injected_to_main_model: bool = False,
     assistant_response_intro: str = "",
     assistant_response_outro: str = "",
 ) -> dict[str, Any]:
@@ -414,6 +429,14 @@ def run_llm_exchange(
             conversation_headers_func=conversation_headers_func,
             conversation_stream_headers_func=conversation_stream_headers_func,
         )
+
+    assistant_final_meta = assistant_turn_state.merge_assistant_message_meta(
+        assistant_response_meta,
+        assistant_turn_state.build_assistant_runtime_provenance_meta(
+            response_origin=assistant_turn_state.ASSISTANT_RUNTIME_PROVENANCE_ORIGIN_MAIN_MODEL,
+            web_context_injected_to_main_model=web_context_injected_to_main_model,
+        ),
+    )
 
     try:
         runtime_settings_module.get_runtime_secret_value('main_model', 'api_key')
@@ -497,9 +520,10 @@ def run_llm_exchange(
                 outro=assistant_response_outro,
             )
             updated_at = now_iso_func()
-            append_kwargs: dict[str, Any] = {'timestamp': updated_at}
-            if assistant_response_meta is not None:
-                append_kwargs['meta'] = dict(assistant_response_meta)
+            append_kwargs: dict[str, Any] = {
+                'timestamp': updated_at,
+                'meta': assistant_final_meta,
+            }
             conv_store_module.append_message(conversation, 'assistant', text, **append_kwargs)
             _mark_next_persist_phase(conv_store_module, 'assistant_final')
             save_result = conv_store_module.save_conversation(conversation, updated_at=updated_at)
@@ -548,7 +572,6 @@ def run_llm_exchange(
             appended_assistant_content = ''
             appended_assistant_timestamp: str | None = None
             appended_assistant_meta: dict[str, Any] | None = None
-            assistant_final_meta = dict(assistant_response_meta) if assistant_response_meta is not None else None
             assistant_has_envelope = bool(
                 str(assistant_response_intro or "").strip() or str(assistant_response_outro or "").strip()
             )

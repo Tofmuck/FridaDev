@@ -312,6 +312,23 @@ def apply_augmented_system(conversation: dict[str, Any], augmented_system: str) 
         conversation['messages'][0]['content'] = augmented_system
 
 
+def has_usable_web_context(
+    web_context_payload: Mapping[str, Any] | None,
+) -> bool:
+    if not isinstance(web_context_payload, Mapping):
+        return False
+    activation_mode = str(web_context_payload.get('activation_mode') or '').strip()
+    status = str(web_context_payload.get('status') or '').strip()
+    context_block = str(web_context_payload.get('context_block') or '').strip()
+    context_injected = web_context_payload.get('context_injected')
+    return (
+        activation_mode in {'manual', 'auto'}
+        and status == 'ok'
+        and bool(context_block)
+        and (context_injected is None or context_injected is True)
+    )
+
+
 def inject_web_context(
     prompt_messages: list[dict[str, Any]],
     *,
@@ -330,6 +347,7 @@ def inject_web_context(
             web_context_payload = {
                 'enabled': True,
                 'status': 'ok' if ctx else 'skipped',
+                'activation_mode': 'manual',
                 'reason_code': None if ctx else 'no_data',
                 'original_user_message': user_msg,
                 'query': search_query,
@@ -339,9 +357,11 @@ def inject_web_context(
                 'context_block': ctx,
             }
 
+    injection_result = dict(web_context_payload)
+    injection_result['main_prompt_context_injected'] = False
+    if not has_usable_web_context(web_context_payload):
+        return injection_result
     ctx = str(web_context_payload.get('context_block') or '')
-    if not ctx:
-        return web_context_payload
 
     for index in range(len(prompt_messages) - 1, -1, -1):
         if prompt_messages[index].get('role') == 'user':
@@ -349,7 +369,10 @@ def inject_web_context(
                 'role': 'user',
                 'content': ctx + '\n\nQuestion : ' + prompt_messages[index]['content'],
             }
+            injection_result['main_prompt_context_injected'] = True
             break
+    if not injection_result['main_prompt_context_injected']:
+        return injection_result
 
     query_text = str(web_context_payload.get('query') or '')
     original_text = str(web_context_payload.get('original_user_message') or user_msg or '')
@@ -392,4 +415,4 @@ def inject_web_context(
         rerank_downranked_count=web_context_payload.get('rerank_downranked_count'),
         results=web_context_payload.get('results_count'),
     )
-    return web_context_payload
+    return injection_result

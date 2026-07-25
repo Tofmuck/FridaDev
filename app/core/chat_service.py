@@ -1111,14 +1111,18 @@ def chat_response(
     )
     payload_message_sources: dict[int, dict[str, Any]] = {}
 
+    web_context_injected_to_main_model = False
     if str(web_runtime_payload.get('activation_mode') or '') in {'manual', 'auto'}:
-        chat_prompt_context.inject_web_context(
+        web_injection_result = chat_prompt_context.inject_web_context(
             prompt_messages,
             user_msg=user_msg,
             conversation_id=conversation['id'],
             web_search_module=web_search_module,
             admin_logs_module=admin_logs_module,
             web_context_payload=web_runtime_payload,
+        )
+        web_context_injected_to_main_model = bool(
+            web_injection_result.get('main_prompt_context_injected')
         )
     notes_before_refs = main_payload_manifest.capture_message_refs(prompt_messages)
     workspace_notes_lane = workspace_folder_notes_prompt_lane.inject_workspace_folder_notes_prompt_lane(
@@ -1301,6 +1305,7 @@ def chat_response(
         conversation_stream_headers_func=chat_session_flow.conversation_stream_headers,
         assistant_response_override=assistant_response_override,
         assistant_response_meta=biblio_assistant_response_meta,
+        web_context_injected_to_main_model=web_context_injected_to_main_model,
         assistant_response_intro=biblio_assistant_response_envelope.get('surface_intro', ''),
         assistant_response_outro=biblio_assistant_response_envelope.get('surface_outro', ''),
     )

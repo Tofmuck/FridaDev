@@ -87,6 +87,8 @@ Portee: schema compact du pipeline chat/runtime courant de `FridaDev`
   |  (central config.OR_BASE fallback only when the runtime value is absent)
   |- chat_llm_flow consumes that final URL without rebuilding its suffix
   |- JSON response OR text/plain streaming response
+  |- final visible assistant meta merges assistant_runtime_provenance v1
+  |    -> main_model + injected/not_injected, or final_lock + not_injected
   v
 [Streaming contract]
   |- assistant_output_contract decides buffering policy
@@ -108,6 +110,9 @@ Portee: schema compact du pipeline chat/runtime courant de `FridaDev`
   |    -> marked assistant remains in dialogue but is excluded from Memory and
   |       projected as non-substantive at both Identity boundaries
   |    -> not written to hermeneutic node_state
+  |- next prompt window projects valid assistant provenance as one adjacent
+  |    content-free system marker; legacy absence stays unknown
+  |- Web sources/context remain transient and no search is replayed
   v
 [Frontend render + rehydration]
   |- live bubble state machine

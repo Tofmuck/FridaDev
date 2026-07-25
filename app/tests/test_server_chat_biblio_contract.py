@@ -267,6 +267,14 @@ class ServerChatBiblioContractTests(unittest.TestCase):
             conversation["messages"][-1]["meta"]["source"],
             answer_object.FINAL_RESPONSE_SOURCE,
         )
+        self.assertEqual(
+            conversation["messages"][-1]["meta"]["assistant_runtime_provenance"],
+            {
+                "schema_version": "v1",
+                "response_origin": "final_lock",
+                "web_context_injected_to_main_model": False,
+            },
+        )
         self.assertNotEqual(payload["text"], "ok biblio")
         event_dump = str(observed["events"])
         self.assertIn("biblio", event_dump)

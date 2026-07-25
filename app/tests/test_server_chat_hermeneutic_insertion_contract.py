@@ -339,7 +339,14 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
                 self.assertEqual(identity_pair[-1]['content'], '...')
                 self.assertEqual(
                     identity_pair[-1]['meta'],
-                    {'assistant_turn': {'status': 'dialogic_presence'}},
+                    {
+                        'assistant_turn': {'status': 'dialogic_presence'},
+                        'assistant_runtime_provenance': {
+                            'schema_version': 'v1',
+                            'response_origin': 'final_lock',
+                            'web_context_injected_to_main_model': False,
+                        },
+                    },
                 )
                 self.assertEqual(observed_state['node_state_writes'], [])
                 self.assertEqual(len(observed_state['save_calls']), 2)
@@ -359,7 +366,14 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
                 self.assertEqual(conversation['messages'][-1]['content'], '...')
                 self.assertEqual(
                     conversation['messages'][-1]['meta'],
-                    {'assistant_turn': {'status': 'dialogic_presence'}},
+                    {
+                        'assistant_turn': {'status': 'dialogic_presence'},
+                        'assistant_runtime_provenance': {
+                            'schema_version': 'v1',
+                            'response_origin': 'final_lock',
+                            'web_context_injected_to_main_model': False,
+                        },
+                    },
                 )
                 self.assertEqual(
                     sum(
