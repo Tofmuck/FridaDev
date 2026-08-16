@@ -21,6 +21,29 @@ class ServerChatWebRuntimeContractTests(unittest.TestCase):
     def setUp(self) -> None:
         self.client = self.server.app.test_client()
 
+    def _assert_single_trailing_continuity_capsule(
+        self,
+        prompt_messages: list[dict],
+        *,
+        expected_prefix: list[dict] | None = None,
+    ) -> None:
+        capsule_marker = '[CONTINUITY CAPSULE]'
+        capsule_indexes = [
+            index
+            for index, message in enumerate(prompt_messages)
+            if capsule_marker in str(message.get('content') or '')
+        ]
+        self.assertEqual(capsule_indexes, [len(prompt_messages) - 1])
+        capsule_message = prompt_messages[-1]
+        self.assertEqual(capsule_message.get('role'), 'system')
+        self.assertTrue(
+            str(capsule_message.get('content') or '').startswith(
+                '[CONTINUITY CAPSULE]\nVersion: continuity_capsule_v1\n'
+            )
+        )
+        if expected_prefix is not None:
+            self.assertEqual(prompt_messages[:-1], expected_prefix)
+
     def _patch_chat_pipeline(
         self,
         *,
@@ -185,9 +208,9 @@ class ServerChatWebRuntimeContractTests(unittest.TestCase):
             ],
         )
         self.assertEqual(observed['web_input']['context_block'], 'WEB CONTEXT')
-        self.assertEqual(
+        self._assert_single_trailing_continuity_capsule(
             observed['prompt_messages'],
-            [{'role': 'user', 'content': 'WEB CONTEXT\n\nQuestion : Bonjour'}],
+            expected_prefix=[{'role': 'user', 'content': 'WEB CONTEXT\n\nQuestion : Bonjour'}],
         )
         self.assertIsInstance(observed['web_requests_module'], self.server._RequestsChatLogProxy)
         self.assertIsInstance(observed['web_llm_module'], self.server._LlmChatLogProxy)
@@ -278,9 +301,9 @@ class ServerChatWebRuntimeContractTests(unittest.TestCase):
                 self.assertEqual(observed['web_input']['status'], 'skipped')
                 self.assertEqual(observed['web_input']['activation_mode'], 'not_requested')
                 self.assertEqual(observed['web_input']['reason_code'], 'not_applicable')
-                self.assertEqual(
+                self._assert_single_trailing_continuity_capsule(
                     observed['prompt_messages'],
-                    [
+                    expected_prefix=[
                         {'role': 'system', 'content': conversation['messages'][0]['content']},
                         {'role': 'user', 'content': message},
                     ],
@@ -364,9 +387,9 @@ class ServerChatWebRuntimeContractTests(unittest.TestCase):
         self.assertEqual(observed['web_input']['status'], 'skipped')
         self.assertEqual(observed['web_input']['activation_mode'], 'not_requested')
         self.assertEqual(observed['web_input']['reason_code'], 'not_applicable')
-        self.assertEqual(
+        self._assert_single_trailing_continuity_capsule(
             observed['prompt_messages'],
-            [
+            expected_prefix=[
                 {'role': 'system', 'content': conversation['messages'][0]['content']},
                 {'role': 'user', 'content': 'Tu peux verifier cette affirmation ?'},
             ],
@@ -458,9 +481,9 @@ class ServerChatWebRuntimeContractTests(unittest.TestCase):
                 self.assertEqual(observed['web_input']['status'], 'skipped')
                 self.assertEqual(observed['web_input']['activation_mode'], 'not_requested')
                 self.assertEqual(observed['web_input']['reason_code'], 'not_applicable')
-                self.assertEqual(
+                self._assert_single_trailing_continuity_capsule(
                     observed['prompt_messages'],
-                    [
+                    expected_prefix=[
                         {'role': 'system', 'content': conversation['messages'][0]['content']},
                         {'role': 'user', 'content': message},
                     ],
@@ -556,9 +579,18 @@ class ServerChatWebRuntimeContractTests(unittest.TestCase):
         self.assertEqual(observed['web_input']['status'], 'skipped')
         self.assertEqual(observed['web_input']['activation_mode'], 'not_requested')
         self.assertEqual(observed['web_input']['reason_code'], 'not_applicable')
-        self.assertEqual(
-            observed['prompt_messages'][1]['content'],
-            "Comment comprendre le lien a l'autre quand ce passage demande de faire preuve de patience dans une lecture atemporelle ?",
+        self._assert_single_trailing_continuity_capsule(
+            observed['prompt_messages'],
+            expected_prefix=[
+                {'role': 'system', 'content': conversation['messages'][0]['content']},
+                {
+                    'role': 'user',
+                    'content': (
+                        "Comment comprendre le lien a l'autre quand ce passage demande de faire preuve "
+                        "de patience dans une lecture atemporelle ?"
+                    ),
+                },
+            ],
         )
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
@@ -630,6 +662,7 @@ class ServerChatWebRuntimeContractTests(unittest.TestCase):
         self.assertEqual(observed['web_input']['reason_code'], 'no_data')
         self.assertEqual(observed['primary_payload']['primary_verdict']['proof_regime'], 'verification_externe_requise')
         self.assertEqual(observed['primary_payload']['primary_verdict']['judgment_posture'], 'answer')
+        self._assert_single_trailing_continuity_capsule(observed_state['payload_messages'])
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 
     def test_api_chat_injects_runtime_derived_web_reading_guard_into_system_prompt(self) -> None:

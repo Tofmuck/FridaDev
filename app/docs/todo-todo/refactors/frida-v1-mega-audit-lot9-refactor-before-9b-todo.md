@@ -139,18 +139,18 @@ Construire dans ce fichier, avant patch, une ligne par identifiant rouge:
 | `FAIL server_logs_phase4.delete_rejects_all_logs_scope` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `FAIL server_logs_phase4.delete_rejects_turn_without_conversation` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `FAIL server_logs_phase6.export_rejects_missing_conversation` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `FAIL web_runtime.no_auto_web_confirmation_1` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `FAIL web_runtime.no_auto_web_confirmation_2` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `FAIL web_runtime.no_auto_web_confirmation_3` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `FAIL web_runtime.no_auto_web_pure_verification` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `FAIL web_runtime.no_auto_web_source_request_1` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `FAIL web_runtime.no_auto_web_source_request_2` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `FAIL web_runtime.no_auto_web_source_request_3` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL web_runtime.no_auto_web_confirmation_1` | F2 | oui | Web non demande et capsule terminale | `TEST_OBSOLETE` | assertion structurelle capsule + prefixe exact | cible `8/8`; complet `11/12`, aucun ajout | ferme |
+| `FAIL web_runtime.no_auto_web_confirmation_2` | F2 | oui | Web non demande et capsule terminale | `TEST_OBSOLETE` | assertion structurelle capsule + prefixe exact | cible `8/8`; complet `11/12`, aucun ajout | ferme |
+| `FAIL web_runtime.no_auto_web_confirmation_3` | F2 | oui | Web non demande et capsule terminale | `TEST_OBSOLETE` | assertion structurelle capsule + prefixe exact | cible `8/8`; complet `11/12`, aucun ajout | ferme |
+| `FAIL web_runtime.no_auto_web_pure_verification` | F2 | oui | Web non demande et capsule terminale | `TEST_OBSOLETE` | assertion structurelle capsule + prefixe exact | cible `8/8`; complet `11/12`, aucun ajout | ferme |
+| `FAIL web_runtime.no_auto_web_source_request_1` | F2 | oui | Web non demande et capsule terminale | `TEST_OBSOLETE` | assertion structurelle capsule + prefixe exact | cible `8/8`; complet `11/12`, aucun ajout | ferme |
+| `FAIL web_runtime.no_auto_web_source_request_2` | F2 | oui | Web non demande et capsule terminale | `TEST_OBSOLETE` | assertion structurelle capsule + prefixe exact | cible `8/8`; complet `11/12`, aucun ajout | ferme |
+| `FAIL web_runtime.no_auto_web_source_request_3` | F2 | oui | Web non demande et capsule terminale | `TEST_OBSOLETE` | assertion structurelle capsule + prefixe exact | cible `8/8`; complet `11/12`, aucun ajout | ferme |
 | `FAIL synthetic_logs.hard_guard_final_posture` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `FAIL compact_observability.hermeneutic_node_insertion` | F1 | oui | summary input absent canonique | `RUNNER_OU_FIXTURE` | summary input synthetique sans DB | cible `7/7`; complet `19/12`, aucun ajout | ferme |
 | `FAIL synthetic_logs.primary_and_validation_events` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `FAIL synthetic_logs.validation_error_without_raw_payload` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `FAIL web_runtime.canonical_web_input_single_pass` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL web_runtime.canonical_web_input_single_pass` | F2 | oui | injection Web unique puis capsule terminale | `TEST_OBSOLETE` | assertion structurelle capsule + prefixe Web exact | cible `8/8`; complet `11/12`, aucun ajout | ferme |
 | `FAIL web_runtime.identity_callback_read_state` | F1 | oui | callback Identity en mode enforced_all | `RUNNER_OU_FIXTURE` | mode hermeneutique explicite dans la fixture cible | cible `7/7`; complet `19/12`, aucun ajout | ferme |
 | `FAIL synthetic_logs.persist_response_save_error` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `FAIL identity_staging.role_play_irony_window` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
@@ -213,12 +213,34 @@ Hypothese a revalider: les tests prouvent encore l'absence d'auto-Web, mais
 comparent le prompt complet sans accepter la capsule de continuite deja
 contractuelle.
 
-- [ ] Preserver les assertions qui prouvent qu'aucune recherche Web n'est
+- [x] Preserver les assertions qui prouvent qu'aucune recherche Web n'est
   lancee.
-- [ ] Tester la presence et la position de la capsule sans snapshoter du
+- [x] Tester la presence et la position de la capsule sans snapshoter du
   contenu utilisateur brut.
-- [ ] Ne pas retirer la capsule du runtime pour satisfaire une attente ancienne.
-- [ ] Verifier les cas Web off, contexte vide, injection effective et legacy.
+- [x] Ne pas retirer la capsule du runtime pour satisfaire une attente ancienne.
+- [x] Verifier les cas Web off, contexte vide, injection effective et legacy.
+
+F2 fermee le 16 aout 2026. Les huit en-tetes provenaient de quatre methodes
+dont deux produisent trois sous-tests. Toutes comparaient le payload final a
+la seule fenetre conversationnelle, alors que le contrat vivant exige une
+Continuity Capsule `system` V1 unique, injectee en derniere position avant
+l'appel du modele principal.
+
+Le correctif reste tests-only. Il conserve l'egalite exacte de tous les
+messages precedant la capsule et les gardes qui font echouer le test si une
+recherche Web non demandee est lancee. Il exige separement une seule capsule,
+terminale, de role `system` et de version `continuity_capsule_v1`, sans
+snapshoter son texte complet. Les chemins Web off, tour conceptuel propre,
+recherche manuelle sans contexte, injection Web effective et absence d'appel
+au builder legacy sont couverts.
+
+Preuves hermetiques sans reseau ni provider: huit reproductions historiques
+vertes, module Web `8/8`, et six mutants de l'assertion capsule rejetes sur
+six. La decouverte complete passe de
+`2549 / 19 echecs / 12 erreurs / 31 en-tetes` a
+`2549 / 11 echecs / 12 erreurs / 23 en-tetes`. Les huit seuls en-tetes retires
+sont ceux de F2; aucun nouvel identifiant n'apparait. Aucun code runtime,
+prompt, contrat produit ou configuration n'est modifie.
 
 ### F3 - Contrats d'observabilite, 12 cas historiques
 
