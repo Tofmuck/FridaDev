@@ -239,7 +239,7 @@ def _inspect_general(value: Any, issues: dict[str, int], *, key: str = "", depth
                 _add_issue(issues, key_issue)
                 continue
             if isinstance(child, Mapping):
-                if lower.endswith(("_counts", "_modes")):
+                if lower == "actions_count" or lower.endswith(("_counts", "_modes")):
                     _inspect_general_dynamic_int_map(child, issues)
                     continue
                 if not _is_safe_general_container_key(lower):

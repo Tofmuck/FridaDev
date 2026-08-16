@@ -393,10 +393,10 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertIsInstance(hermeneutic_payload, dict)
         self.assertTrue(hermeneutic_payload.get('present'))
         self.assertEqual(hermeneutic_payload.get('chars'), len(raw_block))
-        self.assertEqual(
-            hermeneutic_payload.get('sha256_12'),
-            hashlib.sha256(raw_block.encode('utf-8')).hexdigest()[:12],
-        )
+        self.assertFalse(hermeneutic_payload.get('fingerprint_present'))
+        self.assertFalse(hermeneutic_payload.get('fingerprint_included'))
+        self.assertFalse(hermeneutic_payload.get('prompt_block_hash_included'))
+        self.assertFalse(hermeneutic_payload.get('raw_content_included'))
         self.assertEqual(hermeneutic_payload.get('final_judgment_posture'), 'answer')
         self.assertEqual(hermeneutic_payload.get('final_output_regime'), 'simple')
         self.assertEqual(hermeneutic_payload.get('epistemic_regime'), 'incertain')

@@ -122,20 +122,20 @@ Construire dans ce fichier, avant patch, une ligne par identifiant rouge:
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `ERROR minimal_validation_phase9.masked_secret_fields` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `ERROR minimal_validation_phase11.non_secret_fields_db_seed` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `ERROR log_store_phase3.memory_chain_snapshot` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR log_store_phase3.memory_chain_snapshot` | F3 | oui | continuity payload / read-model Web content-free | `TEST_OBSOLETE` | retirer l'attente de hash stable de requete | cible F3 verte; complet `5/6`, aucun ajout | ferme |
 | `ERROR minimal_validation_phase9.api_smoke_without_admin_token` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `ERROR minimal_validation_phase9.admin_route_and_old_absence` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `ERROR minimal_validation_phase9.ui_assets` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `ERROR temporal_model_truth_closure.identity_stimmung_day_claims` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `ERROR llm_client.internal_caller_marker_local` | F1 | oui | isolation locale des headers internes | `RUNNER_OU_FIXTURE` | secret et vue runtime synthetiques dans le test | cible `7/7`; complet `19/12`, aucun ajout | ferme |
-| `ERROR identity_write.legacy_diagnostic_both_sides` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `ERROR identity_write.legacy_visibility_one_side_empty` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `ERROR identity_write.rejected_entries_persisted_count` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR identity_write.legacy_diagnostic_both_sides` | F3 | oui | log-module `identity_write` | `BUG_PRODUIT` | accepter les compteurs bornes de `actions_count` | cible F3 verte; complet `5/6`, aucun ajout | ferme |
+| `ERROR identity_write.legacy_visibility_one_side_empty` | F3 | oui | log-module `identity_write` | `BUG_PRODUIT` | meme correction du garde | cible F3 verte; complet `5/6`, aucun ajout | ferme |
+| `ERROR identity_write.rejected_entries_persisted_count` | F3 | oui | log-module `identity_write` | `BUG_PRODUIT` | meme correction du garde | cible F3 verte; complet `5/6`, aucun ajout | ferme |
 | `ERROR memory_store_phase4.arbiter_effective_model` | F1 | oui | modele effectif fige avant persistance | `RUNNER_OU_FIXTURE` | transport et headers synthetiques locaux | cible `7/7`; complet `19/12`, aucun ajout | ferme |
 | `ERROR logging_conventions.no_legacy_logger_token` | F1 | oui | absence du token logger legacy | `RUNNER_OU_FIXTURE` | scan Python standard-library avec exclusions conservees | cible `7/7`; complet `19/12`, aucun ajout | ferme |
 | `ERROR server_logs_phase3.web_reformulation_provider_identity` | F1 | oui | identite provider de reformulation Web | `RUNNER_OU_FIXTURE` | headers provider synthetiques explicites | cible `7/7`; complet `19/12`, aucun ajout | ferme |
-| `ERROR active_image_documents.over_provider_payload_cap` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `ERROR active_image_documents.multimodal_provider_payload_only` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR active_image_documents.over_provider_payload_cap` | F3 | oui | active-conversation-documents observability | `BUG_PRODUIT` | schema garde borne pour metadonnees documentaires | cible F3 verte; complet `5/6`, aucun ajout | ferme |
+| `ERROR active_image_documents.multimodal_provider_payload_only` | F3 | oui | active-conversation-documents observability | `BUG_PRODUIT` | meme correction du garde | cible F3 verte; complet `5/6`, aucun ajout | ferme |
 | `FAIL server_logs_phase4.delete_rejects_all_logs_scope` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `FAIL server_logs_phase4.delete_rejects_turn_without_conversation` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `FAIL server_logs_phase6.export_rejects_missing_conversation` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
@@ -146,17 +146,17 @@ Construire dans ce fichier, avant patch, une ligne par identifiant rouge:
 | `FAIL web_runtime.no_auto_web_source_request_1` | F2 | oui | Web non demande et capsule terminale | `TEST_OBSOLETE` | assertion structurelle capsule + prefixe exact | cible `8/8`; complet `11/12`, aucun ajout | ferme |
 | `FAIL web_runtime.no_auto_web_source_request_2` | F2 | oui | Web non demande et capsule terminale | `TEST_OBSOLETE` | assertion structurelle capsule + prefixe exact | cible `8/8`; complet `11/12`, aucun ajout | ferme |
 | `FAIL web_runtime.no_auto_web_source_request_3` | F2 | oui | Web non demande et capsule terminale | `TEST_OBSOLETE` | assertion structurelle capsule + prefixe exact | cible `8/8`; complet `11/12`, aucun ajout | ferme |
-| `FAIL synthetic_logs.hard_guard_final_posture` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL synthetic_logs.hard_guard_final_posture` | F3 | oui | validation agent content-free | `TEST_OBSOLETE` | attendre presence/longueur, pas raison brute | cible F3 verte; complet `5/6`, aucun ajout | ferme |
 | `FAIL compact_observability.hermeneutic_node_insertion` | F1 | oui | summary input absent canonique | `RUNNER_OU_FIXTURE` | summary input synthetique sans DB | cible `7/7`; complet `19/12`, aucun ajout | ferme |
-| `FAIL synthetic_logs.primary_and_validation_events` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `FAIL synthetic_logs.validation_error_without_raw_payload` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL synthetic_logs.primary_and_validation_events` | F3 | oui | validation agent content-free | `TEST_OBSOLETE` | attendre presence/longueur, pas raison brute | cible F3 verte; complet `5/6`, aucun ajout | ferme |
+| `FAIL synthetic_logs.validation_error_without_raw_payload` | F3 | oui | validation agent content-free | `TEST_OBSOLETE` | attendre presence/longueur, pas raison brute | cible F3 verte; complet `5/6`, aucun ajout | ferme |
 | `FAIL web_runtime.canonical_web_input_single_pass` | F2 | oui | injection Web unique puis capsule terminale | `TEST_OBSOLETE` | assertion structurelle capsule + prefixe Web exact | cible `8/8`; complet `11/12`, aucun ajout | ferme |
 | `FAIL web_runtime.identity_callback_read_state` | F1 | oui | callback Identity en mode enforced_all | `RUNNER_OU_FIXTURE` | mode hermeneutique explicite dans la fixture cible | cible `7/7`; complet `19/12`, aucun ajout | ferme |
-| `FAIL synthetic_logs.persist_response_save_error` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL synthetic_logs.persist_response_save_error` | F3 | oui | persist_response reason-code convention | `TEST_OBSOLETE` | attendre `reason_code` dans l'evenement | cible F3 verte; complet `5/6`, aucun ajout | ferme |
 | `FAIL identity_staging.role_play_irony_window` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `FAIL frontend_hermeneutic_admin.allowed_endpoints` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `FAIL server_logs_phase3.memory_prompt_injection_summary` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `FAIL server_logs_phase3.hermeneutic_prompt_injection` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL server_logs_phase3.memory_prompt_injection_summary` | F3 | oui | log-module `prompt_prepared` et contrat Memory | `BUG_PRODUIT` | accepter les preuves structurelles bornees | cible F3 verte; complet `5/6`, aucun ajout | ferme |
+| `FAIL server_logs_phase3.hermeneutic_prompt_injection` | F3 | oui | continuity payload Lot 4.2 | `TEST_OBSOLETE` | attendre les flags d'absence de fingerprint | cible F3 verte; complet `5/6`, aucun ajout | ferme |
 | `FAIL phase4_transversal.runtime_binding_contract` | F1 | oui | image productible avec `WORKDIR /app` | `RUNNER_OU_FIXTURE` | verifier le Dockerfile, pas le point de montage du runner | cible `7/7`; complet `19/12`, aucun ajout | ferme |
 
 Valeurs admises pour `cause prouvee`:
@@ -247,12 +247,30 @@ prompt, contrat produit ou configuration n'est modifie.
 Hypothese a revalider: les attentes exigent des champs supprimes, renommes ou
 rediges par les contrats content-free et default-deny courants.
 
-- [ ] Identifier pour chaque champ le sink et le schema vivant autoritatifs.
-- [ ] Corriger le test si le champ est legitimement interdit ou renomme.
-- [ ] Corriger le code seulement si le contrat vivant exige encore le champ.
-- [ ] Ne reintroduire aucun contenu, prompt, query, URL, exception brute ou
+- [x] Identifier pour chaque champ le sink et le schema vivant autoritatifs.
+- [x] Corriger le test si le champ est legitimement interdit ou renomme.
+- [x] Corriger le code seulement si le contrat vivant exige encore le champ.
+- [x] Ne reintroduire aucun contenu, prompt, query, URL, exception brute ou
   identifiant sensible dans une surface content-free.
-- [ ] Conserver la politique distincte des logs serveur prives Identity/Memory.
+- [x] Conserver la politique distincte des logs serveur prives Identity/Memory.
+
+F3 fermee le 16 aout 2026. Les douze cas ont ete reproduits avant correction:
+six attentes etaient anterieures aux contrats content-free courants et six
+exposaient trois refus injustifies du garde writer-side. Le garde accepte
+desormais les compteurs `actions_count`, les metadonnees documentaires compactes
+deja contractuelles et les preuves structurelles de resumes parents, tout en
+refusant toujours URL, contenu, prompt, query, exception brute et valeur de
+credential. Les tests n'attendent plus le hash stable d'une requete Web, le
+hash du bloc hermeneutique, le texte libre de l'arbitre ni l'ancien champ
+`reason` de `persist_response`.
+
+Preuves hermetiques sans reseau ni provider: les 12 reproductions historiques
+sont vertes, les 99 tests des six modules directement concernes sont verts et
+trois nouvelles sensibilites du garde sont vertes. La decouverte complete
+passe de `2549 / 11 echecs / 12 erreurs / 23 en-tetes` a
+`2552 / 5 echecs / 6 erreurs / 11 en-tetes`; les trois tests ajoutes expliquent
+la variation du total. Les douze seuls en-tetes retires sont ceux de F3 et
+aucun nouvel identifiant n'apparait.
 
 ### F4 - Validation minimale, 5 cas historiques
 

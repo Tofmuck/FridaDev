@@ -165,7 +165,8 @@ Minimum event-specific details:
 
 - `web_search`
   - dedicated event (not only a boolean in `turn_start`)
-  - `enabled`, `query_present`, `query_chars`, `query_sha256_12`, `results_count`, `context_injected`, `truncated`
+  - `enabled`, `query_present`, `query_chars`, `results_count`, `context_injected`, `truncated`
+  - stable hashes of the query are intentionally absent; presence and length are the content-free proof
   - `query_preview` can remain as a backward-compatible key but must not carry raw query text in default logs
   - if skipped: `status=skipped` + `reason_code`
 
@@ -225,7 +226,8 @@ Minimum event-specific details:
   - `hermeneutic_prompt_injection`:
     - compact redacted fingerprint of the `[JUGEMENT HERMENEUTIQUE]` block compiled into the main prompt
     - must be computed from the same block string that is passed to prompt assembly, not from an approximate projection
-    - allowed fields: `present`, `chars`, short hash, final posture/regime labels, `epistemic_regime`, `directives_count`, `source`, `fallback`, compact `reason_code`
+    - allowed fields: `present`, `chars`, `fingerprint_present=false`, `fingerprint_included=false`, `prompt_block_hash_included=false`, final posture/regime labels, `epistemic_regime`, `directives_count`, `source`, `fallback`, compact `reason_code`
+    - the injected block has no stable short hash, in accordance with the continuity payload contract
     - forbidden: raw hermeneutic block, raw directives, raw validation rationale, canonical inputs, raw prompt excerpts
   - `memory_retrieval`:
     - compact redacted status of retrieval availability for this turn

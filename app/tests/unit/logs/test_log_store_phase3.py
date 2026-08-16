@@ -499,7 +499,7 @@ class LogStorePhase3Tests(unittest.TestCase):
         self.assertTrue(item['hermeneutic']['node_state']['read_valid'])
         self.assertTrue(item['web']['requested'])
         self.assertTrue(item['web']['injected'])
-        self.assertEqual(item['web']['query_sha256_12'], 'c' * 12)
+        self.assertNotIn('query_sha256_12', item['web'])
         self.assertEqual(item['web']['web_confidence_level'], 'high')
         self.assertFalse(item['web']['openrouter_fallback_used'])
         self.assertFalse(item['flags']['raw_event_payloads_included'])

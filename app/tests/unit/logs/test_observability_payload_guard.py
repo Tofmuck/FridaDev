@@ -19,7 +19,9 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from observability import admin_log_projection
+from observability import active_documents_observability
 from observability import hermeneutic_node_logger
+from observability import identity_observability
 from observability import main_payload_manifest
 from observability import observability_payload_guard
 
@@ -40,6 +42,70 @@ def _raw_flags() -> dict[str, bool]:
 
 
 class ObservabilityPayloadGuardTests(unittest.TestCase):
+    def test_identity_write_generated_payload_passes(self) -> None:
+        payload = identity_observability.build_identity_write_payload(
+            target_side="user",
+            write_mode="legacy_diagnostic",
+            write_effect="legacy_diagnostic_write",
+            persisted_count=1,
+            evidence_count=1,
+            observed_count=1,
+            retained_count=1,
+            actions_count={"add": 1, "update": 0, "override": 0, "reject": 0, "defer": 0},
+            observed_values=["synthetic identity value"],
+        )
+
+        decision = observability_payload_guard.guard_payload(payload)
+
+        self.assertTrue(decision.accepted)
+        self.assertEqual(decision.payload["actions_count"]["add"], 1)
+
+    def test_active_documents_generated_payload_passes_without_raw_content(self) -> None:
+        document = SimpleNamespace(
+            document_id="11111111-1111-4111-8111-111111111111",
+            filename="Document synthetique.png",
+            media_type="image/png",
+            source_extension=".png",
+            byte_size=128,
+            text_chars=0,
+            media_kind="image",
+            content_sha256_12="a" * 12,
+            image_width=100,
+            image_height=80,
+            token_estimate=0,
+            text_sha256_12="",
+            source="active_conversation_documents",
+            workspace_file_id="",
+            workspace_folder_id="",
+            ocr_applied=False,
+            ocr_engine="",
+            ocr_languages="fra+eng",
+            ocr_duration_ms=0,
+            injected=True,
+            reason_code="",
+            provider_model="openai/gpt-5.4",
+            payload_order="text_then_image_url",
+        )
+        payload = active_documents_observability.build_prompt_decision_payload(
+            SimpleNamespace(decisions=[document], read_status="ok", read_reason_code="")
+        )
+
+        decision = observability_payload_guard.guard_payload(payload)
+
+        self.assertTrue(decision.accepted)
+        self.assertEqual(decision.payload["documents"][0]["decision"], "injected")
+
+    def test_active_documents_rejects_unsafe_filename(self) -> None:
+        payload = {
+            "kind": "active_document_prompt_decisions",
+            "documents": [{"filename": "https://example.invalid/private"}],
+        }
+
+        decision = observability_payload_guard.guard_payload(payload)
+
+        self.assertFalse(decision.accepted)
+        self.assertIn("url_value", decision.payload["issue_classes"])
+
     def test_content_free_payload_passes(self) -> None:
         payload = {
             "status_schema_version": "agentic_v1",

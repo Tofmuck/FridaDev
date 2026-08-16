@@ -9,6 +9,9 @@ _SAFE_CLASS_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,159}$")
 _SAFE_MODEL_RE = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,79}/[a-z0-9][a-z0-9_.-]{0,119}$")
 _SAFE_TITLE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ./_-]{0,159}$")
 _SAFE_TIMEZONE_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_./+-]{0,79}$")
+_SAFE_MIME_RE = re.compile(r"^[a-z0-9][a-z0-9.+-]{0,80}/[a-z0-9][a-z0-9.+-]{0,80}$")
+_SAFE_EXTENSION_RE = re.compile(r"^\.?[a-z0-9][a-z0-9.+-]{0,15}$")
+_SAFE_LANGUAGE_SET_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9+_.-]{0,119}$")
 _SAFE_TIMESTAMP_CHARS = set("0123456789T:+-.Z")
 _BASE64_RE = re.compile(r"^[A-Za-z0-9+/]{96,}={0,2}$")
 _SAFE_LANE_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_]{0,79}$")
@@ -288,7 +291,7 @@ _GENERAL_TEXT_KEYS = set(
     schema_version scope search_profile searxng_language searxng_profile_params_kind
     searxng_profile_params_policy searxng_safesearch searxng_time_range
     searxng_soft_signal_policy source source_domain source_first_authority source_first_policy_kind
-    shift_state source_first_product source_kind source_origin stability status status_schema_version stimmung_status summary_id_sha256_12 summary_usage used_content_kind
+    shift_state source_first_product source_kind source_origin stability status status_schema_version stimmung_status summary_id summary_id_sha256_12 summary_usage used_content_kind
     surface_error_hash surface_intro_hash surface_outro_hash
     stream_terminal subject target_side target_verification_error_class time_ambiguity time_kind timezone
     timezone tone upstream_output_regime_proposed upstream_recommendation_posture
@@ -297,6 +300,9 @@ _GENERAL_TEXT_KEYS = set(
     web_discovery_provider_requested web_evidence_policy_kind web_evidence_status
     web_evidence_url_request_policy web_pdf_read_reason_code web_pdf_read_status
     continuity_kind verdict window_end window_start write_effect write_error_class write_execution_reason_code write_execution_status write_mode
+    content_sha256_12 decision document_id document_ref end_ts filename filename_ref media_kind media_type
+    ocr_engine ocr_languages payload_order read_reason_code read_status source_extension start_ts text_sha256_12
+    workspace_file_id workspace_folder_id
     """.split()
 )
 _GENERAL_SCALAR_KEYS = set(
@@ -333,6 +339,7 @@ _GENERAL_SCALAR_KEYS = set(
     candidate_embedding_calls candidate_top_score cancelled conflicts_detected expired pending_action_present pending_cancelled pending_expired pending_execution_attempted pending_target_clear
     read_execution_attempted recent_has_in_progress_turn recent_max_turns redacted secret_included score_gap status_code summary summary_generation_observed target_clear top_score fallback_decisions
     user_display_name_present web workspace write_execution_attempted writes_applied
+    active byte_size future_biblio_included image_height image_width ocr_applied ocr_duration_ms_total token_estimate
     """.split()
 )
 _GENERAL_CONTAINER_KEYS = {
@@ -422,6 +429,7 @@ _GENERAL_CONTAINER_KEYS = {
     "validation",
     "final_response",
     "draft_summary",
+    "documents",
     "mutable",
     "web",
     "web_confidence_inputs_summary",
@@ -563,7 +571,7 @@ def _dangerous_key_class(key: str) -> str:
     if (
         "payload" in lower
         and not _is_metric_like_key(lower)
-        and lower not in {"main_llm_payload", "payload_kind", "rejected_payload", "secondary_provider_payload"}
+        and lower not in {"main_llm_payload", "payload_kind", "payload_order", "rejected_payload", "secondary_provider_payload"}
     ):
         return "payload_key"
     if lower == "caldav_access":
@@ -640,6 +648,14 @@ def _is_safe_general_text_value(key: str, value: Any) -> bool:
         return True
     if lower == "provider_title":
         return bool(_SAFE_TITLE_RE.fullmatch(text))
+    if lower == "filename":
+        return len(text) <= 500 and not any(ord(char) < 32 for char in text)
+    if lower == "media_type":
+        return bool(_SAFE_MIME_RE.fullmatch(text.lower()))
+    if lower == "source_extension":
+        return bool(_SAFE_EXTENSION_RE.fullmatch(text.lower()))
+    if lower == "ocr_languages":
+        return bool(_SAFE_LANGUAGE_SET_RE.fullmatch(text))
     if lower == "timezone":
         return bool(_SAFE_TIMEZONE_RE.fullmatch(text))
     if lower in {"window_start", "window_end", "pending_expires_at", "updated_ts"}:
