@@ -966,9 +966,57 @@ Patch attendu:
 
 Checklist:
 
-- [ ] Extraire state helpers.
-- [ ] Verifier observability compact.
-- [ ] Verifier aucun prompt ou payload brut.
+- [x] Extraire state helpers.
+- [x] Verifier observability compact.
+- [x] Verifier aucun prompt ou payload brut.
+
+Preuves livrees le 16 aout 2026:
+
+- `app/core/chat_hermeneutic_node_state.py` porte les cinq adaptateurs de
+  lecture, extraction du state rehydratable, ecriture ignoree, ecriture et
+  construction du state final auparavant definis dans `chat_service.py`. Les
+  cinq fonctions sont AST-identiques avant/apres; `chat_service.py` reexporte
+  leurs noms prives existants et passe de `1061` a `936` lignes.
+- `_run_hermeneutic_node_insertion_point(...)` reste le coordinateur dans
+  `chat_service.py`: l'ordre lecture -> primary -> validation -> build/write,
+  les appels Stimmung/primary/validation et leurs emissions observability ne
+  bougent pas. Les prompts, agents, payloads provider et le domain builder
+  `core.hermeneutic_node.runtime.node_state` sont inchanges.
+- `app/tests/unit/core/test_chat_hermeneutic_node_state.py` ajoute cinq preuves
+  bornees: propriete/reexport de la frontiere, read absent/error et filtrage
+  d'un state invalide, write absent/error et semantique `attempted`, build
+  answer/clarify avec bypass presence, puis rejet des combinaisons invalidees
+  et des erreurs du domain builder. Les exceptions ne projettent que leur
+  classe, jamais leur texte brut.
+- Les contrats existants prouvent toujours la persistence et rehydratation sur
+  deux tours, la persistence du state final valide answer/clarify/suspend, le
+  no-write presence ou validation absente, ainsi que les evenements compacts
+  Stimmung, primary et validation. Le guard observability, les goldens Lot 9B,
+  le stream/non-stream, la persistence, la capsule et le manifest restent
+  verts et content-free.
+
+Sensibilites rejetees: frontiere absente ou helpers restes dans
+`chat_service.py`; texte brut d'exception read/write/build expose; state
+invalide rehydrate; writer absent marque comme tentative; write error
+requalifie en succes; regimes answer/meta inverses; presence persistee;
+posture/regime invalide accepte; erreur du domain builder propagee. Les
+mutations 9B.0 rejettent toujours changement d'ordre, appel provider sous
+final lock, duplication de capsule ou de persistence et payload brut.
+
+Commandes hermetiques executees avec `--network none`, checkout read-only et
+`/tmp` en tmpfs:
+
+- baseline avant patch: `python -m unittest discover` -> `2559`, OK;
+- RED frontiere state: nouveau module de test -> `5`, un echec attendu sur la
+  propriete encore `core.chat_service`;
+- GREEN frontiere state: meme module -> `5`, OK;
+- state/insertion/observabilite/goldens -> `133`, OK;
+- transport, stream/non-stream, persistence, capsule et manifest -> `90`, OK;
+- decouverte complete apres extraction -> `2564`, OK.
+
+Limite: 9B.3 ne deplace ni le coordinateur hermeneutique, ni les agents
+primary/validation, ni l'emission observability. Les Lots 9B.4 a 9B.6 restent
+ouverts et non commences.
 
 ### Lot 9B.4 - Chat turn coordinator boundary
 
