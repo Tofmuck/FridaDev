@@ -738,8 +738,8 @@ Statut: ferme le 16 aout 2026. La TODO autoritative a classe et corrige les
 38 en-tetes historiques, explique la variation de `2549` a `2552` tests et
 prouve une decouverte complete hermetique a `0` echec, `0` erreur, `0`
 skip et `0` expected failure. Les suites critiques et les goldens Lot 9
-restent verts. Le Lot 9B.0 est donc degele; il devient le prochain lot
-executable mais reste non commence.
+restent verts. Le gate externe du Lot 9B est donc leve; l'etat courant de
+chaque sous-lot est documente dans sa section ci-dessous.
 
 ### Lot 9B.0 - Golden lane-order / final-lock / capsule
 
@@ -840,9 +840,51 @@ Risques:
 
 Checklist:
 
-- [ ] Extraire reads documentaires.
-- [ ] Conserver decisions prompt.
-- [ ] Verifier observabilite content-free.
+- [x] Extraire reads documentaires.
+- [x] Conserver decisions prompt.
+- [x] Verifier observabilite content-free.
+
+Preuves livrees le 16 aout 2026:
+
+- `app/core/chat_document_prompt_reads.py` porte desormais
+  `ActiveDocumentsPromptRead`, `_active_documents_for_prompt`,
+  `_workspace_files_for_prompt` et `_merge_document_prompt_reads`.
+  `app/core/chat_service.py` les reexporte aux memes noms afin de conserver
+  les appels et points de substitution existants; le coordinateur passe de
+  `1311` a `1216` lignes.
+- Les trois corps de fonction et le dataclass sont AST-identiques avant/apres.
+  L'ordre de fusion reste documents actifs puis fichiers workspace; une erreur
+  de lecture conserve les documents lisibles et la priorite de reason code
+  existante. Aucun budget, ordre d'injection ou decision de lane n'a change.
+- Le test de frontiere renforce dans
+  `app/tests/unit/core/test_active_document_prompt_lane.py` a d'abord echoue
+  uniquement sur l'absence du module dedie, puis passe. Les contrats existants
+  prouvent toujours document entier ou absent, selection workspace explicite,
+  Notes sans selection/avec note selectionnee et aucune injection Markdown
+  sans selection.
+- Les suites Documents/workspace/Notes et le golden transversal passent
+  `109/109`; capsule, manifest et observabilite passent `52/52`; la decouverte
+  complete reste a `2556`, `0` echec et `0` erreur. Aucun test, skip ou
+  expected failure n'est ajoute.
+- Le contrat d'observabilite vivant attribue les deux readers au nouveau
+  module et conserve l'enregistrement des decisions dans `chat_service.py`.
+  Les resultats restent bornes a status, documents, reason code et classe;
+  aucune projection content-free ne gagne de contenu brut.
+
+Commandes hermetiques executees avec `--network none`, checkout read-only et
+`/tmp` en tmpfs:
+
+- baseline avant patch: `python -m unittest discover` -> `2556`, OK;
+- RED frontiere documentaire: `tests.unit.core.test_active_document_prompt_lane`
+  -> `31`, un echec attendu sur le module absent;
+- GREEN frontiere documentaire: meme module -> `31`, OK;
+- Documents/workspace/Notes/golden -> `109`, OK;
+- capsule/manifest/observabilite -> `52`, OK;
+- decouverte complete apres extraction -> `2556`, OK.
+
+Limite: 9B.1 ne deplace ni la lane Notes, ni les decisions d'admission et
+d'observabilite documentaires. Les Lots 9B.2 a 9B.6 restent ouverts et non
+commences.
 
 ### Lot 9B.2 - Agent lane orchestration boundary
 

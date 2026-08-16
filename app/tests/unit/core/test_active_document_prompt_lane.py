@@ -265,24 +265,40 @@ class ActiveDocumentPromptLaneTest(unittest.TestCase):
         self.assertEqual(lane.injected_count, 0)
         self.assertEqual(lane.not_injected_count, 1)
 
-    def test_chat_service_document_reader_is_non_blocking_on_store_error(self):
-        from core import chat_service
+    def test_document_prompt_read_boundary_preserves_partial_reads_on_store_error(self):
+        try:
+            from core import chat_document_prompt_reads
+        except ImportError as exc:
+            self.fail(f"document prompt read boundary missing: {exc}")
 
-        fake_module = SimpleNamespace(
+        active_module = SimpleNamespace(
             list_active_documents_for_prompt=lambda _conversation_id: (_ for _ in ()).throw(RuntimeError("db down"))
+        )
+        workspace_document = {"document_id": "workspace-doc", "source": "workspace_file_selection"}
+        workspace_module = SimpleNamespace(
+            list_selected_files_for_prompt=lambda _conversation_id: [workspace_document]
         )
         fake_logger = SimpleNamespace(warning=lambda *_args, **_kwargs: None)
 
-        result = chat_service._active_documents_for_prompt(
+        active_read = chat_document_prompt_reads._active_documents_for_prompt(
             conversation={"id": "11111111-1111-1111-1111-111111111111"},
-            active_documents_module=fake_module,
+            active_documents_module=active_module,
             logger=fake_logger,
         )
+        workspace_read = chat_document_prompt_reads._workspace_files_for_prompt(
+            conversation={
+                "id": "11111111-1111-1111-1111-111111111111",
+                "workspace_folder_id": "22222222-2222-4222-8222-222222222222",
+            },
+            workspace_file_selections_module=workspace_module,
+            logger=fake_logger,
+        )
+        result = chat_document_prompt_reads._merge_document_prompt_reads(active_read, workspace_read)
 
         self.assertEqual(result.status, "error")
-        self.assertEqual(result.documents, ())
+        self.assertEqual(result.documents, (workspace_document,))
         self.assertEqual(result.reason_code, "active_documents_read_error")
-        self.assertEqual(result.error_class, "RuntimeError")
+        self.assertEqual(active_read.error_class, "RuntimeError")
 
     def test_read_error_injects_honest_non_read_signal_without_document_content(self):
         prompt_messages = [
