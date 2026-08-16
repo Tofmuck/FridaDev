@@ -1038,6 +1038,57 @@ Critere de sortie:
   coordinateur;
 - aucune nouvelle facade concurrente et aucun changement produit.
 
+Statut: ferme le 16 aout 2026.
+
+Preuves livrees:
+
+- `app/core/chat_main_payload.py` porte l'unique frontiere privee
+  `prepare_main_payload(...)`: construction du payload principal, injections
+  tardives, resolution des final locks, capsule et manifest;
+- `app/core/chat_service.py` conserve `chat_response(...)` comme coordinateur,
+  les frontieres deja extraites et le handoff final vers
+  `chat_llm_flow.run_llm_exchange(...)`;
+- `app/tests/unit/core/test_chat_main_payload_boundary.py` verrouille la
+  provenance de la frontiere et interdit la reintroduction des operations
+  extraites dans le coordinateur;
+- les goldens 9B.0 et les contrats existants traversant
+  `chat_service.chat_response(...)` figent toujours ordre des lanes,
+  injections, refus, final locks, capsule/manifest, stream/non-stream et
+  persistance.
+
+Mesures et invariants:
+
+- `chat_response(...)`: 534 -> 412 lignes, 13 -> 11 branches et 144 -> 107
+  appels directs; `chat_service.py`: 936 -> 815 lignes;
+- le handoff final vers `run_llm_exchange(...)` est syntaxiquement identique
+  avant/apres; aucun contrat SSE, message, meta, final lock ou persistance
+  n'est modifie;
+- les reexports et points de patch historiques de `chat_service` sont
+  conserves; la nouvelle frontiere est explicite, privee et n'a qu'un appelant;
+- mutations controlees rejetees en RED: frontiere absente ou de mauvais
+  module, delegation absente, et reintroduction directe dans `chat_response`
+  d'une injection Notes/Documents/Biblio/Adobe, de la capsule ou du manifest.
+
+Commandes executees:
+
+- baseline hermetique complete: `2564 tests`, 0 echec, 0 erreur;
+- test structurel RED puis GREEN: 2 echecs attendus, puis `2 tests`, OK;
+- goldens et suites chat principales: `17 tests`, OK;
+- lanes et refus Web/Documents/Notes/Agenda/Biblio/Adobe: `83 tests`, OK;
+- stream, persistance, capsule, manifest et observabilite: `96 tests`, OK;
+- decouverte hermetique complete finale: `2566 tests`, 0 echec, 0 erreur,
+  sans nouveau skip ni expected failure.
+
+Limites restantes:
+
+- l'interface privee comporte 39 arguments nommes: ce couplage preexistant est
+  rendu explicite pour l'unique appelant, sans sac d'etat generique ni facade
+  supplementaire;
+- les lectures Documents et Notes restent dans leurs frontieres 9B.1 deja
+  nommees; l'execution provider, le streaming et la persistance restent dans
+  `chat_llm_flow` et relevent des lots ulterieurs;
+- aucun travail des Lots 9B.5 et 9B.6 n'est commence.
+
 ### Lot 9B.5 - LLM exchange, stream and persistence boundaries
 
 Golden tests prealables:

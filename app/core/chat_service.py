@@ -26,6 +26,7 @@ from core.chat_hermeneutic_node_state import (
     _skipped_hermeneutic_node_state_write,
     _write_hermeneutic_node_state,
 )
+from core.chat_main_payload import PreparedMainPayload, prepare_main_payload
 from core.chat_agent_lane_orchestration import (
     AgentLaneAssistantOutput,
     _agenda_assistant_response_override,
@@ -731,147 +732,28 @@ def chat_response(
         workspace_folder_notes_read_module=workspace_folder_notes_read_module,
         logger=logger,
     )
-    prompt_messages = conv_store_module.build_prompt_messages(
-        conversation,
-        runtime_main_model,
-        now=now_iso_value,
-        memory_traces=memory_traces or None,
-        context_hints=context_hints or None,
-    )
-    payload_message_sources: dict[int, dict[str, Any]] = {}
-
-    web_context_injected_to_main_model = False
-    if str(web_runtime_payload.get('activation_mode') or '') in {'manual', 'auto'}:
-        web_injection_result = chat_prompt_context.inject_web_context(
-            prompt_messages,
-            user_msg=user_msg,
-            conversation_id=conversation['id'],
-            web_search_module=web_search_module,
-            admin_logs_module=admin_logs_module,
-            web_context_payload=web_runtime_payload,
-        )
-        web_context_injected_to_main_model = bool(
-            web_injection_result.get('main_prompt_context_injected')
-        )
-    notes_before_refs = main_payload_manifest.capture_message_refs(prompt_messages)
-    workspace_notes_lane = workspace_folder_notes_prompt_lane.inject_workspace_folder_notes_prompt_lane(
-        prompt_messages,
-        workspace_notes_read.note_reads,
-        read_status=workspace_notes_read.status,
-        read_reason_code=workspace_notes_read.reason_code,
-        requested_count=workspace_notes_read.requested_count,
-        invalid_requested_count=workspace_notes_read.invalid_requested_count,
-        over_limit_count=workspace_notes_read.over_limit_count,
-    )
-    payload_message_sources.update(
-        main_payload_manifest.message_sources_for_new_messages(
-            prompt_messages,
-            notes_before_refs,
-            logical_roles=('note_lane',),
-            origin='core.workspace_folder_notes_prompt_lane',
-            origin_stage='late_note_lane',
-            content_kind='tool_lane_context',
-        )
-    )
-    _emit_workspace_folder_notes_prompt_observability(workspace_notes_lane)
-    documents_before_refs = main_payload_manifest.capture_message_refs(prompt_messages)
-    active_document_lane = active_document_prompt_lane.inject_active_document_prompt_lane(
-        prompt_messages,
-        document_prompt_read.documents,
-        model=runtime_main_model,
-        count_tokens_func=_prompt_token_counter(token_utils_module),
-        max_tokens=_active_document_prompt_max_tokens(config_module),
-        read_status=document_prompt_read.status,
-        read_reason_code=document_prompt_read.reason_code,
-    )
-    payload_message_sources.update(
-        main_payload_manifest.message_sources_for_new_messages(
-            prompt_messages,
-            documents_before_refs,
-            logical_roles=('document_lane',),
-            origin='core.active_document_prompt_lane',
-            origin_stage='late_document_lane',
-            content_kind='tool_lane_context',
-        )
-    )
-    _record_active_document_prompt_decisions(
+    prepared_main_payload = prepare_main_payload(
         conversation=conversation,
-        lane=active_document_lane,
-        turn_id=chat_turn_logger.current_turn_id(),
-        workspace_file_selections_module=workspace_file_selections_module,
-        logger=logger,
-    )
-    active_documents_observability.emit_prompt_decision_event(
-        active_document_lane,
-        chat_turn_logger_module=chat_turn_logger,
-    )
-    biblio_before_refs = main_payload_manifest.capture_message_refs(prompt_messages)
-    biblio_chat_runtime.inject_biblio_prompt_lane(
-        prompt_messages,
-        biblio_result,
-    )
-    payload_message_sources.update(
-        main_payload_manifest.message_sources_for_new_messages(
-            prompt_messages,
-            biblio_before_refs,
-            logical_roles=('biblio_lane',),
-            origin='biblio.chat_runtime',
-            origin_stage='late_biblio_lane',
-            content_kind='tool_lane_context',
-        )
-    )
-    agent_lane_assistant_output = resolve_agent_lane_assistant_output(
+        user_msg=user_msg,
+        runtime_main_model=runtime_main_model,
+        now_iso_value=now_iso_value,
+        memory_traces=memory_traces,
+        context_hints=context_hints,
+        web_runtime_payload=web_runtime_payload,
+        web_search_module=web_search_module,
+        admin_logs_module=admin_logs_module,
+        document_prompt_read=document_prompt_read,
+        workspace_notes_read=workspace_notes_read,
         biblio_result=biblio_result,
         agenda_result=agenda_result,
+        adobe_request=adobe_request,
+        adobe_context=adobe_context,
         validated_result=validated_result,
-    )
-    assistant_response_override = agent_lane_assistant_output.assistant_response_override
-    biblio_assistant_response_meta = agent_lane_assistant_output.assistant_response_meta
-    biblio_assistant_response_envelope = agent_lane_assistant_output.assistant_response_envelope
-    adobe_before_refs = main_payload_manifest.capture_message_refs(prompt_messages)
-    adobe_lane = adobe_docs_prompt_lane.inject_adobe_prompt_lane(
-        prompt_messages,
-        adobe_context,
-    )
-    payload_message_sources.update(
-        main_payload_manifest.message_sources_for_new_messages(
-            prompt_messages,
-            adobe_before_refs,
-            logical_roles=('adobe_lane',),
-            origin='core.adobe_docs_prompt_lane',
-            origin_stage='late_adobe_lane',
-            content_kind='tool_lane_context',
-        )
-    )
-    if adobe_request.active:
-        _emit_adobe_prompt_lane_observability(adobe_lane)
-    continuity_capsule_result = continuity_capsule.resolve_continuity_capsule(
-        config_module=config_module,
-        final_response_lock_present=assistant_response_override is not None,
-    )
-    continuity_before_refs = main_payload_manifest.capture_message_refs(prompt_messages)
-    continuity_capsule.inject_continuity_capsule(prompt_messages, continuity_capsule_result)
-    payload_message_sources.update(
-        main_payload_manifest.message_sources_for_new_messages(
-            prompt_messages,
-            continuity_before_refs,
-            logical_roles=(continuity_capsule.LOGICAL_ROLE,),
-            origin=continuity_capsule.ORIGIN,
-            origin_stage=continuity_capsule.ORIGIN_STAGE,
-            content_kind=continuity_capsule.CONTENT_KIND,
-        )
-    )
-    payload_manifest = main_payload_manifest.build_main_payload_manifest(
-        conversation=conversation,
-        prompt_messages=prompt_messages,
-        runtime_main_model=runtime_main_model,
-        temperature=temperature,
-        top_p=top_p,
-        max_tokens=max_tokens,
-        stream_req=stream_req,
         assistant_output_policy=assistant_output_policy,
-        assistant_response_override=assistant_response_override,
-        turn_id=chat_turn_logger.current_turn_id(),
+        hermeneutic_node_runtime=hermeneutic_node_runtime,
+        hermeneutic_judgment_block=hermeneutic_judgment_block,
+        biblio_recent_dialogue=biblio_recent_dialogue,
+        agenda_recent_dialogue=agenda_recent_dialogue,
         summary_payload=summary_payload,
         identity_payload=identity_payload,
         recent_context_payload=recent_context_payload,
@@ -879,27 +761,24 @@ def chat_response(
         current_mode=current_mode,
         memory_retrieved=getattr(prepared_memory_context, 'memory_retrieved', None),
         memory_arbitration=getattr(prepared_memory_context, 'memory_arbitration', None),
-        memory_traces=memory_traces,
-        context_hints=context_hints,
-        web_runtime_payload=web_runtime_payload,
-        workspace_notes_lane=workspace_notes_lane,
-        active_document_lane=active_document_lane,
-        biblio_result=biblio_result,
-        agenda_result=agenda_result,
-        adobe_context=adobe_context,
-        adobe_lane=adobe_lane,
-        hermeneutic_node_runtime=hermeneutic_node_runtime,
-        hermeneutic_judgment_block=hermeneutic_judgment_block,
-        biblio_recent_dialogue=biblio_recent_dialogue,
-        agenda_recent_dialogue=agenda_recent_dialogue,
-        message_sources=payload_message_sources,
+        temperature=temperature,
+        top_p=top_p,
+        max_tokens=max_tokens,
+        stream_req=stream_req,
+        config_module=config_module,
         count_tokens_func=_prompt_token_counter(token_utils_module),
-        prompt_soft_token_limit=getattr(config_module, 'MAX_TOKENS', None),
-        continuity_capsule_result=continuity_capsule_result,
+        active_document_prompt_max_tokens=_active_document_prompt_max_tokens(config_module),
+        record_active_document_prompt_decisions_func=_record_active_document_prompt_decisions,
+        workspace_file_selections_module=workspace_file_selections_module,
+        logger=logger,
+        conv_store_module=conv_store_module,
     )
-    main_payload_manifest.emit_main_payload_manifest(
-        payload_manifest,
-        chat_turn_logger_module=chat_turn_logger,
+    prompt_messages = prepared_main_payload.prompt_messages
+    assistant_response_override = prepared_main_payload.assistant_response_override
+    biblio_assistant_response_meta = prepared_main_payload.assistant_response_meta
+    biblio_assistant_response_envelope = prepared_main_payload.assistant_response_envelope
+    web_context_injected_to_main_model = (
+        prepared_main_payload.web_context_injected_to_main_model
     )
     return chat_llm_flow.run_llm_exchange(
         conversation=conversation,
