@@ -35,16 +35,84 @@ prouvee.
 
 Avant toute correction:
 
-- [ ] Capturer branche, HEAD, parent, upstream et worktree propre.
-- [ ] Verifier que checkout et code FridaDev execute correspondent.
-- [ ] Executer la decouverte complete dans le runner hermetique autoritatif,
+- [x] Capturer branche, HEAD, parent, upstream et worktree propre.
+- [x] Verifier que checkout et code FridaDev execute correspondent.
+- [x] Executer la decouverte complete dans le runner hermetique autoritatif,
   sans reseau ni secret reel.
-- [ ] Capturer le nombre de tests, echecs, erreurs, skips et expected failures.
-- [ ] Conserver une liste content-free des identifiants `FAIL` et `ERROR`, avec
+- [x] Capturer le nombre de tests, echecs, erreurs, skips et expected failures.
+- [x] Conserver une liste content-free des identifiants `FAIL` et `ERROR`, avec
   une empreinte deterministe.
-- [ ] Rejouer chaque cas rouge de facon ciblee avant de le classer.
-- [ ] Ne pas imposer `2549 / 22 / 16` si le HEAD courant differe: toute
+- [x] Rejouer chaque cas rouge de facon ciblee avant de le classer.
+- [x] Ne pas imposer `2549 / 22 / 16` si le HEAD courant differe: toute
   variation doit etre expliquee par le code, les tests ou le runner reels.
+
+Baseline revalidee le 16 aout 2026 au HEAD
+`b21239284ed1bca864ddd828a01ef946ad84080a`, parent `4020d5b8`, branche
+`FridaV1-Before-9B-Test-Remediation`, upstream `0/0` et worktree propre avant
+execution. Le commit courant ne differe du code deploye que par trois fichiers
+documentaires. Les sept fichiers runtime critiques controles sont identiques
+entre checkout et conteneur; FridaDev est healthy, restart `0`, OOM false.
+
+Runner autoritatif:
+
+```bash
+sudo docker run --rm --network none --read-only \
+  --tmpfs /tmp:rw,nosuid,nodev,noexec \
+  --mount type=bind,src=/opt/platform/fridadev/app,dst=/workspace/app,readonly \
+  -w /workspace/app -e PYTHONDONTWRITEBYTECODE=1 \
+  platform-fridadev-app:local \
+  python -m unittest discover
+```
+
+Resultat complet: `2549` tests en `8.666 s`, `22` echecs, `16` erreurs,
+`0` skip et `0` expected failure signales. Les `34` tests uniques nommes ont
+ensuite ete rejoues explicitement dans le meme runner; leurs sous-tests ont
+reproduit les memes `38` en-tetes. Empreinte SHA-256 de la liste triee:
+
+`f8e9ac4941fc5d35e0ae11db15eccd64705b484d4a6cdd2ac2769b4e7efa586f`
+
+Identifiants executables exacts:
+
+```text
+tests.integration.frontend_admin.test_frontend_hermeneutic_admin_phase6.FrontendHermeneuticAdminPhase6Tests.test_page_scripts_live_in_dedicated_directory_and_use_only_allowed_endpoints
+tests.test_llm_client.LlmClientRuntimeSettingsTests.test_or_headers_keeps_internal_caller_marker_local
+tests.test_logging_conventions_phase8.LoggingConventionsPhase8Tests.test_repo_has_no_legacy_logger_token
+tests.test_memory_store_phase4.MemoryStorePhase4EmbeddingTests.test_record_arbiter_decisions_persists_effective_model_even_if_runtime_changes_before_insert
+tests.test_minimal_validation_phase11.MinimalValidationPhase11Tests.test_assert_no_env_fallback_for_persisted_non_secret_fields_accepts_db_seed
+tests.test_minimal_validation_phase9.MinimalValidationPhase9Tests.test_assert_masked_secret_fields_accepts_redacted_secret_payloads
+tests.test_minimal_validation_phase9.MinimalValidationPhase9Tests.test_check_api_smoke_calls_admin_endpoints_without_admin_token_header
+tests.test_minimal_validation_phase9.MinimalValidationPhase9Tests.test_check_api_smoke_verifies_admin_route_and_admin_old_absence
+tests.test_minimal_validation_phase9.MinimalValidationPhase9Tests.test_check_ui_assets_requires_new_admin_assets_and_rejects_legacy_assets
+tests.test_phase4_transversal.Phase4TransversalTests.test_run_and_compose_runtime_binding_contract_is_unchanged
+tests.test_server_chat_active_image_documents_contract.ServerChatActiveImageDocumentsContractTests.test_stream_chat_excludes_active_image_over_provider_payload_cap
+tests.test_server_chat_active_image_documents_contract.ServerChatActiveImageDocumentsContractTests.test_stream_chat_injects_active_image_as_multimodal_provider_payload_only
+tests.test_server_chat_compact_observability_contract.ServerChatCompactObservabilityContractTests.test_api_chat_emits_hermeneutic_node_insertion_observability_payload
+tests.test_server_chat_synthetic_logs_contract.ServerChatSyntheticLogsContractTests.test_api_chat_emits_hard_guard_name_effect_and_final_posture_in_validation_logs
+tests.test_server_chat_synthetic_logs_contract.ServerChatSyntheticLogsContractTests.test_api_chat_emits_primary_node_and_validation_agent_synthetic_log_events
+tests.test_server_chat_synthetic_logs_contract.ServerChatSyntheticLogsContractTests.test_api_chat_emits_validation_agent_error_stage_without_raw_payload_dump
+tests.test_server_chat_synthetic_logs_contract.ServerChatSyntheticLogsContractTests.test_api_chat_persist_response_reports_error_when_messages_are_not_saved
+tests.test_server_chat_web_runtime_contract.ServerChatWebRuntimeContractTests.test_api_chat_does_not_auto_activate_web_for_conversational_confirmations_without_manual_flag
+tests.test_server_chat_web_runtime_contract.ServerChatWebRuntimeContractTests.test_api_chat_does_not_auto_activate_web_for_pure_verification_request_without_manual_flag
+tests.test_server_chat_web_runtime_contract.ServerChatWebRuntimeContractTests.test_api_chat_does_not_auto_activate_web_for_source_link_or_reference_requests_without_manual_flag
+tests.test_server_chat_web_runtime_contract.ServerChatWebRuntimeContractTests.test_api_chat_exposes_canonical_web_input_and_reuses_single_web_pass
+tests.test_server_chat_web_runtime_contract.ServerChatWebRuntimeContractTests.test_api_chat_passes_web_input_read_state_to_identity_write_callback
+tests.test_server_logs_phase3.ServerLogsPhase3Tests.test_prompt_prepared_exposes_effective_memory_prompt_injection_summary
+tests.test_server_logs_phase3.ServerLogsPhase3Tests.test_prompt_prepared_exposes_hermeneutic_prompt_injection_without_raw_block
+tests.test_server_logs_phase3.ServerLogsPhase3Tests.test_requests_proxy_non_stream_web_reformulation_uses_dedicated_provider_identity
+tests.test_server_logs_phase4.ServerLogsPhase4Tests.test_admin_chat_logs_delete_route_rejects_all_logs_scope
+tests.test_server_logs_phase4.ServerLogsPhase4Tests.test_admin_chat_logs_delete_route_rejects_turn_without_conversation
+tests.test_server_logs_phase6.ServerLogsPhase6Tests.test_admin_chat_logs_export_markdown_rejects_missing_conversation
+tests.unit.core.test_temporal_model_truth_closure.TemporalModelTruthClosureTests.test_identity_and_stimmung_cannot_create_temporal_day_claims
+tests.unit.logs.test_chat_turn_logger_identity_write.ChatTurnLoggerIdentityWriteTests.test_persist_identity_entries_emits_legacy_diagnostic_identity_write_for_both_sides
+tests.unit.logs.test_chat_turn_logger_identity_write.ChatTurnLoggerIdentityWriteTests.test_persist_identity_entries_emits_per_side_legacy_diagnostic_visibility_when_one_side_has_no_data
+tests.unit.logs.test_chat_turn_logger_identity_write.ChatTurnLoggerIdentityWriteTests.test_persist_identity_entries_tracks_persisted_count_for_rejected_entries_in_legacy_diagnostic_pipeline
+tests.unit.logs.test_log_store_phase3.LogStorePhase3Tests.test_build_turn_pipeline_item_complete_turn_uses_memory_chain_snapshot_content_free
+tests.unit.memory.test_hermeneutical_post_stabilization_contract.HermeneuticalPostStabilizationContractTests.test_l2_active_identity_staging_does_not_canonize_role_play_or_irony_window
+```
+
+Les tests `conversational_confirmations` et `source_link_or_reference_requests`
+produisent chacun trois sous-tests. Ils comptent donc pour six en-tetes dans
+la baseline, soit quatre de plus que les `34` identifiants executables uniques.
 
 ## Registre de triage
 
@@ -52,6 +120,44 @@ Construire dans ce fichier, avant patch, une ligne par identifiant rouge:
 
 | identifiant | famille | reproduction ciblee | contrat autoritatif | cause prouvee | action | preuve finale | statut |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| `ERROR minimal_validation_phase9.masked_secret_fields` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR minimal_validation_phase11.non_secret_fields_db_seed` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR log_store_phase3.memory_chain_snapshot` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR minimal_validation_phase9.api_smoke_without_admin_token` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR minimal_validation_phase9.admin_route_and_old_absence` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR minimal_validation_phase9.ui_assets` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR temporal_model_truth_closure.identity_stimmung_day_claims` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR llm_client.internal_caller_marker_local` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR identity_write.legacy_diagnostic_both_sides` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR identity_write.legacy_visibility_one_side_empty` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR identity_write.rejected_entries_persisted_count` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR memory_store_phase4.arbiter_effective_model` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR logging_conventions.no_legacy_logger_token` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR server_logs_phase3.web_reformulation_provider_identity` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR active_image_documents.over_provider_payload_cap` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR active_image_documents.multimodal_provider_payload_only` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL server_logs_phase4.delete_rejects_all_logs_scope` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL server_logs_phase4.delete_rejects_turn_without_conversation` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL server_logs_phase6.export_rejects_missing_conversation` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL web_runtime.no_auto_web_confirmation_1` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL web_runtime.no_auto_web_confirmation_2` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL web_runtime.no_auto_web_confirmation_3` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL web_runtime.no_auto_web_pure_verification` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL web_runtime.no_auto_web_source_request_1` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL web_runtime.no_auto_web_source_request_2` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL web_runtime.no_auto_web_source_request_3` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL synthetic_logs.hard_guard_final_posture` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL compact_observability.hermeneutic_node_insertion` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL synthetic_logs.primary_and_validation_events` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL synthetic_logs.validation_error_without_raw_payload` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL web_runtime.canonical_web_input_single_pass` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL web_runtime.identity_callback_read_state` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL synthetic_logs.persist_response_save_error` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL identity_staging.role_play_irony_window` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL frontend_hermeneutic_admin.allowed_endpoints` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL server_logs_phase3.memory_prompt_injection_summary` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL server_logs_phase3.hermeneutic_prompt_injection` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL phase4_transversal.runtime_binding_contract` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 
 Valeurs admises pour `cause prouvee`:
 
