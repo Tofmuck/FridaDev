@@ -1406,9 +1406,70 @@ Critere de sortie:
 
 Checklist:
 
-- [ ] Extraire local search client.
-- [ ] Extraire discovery client adapter.
-- [ ] Verifier timeout/error_class.
+- [x] Extraire local search client.
+- [x] Extraire discovery client adapter.
+- [x] Verifier timeout/error_class.
+
+Statut: ferme le 16 aout 2026.
+
+Preuves livrees:
+
+- `app/tools/web_search_clients.py` porte desormais l'appel HTTP SearXNG, sa
+  normalisation `ok/error` et l'adapter de selection local/OpenRouter Exa;
+- `app/tools/web_search.py` conserve les facades `search(...)` et
+  `search_with_status(...)`, les points d'injection historiques et le log
+  content-free, mais ne construit plus lui-meme la requete HTTP ni la reponse
+  discovery locale;
+- `app/tests/unit/web_search/test_web_search_clients.py` ajoute cinq preuves
+  hermetiques de transport, status et delegation; la matrice golden 9C.0
+  continue de traverser le builder public complet.
+
+Invariants figes:
+
+- SearXNG reste appele sur `/search` avec un timeout explicite de `10 s`, les
+  parametres profiles non vides et la meme borne de resultats;
+- un succes SearXNG reste `status=ok`, y compris sans resultat, tandis qu'une
+  exception devient `status=error`, `reason_code=web_search_upstream_error`,
+  `results=[]` et conserve uniquement la classe d'erreur;
+- l'adapter discovery preserve la distinction entre absence de donnees locale
+  et erreur upstream locale; les reason codes
+  `searxng_request_failed`/`web_search_upstream_error` ne sont ajoutes que dans
+  le second cas;
+- le provider externe conserve le timeout configure, le transport injecte,
+  `openrouter_timeout` et les autres classifications existantes;
+- le query plan, les readers Crawl4AI/PDF, le context/evidence builder et la
+  projection runtime ne changent ni de responsabilite ni de semantique.
+
+Sensibilite:
+
+- les preuves echouent si le timeout SearXNG est retire ou modifie, si une
+  erreur devient un succes vide, si `error_class` disparait, si les parametres
+  profiles vides sont envoyes, si le timeout discovery est perdu, ou si les
+  facades contournent les clients extraits;
+- les sentinelles d'exception restent absentes des resultats normalises.
+
+Commandes hermetiques executees avec `--network none`, checkout read-only et
+`/tmp` en tmpfs:
+
+- baseline complete avant patch: `2576 tests`, 0 echec, 0 erreur;
+- preuve rouge avant implementation: import du module absent, `1 erreur`
+  attendue;
+- nouveaux tests et golden 9C.0: `9 tests`, OK;
+- tous les tests `tests/unit/web_search`: `172 tests`, OK;
+- logger/guard/redaction: `54 tests`, OK;
+- route Web, provenance, read-state et golden Lot 9: `36 tests`, OK;
+- decouverte complete finale: `2581 tests`, 0 echec, 0 erreur, sans nouveau
+  skip ni expected failure.
+
+Limites restantes:
+
+- aucun provider reel, secret, DB ou reseau n'est sollicite; la preuve porte
+  sur les contrats hermetiques et les fakes de transport;
+- la contradiction preexistante `web_pdf_read_pages`/writer-side guard et le
+  benchmark legacy non collecte documentes en 9C.0 restent ouverts hors de ce
+  sous-lot;
+- Crawl4AI/PDF, context/evidence et event projection restent integralement
+  ouverts dans 9C.2 a 9C.4, sans commencement anticipe.
 
 ### Lot 9C.2 - Crawl4AI/PDF reader boundary
 

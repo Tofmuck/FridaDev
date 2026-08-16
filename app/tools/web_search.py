@@ -32,6 +32,7 @@ from tools import (
     web_search_profile_policy,
     web_search_rerank,
     web_search_searxng_params,
+    web_search_clients,
     web_search_discovery,
     web_pdf_reader,
     web_public_url_policy,
@@ -39,9 +40,9 @@ from tools import (
 
 logger = logging.getLogger("frida.web_search")
 _EXPLICIT_URL_RE = re.compile(r'https?://[^\s<>"\']+')
-WEB_SEARCH_UPSTREAM_ERROR_REASON = 'web_search_upstream_error'
+WEB_SEARCH_UPSTREAM_ERROR_REASON = web_search_clients.WEB_SEARCH_UPSTREAM_ERROR_REASON
 WEB_DISCOVERY_UPSTREAM_ERROR_REASON = 'web_discovery_upstream_error'
-SEARXNG_REQUEST_FAILED_REASON = 'searxng_request_failed'
+SEARXNG_REQUEST_FAILED_REASON = web_search_clients.SEARXNG_REQUEST_FAILED_REASON
 _URL_TRAILING_PUNCTUATION = '.,;:!?)]}\'"'
 CRAWL4AI_FILTER_FIT = 'fit'
 CRAWL4AI_FILTER_RAW = 'raw'
@@ -1132,17 +1133,6 @@ def _with_query_source(result: dict[str, Any], query_entry: dict[str, Any]) -> d
     return enriched
 
 
-def _normalize_local_discovery_result(result: dict[str, Any]) -> dict[str, str]:
-    url = str(result.get('url') or '').strip()
-    return {
-        'title': str(result.get('title') or '').strip(),
-        'url': url,
-        'content': str(result.get('content') or '').strip(),
-        'discovery_source_kind': 'searxng_result',
-        'discovery_domain': str(urlparse(url).netloc or '').lower(),
-    }
-
-
 def _interleave_and_dedupe_query_results(
     query_result_groups: list[tuple[dict[str, Any], list[dict[str, str]]]],
     *,
@@ -1197,48 +1187,16 @@ def _call_discovery_with_profile_params(
     discovery_provider: str | None,
     requests_module: Any = requests,
     llm_module: Any | None = None,
-) -> web_search_discovery.DiscoveryResponse:
-    return web_search_discovery.discover_urls(
+) -> web_search_clients.DiscoveryClientResult:
+    return web_search_clients.discover_with_status(
         query,
         search_profile=search_profile,
         searxng_params=searxng_params,
         max_results=max_results,
         requested_provider=discovery_provider,
-        local_search=_call_search_with_profile_params,
+        local_search_response=_call_search_response_with_profile_params,
         requests_module=requests_module,
         llm_module=llm_module,
-    )
-
-
-def _local_search_discovery_response(
-    query: str,
-    *,
-    searxng_params: dict[str, str] | None,
-    max_results: int,
-    discovery_provider: str | None,
-) -> tuple[web_search_discovery.DiscoveryResponse, str]:
-    search_response = _call_search_response_with_profile_params(query, searxng_params)
-    status = str(search_response.get('status') or 'ok')
-    reason_codes = ['local_searxng_discovery_used']
-    error_class = ''
-    if status == 'error':
-        reason_codes.extend([SEARXNG_REQUEST_FAILED_REASON, WEB_SEARCH_UPSTREAM_ERROR_REASON])
-        error_class = str(search_response.get('error_class') or '')
-    result_limit = max_results if max_results > 0 else 5
-    results = [
-        _normalize_local_discovery_result(item)
-        for item in list(search_response.get('results') or [])[:result_limit]
-    ]
-    return (
-        web_search_discovery.DiscoveryResponse(
-            results=results,
-            observability=web_search_discovery.empty_observability_fields(
-                requested_provider=discovery_provider,
-                effective_provider_value=web_search_discovery.PROVIDER_LOCAL,
-                reason_codes=reason_codes,
-            ),
-        ),
-        error_class,
     )
 
 
@@ -1274,29 +1232,18 @@ def _run_search_query_plan(
     local_search_error_classes: list[str] = []
     for query_entry in queries:
         query = str(query_entry.get('query') or '')
-        effective_provider = web_search_discovery.effective_provider(
-            requested_provider=discovery_provider,
+        discovery_result = _call_discovery_with_profile_params(
+            query,
             search_profile=search_profile,
+            searxng_params=searxng_params,
+            max_results=max_results,
+            discovery_provider=discovery_provider,
+            requests_module=requests_module,
+            llm_module=llm_module,
         )
-        if effective_provider == web_search_discovery.PROVIDER_LOCAL:
-            discovery_response, error_class = _local_search_discovery_response(
-                query,
-                searxng_params=searxng_params,
-                max_results=max_results,
-                discovery_provider=discovery_provider,
-            )
-            if error_class:
-                local_search_error_classes.append(error_class)
-        else:
-            discovery_response = _call_discovery_with_profile_params(
-                query,
-                search_profile=search_profile,
-                searxng_params=searxng_params,
-                max_results=max_results,
-                discovery_provider=discovery_provider,
-                requests_module=requests_module,
-                llm_module=llm_module,
-            )
+        discovery_response = discovery_result.response
+        if discovery_result.error_class:
+            local_search_error_classes.append(discovery_result.error_class)
         discovery_observability.append(discovery_response.observability)
         query_result_groups.append((query_entry, discovery_response.results))
 
@@ -1768,35 +1715,22 @@ def search_with_status(
     """Interroge SearXNG avec un statut explicite content-free."""
     if max_results is None:
         max_results = int(_runtime_services_value('searxng_results'))
-    try:
-        params = {"q": query, "format": "json", "language": "fr-FR", "safesearch": "0"}
-        params.update({key: value for key, value in dict(searxng_params or {}).items() if value})
-        searxng_url = str(_runtime_services_value('searxng_url')).rstrip('/')
-        resp = requests.get(f"{searxng_url}/search", params=params, timeout=10)
-        resp.raise_for_status()
-        results = resp.json().get("results", [])[:max_results]
-        return {
-            'status': 'ok',
-            'reason_code': None,
-            'error_class': '',
-            'results': [
-                {"title": r.get("title", ""), "url": r.get("url", ""), "content": r.get("content", "")}
-                for r in results
-            ],
-        }
-    except Exception as e:
+    response = web_search_clients.search_local_with_status(
+        query,
+        searxng_url=str(_runtime_services_value('searxng_url')),
+        max_results=max_results,
+        searxng_params=searxng_params,
+        timeout_s=web_search_clients.SEARXNG_TIMEOUT_S,
+        requests_module=requests,
+    )
+    if response.get('status') == 'error':
         logger.warning(
             "search_error query_chars=%s query_sha256_12=%s error_class=%s reason_code=searxng_request_failed",
             _safe_len(query),
             _sha256_12(query),
-            type(e).__name__,
+            response.get('error_class') or '',
         )
-        return {
-            'status': 'error',
-            'reason_code': WEB_SEARCH_UPSTREAM_ERROR_REASON,
-            'error_class': type(e).__name__,
-            'results': [],
-        }
+    return response
 
 
 _DEFAULT_SEARCH_FUNCTION = search
