@@ -1593,6 +1593,8 @@ Limites et frontiere:
 
 ### Lot 9C.2 - Crawl4AI/PDF reader boundary
 
+Statut: ferme le 16 aout 2026.
+
 Patch attendu:
 
 - isoler crawl markdown, explicit URL, PDF reader.
@@ -1604,9 +1606,61 @@ Risques:
 
 Checklist:
 
-- [ ] Extraire crawl client.
-- [ ] Extraire PDF reader adapter.
-- [ ] Verifier URL redaction.
+- [x] Extraire crawl client.
+- [x] Extraire PDF reader adapter.
+- [x] Verifier URL redaction.
+
+Implementation livree:
+
+- `app/tools/web_search_readers.py` porte desormais le client `/md`, sa
+  normalisation de statut, la politique URL explicite `fit` puis `raw`
+  uniquement apres un resultat `empty`, la politique de lecture d'un resultat
+  de recherche et l'adaptateur vers le lecteur PDF borne existant;
+- `app/tools/web_search.py` conserve des facades minces et tardivement liees
+  pour les appelants et seams de test existants. Les builders de contexte et
+  d'evidence ainsi que la projection d'evenements restent dans leur perimetre
+  actuel: 9C.3 et 9C.4 ne sont pas commences;
+- `app/tests/unit/web_search/test_web_search_readers.py` ajoute six preuves
+  synthetiques et content-free: contrat `/md` et timeout, garde URL avant
+  resolution de settings/secret/transport, fallback URL explicite, adaptation
+  PDF directe, redaction des logs d'erreur et passage effectif par la nouvelle
+  frontiere.
+
+Invariants preserves:
+
+- payload Crawl4AI, filtres, cache mode, query hash/compteur, statuts et reason
+  codes inchanges; aucun provider ni reseau reel n'est utilise par les tests;
+- une URL bloquee est refusee avant toute resolution de configuration, secret,
+  payload ou transport; les logs n'exposent ni hote, path, query, fragment,
+  token ni texte d'exception;
+- une URL explicite tente `raw` seulement apres un `fit` vide; une erreur ou un
+  succes `fit` ne declenche pas ce fallback;
+- le lecteur PDF direct conserve detection, budget, probe content-type et
+  resultat crawl-like sans ajouter stockage, cache, OCR ou autre capacite.
+
+Preuves executees dans le runner hermetique `--network none`, checkout
+read-only, `/tmp` en tmpfs, avec montages bornes `app/` et `benchmark/`:
+
+- baseline avant patch: `2595 tests`, OK;
+- RED cible: `tests.unit.web_search.test_web_search_readers`, ImportError
+  attendu car la frontiere n'existait pas encore;
+- GREEN cible: `6 tests`, OK;
+- suite `tests/unit/web_search`: `191 tests`, OK;
+- observabilite Web, garde payload et golden Lot 9: `59 tests`, OK;
+- decouverte complete finale: `2601 tests`, 0 echec, 0 erreur, sans nouveau
+  skip ni expected failure. Le delta exact de six correspond aux six preuves
+  ajoutees.
+
+Sensibilite et limites:
+
+- les preuves echouent si la facade contourne la nouvelle frontiere, si le
+  contrat `/md` ou son timeout change, si la garde SSRF est deplacee apres une
+  resolution sensible, si `raw` est tente sans `fit` vide, si l'adaptateur PDF
+  altere son budget ou si URL/query/secret/exception brute reapparaissent dans
+  le log;
+- aucun appel provider live n'a ete ajoute: les contrats existants et la
+  decouverte hermetique sont l'autorite de non-regression pour ce refactor;
+- 9C.3 et 9C.4 restent entierement ouverts et non commences.
 
 ### Lot 9C.3 - Context/evidence payload boundary
 
