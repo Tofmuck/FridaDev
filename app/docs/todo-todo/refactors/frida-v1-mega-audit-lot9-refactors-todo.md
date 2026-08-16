@@ -1201,6 +1201,88 @@ Critere de sortie:
 - moins de responsabilites par fonction et tests identiques sur verdict,
   fail-open local, observabilite et bornes payload.
 
+Statut: ferme le 16 aout 2026.
+
+Preuves livrees:
+
+- `app/core/hermeneutic_node/validation/validation_contract.py` porte la
+  validation pure des entrees et du verdict provider, la normalisation du
+  verdict final et la construction des resultats nominaux/fail-open;
+- `app/core/hermeneutic_node/validation/validation_messages.py` porte la
+  construction deterministe et bornee des deux messages provider, y compris
+  la reference temporelle, la compaction du dialogue et l'observabilite
+  preparatoire content-free;
+- `app/core/hermeneutic_node/validation/validation_transport.py` porte
+  exclusivement l'attribution provider, URL/headers, POST, timeout, lecture
+  de reponse et metadata provider;
+- `app/core/hermeneutic_node/validation/validation_agent.py` conserve
+  `build_validated_output(...)` comme facade contractuelle, les patch points
+  historiques d'observabilite et la politique interne
+  primary/fallback/fail-open;
+- `app/tests/test_validation_agent_boundaries.py` exerce directement les
+  trois frontieres sans introspection du texte source.
+
+Mesures et invariants:
+
+- `validation_agent.py`: 1141 -> 267 lignes;
+  `build_validated_output`: 93 -> 46 lignes, 3 -> 1 noeuds de branchement AST
+  et 17 -> 9 appels AST; `_call_model`: 66 -> 54 lignes et 14 -> 6 appels;
+- la sequence fixe primary puis fallback reste explicite dans
+  `_run_model_fallback`; le dernier reason code, le modele rapporte, les
+  exceptions timeout/HTTP, le prompt manquant et le fail-open sous hard guard
+  restent identiques;
+- le prompt charge depuis `prompts/validation_agent.txt` est inchange
+  byte-pour-byte; deux matrices de messages avant/apres, dont contexte large,
+  temps local et hard guard, sont identiques;
+- six comparaisons avant/apres verrouillent verdict valide, mutants invalides,
+  payload final et fail-open absent/present; URL, headers, attribution,
+  timeout, sampling, budget et metadata provider conservent leurs tests;
+- `validation_prompt_prepared` conserve les memes comptes et bornes
+  content-free; aucun prompt, message, contenu Memory/Web ou secret n'est
+  ajoute aux logs, objets de frontiere ou nouvelles fixtures.
+
+Sensibilite et contre-audit:
+
+- RED TDD: le golden de frontieres echoue a l'import tant que les trois
+  modules n'existent pas;
+- le contrat pur rejette le mutant `presence + clarify`; le constructeur de
+  messages rejette implicitement deplacement, debordement ou mutation des
+  entrees par egalite repetee, ordre et bornes; le transport rejette appel
+  duplique, alteration du payload/timeout ou interpretation prematuree du
+  texte provider;
+- une premiere decouverte complete, encore a `2569 tests`, a prouve que le
+  golden sous l'arborescence unitaire non packagee n'etait pas collecte; son
+  deplacement sans duplication vers `app/tests/` porte le total autoritatif a
+  `2572`;
+- la matrice ciblee a ensuite detecte `36` erreurs quand le patch point
+  historique `validation_agent.chat_turn_logger` avait disparu; la facade
+  reexporte le meme objet sans reprendre l'emission;
+- contre-audit manuel: facade unique, patch points historiques, ordre
+  observabilite/POST/parse, priorite primary/fallback, hard guards, payloads
+  bornes, contenu sensible, prompt, dependances et perimetre 9C relus.
+
+Commandes hermetiques executees avec `--network none`, checkout read-only et
+`/tmp` en tmpfs:
+
+- baseline complete avant patch: `2569 tests`, 0 echec, 0 erreur;
+- RED des nouvelles frontieres: `1` erreur d'import attendue;
+- frontieres + validation agent: `39 tests`, OK; avec verite temporelle:
+  `44 tests`, OK;
+- validation/insertion/logs synthetiques: `71 tests`, OK;
+- insertion/observabilite/prompt/corpus/entrees runtime: `67 tests`, OK;
+- decouverte complete finale: `2572 tests`, 0 echec, 0 erreur, sans nouveau
+  skip ni expected failure.
+
+Limites restantes:
+
+- `validation_contract.py` reste un module cohesif de validation
+  structurelle de 540 lignes; il ne contient ni transport, ni prompt, ni
+  politique de retry et n'appelle aucun service externe;
+- la composition content-free de `validation_prompt_prepared` reside avec le
+  message provider; la facade reexporte le logger historique et conserve
+  l'ordre exact emission puis transport;
+- aucun travail du Lot 9C n'est commence.
+
 ## Lot 9C - `web_search.py` clients/status/context
 
 Objectif:
