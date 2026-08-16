@@ -58,6 +58,7 @@ legacy.
 - `app/observability/dashboard_read_model.py`;
 - `app/server.py`;
 - `app/core/chat_service.py`;
+- `app/core/chat_agent_lane_orchestration.py`;
 - `app/agenda/chat_runtime.py`;
 - `app/biblio/chat_runtime.py`.
 

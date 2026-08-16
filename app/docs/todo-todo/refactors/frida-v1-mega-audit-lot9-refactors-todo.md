@@ -905,9 +905,51 @@ Risques:
 
 Checklist:
 
-- [ ] Extraire emission observability lanes.
-- [ ] Extraire override/meta resolution.
-- [ ] Verifier no-op statuses.
+- [x] Extraire emission observability lanes.
+- [x] Extraire override/meta resolution.
+- [x] Verifier no-op statuses.
+
+Preuves livrees le 16 aout 2026:
+
+- `app/core/chat_agent_lane_orchestration.py` porte les cinq emissions
+  Adobe contexte/prompt, Biblio, Agenda et Notes auparavant definies dans
+  `chat_service.py`. Les dix helpers de projection observability et de
+  conversion override/meta sont AST-identiques avant/apres; les runtimes de
+  domaine et l'observabilite Web restent a leur emplacement.
+- `resolve_agent_lane_assistant_output` constitue l'unique frontiere de
+  resolution assistant des lanes. Elle conserve l'ordre d'evaluation existant,
+  la priorite Agenda > Biblio > presence hermeneutique, le rejet des locks
+  invalides ou vides, ainsi que la meta et l'enveloppe Biblio independantes du
+  lock finalement selectionne. `chat_service.py` reexporte les anciens noms
+  prives pour conserver les points de substitution existants et passe de
+  `1216` a `1061` lignes.
+- `app/tests/unit/core/test_chat_agent_lane_orchestration.py` ajoute trois
+  preuves bornees: priorite et surface Biblio, fallback presence face aux locks
+  domaine invalides, et absence totale d'evenement Notes sans selection. Les
+  contrats existants conservent Adobe absent/error, Biblio
+  disabled/not_selected/error, Agenda disabled, Web off/not_selected, ordre
+  des lanes, bypass provider sous final lock, stream/non-stream, capsule,
+  manifest et persistence.
+- Sensibilites rejetees: frontiere absente, priorite Agenda/Biblio inversee,
+  lock invalide accepte, fallback presence perdu, meta ou enveloppe Biblio
+  effacee, et faux evenement Notes pour un no-op. Les goldens 9B.0 rejettent
+  toujours lane ajoutee/retiree/deplacee, appel provider sous lock et
+  duplication de persistence.
+
+Commandes hermetiques executees avec `--network none`, checkout read-only et
+`/tmp` en tmpfs:
+
+- baseline avant patch: `python -m unittest discover` -> `2556`, OK;
+- RED frontiere agent-lane: nouveau module de test -> `3`, deux echecs
+  attendus sur la frontiere absente;
+- GREEN frontiere agent-lane: meme module -> `3`, OK;
+- Adobe/Biblio/Agenda/Notes/Web, regime dialogique et goldens -> `127`, OK;
+- stream/persistence/capsule/manifest/observabilite transverse -> `89`, OK;
+- decouverte complete apres extraction -> `2559`, OK.
+
+Limite: 9B.2 ne deplace ni l'execution des runtimes domaine, ni l'injection des
+lanes, ni l'observabilite Web. Les Lots 9B.3 a 9B.6 restent ouverts et non
+commences.
 
 ### Lot 9B.3 - Hermeneutic node state boundary
 

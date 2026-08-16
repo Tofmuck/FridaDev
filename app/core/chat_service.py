@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 from typing import Any, Mapping
 
 from core import assistant_output_contract
-from core import assistant_turn_state
 from core import adobe_docs_prompt_lane
 from core import active_conversation_documents
 from core import active_document_prompt_lane
@@ -19,6 +18,20 @@ from core.chat_document_prompt_reads import (
     _active_documents_for_prompt,
     _merge_document_prompt_reads,
     _workspace_files_for_prompt,
+)
+from core.chat_agent_lane_orchestration import (
+    AgentLaneAssistantOutput,
+    _agenda_assistant_response_override,
+    _biblio_assistant_response_envelope,
+    _biblio_assistant_response_meta,
+    _biblio_assistant_response_override,
+    _emit_adobe_docs_observability,
+    _emit_adobe_prompt_lane_observability,
+    _emit_agenda_observability,
+    _emit_biblio_observability,
+    _emit_workspace_folder_notes_prompt_observability,
+    _hermeneutic_presence_assistant_response_override,
+    resolve_agent_lane_assistant_output,
 )
 from core import chat_memory_flow
 from core import chat_prompt_context
@@ -35,7 +48,6 @@ from core.hermeneutic_node.inputs import stimmung_input as canonical_stimmung_in
 from core.hermeneutic_node.inputs import web_input as canonical_web_input
 from agenda import chat_runtime as agenda_chat_runtime
 from biblio import chat_runtime as biblio_chat_runtime
-from biblio import observability as biblio_observability
 from observability import active_documents_observability
 from observability import chat_turn_logger
 from observability import hermeneutic_node_logger
@@ -154,7 +166,6 @@ _FINAL_NON_ANSWER_OUTPUT_REGIME = {
     'resituation_level': 'none',
     'time_reference_mode': 'atemporal',
 }
-_DIALOGIC_PRESENCE_TEXT = '...'
 
 
 def _read_hermeneutic_node_state(
@@ -310,168 +321,6 @@ _resolve_web_runtime_payload_skipped_by_adobe = chat_turn_runtime_inputs.resolve
 _run_stimmung_agent_stage = chat_turn_runtime_inputs.run_stimmung_agent_stage
 _build_stimmung_input = chat_turn_runtime_inputs.build_stimmung_input
 _build_web_input_from_runtime_payload = chat_turn_runtime_inputs.build_web_input_from_runtime_payload
-
-
-def _emit_adobe_docs_observability(
-    *,
-    conversation_id: str,
-    adobe_context: Any,
-    admin_logs_module: Any,
-) -> None:
-    payload_builder = getattr(adobe_context, 'as_content_free_dict', None)
-    payload = payload_builder() if callable(payload_builder) else {}
-    if not isinstance(payload, Mapping):
-        payload = {}
-    status = str(payload.get('status') or getattr(adobe_context, 'status', '') or 'error')
-    event_status = 'error' if status == 'error' else 'ok'
-    reason_codes = payload.get('reason_codes') if isinstance(payload.get('reason_codes'), list) else []
-    reason_code = str(reason_codes[0]) if reason_codes else ''
-    chat_turn_logger.set_state('adobe_docs', dict(payload))
-    chat_turn_logger.emit(
-        'adobe_docs',
-        status=event_status,
-        reason_code=reason_code or None,
-        payload=dict(payload),
-    )
-    try:
-        admin_logs_module.log_event(
-            'adobe_docs',
-            conversation_id=conversation_id,
-            **dict(payload),
-        )
-    except Exception:
-        return
-
-
-def _emit_adobe_prompt_lane_observability(lane: Any) -> None:
-    payload_builder = getattr(lane, 'as_content_free_dict', None)
-    payload = payload_builder() if callable(payload_builder) else {}
-    if not isinstance(payload, Mapping):
-        payload = {}
-    chat_turn_logger.set_state('adobe_prompt_lane', dict(payload))
-    status = str(payload.get('status') or 'not_requested')
-    chat_turn_logger.emit(
-        'adobe_prompt_lane',
-        status='error' if status == 'error' else 'ok',
-        payload=dict(payload),
-    )
-
-
-def _emit_biblio_observability(result: Any) -> None:
-    payload = getattr(result, 'observability_payload', None)
-    if not isinstance(payload, Mapping):
-        return
-    clean_payload = dict(payload)
-    chat_turn_logger.set_state('biblio', clean_payload)
-    biblio_observability.emit_biblio_event(
-        clean_payload,
-        chat_turn_logger_module=chat_turn_logger,
-    )
-
-
-def _emit_agenda_observability(result: Any) -> None:
-    payload = getattr(result, 'observability_payload', None)
-    if not isinstance(payload, Mapping):
-        return
-    clean_payload = dict(payload)
-    chat_turn_logger.set_state('agenda', clean_payload)
-    chat_turn_logger.emit(
-        'agenda',
-        status=agenda_chat_runtime.observability_status_for_payload(clean_payload),
-        reason_code=str(clean_payload.get('reason_code') or '') or None,
-        payload=clean_payload,
-    )
-
-
-def _emit_workspace_folder_notes_prompt_observability(lane: Any) -> None:
-    payload_builder = getattr(lane, 'as_content_free_dict', None)
-    payload = payload_builder() if callable(payload_builder) else {}
-    if not isinstance(payload, Mapping):
-        payload = {}
-    if not payload.get('requested_count') and not payload.get('invalid_requested_count'):
-        return
-    clean_payload = dict(payload)
-    status = str(clean_payload.get('status') or 'empty')
-    chat_turn_logger.set_state('workspace_folder_notes_prompt_lane', clean_payload)
-    chat_turn_logger.emit(
-        'workspace_folder_notes_prompt_lane',
-        status='error' if status == 'error' else 'ok',
-        reason_code=str(clean_payload.get('reason_code') or '') or None,
-        payload=clean_payload,
-    )
-
-
-def _biblio_assistant_response_override(result: Any) -> chat_llm_flow.AssistantResponseOverride | None:
-    lock_reader = getattr(biblio_chat_runtime, 'final_response_lock_for_result', None)
-    lock = lock_reader(result) if callable(lock_reader) else getattr(result, 'final_response_lock', None)
-    if lock is None or not bool(getattr(lock, 'ok', False)):
-        return None
-    content = str(getattr(lock, 'content', '') or '')
-    if not content:
-        return None
-    meta_builder = getattr(lock, 'to_message_meta', None)
-    observability_builder = getattr(lock, 'to_observability', None)
-    return chat_llm_flow.AssistantResponseOverride(
-        content=content,
-        source=str(getattr(lock, 'source', '') or ''),
-        reason_code=str(getattr(lock, 'reason_code', '') or ''),
-        meta=meta_builder() if callable(meta_builder) else None,
-        observability=observability_builder() if callable(observability_builder) else {},
-    )
-
-
-def _agenda_assistant_response_override(result: Any) -> chat_llm_flow.AssistantResponseOverride | None:
-    lock_reader = getattr(agenda_chat_runtime, 'final_response_lock_for_result', None)
-    lock = lock_reader(result) if callable(lock_reader) else getattr(result, 'final_response_lock', None)
-    if lock is None or not bool(getattr(lock, 'ok', False)):
-        return None
-    content = str(getattr(lock, 'content', '') or '')
-    if not content:
-        return None
-    meta_builder = getattr(lock, 'to_message_meta', None)
-    observability_builder = getattr(lock, 'to_observability', None)
-    return chat_llm_flow.AssistantResponseOverride(
-        content=content,
-        source=str(getattr(lock, 'source', '') or ''),
-        reason_code=str(getattr(lock, 'reason_code', '') or ''),
-        meta=meta_builder() if callable(meta_builder) else None,
-        observability=observability_builder() if callable(observability_builder) else {},
-    )
-
-
-def _hermeneutic_presence_assistant_response_override(
-    result: Any,
-) -> chat_llm_flow.AssistantResponseOverride | None:
-    if _text(getattr(result, 'status', '')) != 'ok':
-        return None
-    validated_output = _mapping(getattr(result, 'validated_output', None))
-    if _text(validated_output.get('final_judgment_posture')) != 'answer':
-        return None
-    if _text(validated_output.get('final_output_regime')) != 'presence':
-        return None
-    return chat_llm_flow.AssistantResponseOverride(
-        content=_DIALOGIC_PRESENCE_TEXT,
-        source='hermeneutic_presence',
-        reason_code='validated_dialogic_presence',
-        meta=assistant_turn_state.build_dialogic_presence_assistant_turn_meta(),
-    )
-
-
-def _biblio_assistant_response_meta(result: Any) -> dict[str, Any] | None:
-    meta_builder = getattr(biblio_chat_runtime, 'assistant_response_meta_for_result', None)
-    meta = meta_builder(result) if callable(meta_builder) else None
-    return dict(meta) if isinstance(meta, Mapping) else None
-
-
-def _biblio_assistant_response_envelope(result: Any) -> dict[str, str]:
-    envelope_builder = getattr(biblio_chat_runtime, 'assistant_response_envelope_for_result', None)
-    envelope = envelope_builder(result) if callable(envelope_builder) else None
-    if not isinstance(envelope, Mapping):
-        return {}
-    return {
-        'surface_intro': str(envelope.get('surface_intro') or ''),
-        'surface_outro': str(envelope.get('surface_outro') or ''),
-    }
 
 
 _BIBLIO_RECENT_DIALOGUE_META_SOURCES = {
@@ -1096,13 +945,14 @@ def chat_response(
             content_kind='tool_lane_context',
         )
     )
-    biblio_final_response_override = _biblio_assistant_response_override(biblio_result)
-    agenda_final_response_override = _agenda_assistant_response_override(agenda_result)
-    presence_final_response_override = _hermeneutic_presence_assistant_response_override(
-        validated_result,
+    agent_lane_assistant_output = resolve_agent_lane_assistant_output(
+        biblio_result=biblio_result,
+        agenda_result=agenda_result,
+        validated_result=validated_result,
     )
-    biblio_assistant_response_meta = _biblio_assistant_response_meta(biblio_result)
-    biblio_assistant_response_envelope = _biblio_assistant_response_envelope(biblio_result)
+    assistant_response_override = agent_lane_assistant_output.assistant_response_override
+    biblio_assistant_response_meta = agent_lane_assistant_output.assistant_response_meta
+    biblio_assistant_response_envelope = agent_lane_assistant_output.assistant_response_envelope
     adobe_before_refs = main_payload_manifest.capture_message_refs(prompt_messages)
     adobe_lane = adobe_docs_prompt_lane.inject_adobe_prompt_lane(
         prompt_messages,
@@ -1120,11 +970,6 @@ def chat_response(
     )
     if adobe_request.active:
         _emit_adobe_prompt_lane_observability(adobe_lane)
-    assistant_response_override = (
-        agenda_final_response_override
-        or biblio_final_response_override
-        or presence_final_response_override
-    )
     continuity_capsule_result = continuity_capsule.resolve_continuity_capsule(
         config_module=config_module,
         final_response_lock_present=assistant_response_override is not None,

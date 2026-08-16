@@ -66,7 +66,7 @@ class DialogicRegimeCorpusTests(unittest.TestCase):
                     self.assertNotIn(message["content"], runtime_text)
 
     def test_presence_override_depends_only_on_validated_output_not_user_text(self) -> None:
-        source_path = APP_DIR / "core" / "chat_service.py"
+        source_path = APP_DIR / "core" / "chat_agent_lane_orchestration.py"
         tree = ast.parse(source_path.read_text(encoding="utf-8"))
         function = next(
             node
@@ -92,7 +92,7 @@ class DialogicRegimeCorpusTests(unittest.TestCase):
 
     def test_presence_derivation_boundary_never_compares_visible_dot_content(self) -> None:
         for relative_path in (
-            "core/chat_service.py",
+            "core/chat_agent_lane_orchestration.py",
             "core/chat_memory_flow.py",
             "memory/memory_traces_summaries.py",
         ):
