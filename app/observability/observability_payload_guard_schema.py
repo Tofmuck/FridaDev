@@ -326,6 +326,7 @@ _GENERAL_SCALAR_KEYS = set(
     web_confidence_score web_evidence_can_answer web_evidence_can_suggest_reformulation
     web_evidence_external_fallback_used web_evidence_requires_caveat web_search_enabled
     web_search_requested
+    web_pdf_read_pages
     agent_json_validated ambiguous arbiter_followed_upstream available buffer_target_pairs caldav_access catalog_saved confirmation_required
     confidence content_free conversation_saved current_embedding_blocked current_embedding_calls
     current_embedding_reused dimensions draft_description_present draft_present draft_private embedding_calls_total fallback family_calendar

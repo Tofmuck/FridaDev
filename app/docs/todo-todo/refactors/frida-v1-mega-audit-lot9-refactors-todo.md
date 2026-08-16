@@ -1379,7 +1379,8 @@ Limites restantes:
   `web_pdf_read_pages` comme `unknown_scalar_key`. Cette contradiction
   preexistante entre contrat PDF et allowlist n'est pas corrigee dans le lot
   tests/docs-only; elle devra etre resolue avant 9C.4 sans changer le schema
-  observable voulu;
+  observable voulu. Elle est resolue ulterieurement par la passe 1 du
+  prerequis avant 9C.2 documentee ci-dessous;
 - `app/tests/unit/benchmark/test_web_search_benchmark.py` n'est pas collecte
   par la decouverte autoritative; son execution isolee avec le depot complet
   monte s'arrete avant collecte sur l'import legacy deja retire
@@ -1466,10 +1467,61 @@ Limites restantes:
 - aucun provider reel, secret, DB ou reseau n'est sollicite; la preuve porte
   sur les contrats hermetiques et les fakes de transport;
 - la contradiction preexistante `web_pdf_read_pages`/writer-side guard et le
-  benchmark legacy non collecte documentes en 9C.0 restent ouverts hors de ce
-  sous-lot;
+  benchmark legacy non collecte sont tous deux encore ouverts a la fermeture
+  de 9C.1; la premiere est resolue par la passe 1 ci-dessous, le second reste
+  attribue a la passe 2;
 - Crawl4AI/PDF, context/evidence et event projection restent integralement
   ouverts dans 9C.2 a 9C.4, sans commencement anticipe.
+
+#### Prerequis avant 9C.2 - passe 1: compteur PDF et writer-side guard
+
+Statut: ferme le 16 aout 2026.
+
+Cause prouvee:
+
+- le vrai payload runtime PDF produit par la matrice 9C.0 etait content-free,
+  mais `web_pdf_read_pages` etait le seul compteur de son resume a ne
+  correspondre ni a l'allowlist scalaire exacte ni a un suffixe metrique;
+- la writer-side guard le refusait donc avec l'unique issue
+  `unknown_scalar_key`, alors que les compteurs voisins `_bytes`, `_chars`,
+  `_ms` et `_count` etaient deja admis.
+
+Patch et preuves:
+
+- `app/observability/observability_payload_guard_schema.py` ajoute uniquement
+  `web_pdf_read_pages` a l'allowlist scalaire; aucun suffixe generique, champ
+  voisin, contenu ou schema observable n'est ajoute;
+- `app/tests/unit/logs/test_observability_payload_guard.py` traverse le vrai
+  golden `explicit_url_pdf`, exige l'acceptation du compteur contractuel et
+  prouve qu'un mutant voisin `web_pdf_page_number` reste refuse comme
+  `unknown_scalar_key`;
+- la premiere invocation rouge, invalide, a revele un nom de helper de test
+  errone et a ete ecartee; apres correction, la preuve rouge valide donne
+  `1 test`, `1 echec` sur le refus du payload, puis la preuve verte
+  garde/logger/observabilite/golden Web donne `54 tests`, OK;
+- decouverte complete: `2582 tests`, 0 echec, 0 erreur. L'unique nouveau test
+  explique le passage de `2581` a `2582`.
+
+Limites et frontiere:
+
+- aucun reader PDF, payload builder, event projector, format de log ou contrat
+  content-free n'est modifie;
+- seul FridaDev doit etre rebuild pour livrer la correction de schema; 9C.2 a
+  9C.4 restent non commences;
+- la passe 2 benchmark ci-dessous reste ouverte et doit partir du commit propre
+  de cette passe.
+
+#### Prerequis avant 9C.2 - passe 2: benchmark Web autoritatif
+
+Statut: ouvert, non commence.
+
+Checklist:
+
+- [ ] Reproduire l'absence de collecte et l'echec isole.
+- [ ] Prouver la cause transitive exacte sans retablir Identity legacy.
+- [ ] Reintegrer le benchmark a la decouverte s'il reste contractuel, sinon
+  prouver son obsolescence et l'archiver explicitement.
+- [ ] Etablir une nouvelle baseline complete avant 9C.2.
 
 ### Lot 9C.2 - Crawl4AI/PDF reader boundary
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import sys
 import unittest
@@ -24,6 +25,7 @@ from observability import hermeneutic_node_logger
 from observability import identity_observability
 from observability import main_payload_manifest
 from observability import observability_payload_guard
+from tests.support import web_search_golden_matrix
 
 
 def _encoded(value: object) -> str:
@@ -351,6 +353,29 @@ class ObservabilityPayloadGuardTests(unittest.TestCase):
         self.assertFalse(decision.accepted)
         self.assertIn("unsafe_string_value", decision.payload["issue_classes"])
         self.assertNotIn(sentinel, encoded)
+
+    def test_web_pdf_runtime_payload_accepts_only_contractual_page_count(self) -> None:
+        case = web_search_golden_matrix.exercise_web_case("explicit_url_pdf")
+        web_event = next(
+            event
+            for event in case["events"]
+            if event.get("kind") == "event" and event.get("stage") == "web_search"
+        )
+        payload = dict(web_event["payload"])
+
+        decision = observability_payload_guard.guard_payload(payload)
+
+        self.assertTrue(decision.accepted)
+        self.assertEqual(
+            decision.payload["web_pdf_read_summary"][0]["web_pdf_read_pages"],
+            1,
+        )
+
+        mutant = copy.deepcopy(payload)
+        mutant["web_pdf_read_summary"][0]["web_pdf_page_number"] = 1
+        mutant_decision = observability_payload_guard.guard_payload(mutant)
+        self.assertFalse(mutant_decision.accepted)
+        self.assertIn("unknown_scalar_key", mutant_decision.payload["issue_classes"])
 
     def test_error_code_and_class_pass_without_message_short(self) -> None:
         payload = {
