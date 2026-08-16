@@ -84,8 +84,9 @@ class ServerLogsPhase4Tests(unittest.TestCase):
 
     def test_admin_chat_logs_delete_route_rejects_all_logs_scope(self) -> None:
         original_delete = self.server.log_store.delete_chat_log_events
+        internal_detail = 'all_logs deletion is not supported in MVP'
         self.server.log_store.delete_chat_log_events = (
-            lambda **_kwargs: (_ for _ in ()).throw(ValueError('all_logs deletion is not supported in MVP'))
+            lambda **_kwargs: (_ for _ in ()).throw(ValueError(internal_detail))
         )
         try:
             response = self.client.delete('/api/admin/logs/chat')
@@ -93,12 +94,22 @@ class ServerLogsPhase4Tests(unittest.TestCase):
             self.server.log_store.delete_chat_log_events = original_delete
 
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.get_json(), {'ok': False, 'error': 'all_logs deletion is not supported in MVP'})
+        self.assertEqual(
+            response.get_json(),
+            {
+                'ok': False,
+                'error': 'requete admin invalide',
+                'error_code': 'admin_bad_request',
+                'reason_code': 'admin_chat_logs_delete_bad_request',
+            },
+        )
+        self.assertNotIn(internal_detail, repr(response.get_json()))
 
     def test_admin_chat_logs_delete_route_rejects_turn_without_conversation(self) -> None:
         original_delete = self.server.log_store.delete_chat_log_events
+        internal_detail = 'turn_logs deletion requires conversation_id'
         self.server.log_store.delete_chat_log_events = (
-            lambda **_kwargs: (_ for _ in ()).throw(ValueError('turn_logs deletion requires conversation_id'))
+            lambda **_kwargs: (_ for _ in ()).throw(ValueError(internal_detail))
         )
         try:
             response = self.client.delete('/api/admin/logs/chat?turn_id=turn-only')
@@ -106,7 +117,16 @@ class ServerLogsPhase4Tests(unittest.TestCase):
             self.server.log_store.delete_chat_log_events = original_delete
 
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.get_json(), {'ok': False, 'error': 'turn_logs deletion requires conversation_id'})
+        self.assertEqual(
+            response.get_json(),
+            {
+                'ok': False,
+                'error': 'requete admin invalide',
+                'error_code': 'admin_bad_request',
+                'reason_code': 'admin_chat_logs_delete_bad_request',
+            },
+        )
+        self.assertNotIn(internal_detail, repr(response.get_json()))
 
     def test_admin_chat_logs_delete_route_is_available_without_admin_token(self) -> None:
         original_delete = self.server.log_store.delete_chat_log_events

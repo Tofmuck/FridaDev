@@ -136,9 +136,9 @@ Construire dans ce fichier, avant patch, une ligne par identifiant rouge:
 | `ERROR server_logs_phase3.web_reformulation_provider_identity` | F1 | oui | identite provider de reformulation Web | `RUNNER_OU_FIXTURE` | headers provider synthetiques explicites | cible `7/7`; complet `19/12`, aucun ajout | ferme |
 | `ERROR active_image_documents.over_provider_payload_cap` | F3 | oui | active-conversation-documents observability | `BUG_PRODUIT` | schema garde borne pour metadonnees documentaires | cible F3 verte; complet `5/6`, aucun ajout | ferme |
 | `ERROR active_image_documents.multimodal_provider_payload_only` | F3 | oui | active-conversation-documents observability | `BUG_PRODUIT` | meme correction du garde | cible F3 verte; complet `5/6`, aucun ajout | ferme |
-| `FAIL server_logs_phase4.delete_rejects_all_logs_scope` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `FAIL server_logs_phase4.delete_rejects_turn_without_conversation` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `FAIL server_logs_phase6.export_rejects_missing_conversation` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL server_logs_phase4.delete_rejects_all_logs_scope` | F5 | oui | contrat admin Lot 6C content-free | `TEST_OBSOLETE` | attendre `admin_bad_request` et le reason code delete | cible F5 verte; complet `2/1`, aucun ajout | ferme |
+| `FAIL server_logs_phase4.delete_rejects_turn_without_conversation` | F5 | oui | contrat admin Lot 6C content-free | `TEST_OBSOLETE` | meme schema public, sans texte interne | cible F5 verte; complet `2/1`, aucun ajout | ferme |
+| `FAIL server_logs_phase6.export_rejects_missing_conversation` | F5 | oui | contrat admin Lot 6C content-free | `TEST_OBSOLETE` | attendre le reason code export sans texte interne | cible F5 verte; complet `2/1`, aucun ajout | ferme |
 | `FAIL web_runtime.no_auto_web_confirmation_1` | F2 | oui | Web non demande et capsule terminale | `TEST_OBSOLETE` | assertion structurelle capsule + prefixe exact | cible `8/8`; complet `11/12`, aucun ajout | ferme |
 | `FAIL web_runtime.no_auto_web_confirmation_2` | F2 | oui | Web non demande et capsule terminale | `TEST_OBSOLETE` | assertion structurelle capsule + prefixe exact | cible `8/8`; complet `11/12`, aucun ajout | ferme |
 | `FAIL web_runtime.no_auto_web_confirmation_3` | F2 | oui | Web non demande et capsule terminale | `TEST_OBSOLETE` | assertion structurelle capsule + prefixe exact | cible `8/8`; complet `11/12`, aucun ajout | ferme |
@@ -306,9 +306,25 @@ modifie; `minimal_validation.py` reste un validateur operateur offline.
 Hypothese a revalider: les tests attendent des messages detailles anterieurs
 aux erreurs generiques content-free.
 
-- [ ] Verifier statut HTTP, reason code et schema public courant.
-- [ ] Ne pas reexposer de texte d'exception ou de detail prive.
-- [ ] Mettre a jour les attentes seulement apres preuve du contrat actif.
+- [x] Verifier statut HTTP, reason code et schema public courant.
+- [x] Ne pas reexposer de texte d'exception ou de detail prive.
+- [x] Mettre a jour les attentes seulement apres preuve du contrat actif.
+
+F5 fermee le 16 aout 2026. Les trois routes renvoyaient correctement le contrat
+durci du Lot 6C: HTTP `400`, `error=requete admin invalide`,
+`error_code=admin_bad_request` et un `reason_code` stable propre a delete ou
+export. Les trois tests Phase 4/6 attendaient encore le texte brut des
+`ValueError` internes anterieur au durcissement. Leurs assertions portent
+desormais sur le schema public exact et prouvent explicitement que les anciens
+details internes ne sont pas presents dans la reponse.
+
+Le contrat canonique voisin couvre deja les memes routes avec des sentinelles
+synthetiques de secret, URL et chemin prive. F5 ne modifie donc aucun handler,
+service, frontend ou comportement runtime. Les trois reproductions sont vertes,
+les suites Phase 4/6 et le contrat admin voisin sont verts. La decouverte
+complete reste a `2552` tests et passe de `5 echecs / 1 erreur` a
+`2 echecs / 1 erreur`; les trois seuls identifiants retires sont ceux de F5 et
+aucun nouvel identifiant n'apparait.
 
 ### F6 - Contrats isoles, 3 cas historiques
 

@@ -92,9 +92,19 @@ class ServerLogsPhase6Tests(unittest.TestCase):
         self.assertEqual(observed['kwargs'], {'conversation_id': 'conv-1', 'turn_id': 'turn-3'})
 
     def test_admin_chat_logs_export_markdown_rejects_missing_conversation(self) -> None:
+        internal_detail = 'conversation_id is required for markdown export'
         response = self.client.get('/api/admin/logs/chat/export.md')
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.get_json(), {'ok': False, 'error': 'conversation_id is required for markdown export'})
+        self.assertEqual(
+            response.get_json(),
+            {
+                'ok': False,
+                'error': 'requete admin invalide',
+                'error_code': 'admin_bad_request',
+                'reason_code': 'admin_chat_logs_export_bad_request',
+            },
+        )
+        self.assertNotIn(internal_detail, repr(response.get_json()))
 
     def test_admin_chat_logs_export_markdown_is_available_without_admin_token(self) -> None:
         original_export = self.server.log_markdown_export.export_chat_logs_markdown
