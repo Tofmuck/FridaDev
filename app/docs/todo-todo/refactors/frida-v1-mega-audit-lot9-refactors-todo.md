@@ -1740,11 +1740,7 @@ Sensibilite et limites:
 
 ### Lot 9C.4 - Runtime event projection boundary
 
-Golden tests prealables:
-
-- matrice 9C.0;
-- tests Web observability et `chat_turn_logger`;
-- payloads synthetiques prouvant l'absence de query, URL ou contenu brut.
+Statut: ferme le 16 aout 2026.
 
 Patch attendu:
 
@@ -1752,10 +1748,69 @@ Patch attendu:
   `_emit_web_search_runtime_event`;
 - ne changer ni collecte, ni evidence/confidence, ni status/reason codes.
 
-Critere de sortie:
+Checklist:
 
-- emetteur sans responsabilite de requete ou de crawl;
-- schema observable identique et branches de projection reduites.
+- [x] Isoler les summaries et counters Web.
+- [x] Isoler la projection et l'emission content-free.
+- [x] Prouver la facade, les redactions et les branches terminales.
+
+Implementation livree:
+
+- `app/tools/web_search_runtime_events.py` porte les summaries/counters,
+  l'enrichissement observable du payload et la projection content-free de
+  l'evenement `web_search`; il ne contient aucun client de recherche, reader,
+  requete HTTP, crawl ni resolution de secret;
+- `app/tools/web_search.py` conserve quatre facades privees tardivement liees
+  et l'orchestration de collecte. La projection auparavant imbriquee y est
+  supprimee, sans changement des appelants ni du schema emis;
+- `app/tests/unit/web_search/test_web_search_runtime_events.py` ajoute six
+  preuves synthetiques sur les summaries/counters, la redaction, la
+  preservation d'evaluations fournies, l'exclusivite des terminaux
+  `skipped`/`error` et le passage effectif de la facade par la frontiere.
+
+Invariants preserves:
+
+- les compteurs, statuts, reason codes, domaines et metadonnees bornees gardent
+  leur schema et leur ordre; query, URL complete, contenu source, empreintes de
+  query/URL et contenu de contexte ne sont jamais projetes;
+- une evaluation confidence/evidence deja fournie n'est pas recalculee; les
+  evaluateurs existants restent inchanges lorsqu'une evaluation manque;
+- `skipped` emet exactement un `branch_skipped` et aucun `error`; `error` emet
+  exactement un `error` et aucun `branch_skipped`;
+- collecte, source-first, readers 9C.2, contexte/evidence 9C.3, statuts et
+  reason codes ne sont pas modifies.
+
+Preuves executees dans le runner hermetique `--network none`, checkout
+read-only, `/tmp` en tmpfs, avec montages bornes `app/` et `benchmark/`:
+
+- baseline avant patch: `2607 tests`, OK;
+- RED cible: `tests.unit.web_search.test_web_search_runtime_events`, ImportError
+  attendu car la frontiere n'existait pas encore;
+- GREEN cible: `6 tests`, OK;
+- suite `tests/unit/web_search`: `203 tests`, OK. Une premiere invocation sans
+  le montage `benchmark/` a correctement echoue dans le runner; elle a ete
+  remplacee par la commande hermetique complete, sans changement de code;
+- logger Web, garde payload, golden 9C, observabilite/redaction, autorite
+  benchmark et golden Lot 9: `80 tests`, OK;
+- decouverte complete finale: `2613 tests`, 0 echec, 0 erreur, sans nouveau
+  skip ni expected failure. Le delta exact de six correspond aux six preuves
+  ajoutees.
+
+Sensibilite et limites:
+
+- les preuves echouent si un summary ou compteur derive diverge, si query, URL,
+  contenu ou empreinte reapparait, si confidence/evidence est reevaluee malgre
+  des champs fournis, si un terminal est absent ou double, ou si la facade
+  contourne la frontiere extraite;
+- la matrice 9C.0 et les contrats observabilite existants continuent de figer
+  le schema exhaustif. La garde default-deny et ses read-models ne sont pas
+  modifies: leur consolidation appartient au Lot 9D;
+- aucun provider, secret, DB, donnee operateur ou reseau reel n'est sollicite.
+  Aucune extension fonctionnelle n'est introduite.
+
+Critere de sortie atteint: l'emetteur est sans responsabilite de requete ou de
+crawl, le schema observable reste identique et la projection n'est plus
+imbriquee dans l'orchestrateur Web.
 
 ## Lot 9D - Observabilite guard/read-models
 
