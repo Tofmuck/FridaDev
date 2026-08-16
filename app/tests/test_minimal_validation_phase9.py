@@ -27,75 +27,25 @@ class _FakeResponse:
 class MinimalValidationPhase9Tests(unittest.TestCase):
     @staticmethod
     def _fake_admin_settings_payload():
+        sections = {}
+        for section in runtime_settings.list_sections():
+            payload = {}
+            for field in runtime_settings.get_section_spec(section).fields:
+                if field.is_secret:
+                    payload[field.key] = {
+                        "is_secret": True,
+                        "is_set": False,
+                        "origin": "env_seed",
+                    }
+            sections[section] = {
+                "section": section,
+                "payload": payload,
+                "source": "env",
+                "source_reason": "empty_table",
+            }
         return {
             "ok": True,
-            "sections": {
-                "main_model": {
-                    "section": "main_model",
-                    "payload": {
-                        "model": {"value": "openrouter/test-main", "origin": "env_seed"},
-                        "api_key": {"is_secret": True, "is_set": True, "origin": "env_seed"},
-                    },
-                    "source": "env",
-                    "source_reason": "empty_table",
-                },
-                "arbiter_model": {"section": "arbiter_model", "payload": {}, "source": "env", "source_reason": "empty_table"},
-                "summary_model": {"section": "summary_model", "payload": {}, "source": "env", "source_reason": "empty_table"},
-                "web_reformulation_model": {
-                    "section": "web_reformulation_model",
-                    "payload": {},
-                    "source": "env",
-                    "source_reason": "empty_table",
-                },
-                "stimmung_agent_model": {
-                    "section": "stimmung_agent_model",
-                    "payload": {},
-                    "source": "env",
-                    "source_reason": "empty_table",
-                },
-                "validation_agent_model": {
-                    "section": "validation_agent_model",
-                    "payload": {},
-                    "source": "env",
-                    "source_reason": "empty_table",
-                },
-                "embedding": {
-                    "section": "embedding",
-                    "payload": {
-                        "endpoint": {"value": "https://embed.example", "origin": "env_seed"},
-                        "token": {"is_secret": True, "is_set": True, "origin": "env_seed"},
-                    },
-                    "source": "env",
-                    "source_reason": "empty_table",
-                },
-                "database": {
-                    "section": "database",
-                    "payload": {
-                        "backend": {"value": "postgresql", "origin": "env_seed"},
-                        "dsn": {"is_secret": True, "is_set": False, "origin": "env_seed"},
-                    },
-                    "source": "env",
-                    "source_reason": "empty_table",
-                },
-                "services": {
-                    "section": "services",
-                    "payload": {
-                        "searxng_url": {"value": "http://127.0.0.1:8080", "origin": "env_seed"},
-                        "crawl4ai_token": {"is_secret": True, "is_set": True, "origin": "env_seed"},
-                    },
-                    "source": "env",
-                    "source_reason": "empty_table",
-                },
-                "resources": {"section": "resources", "payload": {}, "source": "env", "source_reason": "empty_table"},
-                "identity_governance": {
-                    "section": "identity_governance",
-                    "payload": {
-                        "CONTEXT_HINTS_MAX_ITEMS": {"value": 2, "origin": "env_seed"},
-                    },
-                    "source": "env",
-                    "source_reason": "empty_table",
-                },
-            },
+            "sections": sections,
         }
 
     @staticmethod
@@ -111,30 +61,18 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
 
     def test_assert_masked_secret_fields_accepts_redacted_secret_payloads(self) -> None:
         section_payloads = {
-            "main_model": {
-                "model": {"value": "openrouter/test", "origin": "db"},
-                "api_key": {"is_secret": True, "is_set": True, "origin": "db"},
-            },
-            "arbiter_model": {},
-            "summary_model": {},
-            "web_reformulation_model": {},
-            "embedding": {
-                "endpoint": {"value": "https://embed.example", "origin": "db"},
-                "token": {"is_secret": True, "is_set": True, "origin": "db"},
-            },
-            "database": {
-                "backend": {"value": "postgresql", "origin": "db"},
-                "dsn": {"is_secret": True, "is_set": False, "origin": "db"},
-            },
-            "services": {
-                "searxng_url": {"value": "http://127.0.0.1:8080", "origin": "db"},
-                "crawl4ai_token": {"is_secret": True, "is_set": True, "origin": "db"},
-            },
-            "resources": {},
-            "identity_governance": {},
+            section: section_payload["payload"]
+            for section, section_payload in self._fake_admin_settings_payload()["sections"].items()
         }
 
         minimal_validation._assert_masked_secret_fields(section_payloads)
+
+        section_payloads["agenda_agent"].pop("caldav_app_password")
+        with self.assertRaisesRegex(
+            RuntimeError,
+            r"payload secret manquant pour agenda_agent\.caldav_app_password",
+        ):
+            minimal_validation._assert_masked_secret_fields(section_payloads)
 
     def test_build_non_secret_patch_payload_keeps_only_value_fields(self) -> None:
         patch_payload = minimal_validation._build_non_secret_patch_payload(
@@ -257,6 +195,8 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertIn("Hermeneutic admin", details["hermeneutic_admin_markers"])
         self.assertIn("Logs applicatifs", details["log_markers"])
         self.assertIn("Les 4 blocs a editer en premier", details["identity_markers"])
+        self.assertIn("Caps, budgets et legacy", details["identity_markers"])
+        self.assertNotIn("Seuils et limites", details["identity_markers"])
         self.assertIn("Memory Admin", details["memory_admin_markers"])
         self.assertIn("admin_old_html", details["legacy_admin_assets_absent"])
         self.assertIn("admin_old_js", details["legacy_admin_assets_absent"])

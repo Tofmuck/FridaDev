@@ -26,7 +26,7 @@ La page doit montrer, en francais clair:
 - un rappel compact des formes runtime compilees utile au pilotage immediat, plus le statut staging / suspension / promotions recentes;
 - un acces explicite vers leur detail diagnostique sur `/hermeneutic-admin`;
 - l'edition du statique et de la mutable;
-- les seuils et limites;
+- les caps, budgets et reperes legacy;
 - un bloc `Diagnostics / historique` replie par defaut;
 - dans ce bloc replie: legacy / evidence-only, conflits et corrections recentes utiles.
 
@@ -187,7 +187,7 @@ La page `/identity` doit presenter, dans cet ordre ou equivalent:
 - la structure reelle du systeme identity;
 - l'etat courant par sujet comme synthese compacte;
 - un repere runtime compile utile au pilotage, avec lien explicite vers le detail diagnostique et rappel que le staging reste non injecte;
-- les seuils et limites;
+- les caps, budgets et reperes legacy;
 - `Diagnostics / historique`, replie par defaut;
 - dans ce bloc replie, le legacy / evidence-only, les conflits et les corrections recentes utiles.
 
@@ -216,7 +216,7 @@ Acceptables:
 - `Etat courant par sujet`
 - `Projection structuree compilee pour le jugement`
 - `Forme runtime compilee injectee au modele`
-- `Seuils et limites`
+- `Caps, budgets et legacy`
 - `Legacy, evidences et conflits`
 
 Interdits comme titres principaux seuls:

@@ -61,6 +61,23 @@ class MinimalValidationPhase11Tests(unittest.TestCase):
             source_reason="db_row",
         )
 
+    @staticmethod
+    def _persisted_main_model_payload(*, base_url_origin: str = "db_seed") -> dict[str, dict[str, object]]:
+        payload: dict[str, dict[str, object]] = {}
+        for field in runtime_settings.get_section_spec("main_model").fields:
+            if field.is_secret:
+                payload[field.key] = {
+                    "is_secret": True,
+                    "is_set": True,
+                    "origin": "env_seed",
+                }
+            else:
+                payload[field.key] = {
+                    "value": f"synthetic-{field.key}",
+                    "origin": base_url_origin if field.key == "base_url" else "db_seed",
+                }
+        return payload
+
     def test_check_db_schema_raises_when_runtime_settings_table_is_missing(self) -> None:
         required_tables = _required_tables_schema()
         self.assertIn("identity_mutables", required_tables)
@@ -177,44 +194,10 @@ class MinimalValidationPhase11Tests(unittest.TestCase):
 
     def test_assert_no_env_fallback_for_persisted_non_secret_fields_accepts_db_seed(self) -> None:
         section_payloads = {
-            "main_model": {
-                "base_url": {"value": "https://openrouter.ai/api/v1", "origin": "db_seed"},
-                "model": {"value": "openai/gpt-5.1", "origin": "db_seed"},
-                "api_key": {"is_secret": True, "is_set": True, "origin": "env_seed"},
-                "referer": {"value": "https://frida-system.fr", "origin": "db_seed"},
-                "referer_llm": {"value": "https://llm.frida-system.fr/", "origin": "db_seed"},
-                "referer_arbiter": {"value": "https://arbiter.frida-system.fr/", "origin": "db_seed"},
-                "referer_identity_extractor": {"value": "https://identity-extractor.frida-system.fr/", "origin": "db_seed"},
-                "referer_resumer": {"value": "https://resumer.frida-system.fr/", "origin": "db_seed"},
-                "referer_stimmung_agent": {"value": "https://stimmung-agent.frida-system.fr/", "origin": "db_seed"},
-                "referer_validation_agent": {"value": "https://validation-agent.frida-system.fr/", "origin": "db_seed"},
-                "app_name": {"value": "FridaDev", "origin": "db_seed"},
-                "title_llm": {"value": "FridaDev/LLM", "origin": "db_seed"},
-                "title_arbiter": {"value": "FridaDev/Arbiter", "origin": "db_seed"},
-                "title_identity_extractor": {"value": "FridaDev/IdentityExtractor", "origin": "db_seed"},
-                "title_resumer": {"value": "FridaDev/Resumer", "origin": "db_seed"},
-                "title_stimmung_agent": {"value": "FridaDev/StimmungAgent", "origin": "db_seed"},
-                "title_validation_agent": {"value": "FridaDev/ValidationAgent", "origin": "db_seed"},
-                "temperature": {"value": 0.4, "origin": "db_seed"},
-                "top_p": {"value": 1.0, "origin": "db_seed"},
-                "response_max_tokens": {"value": 8192, "origin": "db_seed"},
-                "reasoning_effort": {"value": "high", "origin": "db_seed"},
-            },
-            "arbiter_model": {},
-            "summary_model": {},
-            "embedding": {},
-            "database": {},
-            "services": {},
-            "resources": {},
+            "main_model": self._persisted_main_model_payload(),
         }
         section_statuses = {
             "main_model": {"source": "db", "source_reason": "db_row"},
-            "arbiter_model": {"source": "env", "source_reason": "missing_section"},
-            "summary_model": {"source": "env", "source_reason": "missing_section"},
-            "embedding": {"source": "env", "source_reason": "missing_section"},
-            "database": {"source": "env", "source_reason": "missing_section"},
-            "services": {"source": "env", "source_reason": "missing_section"},
-            "resources": {"source": "env", "source_reason": "missing_section"},
         }
 
         minimal_validation._assert_no_env_fallback_for_persisted_non_secret_fields(
@@ -224,44 +207,10 @@ class MinimalValidationPhase11Tests(unittest.TestCase):
 
     def test_assert_no_env_fallback_for_persisted_non_secret_fields_rejects_env_seed(self) -> None:
         section_payloads = {
-            "main_model": {
-                "base_url": {"value": "https://openrouter.ai/api/v1", "origin": "env_seed"},
-                "model": {"value": "openai/gpt-5.1", "origin": "db_seed"},
-                "api_key": {"is_secret": True, "is_set": True, "origin": "env_seed"},
-                "referer": {"value": "https://frida-system.fr", "origin": "db_seed"},
-                "referer_llm": {"value": "https://llm.frida-system.fr/", "origin": "db_seed"},
-                "referer_arbiter": {"value": "https://arbiter.frida-system.fr/", "origin": "db_seed"},
-                "referer_identity_extractor": {"value": "https://identity-extractor.frida-system.fr/", "origin": "db_seed"},
-                "referer_resumer": {"value": "https://resumer.frida-system.fr/", "origin": "db_seed"},
-                "referer_stimmung_agent": {"value": "https://stimmung-agent.frida-system.fr/", "origin": "db_seed"},
-                "referer_validation_agent": {"value": "https://validation-agent.frida-system.fr/", "origin": "db_seed"},
-                "app_name": {"value": "FridaDev", "origin": "db_seed"},
-                "title_llm": {"value": "FridaDev/LLM", "origin": "db_seed"},
-                "title_arbiter": {"value": "FridaDev/Arbiter", "origin": "db_seed"},
-                "title_identity_extractor": {"value": "FridaDev/IdentityExtractor", "origin": "db_seed"},
-                "title_resumer": {"value": "FridaDev/Resumer", "origin": "db_seed"},
-                "title_stimmung_agent": {"value": "FridaDev/StimmungAgent", "origin": "db_seed"},
-                "title_validation_agent": {"value": "FridaDev/ValidationAgent", "origin": "db_seed"},
-                "temperature": {"value": 0.4, "origin": "db_seed"},
-                "top_p": {"value": 1.0, "origin": "db_seed"},
-                "response_max_tokens": {"value": 8192, "origin": "db_seed"},
-                "reasoning_effort": {"value": "high", "origin": "db_seed"},
-            },
-            "arbiter_model": {},
-            "summary_model": {},
-            "embedding": {},
-            "database": {},
-            "services": {},
-            "resources": {},
+            "main_model": self._persisted_main_model_payload(base_url_origin="env_seed"),
         }
         section_statuses = {
             "main_model": {"source": "db", "source_reason": "db_row"},
-            "arbiter_model": {"source": "env", "source_reason": "missing_section"},
-            "summary_model": {"source": "env", "source_reason": "missing_section"},
-            "embedding": {"source": "env", "source_reason": "missing_section"},
-            "database": {"source": "env", "source_reason": "missing_section"},
-            "services": {"source": "env", "source_reason": "missing_section"},
-            "resources": {"source": "env", "source_reason": "missing_section"},
         }
 
         with self.assertRaisesRegex(

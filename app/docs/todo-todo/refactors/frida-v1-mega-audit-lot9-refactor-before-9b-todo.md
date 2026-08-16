@@ -120,12 +120,12 @@ Construire dans ce fichier, avant patch, une ligne par identifiant rouge:
 
 | identifiant | famille | reproduction ciblee | contrat autoritatif | cause prouvee | action | preuve finale | statut |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `ERROR minimal_validation_phase9.masked_secret_fields` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `ERROR minimal_validation_phase11.non_secret_fields_db_seed` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR minimal_validation_phase9.masked_secret_fields` | F4 | oui | schema runtime settings et redaction API | `TEST_OBSOLETE` | generer les secrets masques depuis le schema courant | cible F4 verte; complet `5/1`, aucun ajout | ferme |
+| `ERROR minimal_validation_phase11.non_secret_fields_db_seed` | F4 | oui | schema `main_model` persiste | `TEST_OBSOLETE` | generer tous les champs non secrets depuis le schema courant | cible F4 verte; complet `5/1`, aucun ajout | ferme |
 | `ERROR log_store_phase3.memory_chain_snapshot` | F3 | oui | continuity payload / read-model Web content-free | `TEST_OBSOLETE` | retirer l'attente de hash stable de requete | cible F3 verte; complet `5/6`, aucun ajout | ferme |
-| `ERROR minimal_validation_phase9.api_smoke_without_admin_token` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `ERROR minimal_validation_phase9.admin_route_and_old_absence` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `ERROR minimal_validation_phase9.ui_assets` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR minimal_validation_phase9.api_smoke_without_admin_token` | F4 | oui | liste courante des sections admin settings | `TEST_OBSOLETE` | construire la matrice fake depuis le schema courant | cible F4 verte; complet `5/1`, aucun ajout | ferme |
+| `ERROR minimal_validation_phase9.admin_route_and_old_absence` | F4 | oui | liste courante des sections admin settings | `TEST_OBSOLETE` | meme fixture schema-driven, routes et absence legacy preservees | cible F4 verte; complet `5/1`, aucun ajout | ferme |
+| `ERROR minimal_validation_phase9.ui_assets` | F4 | oui | page et contrat Identity courants | `VALIDATEUR_OBSOLETE` | verifier `Caps, budgets et legacy` et aligner le contrat vivant | cible F4 verte; complet `5/1`, aucun ajout | ferme |
 | `ERROR temporal_model_truth_closure.identity_stimmung_day_claims` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `ERROR llm_client.internal_caller_marker_local` | F1 | oui | isolation locale des headers internes | `RUNNER_OU_FIXTURE` | secret et vue runtime synthetiques dans le test | cible `7/7`; complet `19/12`, aucun ajout | ferme |
 | `ERROR identity_write.legacy_diagnostic_both_sides` | F3 | oui | log-module `identity_write` | `BUG_PRODUIT` | accepter les compteurs bornes de `actions_count` | cible F3 verte; complet `5/6`, aucun ajout | ferme |
@@ -278,10 +278,28 @@ Hypotheses a revalider: attentes anciennes sur secret Agenda, referer de
 reformulation Web, matrice de settings, marqueur UI et champ du modele
 principal.
 
-- [ ] Comparer chaque attente au schema runtime courant et au contrat vivant.
-- [ ] Distinguer validation offline, image de test et configuration runtime.
-- [ ] Ne pas retablir une compatibilite obsolete uniquement pour le test.
-- [ ] Conserver une sortie content-free et des reason codes stables.
+- [x] Comparer chaque attente au schema runtime courant et au contrat vivant.
+- [x] Distinguer validation offline, image de test et configuration runtime.
+- [x] Ne pas retablir une compatibilite obsolete uniquement pour le test.
+- [x] Conserver une sortie content-free et des reason codes stables.
+
+F4 fermee le 16 aout 2026. Quatre erreurs provenaient de fixtures manuelles
+restees sur une ancienne matrice runtime settings: elles omettaient notamment
+la section `agenda_agent`, plusieurs sections de modeles et les nouveaux champs
+de `main_model`. Les fixtures sont maintenant derivees de
+`runtime_settings.list_sections()` et des `SectionSpec`; le test de masquage
+prouve aussi qu'un secret courant retire reste refuse. La cinquieme erreur
+venait du validateur offline et du contrat Identity, qui exigeaient encore le
+libelle obsolete `Seuils et limites` alors que la surface active et son test
+frontend portent `Caps, budgets et legacy`.
+
+Preuves hermetiques sans reseau ni secret: les `10` tests Phase 9/11 sont verts,
+les `20` tests `minimal_validation*` sont verts et les `67` contrats voisins
+Identity/runtime settings sont verts. La decouverte complete reste a `2552`
+tests et passe de `5 echecs / 6 erreurs` a `5 echecs / 1 erreur`; les cinq seuls
+en-tetes retires sont ceux de F4 et aucun nouvel identifiant n'apparait. Aucun
+code de requete, route, service, configuration ou comportement produit n'a ete
+modifie; `minimal_validation.py` reste un validateur operateur offline.
 
 ### F5 - Erreurs admin anciennes, 3 cas historiques
 

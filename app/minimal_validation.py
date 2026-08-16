@@ -1159,7 +1159,7 @@ def _check_ui_assets() -> Dict[str, Any]:
         "Source canonique, pilotage systeme et formes compilees",
         "Etat courant par sujet",
         "Repere runtime compile utile au pilotage",
-        "Seuils et limites",
+        "Caps, budgets et legacy",
         "Legacy, evidences et conflits",
         "Corrections recentes et sorties utiles",
         'script src="identity/api.js"',
