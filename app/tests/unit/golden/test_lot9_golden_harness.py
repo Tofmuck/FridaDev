@@ -378,6 +378,299 @@ class Lot9GoldenHarnessTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     lot9_content_free_harness.parse_smoke_jsonl(violation)
 
+    def test_lot9b_lane_order_toggle_matrix_and_controlled_mutations(self) -> None:
+        full = server_chat_pipeline.exercise_chat_orchestration_golden(self.server)
+        self.assertEqual(full['response'].status_code, 200)
+        self.assertEqual(
+            tuple(full['observed']['injection_order']),
+            server_chat_pipeline.LOT9B_EXPECTED_INJECTION_ORDER,
+        )
+        server_chat_pipeline.assert_lot9b_lane_order(full['observed']['injection_order'])
+        trace = full['observed']['decision_trace']
+        for earlier, later in (
+            ('web_decision', 'web_inject'),
+            ('biblio_decision', 'biblio_inject'),
+            ('agenda_decision', 'notes_inject'),
+            ('hermeneutic_decision', 'documents_read'),
+            ('notes_inject', 'documents_inject'),
+            ('documents_inject', 'biblio_inject'),
+            ('biblio_inject', 'provider_call'),
+        ):
+            self.assertLess(trace.index(earlier), trace.index(later))
+
+        for omitted in server_chat_pipeline.LOT9B_EXPECTED_INJECTION_ORDER:
+            enabled = tuple(
+                lane
+                for lane in server_chat_pipeline.LOT9B_EXPECTED_INJECTION_ORDER
+                if lane != omitted
+            )
+            with self.subTest(omitted=omitted):
+                case = server_chat_pipeline.exercise_chat_orchestration_golden(
+                    self.server,
+                    enabled_lanes=enabled,
+                )
+                self.assertEqual(
+                    tuple(case['observed']['injection_order']),
+                    enabled,
+                )
+                payload_text = json.dumps(case['observed']['payload_messages'], sort_keys=True)
+                self.assertNotIn(server_chat_pipeline.LOT9B_LANE_MARKERS[omitted], payload_text)
+                self.assertEqual(case['observed']['provider_calls'], 1)
+
+        canonical = list(server_chat_pipeline.LOT9B_EXPECTED_INJECTION_ORDER)
+        mutations = (
+            canonical[1:],
+            canonical + ['web'],
+            canonical[:2] + ['agenda'] + canonical[2:],
+            [canonical[1], canonical[0], *canonical[2:]],
+        )
+        for mutated in mutations:
+            with self.subTest(mutated=mutated):
+                with self.assertRaises(AssertionError):
+                    server_chat_pipeline.assert_lot9b_lane_order(mutated)
+
+    def test_lot9b_final_lock_matrix_preserves_priority_and_bypasses_provider(self) -> None:
+        cases = (
+            ((), (), None, True),
+            (('biblio',), (), 'biblio_rendered_answer', False),
+            (('agenda',), (), 'agenda_readonly_response', False),
+            (('agenda', 'biblio'), (), 'agenda_readonly_response', False),
+            (('presence',), (), 'hermeneutic_presence', False),
+            (('agenda', 'presence'), (), 'agenda_readonly_response', False),
+            ((), ('biblio',), None, True),
+            ((), ('agenda',), None, True),
+        )
+        for locks, invalid, expected_source, provider_called in cases:
+            with self.subTest(locks=locks, invalid=invalid):
+                case = server_chat_pipeline.exercise_chat_orchestration_golden(
+                    self.server,
+                    final_locks=locks,
+                    invalid_locks=invalid,
+                )
+                manifest = case['observed']['manifests'][0]
+                self.assertEqual(
+                    manifest['final_response_lock']['source'] or None,
+                    expected_source,
+                )
+                self.assertEqual(case['observed']['provider_calls'], int(provider_called))
+                self.assertEqual(case['observed']['secret_calls'], int(provider_called))
+                self.assertEqual(case['observed']['url_calls'], int(provider_called))
+                assistant = [
+                    message
+                    for message in case['conversation']['messages']
+                    if message.get('role') == 'assistant'
+                ]
+                self.assertEqual(len(assistant), 1)
+                self.assertEqual(len(case['observed']['save_calls']), 1)
+                provenance = assistant[0]['meta']['assistant_runtime_provenance']
+                self.assertEqual(
+                    provenance['response_origin'],
+                    'main_model' if provider_called else 'final_lock',
+                )
+                capsule = manifest['continuity_capsule']
+                self.assertEqual(capsule['injected_count'], int(provider_called))
+                self.assertEqual(
+                    capsule['reason_code'],
+                    'continuity_capsule_final_lock_bypass' if not provider_called else 'continuity_capsule_ready',
+                )
+
+        conflict = server_chat_pipeline.exercise_chat_orchestration_golden(
+            self.server,
+            final_locks=('agenda', 'biblio'),
+        )['observed']['manifests'][0]
+
+        def assert_conflict_contract(manifest):
+            if manifest['final_response_lock']['source'] != 'agenda_readonly_response':
+                raise AssertionError('Agenda/Biblio final-lock priority changed')
+            if manifest['lane_conflicts']['priority_policy'] != 'agenda_over_biblio':
+                raise AssertionError('final-lock priority policy changed')
+            if manifest['lane_conflicts']['candidate_sources'] != [
+                'agenda_readonly_response',
+                'biblio_rendered_answer',
+            ]:
+                raise AssertionError('final-lock candidates changed')
+            if manifest['lane_conflicts']['suppressed_source'] != 'biblio_rendered_answer':
+                raise AssertionError('suppressed final-lock candidate changed')
+
+        assert_conflict_contract(conflict)
+        inverted = copy.deepcopy(conflict)
+        inverted['final_response_lock']['source'] = 'biblio_rendered_answer'
+        inverted['lane_conflicts']['selected_source'] = 'biblio_rendered_answer'
+        with self.assertRaises(AssertionError):
+            assert_conflict_contract(inverted)
+
+        bypass_summary = {
+            'selected_source': conflict['final_response_lock']['source'],
+            'provider_calls': 0,
+            'secret_calls': 0,
+            'url_calls': 0,
+        }
+
+        def assert_bypass_contract(summary):
+            if summary != {
+                'selected_source': 'agenda_readonly_response',
+                'provider_calls': 0,
+                'secret_calls': 0,
+                'url_calls': 0,
+            }:
+                raise AssertionError('final lock no longer bypasses main provider preparation')
+
+        assert_bypass_contract(bypass_summary)
+        called_provider = dict(bypass_summary)
+        called_provider['provider_calls'] = 1
+        with self.assertRaises(AssertionError):
+            assert_bypass_contract(called_provider)
+
+    def test_lot9b_coordinator_manifest_capsule_is_terminal_stable_and_content_free(self) -> None:
+        first = server_chat_pipeline.exercise_chat_orchestration_golden(self.server)
+        second = server_chat_pipeline.exercise_chat_orchestration_golden(self.server)
+        for case in (first, second):
+            manifest = case['observed']['manifests'][0]
+            self.assertEqual(manifest['schema_version'], 'main_payload_manifest_v1')
+            self.assertEqual(manifest['continuity_capsule']['version'], 'continuity_capsule_v1')
+            self.assertEqual(manifest['continuity_capsule']['injected_count'], 1)
+            capsule_messages = [
+                message
+                for message in manifest['messages']
+                if 'continuity_capsule' in message['logical_roles']
+            ]
+            self.assertEqual(len(capsule_messages), 1)
+            self.assertEqual(manifest['messages'][-1], capsule_messages[0])
+            self.assertEqual(capsule_messages[0]['provider_role'], 'system')
+            logical_order = [
+                role
+                for message in manifest['messages']
+                for role in message['logical_roles']
+                if role in {'note_lane', 'document_lane', 'biblio_lane', 'continuity_capsule'}
+            ]
+            self.assertEqual(
+                logical_order,
+                ['note_lane', 'document_lane', 'biblio_lane', 'continuity_capsule'],
+            )
+            self.assertTrue(observability_payload_guard.guard_payload(manifest).accepted)
+            encoded = json.dumps(manifest, ensure_ascii=False, sort_keys=True)
+            for marker in (
+                *server_chat_pipeline.LOT9B_LANE_MARKERS.values(),
+                'LOT9B_SYNTHETIC_USER_TURN',
+                'LOT9B_SYNTHETIC_PROVIDER_ANSWER',
+                'lot9b-synthetic-key',
+                'https://lot9b.invalid',
+            ):
+                self.assertNotIn(marker, encoded)
+            self.assertTrue(all(value is False for value in manifest['raw_flags'].values()))
+
+        self.assertEqual(first['observed']['manifests'], second['observed']['manifests'])
+        manifest = first['observed']['manifests'][0]
+        mutations = []
+        missing = copy.deepcopy(manifest)
+        missing['messages'].pop()
+        mutations.append(missing)
+        duplicate = copy.deepcopy(manifest)
+        duplicate['messages'].append(copy.deepcopy(duplicate['messages'][-1]))
+        mutations.append(duplicate)
+        raw = copy.deepcopy(manifest)
+        raw['prompt'] = 'LOT9B_SYNTHETIC_RAW_PROMPT'
+        mutations.append(raw)
+        moved = copy.deepcopy(manifest)
+        moved['messages'][0], moved['messages'][-1] = moved['messages'][-1], moved['messages'][0]
+        mutations.append(moved)
+        for mutated in mutations:
+            capsule_rows = [
+                row
+                for row in mutated['messages']
+                if 'continuity_capsule' in row.get('logical_roles', ())
+            ]
+            semantic_ok = (
+                len(capsule_rows) == 1
+                and mutated['messages'][-1] is capsule_rows[0]
+                and observability_payload_guard.guard_payload(mutated).accepted
+            )
+            self.assertFalse(semantic_ok)
+
+    def test_lot9b_persistence_done_error_and_mutation_sensitivity(self) -> None:
+        success_cases = (
+            server_chat_pipeline.exercise_chat_orchestration_golden(self.server),
+            server_chat_pipeline.exercise_chat_orchestration_golden(self.server, stream_req=True),
+            server_chat_pipeline.exercise_chat_orchestration_golden(self.server, final_locks=('agenda',)),
+        )
+        for case in success_cases:
+            with self.subTest(stream=bool(case['terminal']), locks=case['final_locks']):
+                saves = case['observed']['save_calls']
+                self.assertEqual(len(saves), 1)
+                roles = [message['role'] for message in saves[0]['messages']]
+                self.assertEqual(roles.count('user'), 1)
+                self.assertEqual(roles.count('assistant'), 1)
+                if case['terminal'] is not None:
+                    self.assertEqual(case['terminal']['event'], 'done')
+                    self.assertEqual(case['response_bytes'].count(b'\x1e'), 1)
+
+        before_result = server_chat_pipeline.exercise_chat_llm_surface(
+            surface='normal_non_stream',
+            provider_behavior='request_error',
+        )
+        self.assertIsNone(before_result['raised_exception'])
+        self.assertEqual(before_result['result']['status'], 502)
+        self.assertEqual(before_result['observed']['save_calls'], 1)
+        self.assertEqual(
+            [message['role'] for message in before_result['observed']['durable_snapshots'][0]],
+            ['user'],
+        )
+
+        partial = server_chat_pipeline.exercise_chat_llm_surface(
+            surface='normal_stream',
+            provider_behavior='partial_stream_error',
+        )
+        self.assertIsNone(partial['raised_exception'])
+        self.assertEqual(partial['terminal']['event'], 'error')
+        self.assertEqual(partial['terminal']['error_code'], 'upstream_error')
+        self.assertEqual(partial['observed']['save_calls'], 1)
+        interrupted = partial['observed']['durable_snapshots'][0][-1]
+        self.assertEqual(interrupted['role'], 'assistant')
+        self.assertEqual(interrupted['content'], '')
+        self.assertEqual(interrupted['meta']['assistant_turn']['status'], 'interrupted')
+        self.assertEqual(partial['observed']['post_effect_sequence'], [])
+
+        persist_failed = server_chat_pipeline.exercise_chat_llm_surface(
+            surface='normal_stream',
+            persistence='negative',
+        )
+        self.assertEqual(
+            persist_failed['terminal'],
+            {'event': 'error', 'error_code': 'conversation_persist_failed'},
+        )
+        self.assertNotIn('updated_at', persist_failed['terminal'])
+        self.assertEqual(persist_failed['observed']['save_calls'], 1)
+        self.assertEqual(persist_failed['observed']['durable_snapshots'], [])
+        self.assertEqual(persist_failed['observed']['post_effect_sequence'], [])
+        self.assertEqual(
+            [message['role'] for message in persist_failed['conversation']['messages']],
+            ['user'],
+        )
+
+        valid_summary = {
+            'assistant_saves': 1,
+            'terminal_events': 1,
+            'terminal_kind': 'done',
+            'derived_from_durable_assistant': True,
+        }
+
+        def assert_persistence_summary(summary):
+            if summary != valid_summary:
+                raise AssertionError('Lot 9B persistence contract changed')
+
+        assert_persistence_summary(valid_summary)
+        for key, value in (
+            ('assistant_saves', 2),
+            ('terminal_events', 0),
+            ('terminal_events', 2),
+            ('terminal_kind', 'error'),
+            ('derived_from_durable_assistant', False),
+        ):
+            mutated = dict(valid_summary)
+            mutated[key] = value
+            with self.assertRaises(AssertionError):
+                assert_persistence_summary(mutated)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -761,10 +761,63 @@ Critere de sortie:
 
 Checklist:
 
-- [ ] Fixture lane-order.
-- [ ] Fixture final-lock conflict absent/present.
-- [ ] Fixture capsule/manifest.
-- [ ] Fixture persistence done/error.
+- [x] Fixture lane-order.
+- [x] Fixture final-lock conflict absent/present.
+- [x] Fixture capsule/manifest.
+- [x] Fixture persistence done/error.
+
+Preuves livrees le 16 aout 2026:
+
+- `app/tests/support/server_chat_pipeline.py` fournit une fixture transversale
+  synthetique qui traverse `chat_service.chat_response` via la vraie route,
+  avec transports, services et persistence fakes. Web, Documents, Notes,
+  Agenda et Biblio sont activables independamment; aucun provider, secret,
+  DB, reseau ou contenu operateur n'est utilise.
+- `app/tests/unit/golden/test_lot9_golden_harness.py` ajoute quatre goldens
+  semantiques. Ils figent l'ordre observable Web -> Notes -> Documents ->
+  Biblio, les decisions Agenda et hermeneutiques, les absences/no-op par
+  toggle, et l'unicite des injections sans recopier le corps des lanes.
+- La matrice des final locks couvre absence, Biblio, Agenda, conflit
+  Agenda/Biblio, presence hermeneutique, Agenda/presence, ainsi que locks
+  Biblio/Agenda invalides. La priorite observee reste Agenda > Biblio >
+  presence; tout lock valide evite appel modele principal, resolution de
+  secret et resolution d'URL, tout en conservant une seule reponse assistant,
+  une seule persistence, ses metas et sa provenance content-free.
+- La Continuity Capsule reste V1, unique et terminale quand le modele
+  principal est appele, et `not_selected` avec le reason code de bypass sous
+  final lock. `main_payload_manifest_v1` conserve l'ordre logique Notes,
+  Documents, Biblio, Capsule, ses compteurs/status et ses flags raw tous faux.
+  Deux reconstructions identiques ne dupliquent aucune source.
+- La persistence couvre user/assistant exactement une fois en succes
+  non-stream, stream et final lock, terminal `done` unique, erreur provider
+  avant resultat, erreur apres fragment stream avec assistant interrompu,
+  echec de persistence assistant par resultat negatif sans `updated_at`, sans
+  derive, seconde tentative ni doublon durable. Le fallback borne existant
+  qui tente de persister un
+  marqueur interrompu apres une exception de writer reste couvert par les
+  contrats historiques et n'est pas modifie par 9B.0.
+
+Sensibilites controlees rejetees: lane retiree, ajoutee, deplacee ou dupliquee;
+priorite Agenda/Biblio inversee; appel provider sous final lock; capsule
+absente, dupliquee ou non terminale; manifeste avec champ brut; assistant
+sauvegarde deux fois; terminal absent ou double; erreur requalifiee en succes.
+
+Commandes hermetiques executees avec `--network none`, checkout read-only et
+`/tmp` en tmpfs:
+
+- baseline avant patch: `python -m unittest discover` -> `2552`, OK;
+- golden Lot 9/9B: `python -m unittest tests.unit.golden.test_lot9_golden_harness`
+  -> `11`, OK;
+- Web/Documents/Notes/Agenda/Biblio voisins -> `32`, OK;
+- LLM flow/stream control/transport -> `32`, OK;
+- manifest/capsule/observabilite -> `33`, OK;
+- provenance persistence/rehydratation -> `16`, OK;
+- decouverte complete finale: `python -m unittest discover` -> `2556`, OK.
+
+Les quatre nouveaux tests expliquent seuls le passage de `2552` a `2556`.
+Aucun frontend n'a ete rejoue: aucune fixture ni aucun fichier frontend n'est
+touche. Aucun split/refactor 9B.1-9B.6, code runtime, prompt, rebuild ou restart
+n'a ete execute.
 
 ### Lot 9B.1 - Document prompt reads boundary
 

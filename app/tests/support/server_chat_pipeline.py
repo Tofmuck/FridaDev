@@ -41,6 +41,7 @@ def exercise_chat_llm_surface(
     regime: str = 'answer',
     assistant_text: str | None = None,
     web_context_injected_to_main_model: bool = False,
+    provider_behavior: str = 'success',
 ) -> dict[str, object]:
     """Exercise the real LLM/persistence boundary with bounded synthetic fakes."""
 
@@ -51,6 +52,10 @@ def exercise_chat_llm_surface(
         'override_stream': (True, True),
     }
     is_override, stream_req = surface_flags[surface]
+    if provider_behavior not in {'success', 'request_error', 'partial_stream_error'}:
+        raise ValueError('unsupported synthetic provider behavior')
+    if provider_behavior == 'partial_stream_error' and not stream_req:
+        raise ValueError('partial provider failure requires streaming')
     if regime not in {'answer', 'presence'}:
         raise ValueError('unsupported synthetic dialogic regime')
     if regime == 'presence' and not is_override:
@@ -206,12 +211,16 @@ def exercise_chat_llm_surface(
                 {'choices': [{'delta': {'content': assistant_text}}]},
                 ensure_ascii=False,
             )
+            if provider_behavior == 'partial_stream_error':
+                raise SyntheticRequestException(dangerous_exception_message())
             yield 'data: [DONE]'
 
     def requests_post(*_args, **kwargs):
         observed['post_calls'] += 1
         if is_override:
             raise AssertionError('provider call forbidden for override')
+        if provider_behavior == 'request_error':
+            raise SyntheticRequestException(dangerous_exception_message())
         return FakeStreamResponse() if kwargs.get('stream') else FakeResponse()
 
     def get_runtime_secret_value(*_args, **_kwargs):
@@ -742,6 +751,393 @@ def exercise_chat_route_surface(server_module, *, stream_req: bool) -> dict[str,
         'response': response,
         'response_bytes': response_bytes,
         'stream_req': stream_req,
+        'terminal': terminal,
+        'visible_text': visible_text,
+    }
+
+
+LOT9B_LANE_MARKERS = {
+    'web': 'LOT9B_SYNTHETIC_WEB_LANE',
+    'notes': 'LOT9B_SYNTHETIC_NOTES_LANE',
+    'documents': 'LOT9B_SYNTHETIC_DOCUMENTS_LANE',
+    'biblio': 'LOT9B_SYNTHETIC_BIBLIO_LANE',
+}
+LOT9B_EXPECTED_INJECTION_ORDER = ('web', 'notes', 'documents', 'biblio')
+
+
+def assert_lot9b_lane_order(actual: list[str] | tuple[str, ...]) -> None:
+    if tuple(actual) != LOT9B_EXPECTED_INJECTION_ORDER:
+        raise AssertionError('Lot 9B lane injection order changed')
+
+
+class _SyntheticFinalLock:
+    def __init__(self, *, source: str, content: str, ok: bool = True) -> None:
+        self.ok = ok
+        self.source = source
+        self.content = content
+        self.reason_code = f'{source}_authorized'
+
+    def to_message_meta(self) -> dict[str, Any]:
+        return {
+            'source': self.source,
+            'content_free_meta': True,
+        }
+
+    def to_observability(self) -> dict[str, Any]:
+        return {
+            'source': self.source,
+            'reason_code': self.reason_code,
+            'content_present': bool(self.content),
+            'content_chars': len(self.content),
+            'content_free': True,
+        }
+
+
+def exercise_chat_orchestration_golden(
+    server_module,
+    *,
+    enabled_lanes: tuple[str, ...] = LOT9B_EXPECTED_INJECTION_ORDER,
+    final_locks: tuple[str, ...] = (),
+    invalid_locks: tuple[str, ...] = (),
+    stream_req: bool = False,
+) -> dict[str, Any]:
+    """Traverse chat_response with synthetic lane, transport, and persistence fakes."""
+
+    enabled = set(enabled_lanes)
+    locks = set(final_locks)
+    invalid = set(invalid_locks)
+    conversation = {
+        'id': 'conv-lot9b-orchestration',
+        'created_at': '2026-08-16T17:40:00Z',
+        'messages': [{'role': 'system', 'content': 'LOT9B_SYNTHETIC_SYSTEM'}],
+    }
+    observed: dict[str, Any] = {
+        'decision_trace': [],
+        'injection_order': [],
+        'provider_calls': 0,
+        'secret_calls': 0,
+        'url_calls': 0,
+        'manifests': [],
+    }
+
+    class FakeResponse:
+        encoding = None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {'choices': [{'message': {'content': 'LOT9B_SYNTHETIC_PROVIDER_ANSWER'}}]}
+
+        def iter_lines(self, decode_unicode=True, delimiter='\n'):
+            yield 'data: ' + json.dumps(
+                {'choices': [{'delta': {'content': 'LOT9B_SYNTHETIC_PROVIDER_ANSWER'}}]},
+                ensure_ascii=False,
+            )
+            yield 'data: [DONE]'
+
+    def requests_post(*_args, **_kwargs):
+        observed['provider_calls'] += 1
+        observed['decision_trace'].append('provider_call')
+        return FakeResponse()
+
+    base_observed, restore_base = patch_server_chat_pipeline(
+        server_module,
+        conversation=conversation,
+        requests_post=requests_post,
+        save_conversation_result=lambda _conversation, **kwargs: SimpleNamespace(
+            ok=True,
+            updated_at=kwargs.get('updated_at'),
+            reason='',
+        ),
+        existing_conversation=True,
+        summarize_user_turn=False,
+        hermeneutic_mode='off',
+        disable_chat_log_storage=True,
+    )
+    originals: list[tuple[Any, str, Any]] = []
+
+    def patch_attr(obj: Any, name: str, value: Any) -> None:
+        originals.append((obj, name, getattr(obj, name)))
+        setattr(obj, name, value)
+
+    def lane_result(name: str, *, status: str | None = None) -> SimpleNamespace:
+        active = name in enabled
+        payload = {
+            'enabled': active,
+            'used': active,
+            'status': status or ('ok' if active else 'disabled'),
+            'reason_code': f'{name}_synthetic_' + ('ok' if active else 'disabled'),
+            'content_free': True,
+        }
+        lock = None
+        if name in locks or name in invalid:
+            source = {
+                'agenda': 'agenda_readonly_response',
+                'biblio': 'biblio_rendered_answer',
+            }[name]
+            lock = _SyntheticFinalLock(
+                source=source,
+                content=f'LOT9B_SYNTHETIC_{name.upper()}_ANSWER',
+                ok=name not in invalid,
+            )
+        return SimpleNamespace(
+            enabled=active,
+            used=active,
+            status=payload['status'],
+            reason_code=payload['reason_code'],
+            observability_payload=payload,
+            final_response_lock=lock,
+        )
+
+    def inject_marker(name: str, prompt_messages: list[dict[str, Any]]) -> None:
+        if name not in enabled:
+            return
+        observed['injection_order'].append(name)
+        observed['decision_trace'].append(f'{name}_inject')
+        prompt_messages.append({'role': 'system', 'content': LOT9B_LANE_MARKERS[name]})
+
+    try:
+        def resolve_web(**_kwargs):
+            observed['decision_trace'].append('web_decision')
+            return {
+                'activation_mode': 'manual' if 'web' in enabled else 'off',
+                'status': 'ok' if 'web' in enabled else 'disabled',
+                'reason_code': 'synthetic_web',
+                'main_prompt_context_injected': False,
+            }
+
+        def inject_web(prompt_messages, **_kwargs):
+            inject_marker('web', prompt_messages)
+            return {'main_prompt_context_injected': 'web' in enabled}
+
+        patch_attr(server_module.chat_service, '_resolve_web_runtime_payload', resolve_web)
+        patch_attr(server_module.chat_service.chat_prompt_context, 'inject_web_context', inject_web)
+
+        def active_documents(**_kwargs):
+            observed['decision_trace'].append('documents_read')
+            return server_module.chat_service.ActiveDocumentsPromptRead(
+                documents=(SimpleNamespace(document_id='lot9b-document'),) if 'documents' in enabled else (),
+                status='ok' if 'documents' in enabled else 'empty',
+                reason_code='synthetic_documents',
+            )
+
+        patch_attr(server_module.chat_service, '_active_documents_for_prompt', active_documents)
+        patch_attr(
+            server_module.chat_service,
+            '_workspace_files_for_prompt',
+            lambda **_kwargs: server_module.chat_service.ActiveDocumentsPromptRead(
+                documents=(), status='empty', reason_code='synthetic_workspace_empty'
+            ),
+        )
+
+        def read_notes(**_kwargs):
+            observed['decision_trace'].append('notes_read')
+            return SimpleNamespace(
+                note_reads=(SimpleNamespace(note_id='lot9b-note'),) if 'notes' in enabled else (),
+                status='ok' if 'notes' in enabled else 'empty',
+                reason_code='synthetic_notes',
+                requested_count=1 if 'notes' in enabled else 0,
+                invalid_requested_count=0,
+                over_limit_count=0,
+            )
+
+        patch_attr(
+            server_module.chat_service.workspace_folder_notes_prompt_lane,
+            'read_workspace_folder_notes_for_prompt',
+            read_notes,
+        )
+
+        def inject_notes(prompt_messages, *_args, **_kwargs):
+            inject_marker('notes', prompt_messages)
+            return SimpleNamespace(
+                status='ok' if 'notes' in enabled else 'empty',
+                reason_code='synthetic_notes',
+                requested_count=1 if 'notes' in enabled else 0,
+                invalid_requested_count=0,
+                over_limit_count=0,
+                injected_count=1 if 'notes' in enabled else 0,
+                as_content_free_dict=lambda: {
+                    'status': 'ok' if 'notes' in enabled else 'empty',
+                    'reason_code': 'synthetic_notes',
+                    'requested_count': 1 if 'notes' in enabled else 0,
+                    'invalid_requested_count': 0,
+                    'over_limit_count': 0,
+                    'injected_count': 1 if 'notes' in enabled else 0,
+                },
+            )
+
+        patch_attr(
+            server_module.chat_service.workspace_folder_notes_prompt_lane,
+            'inject_workspace_folder_notes_prompt_lane',
+            inject_notes,
+        )
+
+        def inject_documents(prompt_messages, *_args, **_kwargs):
+            inject_marker('documents', prompt_messages)
+            return SimpleNamespace(
+                status='ok' if 'documents' in enabled else 'empty',
+                reason_code='synthetic_documents',
+                injected_count=1 if 'documents' in enabled else 0,
+                excluded_count=0,
+                decisions=(),
+                as_content_free_dict=lambda: {
+                    'status': 'ok' if 'documents' in enabled else 'empty',
+                    'reason_code': 'synthetic_documents',
+                    'injected_count': 1 if 'documents' in enabled else 0,
+                    'excluded_count': 0,
+                },
+            )
+
+        patch_attr(
+            server_module.chat_service.active_document_prompt_lane,
+            'inject_active_document_prompt_lane',
+            inject_documents,
+        )
+        patch_attr(
+            server_module.chat_service,
+            '_record_active_document_prompt_decisions',
+            lambda **_kwargs: observed['decision_trace'].append('documents_decision'),
+        )
+        patch_attr(
+            server_module.chat_service.active_documents_observability,
+            'emit_prompt_decision_event',
+            lambda *_args, **_kwargs: None,
+        )
+
+        biblio_result = lane_result('biblio')
+        agenda_result = lane_result('agenda')
+
+        def run_biblio(*_args, **_kwargs):
+            observed['decision_trace'].append('biblio_decision')
+            return biblio_result
+
+        def inject_biblio(prompt_messages, _result):
+            inject_marker('biblio', prompt_messages)
+
+        patch_attr(server_module.chat_service.biblio_chat_runtime, 'run_biblio_chat_turn', run_biblio)
+        patch_attr(server_module.chat_service.biblio_chat_runtime, 'attach_biblio_conversation_state', lambda *_args: None)
+        patch_attr(server_module.chat_service.biblio_chat_runtime, 'inject_biblio_prompt_lane', inject_biblio)
+        patch_attr(
+            server_module.chat_service.biblio_chat_runtime,
+            'final_response_lock_for_result',
+            lambda result: getattr(result, 'final_response_lock', None),
+        )
+        patch_attr(
+            server_module.chat_service.biblio_chat_runtime,
+            'assistant_response_meta_for_result',
+            lambda result: (
+                result.final_response_lock.to_message_meta()
+                if getattr(result, 'final_response_lock', None) is not None
+                else None
+            ),
+        )
+        patch_attr(server_module.chat_service.biblio_chat_runtime, 'assistant_response_envelope_for_result', lambda _result: {})
+        patch_attr(server_module.chat_service, '_emit_biblio_observability', lambda _result: None)
+
+        patch_attr(
+            server_module.chat_service.agenda_chat_runtime,
+            'normalize_agenda_enabled',
+            lambda _value: 'agenda' in enabled,
+        )
+
+        def run_agenda(*_args, **_kwargs):
+            observed['decision_trace'].append('agenda_decision')
+            return agenda_result
+
+        patch_attr(server_module.chat_service.agenda_chat_runtime, 'run_agenda_chat_turn', run_agenda)
+        patch_attr(server_module.chat_service.agenda_chat_runtime, 'attach_agenda_conversation_state', lambda *_args: None)
+        patch_attr(
+            server_module.chat_service.agenda_chat_runtime,
+            'build_disabled_observability_result',
+            lambda: observed['decision_trace'].append('agenda_decision') or agenda_result,
+        )
+        patch_attr(
+            server_module.chat_service.agenda_chat_runtime,
+            'final_response_lock_for_result',
+            lambda result: getattr(result, 'final_response_lock', None),
+        )
+        patch_attr(server_module.chat_service, '_emit_agenda_observability', lambda _result: None)
+
+        def hermeneutic_insertion(**_kwargs):
+            observed['decision_trace'].append('hermeneutic_decision')
+            if 'presence' not in locks:
+                return None
+            return {
+                'primary_payload': {},
+                'validated_result': SimpleNamespace(
+                    status='ok',
+                    validated_output={
+                        'final_judgment_posture': 'answer',
+                        'final_output_regime': 'presence',
+                    },
+                ),
+            }
+
+        patch_attr(server_module.chat_service, '_run_hermeneutic_node_insertion_point', hermeneutic_insertion)
+        patch_attr(server_module.chat_service.chat_prompt_context, 'build_hermeneutic_judgment_block', lambda **_kwargs: '')
+
+        patch_attr(
+            server_module.runtime_settings,
+            'get_runtime_secret_value',
+            lambda *_args, **_kwargs: observed.update(secret_calls=observed['secret_calls'] + 1)
+            or runtime_settings.RuntimeSecretValue(
+                section='main_model',
+                field='api_key',
+                value='lot9b-synthetic-key',
+                source='synthetic',
+                source_reason='lot9b',
+            ),
+        )
+        patch_attr(
+            server_module.llm,
+            'or_chat_completions_url',
+            lambda: observed.update(url_calls=observed['url_calls'] + 1)
+            or 'https://lot9b.invalid/v1/chat/completions',
+        )
+        patch_attr(
+            server_module.chat_service.main_payload_manifest,
+            'emit_main_payload_manifest',
+            lambda manifest, **_kwargs: observed['manifests'].append(copy.deepcopy(manifest)),
+        )
+
+        response = server_module.app.test_client().post(
+            '/api/chat',
+            json={
+                'message': 'LOT9B_SYNTHETIC_USER_TURN',
+                'conversation_id': conversation['id'],
+                'stream': stream_req,
+                'web_search': 'web' in enabled,
+                'agenda_enabled': 'agenda' in enabled,
+                'biblio_enabled': 'biblio' in enabled,
+            },
+        )
+        response_bytes = response.get_data()
+    finally:
+        while originals:
+            obj, name, value = originals.pop()
+            setattr(obj, name, value)
+        restore_base()
+
+    visible_text = None
+    terminal = None
+    if stream_req:
+        visible_text, terminal = chat_stream_control.split_text_and_terminal(response_bytes)
+    observed.update(base_observed)
+    return {
+        'conversation': conversation,
+        'enabled_lanes': tuple(enabled_lanes),
+        'final_locks': tuple(final_locks),
+        'invalid_locks': tuple(invalid_locks),
+        'observed': observed,
+        'response': response,
+        'response_bytes': response_bytes,
         'terminal': terminal,
         'visible_text': visible_text,
     }
