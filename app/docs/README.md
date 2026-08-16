@@ -17,7 +17,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Audit repo canonique: `todo-done/audits/fridadev_repo_audit.md`
 - Roadmap finale produit Frida 1.0: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
 - TODO refactors Lot 9 du mega-audit: `todo-todo/refactors/frida-v1-mega-audit-lot9-refactors-todo.md` pour la roadmap active golden-test-first des refactors structurels.
-- Prerequis avant Lot 9B: `todo-todo/refactors/frida-v1-mega-audit-lot9-refactor-before-9b-todo.md` pour le triage et la remise au vert de la suite complete avant tout refactor du coeur du chat.
+- Prerequis avant Lot 9B ferme: `todo-done/refactors/frida-v1-mega-audit-lot9-refactor-before-9b-todo.md` conserve le triage et la preuve de remise au vert de la suite complete.
 - Audit readiness Lot 9 du mega-audit: `states/audits/frida-v1-mega-audit-lot9-refactor-readiness-2026-06-26.md` pour la preuve docs-only qui fonde la roadmap Lot 9.
 - Audit code-only Lot 10 du mega-audit: `states/audits/frida-v1-mega-audit-code-only-2026-07-15.md` pour la seconde passe autocritique, ses cinq P2 et ses trois P3 a revalider dans le HEAD courant.
 - Archive de remediation Lot 10: `todo-done/audits/frida-v1-mega-audit-code-only-remediation-2026-07-15-todo.md` pour les lots Celebrimbor 10A-10G fermes ou requalifies avec preuve; le finding de complexite est absorbe par l'unique roadmap Lot 9, qui reste ouverte a son gate 9.0. L'audit historique conserve son comptage initial de cinq P2 et trois P3.

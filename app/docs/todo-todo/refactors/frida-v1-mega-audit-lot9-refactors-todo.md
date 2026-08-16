@@ -732,7 +732,7 @@ La suite complete conserve une dette historique de tests qui empeche une
 baseline lisible pour le refactor du coeur du chat. La TODO methodologique
 autoritative est:
 
-`app/docs/todo-todo/refactors/frida-v1-mega-audit-lot9-refactor-before-9b-todo.md`
+`app/docs/todo-done/refactors/frida-v1-mega-audit-lot9-refactor-before-9b-todo.md`
 
 Statut: ferme le 16 aout 2026. La TODO autoritative a classe et corrige les
 38 en-tetes historiques, explique la variation de `2549` a `2552` tests et
