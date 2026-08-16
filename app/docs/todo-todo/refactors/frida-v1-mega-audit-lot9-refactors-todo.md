@@ -1317,9 +1317,76 @@ Golden tests prealables:
 
 Checklist:
 
-- [ ] Matrix status/reason codes.
-- [ ] Matrix context payload content-free.
-- [ ] Matrix log redaction.
+- [x] Matrix status/reason codes.
+- [x] Matrix context payload content-free.
+- [x] Matrix log redaction.
+
+Statut: ferme le 16 aout 2026.
+
+Preuves livrees:
+
+- `app/tests/support/web_search_golden_matrix.py` traverse la facade publique
+  `build_context_payload(...)`, les vrais normalisateurs SearXNG/Crawl4AI et
+  l'emetteur runtime avec transports, reader PDF, services et logger
+  synthetiques; aucune DB, aucun provider ni secret reel n'est requis;
+- `app/tests/unit/web_search/test_web_search_golden_matrix.py` fige une matrice
+  compacte de huit cas: URL explicite lue, timeout Crawl4AI, erreur Crawl4AI,
+  PDF direct, SearXNG sans resultat/erreur upstream et discovery sans
+  citation/erreur upstream;
+- les tests Phase 4, discovery, evidence, confiance, PDF et logger existants
+  restent les preuves detaillees de chaque branche; le nouveau golden ne les
+  duplique pas et ne snapshotte que leur composition observable commune.
+
+Invariants figes:
+
+- `no_data` reste `skipped`, distinct de `web_search_upstream_error` et
+  `web_discovery_upstream_error`; les erreurs discovery conservent
+  `WebDiscoveryUpstreamError` et `openrouter_config_error`;
+- une erreur ou un timeout Crawl4AI sur URL explicite reste un echec de
+  lecture `page_not_read_error`, sans faux succes ni faux contexte injecte;
+- HTML lu et PDF direct restent `page_read`, avec respectivement
+  `crawl_markdown` et `web_pdf_text`; le PDF contourne Crawl4AI;
+- evidence/confiance restent `sufficient/high` pour les lectures reussies et
+  `insufficient/low` pour absence de donnees ou upstream en erreur;
+- status, reason, contexte injecte, branche skipped et event error restent
+  coherents entre payload de contexte et projection runtime;
+- la projection golden et les events n'exposent aucune requete, URL complete,
+  contenu, exception ou secret synthetique; `query_preview` reste vide et
+  `explicit_url_included=false`.
+
+Sensibilite:
+
+- le golden rejette cinq mutants semantiques controles: inversion
+  `no_data/error`, faux succes de lecture apres timeout, PDF requalifie en
+  Crawl4AI, preuve insuffisante requalifiee suffisante et event error duplique;
+- la garde content-free rejette un mutant contenant la sentinelle brute.
+
+Commandes hermetiques executees avec `--network none`, checkout read-only et
+`/tmp` en tmpfs:
+
+- baseline complete avant patch: `2572 tests`, 0 echec, 0 erreur;
+- nouveau golden: `4 tests`, OK;
+- tous les tests `tests/unit/web_search`: `167 tests`, OK;
+- logger/guard/redaction: `52 tests`, OK;
+- route Web, provenance, read-state et golden Lot 9: `36 tests`, OK;
+- decouverte complete finale: `2576 tests`, 0 echec, 0 erreur, sans nouveau
+  skip ni expected failure.
+
+Limites restantes:
+
+- la projection `web_search` PDF est bien content-free au point d'emission,
+  mais la garde writer-side courante refuse ensuite le compteur
+  `web_pdf_read_pages` comme `unknown_scalar_key`. Cette contradiction
+  preexistante entre contrat PDF et allowlist n'est pas corrigee dans le lot
+  tests/docs-only; elle devra etre resolue avant 9C.4 sans changer le schema
+  observable voulu;
+- `app/tests/unit/benchmark/test_web_search_benchmark.py` n'est pas collecte
+  par la decouverte autoritative; son execution isolee avec le depot complet
+  monte s'arrete avant collecte sur l'import legacy deja retire
+  `memory_identity_periodic_apply`. Cette dette preexistante n'est ni masquee
+  ni corrigee hors perimetre 9C.0;
+- aucun client, status mapper, reader, builder ou emetteur runtime n'est encore
+  extrait: 9C.1 a 9C.4 restent ouverts et non commences.
 
 ### Lot 9C.1 - SearXNG/discovery client boundary
 
