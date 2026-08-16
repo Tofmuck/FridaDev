@@ -1,6 +1,6 @@
 # Frida V1 mega-audit - remise au vert avant Lot 9B TODO
 
-Statut: actif, tests et documentation uniquement a la creation.
+Statut: ferme le 16 aout 2026, suite complete verte.
 
 Roadmap parente:
 `app/docs/todo-todo/refactors/frida-v1-mega-audit-lot9-refactors-todo.md`
@@ -126,7 +126,7 @@ Construire dans ce fichier, avant patch, une ligne par identifiant rouge:
 | `ERROR minimal_validation_phase9.api_smoke_without_admin_token` | F4 | oui | liste courante des sections admin settings | `TEST_OBSOLETE` | construire la matrice fake depuis le schema courant | cible F4 verte; complet `5/1`, aucun ajout | ferme |
 | `ERROR minimal_validation_phase9.admin_route_and_old_absence` | F4 | oui | liste courante des sections admin settings | `TEST_OBSOLETE` | meme fixture schema-driven, routes et absence legacy preservees | cible F4 verte; complet `5/1`, aucun ajout | ferme |
 | `ERROR minimal_validation_phase9.ui_assets` | F4 | oui | page et contrat Identity courants | `VALIDATEUR_OBSOLETE` | verifier `Caps, budgets et legacy` et aligner le contrat vivant | cible F4 verte; complet `5/1`, aucun ajout | ferme |
-| `ERROR temporal_model_truth_closure.identity_stimmung_day_claims` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR temporal_model_truth_closure.identity_stimmung_day_claims` | F6 | oui | writer Identity legacy retire et prompt du juge V2 actif | `TEST_OBSOLETE` | verifier le shim desactive et la doctrine `temporary_state`, sans recreer le helper | cible F6 verte; complet `0/0` | ferme |
 | `ERROR llm_client.internal_caller_marker_local` | F1 | oui | isolation locale des headers internes | `RUNNER_OU_FIXTURE` | secret et vue runtime synthetiques dans le test | cible `7/7`; complet `19/12`, aucun ajout | ferme |
 | `ERROR identity_write.legacy_diagnostic_both_sides` | F3 | oui | log-module `identity_write` | `BUG_PRODUIT` | accepter les compteurs bornes de `actions_count` | cible F3 verte; complet `5/6`, aucun ajout | ferme |
 | `ERROR identity_write.legacy_visibility_one_side_empty` | F3 | oui | log-module `identity_write` | `BUG_PRODUIT` | meme correction du garde | cible F3 verte; complet `5/6`, aucun ajout | ferme |
@@ -153,8 +153,8 @@ Construire dans ce fichier, avant patch, une ligne par identifiant rouge:
 | `FAIL web_runtime.canonical_web_input_single_pass` | F2 | oui | injection Web unique puis capsule terminale | `TEST_OBSOLETE` | assertion structurelle capsule + prefixe Web exact | cible `8/8`; complet `11/12`, aucun ajout | ferme |
 | `FAIL web_runtime.identity_callback_read_state` | F1 | oui | callback Identity en mode enforced_all | `RUNNER_OU_FIXTURE` | mode hermeneutique explicite dans la fixture cible | cible `7/7`; complet `19/12`, aucun ajout | ferme |
 | `FAIL synthetic_logs.persist_response_save_error` | F3 | oui | persist_response reason-code convention | `TEST_OBSOLETE` | attendre `reason_code` dans l'evenement | cible F3 verte; complet `5/6`, aucun ajout | ferme |
-| `FAIL identity_staging.role_play_irony_window` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `FAIL frontend_hermeneutic_admin.allowed_endpoints` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL identity_staging.role_play_irony_window` | F6 | oui | contrat `mutable_judge_v2` add-only | `RUNNER_OU_FIXTURE` | rendre le faux `no_change` strictement valide avec `guard_notes=[]` | cible F6 verte; complet `0/0` | ferme |
+| `FAIL frontend_hermeneutic_admin.allowed_endpoints` | F6 | oui | UI et contrat Identity judge-first courants | `TEST_OBSOLETE` | attendre le marqueur canon/fenetre judge-first et refuser l'ancien scoring | cible F6 verte; complet `0/0` | ferme |
 | `FAIL server_logs_phase3.memory_prompt_injection_summary` | F3 | oui | log-module `prompt_prepared` et contrat Memory | `BUG_PRODUIT` | accepter les preuves structurelles bornees | cible F3 verte; complet `5/6`, aucun ajout | ferme |
 | `FAIL server_logs_phase3.hermeneutic_prompt_injection` | F3 | oui | continuity payload Lot 4.2 | `TEST_OBSOLETE` | attendre les flags d'absence de fingerprint | cible F3 verte; complet `5/6`, aucun ajout | ferme |
 | `FAIL phase4_transversal.runtime_binding_contract` | F1 | oui | image productible avec `WORKDIR /app` | `RUNNER_OU_FIXTURE` | verifier le Dockerfile, pas le point de montage du runner | cible `7/7`; complet `19/12`, aucun ajout | ferme |
@@ -331,11 +331,38 @@ aucun nouvel identifiant n'apparait.
 Hypotheses a revalider: helper temporel retire, statut Identity requalifie et
 marqueur frontend obsolete.
 
-- [ ] Verifier qu'aucun appel runtime vivant ne depend du helper retire.
-- [ ] Verifier le statut Identity contre le mode et les guards courants.
-- [ ] Verifier le marqueur frontend contre le DOM et le contrat actifs.
-- [ ] Ne pas recreer une API morte ou un texte UI obsolete pour satisfaire le
+- [x] Verifier qu'aucun appel runtime vivant ne depend du helper retire.
+- [x] Verifier le statut Identity contre le mode et les guards courants.
+- [x] Verifier le marqueur frontend contre le DOM et le contrat actifs.
+- [x] Ne pas recreer une API morte ou un texte UI obsolete pour satisfaire le
   test.
+
+F6 fermee le 16 aout 2026. Le premier test appelait encore
+`_sanitize_identity_periodic_temporal_claims`, supprime avec le writer
+score-first legacy. Aucun appel runtime vivant ne le reference. La preuve
+actualisee exige que le point d'entree legacy reste desactive, sans ecriture,
+et que le prompt du juge V2 actif classe explicitement les matieres temporaires
+en `no_change/temporary_state`.
+
+Le second echec venait de la fixture elle-meme: elle produisait un
+`no_change` avec `guard_notes=["not_persisted"]`, forme interdite par le
+schema strict courant qui exige `proposition=""`, `source_refs=[]`,
+`guard_notes=[]` et `continuity_kind="none"`. Une fois la fixture rendue
+valide, le juge termine `completed_no_change`, vide le buffer et n'ecrit rien
+dans le canon, ce qui preserve la responsabilite substantielle du test.
+
+Le troisieme test exigeait encore la phrase du regime score-first
+`scoring, promotion et suspension`, retiree lors du passage au
+`mutable_identity_judge_v2_add_only`. Il exige desormais le marqueur actif
+`canon, fenetre juge-first et budgets` et refuse explicitement l'ancien
+libelle.
+
+Preuves hermetiques sans reseau ni provider: les trois reproductions F6 sont
+vertes, les 60 contrats temporels, Identity, admin/frontend et golden voisins
+sont verts, puis la decouverte complete termine avec `2552 tests`, `0`
+echec et `0` erreur en `9.203 s`. Aucun skip ou expected failure n'a ete
+ajoute. Aucun module runtime, prompt, route, service, configuration ou
+comportement produit n'a ete modifie.
 
 ## Regles de correction
 
@@ -359,35 +386,40 @@ marqueur frontend obsolete.
 
 ## Auto-audit obligatoire par famille
 
-- [ ] Le test echouait bien avant la correction.
-- [ ] Le comportement attendu vient d'une source de verite courante.
-- [ ] Le test corrige echouerait encore si le bug protege etait reintroduit.
-- [ ] Aucun test voisin n'a ete affaibli, supprime ou ignore.
-- [ ] Aucun nombre, chemin, ordre ou texte interne instable n'est fige sans
+- [x] Le test echouait bien avant la correction.
+- [x] Le comportement attendu vient d'une source de verite courante.
+- [x] Le test corrige echouerait encore si le bug protege etait reintroduit.
+- [x] Aucun test voisin n'a ete affaibli, supprime ou ignore.
+- [x] Aucun nombre, chemin, ordre ou texte interne instable n'est fige sans
   raison contractuelle.
-- [ ] Aucun contenu sensible n'entre dans fixture, snapshot, diff ou rapport.
-- [ ] Le patch ne commence aucun refactor 9B.
+- [x] Aucun contenu sensible n'entre dans fixture, snapshot, diff ou rapport.
+- [x] Le patch ne commence aucun refactor 9B.
 
 ## Condition de sortie
 
 La TODO ne peut etre fermee que si:
 
-- [ ] Le registre contient tous les identifiants de la baseline et aucun
+- [x] Le registre contient tous les identifiants de la baseline et aucun
   `INCONNU`.
-- [ ] Chaque ancienne panne est reproduite, expliquee et corrigee a sa source.
-- [ ] La decouverte complete termine avec `0` echec et `0` erreur.
-- [ ] Le nombre de skips et expected failures n'augmente pas.
-- [ ] Le nombre total de tests et toute variation sont expliques.
-- [ ] Les suites critiques chat, Web, observabilite, admin, validation minimale,
+- [x] Chaque ancienne panne est reproduite, expliquee et corrigee a sa source.
+- [x] La decouverte complete termine avec `0` echec et `0` erreur.
+- [x] Le nombre de skips et expected failures n'augmente pas.
+- [x] Le nombre total de tests et toute variation sont expliques.
+- [x] Les suites critiques chat, Web, observabilite, admin, validation minimale,
   Identity et frontend sont vertes separement.
-- [ ] La route map et les golden tests du Lot 9 restent verts.
-- [ ] Le P2 de continuite Web est documente ferme par audit technique et
+- [x] La route map et les golden tests du Lot 9 restent verts.
+- [x] Le P2 de continuite Web est documente ferme par audit technique et
   validation live utilisateur.
-- [ ] La roadmap Lot 9 pointe vers la preuve finale et degele explicitement
+- [x] La roadmap Lot 9 pointe vers la preuve finale et degele explicitement
   9B.0.
-- [ ] Le worktree final est propre et la branche est alignee avec son upstream
+- [x] Le worktree final est propre et la branche est alignee avec son upstream
   apres livraison autorisee.
 
 Statut de sortie attendu:
 
 `SUITE COMPLETE VERTE - PREREQUIS AVANT 9B FERME`
+
+Statut atteint le 16 aout 2026. La suite passe de la baseline initiale
+`2549 / 22 echecs / 16 erreurs / 38 en-tetes` a
+`2552 / 0 echec / 0 erreur`. Les trois tests ajoutes en F3 expliquent seuls
+la variation du total; les skips et expected failures restent a zero.

@@ -374,7 +374,7 @@ class TemporalModelTruthClosureTests(unittest.TestCase):
             [],
         )
 
-        annotated_pairs, periodic_summary = identity_temporal_guard.sanitized_buffer_pairs_with_source_summary(
+        annotated_pairs, _periodic_summary = identity_temporal_guard.sanitized_buffer_pairs_with_source_summary(
             [
                 {
                     "user": {"role": "user", "content": "Aujourd'hui je suis anxieux."},
@@ -387,26 +387,15 @@ class TemporalModelTruthClosureTests(unittest.TestCase):
             annotated_pairs[0]["user"]["temporal_source_guard"],
             "weak_relative_temporal_claim_present",
         )
-        periodic_result = arbiter._sanitize_identity_periodic_temporal_claims(
-            {
-                "user": {
-                    "operations": [
-                        {"kind": "add", "proposition": "L'utilisateur est anxieux.", "reason": "paraphrase"}
-                    ]
-                }
-            },
-            source_summary=periodic_summary,
-        )
-        self.assertEqual(
-            periodic_result["user"]["operations"],
-            [
-                {
-                    "kind": "no_change",
-                    "proposition": "",
-                    "reason": "weak relative temporal identity source rejected",
-                }
-            ],
-        )
+        self.assertFalse(hasattr(arbiter, "_sanitize_identity_periodic_temporal_claims"))
+        legacy_result = arbiter.run_identity_periodic_agent({"buffer_pairs": annotated_pairs})
+        self.assertEqual(legacy_result["status"], "skipped")
+        self.assertEqual(legacy_result["reason_code"], "legacy_identity_periodic_agent_disabled")
+        self.assertFalse(legacy_result["writes_applied"])
+
+        active_judge_prompt = (APP_DIR / config.IDENTITY_MUTABLE_JUDGE_PROMPT_PATH).read_text(encoding="utf-8")
+        self.assertIn("the matter is local, temporary", active_judge_prompt)
+        self.assertIn("- `temporary_state`", active_judge_prompt)
 
         recent_window = {
             "turns": [

@@ -393,7 +393,7 @@ class HermeneuticalPostStabilizationContractTests(unittest.TestCase):
                             "reason_code": "quoted_or_reported_speech",
                             "continuity_kind": "none",
                             "source_refs": [],
-                            "guard_notes": ["not_persisted"],
+                            "guard_notes": [],
                         },
                     ],
                 },

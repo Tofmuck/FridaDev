@@ -734,9 +734,12 @@ autoritative est:
 
 `app/docs/todo-todo/refactors/frida-v1-mega-audit-lot9-refactor-before-9b-todo.md`
 
-Statut: ouvert. Tout le Lot 9B reste gele jusqu'a une decouverte complete a
-`0` echec et `0` erreur, sans augmentation des skips ou expected failures et
-sans affaiblissement des contrats.
+Statut: ferme le 16 aout 2026. La TODO autoritative a classe et corrige les
+38 en-tetes historiques, explique la variation de `2549` a `2552` tests et
+prouve une decouverte complete hermetique a `0` echec, `0` erreur, `0`
+skip et `0` expected failure. Les suites critiques et les goldens Lot 9
+restent verts. Le Lot 9B.0 est donc degele; il devient le prochain lot
+executable mais reste non commence.
 
 ### Lot 9B.0 - Golden lane-order / final-lock / capsule
 
