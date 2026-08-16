@@ -17,7 +17,6 @@ from benchmark.suites.arbiter import scorer as arbiter_scorer
 from benchmark.suites.arbiter import tournament as arbiter_tournament
 from benchmark.suites.identity_extractor import campaign as identity_campaign
 from benchmark.suites.identity_periodic import adapter as identity_periodic_adapter
-from benchmark.suites.identity_periodic import campaign as identity_periodic_campaign
 from benchmark.suites.stimmung import campaign as stimmung_campaign
 from benchmark.suites.summary import adapter as summary_adapter
 from benchmark.suites.summary import campaign as summary_campaign
@@ -193,6 +192,8 @@ def main() -> int:
         return 0
 
     if suite == "identity_periodic":
+        from benchmark.suites.identity_periodic import campaign as identity_periodic_campaign
+
         result = identity_periodic_campaign.run_identity_periodic_smoke_campaign(
             config=config,
             client=client,

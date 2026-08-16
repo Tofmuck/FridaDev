@@ -1513,15 +1513,83 @@ Limites et frontiere:
 
 #### Prerequis avant 9C.2 - passe 2: benchmark Web autoritatif
 
-Statut: ouvert, non commence.
+Statut: ferme le 16 aout 2026.
 
 Checklist:
 
-- [ ] Reproduire l'absence de collecte et l'echec isole.
-- [ ] Prouver la cause transitive exacte sans retablir Identity legacy.
-- [ ] Reintegrer le benchmark a la decouverte s'il reste contractuel, sinon
+- [x] Reproduire l'absence de collecte et l'echec isole.
+- [x] Prouver la cause transitive exacte sans retablir Identity legacy.
+- [x] Reintegrer le benchmark a la decouverte s'il reste contractuel, sinon
   prouver son obsolescence et l'archiver explicitement.
-- [ ] Etablir une nouvelle baseline complete avant 9C.2.
+- [x] Etablir une nouvelle baseline complete avant 9C.2.
+
+Autorite et cause prouvees:
+
+- `benchmark/README.md`, `benchmark/web-search/README.md`, les fixtures Web et
+  les douze preuves de `app/tests/unit/benchmark/test_web_search_benchmark.py`
+  confirment que le benchmark Web reste un outil operateur contractuel; il ne
+  doit donc pas etre archive;
+- `app/tests/unit/benchmark/` n'etant pas un package de decouverte, ces preuves
+  restaient absentes de la baseline applicative `2582`, sans skip ni signal;
+- l'execution isolee avec `app/` et `benchmark/` disponibles echouait avant
+  toute collecte: `benchmark.run_benchmark` importait avidement la campagne
+  `identity_periodic`, laquelle importe le module supprime
+  `memory_identity_periodic_apply`;
+- ce module appartient au writer Identity score-first retire; le restaurer ou
+  adapter sa campagne aurait contredit le contrat Identity vivant et elargi
+  ce prerequis Web.
+
+Patch et preuves:
+
+- `benchmark/run_benchmark.py` ne charge plus la campagne
+  `identity_periodic` au demarrage commun; elle n'est importee que si cette
+  suite legacy est explicitement selectionnee. Aucun chemin Identity n'est
+  retabli et les autres suites gardent leurs choix, modeles et payloads;
+- `app/tests/unit/web_search/test_web_search_benchmark_authority.py` expose
+  exactement le `WebSearchBenchmarkSuiteTests` existant a la decouverte Web;
+  les autres benchmarks operateur, dont certains sont historiques, ne sont
+  ni declares autoritatifs par effet de bord ni modifies dans cette passe;
+- le benchmark Web ajoute une treizieme preuve qui traverse le vrai
+  `benchmark_runner.main()` en dry-run, sans provider, et exige les trois
+  artefacts attendus sous `/tmp`;
+- la fixture `local/local_profiled` remplace et restaure desormais a la fois
+  `sys.modules["tools.web_search"]` et l'attribut cache sur le package
+  `tools`. La suite Web elargie a revele cette dependance d'ordre preexistante:
+  le module isole passait, mais la suite de `185 tests` echouait auparavant
+  avec une liste d'appels vide;
+- la mutation controlee correspondant au bug est l'import eager de la campagne
+  Identity: elle reproduit l'`ImportError` avant collecte. Retirer le pont de
+  decouverte ramene silencieusement la baseline de `2595` a `2582`; conserver
+  seulement `sys.modules` dans la fixture reproduit l'echec d'ordre de la
+  suite Web.
+
+Commandes hermetiques executees avec `--network none`, image read-only,
+`/tmp` en tmpfs et seulement `app/` puis `benchmark/` montes read-only:
+
+- baseline propre entre les deux passes: `2582 tests`, 0 echec, 0 erreur;
+- reproduction isolee avant patch: `1 test`, `1 erreur` d'import avant
+  collecte sur `memory_identity_periodic_apply`;
+- module benchmark Web puis point d'entree autoritatif: `13 tests`, OK pour
+  chacun;
+- suite `tests/unit/web_search`: `185 tests`, OK apres reproduction puis
+  correction de la dependance d'ordre;
+- benchmarks voisins Stimmung et Validation Agent: `13 tests`, OK;
+- decouverte complete avec montages bornes `app/` et `benchmark/`:
+  `2595 tests`, 0 echec, 0 erreur. Le delta exact de treize correspond aux
+  douze preuves Web jusque-la non collectees et au nouveau test du CLI.
+
+Limites et frontiere:
+
+- les campagnes benchmark ne deviennent pas du runtime produit et leur dry-run
+  ne resout aucun provider, secret ou acces DB; `--network none` interdit tout
+  service externe a l'ensemble de la decouverte;
+- la branche `identity_periodic` du runner reste un artefact legacy incompatible
+  avec le writer retire lorsqu'elle est explicitement invoquee; son
+  archivage eventuel releve d'un lot Identity distinct, pas de ce prerequis
+  Web;
+- 9C.2 a 9C.4 restent ouverts et non commences. La baseline autoritative avant
+  9C.2 inclut desormais le benchmark Web avec le second montage read-only
+  `benchmark/`.
 
 ### Lot 9C.2 - Crawl4AI/PDF reader boundary
 

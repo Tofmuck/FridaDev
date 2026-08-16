@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import ModuleType
+from unittest.mock import patch
 
 
 def _repo_root() -> Path:
@@ -20,7 +21,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from benchmark.core.campaign import CampaignConfig
-from benchmark.run_benchmark import DEFAULT_WEB_SEARCH_MODELS
+from benchmark import run_benchmark as benchmark_runner
 from benchmark.suites.web_search import adapter as web_adapter
 from benchmark.suites.web_search import campaign as web_campaign
 from benchmark.suites.web_search import same_query_diagnostic
@@ -28,11 +29,32 @@ from benchmark.suites.web_search import same_query_diagnostic
 
 class WebSearchBenchmarkSuiteTests(unittest.TestCase):
     def test_default_web_search_models_and_arms_are_bounded(self) -> None:
-        self.assertEqual(DEFAULT_WEB_SEARCH_MODELS, ["openai/gpt-5.1"])
+        self.assertEqual(benchmark_runner.DEFAULT_WEB_SEARCH_MODELS, ["openai/gpt-5.1"])
         self.assertEqual(web_adapter.DEFAULT_ARMS, ["local", "local_profiled", "openrouter_exa", "openrouter_parallel"])
         self.assertEqual(web_adapter.DEFAULT_MAX_RESULTS, 5)
         self.assertEqual(web_adapter.DEFAULT_MAX_TOTAL_RESULTS, 5)
         self.assertEqual(web_adapter.DEFAULT_SEARCH_CONTEXT_SIZE, "low")
+
+    def test_web_search_cli_dry_run_isolated_from_removed_identity_legacy(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "results"
+            argv = [
+                "benchmark/run_benchmark.py",
+                "--suite",
+                "web_search",
+                "--dry-run",
+                "--campaign-id",
+                "web-search-authority",
+                "--output-dir",
+                str(output_dir),
+            ]
+            with patch.object(sys, "argv", argv):
+                exit_code = benchmark_runner.main()
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue((output_dir / "web-search-authority.json").is_file())
+            self.assertTrue((output_dir / "web-search-authority.jsonl").is_file())
+            self.assertTrue((output_dir / "web-search-authority.md").is_file())
 
     def test_web_search_fixtures_cover_product_matrix(self) -> None:
         cases = web_adapter.load_cases(REPO_ROOT)
@@ -337,8 +359,12 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
 
         fake_web_search = ModuleType("tools.web_search")
         fake_web_search.build_context_payload = fake_build_context_payload  # type: ignore[attr-defined]
+        tools_package = __import__("tools")
+        missing_attribute = object()
         original_web_search_module = sys.modules.get("tools.web_search")
+        original_web_search_attribute = getattr(tools_package, "web_search", missing_attribute)
         sys.modules["tools.web_search"] = fake_web_search
+        tools_package.web_search = fake_web_search  # type: ignore[attr-defined]
         config = CampaignConfig(
             campaign_id="web-search-live-toggle",
             suite="web_search",
@@ -357,6 +383,10 @@ class WebSearchBenchmarkSuiteTests(unittest.TestCase):
                 sys.modules.pop("tools.web_search", None)
             else:
                 sys.modules["tools.web_search"] = original_web_search_module
+            if original_web_search_attribute is missing_attribute:
+                delattr(tools_package, "web_search")
+            else:
+                tools_package.web_search = original_web_search_attribute  # type: ignore[attr-defined]
 
         self.assertFalse(observed_kwargs[0]["enable_specialized_queries"])
         self.assertFalse(observed_kwargs[0]["enable_profiled_searxng_params"])
