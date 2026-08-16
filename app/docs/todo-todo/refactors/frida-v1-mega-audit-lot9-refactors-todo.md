@@ -722,9 +722,21 @@ Sous-lots:
 content-free, distingue modele principal et final lock, puis la projette au
 tour suivant sans conserver les sources Web ni relancer une recherche.
 
-Statut: correction technique livree; audit independant et validation live par
-Tof encore requis. Le finding P2 reste ouvert et tout le Lot 9B demeure gele
-jusqu'a ces validations. Aucune case 9B n'est cochee par ce correctif.
+Statut: ferme. La correction technique a ete auditee independamment le 25
+juillet 2026, puis validee en dialogue live par Tof le 14 aout 2026. Le finding
+P2 peut etre clos; aucune case 9B n'est cochee par cette correction.
+
+### Prerequis de remise au vert avant 9B.0
+
+La suite complete conserve une dette historique de tests qui empeche une
+baseline lisible pour le refactor du coeur du chat. La TODO methodologique
+autoritative est:
+
+`app/docs/todo-todo/refactors/frida-v1-mega-audit-lot9-refactor-before-9b-todo.md`
+
+Statut: ouvert. Tout le Lot 9B reste gele jusqu'a une decouverte complete a
+`0` echec et `0` erreur, sans augmentation des skips ou expected failures et
+sans affaiblissement des contrats.
 
 ### Lot 9B.0 - Golden lane-order / final-lock / capsule
 
