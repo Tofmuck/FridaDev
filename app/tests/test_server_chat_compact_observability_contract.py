@@ -9,6 +9,7 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
+from core.hermeneutic_node.inputs import summary_input
 from tests.support import server_chat_pipeline
 from tests.support.server_test_bootstrap import load_server_module_for_tests
 
@@ -51,16 +52,22 @@ class ServerChatCompactObservabilityContractTests(unittest.TestCase):
             requests_post=fake_requests_post,
         )
         original_insert = self.server.chat_turn_logger.log_store.insert_chat_log_event
+        original_resolve_summary = self.server.chat_service._resolve_summary_input
 
         def fake_insert(event, **_kwargs):
             observed_events.append(event)
             return True
 
         self.server.chat_turn_logger.log_store.insert_chat_log_event = fake_insert
+        self.server.chat_service._resolve_summary_input = lambda **kwargs: summary_input.build_summary_input(
+            active_summary=None,
+            conversation_id=kwargs.get('conversation_id'),
+        )
         try:
             response = self.client.post('/api/chat', json={'message': 'Bonjour'})
         finally:
             self.server.chat_turn_logger.log_store.insert_chat_log_event = original_insert
+            self.server.chat_service._resolve_summary_input = original_resolve_summary
             restore()
 
         self.assertEqual(response.status_code, 200)

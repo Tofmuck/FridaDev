@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-import subprocess
 import unittest
 from pathlib import Path
 
@@ -18,31 +17,42 @@ LOGGER_EXPECTATIONS = {
     APP_DIR / 'memory' / 'arbiter.py': 'frida.arbiter',
 }
 
-LEGACY_TOKEN_EXCLUDE_GLOBS = (
-    '!docs/todo-done/**',
-    '!docs/states/legacy/**',
-    '!docs/states/baselines/**',
+LEGACY_TOKEN_EXCLUDE_PREFIXES = (
+    Path('docs/todo-done'),
+    Path('docs/states/legacy'),
+    Path('docs/states/baselines'),
 )
 
 
 class LoggingConventionsPhase8Tests(unittest.TestCase):
     def test_repo_has_no_legacy_logger_token(self) -> None:
         legacy_token = 'ki' + 'ki'
-        command = ['rg', '-n', legacy_token, str(APP_DIR), '-S']
-        for glob in LEGACY_TOKEN_EXCLUDE_GLOBS:
-            command.extend(['-g', glob])
-        run = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if run.returncode == 2:
-            self.fail(f'rg failed: {run.stderr.strip()}')
+        matches: list[str] = []
+        for path in sorted(APP_DIR.rglob('*')):
+            if not path.is_file():
+                continue
+            relative = path.relative_to(APP_DIR)
+            if '__pycache__' in relative.parts:
+                continue
+            if any(
+                prefix == relative or prefix in relative.parents
+                for prefix in LEGACY_TOKEN_EXCLUDE_PREFIXES
+            ):
+                continue
+            try:
+                payload = path.read_bytes()
+            except OSError as exc:
+                self.fail(f'unable to read {relative}: {exc.__class__.__name__}')
+            if b'\x00' in payload:
+                continue
+            text = payload.decode('utf-8', errors='ignore')
+            for line_number, line in enumerate(text.splitlines(), start=1):
+                if legacy_token.casefold() in line.casefold():
+                    matches.append(f'{relative}:{line_number}')
         self.assertEqual(
-            run.returncode,
-            1,
-            msg=f'legacy token still present:\n{run.stdout.strip()}',
+            matches,
+            [],
+            msg='legacy token still present:\n' + '\n'.join(matches),
         )
 
     def test_target_modules_keep_standard_logging_getlogger_calls(self) -> None:

@@ -110,6 +110,7 @@ class Phase4TransversalTests(unittest.TestCase):
         self.assertIn('resolve_python_bin()', run_sh)
         self.assertIn('PYTHON_BIN="$(resolve_python_bin)"', run_sh)
         self.assertIn('exec "$PYTHON_BIN" server.py', run_sh)
+        self.assertIn('WORKDIR /app', dockerfile)
         self.assertIn('CMD ["python", "server.py"]', dockerfile)
 
         self.assertIn("WEB_HOST = os.environ.get('FRIDA_WEB_HOST', '0.0.0.0').strip() or '0.0.0.0'", config_py)
@@ -122,9 +123,6 @@ class Phase4TransversalTests(unittest.TestCase):
             self.assertIn('FRIDA_WEB_PORT: "8089"', compose)
             self.assertIn('FRIDA_WEB_HOST: "0.0.0.0"', compose)
             self.assertIn('- "8093:8089"', compose)
-        else:
-            self.assertEqual(APP_DIR, Path('/app'))
-
     def test_frontend_chat_payload_contract_no_longer_serializes_history(self) -> None:
         app_js = (APP_DIR / 'web' / 'app.js').read_text(encoding='utf-8')
 

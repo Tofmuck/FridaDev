@@ -771,7 +771,13 @@ class ServerLogsPhase3Tests(unittest.TestCase):
             proxy.post(
                 'https://openrouter.example/chat/completions',
                 json={'model': 'openai/gpt-5.4-mini'},
-                headers=self.server.llm.or_headers(caller='web_reformulation'),
+                headers={
+                    'Authorization': 'Bearer synthetic-test-key',
+                    self.server.llm.INTERNAL_PROVIDER_CALLER_HEADER: 'web_reformulation',
+                    'X-OpenRouter-Title': self.server.config.OR_TITLE_WEB_REFORMULATION,
+                    'X-Title': self.server.config.OR_TITLE_WEB_REFORMULATION,
+                    'HTTP-Referer': self.server.config.OR_REFERER_WEB_REFORMULATION,
+                },
                 timeout=30,
                 stream=False,
             )

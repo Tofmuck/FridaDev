@@ -21,11 +21,18 @@ class ServerChatWebRuntimeContractTests(unittest.TestCase):
     def setUp(self) -> None:
         self.client = self.server.app.test_client()
 
-    def _patch_chat_pipeline(self, *, conversation: dict, requests_post):
+    def _patch_chat_pipeline(
+        self,
+        *,
+        conversation: dict,
+        requests_post,
+        hermeneutic_mode: str | None = None,
+    ):
         return server_chat_pipeline.patch_server_chat_pipeline(
             self.server,
             conversation=conversation,
             requests_post=requests_post,
+            hermeneutic_mode=hermeneutic_mode,
         )
 
     def test_api_chat_exposes_canonical_web_input_and_reuses_single_web_pass(self) -> None:
@@ -757,6 +764,7 @@ class ServerChatWebRuntimeContractTests(unittest.TestCase):
         observed_state, restore = self._patch_chat_pipeline(
             conversation=conversation,
             requests_post=fake_requests_post,
+            hermeneutic_mode='enforced_all',
         )
         original_build_context_payload = self.server.ws.build_context_payload
         original_build_context = self.server.ws.build_context

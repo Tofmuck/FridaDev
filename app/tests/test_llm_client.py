@@ -209,7 +209,29 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
         self.assertEqual(headers['HTTP-Referer'], 'https://identity-periodic.frida-system.fr/')
 
     def test_or_headers_keeps_internal_caller_marker_local(self) -> None:
-        headers = llm_client.or_headers(caller='validation_agent')
+        original_secret = llm_client.runtime_settings.get_runtime_secret_value
+        original_view = llm_client.runtime_settings.get_main_model_settings
+
+        llm_client.runtime_settings.get_runtime_secret_value = lambda *_args, **_kwargs: (
+            runtime_settings.RuntimeSecretValue(
+                section='main_model',
+                field='api_key',
+                value='synthetic-test-key',
+                source='db_encrypted',
+                source_reason='test_fixture',
+            )
+        )
+        llm_client.runtime_settings.get_main_model_settings = lambda: runtime_settings.RuntimeSectionView(
+            section='main_model',
+            payload=runtime_settings.build_env_seed_bundle('main_model').payload,
+            source='env',
+            source_reason='test_fixture',
+        )
+        try:
+            headers = llm_client.or_headers(caller='validation_agent')
+        finally:
+            llm_client.runtime_settings.get_runtime_secret_value = original_secret
+            llm_client.runtime_settings.get_main_model_settings = original_view
 
         self.assertEqual(headers[llm_client.INTERNAL_PROVIDER_CALLER_HEADER], 'validation_agent')
         self.assertEqual(headers['X-OpenRouter-Title'], config.OR_TITLE_VALIDATION_AGENT)

@@ -867,6 +867,8 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
         original_memory_arbiter_get_settings = arbiter.runtime_settings.get_memory_arbiter_model_settings
         original_load_prompt = arbiter._load_prompt
         original_post = arbiter.requests.post
+        original_or_headers = arbiter.llm_client.or_headers
+        original_or_url = arbiter.llm_client.or_chat_completions_url
         original_conn = memory_store._conn
 
         call_count = {'n': 0}
@@ -953,6 +955,10 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
         arbiter.runtime_settings.get_memory_arbiter_model_settings = fake_get_memory_arbiter_model_settings
         arbiter._load_prompt = lambda _path, _label: 'prompt'
         arbiter.requests.post = fake_post
+        arbiter.llm_client.or_headers = lambda *, caller: {
+            arbiter.llm_client.INTERNAL_PROVIDER_CALLER_HEADER: caller
+        }
+        arbiter.llm_client.or_chat_completions_url = lambda: 'https://provider.invalid/chat/completions'
         memory_store._conn = lambda: FakeConnection()
         try:
             _kept, decisions = arbiter.filter_traces_with_diagnostics(traces, recent_turns)
@@ -968,6 +974,8 @@ class MemoryStorePhase4EmbeddingTests(unittest.TestCase):
             arbiter.runtime_settings.get_memory_arbiter_model_settings = original_memory_arbiter_get_settings
             arbiter._load_prompt = original_load_prompt
             arbiter.requests.post = original_post
+            arbiter.llm_client.or_headers = original_or_headers
+            arbiter.llm_client.or_chat_completions_url = original_or_url
             memory_store._conn = original_conn
 
         self.assertEqual(observed['request_models'], ['openrouter/runtime-arbiter-v1'])

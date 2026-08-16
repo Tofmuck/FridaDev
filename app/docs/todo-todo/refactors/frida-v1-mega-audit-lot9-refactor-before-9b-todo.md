@@ -127,13 +127,13 @@ Construire dans ce fichier, avant patch, une ligne par identifiant rouge:
 | `ERROR minimal_validation_phase9.admin_route_and_old_absence` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `ERROR minimal_validation_phase9.ui_assets` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `ERROR temporal_model_truth_closure.identity_stimmung_day_claims` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `ERROR llm_client.internal_caller_marker_local` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR llm_client.internal_caller_marker_local` | F1 | oui | isolation locale des headers internes | `RUNNER_OU_FIXTURE` | secret et vue runtime synthetiques dans le test | cible `7/7`; complet `19/12`, aucun ajout | ferme |
 | `ERROR identity_write.legacy_diagnostic_both_sides` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `ERROR identity_write.legacy_visibility_one_side_empty` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `ERROR identity_write.rejected_entries_persisted_count` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `ERROR memory_store_phase4.arbiter_effective_model` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `ERROR logging_conventions.no_legacy_logger_token` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `ERROR server_logs_phase3.web_reformulation_provider_identity` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `ERROR memory_store_phase4.arbiter_effective_model` | F1 | oui | modele effectif fige avant persistance | `RUNNER_OU_FIXTURE` | transport et headers synthetiques locaux | cible `7/7`; complet `19/12`, aucun ajout | ferme |
+| `ERROR logging_conventions.no_legacy_logger_token` | F1 | oui | absence du token logger legacy | `RUNNER_OU_FIXTURE` | scan Python standard-library avec exclusions conservees | cible `7/7`; complet `19/12`, aucun ajout | ferme |
+| `ERROR server_logs_phase3.web_reformulation_provider_identity` | F1 | oui | identite provider de reformulation Web | `RUNNER_OU_FIXTURE` | headers provider synthetiques explicites | cible `7/7`; complet `19/12`, aucun ajout | ferme |
 | `ERROR active_image_documents.over_provider_payload_cap` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `ERROR active_image_documents.multimodal_provider_payload_only` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `FAIL server_logs_phase4.delete_rejects_all_logs_scope` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
@@ -147,17 +147,17 @@ Construire dans ce fichier, avant patch, une ligne par identifiant rouge:
 | `FAIL web_runtime.no_auto_web_source_request_2` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `FAIL web_runtime.no_auto_web_source_request_3` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `FAIL synthetic_logs.hard_guard_final_posture` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `FAIL compact_observability.hermeneutic_node_insertion` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL compact_observability.hermeneutic_node_insertion` | F1 | oui | summary input absent canonique | `RUNNER_OU_FIXTURE` | summary input synthetique sans DB | cible `7/7`; complet `19/12`, aucun ajout | ferme |
 | `FAIL synthetic_logs.primary_and_validation_events` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `FAIL synthetic_logs.validation_error_without_raw_payload` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `FAIL web_runtime.canonical_web_input_single_pass` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `FAIL web_runtime.identity_callback_read_state` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL web_runtime.identity_callback_read_state` | F1 | oui | callback Identity en mode enforced_all | `RUNNER_OU_FIXTURE` | mode hermeneutique explicite dans la fixture cible | cible `7/7`; complet `19/12`, aucun ajout | ferme |
 | `FAIL synthetic_logs.persist_response_save_error` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `FAIL identity_staging.role_play_irony_window` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `FAIL frontend_hermeneutic_admin.allowed_endpoints` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `FAIL server_logs_phase3.memory_prompt_injection_summary` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
 | `FAIL server_logs_phase3.hermeneutic_prompt_injection` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
-| `FAIL phase4_transversal.runtime_binding_contract` | a revalider | oui | a etablir | `INCONNU` | aucune | baseline `f8e9ac49` | reproduit |
+| `FAIL phase4_transversal.runtime_binding_contract` | F1 | oui | image productible avec `WORKDIR /app` | `RUNNER_OU_FIXTURE` | verifier le Dockerfile, pas le point de montage du runner | cible `7/7`; complet `19/12`, aucun ajout | ferme |
 
 Valeurs admises pour `cause prouvee`:
 
@@ -180,12 +180,32 @@ Hypotheses a revalider: secrets runtime absents, outil `rg` absent de l'image,
 chemin `/app` fige alors que le runner monte `/workspace/app`, DB absente, mode
 Identity different entre runner hermetique et runtime.
 
-- [ ] Rendre les tests hermetiques avec fakes et valeurs synthetiques quand le
+- [x] Rendre les tests hermetiques avec fakes et valeurs synthetiques quand le
   contrat est unitaire.
-- [ ] Rendre les chemins independants du point de montage.
-- [ ] Ne jamais injecter un secret reel pour faire passer un test.
-- [ ] Ne pas transformer silencieusement un test runtime en test unitaire.
-- [ ] Ne pas ajouter de skip general pour cacher une dependance non preparee.
+- [x] Rendre les chemins independants du point de montage.
+- [x] Ne jamais injecter un secret reel pour faire passer un test.
+- [x] Ne pas transformer silencieusement un test runtime en test unitaire.
+- [x] Ne pas ajouter de skip general pour cacher une dependance non preparee.
+
+F1 fermee le 16 aout 2026. Les sept cas ont d'abord ete reproduits dans le
+runner hermetique, puis compares au service actif pour distinguer les
+dependances de fixture des contrats produit. Le classement exact est:
+
+- trois tests appelaient une resolution de secret ou de headers runtime sans
+  preparer de valeurs synthetiques;
+- un test dependait de `rg`, absent de l'image de test;
+- un test confondait le `WORKDIR /app` de l'image avec le point de montage
+  `/workspace/app` du runner;
+- un test dependait d'un summary input DB non prepare;
+- un test dependait du mode Identity actif au lieu de fixer `enforced_all`.
+
+Les sept tests cibles passent `7/7` sans reseau ni secret reel. La decouverte
+complete passe de `2549 / 22 echecs / 16 erreurs / 38 en-tetes` a
+`2549 / 19 echecs / 12 erreurs / 31 en-tetes`. Les sept en-tetes F1 sont les
+seuls retires et aucun nouvel identifiant n'apparait. `rg` n'a ete installe ni
+sur l'hote ni dans l'image: le scan de convention utilise desormais
+`pathlib`, ce qui supprime une dependance outil non necessaire sans modifier
+le produit.
 
 ### F2 - Attentes Web anterieures a la capsule, 8 cas historiques
 
