@@ -85,11 +85,20 @@ class ServerPhase5BisSecretRuntimeTests(unittest.TestCase):
 
         source_chat = (APP_DIR / 'core' / 'chat_service.py').read_text()
         source_llm_flow = (APP_DIR / 'core' / 'chat_llm_flow.py').read_text()
-        self.assertIn("runtime_settings_module.get_runtime_secret_value('main_model', 'api_key')", source_llm_flow)
+        source_provider_exchange = (
+            APP_DIR / 'core' / 'chat_llm_provider_exchange.py'
+        ).read_text()
+        self.assertIn('prepare_provider_call(', source_llm_flow)
+        self.assertIn(
+            "runtime_settings_module.get_runtime_secret_value('main_model', 'api_key')",
+            source_provider_exchange,
+        )
         self.assertNotIn('if not config.OR_KEY', source_chat)
         self.assertNotIn('OPENROUTER_API_KEY manquant', source_chat)
         self.assertNotIn('if not config.OR_KEY', source_llm_flow)
         self.assertNotIn('OPENROUTER_API_KEY manquant', source_llm_flow)
+        self.assertNotIn('if not config.OR_KEY', source_provider_exchange)
+        self.assertNotIn('OPENROUTER_API_KEY manquant', source_provider_exchange)
 
 
 if __name__ == '__main__':

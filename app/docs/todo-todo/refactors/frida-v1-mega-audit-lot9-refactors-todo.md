@@ -1112,6 +1112,75 @@ Critere de sortie:
 - stream et non-stream partagent des frontieres explicites avec moins de
   duplication et de branches croisees.
 
+Statut: ferme le 16 aout 2026.
+
+Preuves livrees:
+
+- `app/core/chat_llm_provider_exchange.py` porte la resolution bornee du
+  secret principal, la preparation URL/headers/payload, la lecture provider
+  stream et non-stream et leur observabilite content-free;
+- `app/core/chat_assistant_finalization.py` porte append/save, phase de
+  persistence, rollback exact et derives post-persistence fail-open;
+- `app/core/chat_llm_flow.py` conserve `run_llm_exchange(...)` comme unique
+  coordinateur et son `event_stream` comme machine d'etat locale du meme lot;
+- `app/tests/unit/chat/test_chat_llm_flow_boundaries.py` verrouille les
+  proprietaires et interdit la reintroduction des POST et ecritures de
+  conversation bas niveau dans le coordinateur;
+- `app/tests/test_server_phase5bis.py` suit la resolution obligatoire du
+  secret runtime dans son nouveau proprietaire sans retablir de fallback env.
+
+Mesures et invariants:
+
+- `chat_llm_flow.py`: 950 -> 728 lignes; `run_llm_exchange`: 574 -> 485
+  lignes, 63 -> 41 noeuds de branchement AST et 149 -> 86 appels AST;
+  l'`event_stream` principal: 327 -> 261 lignes, 55 -> 34 branchements et
+  88 -> 50 appels;
+- ordre de resolution secret/headers/payload/model/title/reasoning/URL et
+  timeouts provider inchange; le final lock bypass toujours secret, URL et
+  modele principal;
+- stream et non-stream conservent normalisation, meta/provenance, terminal
+  unique, `updated_at`, interruption, rollback et nombre de saves;
+- aucun derive memoire/identite ni log AssistantText ne part d'un assistant
+  non sauvegarde; l'ordre distinct des derives stream/non-stream est preserve;
+- les objets de frontiere masquent headers, payload, URL, contenu et meta dans
+  leur `repr`; aucun contenu utilisateur/provider ni secret n'est ajoute aux
+  logs ou tests.
+
+Sensibilite et contre-audit:
+
+- RED structurel: `3 tests`, deux echecs attendus tant que modules et
+  delegations etaient absents; la mutation interne etait deja verte;
+- le golden rejette retrait de chaque delegation provider/persistence et
+  reintroduction d'un POST, append ou save bas niveau dans le flow;
+- la decouverte complete a revele puis fait corriger le seul contrat source
+  Phase 5bis devenu obsolete: il exige toujours le secret runtime, dans son
+  nouveau proprietaire, plus la delegation depuis le flow;
+- contre-audit manuel: portees `try/except`, ordre des effets, double save,
+  rollback apres exception, terminal erreur, meta interrompue, final lock,
+  contenu sensible et perimetre 9B.6 relus integralement.
+
+Commandes hermetiques executees avec `--network none`, checkout read-only et
+`/tmp` en tmpfs:
+
+- baseline complete avant patch: `2566 tests`, 0 echec, 0 erreur;
+- flow/stream/transport/goldens: `46 tests`, OK; apres revalidation Phase
+  5bis: `48 tests`, OK;
+- lanes Web/Documents/Notes/Agenda/Biblio/Adobe: `56 tests`, OK;
+- persistence/capsule/manifest/observabilite: `114 tests`, OK;
+- contrat Phase 5bis cible: `2 tests`, OK;
+- decouverte complete finale: `2569 tests`, 0 echec, 0 erreur, sans nouveau
+  skip ni expected failure.
+
+Limites restantes:
+
+- `run_llm_exchange` reste un coordinateur de 485 lignes car les decisions de
+  buffering, terminal et reprise interrompue forment une seule machine d'etat
+  stream contractuelle; aucune seconde facade concurrente n'est ajoutee;
+- les deux modules prives n'ont qu'un appelant produit et ne constituent pas
+  une nouvelle capacite;
+- la validation agent interne releve exclusivement de 9B.6, laisse ouvert et
+  non commence.
+
 ### Lot 9B.6 - Validation agent internal boundaries
 
 Golden tests prealables:

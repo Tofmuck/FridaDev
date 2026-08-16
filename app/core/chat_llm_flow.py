@@ -1,12 +1,29 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-import json
 from typing import Any, Callable, Mapping, Sequence
 
 from core import assistant_turn_state
 from core import assistant_output_contract
 from core import chat_stream_control
+from core.chat_assistant_finalization import (
+    AssistantPersistAttempt,
+    AssistantPersistTracker,
+    append_assistant_message,
+    append_and_persist_assistant,
+    persist_assistant_attempt,
+    persist_user_turn_after_error,
+    rollback_assistant_attempt,
+    run_chat_post_persistence_effects,
+)
+from core.chat_llm_provider_exchange import (
+    ProviderStreamState,
+    emit_provider_response_observability,
+    iter_stream_provider_content,
+    prepare_provider_call,
+    read_non_stream_provider_response,
+    require_main_model_secret,
+)
 
 
 def _json_result(payload: dict[str, Any], status: int, headers: dict[str, str] | None = None) -> dict[str, Any]:
@@ -47,9 +64,6 @@ LLM_RUNTIME_SECRET_ERROR_CODE = "llm_secret_resolution_error"
 LLM_UPSTREAM_USER_MESSAGE = "Connexion au LLM impossible"
 LLM_INTERNAL_USER_MESSAGE = "Erreur LLM interne"
 LLM_CONFIG_USER_MESSAGE = "Configuration LLM indisponible"
-POST_PERSISTENCE_AUX_ERROR_EVENT = "chat_post_persistence_aux_error"
-
-
 def _exception_class(exc: BaseException) -> str:
     name = str(exc.__class__.__name__ or "").strip()
     return name if name.replace("_", "").isalnum() else "Exception"
@@ -90,34 +104,13 @@ class AssistantResponseOverride:
         }
 
 
-def _save_result_ok(result: Any) -> bool:
-    if result is None:
-        return True
-    return bool(getattr(result, 'ok', False))
-
-
-def _save_result_reason(result: Any) -> str:
-    reason = str(getattr(result, 'reason', '') or '').strip()
-    return reason or CONVERSATION_PERSIST_ERROR_CODE
-
-
-def _save_result_updated_at(result: Any, fallback: str | None) -> str | None:
-    updated_at = str(getattr(result, 'updated_at', '') or '').strip()
-    return updated_at or fallback
-
-
 def _persistence_failure_payload(result: Any) -> dict[str, Any]:
     return {
         'ok': False,
         'error': 'sauvegarde conversationnelle impossible',
-        'reason': _save_result_reason(result),
+        'reason': str(getattr(result, 'reason', '') or '').strip()
+        or CONVERSATION_PERSIST_ERROR_CODE,
     }
-
-
-def _mark_next_persist_phase(conv_store_module: Any, phase: str) -> None:
-    marker = getattr(conv_store_module, 'mark_next_persist_phase', None)
-    if callable(marker):
-        marker(phase)
 
 
 def _compose_assistant_response(
@@ -132,122 +125,6 @@ def _compose_assistant_response(
         if text
     ]
     return "\n\n".join(parts)
-
-
-def _latest_completed_identity_pair(messages: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
-    dialog_messages = [
-        dict(message or {})
-        for message in messages
-        if str(message.get('role') or '').strip().lower() in {'user', 'assistant'}
-    ]
-    if not dialog_messages:
-        return []
-    assistant_message = dialog_messages[-1]
-    if str(assistant_message.get('role') or '').strip().lower() != 'assistant':
-        return []
-    for candidate in reversed(dialog_messages[:-1]):
-        if str(candidate.get('role') or '').strip().lower() == 'user':
-            return [candidate, assistant_message]
-    return []
-
-
-def _run_chat_post_persistence_effects(
-    *,
-    conversation: dict[str, Any],
-    assistant_text: str | None,
-    assistant_timestamp: str | None,
-    runtime_main_model: str,
-    current_mode: str,
-    identity_ids: Sequence[str],
-    web_input: Mapping[str, Any] | None,
-    memory_store_module: Any,
-    token_utils_module: Any,
-    admin_logs_module: Any,
-    logger: Any,
-    arbiter_module: Any,
-    record_identity_entries_for_mode: Callable[..., None],
-    mode_enforces_identity: Callable[[str], bool],
-    traces_after_identity: bool,
-) -> None:
-    def record_assistant_text_observability() -> None:
-        if assistant_text is None:
-            return
-        estimated_assistant_tokens = token_utils_module.estimate_tokens(
-            [{'content': assistant_text}],
-            runtime_main_model,
-        )
-        admin_logs_module.log_event(
-            'AssistantText',
-            conversation_id=conversation['id'],
-            estimated_assistant_tokens=estimated_assistant_tokens,
-            message_timestamp=assistant_timestamp,
-        )
-
-    def save_memory_traces() -> None:
-        memory_store_module.save_new_traces(conversation)
-
-    def record_identity_entries() -> None:
-        completed_turn_pair = _latest_completed_identity_pair(conversation.get('messages', []))
-        record_identity_entries_for_mode(
-            conversation['id'],
-            completed_turn_pair,
-            mode=current_mode,
-            web_input=web_input,
-            arbiter_module=arbiter_module,
-            memory_store_module=memory_store_module,
-            admin_logs_module=admin_logs_module,
-        )
-
-    def reactivate_identities() -> None:
-        if not identity_ids or not mode_enforces_identity(current_mode):
-            return
-        memory_store_module.reactivate_identities(identity_ids)
-
-    effects = {
-        'assistant_text_observability': record_assistant_text_observability,
-        'memory_traces': save_memory_traces,
-        'identity_entries': record_identity_entries,
-        'identity_reactivation': reactivate_identities,
-    }
-    if traces_after_identity:
-        effect_order = (
-            'assistant_text_observability',
-            'identity_entries',
-            'identity_reactivation',
-            'memory_traces',
-        )
-    else:
-        effect_order = (
-            'assistant_text_observability',
-            'memory_traces',
-            'identity_entries',
-            'identity_reactivation',
-        )
-    for effect_name in effect_order:
-        try:
-            effects[effect_name]()
-        except Exception as exc:
-            error_class = _exception_class(exc)[:80]
-            try:
-                logger.error(
-                    'chat_post_persistence_aux_error effect=%s id=%s error_class=%s',
-                    effect_name,
-                    conversation['id'],
-                    error_class,
-                )
-            except Exception:
-                pass
-            try:
-                admin_logs_module.log_event(
-                    POST_PERSISTENCE_AUX_ERROR_EVENT,
-                    level='ERROR',
-                    conversation_id=conversation['id'],
-                    effect_name=effect_name,
-                    error_class=error_class,
-                    reason_code=POST_PERSISTENCE_AUX_ERROR_EVENT,
-                )
-            except Exception:
-                pass
 
 
 def _run_assistant_response_override(
@@ -297,31 +174,21 @@ def _run_assistant_response_override(
 
     def persist_and_record() -> tuple[bool, str | None, dict[str, Any] | None]:
         updated_at = now_iso_func()
-        append_kwargs: dict[str, Any] = {
-            "timestamp": updated_at,
-            "meta": assistant_final_meta,
-        }
-        conv_store_module.append_message(conversation, "assistant", text, **append_kwargs)
-        _mark_next_persist_phase(conv_store_module, "assistant_final")
-        save_result = conv_store_module.save_conversation(conversation, updated_at=updated_at)
-        if not _save_result_ok(save_result):
-            messages = conversation.get("messages")
-            if isinstance(messages, list) and messages:
-                last = messages[-1]
-                if (
-                    isinstance(last, dict)
-                    and last.get("role") == "assistant"
-                    and last.get("content") == text
-                    and str(last.get("timestamp") or "") == str(updated_at or "")
-                    and last.get("meta") == assistant_final_meta
-                ):
-                    messages.pop()
-            return False, updated_at, _persistence_failure_payload(save_result)
-        persisted_at = _save_result_updated_at(save_result, updated_at)
-        _run_chat_post_persistence_effects(
+        attempt = append_and_persist_assistant(
+            conversation=conversation,
+            content=text,
+            timestamp=updated_at,
+            meta=assistant_final_meta,
+            persist_phase='assistant_final',
+            conv_store_module=conv_store_module,
+        )
+        if not attempt.ok:
+            rollback_assistant_attempt(conversation, attempt)
+            return False, updated_at, _persistence_failure_payload(attempt)
+        run_chat_post_persistence_effects(
             conversation=conversation,
             assistant_text=text,
-            assistant_timestamp=persisted_at,
+            assistant_timestamp=attempt.updated_at,
             runtime_main_model=runtime_main_model,
             current_mode=current_mode,
             identity_ids=identity_ids,
@@ -335,7 +202,7 @@ def _run_assistant_response_override(
             mode_enforces_identity=mode_enforces_identity,
             traces_after_identity=False,
         )
-        return True, persisted_at, None
+        return True, attempt.updated_at, None
 
     if not stream_req:
         ok, updated_at, failure_payload = persist_and_record()
@@ -439,7 +306,7 @@ def run_llm_exchange(
     )
 
     try:
-        runtime_settings_module.get_runtime_secret_value('main_model', 'api_key')
+        require_main_model_secret(runtime_settings_module=runtime_settings_module)
     except (
         runtime_settings_module.RuntimeSettingsSecretRequiredError,
         runtime_settings_module.RuntimeSettingsSecretResolutionError,
@@ -454,62 +321,29 @@ def run_llm_exchange(
             500,
         )
 
-    headers = llm_module.or_headers(caller='llm')
-    payload = llm_module.build_payload(prompt_messages, temperature, top_p, max_tokens, stream=stream_req)
-    call_model = str(payload['model'])
-    provider_title = llm_module.resolve_provider_title('llm')
-    reasoning_observability_builder = getattr(llm_module, 'main_llm_reasoning_observability_from_payload', None)
-    reasoning_observability = (
-        reasoning_observability_builder(payload)
-        if callable(reasoning_observability_builder)
-        else {}
-    )
-    url = llm_module.or_chat_completions_url()
-
-    admin_logs_module.log_event(
-        'llm_payload',
-        conversation_id=conversation['id'],
-        model=call_model,
+    prepared_call = prepare_provider_call(
+        conversation=conversation,
+        prompt_messages=prompt_messages,
         temperature=temperature,
         top_p=top_p,
         max_tokens=max_tokens,
-        stream=stream_req,
-        message_count=len(prompt_messages),
-        provider_caller='llm',
-        provider_title=provider_title,
-        **reasoning_observability,
+        stream_req=stream_req,
+        llm_module=llm_module,
+        admin_logs_module=admin_logs_module,
     )
 
     try:
         if not stream_req:
-            logger.info('llm_call id=%s model=%s messages=%s', conversation['id'], call_model, len(prompt_messages))
-            admin_logs_module.log_event(
-                'llm_call',
-                conversation_id=conversation['id'],
-                model=call_model,
-                message_count=len(prompt_messages),
-                stream=False,
-                provider_caller='llm',
-                provider_title=provider_title,
-                **reasoning_observability,
+            raw_text = read_non_stream_provider_response(
+                prepared_call=prepared_call,
+                conversation=conversation,
+                prompt_messages=prompt_messages,
+                requests_module=requests_module,
+                llm_module=llm_module,
+                admin_logs_module=admin_logs_module,
+                config_module=config_module,
+                logger=logger,
             )
-            response = requests_module.post(url, json=payload, headers=headers, timeout=config_module.TIMEOUT_S)
-            response.raise_for_status()
-            obj = llm_module.read_openrouter_response_payload(response)
-            provider_fields = llm_module.build_provider_observability_fields(
-                caller='llm',
-                provider_metadata=llm_module.extract_openrouter_provider_metadata(
-                    obj,
-                    requested_model=call_model,
-                ),
-            )
-            llm_module.log_provider_metadata(logger, 'llm_provider_response', provider_fields)
-            admin_logs_module.log_event(
-                'llm_provider_response',
-                conversation_id=conversation['id'],
-                **provider_fields,
-            )
-            raw_text = llm_module.extract_openrouter_text(obj)
             text = assistant_output_contract.normalize_assistant_output(
                 raw_text,
                 assistant_output_policy,
@@ -520,16 +354,17 @@ def run_llm_exchange(
                 outro=assistant_response_outro,
             )
             updated_at = now_iso_func()
-            append_kwargs: dict[str, Any] = {
-                'timestamp': updated_at,
-                'meta': assistant_final_meta,
-            }
-            conv_store_module.append_message(conversation, 'assistant', text, **append_kwargs)
-            _mark_next_persist_phase(conv_store_module, 'assistant_final')
-            save_result = conv_store_module.save_conversation(conversation, updated_at=updated_at)
-            if not _save_result_ok(save_result):
-                return _json_result(_persistence_failure_payload(save_result), 503)
-            _run_chat_post_persistence_effects(
+            attempt = append_and_persist_assistant(
+                conversation=conversation,
+                content=text,
+                timestamp=updated_at,
+                meta=assistant_final_meta,
+                persist_phase='assistant_final',
+                conv_store_module=conv_store_module,
+            )
+            if not attempt.ok:
+                return _json_result(_persistence_failure_payload(attempt), 503)
+            run_chat_post_persistence_effects(
                 conversation=conversation,
                 assistant_text=text,
                 assistant_timestamp=updated_at,
@@ -562,50 +397,18 @@ def run_llm_exchange(
 
         def event_stream():
             assistant_chunks: list[str] = []
-            provider_metadata: dict[str, object] = {}
-            provider_response_open = False
+            provider_state = ProviderStreamState()
             stream_visible_output = ''
             terminal_final_text: str | None = None
             terminal_event = chat_stream_control.STREAM_TERMINAL_DONE
             terminal_error_code: str | None = None
-            assistant_appended = False
-            appended_assistant_content = ''
-            appended_assistant_timestamp: str | None = None
-            appended_assistant_meta: dict[str, Any] | None = None
+            assistant_tracker = AssistantPersistTracker()
             assistant_has_envelope = bool(
                 str(assistant_response_intro or "").strip() or str(assistant_response_outro or "").strip()
             )
             buffer_stream_output = assistant_output_contract.should_buffer_plain_text_stream(
                 assistant_output_policy,
             ) or assistant_has_envelope
-
-            def _rollback_appended_assistant() -> None:
-                nonlocal assistant_appended, terminal_final_text
-                nonlocal appended_assistant_content, appended_assistant_timestamp, appended_assistant_meta
-                if not assistant_appended:
-                    return
-                messages = conversation.get('messages')
-                if isinstance(messages, list) and messages:
-                    last_message = messages[-1]
-                    last_meta = last_message.get('meta') if isinstance(last_message, dict) else None
-                    meta_matches = (
-                        last_meta == appended_assistant_meta
-                        if appended_assistant_meta is not None
-                        else last_meta is None
-                    )
-                    if (
-                        isinstance(last_message, dict)
-                        and str(last_message.get('role') or '') == 'assistant'
-                        and str(last_message.get('content') or '') == appended_assistant_content
-                        and str(last_message.get('timestamp') or '') == str(appended_assistant_timestamp or '')
-                        and meta_matches
-                    ):
-                        messages.pop()
-                assistant_appended = False
-                terminal_final_text = None
-                appended_assistant_content = ''
-                appended_assistant_timestamp = None
-                appended_assistant_meta = None
 
             def _stream_plain_text_draft() -> str:
                 nonlocal stream_visible_output
@@ -620,79 +423,21 @@ def run_llm_exchange(
                     stream_visible_output = draft_text
                 return delta
 
-            def _append_persisted_assistant_message(
-                content: str,
-                *,
-                timestamp: str | None = None,
-                meta: Mapping[str, Any] | None = None,
-            ) -> None:
-                nonlocal assistant_appended, appended_assistant_content
-                nonlocal appended_assistant_timestamp, appended_assistant_meta
-                append_kwargs: dict[str, Any] = {}
-                if timestamp is not None:
-                    append_kwargs['timestamp'] = timestamp
-                if meta is None:
-                    conv_store_module.append_message(
-                        conversation,
-                        'assistant',
-                        content,
-                        **append_kwargs,
-                    )
-                    appended_assistant_meta = None
-                else:
-                    conv_store_module.append_message(
-                        conversation,
-                        'assistant',
-                        content,
-                        meta=dict(meta),
-                        **append_kwargs,
-                    )
-                    appended_assistant_meta = dict(meta)
-                appended_assistant_content = content
-                appended_assistant_timestamp = timestamp
-                assistant_appended = True
-
             try:
-                with requests_module.post(
-                    url,
-                    json=payload,
-                    headers=headers,
-                    timeout=config_module.TIMEOUT_S,
-                    stream=True,
-                ) as response:
-                    response.raise_for_status()
-                    provider_response_open = True
-                    provider_metadata = llm_module.extract_openrouter_provider_metadata(
-                        {},
-                        requested_model=call_model,
-                    )
-                    response.encoding = response.encoding or 'utf-8'
-                    for line in response.iter_lines(decode_unicode=True, delimiter='\n'):
-                        if not line or not line.startswith('data:'):
-                            continue
-                        data_str = line[5:].strip()
-                        if data_str == '[DONE]':
-                            break
-                        try:
-                            chunk = json.loads(data_str)
-                        except json.JSONDecodeError:
-                            continue
-                        provider_metadata = llm_module.merge_openrouter_provider_metadata(
-                            provider_metadata,
-                            chunk,
-                            requested_model=call_model,
-                        )
-                        delta = chunk.get('choices', [{}])[0].get('delta', {})
-                        content = delta.get('content')
-                        if content:
-                            sanitized_content = llm_module.sanitize_provider_text(content)
-                            assistant_chunks.append(sanitized_content)
-                            if not buffer_stream_output:
-                                yield sanitized_content
-                            elif not assistant_has_envelope:
-                                draft_delta = _stream_plain_text_draft()
-                                if draft_delta:
-                                    yield draft_delta
+                for sanitized_content in iter_stream_provider_content(
+                    prepared_call=prepared_call,
+                    state=provider_state,
+                    requests_module=requests_module,
+                    llm_module=llm_module,
+                    config_module=config_module,
+                ):
+                    assistant_chunks.append(sanitized_content)
+                    if not buffer_stream_output:
+                        yield sanitized_content
+                    elif not assistant_has_envelope:
+                        draft_delta = _stream_plain_text_draft()
+                        if draft_delta:
+                            yield draft_delta
             except requests_module.exceptions.RequestException as exc:
                 terminal_event = chat_stream_control.STREAM_TERMINAL_ERROR
                 terminal_error_code = LLM_UPSTREAM_ERROR_CODE
@@ -706,7 +451,7 @@ def run_llm_exchange(
                     'llm_stream_error',
                     level='ERROR',
                     conversation_id=conversation['id'],
-                    model=call_model,
+                    model=prepared_call.call_model,
                     error_class=error_class,
                     error_code=terminal_error_code,
                     reason_code=LLM_UPSTREAM_REASON_CODE,
@@ -716,17 +461,14 @@ def run_llm_exchange(
             persisted_updated_at: str | None = None
             persistence_ok = False
             try:
-                if provider_response_open:
-                    provider_fields = llm_module.build_provider_observability_fields(
-                        caller='llm',
-                        provider_metadata=provider_metadata,
-                    )
-                    llm_module.log_provider_metadata(logger, 'llm_provider_response', provider_fields)
-                    admin_logs_module.log_event(
-                        'llm_provider_response',
-                        conversation_id=conversation['id'],
-                        **provider_fields,
-                    )
+                emit_provider_response_observability(
+                    prepared_call=prepared_call,
+                    state=provider_state,
+                    conversation=conversation,
+                    llm_module=llm_module,
+                    admin_logs_module=admin_logs_module,
+                    logger=logger,
+                )
                 final_updated_at = now_iso_func()
                 if terminal_event == chat_stream_control.STREAM_TERMINAL_DONE:
                     if buffer_stream_output:
@@ -742,51 +484,64 @@ def run_llm_exchange(
                         if assistant_text != stream_visible_output:
                             terminal_final_text = assistant_text
                     if assistant_text:
-                        _append_persisted_assistant_message(
-                            assistant_text,
+                        assistant_tracker.attempt = append_and_persist_assistant(
+                            conversation=conversation,
+                            content=assistant_text,
                             timestamp=final_updated_at,
                             meta=assistant_final_meta,
+                            persist_phase='assistant_final',
+                            conv_store_module=conv_store_module,
+                            tracker=assistant_tracker,
+                        )
+                    else:
+                        assistant_tracker.attempt = persist_user_turn_after_error(
+                            conversation=conversation,
+                            conv_store_module=conv_store_module,
+                            updated_at=final_updated_at,
                         )
                 elif terminal_event == chat_stream_control.STREAM_TERMINAL_ERROR:
-                    _append_persisted_assistant_message(
-                        '',
+                    assistant_tracker.attempt = append_and_persist_assistant(
+                        conversation=conversation,
+                        content='',
                         timestamp=final_updated_at,
                         meta=assistant_turn_state.build_interrupted_assistant_turn_meta(
                             terminal_error_code or 'stream_protocol_error',
                         ),
+                        persist_phase='assistant_interrupted',
+                        conv_store_module=conv_store_module,
+                        tracker=assistant_tracker,
                     )
-                if terminal_event == chat_stream_control.STREAM_TERMINAL_DONE and assistant_appended:
-                    persist_phase = 'assistant_final'
-                elif terminal_event == chat_stream_control.STREAM_TERMINAL_ERROR:
-                    persist_phase = 'assistant_interrupted'
-                else:
-                    persist_phase = 'user_turn'
-                _mark_next_persist_phase(conv_store_module, persist_phase)
-                save_result = conv_store_module.save_conversation(conversation, updated_at=final_updated_at)
-                if _save_result_ok(save_result):
-                    persisted_updated_at = _save_result_updated_at(save_result, final_updated_at)
+                if assistant_tracker.attempt is not None and assistant_tracker.attempt.ok:
+                    persisted_updated_at = assistant_tracker.attempt.updated_at
                     persistence_ok = True
                 else:
-                    _rollback_appended_assistant()
+                    rollback_assistant_attempt(conversation, assistant_tracker.attempt)
                     terminal_event = chat_stream_control.STREAM_TERMINAL_ERROR
                     terminal_error_code = CONVERSATION_PERSIST_ERROR_CODE
                     final_updated_at = None
                     terminal_final_text = None
+                    persist_reason = (
+                        assistant_tracker.attempt.reason
+                        if assistant_tracker.attempt is not None
+                        else CONVERSATION_PERSIST_ERROR_CODE
+                    )
                     logger.error(
                         'llm_stream_finalize_persist_error id=%s reason=%s',
                         conversation['id'],
-                        _save_result_reason(save_result),
+                        persist_reason,
                     )
                     admin_logs_module.log_event(
                         'llm_stream_finalize_persist_error',
                         level='ERROR',
                         conversation_id=conversation['id'],
-                        model=call_model,
+                        model=prepared_call.call_model,
                         error_code=terminal_error_code,
-                        reason=_save_result_reason(save_result),
+                        reason=persist_reason,
                     )
             except Exception as exc:
-                _rollback_appended_assistant()
+                rollback_assistant_attempt(conversation, assistant_tracker.attempt)
+                assistant_tracker.attempt = None
+                terminal_final_text = None
                 terminal_event = chat_stream_control.STREAM_TERMINAL_ERROR
                 terminal_error_code = terminal_error_code or LLM_STREAM_FINALIZE_ERROR_CODE
                 persistence_ok = False
@@ -801,7 +556,7 @@ def run_llm_exchange(
                     'llm_stream_finalize_error',
                     level='ERROR',
                     conversation_id=conversation['id'],
-                    model=call_model,
+                    model=prepared_call.call_model,
                     error_class=error_class,
                     error_code=terminal_error_code,
                     reason_code='llm_stream_finalize_error',
@@ -811,41 +566,46 @@ def run_llm_exchange(
                         final_updated_at = now_iso_func()
                     except Exception:
                         final_updated_at = None
-                _append_persisted_assistant_message(
-                    '',
+                assistant_tracker.attempt = append_assistant_message(
+                    conversation=conversation,
+                    content='',
                     timestamp=final_updated_at,
                     meta=assistant_turn_state.build_interrupted_assistant_turn_meta(
                         terminal_error_code,
                     ),
+                    conv_store_module=conv_store_module,
+                    tracker=assistant_tracker,
                 )
                 try:
-                    _mark_next_persist_phase(conv_store_module, 'assistant_interrupted')
-                    if final_updated_at is None:
-                        save_result = conv_store_module.save_conversation(conversation)
-                    else:
-                        save_result = conv_store_module.save_conversation(conversation, updated_at=final_updated_at)
-                    if _save_result_ok(save_result):
-                        persisted_updated_at = _save_result_updated_at(save_result, final_updated_at)
+                    assistant_tracker.attempt = persist_assistant_attempt(
+                        conversation=conversation,
+                        attempt=assistant_tracker.attempt,
+                        persist_phase='assistant_interrupted',
+                        conv_store_module=conv_store_module,
+                        tracker=assistant_tracker,
+                    )
+                    if assistant_tracker.attempt.ok:
+                        persisted_updated_at = assistant_tracker.attempt.updated_at
                         persistence_ok = True
                     else:
-                        _rollback_appended_assistant()
+                        rollback_assistant_attempt(conversation, assistant_tracker.attempt)
                         terminal_error_code = CONVERSATION_PERSIST_ERROR_CODE
                         final_updated_at = None
                         logger.error(
                             'llm_stream_finalize_persist_error id=%s reason=%s',
                             conversation['id'],
-                            _save_result_reason(save_result),
+                            assistant_tracker.attempt.reason,
                         )
                         admin_logs_module.log_event(
                             'llm_stream_finalize_persist_error',
                             level='ERROR',
                             conversation_id=conversation['id'],
-                            model=call_model,
+                            model=prepared_call.call_model,
                             error_code=terminal_error_code,
-                            reason=_save_result_reason(save_result),
+                            reason=assistant_tracker.attempt.reason,
                         )
                 except Exception as persist_exc:
-                    _rollback_appended_assistant()
+                    rollback_assistant_attempt(conversation, assistant_tracker.attempt)
                     terminal_error_code = CONVERSATION_PERSIST_ERROR_CODE
                     final_updated_at = None
                     persist_error_class = _exception_class(persist_exc)
@@ -858,15 +618,24 @@ def run_llm_exchange(
                         'llm_stream_finalize_persist_error',
                         level='ERROR',
                         conversation_id=conversation['id'],
-                        model=call_model,
+                        model=prepared_call.call_model,
                         error_class=persist_error_class,
                         error_code=terminal_error_code,
                         reason_code=CONVERSATION_PERSIST_ERROR_CODE,
                     )
             if persistence_ok and terminal_event == chat_stream_control.STREAM_TERMINAL_DONE:
-                _run_chat_post_persistence_effects(
+                completed_assistant_appended = bool(
+                    assistant_tracker.attempt is not None
+                    and assistant_tracker.attempt.appended
+                    and assistant_tracker.attempt.ok
+                )
+                run_chat_post_persistence_effects(
                     conversation=conversation,
-                    assistant_text=assistant_text if assistant_appended and assistant_text else None,
+                    assistant_text=(
+                        assistant_text
+                        if completed_assistant_appended and assistant_text
+                        else None
+                    ),
                     assistant_timestamp=persisted_updated_at or final_updated_at,
                     runtime_main_model=runtime_main_model,
                     current_mode=current_mode,
@@ -888,16 +657,21 @@ def run_llm_exchange(
                 final_text=terminal_final_text if persistence_ok else None,
             )
 
-        logger.info('llm_call id=%s model=%s messages=%s stream=true', conversation['id'], call_model, len(prompt_messages))
+        logger.info(
+            'llm_call id=%s model=%s messages=%s stream=true',
+            conversation['id'],
+            prepared_call.call_model,
+            len(prompt_messages),
+        )
         admin_logs_module.log_event(
             'llm_call',
             conversation_id=conversation['id'],
-            model=call_model,
+            model=prepared_call.call_model,
             message_count=len(prompt_messages),
             stream=True,
             provider_caller='llm',
-            provider_title=provider_title,
-            **reasoning_observability,
+            provider_title=prepared_call.provider_title,
+            **prepared_call.reasoning_observability,
         )
         return _stream_result(
             event_stream(),
@@ -905,14 +679,16 @@ def run_llm_exchange(
         )
 
     except requests_module.exceptions.RequestException as exc:
-        _mark_next_persist_phase(conv_store_module, 'user_turn')
-        conv_store_module.save_conversation(conversation)
+        persist_user_turn_after_error(
+            conversation=conversation,
+            conv_store_module=conv_store_module,
+        )
         error_class = _exception_class(exc)
         admin_logs_module.log_event(
             'llm_error',
             level='ERROR',
             conversation_id=conversation['id'],
-            model=call_model,
+            model=prepared_call.call_model,
             error_class=error_class,
             error_code=LLM_UPSTREAM_ERROR_CODE,
             reason_code=LLM_UPSTREAM_REASON_CODE,
@@ -927,14 +703,16 @@ def run_llm_exchange(
             502,
         )
     except Exception as exc:
-        _mark_next_persist_phase(conv_store_module, 'user_turn')
-        conv_store_module.save_conversation(conversation)
+        persist_user_turn_after_error(
+            conversation=conversation,
+            conv_store_module=conv_store_module,
+        )
         error_class = _exception_class(exc)
         admin_logs_module.log_event(
             'llm_error',
             level='ERROR',
             conversation_id=conversation['id'],
-            model=call_model,
+            model=prepared_call.call_model,
             error_class=error_class,
             error_code=LLM_INTERNAL_ERROR_CODE,
             reason_code=LLM_INTERNAL_ERROR_CODE,
