@@ -1664,6 +1664,8 @@ Sensibilite et limites:
 
 ### Lot 9C.3 - Context/evidence payload boundary
 
+Statut: ferme le 16 aout 2026.
+
 Patch attendu:
 
 - isoler build context payload/evidence/status.
@@ -1675,9 +1677,66 @@ Risques:
 
 Checklist:
 
-- [ ] Extraire context material builder.
-- [ ] Extraire evidence summary.
-- [ ] Verifier source-first contracts.
+- [x] Extraire context material builder.
+- [x] Extraire evidence summary.
+- [x] Verifier source-first contracts.
+
+Implementation livree:
+
+- `app/tools/web_search_context.py` porte desormais les transformations de
+  materiau Web: normalisation des sources, budgets et troncatures, contexte
+  recherche ou URL explicite, promotion/deduplication de l'URL primaire,
+  read-state, classification `ok`/`skipped`/`error` et composition des
+  evaluations profile/confidence/evidence;
+- `app/tools/web_search.py` conserve les facades tardivement liees et
+  l'orchestration de collecte. Le source payload builder reste au contact des
+  readers 9C.2; les summaries/counters content-free et
+  `_emit_web_search_runtime_event` restent en place pour 9C.4;
+- `app/tests/unit/web_search/test_web_search_context.py` ajoute six preuves
+  synthetiques: ordre des sources et terminaison du contexte, materiau PDF
+  explicite et budget, matrice des read-states, matrice des statuts upstream,
+  guidance d'evidence avec source situee sans autorite attendue, et passage
+  effectif de la facade par la nouvelle frontiere.
+
+Invariants preserves:
+
+- l'ordre deja decide par source-first/rerank reste celui du payload et du
+  prompt; l'URL explicite correspondante est promue une seule fois sans
+  duplication dans le fallback;
+- le prompt material, ses lignes d'attribution, son ordre, ses budgets, sa
+  troncature et son terminal `[FIN DES RÉSULTATS WEB]` restent inchanges;
+- les read-states distinguent lecture complete, partielle, fallback snippet,
+  crawl vide et erreur; les erreurs SearXNG et discovery conservent leurs
+  reason codes et classes distincts;
+- l'evaluation profile/confidence/evidence conserve la guidance de limite et
+  les champs source-first. Aucune query, URL ou source n'est ajoutee a la
+  projection content-free.
+
+Preuves executees dans le runner hermetique `--network none`, checkout
+read-only, `/tmp` en tmpfs, avec montages bornes `app/` et `benchmark/`:
+
+- baseline avant patch: `2601 tests`, OK;
+- RED cible: `tests.unit.web_search.test_web_search_context`, ImportError
+  attendu car la frontiere n'existait pas encore;
+- GREEN cible: `6 tests`, OK;
+- suite `tests/unit/web_search`: `197 tests`, OK;
+- logger Web, garde payload, temporalite, golden 9C, benchmark Web et golden
+  Lot 9: `81 tests`, OK;
+- preuve resserree context/golden/source-first/evidence: `34 tests`, OK;
+- decouverte complete finale: `2607 tests`, 0 echec, 0 erreur, sans nouveau
+  skip ni expected failure. Le delta exact de six correspond aux six preuves
+  ajoutees.
+
+Sensibilite et limites:
+
+- les preuves echouent si l'ordre des sources est inverse, si le terminal ou
+  le materiau PDF disparait, si un read-state est confondu, si les priorites de
+  statut local/discovery changent, si la guidance de preuve insuffisante est
+  perdue ou si la facade contourne la frontiere extraite;
+- aucun provider, secret, DB ou reseau reel n'est sollicite. Les goldens 9C.0,
+  les tests source-first et les contrats Web existants restent l'autorite de
+  non-regression du comportement produit;
+- 9C.4 reste entierement ouvert et non commence.
 
 ### Lot 9C.4 - Runtime event projection boundary
 
