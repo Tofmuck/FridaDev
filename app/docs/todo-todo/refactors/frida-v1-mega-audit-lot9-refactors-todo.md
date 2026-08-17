@@ -1916,22 +1916,79 @@ Sensibilite et limites:
 
 ### Lot 9D.1 - Guard schema decomposition
 
-Patch attendu:
+Statut: ferme le 17 aout 2026.
 
-- extraire constantes/sets/schema helpers par domaine si cela reduit la taille;
-- garder une seule entree publique de validation.
+Decomposition livree:
 
-Risques:
+- `app/observability/observability_payload_guard_safe_code_policy.py` est
+  l'unique proprietaire des regex de codes/classes/modeles, de la detection
+  token-like, des raw flags qualifies et des classifications de cles/valeurs
+  dangereuses;
+- `app/observability/observability_payload_guard_manifest_schema.py` est
+  l'unique proprietaire des contextes, allowlists et helpers stricts de
+  `main_payload_manifest_v1`, y compris windows, lanes, capsule et final lock;
+- `app/observability/observability_payload_guard_stage_schema.py` est
+  l'unique proprietaire des allowlists generales utilisees par les stages et
+  de leurs validateurs texte/scalaires/conteneurs;
+- `app/observability/observability_payload_guard_schema.py` est reduit de 783
+  a 51 lignes et ne contient plus aucune allowlist: il reexporte seulement les
+  politiques internes vers le validateur existant;
+- `app/observability/observability_payload_guard.py` reste strictement
+  inchange. `guard_payload()` demeure l'unique entree de validation complete;
+  aucune entree concurrente, traversal ou politique d'acceptation n'est
+  ajoutee;
+- `app/tests/unit/logs/test_observability_payload_guard_schema_boundaries.py`
+  ajoute quatre preuves comportementales des nouvelles frontieres, sans
+  inspection textuelle de l'implementation.
 
-- relacher default-deny par accident;
-- creer des allowlists paralleles incoherentes.
+Invariants verifies:
+
+- les 39 constantes/sets/dictionnaires de l'ancien schema ont exactement la
+  meme valeur et un seul module proprietaire apres extraction;
+- les decisions safe-code, token-like, cles/valeurs dangereuses, textes par
+  stage, contextes manifest, bool/nombres et enfants manifest restent
+  identiques sur la matrice differentielle synthetique;
+- les 41 contrats historiques et les trois goldens 9D.0 continuent de prouver
+  acceptation inchangee, default-deny content-free et absence de faux positif
+  sur reason codes/modeles legitimes;
+- les contextes manifest restent distincts: une cle Memory n'est pas admise
+  dans Agenda et une cle inconnue reste absente de toute allowlist;
+- aucune allowlist, regex ou constante de politique n'est dupliquee entre les
+  trois modules extraits.
+
+Preuves executees dans le runner hermetique `--network none`, checkout
+read-only et `/tmp` en tmpfs:
+
+- baseline complete avant edition: `2616 tests`, OK;
+- RED: ImportError attendu sur le premier module de politique absent;
+- garde historique, goldens 9D.0 et frontieres 9D.1: `48 tests`, OK;
+- egalite differentielle: `39` constantes identiques et decisions
+  echantillonnees identiques;
+- suite complete `tests/unit/logs`: `226 tests`, OK;
+- manifest/capsule/golden Lot 9 et producteurs/read-models
+  Chat/Agenda/Biblio/Web/Stimmung/Arbiter: `232 tests`, OK;
+- decouverte complete finale: `2620 tests`, 0 echec, 0 erreur, sans nouveau
+  skip ni expected failure. Le delta exact de quatre correspond aux quatre
+  tests de frontiere ajoutes.
+
+Sensibilite et limites:
+
+- les preuves echouent si un token-like devient un safe-code, si une cle
+  inconnue est admise, si la regle Memory fuit dans le contexte Agenda, si une
+  allowlist perd son proprietaire unique ou si un second `guard_payload`
+  apparait;
+- les mutations 9D.0 continuent de rejeter l'ajout de `private_sentence` dans
+  chacune des dix familles legitimes et les payloads bruts/dangereux;
+- ce lot ne change aucun contrat content-free, payload accepte/rejete,
+  projection, read-model, writer ou surface `/log`. La decomposition du turn
+  pipeline appartient exclusivement a 9D.2, qui reste non commence.
 
 Checklist:
 
-- [ ] Extraire safe-code/token-like policy.
-- [ ] Extraire manifest rules.
-- [ ] Extraire stage-specific allowlists.
-- [ ] Verifier matrices.
+- [x] Extraire safe-code/token-like policy.
+- [x] Extraire manifest rules.
+- [x] Extraire stage-specific allowlists.
+- [x] Verifier matrices.
 
 ### Lot 9D.2 - Turn pipeline read-model decomposition
 
