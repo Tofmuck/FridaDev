@@ -2186,21 +2186,91 @@ Checklist:
 
 ### Lot 9D.4 - Observable module registry boundaries
 
-Golden tests prealables:
+Statut: ferme le 17 aout 2026.
 
-- `app/tests/unit/logs/test_dashboard_observable_modules_lot3.py`;
-- analytics projection/storage et ordre stable des modules;
-- labels et explications content-free.
+Decision et decomposition livree:
 
-Patch attendu:
+- le meilleur plan est reste volontairement borne a deux frontieres: un
+  fichier par module aurait duplique la taxonomie et multiplie les imports
+  sans gain de responsabilite;
+- `app/observability/dashboard_observable_module_domains.py` porte les
+  reducers, finalizers, resumes humains et resolvers de cause des domaines;
+- `app/observability/dashboard_observable_module_serialization.py` porte la
+  seule serialization publique content-free d'un `ObservableModule`;
+- `app/observability/dashboard_observable_modules.py` reste l'unique registre
+  autoritatif, conserve `ObservableModule`, les declarations initiales et
+  futures, les lookups et les facades publiques, et passe de 1268 a 734
+  lignes;
+- aucune table de dispatch par `module_key`, seconde taxonomie ou second
+  catalogue n'est cree;
+- `app/tests/unit/logs/test_dashboard_observable_modules_lot3.py` ajoute trois
+  preuves directes: ordre registre/catalogue/storage, reducers importables et
+  content-free, serialization publique bornee.
 
-- isoler reducers et serialization publique autour d'un registre unique;
-- ne creer ni seconde taxonomie, ni second catalogue de modules.
+Invariants verifies:
 
-Critere de sortie:
+- les 51 definitions du module initial sont toutes presentes une seule fois
+  apres decomposition avec un AST semantique strictement identique;
+- les cles restent, dans l'ordre, `pipeline`, `persistence`, `memory`, `web`,
+  `documents`, `biblio`, `providers`, `identity`, `hermeneutic`, `node_state`,
+  `errors`; le catalogue et `_MODULE_KEYS` du storage derivent toujours de ce
+  meme registre;
+- labels francais, descriptions, champs, etats, reason codes, regles
+  content-free, sources, limites, flags de hooks et payload du catalogue sont
+  inchanges;
+- la projection analytics continue d'appeler les callbacks portes par chaque
+  `ObservableModule`; le storage continue de filtrer avec les cles du registre;
+- les reducers n'exposent pas le contenu brut synthetique et la serialization
+  n'execute ni ne projette les callbacks;
+- aucune route, requete SQL, table, writer, evenement, frontend, contenu
+  journalise ou capacite produit n'est ajoute ni modifie.
 
-- cles, ordre, labels et payloads inchanges;
-- reducers de domaine separes et couplage au registre reduit.
+Preuves executees dans le runner hermetique `--network none`, checkout
+read-only et `/tmp` en tmpfs:
+
+- baseline complete avant edition: `2629 tests`, OK;
+- baseline ciblee modules/analytics/read-model avant edition: `49 tests`, OK;
+- RED: ImportError attendu sur la premiere frontiere de domaine absente;
+- golden registre enrichi: `16 tests`, OK, dont les trois nouvelles preuves;
+- modules, analytics et read-model dashboard: `52 tests`, OK;
+- toute la suite unitaire Log Store/observabilite: `238 tests`, OK;
+- routes admin dashboard, frontend dashboard et observabilite Agenda/Biblio:
+  `29 tests`, OK;
+- compilation des cinq modules registre/analytics avec cache Python dirige
+  dans le tmpfs: OK;
+- decouverte complete finale avant livraison: `2632 tests`, 0 echec, 0
+  erreur, sans nouveau skip ni expected failure. Le delta exact de trois
+  correspond aux trois tests ajoutes;
+- apres rebuild du seul FridaDev depuis la sous-stack autoritative
+  `/opt/platform/fridadev-app`, les `52` contrats cibles passent depuis
+  l'image livree sans mount du code; les quatre empreintes checkout/conteneur
+  sont identiques, le smoke `/dashboard` rend HTTP `200` et le conteneur reste
+  healthy, restart `0`, OOM false.
+
+Sensibilite et limites:
+
+- les nouvelles preuves echouent si une cle est retiree, ajoutee ou deplacee,
+  si storage ou catalogue cessent de suivre le registre, si un reducer change
+  ses metriques, si le contenu brut synthetique fuit, ou si une cle/valeur du
+  payload public disparait ou se deplace;
+- les goldens historiques echouent si les metriques, resumes, explications,
+  labels ou reason codes des domaines divergent;
+- la premiere tentative de rebuild depuis le Compose du depot n'a provoque
+  aucune mutation: elle a ete refusee avant build car ce checkout ne porte pas
+  le `.env` runtime. Les labels Compose du conteneur ont confirme que la
+  livraison autoritative passe par `/opt/platform/fridadev-app`, utilisee
+  ensuite avec succes sans lire ni modifier de secret;
+- les deux tuples initial/futur preexistants restent dans l'unique module de
+  registre; ce lot ne fusionne pas leur semantique et n'ouvre aucun module
+  futur;
+- le Lot 9E reste entierement ouvert et non commence.
+
+Checklist:
+
+- [x] Isoler les reducers de domaine.
+- [x] Isoler la serialization publique content-free.
+- [x] Conserver un registre et un catalogue uniques.
+- [x] Verifier cles, ordre, labels et payloads.
 
 ## Lot 9E - Frontend chat scripts/load-order/panels
 

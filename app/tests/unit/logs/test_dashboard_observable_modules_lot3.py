@@ -20,6 +20,13 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from observability import dashboard_analytics
+from observability.dashboard_analytics_storage import _MODULE_KEYS
+from observability.dashboard_observable_module_domains import (
+    _finalize_pipeline_metrics,
+    _reduce_documents_metrics,
+    _reduce_pipeline_metrics,
+)
+from observability.dashboard_observable_module_serialization import _module_to_public_dict
 from observability.dashboard_observable_modules import ObservableModule
 
 
@@ -229,6 +236,111 @@ class DashboardObservableModulesLot3Tests(unittest.TestCase):
             self.assertTrue(module.sources)
             self.assertTrue(module.limits)
             self.assertTrue(module.calculation_version)
+
+    def test_registry_order_is_the_single_order_used_by_catalog_and_storage(self) -> None:
+        expected = (
+            'pipeline',
+            'persistence',
+            'memory',
+            'web',
+            'documents',
+            'biblio',
+            'providers',
+            'identity',
+            'hermeneutic',
+            'node_state',
+            'errors',
+        )
+        catalog = dashboard_analytics.build_dashboard_module_catalog()
+
+        self.assertEqual(expected, dashboard_analytics.observable_module_keys())
+        self.assertEqual(expected, _MODULE_KEYS)
+        self.assertEqual(list(expected), catalog['module_keys'])
+        self.assertEqual(list(expected), [module['module_key'] for module in catalog['modules']])
+
+    def test_domain_reducers_are_directly_testable_and_remain_content_free(self) -> None:
+        pipeline_metrics: dict[str, Any] = {}
+        _reduce_pipeline_metrics(
+            pipeline_metrics,
+            {'classification': 'complete', 'score': 91, 'flags': {'events_truncated': True}},
+        )
+        _finalize_pipeline_metrics(pipeline_metrics)
+        self.assertEqual(
+            {
+                'classification_counts': {'complete': 1},
+                'score_total': 91,
+                'score_count': 1,
+                'events_truncated_turns': 1,
+                'score_avg': 91.0,
+            },
+            pipeline_metrics,
+        )
+
+        document_metrics: dict[str, Any] = {}
+        _reduce_documents_metrics(
+            document_metrics,
+            {
+                'documents': {
+                    'status': 'ok',
+                    'active_count': 2,
+                    'injected_count': 1,
+                    'not_injected_count': 1,
+                    'too_large_count': 1,
+                    'empty_count': 0,
+                    'ocr_applied_count': 1,
+                    'ocr_duration_ms_total': 1200,
+                    'ocr_engine_counts': {'synthetic-engine': 1},
+                    'reason_code_counts': {'synthetic_reason': 1},
+                    'raw_content': 'RAW DOCUMENT SENTINEL MUST NOT LEAK',
+                },
+            },
+        )
+        self.assertEqual(2, document_metrics['active_documents_total'])
+        self.assertEqual(1, document_metrics['injected_documents_total'])
+        self.assertEqual({'synthetic-engine': 1}, document_metrics['ocr_engine_counts'])
+        self.assertEqual({'synthetic_reason': 1}, document_metrics['reason_code_counts'])
+        self.assertNotIn('RAW DOCUMENT SENTINEL MUST NOT LEAK', json.dumps(document_metrics))
+
+    def test_public_module_serialization_keeps_the_bounded_contract(self) -> None:
+        serialized = _module_to_public_dict(self._fake_module())
+
+        self.assertEqual(
+            [
+                'module_key',
+                'label_fr',
+                'description_fr',
+                'calculation_version',
+                'global_metrics',
+                'conversation_summary',
+                'turn_summary',
+                'human_detail',
+                'states',
+                'content_free_rules',
+                'sources',
+                'limits',
+                'degradation_reasons',
+                'gated_content',
+                'bucket_metrics',
+                'turn_summary_renderer_declared',
+                'turn_degradation_reason_resolver_declared',
+                'future',
+            ],
+            list(serialized),
+        )
+        self.assertEqual('fake_documents', serialized['module_key'])
+        self.assertEqual({'fake_used_count': 'Documents factices utilises'}, serialized['global_metrics'])
+        self.assertEqual(
+            {'fake_missing': 'Le document factice attendu n est pas disponible.'},
+            serialized['degradation_reasons'],
+        )
+        self.assertEqual(
+            {'reducer_declared': True, 'finalizer_declared': False},
+            serialized['bucket_metrics'],
+        )
+        self.assertTrue(serialized['turn_summary_renderer_declared'])
+        self.assertTrue(serialized['turn_degradation_reason_resolver_declared'])
+        self.assertTrue(serialized['future'])
+        self.assertNotIn('bucket_metrics_reducer', serialized)
 
     def test_degradation_explanations_are_human_and_content_free(self) -> None:
         self.assertEqual(
