@@ -2001,30 +2001,97 @@ Checklist:
 
 ### Lot 9D.2 - Turn pipeline read-model decomposition
 
-Golden tests prealables:
+Statut: ferme le 17 aout 2026.
 
-- snapshot read-model synthetic multi-domain;
-- messages_count/summary.status Lot 6H;
-- Biblio/Agenda/Web/Documents summaries;
-- error summary content-free.
+Decomposition livree:
 
-Patch attendu:
+- `app/observability/turn_pipeline_memory_summary.py` porte la synthese
+  Memory/RAG, les compteurs embeddings et les metadonnees content-free des
+  summaries parents;
+- `app/observability/turn_pipeline_web_summary.py` porte la projection Web,
+  y compris SearXNG, Crawl4AI, discovery et evidence, sans query, URL ni
+  contexte brut;
+- `app/observability/turn_pipeline_documents_summary.py` porte la synthese
+  Documents et conserve exactement les metadonnees deja exposees;
+- `app/observability/turn_pipeline_biblio_summary.py` porte la synthese
+  Biblio et ses sanitizers bornes;
+- `app/observability/turn_pipeline_summary_support.py` centralise uniquement
+  les primitives de normalisation partagees par la facade et les builders;
+- `app/observability/turn_pipeline_read_model.py` passe de 1391 a 529 lignes;
+  `build_turn_pipeline_item()` reste l'unique facade de l'item complet et
+  conserve les memes cles et appelants;
+- aucun summary Agenda dedie n'existait dans le read-model autoritatif. Le
+  libelle initial `Biblio/Agenda` etait donc plus large que le contrat vivant:
+  ce lot extrait Biblio et preserve Agenda exclusivement dans les statuts,
+  compteurs de stages, checklist et erreurs generiques, sans inventer de cle
+  `agenda` ni rouvrir Agenda runtime;
+- `app/tests/unit/logs/test_turn_pipeline_domain_summaries.py` ajoute une
+  fixture synthetique multi-domaine et cinq preuves directes des builders et
+  de leur delegation par la facade;
+- `app/tests/unit/web_search/test_web_search_observability.py` appelle
+  desormais le builder Web extrait au lieu de l'ancien helper prive.
 
-- extraire summary builders par domaine;
-- conserver `build_turn_pipeline_item()` facade.
+Invariants verifies:
 
-Risques:
+- les 36 fonctions deplacees ont un AST semantique identique avant/apres,
+  hors les quatre renommages explicites des builders;
+- la facade continue de trier les evenements une fois, de fournir le payload
+  `prompt_prepared` a Memory/RAG et de produire exactement les projections
+  persistence, providers, RAG, identity, hermeneutic, Web, Documents, Biblio,
+  latences, erreurs, statuts, compteurs, flags et source;
+- `messages_count` reste dans son evenement `prompt_prepared`; les champs
+  contractuels `conversation_summary_status`, compteurs et statuts Memory/RAG
+  restent inchanges. Aucun champ top-level nouveau n'est ajoute;
+- les syntheses Web, Documents et Biblio conservent leurs metadonnees
+  contractuelles et refusent les contenus bruts synthetiques;
+- Agenda disabled reste un no-op agentique observable sans summary dedie;
+- aucune route admin, requete, writer, payload d'observabilite, format de log,
+  lane produit ou surface frontend n'est modifie.
 
-- modifier la projection admin;
-- reintroduire hash/filename/raw values.
+Preuves executees dans le runner hermetique `--network none`, checkout
+read-only et `/tmp` en tmpfs:
+
+- baseline complete avant edition: `2620 tests`, OK;
+- RED: ImportError attendu sur le premier builder de domaine absent;
+- nouveaux builders et fixture multi-domaine: `5 tests`, OK;
+- goldens/read-models historiques Log Store, statuts agentiques, analytics,
+  dashboard et Documents: `85 tests`, OK;
+- contrat Web aval et nouveaux builders: `7 tests`, OK;
+- compilation des six modules avec cache Python redirige dans le tmpfs: OK;
+- une premiere decouverte complete a execute `2625 tests` puis expose
+  l'unique appel de test residuel a `_web_summary`; le test a ete migre vers
+  `build_web_summary` sans modifier ses assertions produit;
+- decouverte complete finale avant livraison: `2625 tests`, 0 echec, 0
+  erreur, sans nouveau skip ni expected failure. Le delta exact de cinq
+  correspond aux cinq tests ajoutes;
+- apres rebuild du seul FridaDev, les `87` contrats cibles passent aussi
+  depuis l'image livree sans mount du code; les huit empreintes
+  checkout/conteneur sont identiques, le smoke interne rend HTTP `200` et le
+  conteneur reste healthy, restart `0`, OOM false.
+
+Sensibilite et limites:
+
+- les preuves echouent si un builder n'est plus appele par la facade, si une
+  projection de domaine change, si Agenda devient une nouvelle cle dediee,
+  ou si un contenu brut Memory, Web, Documents ou Biblio atteint le summary;
+- la fixture Biblio force aussi une valeur non sure dans le sanitizer: elle
+  echoue si le hash bornant disparait ou si sa dependance n'est plus importee;
+- les goldens historiques echouent si `summary.status`, les compteurs Memory,
+  les metadonnees Web/Documents/Biblio, les erreurs content-free ou la
+  taxonomie no-op/error divergent;
+- les noms de fichiers et identifiants Documents deja contractuels restent
+  exposes comme avant; ce lot n'elargit ni ne reduit ce contrat;
+- persistence, providers, identity, hermeneutic, latences et erreurs restent
+  dans la facade: leur extraction n'est ni necessaire a 9D.2 ni autorisee par
+  9D.3, qui reste non commence.
 
 Checklist:
 
-- [ ] Extraire Memory/RAG summary.
-- [ ] Extraire Web summary.
-- [ ] Extraire Documents summary.
-- [ ] Extraire Biblio/Agenda summary.
-- [ ] Verifier content-free snapshots.
+- [x] Extraire Memory/RAG summary.
+- [x] Extraire Web summary.
+- [x] Extraire Documents summary.
+- [x] Extraire Biblio et preserver la projection Agenda generique.
+- [x] Verifier content-free snapshots.
 
 ### Lot 9D.3 - Dashboard read-model boundaries
 

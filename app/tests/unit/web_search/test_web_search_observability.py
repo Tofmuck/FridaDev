@@ -31,6 +31,7 @@ from core.hermeneutic_node.inputs import web_input
 from observability import hermeneutic_node_logger
 from observability import turn_observability_checklist
 from observability import turn_pipeline_read_model
+from observability.turn_pipeline_web_summary import build_web_summary
 
 
 def _event(stage: str, *, payload: dict[str, Any] | None = None, status: str = 'ok') -> dict[str, Any]:
@@ -162,7 +163,7 @@ class WebSearchObservabilityTests(unittest.TestCase):
             _event('turn_start', payload={'web_search_enabled': True}),
             _event('web_search', payload=payload),
         ]
-        pipeline_web = turn_pipeline_read_model._web_summary(events)
+        pipeline_web = build_web_summary(events)
         self.assertEqual(
             pipeline_web['searxng_params_reason_codes'],
             ['profile_documentation_officielle', 'source_first_authority_detected'],
