@@ -2095,21 +2095,94 @@ Checklist:
 
 ### Lot 9D.3 - Dashboard read-model boundaries
 
-Golden tests prealables:
+Statut: ferme le 17 aout 2026.
 
-- `app/tests/unit/logs/test_dashboard_read_model_lot4.py`;
-- `app/tests/test_server_admin_dashboard_contract.py`;
-- content gate explicite et erreurs routes content-free.
+Decision et decomposition livree:
 
-Patch attendu:
+- le meilleur plan etait plus simple que quatre nouvelles extractions: le
+  content gate pur existait deja dans `app/observability/dashboard_content_gate.py`.
+  Le lot conserve cette frontiere autoritative au lieu de creer une couche
+  concurrente;
+- `app/observability/dashboard_read_model_query.py` porte les fenetres,
+  pagination, couverture/source, projections de lignes et lectures SQL
+  partagees;
+- `app/observability/dashboard_read_model_overview.py` porte les builders
+  purs overview/conversations, l'agregation additive, la latence providers,
+  le pouls et la sante des summaries;
+- `app/observability/dashboard_read_model_inspection.py` porte la traduction
+  de l'inspection et le story builder content-free;
+- `app/observability/dashboard_read_model.py` passe de 1688 a 455 lignes et
+  conserve les cinq facades publiques `read_dashboard_overview`,
+  `read_dashboard_conversations`, `read_dashboard_conversation_turns`,
+  `read_dashboard_turn_inspection` et `read_dashboard_turn_content`, ainsi que
+  `resolve_dashboard_window` et les attributs historiques utiles aux contrats;
+- `app/tests/unit/logs/test_dashboard_read_model_boundaries.py` ajoute quatre
+  preuves directes des builders query/window, overview/conversations,
+  turn-fact et inspection/story.
 
-- separer query/window, overview/conversations, inspection/story et content
-  gate en conservant les cinq facades publiques du read-model.
+Invariants verifies:
 
-Critere de sortie:
+- les 43 fonctions du monolithe initial sont toutes presentes apres
+  decomposition avec un AST semantique strictement identique; aucune fonction
+  n'est perdue, dupliquee ou reecrite;
+- les cinq facades, leurs signatures, les requetes, les tris, pagination,
+  fenetres et branches degradees restent identiques;
+- les payloads overview, conversations, conversation turns, inspection et
+  content gate conservent exactement leurs cles, statuts, redaction et
+  erreurs content-free;
+- les routes admin ne sont pas modifiees et continuent de deleguer aux cinq
+  facades; le frontend dashboard n'est pas modifie;
+- les builders overview/conversations et inspection/story sont importables et
+  testables directement sans connexion, curseur SQL ni requete d'une autre
+  vue;
+- le content gate reste explicite, non precharge, audite et construit par
+  `dashboard_content_gate.py`; aucune seconde politique de contenu n'est
+  introduite;
+- aucune table, migration, writer, event d'observabilite, taxonomie, contenu
+  journalise ou capacite produit n'est ajoute.
 
-- payloads et routes identiques;
-- builders de domaine testables sans couplage aux requetes des autres vues.
+Preuves executees dans le runner hermetique `--network none`, checkout
+read-only et `/tmp` en tmpfs:
+
+- baseline complete avant edition: `2625 tests`, OK;
+- baseline dashboard ciblee avant edition: `29 tests`, OK;
+- RED: ImportError attendu sur la premiere frontiere absente;
+- nouveaux builders et fixture de frontieres: `4 tests`, OK;
+- nouveaux tests, goldens dashboard, routes admin, content gate, Documents et
+  redaction residuelle: `41 tests`, OK;
+- toute la suite unitaire Log Store/observabilite: `235 tests`, OK;
+- routes admin dashboard et frontend dashboard: `14 tests`, OK;
+- compilation des quatre modules avec cache Python dirige dans le tmpfs: OK;
+- decouverte complete finale avant livraison: `2629 tests`, 0 echec, 0
+  erreur, sans nouveau skip ni expected failure. Le delta exact de quatre
+  correspond aux quatre tests ajoutes;
+- apres rebuild du seul FridaDev, les contrats cibles sont reexecutes depuis
+  l'image livree sans mount du code, les empreintes checkout/conteneur sont
+  identiques, le smoke interne rend HTTP `200` et le conteneur reste healthy,
+  restart `0`, OOM false.
+
+Sensibilite et limites:
+
+- les nouvelles preuves echouent si la fenetre ou la couverture source
+  change, si un metrique non additif est somme, si les compteurs conversation
+  divergent, si la projection turn-fact perd sa redaction, si les sections du
+  story changent ou si le contenu brut synthetique atteint l'inspection;
+- les goldens historiques echouent si une facade, une requete, une route, un
+  payload degrade ou la politique content gate diverge;
+- les noms de fichiers Documents deja explicitement projetes restent visibles
+  comme avant; ce lot ne requalifie pas leur contrat;
+- la lecture content gate conserve sa coordination dans la facade et sa
+  construction pure dans la frontiere preexistante; aucune abstraction
+  supplementaire n'etait justifiee;
+- le registre des modules observables, ses reducers, son ordre et ses labels
+  appartiennent exclusivement a 9D.4, qui reste non commence.
+
+Checklist:
+
+- [x] Separer query/window.
+- [x] Separer overview/conversations.
+- [x] Separer inspection/story.
+- [x] Preserver content gate et les cinq facades publiques.
 
 ### Lot 9D.4 - Observable module registry boundaries
 
