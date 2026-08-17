@@ -1969,7 +1969,11 @@ read-only et `/tmp` en tmpfs:
   Chat/Agenda/Biblio/Web/Stimmung/Arbiter: `232 tests`, OK;
 - decouverte complete finale: `2620 tests`, 0 echec, 0 erreur, sans nouveau
   skip ni expected failure. Le delta exact de quatre correspond aux quatre
-  tests de frontiere ajoutes.
+  tests de frontiere ajoutes;
+- apres rebuild du seul FridaDev, les `48` contrats garde/golden/frontieres
+  passent aussi depuis l'image livree sans mount du code; les quatre empreintes
+  checkout/conteneur sont identiques, le smoke interne rend HTTP `200` et le
+  conteneur reste healthy, restart `0`, OOM false.
 
 Sensibilite et limites:
 
@@ -1979,6 +1983,11 @@ Sensibilite et limites:
   apparait;
 - les mutations 9D.0 continuent de rejeter l'ajout de `private_sentence` dans
   chacune des dix familles legitimes et les payloads bruts/dangereux;
+- une tentative de decouverte complete depuis `/app` sans mount du checkout a
+  execute `2608` tests puis rencontre l'unique erreur de runner attendue
+  `Unable to resolve repo root` du test d'autorite benchmark. Elle n'est pas
+  comptee comme preuve complete; le runner autoritatif avec checkout et
+  benchmark read-only est celui qui passe `2620/2620`;
 - ce lot ne change aucun contrat content-free, payload accepte/rejete,
   projection, read-model, writer ou surface `/log`. La decomposition du turn
   pipeline appartient exclusivement a 9D.2, qui reste non commence.
