@@ -408,6 +408,7 @@ test('chat composer keeps desktop textarea and action row from overlapping contr
       return {
         askLeft: ask.left,
         askRight: ask.right,
+        actionsWidth: actions.width,
         messageWidth: message.width,
         messageLeft: message.left,
         messageRight: message.right,
@@ -438,7 +439,10 @@ test('chat composer keeps desktop textarea and action row from overlapping contr
       };
     });
 
-    assert.ok(layout.messageWidth >= 900, `desktop composer textarea too narrow: ${layout.messageWidth}px`);
+    assert.ok(
+      layout.messageWidth > layout.actionsWidth,
+      `desktop composer textarea should remain wider than actions: ${layout.messageWidth}px <= ${layout.actionsWidth}px`,
+    );
     assert.ok(layout.messageLeft >= layout.askLeft, 'textarea should stay inside the composer');
     assert.ok(layout.messageRight <= layout.askRight + 1, 'textarea should stay inside the composer');
     assert.ok(layout.messageRight <= layout.actionsLeft, 'action grid should sit to the right of the textarea');

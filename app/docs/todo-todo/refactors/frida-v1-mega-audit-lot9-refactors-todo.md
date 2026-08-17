@@ -2395,6 +2395,19 @@ Limite constatee hors patch:
   dans un micro-lot distinct avant 9E.1 et ne doit pas etre corrigee
   silencieusement dans ce golden.
 
+Qualification prealable a 9E.1, le 17 aout 2026:
+
+- dette classee `TEST_OBSOLETE`: le seuil fixe de `900 px` venait de l'ancien
+  composer et n'est porte par aucun contrat produit; le layout courant ajoute
+  des controles tout en conservant toutes les relations de non-chevauchement;
+- l'assertion fixe est remplacee par l'invariant semantique selon lequel la
+  zone de texte reste plus large que la grille d'actions; les gardes de
+  bornage, d'alignement, d'ordre et de non-chevauchement restent intactes;
+- sensibilite: la preuve echoue si la grille d'actions devient aussi large ou
+  plus large que la zone de texte;
+- suite browser hermetique complete apres correction: `17/17`, sans skip ni
+  todo. La dette est fermee avant toute edition runtime de 9E.1.
+
 ### Lot 9E.1 - `chat_threads_sidebar.js` separation
 
 Patch attendu:
