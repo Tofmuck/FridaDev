@@ -53,6 +53,10 @@ test('Lot 9 chat assets load once in dependency order and expose required global
   for (const globalName of REQUIRED_GLOBALS) {
     assert.equal(typeof context[globalName], 'object', `${globalName} must be available`);
   }
+  assert.equal(vm.runInContext('typeof FridaChatThreadsFolderBindingModule', context), 'object');
+  assert.equal(vm.runInContext('typeof FridaChatThreadsListRendererModule', context), 'object');
+  assert.equal(context.FridaChatThreadsFolderBindingModule, undefined);
+  assert.equal(context.FridaChatThreadsListRendererModule, undefined);
   assert.deepEqual(validateRequiredGlobalPublicationCounts(publicationCounts), []);
 });
 

@@ -2422,9 +2422,94 @@ Risques:
 
 Checklist:
 
-- [ ] Extraire conversation list rendering.
-- [ ] Extraire folder binding glue.
-- [ ] Verifier browser smoke.
+- [x] Extraire conversation list rendering.
+- [x] Extraire folder binding glue.
+- [x] Verifier browser smoke.
+
+Statut: ferme le 17 aout 2026.
+
+Decision de methode:
+
+- le plan le plus simple et le plus sur conserve
+  `window.FridaChatThreadsSidebar` comme unique facade publique et extrait
+  seulement deux responsabilites internes: rendu de la liste des conversations
+  et binding drag/drop vers les repertoires;
+- transport, etat, cycle de vie, selection et orchestration des panels restent
+  dans `chat_threads_sidebar.js`; l'extraction des panels workspace demeure
+  reservee a 9E.2;
+- les modules internes sont des bindings lexicaux de scripts classiques et ne
+  publient aucune nouvelle propriete sur `window`.
+
+Fichiers de preuve:
+
+- `app/web/chat_threads_list_renderer.js`: rendu borne des conversations,
+  regroupement par repertoire et delegation rename/delete/select;
+- `app/web/chat_threads_folder_binding.js`: source et cibles drag/drop,
+  nettoyage des marqueurs et delegation du deplacement;
+- `app/web/chat_threads_sidebar.js`: coordinateur conserve derriere la meme
+  facade publique;
+- `app/tests/unit/frontend_chat/test_threads_list_renderer_module.js` et
+  `test_threads_folder_binding_module.js`: comportements extraits et mutants
+  controles;
+- `app/tests/unit/frontend_chat/test_threads_sidebar_module.js` et
+  `test_lot9_load_order_golden.js`: surface publique exacte et absence de
+  nouveaux globals `window`;
+- `app/tests/integration/frontend_browser/test_frontend_browser_smoke.js` et
+  `test_frontend_browser_workspace_folders.js`: boot chat et drag/drop reels
+  dans Chromium.
+
+Invariants figes:
+
+- liste, dossiers, separateur et conversations hors repertoire conservent leur
+  ordre et leurs etats actif/nested;
+- rename, delete, select et drag/drop ne sont declenches qu'une fois et restent
+  delegues au coordinateur; une cible interactive ou une edition active
+  interdit le demarrage du drag;
+- les scripts extraits precedent le sidebar dans l'ordre de chargement et le
+  chat atteint son etat nominal sans `pageerror`;
+- la facade CommonJS/navigateur conserve exactement ses six exports historiques
+  et aucun nouveau global public n'est introduit;
+- aucun transport, contrat backend, CSS, panel workspace ni capacite produit
+  n'est modifie.
+
+Sensibilite controlee:
+
+- les tests ont d'abord produit `4` echecs attendus lorsque les deux factories
+  extraites etaient absentes;
+- le contrat load-order rejette un script extrait absent, duplique ou place
+  apres le sidebar;
+- les tests unitaires rejettent une injection drag dupliquee ou declenchee
+  depuis une cible interactive, un deplacement multiple, et une delegation de
+  rendu/selection/rename/delete manquante;
+- la surface exacte rejette tout export public ajoute ou retire, tandis que le
+  golden realm rejette la publication des modules internes sur `window`.
+
+Preuves executees:
+
+- parent autoritatif apres qualification 9E.0: `c200b377a32cd237728d712f0ed3029e525d4973`,
+  worktree propre et divergence `0/0`;
+- baseline Python hermetique: `2632 tests`, OK; baseline frontend Node:
+  `126/126`; baseline Chromium qualifiee: `17/17`;
+- RED controle: `4/4` echecs d'assertion attendus sur les factories absentes,
+  sans erreur de runner;
+- modules, sidebar et golden cibles: `20/20`, OK;
+- frontend Node complet: `130/130`, sans skip ni todo; le delta exact est de
+  quatre nouveaux tests;
+- minimal validation phases 9/11 et contrat frontend Python: `35/35`, OK;
+- Chromium hermetique complet: `17/17`, sans skip ni todo;
+- decouverte Python complete avec checkout et benchmark read-only,
+  `--network none` et `/tmp` en tmpfs: `2632 tests`, OK;
+- un unique echec de contrat source-only a correctement detecte l'ancien
+  emplacement inline du renderer; le contrat a ete aligne sur les deux
+  factories, puis les `35/35` tests cibles ont ete revalides.
+
+Limites restantes:
+
+- les hooks de panels et le sidebar workspace ne sont volontairement pas
+  extraits: ils appartiennent a 9E.2, qui reste ouvert et non commence;
+- le fichier coordinateur passe de `1341` a `1238` lignes; les deux modules
+  focalises font respectivement `90` et `129` lignes. Cette reduction de span
+  ne constitue ni redesign ni extension fonctionnelle.
 
 ### Lot 9E.2 - Workspace folder sidebar/panels
 

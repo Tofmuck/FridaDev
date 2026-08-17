@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
+const ThreadsSidebarModule = require("../../../web/chat_threads_sidebar.js");
 const {
   THREADS_PAGE_SIZE,
   MAX_TITLE_LENGTH,
@@ -8,7 +9,7 @@ const {
   clampThreadTitle,
   normalizeThreadItem,
   createChatThreadsSidebar,
-} = require("../../../web/chat_threads_sidebar.js");
+} = ThreadsSidebarModule;
 
 function makeElement(tagName = "div") {
   const listeners = new Map();
@@ -169,6 +170,14 @@ function expandFirstFolder(threadsUl) {
 test("threads sidebar module exposes the conversations page size contract", () => {
   assert.equal(THREADS_PAGE_SIZE, 200);
   assert.equal(WORKSPACE_CONVERSATION_DRAG_MIME, "application/x-fridadev-conversation-id");
+  assert.deepEqual(Object.keys(ThreadsSidebarModule), [
+    "THREADS_PAGE_SIZE",
+    "MAX_TITLE_LENGTH",
+    "WORKSPACE_CONVERSATION_DRAG_MIME",
+    "clampThreadTitle",
+    "normalizeThreadItem",
+    "createChatThreadsSidebar",
+  ]);
 });
 
 test("clampThreadTitle normalizes whitespace and preserves the fallback contract", () => {

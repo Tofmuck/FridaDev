@@ -377,10 +377,20 @@ class AppPhase8Tests(unittest.TestCase):
         app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
         index_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
         threads_source = (APP_DIR / "web" / "chat_threads_sidebar.js").read_text(encoding="utf-8")
+        folder_binding_source = (APP_DIR / "web" / "chat_threads_folder_binding.js").read_text(encoding="utf-8")
+        list_renderer_source = (APP_DIR / "web" / "chat_threads_list_renderer.js").read_text(encoding="utf-8")
 
         self.assertIn('<script src="chat_threads_sidebar.js"></script>', index_source)
         self.assertLess(
             index_source.index('<script src="chat_streaming.js"></script>'),
+            index_source.index('<script src="chat_threads_sidebar.js"></script>'),
+        )
+        self.assertLess(
+            index_source.index('<script src="chat_threads_folder_binding.js"></script>'),
+            index_source.index('<script src="chat_threads_sidebar.js"></script>'),
+        )
+        self.assertLess(
+            index_source.index('<script src="chat_threads_list_renderer.js"></script>'),
             index_source.index('<script src="chat_threads_sidebar.js"></script>'),
         )
         self.assertLess(
@@ -396,7 +406,10 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertIn('async function renameConversationOnServer', threads_source)
         self.assertIn('async function deleteConversationOnServer', threads_source)
         self.assertIn('async function fetchConversationMessagesFromServer', threads_source)
-        self.assertIn('const renderThreads = () => {', threads_source)
+        self.assertIn('ThreadsFolderBinding.createConversationFolderBinding({', threads_source)
+        self.assertIn('ThreadsListRenderer.createConversationListRenderer({', threads_source)
+        self.assertIn('function createConversationFolderBinding({', folder_binding_source)
+        self.assertIn('function createConversationListRenderer({', list_renderer_source)
         self.assertIn('async function startInlineRename', threads_source)
         self.assertIn('const hydrateThreadMessages = async', threads_source)
         self.assertIn('const loadThread = async', threads_source)

@@ -12,6 +12,8 @@ const REQUIRED_CHAT_SCRIPTS = Object.freeze([
   'chat_notes_mode.js',
   'chat_workspace_folder_notes_panel.js',
   'chat_workspace_folders_sidebar.js',
+  'chat_threads_folder_binding.js',
+  'chat_threads_list_renderer.js',
   'chat_threads_sidebar.js',
   'chat_active_documents.js',
   'chat_copy_export.js',
@@ -31,6 +33,8 @@ const LOAD_BEFORE = Object.freeze([
   ['chat_workspace_folder_generated_images_panel.js', 'chat_workspace_folders_sidebar.js'],
   ['chat_notes_mode.js', 'chat_workspace_folder_notes_panel.js'],
   ['chat_workspace_folder_notes_panel.js', 'chat_workspace_folders_sidebar.js'],
+  ['chat_threads_folder_binding.js', 'chat_threads_sidebar.js'],
+  ['chat_threads_list_renderer.js', 'chat_threads_sidebar.js'],
   ['chat_workspace_folders_sidebar.js', 'chat_threads_sidebar.js'],
   ['chat_workspace_folders.js', 'chat_threads_sidebar.js'],
   ...REQUIRED_CHAT_SCRIPTS

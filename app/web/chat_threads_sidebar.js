@@ -25,6 +25,16 @@ const WorkspaceFolderNotes = (
     ? window.FridaNotesMode
     : (typeof require !== "undefined" ? require("./chat_notes_mode.js") : null)
 );
+const ThreadsFolderBinding = (
+  typeof FridaChatThreadsFolderBindingModule !== "undefined"
+    ? FridaChatThreadsFolderBindingModule
+    : (typeof require !== "undefined" ? require("./chat_threads_folder_binding.js") : null)
+);
+const ThreadsListRenderer = (
+  typeof FridaChatThreadsListRendererModule !== "undefined"
+    ? FridaChatThreadsListRendererModule
+    : (typeof require !== "undefined" ? require("./chat_threads_list_renderer.js") : null)
+);
 const WORKSPACE_CONVERSATION_DRAG_MIME = "application/x-fridadev-conversation-id";
 
 function clampThreadTitle(value, fallback = "Nouvelle conversation") {
@@ -697,50 +707,15 @@ function createChatThreadsSidebar({
     }
   };
 
-  const clearConversationDropTargets = () => {
-    if (!threadsUl) return;
-    threadsUl.querySelectorAll(".workspace-folder-drop-target, .dragging").forEach((node) => {
-      node.classList.remove("workspace-folder-drop-target", "dragging");
-    });
-  };
-
-  const hasConversationDrag = (event) => {
-    if (!event?.dataTransfer) return "";
-    const types = Array.from(event.dataTransfer.types || []);
-    return types.includes(WORKSPACE_CONVERSATION_DRAG_MIME) || types.includes("text/plain");
-  };
-
-  const draggedConversationId = (event) => {
-    if (!event?.dataTransfer || !hasConversationDrag(event)) return "";
-    return event.dataTransfer.getData(WORKSPACE_CONVERSATION_DRAG_MIME)
-      || event.dataTransfer.getData("text/plain")
-      || "";
-  };
-
-  const bindConversationDropTarget = (node, folderId) => {
-    if (!node) return;
-    node.addEventListener("dragenter", (event) => {
-      if (!hasConversationDrag(event)) return;
-      event.preventDefault();
-      node.classList.add("workspace-folder-drop-target");
-    });
-    node.addEventListener("dragover", (event) => {
-      if (!hasConversationDrag(event)) return;
-      event.preventDefault();
-      event.dataTransfer.dropEffect = "move";
-      node.classList.add("workspace-folder-drop-target");
-    });
-    node.addEventListener("dragleave", () => {
-      node.classList.remove("workspace-folder-drop-target");
-    });
-    node.addEventListener("drop", (event) => {
-      const conversationId = draggedConversationId(event);
-      if (!conversationId) return;
-      event.preventDefault();
-      clearConversationDropTargets();
-      void moveThreadToWorkspaceFolder(conversationId, folderId || null);
-    });
-  };
+  const conversationFolderBinding = ThreadsFolderBinding.createConversationFolderBinding({
+    threadsUl,
+    dragMime: WORKSPACE_CONVERSATION_DRAG_MIME,
+    isEditingThread: () => Boolean(editingThreadId),
+    moveThreadToWorkspaceFolder,
+  });
+  const {
+    bindConversationDropTarget,
+  } = conversationFolderBinding;
 
   const refreshWorkspaceFiles = async (folderId) => {
     const normalized = WorkspaceFolders?.normalizeWorkspaceFolderId(folderId);
@@ -913,145 +888,67 @@ function createChatThreadsSidebar({
     consoleObj: logger,
   });
 
-  const renderThreads = () => {
-    threadsUl.innerHTML = "";
-    const threads = getThreads();
-    const folders = getWorkspaceFolders();
-    const current = getCurrentId();
-    const grouped = WorkspaceFolders?.groupThreadsByWorkspaceFolder(threads, folders) || { byFolder: new Map(), outside: threads };
+  const deleteThread = async (li, threadId) => {
+    li.style.opacity = "0";
+    li.style.transform = "translateX(-6px)";
 
-    const appendThreadRow = (t, nested = false) => {
-      const li = document.createElement("li");
-      if (nested) li.classList.add("in-workspace-folder");
-      if (t.id === current) li.classList.add("active");
-      li.tabIndex = 0;
-      li.draggable = true;
-      li.setAttribute("role", "button");
-      li.setAttribute("aria-label", t.title || "Conversation");
-      li.dataset.conversationId = t.id;
+    const previous = [...getThreads()];
+    saveThreads(previous.filter((item) => item.id !== threadId));
+    messageCache.delete(threadId);
+    if (getCurrentId() === threadId) {
+      setCurrentId(getThreads()[0]?.id || null);
+    }
 
-      const main = document.createElement("div");
-      main.className = "thread-main";
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    renderThreads();
 
-      const titleSpan = document.createElement("span");
-      titleSpan.className = "title";
-      titleSpan.textContent = t.title || "Sans titre";
-      main.appendChild(titleSpan);
+    try {
+      await deleteConversationOnServer(threadId);
+      await refreshThreadsFromServer({ keepSelection: true });
+      renderThreads();
 
-      const editBtn = document.createElement("button");
-      editBtn.className = "thread-edit";
-      editBtn.title = "Renommer";
-      editBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
-      editBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        startInlineRename(li, t.id);
-      });
-      main.appendChild(editBtn);
-
-      const delBtn = document.createElement("button");
-      delBtn.className = "thread-del";
-      delBtn.title = "Supprimer";
-      delBtn.innerHTML = `<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="1" x2="9" y2="9"/><line x1="9" y1="1" x2="1" y2="9"/></svg>`;
-      delBtn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-
-        li.style.opacity = "0";
-        li.style.transform = "translateX(-6px)";
-
-        const previous = [...getThreads()];
-        saveThreads(previous.filter((x) => x.id !== t.id));
-        messageCache.delete(t.id);
-        if (getCurrentId() === t.id) {
-          setCurrentId(getThreads()[0]?.id || null);
-        }
-
-        await new Promise((r) => setTimeout(r, 200));
-        renderThreads();
-
-        try {
-          await deleteConversationOnServer(t.id);
-          await refreshThreadsFromServer({ keepSelection: true });
-          renderThreads();
-
-          const selected = getCurrentId();
-          if (selected) {
-            await loadThread(selected);
-          } else {
-            logEl.innerHTML = "";
-            await setHero();
-          }
-        } catch (err) {
-          logger.warn("Suppression serveur échouée", err);
-          saveThreads(previous);
-          if (!getCurrentId() && previous.length) setCurrentId(previous[0].id);
-          setThreadStatus("Suppression non synchronisée.", true);
-          renderThreads();
-        }
-      });
-      main.appendChild(delBtn);
-
-      li.appendChild(main);
-
-
-      const ts = t.updated_at || t.created_at;
-      if (ts) {
-        const timeSpan = document.createElement("span");
-        timeSpan.className = "thread-time";
-        timeSpan.textContent = formatTimestamp(ts);
-        li.appendChild(timeSpan);
+      const selected = getCurrentId();
+      if (selected) {
+        await loadThread(selected);
+      } else {
+        logEl.innerHTML = "";
+        await setHero();
       }
-
-      titleSpan.addEventListener("dblclick", (ev) => {
-        ev.stopPropagation();
-        startInlineRename(li, t.id);
-      });
-
-      li.addEventListener("dblclick", (ev) => {
-        const interactiveTarget = ev.target?.closest?.("button, input, textarea, select, a");
-        if (interactiveTarget) return;
-        ev.stopPropagation();
-        startInlineRename(li, t.id);
-      });
-
-      li.addEventListener("click", async () => {
-        if (editingThreadId) return;
-        setCurrentId(t.id);
-        await loadThread(t.id);
-        renderThreads();
-        closeSidebar();
-      });
-      li.addEventListener("dragstart", (event) => {
-        const interactiveTarget = event.target?.closest?.("button, input, textarea, select, a");
-        if (editingThreadId || interactiveTarget) {
-          event.preventDefault();
-          return;
-        }
-        event.dataTransfer.effectAllowed = "move";
-        event.dataTransfer.setData(WORKSPACE_CONVERSATION_DRAG_MIME, t.id);
-        event.dataTransfer.setData("text/plain", t.id);
-        li.classList.add("dragging");
-      });
-      li.addEventListener("dragend", clearConversationDropTargets);
-
-      threadsUl.appendChild(li);
-    };
-
-    workspaceFolderRenderer?.appendToolbar();
-    if (!folders.length) {
-      workspaceFolderRenderer?.appendNoFoldersEmpty?.();
+    } catch (err) {
+      logger.warn("Suppression serveur échouée", err);
+      saveThreads(previous);
+      if (!getCurrentId() && previous.length) setCurrentId(previous[0].id);
+      setThreadStatus("Suppression non synchronisée.", true);
+      renderThreads();
     }
-    folders.forEach((folder, index) => {
-      workspaceFolderRenderer?.appendFolderRow(folder, grouped.byFolder.get(folder.id) || [], index, appendThreadRow);
-    });
-    if (folders.length) {
-      const separator = document.createElement("li");
-      separator.className = "workspace-folder-separator";
-      separator.textContent = "Conversations hors répertoire";
-      bindConversationDropTarget(separator, null);
-      threadsUl.appendChild(separator);
-    }
-    (grouped.outside || []).forEach((thread) => appendThreadRow(thread, false));
   };
+
+  const selectThread = async (threadId) => {
+    setCurrentId(threadId);
+    await loadThread(threadId);
+    renderThreads();
+    closeSidebar();
+  };
+
+  const conversationListRenderer = ThreadsListRenderer.createConversationListRenderer({
+    threadsUl,
+    documentObj: document,
+    getThreads,
+    getWorkspaceFolders,
+    getCurrentId,
+    groupThreadsByWorkspaceFolder: (threads, folders) => (
+      WorkspaceFolders?.groupThreadsByWorkspaceFolder(threads, folders)
+      || { byFolder: new Map(), outside: threads }
+    ),
+    workspaceFolderRenderer,
+    folderBinding: conversationFolderBinding,
+    formatTimestamp,
+    isEditingThread: () => Boolean(editingThreadId),
+    onRename: (li, threadId) => startInlineRename(li, threadId),
+    onDelete: deleteThread,
+    onSelect: selectThread,
+  });
+  const renderThreads = () => conversationListRenderer.renderThreads();
 
   async function startInlineRename(li, threadId) {
     if (editingThreadId) return;
