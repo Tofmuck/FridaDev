@@ -23,6 +23,7 @@ from observability.dashboard_read_model_query import (
     CALCULATION_VERSION,
     RECENT_GRANULARITY_DAYS,
     RETENTION_DAYS,
+    _MAX_CONTENT_GATE_EVENTS,
     _limit_offset,
     _params_get,
     _read_materialization_status,
@@ -37,7 +38,6 @@ from observability.dashboard_read_model_query import (
 
 _DEFAULT_CONVERSATION_LIMIT = 50
 _DEFAULT_TURN_LIMIT = 100
-_MAX_CONTENT_GATE_EVENTS = 500
 
 
 def read_dashboard_overview(
