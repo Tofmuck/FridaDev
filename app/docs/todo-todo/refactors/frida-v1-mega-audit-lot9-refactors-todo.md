@@ -1837,7 +1837,9 @@ Sous-lots:
 
 ### Lot 9D.0 - Golden guard matrix
 
-Golden tests prealables:
+Statut: ferme le 17 aout 2026.
+
+Golden tests prealables revalides:
 
 - payload legitime par stage: chat_response, stream, arbiter, memory,
   identity, web, agenda, biblio, stimmung, manifest;
@@ -1846,9 +1848,71 @@ Golden tests prealables:
 
 Checklist:
 
-- [ ] Matrix accepted by stage.
-- [ ] Matrix rejected dangerous.
-- [ ] Token-like safe-code regression.
+- [x] Matrix accepted by stage.
+- [x] Matrix rejected dangerous.
+- [x] Token-like safe-code regression.
+
+Implementation et inventaire:
+
+- `app/tests/support/observability_guard_golden_matrix.py` porte une fixture
+  synthetique content-free de dix payloads legitimes, dans l'ordre contractuel
+  `chat_response`, stream, arbiter, memory, identity, web, agenda, biblio,
+  stimmung et manifest. Le `stage` reste une metadonnee de preuve: le garde
+  runtime demeure volontairement payload-only dans ce lot;
+- `app/tests/unit/logs/test_observability_payload_guard_golden_matrix.py`
+  ajoute trois goldens: couverture exacte et sans doublon des dix familles,
+  acceptation inchangee de chaque payload, puis rejet fail-closed du meme
+  payload apres ajout d'un texte non contractuel;
+- la matrice de refus existante dans
+  `app/tests/unit/logs/test_observability_payload_guard.py` couvrait deja
+  exactement prompt, message, content, raw, URL/query, provider payload et
+  exception brute, avec rejet content-free. Elle est revalidee sans seconde
+  preuve dupliquee;
+- sa regression `test_token_like_safe_code_value_is_rejected_without_blocking_normal_codes`
+  reste l'autorite: variantes synthetiques `sk-*`, `ghp_*`, `hf_*` et
+  `xoxb-*` refusees, reason codes normaux et modele qualifie acceptes.
+
+Invariants figes:
+
+- les dix familles legitimes restent acceptees et rendues sans transformation;
+- une cle texte non contractuelle ajoutee a n'importe quelle famille provoque
+  un refus content-free sans recopier la sentinelle;
+- les champs bruts ou dangereux restent default-deny, y compris sous une cle
+  autrement allowlistee;
+- la detection token-like ne s'etend pas aux reason codes ordinaires ni aux
+  noms de modeles contractuels;
+- aucun schema, allowlist, writer, projection, read-model ou frontend runtime
+  n'est modifie. 9D.1 reste non commence.
+
+Preuves executees dans le runner hermetique `--network none`, checkout
+read-only et `/tmp` en tmpfs:
+
+- baseline avant patch: `2613 tests`, OK;
+- RED initial: ImportError attendu pour la fixture golden absente;
+- correction de fixture observee: le mutant Memory avec
+  `retrieval_reason_code` a ete refuse `unknown_string_key`; la fixture finale
+  emploie le `reason_code` reel du stage;
+- nouveaux goldens: `3 tests`, OK;
+- garde historique plus nouvelle matrice: `44 tests`, OK;
+- suite complete `tests/unit/logs`: `222 tests`, OK;
+- producteurs Agenda/Biblio/Stimmung/Arbiter/Web, manifest, dashboard et golden
+  Lot 9: `245 tests`, OK;
+- decouverte complete finale: `2616 tests`, 0 echec, 0 erreur, sans nouveau
+  skip ni expected failure. Le delta exact de trois correspond aux trois
+  goldens ajoutes.
+
+Sensibilite et limites:
+
+- les goldens echouent si une famille est retiree, ajoutee, dupliquee ou
+  deplacee, si un payload legitime est refuse ou modifie, ou si une famille
+  accepte le mutant `private_sentence`;
+- les preuves historiques echouent si une donnee brute dangereuse ou une
+  valeur token-like redevient acceptable, ou si `skipped`,
+  `provider_timeout`, `llm_call_ok` ou `openai/gpt-5.4-mini` devient un faux
+  positif;
+- la decomposition des politiques safe-code/token-like, manifest et familles
+  de schema appartient exclusivement a 9D.1. Ce lot n'introduit aucune
+  allowlist runtime parallele et ne modifie pas la surface `/log` du Lot 7.
 
 ### Lot 9D.1 - Guard schema decomposition
 
