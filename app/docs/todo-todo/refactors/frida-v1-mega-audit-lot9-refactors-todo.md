@@ -2306,9 +2306,94 @@ Golden tests prealables:
 
 Checklist:
 
-- [ ] Smoke load-order browser.
-- [ ] Test no duplicate global bindings.
-- [ ] Panels empty/error matrix.
+- [x] Smoke load-order browser.
+- [x] Test no duplicate global bindings.
+- [x] Panels empty/error matrix.
+
+Statut: ferme le 17 aout 2026, tests et documentation uniquement.
+
+Decision de methode:
+
+- le plan le plus simple et le plus sur consistait a completer le golden Lot 9
+  existant et la fixture Notes existante, sans creer un second harness ni
+  modifier un asset produit;
+- les contrats deja exacts Documents, fichiers workspace, Exports et Images
+  sont reutilises plutot que dupliques; seul l'etat Notes vide manquait;
+- `app/minimal_validation.py` reste intact et reserve a 9E.3; aucun travail de
+  9E.1 n'est commence.
+
+Fichiers de preuve:
+
+- `app/tests/support/frontend_load_order_contract.js`: validateur borne du
+  nombre de publications des globals requis;
+- `app/tests/unit/frontend_chat/test_lot9_load_order_golden.js`: execution des
+  scripts reels dans un meme realm VM, comptage des publications, mutants
+  script/global absent ou duplique, ordre inverse et redeclaration `const`;
+- `app/tests/unit/frontend_chat/test_workspace_folder_notes_panel_module.js`:
+  distinction Notes vide normal / erreur visible;
+- les contrats existants de `test_threads_sidebar_module.js`,
+  `test_workspace_folder_exports_panel_module.js` et
+  `test_workspace_folder_generated_images_panel_module.js` couvrent sans
+  duplication Documents/fichiers, Exports et Images vide/erreur;
+- `app/tests/integration/frontend_browser/test_frontend_browser_smoke.js`,
+  `test_frontend_browser_active_documents.js` et
+  `test_frontend_browser_workspace_folders.js` traversent le chargement reel
+  dans Chromium et l'initialisation nominale du chat.
+
+Invariants figes:
+
+- chaque script chat requis est present exactement une fois et respecte les
+  dependances de chargement autoritatives;
+- chaque global public requis est publie exactement une fois apres execution
+  des assets reels dans un realm partage;
+- une collision top-level lexicale produit bien une `SyntaxError`, ce qui
+  protege explicitement contre la classe d'incident du Lot 7.3;
+- le chat navigateur atteint son etat nominal sans `pageerror`; Documents et
+  workspace folders restent operants;
+- Notes, Documents/fichiers, Exports et Images distinguent tous un resultat
+  vide normal d'une erreur visible, sans rendre de contenu brut dans le
+  golden.
+
+Sensibilite controlee:
+
+- le golden rejette un script requis retire, ajoute une seconde fois ou
+  deplace avant sa dependance;
+- le validateur rejette un global requis absent ou publie deux fois;
+- le realm partage rejette une redeclaration top-level controlee;
+- la matrice Notes echoue si un resultat vide devient une erreur ou si une
+  erreur est masquee comme liste vide; les matrices voisines conservent les
+  memes mutants pour les autres panels.
+
+Preuves executees:
+
+- baseline Python hermetique avant edition: `2632 tests`, OK;
+- baseline frontend Node ciblee avant edition: `36 tests`, OK;
+- RED controle: `2` echecs attendus sur le validateur de publications absent,
+  les `6` autres tests restant verts;
+- golden cible apres patch: `8/8`, puis matrice ciblee `39/39`, OK;
+- toute la suite frontend Node: `126/126`, sans skip ni todo, contre `123/123`
+  avant le lot; le delta exact est de trois tests;
+- minimal validation phases 9/11 et contrats frontend Python: `35/35`, OK;
+- Chromium hermetique, cache existant et loopback seul: init chat nominal
+  `1/1`, active Documents et workspace folders `2/2`, aucun `pageerror`;
+- suite browser elargie: `16/17`; les seize scenarios hors dette de largeur
+  sont verts sans skip ni todo;
+- decouverte Python complete finale avec `app/` et `benchmark/` montes
+  read-only, `--network none` et `/tmp` en tmpfs: `2632 tests`, OK;
+- la premiere relance complete omettant par erreur le mount `benchmark/` a
+  produit une unique erreur d'import du test d'autorite Web; le runner complet
+  autoritatif ci-dessus l'annule et confirme la baseline.
+
+Limite constatee hors patch:
+
+- la suite browser elargie conserve un echec preexistant et reproductible sur
+  l'assertion de largeur du composer desktop (`878 px` observes pour un seuil
+  historique de `900 px`). Le meme `878 px` est reproduit depuis une archive
+  temporaire du HEAD initial `e97c4d61`, puis supprimee; ni ce test, ni
+  HTML/CSS/JS produit ne sont modifies par 9E.0. Les smokes load-order et
+  panels requis sont verts. Cette dette de contrat/layout doit etre qualifiee
+  dans un micro-lot distinct avant 9E.1 et ne doit pas etre corrigee
+  silencieusement dans ce golden.
 
 ### Lot 9E.1 - `chat_threads_sidebar.js` separation
 

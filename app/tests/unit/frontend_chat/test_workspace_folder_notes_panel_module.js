@@ -193,6 +193,18 @@ test('notes panel renders API errors as visible errors instead of empty lists', 
   assert.match(visibleText(rendered.threadsUl), /Chargement des notes impossible/);
 });
 
+test('notes panel keeps normal empty state when API returns an empty list', () => {
+  const rendered = buildPanel({
+    notes: [],
+    noteStatus: { status: 'ok', reason_code: 'workspace_notes_list_ok' },
+  });
+
+  assert.equal(firstByClass(rendered.threadsUl, 'workspace-folder-note-error'), null);
+  const empty = firstByClass(rendered.threadsUl, 'workspace-folder-note-empty');
+  assert.ok(empty);
+  assert.equal(empty.textContent, 'Aucune note');
+});
+
 test('notes panel creates an empty note through the existing backend route contract', async () => {
   const rendered = buildPanel({ prompts: ['Plan Lot 5B'] });
   const create = firstByClass(rendered.threadsUl, 'workspace-folder-note-create');

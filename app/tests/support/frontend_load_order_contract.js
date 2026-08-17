@@ -81,10 +81,25 @@ function validateChatScriptOrder(sources) {
   return issues.sort();
 }
 
+function validateRequiredGlobalPublicationCounts(publicationCounts) {
+  const counts = publicationCounts && typeof publicationCounts === 'object'
+    ? publicationCounts
+    : {};
+  const issues = [];
+  for (const globalName of REQUIRED_GLOBALS) {
+    const count = Number.isInteger(counts[globalName]) ? counts[globalName] : 0;
+    if (count !== 1) {
+      issues.push(`required_global_publication_count:${globalName}:${count}`);
+    }
+  }
+  return issues.sort();
+}
+
 module.exports = {
   LOAD_BEFORE,
   REQUIRED_CHAT_SCRIPTS,
   REQUIRED_GLOBALS,
   parseScriptSources,
   validateChatScriptOrder,
+  validateRequiredGlobalPublicationCounts,
 };
