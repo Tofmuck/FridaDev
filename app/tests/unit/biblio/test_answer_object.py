@@ -1430,6 +1430,37 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertFalse(rendered.exact_text_rendered)
         self.assertIn(RAW_EXACT_TEXT, rendered.content)
 
+    def test_rendering_boundary_accepts_a_prebuilt_answer_without_tool_results(self) -> None:
+        try:
+            from biblio import answer_rendering
+        except ImportError:
+            self.fail("answer_rendering boundary is missing")
+
+        answer = answer_object.BiblioAnswerObject(
+            status=answer_object.STATUS_NEEDS_CLARIFICATION,
+            reason_codes=("synthetic_clarification",),
+            render_mode=answer_object.RENDER_BLOCKED_EXACT,
+            surface_intro="SYNTHETIC INTRO",
+            surface_outro="SYNTHETIC OUTRO",
+        )
+
+        rendered = answer_rendering.render_biblio_answer_object(answer)
+        lock = answer_rendering.build_final_response_lock(answer, rendered)
+
+        self.assertEqual(
+            rendered.content,
+            "SYNTHETIC INTRO\n\n"
+            "Je ne peux pas rendre un extrait exact sans precision ou ancre supplementaire.\n\n"
+            "SYNTHETIC OUTRO",
+        )
+        self.assertEqual(rendered.reason_code, "synthetic_clarification")
+        self.assertFalse(rendered.exact_text_rendered)
+        self.assertTrue(lock.ok)
+        self.assertEqual(lock.content, rendered.content)
+        self.assertEqual(lock.reason_code, answer_object.REASON_FINAL_RESPONSE_AUTHORIZED)
+        self.assertNotIn("SYNTHETIC INTRO", _json(rendered.to_observability()))
+        self.assertNotIn("SYNTHETIC OUTRO", _json(lock.to_observability()))
+
     def test_final_response_lock_authorizes_only_technical_render_contract(self) -> None:
         result = _tool_result(
             tool_name=tools.TOOL_PASSAGE_CONTEXT,

@@ -3410,6 +3410,86 @@ Auto-audit et limites:
 - l'answer object et le rendu restent reserves a 9G.4; aucun rebuild, restart
   ou deploiement runtime n'est effectue.
 
+### Lot 9G.4 - Answer object/rendering separation - ferme le 18 aout 2026
+
+Decision de methode:
+
+- la frontiere la plus simple conserve `answer_object.py` comme source de
+  verite semantique et facade publique historique, puis isole uniquement le
+  rendu visible et la validation technique du final lock dans
+  `answer_rendering.py`;
+- les classes, constantes et fonctions publiques restent accessibles depuis
+  `biblio.answer_object`; les appelants ne sont pas migres et les delegations
+  sont paresseuses afin que les deux modules restent importables a froid;
+- `answer_surface.py` reste le formateur visible de bas niveau deja etabli.
+  Aucun nouveau renderer, chemin d'execution ou arbitrage bibliothecaire n'est
+  introduit.
+
+Fichiers de preuve et runtime:
+
+- `app/biblio/answer_object.py`: construction semantique, contrats de donnees
+  et facade de compatibilite, reduits de `1062` a `783` lignes;
+- `app/biblio/answer_rendering.py`: rendu d'un answer object deja construit et
+  validation du final lock, `345` lignes;
+- `app/tests/unit/biblio/test_answer_object.py`: preuve directe qu'un answer
+  object synthetique preconstruit est rendu et verrouille sans tool result;
+- cette section 9G.4 est la seule documentation modifiee.
+
+Invariants figes:
+
+- le builder semantique, ses statuts, reason codes, anchors, provenance et
+  projections content-free restent inchanges;
+- le renderer recoit un answer object deja construit: il ne planifie pas, ne
+  choisit pas de candidat, n'execute aucun outil et n'appelle pas Catalogue;
+- l'extrait exact reste purement mecanique et borne; une ambiguite ou une
+  clarification requise produit la meme surface bloquee sans decision
+  semantique supplementaire;
+- le final lock verifie seulement statut, mode, anchors, presence et empreinte
+  du contenu rendu; il conserve ses reason codes et son observabilite;
+- les classes et fonctions historiques gardent leur identite publique, et les
+  appelants agent-first, chat runtime, bridge et tests continuent de passer par
+  `biblio.answer_object`.
+
+Sensibilite controlee:
+
+- avant implementation, la nouvelle preuve charge `42` tests historiques
+  verts puis echoue une fois sur l'absence attendue de `answer_rendering`;
+- remplacer la surface de clarification par une sentinelle mutee fait echouer
+  l'assertion litterale du test de frontiere; apres restauration, la preuve
+  repasse `1/1`;
+- les contrats historiques restent sensibles aux corruptions de statut, mode,
+  anchor, hash, taille, rendu exact et autorisation du final lock.
+
+Preuves executees dans le runner hermetique `--network none`, checkout et
+benchmark read-only, `/tmp` en tmpfs, sans Catalogue, provider, secret, DB ou
+contenu operateur reels:
+
+- baseline complete avant patch: `2657 tests`, OK;
+- RED frontiere absente: `42` verts et `1` echec attendu;
+- GREEN answer object/rendering cible: `43/43`, OK;
+- answer object, agent-first, chat runtime, tools et goldens voisins:
+  `184/184`, OK;
+- suite Biblio fake/local complete: `499/499`, OK;
+- contrats transversaux chat/Biblio, transport, documents, final locks,
+  manifest, runtime inputs et assistant output: `65/65`, OK;
+- import froid direct de `answer_rendering`, rendu et final lock synthetiques:
+  OK, sans cycle ni resolution externe;
+- decouverte Python complete finale: `2658 tests`, OK, delta exact de un;
+- aucun frontend n'est concerne par cette frontiere Python interne.
+
+Auto-audit et limites:
+
+- l'implementation du rendu et du final lock n'existe qu'une fois; les deux
+  petites delegations historiques preservent l'API sans second chemin;
+- les imports de helpers semantiques prives depuis `answer_object` forment un
+  couplage interne borne et explicite. Creer un troisieme module de helpers ici
+  aurait elargi le lot sans nouvelle frontiere produit;
+- aucun test n'est supprime ou affaibli, aucun contenu brut ou secret n'entre
+  dans les nouvelles fixtures, snapshots, diffs ou sorties;
+- aucun Catalogue/provider live, nouveau cas produit, outil, endpoint, prompt,
+  route ou capacite; aucun rebuild, restart ou deploiement runtime;
+- 9G.0 a 9G.4 sont fermes. Le Lot 9H reste entierement ouvert et non commence.
+
 Sous-lots:
 
 - 9G.0 golden Biblio method matrix;
@@ -3424,7 +3504,7 @@ Checklist:
 - [x] Refactor tool registry only.
 - [x] Refactor planner/runtime only.
 - [x] Refactor passage search/extraction only.
-- [ ] Verify no Catalogue live.
+- [x] Verify no Catalogue live.
 
 ## Lot 9H - Memory/Admin structure
 
