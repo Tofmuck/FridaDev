@@ -2962,6 +2962,91 @@ Auto-audit et limites:
 - 9F.3 reste ouvert et non commence. Aucun cleanup du read-model
   d'observabilite n'est anticipe par ce lot.
 
+### Lot 9F.3 - Observability read-model cleanup - ferme le 18 aout 2026
+
+Decision de methode:
+
+- le meilleur plan est un split unique entre projection content-free pure et
+  agregation du read-model admin; un nouveau decoupage du runtime Agenda ou
+  des helpers generiques aurait elargi le lot sans reduire le risque;
+- `observability_read_model.py` conserve la route logique, les agregats et les
+  exports de compatibilite; `observability_projection.py` porte seulement la
+  normalisation bornee des payloads et metas Agenda;
+- les goldens 9F.0 prouvaient deja exactement la precedence des erreurs
+  enfants et l'anti-fuite. La preuve anti-contenu existante vise desormais
+  directement la nouvelle frontiere, sans scenario ni snapshot duplique.
+
+Fichiers de preuve et runtime:
+
+- `app/agenda/observability_projection.py`: projection pure des metas et
+  payloads, allowlist de caracteres, marqueurs sensibles et bornes stables;
+- `app/agenda/observability_read_model.py`: agregation admin et projection des
+  pending actions; les deux fonctions publiques historiques restent
+  reexportees a l'identique;
+- `app/tests/unit/agenda/test_observability_read_model.py`: preuve directe de
+  la frontiere de projection, completee par la matrice transversale 9F.0 et le
+  contrat de route admin.
+
+Invariants figes:
+
+- schema, route, statut degrade, compteurs, listes bornees et pending actions
+  du read-model admin restent identiques;
+- une erreur enfant read, pending ou write prime toujours le statut parent;
+- la projection conserve uniquement les champs techniques allowlistes et ne
+  laisse passer ni contenu calendrier, ICS, chemin DAV, URL, credential ou
+  texte brut d'exception;
+- les payloads historiques continuent de passer par les exports
+  `observability_read_model.project_message_meta` et
+  `project_observability_payload` sans rupture d'appelant;
+- `chat_runtime.py`, la route serveur, les statuts, reason codes, final locks,
+  confirmations, resolutions client et executions Agenda sont inchanges par
+  9F.3.
+
+Sensibilite controlee:
+
+- neutraliser la precedence des erreurs enfants produit trois echecs attendus
+  pour read, pending et write dans le golden 9F.0;
+- retirer le marqueur sensible `BEGIN:VEVENT` produit un echec attendu dans
+  la preuve directe anti-contenu;
+- apres restauration, les goldens et contrats de route repassent tous au
+  vert.
+
+Preuves executees dans le runner hermetique `--network none`, checkout et
+benchmark read-only, `/tmp` en tmpfs, sans provider, secret, CalDAV ou DB
+reels:
+
+- baseline avant patch: `2646 tests`, OK;
+- RED: `1` echec d'assertion attendu tant que la frontiere de projection
+  n'existait pas;
+- projection, goldens 9F.0 et route admin: `10/10`, OK;
+- suite Agenda elargie: `164/164`, OK;
+- observabilite transverse et gardes content-free: `58/58`, OK;
+- deux mutants controles: `3` puis `1` echecs attendus;
+- decouverte Python complete finale: `2646 tests`, OK, delta nul car aucune
+  preuve existante n'a ete dupliquee.
+
+Audit final d'absence d'extension produit:
+
+- le diff cumule 9F.1-9F.3 depuis `14eddabb` ne modifie ni `server.py`, ni
+  configuration, product methods, agent contract, outils CalDAV, pending
+  store, write execution, frontend, prompts, DB ou migration;
+- aucune route, action, provider, modele, setting, confirmation ou capacite
+  Agenda n'est ajoute; les modules nouveaux sont des frontieres internes et
+  les anciens chemins inline sont retires;
+- aucun provider ou CalDAV live n'a ete appele pendant les preuves. La
+  validation live du read-model utilise seulement la route admin existante
+  apres livraison FridaDev.
+
+Auto-audit et limites:
+
+- `observability_read_model.py` passe de `387` a `180` lignes; la projection
+  isolee fait `231` lignes. Les responsabilites sont separees sans chemin
+  concurrent ni format nouveau;
+- aucun snapshot large, contenu operateur ou secret n'est ajoute; aucune
+  preuve n'est affaiblie ou supprimee;
+- CalDAV live, provider live, DB/migration et toute roadmap Agenda post-V1
+  restent hors scope. Le Lot 9G reste ouvert et non commence.
+
 Sous-lots:
 
 - 9F.0 golden fake Agenda matrix;
@@ -2974,7 +3059,7 @@ Checklist:
 - [x] Golden fake Agenda matrix.
 - [x] Refactor client resolution only.
 - [x] Refactor execution only.
-- [ ] Verify no product expansion.
+- [x] Verify no product expansion.
 
 ## Lot 9G - Biblio runtime structure
 

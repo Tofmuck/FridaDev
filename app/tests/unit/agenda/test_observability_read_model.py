@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import unittest
 
-from agenda import observability_read_model, pending_store
+from agenda import observability_projection, observability_read_model, pending_store
 
 
 FORBIDDEN_VALUES = (
@@ -186,7 +186,7 @@ class AgendaObservabilityReadModelTests(unittest.TestCase):
         self.assert_content_free(read_model)
 
     def test_sensitive_values_in_allowed_fields_are_dropped(self) -> None:
-        projected = observability_read_model.project_observability_payload(
+        projected = observability_projection.project_observability_payload(
             {
                 'schema_version': 'frida_agenda_lot5_readonly_v1',
                 'reason_code': 'BEGIN:VEVENT',
