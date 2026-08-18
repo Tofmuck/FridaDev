@@ -9,62 +9,31 @@ from typing import Any, Mapping, Sequence
 from . import catalogue_client as catalogue
 from . import passage_extractor
 from .document_resolver import BiblioResolveRequest
-from .passage_extractor import BiblioPassageRequest
-
-
-TOOL_SEARCH_DOCUMENT = "search_document"
-TOOL_SEARCH_WORK = "search_work"
-TOOL_SEARCH_SECTION = "search_section"
-TOOL_RESOLVE_WORK = "resolve_work"
-TOOL_RESOLVE_SECTION = "resolve_section"
-TOOL_SECTION_BOUNDS = "section_bounds"
-TOOL_CATALOG_LIST = "catalog_list"
-TOOL_CATALOG_SEARCH = "catalog_search"
-TOOL_SEARCH_CHAPTERS = "search_chapters"
-TOOL_DOCUMENT_OPEN_SUMMARY = "document_open_summary"
-TOOL_DOCUMENT_TOC = "document_toc"
-TOOL_PAGE_READ = "page_read"
-TOOL_LOCATE = "locate"
-TOOL_PASSAGE_CONTEXT = "passage_context"
-TOOL_CANONICAL_RANGE_EXTRACT = "canonical_range_extract"
-
-LOT2_LIBRARY_TOOL_NAMES = (
-    TOOL_SEARCH_DOCUMENT,
-    TOOL_SEARCH_WORK,
-    TOOL_SEARCH_SECTION,
-    TOOL_RESOLVE_WORK,
-    TOOL_RESOLVE_SECTION,
-    TOOL_SECTION_BOUNDS,
-)
-
-LOT3_TOOL_NAMES = (
-    *LOT2_LIBRARY_TOOL_NAMES,
+from .librarian_tool_registry import (
+    FORBIDDEN_TOOL_NAMES,
+    LOT2_LIBRARY_TOOL_NAMES,
+    LOT3_TOOL_NAMES,
+    REASON_FORBIDDEN_TOOL,
+    REASON_UNKNOWN_TOOL,
+    TOOL_CANONICAL_RANGE_EXTRACT,
     TOOL_CATALOG_LIST,
     TOOL_CATALOG_SEARCH,
-    TOOL_SEARCH_CHAPTERS,
     TOOL_DOCUMENT_OPEN_SUMMARY,
     TOOL_DOCUMENT_TOC,
-    TOOL_PAGE_READ,
     TOOL_LOCATE,
+    TOOL_PAGE_READ,
     TOOL_PASSAGE_CONTEXT,
-    TOOL_CANONICAL_RANGE_EXTRACT,
+    TOOL_RESOLVE_SECTION,
+    TOOL_RESOLVE_WORK,
+    TOOL_SEARCH_CHAPTERS,
+    TOOL_SEARCH_DOCUMENT,
+    TOOL_SEARCH_SECTION,
+    TOOL_SEARCH_WORK,
+    TOOL_SECTION_BOUNDS,
+    BiblioLibrarianToolError,
+    BiblioLibrarianToolRegistry,
 )
-
-FORBIDDEN_TOOL_NAMES = frozenset(
-    {
-        "page",
-        "latest/page",
-        "latest/context",
-        "export",
-        "export/chunk",
-        "export_chunk",
-        "document",
-        "document_read",
-        "settings",
-        "settings/reset",
-        "progress/recent/clear",
-    }
-)
+from .passage_extractor import BiblioPassageRequest
 
 STATUS_OK = "ok"
 STATUS_ERROR = "error"
@@ -77,8 +46,6 @@ REASON_OK = "ok"
 REASON_RESOLVED = "resolved"
 REASON_AMBIGUOUS = "ambiguous"
 REASON_NOT_FOUND = "not_found"
-REASON_UNKNOWN_TOOL = "unknown_tool"
-REASON_FORBIDDEN_TOOL = "forbidden_tool"
 REASON_INVALID_PARAMETER = "invalid_parameter"
 REASON_MISSING_DOCUMENT_ID = "missing_document_id"
 REASON_MISSING_QUERY = "missing_query"
@@ -137,56 +104,6 @@ _MAX_CANONICAL_RANGE_CHARS = passage_extractor.MAX_MAX_PASSAGE_CHARS
 _MAX_CANONICAL_RANGE_RUNTIME_CHARS = 5_600
 
 
-class BiblioLibrarianToolError(Exception):
-    def __init__(
-        self,
-        *,
-        tool_name: str = "",
-        reason_code: str = REASON_INVALID_PARAMETER,
-        endpoint_kind: str = "",
-        status_code: int | None = None,
-        doc_id: str = "",
-        error_class: str = "",
-        detail: str = "",
-    ) -> None:
-        self.tool_name = _clean_tool_name(tool_name)
-        self.reason_code = reason_code
-        self.endpoint_kind = endpoint_kind
-        self.status_code = status_code
-        self.doc_id_short = catalogue.short_doc_id(doc_id)
-        self.error_class = error_class
-        self.detail = detail
-        super().__init__(self.__str__())
-
-    def __str__(self) -> str:
-        parts = [self.reason_code]
-        for key, value in (
-            ("tool", self.tool_name),
-            ("endpoint", self.endpoint_kind),
-            ("doc_id_short", self.doc_id_short),
-            ("error_class", self.error_class),
-            ("detail", self.detail),
-        ):
-            if value:
-                parts.append(f"{key}={value}")
-        if self.status_code is not None:
-            parts.append(f"status={self.status_code}")
-        return " ".join(parts)
-
-    def to_observability(self) -> dict[str, Any]:
-        return _clean_observation(
-            {
-                "tool_name": self.tool_name,
-                "endpoint_kind": self.endpoint_kind,
-                "status": STATUS_ERROR,
-                "reason_code": self.reason_code,
-                "status_code": self.status_code,
-                "doc_id_short": self.doc_id_short,
-                "error_class": self.error_class,
-            }
-        )
-
-
 @dataclass(frozen=True)
 class BiblioLibrarianToolObservation:
     tool_name: str
@@ -229,17 +146,12 @@ class BiblioLibrarianToolResult:
         return self.observation.to_observability()
 
 
-class BiblioLibrarianToolRegistry:
+class _BiblioLibrarianToolHandlers:
     def __init__(self, client: Any) -> None:
         self._client = client
 
-    @property
-    def tool_names(self) -> tuple[str, ...]:
-        return LOT3_TOOL_NAMES
-
-    def run(self, tool_name: str, params: Mapping[str, Any] | None = None) -> BiblioLibrarianToolResult:
-        clean_name = _validate_tool_name(tool_name)
-        handlers = {
+    def as_mapping(self) -> dict[str, Any]:
+        return {
             TOOL_SEARCH_DOCUMENT: self._search_document,
             TOOL_SEARCH_WORK: self._search_work,
             TOOL_SEARCH_SECTION: self._search_section,
@@ -256,7 +168,6 @@ class BiblioLibrarianToolRegistry:
             TOOL_PASSAGE_CONTEXT: self._passage_context,
             TOOL_CANONICAL_RANGE_EXTRACT: self._canonical_range_extract,
         }
-        return handlers[clean_name](dict(params or {}))
 
     def _search_document(self, params: Mapping[str, Any]) -> BiblioLibrarianToolResult:
         return _run_library_tool(self._client, TOOL_SEARCH_DOCUMENT, params)
@@ -559,22 +470,18 @@ class BiblioLibrarianToolRegistry:
 
 
 def build_librarian_tool_registry(client: Any | None = None) -> BiblioLibrarianToolRegistry:
-    return BiblioLibrarianToolRegistry(client or catalogue.CatalogueClient())
+    resolved_client = client or catalogue.CatalogueClient()
+    handlers = _BiblioLibrarianToolHandlers(resolved_client)
+    return BiblioLibrarianToolRegistry(
+        handlers=handlers.as_mapping(),
+        client=resolved_client,
+    )
 
 
 def _run_library_tool(client: Any, tool_name: str, params: Mapping[str, Any]) -> BiblioLibrarianToolResult:
     from . import librarian_library_tools
 
     return librarian_library_tools.run_library_tool(client, tool_name, params)
-
-
-def _validate_tool_name(tool_name: str) -> str:
-    clean_name = _clean_tool_name(tool_name)
-    if clean_name in FORBIDDEN_TOOL_NAMES:
-        raise BiblioLibrarianToolError(tool_name=clean_name, reason_code=REASON_FORBIDDEN_TOOL)
-    if clean_name not in LOT3_TOOL_NAMES:
-        raise BiblioLibrarianToolError(tool_name=clean_name, reason_code=REASON_UNKNOWN_TOOL)
-    return clean_name
 
 
 def _ok_result(

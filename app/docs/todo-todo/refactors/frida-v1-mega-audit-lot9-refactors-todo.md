@@ -3168,6 +3168,81 @@ Limites et non-extension:
   registre, du method runtime, du passage extractor ou du rendu n'est anticipe
   dans ce lot.
 
+### Lot 9G.1 - Tool registry boundary - ferme le 18 aout 2026
+
+Decision de methode:
+
+- le meilleur split isole seulement le namespace Biblio autorise/interdit, la
+  validation et le dispatch; les handlers Catalogue, leur normalisation et les
+  resultats restent dans `librarian_tools.py`;
+- la nouvelle frontiere n'est pas un registre generique: elle exige les 15
+  handlers historiques, dans leur ordre exact, et ne permet pas d'injecter un
+  autre namespace;
+- `librarian_tools` reexporte les constantes et la classe historiques, puis
+  cable le mapping concret. Aucun appelant n'est migre vers une API concurrente.
+
+Fichiers de preuve et runtime:
+
+- `app/biblio/librarian_tool_registry.py`: noms autorises/interdits, reason
+  codes de rejet et dispatch valide content-free;
+- `app/biblio/librarian_tools.py`: handlers concrets inchanges, wiring unique
+  du registre et reexports de compatibilite;
+- `app/tests/unit/biblio/test_librarian_tool_registry_boundary.py`: trois
+  preuves directes sur mapping exact, rejet avant dispatch, copie des params et
+  compatibilite du client historique.
+
+Invariants figes:
+
+- l'allowlist, la denylist, leur ordre et les reason codes restent identiques;
+- handler absent, ajoute ou deplace fait echouer la construction du registre;
+- outil interdit ou inconnu est rejete avant tout handler; un appel autorise
+  recoit une copie des params et ne peut pas muter l'entree de l'appelant;
+- `build_librarian_tool_registry(...)`, la classe et les constantes restent
+  accessibles depuis `biblio.librarian_tools`;
+- la reference client historique `_client` reste disponible: le method runtime
+  l'utilise encore pour la navigation structurelle vers le chapitre suivant;
+- planner, method runtime, tool results, observabilite, prompts, 18 cas produit
+  et endpoints Catalogue sont inchanges.
+
+Sensibilite controlee:
+
+- supprimer, ajouter ou inverser un handler fait echouer la frontiere;
+- accepter POST, outil interdit ou inconnu reste rejete par les goldens 9G.0;
+- perdre la reference client fait echouer la navigation vers le chapitre
+  suivant au lieu de la requalifier silencieusement en clarification;
+- rendre le namespace injectable fait echouer la preuve qui exige une
+  frontiere Biblio fermee.
+
+Preuves executees dans le runner hermetique `--network none`, checkout et
+benchmark read-only, `/tmp` en tmpfs, sans Catalogue, provider, secret, DB ou
+contenu operateur reels:
+
+- baseline complete avant patch: `2649 tests`, OK;
+- RED frontiere absente: `3` echecs d'assertion attendus;
+- GREEN initial puis registre/planner/goldens 9G.0: `3/3`, puis `54/54`, OK;
+- la premiere suite Biblio a detecte `1` regression sur `493` tests: perte du
+  client historique et faux `needs_clarification` sur next-chapter;
+- RED cible de compatibilite client: `1` echec attendu; GREEN cible: `4/4`, OK;
+- RED anti-registre generique: `2` echecs attendus; GREEN cible: `4/4`, OK;
+- RED suppression de la factory d'erreur injectable: `3` echecs attendus;
+  GREEN registre/navigation: `4/4`, OK;
+- suite Biblio fake/local complete finale: `493/493`, OK;
+- contrats transversaux chat/Biblio, final locks, golden Lot 9, manifest et
+  observabilite: `66/66`, OK;
+- decouverte Python complete finale: `2652 tests`, OK, delta exact de trois;
+- aucun frontend n'est concerne par cette frontiere Python interne.
+
+Auto-audit et limites:
+
+- `librarian_tools.py` passe de `1187` a `1094` lignes; la frontiere fermee
+  fait `146` lignes. Le gain est une responsabilite explicite, pas un
+  deplacement des handlers ni un split cosmetique;
+- la dependance privee du method runtime a `registry._client` est une dette
+  existante preservee pour ne pas anticiper 9G.2;
+- aucun nouvel outil, endpoint, provider, prompt, route ou cas produit; aucun
+  Catalogue/provider live, rebuild ou restart;
+- 9G.2, 9G.3 et 9G.4 restent ouverts et non commences.
+
 Sous-lots:
 
 - 9G.0 golden Biblio method matrix;
@@ -3179,7 +3254,7 @@ Sous-lots:
 Checklist:
 
 - [x] Golden method matrix.
-- [ ] Refactor tool registry only.
+- [x] Refactor tool registry only.
 - [ ] Refactor planner/runtime only.
 - [ ] Refactor passage search/extraction only.
 - [ ] Verify no Catalogue live.
