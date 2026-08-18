@@ -2747,6 +2747,83 @@ Golden tests prealables:
 - observability admin projection child error precedence;
 - no secret/ICS/DAV path.
 
+### Lot 9F.0 - Golden fake Agenda matrix - ferme le 18 aout 2026
+
+Decision de methode:
+
+- les contrats Agenda existants couvraient deja individuellement les branches
+  toggle, resolution, lecture, proposition et observabilite; 9F.0 ajoute une
+  matrice transversale compacte, sans recopier ces preuves ni modifier le
+  runtime;
+- une fixture fake partagee traverse le vrai coordinateur
+  `agenda.chat_runtime.run_agenda_chat_turn`; aucun provider, secret, CalDAV,
+  DB ou contenu operateur reel n'est sollicite;
+- le lot reste strictement tests/docs-only. Les quatre modules runtime vises
+  par 9F.1 a 9F.3 sont inchanges.
+
+Fichiers de preuve:
+
+- `app/tests/support/agenda_runtime_golden.py`: clients modele et CalDAV fake,
+  resolution de secret comptabilisee, plans lecture/proposition synthetiques
+  et garde content-free commune;
+- `app/tests/unit/agenda/test_lot9_agenda_golden_matrix.py`: trois goldens
+  transversaux pour la resolution, l'execution lecture/proposition et la
+  precedence des erreurs enfants dans la projection d'observabilite.
+
+Invariants figes:
+
+- toggle desactive, mode runtime off, secret non configure et erreur provider
+  conservent leurs statuts/reason codes, sans modele appele hors branche
+  autorisee, acces CalDAV, lecture de secret ni mutation;
+- le plan read-only utilise uniquement le client fake et conserve outils,
+  compteur d'evenements et absence de mutation;
+- la proposition cree exactement une action `pending`, garde la confirmation
+  simple et n'effectue ni acces CalDAV, ni lecture de secret, ni mutation;
+- une erreur enfant read, pending ou write prime le statut parent
+  `active_ready` dans la projection admin;
+- observabilite et meta de final lock restent content-free: aucun texte
+  utilisateur, titre, lieu, description, secret synthetique, ICS ou chemin DAV
+  n'est projete.
+
+Sensibilite controlee:
+
+- forcer le toggle Agenda a actif fait echouer la branche `toggle_off` en
+  appelant le modele interdit;
+- retirer la branche de stockage pending fait echouer la preuve proposition;
+- remplacer la precedence des erreurs enfants par le seul statut parent fait
+  echouer les trois cas read/pending/write.
+
+Preuves executees dans le runner hermetique `--network none`, checkout et
+benchmark read-only, `/tmp` en tmpfs, sans secret ni volume runtime:
+
+- baseline avant patch: Python `2635 tests`, frontend Node `135/135`, Chromium
+  `17/17`, tous verts;
+- mutants controles: `1`, `1` et `3` echecs attendus, puis restauration de
+  l'implementation reelle;
+- nouveaux goldens: `3 tests`, OK;
+- suite Agenda elargie: `156 tests`, OK;
+- contrat frontend Agenda cible: `3/3`, OK;
+- decouverte Python complete finale: `2638 tests`, OK, delta exact de trois;
+- frontend Node complet final: `135/135`, sans fail, skip ni todo;
+- Chromium hermetique complet, namespace vide avec loopback seul: `17/17`,
+  sans fail, skip ni todo.
+
+Corrections de runner observees, sans changement de code:
+
+- une premiere decouverte montee avec `app/` seul ne pouvait pas resoudre la
+  racine du benchmark Web; la commande autoritative a ete relancee avec les
+  montages read-only bornes `app/` et `benchmark/`;
+- une premiere invocation Chromium dans un namespace sans interface loopback
+  a produit `17` erreurs locales `ERR_INTERNET_DISCONNECTED`; la preuve
+  hermetique correcte active uniquement `lo` et passe `17/17`.
+
+Limites restantes:
+
+- 9F.0 ne prouve aucun serveur CalDAV ou provider live, conformement au hors
+  scope; les transports sont exclusivement fake/local;
+- 9F.1, 9F.2 et 9F.3 restent ouverts et non commences. Aucun split de
+  resolution client, adaptateur d'execution ou read-model n'est anticipe ici.
+
 Sous-lots:
 
 - 9F.0 golden fake Agenda matrix;
@@ -2756,7 +2833,7 @@ Sous-lots:
 
 Checklist:
 
-- [ ] Golden fake Agenda matrix.
+- [x] Golden fake Agenda matrix.
 - [ ] Refactor client resolution only.
 - [ ] Refactor execution only.
 - [ ] Verify no product expansion.
