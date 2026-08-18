@@ -522,6 +522,63 @@ class PassageExtractorTests(unittest.TestCase):
         self.assertEqual(result.status, extractor.STATUS_EXTRACTED)
         self.assertEqual(fake.calls[-1], ("context", "doc-1", None, 12, 3, 5, 80))
 
+    def test_resolved_extraction_boundary_needs_no_search_client(self) -> None:
+        try:
+            from biblio import passage_extraction
+        except ImportError:
+            self.fail("passage_extraction boundary is missing")
+
+        class ContextOnlyClient:
+            def __init__(self) -> None:
+                self.calls: list[tuple[object, ...]] = []
+
+            def context(
+                self,
+                doc_id: str,
+                *,
+                page_no: int | None = None,
+                para_no: int | None = None,
+                paragraph_id: int | None = None,
+                char_offset: int = 0,
+                window_chars: int = extractor.DEFAULT_CONTEXT_WINDOW_CHARS,
+            ) -> catalogue.CatalogueResponse:
+                self.calls.append(("context", doc_id, paragraph_id, page_no, para_no, char_offset, window_chars))
+                return response(
+                    {
+                        "document_id": "doc-resolved",
+                        "page_no": 4,
+                        "para_no": 2,
+                        "excerpt": "SYNTHETIC PASSAGE",
+                    },
+                    "context",
+                )
+
+        resolution = resolver.BiblioResolutionResult(
+            status=resolver.STATUS_RESOLVED,
+            reason_code=resolver.REASON_DOCUMENT_AND_LOCATOR_RESOLVED,
+            document=resolver.DocumentCandidate(document_id="doc-resolved", doc_id_short="resolved"),
+            locator=resolver.LocatorCandidate(
+                document_id="doc-resolved",
+                doc_id_short="resolved",
+                kind="page",
+                label="synthetic-locator",
+                page_no=4,
+                para_no=2,
+            ),
+        )
+        options = passage_extraction.PassageExtractionOptions(
+            char_offset=0,
+            window_chars=extractor.DEFAULT_CONTEXT_WINDOW_CHARS,
+            max_passage_chars=extractor.DEFAULT_MAX_PASSAGE_CHARS,
+        )
+        client = ContextOnlyClient()
+
+        result = passage_extraction.ResolvedPassageExtractor(client).extract(resolution, options)
+
+        self.assertEqual((result.status, result.reason_code), ("extracted", "passage_extracted"))
+        self.assertEqual(result.passage, "SYNTHETIC PASSAGE")
+        self.assertEqual(client.calls, [("context", "doc-resolved", None, 4, 2, 0, 700)])
+
     def test_invalid_extraction_options_refuse_before_network(self) -> None:
         fake = FakeCatalogueClient()
         cases = [

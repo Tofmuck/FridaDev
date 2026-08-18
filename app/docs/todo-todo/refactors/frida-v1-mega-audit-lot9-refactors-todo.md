@@ -3327,6 +3327,89 @@ Auto-audit et limites:
   l'answer object et le rendu restent reserves a 9G.4;
 - aucun Catalogue/provider live, rebuild, restart ou deploiement runtime.
 
+### Lot 9G.3 - Passage extraction/search separation - ferme le 18 aout 2026
+
+Decision de methode:
+
+- le meilleur split conserve `passage_extractor.py` comme facade publique:
+  validation, resolution unique du document/locator, puis delegation;
+- l'extraction mecanique apres resolution est isolee dans
+  `passage_extraction.py`; elle ne connait ni resolver, ni `/search`, ni
+  planner, et ne lit que les endpoints Catalogue `context` ou `page`;
+- les moteurs deja distincts `passage_candidate_search.py` et
+  `passage_context_search.py` restent inchanges. Aucun second chemin de
+  recherche, extraction ou selection n'est cree.
+
+Fichiers de preuve et runtime:
+
+- `app/biblio/passage_extractor.py`: facade historique de 90 lignes et
+  reexports de compatibilite pour tous les appelants existants;
+- `app/biblio/passage_extraction.py`: contrats de resultat historiques et
+  extraction point/range apres resolution, deplaces sans changement de regle;
+- `app/tests/unit/biblio/test_passage_extractor.py`: preuve directe qu'une
+  resolution deja obtenue s'extrait avec un client expose uniquement a
+  `context`, sans methode de recherche;
+- cette section 9G.3 est la seule documentation modifiee.
+
+Invariants figes:
+
+- l'ordre reste validation des bornes, resolution document/locator, refus des
+  resolutions non uniques, puis extraction;
+- aucune extraction n'est tentee sur resolution ambigue, absente ou invalide;
+- l'extracteur resolu n'appelle ni `catalog`, ni `metadata`, ni `locate`, ni
+  `search`; les ranges conservent leurs bornes de 40 paragraphes et 12 pages;
+- statuts, reason codes, hashes, interval hints, contenu interne, projection
+  content-free, erreurs Catalogue et API historique restent identiques;
+- candidate search, context search, selection, prompt lane, final lock,
+  answer object, rendu, planner et method runtime sont inchanges;
+- aucun outil, endpoint, prompt, provider, route, cas produit ou capacite
+  n'est ajoute.
+
+Sensibilite controlee:
+
+- avant implementation, la frontiere absente fait echouer la nouvelle preuve:
+  `1` echec attendu sur `19` tests, les `18` historiques restant verts;
+- une mutation qui reintroduit artificiellement un appel `/search` dans
+  l'extracteur resolu est rejetee par le client `context`-only avec l'erreur
+  attendue; apres restauration, la preuve repasse `1/1`;
+- une cible `context` deplacee, un ordre range inverse, une extraction apres
+  ambiguite ou une modification des statuts reste couverte par les 18 contrats
+  historiques et les goldens Biblio transversaux.
+
+Preuves executees dans le runner hermetique `--network none`, checkout et
+benchmark read-only, `/tmp` en tmpfs, sans Catalogue, provider, secret, DB ou
+contenu operateur reels:
+
+- baseline complete avant patch: `2656 tests`, OK;
+- RED frontiere absente: `18` verts et `1` echec attendu;
+- GREEN extractor cible: `19/19`, OK;
+- recherche, contexte, extraction, appelants et golden Lot 9 cibles:
+  `205/205`, OK;
+- une premiere selection manuelle de modules a charge `181` tests verts mais
+  comportait `3` erreurs d'import de noms de modules inexistants; la commande
+  corrigee ci-dessus est la preuve retenue;
+- suite Biblio fake/local complete: `498/498`, OK;
+- contrats transversaux chat/Biblio, final locks, manifest, golden Lot 9 et
+  runtime inputs: `65/65`, OK;
+- decouverte Python complete finale: `2657 tests`, OK, delta exact de un;
+- aucun frontend n'est concerne par cette frontiere Python interne.
+
+Auto-audit et limites:
+
+- `passage_extractor.py` passe de `1020` a `90` lignes; le composant extrait
+  fait `1006` lignes. Le gain est la separation resolution/extraction, pas une
+  reduction artificielle du volume des regles point/range;
+- le nouveau module ne contient aucune construction de resolver ni appel de
+  recherche; les seuls I/O de sa classe sont `context` et `page`;
+- aucun test n'est supprime ou affaibli, aucun contenu brut n'entre dans la
+  nouvelle preuve ou l'observabilite, et aucun Catalogue/provider live n'est
+  appele;
+- la taille du moteur d'extraction reste une limite connue, mais le subdiviser
+  davantage ici anticiperait un lot non autorise et figerait des details sans
+  gain de frontiere;
+- l'answer object et le rendu restent reserves a 9G.4; aucun rebuild, restart
+  ou deploiement runtime n'est effectue.
+
 Sous-lots:
 
 - 9G.0 golden Biblio method matrix;
@@ -3340,7 +3423,7 @@ Checklist:
 - [x] Golden method matrix.
 - [x] Refactor tool registry only.
 - [x] Refactor planner/runtime only.
-- [ ] Refactor passage search/extraction only.
+- [x] Refactor passage search/extraction only.
 - [ ] Verify no Catalogue live.
 
 ## Lot 9H - Memory/Admin structure
