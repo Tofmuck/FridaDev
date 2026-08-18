@@ -9,11 +9,10 @@ from agenda import (
     agent_openrouter,
     agent_runtime,
     client_resolution,
+    execution_adapters,
     pending_store,
     proposal_execution,
-    proposal_rendering,
     read_execution,
-    response_rendering,
     time_windows,
 )
 from observability import agentic_status
@@ -344,75 +343,43 @@ def run_agenda_chat_turn(
         config_module=config_module,
     )
     result = agent_runtime.AgendaJsonAgent(model_client).run(request)
-    execution_result = None
-    proposal_result = None
-    final_lock = None
+    execution_outcome = None
     if result.validated_plan is not None and result.status == agent_runtime.STATUS_ACTIVE_READY:
         if proposal_execution.plan_needs_pending_store(result.validated_plan):
-            proposal_client_resolution = client_resolution.resolve_proposal_read_client(
+            execution_outcome = execution_adapters.execute_proposal_plan(
+                result.validated_plan,
                 settings=settings,
-                plan=result.validated_plan,
-                injected_client=read_client,
+                pending_state=pending_state,
+                now_iso=str(now_iso or ''),
+                injected_read_client=read_client,
                 runtime_settings_module=runtime_settings_module,
                 requests_module=requests_module,
                 config_module=config_module,
-            )
-            if proposal_client_resolution.is_error:
-                proposal_result = proposal_execution.client_resolution_error_result(
-                    result.validated_plan,
-                    conversation_state=pending_state,
-                    now_iso=str(now_iso or ''),
-                    error_class=proposal_client_resolution.error_class,
-                )
-            else:
-                proposal_result = proposal_execution.execute_pending_plan(
-                    result.validated_plan,
-                    conversation_state=pending_state,
-                    now_iso=str(now_iso or ''),
-                    id_factory=pending_id_factory,
-                    read_client=proposal_client_resolution.client,
-                    live_caldav=proposal_client_resolution.live_caldav,
-                    write_client=write_client,
-                    live_write_caldav=False,
-                    uid_factory=write_uid_factory,
-                )
-            pending_state = proposal_result.state or pending_state
-            final_lock = proposal_rendering.build_proposal_response_lock(
-                plan=result.validated_plan,
-                proposal_result=proposal_result,
+                pending_id_factory=pending_id_factory,
+                write_client=write_client,
+                write_uid_factory=write_uid_factory,
             )
         elif read_execution.plan_needs_read_client(result.validated_plan):
-            read_client_resolution = client_resolution.resolve_read_client(
+            execution_outcome = execution_adapters.execute_read_plan(
+                result.validated_plan,
                 settings=settings,
-                injected_client=read_client,
+                injected_read_client=read_client,
                 runtime_settings_module=runtime_settings_module,
                 requests_module=requests_module,
                 config_module=config_module,
-            )
-            if read_client_resolution.is_error:
-                execution_result = read_execution.client_resolution_error_result(
-                    result.validated_plan,
-                    error_class=read_client_resolution.error_class,
-                )
-            else:
-                execution_result = read_execution.execute_readonly_plan(
-                    result.validated_plan,
-                    client=read_client_resolution.client,
-                    live_caldav=read_client_resolution.live_caldav,
-                    now_iso=str(now_iso or ''),
-                )
-            final_lock = response_rendering.build_final_response_lock(
-                plan=result.validated_plan,
-                execution_result=execution_result,
+                now_iso=str(now_iso or ''),
             )
         else:
-            final_lock = response_rendering.build_context_response_lock(plan=result.validated_plan)
-            if final_lock is None:
-                execution_result = read_execution.execute_readonly_plan(
-                    result.validated_plan,
-                    client=None,
-                    live_caldav=False,
-                )
+            execution_outcome = execution_adapters.execute_context_plan(result.validated_plan)
+    execution_result = (
+        execution_outcome.read_execution_result if execution_outcome is not None else None
+    )
+    proposal_result = (
+        execution_outcome.proposal_execution_result if execution_outcome is not None else None
+    )
+    final_lock = execution_outcome.final_response_lock if execution_outcome is not None else None
+    if execution_outcome is not None and execution_outcome.pending_state is not None:
+        pending_state = execution_outcome.pending_state
     execution_observation = (
         execution_result.observation if execution_result is not None else None
     )

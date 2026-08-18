@@ -2892,6 +2892,76 @@ Auto-audit et limites:
   `proposal_execution.py` et `observability_read_model.py` ne sont pas
   refactores par ce lot.
 
+### Lot 9F.2 - Execution adapters split - ferme le 18 aout 2026
+
+Decision de methode:
+
+- un nouveau split interne de `read_execution.py` ou `proposal_execution.py`
+  aurait fragmente deux responsabilites metier deja coherentes;
+- la dette reelle etait la couche d'adaptation encore inline dans
+  `chat_runtime.py`: resolution du client, appel de l'executeur, construction
+  du final lock et avancement du pending state;
+- le split minimal cree `app/agenda/execution_adapters.py` avec trois
+  adaptateurs explicites read, proposal et context. Le coordinateur conserve
+  le choix et l'ordre des branches ainsi que toute l'observabilite.
+
+Fichiers de preuve et runtime:
+
+- `app/agenda/execution_adapters.py`: resultat d'adaptation borne et trois
+  chemins read/proposal/context;
+- `app/agenda/chat_runtime.py`: choix orchestral preserve, puis consommation
+  uniforme du resultat d'adaptation;
+- `app/tests/unit/agenda/test_execution_adapters.py`: trois tests directs,
+  completes par les goldens transversaux 9F.0 et les preuves de resolution
+  9F.1.
+
+Invariants figes:
+
+- la lecture resout le client au meme moment, execute le plan read-only et
+  construit un final lock uniquement depuis son resultat reel;
+- la proposition conserve les gates de resolution 9F.1, cree ou refuse la
+  pending action, avance l'etat retourne et construit la reponse depuis ce
+  resultat;
+- le contexte capacites produit un final lock sans lecture, secret ni client;
+  les autres plans de contexte gardent le resultat read-only `method_not_read`
+  utilise par l'observabilite existante;
+- la confirmation continue de passer uniquement par le pending store et le
+  client write injecte, avec `live_write_caldav=false` comme avant le split;
+- erreurs de resolution, statuts, reason codes, metas content-free, final
+  locks et priorite proposal/read/context restent inchanges.
+
+Sensibilite controlee:
+
+- retirer le final lock de l'adaptateur read produit un echec attendu;
+- conserver l'ancien pending state au lieu de l'etat cree par la proposition
+  produit un echec attendu;
+- retirer le final lock du contexte capacites produit un echec attendu et
+  declenche a tort le fallback d'execution read-only.
+
+Preuves executees dans le runner hermetique `--network none`, checkout et
+benchmark read-only, `/tmp` en tmpfs, sans provider, secret ou CalDAV reels:
+
+- baseline avant patch: `2643 tests`, OK;
+- RED: `3` echecs d'assertion attendus car la frontiere
+  `agenda.execution_adapters` n'existait pas;
+- tests directs des adaptateurs: `3/3`, OK;
+- adaptateurs, resolution client et goldens 9F.0: `11/11`, OK;
+- runtime Agenda, adaptateurs, resolution et goldens: `91/91`, OK;
+- suite Agenda elargie: `164/164`, OK;
+- trois mutants controles: `1` echec attendu pour chacun;
+- decouverte Python complete finale: `2646 tests`, OK, delta exact de trois.
+
+Auto-audit et limites:
+
+- `chat_runtime.py` passe de `478` a `445` lignes; le nouveau module fait
+  `133` lignes. L'ancien adaptateur inline est retire, sans chemin concurrent;
+- `read_execution.py`, `proposal_execution.py` et
+  `observability_read_model.py` restent inchanges;
+- aucun appel provider ou CalDAV live, aucune DB, migration, nouvelle action
+  Agenda, modification de confirmation ou changement de contrat produit;
+- 9F.3 reste ouvert et non commence. Aucun cleanup du read-model
+  d'observabilite n'est anticipe par ce lot.
+
 Sous-lots:
 
 - 9F.0 golden fake Agenda matrix;
@@ -2903,7 +2973,7 @@ Checklist:
 
 - [x] Golden fake Agenda matrix.
 - [x] Refactor client resolution only.
-- [ ] Refactor execution only.
+- [x] Refactor execution only.
 - [ ] Verify no product expansion.
 
 ## Lot 9G - Biblio runtime structure
