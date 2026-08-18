@@ -3092,6 +3092,82 @@ Golden tests prealables:
 - fallback repaired observability;
 - no query/text raw in observability.
 
+### Lot 9G.0 - Golden Biblio method matrix - ferme le 18 aout 2026
+
+Decision de methode:
+
+- les contrats Biblio existants prouvaient deja separement registre, planner,
+  method runtime, recherche/contexte, answer object et observabilite; 9G.0
+  ajoute une matrice transversale compacte sans rejouer les 18 cas historiques;
+- une fixture fake partagee traverse le vrai
+  `biblio.librarian_agent_first.run_agent_first_plan`, donc le planner, le
+  registre GET-only, la completion de methode, l'answer object, le rendu et le
+  final lock;
+- trois familles distinctes suffisent a verrouiller les continuations qui
+  seront separees ensuite: resolution d'oeuvre vers summary, structure vers
+  TOC et recherche de passage vers contexte;
+- le lot reste strictement tests/docs-only. Les cinq modules runtime vises par
+  9G.1 a 9G.4 sont inchanges.
+
+Fichiers de preuve:
+
+- `app/tests/support/biblio_method_golden.py`: client Catalogue fake local,
+  sentinelles synthetiques, cas de methode et projection content-free partagee;
+- `app/tests/unit/biblio/test_lot9_biblio_golden_matrix.py`: trois goldens
+  transversaux GET-only, method runtime/answer/final lock et
+  fallback-repaired/anti-fuite.
+
+Invariants figes:
+
+- une operation autorisee traverse le registre en GET; POST, outil interdit et
+  outil inconnu sont rejetes avant tout appel client;
+- `work_lookup` complete `catalog_search` par `document_open_summary`,
+  `document_toc_show` complete par `document_toc`, et
+  `passage_search_in_work` complete par `passage_context`, dans cet ordre;
+- chaque methode conserve son `case_id` et son `product_method`, produit un
+  answer object `ready`, un rendu present et un final lock autorise;
+- le texte mecanique du passage peut atteindre le rendu exact, mais aucune
+  query, titre, chapitre ou passage brut n'apparait dans les projections de
+  loop, answer object, rendu, lock ou expectations;
+- une execution deterministe reparee apres echec du plan modele reste
+  explicitement `fallback_repaired` avec le reason code
+  `agent_first_fallback_repaired`, et n'est pas requalifiee en succes pur du
+  bibliothecaire LLM.
+
+Sensibilite controlee:
+
+- requalifier le POST en appel execute fait echouer le golden GET-only;
+- inverser l'ordre des outils de completion fait echouer chaque ligne de la
+  matrice de methodes;
+- requalifier `fallback_repaired` en `met` ou injecter un passage brut dans
+  l'observabilite fait echouer le golden rendu/fallback.
+
+Preuves executees dans le runner hermetique `--network none`, checkout et
+benchmark read-only, `/tmp` en tmpfs, sans Catalogue, provider, secret, DB ou
+contenu operateur reels:
+
+- baseline complete avant patch: `2646 tests`, OK;
+- premier ciblage: `3 tests`, trois erreurs de test observees sur une
+  assertion visant un champ `ok` absent de la projection; la preuve a ete
+  corrigee vers le contrat vivant `status=authorized`, sans changement runtime;
+- nouveaux goldens avec mutations controlees: `3/3`, OK;
+- suite Biblio fake/local complete: `490/490`, OK;
+- contrats transversaux chat/Biblio, final locks, golden Lot 9, manifest et
+  observabilite: `66/66`, OK;
+- decouverte Python complete finale: `2649 tests`, OK, delta exact de trois;
+- aucun frontend n'est concerne par cette fixture Python sans surface produit.
+
+Limites et non-extension:
+
+- aucune preuve Catalogue ou provider live n'est executee, conformement au
+  hors scope; 9G.0 etablit des goldens de refactor et ne ferme aucun des 18 cas
+  produit Biblio;
+- aucun outil, route, prompt, provider, format, capacite ou semantique Biblio
+  n'est ajoute ou modifie;
+- 9G.1, 9G.2, 9G.3 et 9G.4 restent ouverts et non commences. Aucun split du
+  registre, du method runtime, du passage extractor ou du rendu n'est anticipe
+  dans ce lot.
+
 Sous-lots:
 
 - 9G.0 golden Biblio method matrix;
@@ -3102,7 +3178,7 @@ Sous-lots:
 
 Checklist:
 
-- [ ] Golden method matrix.
+- [x] Golden method matrix.
 - [ ] Refactor tool registry only.
 - [ ] Refactor planner/runtime only.
 - [ ] Refactor passage search/extraction only.
