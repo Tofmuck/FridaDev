@@ -2619,21 +2619,104 @@ Limites restantes:
 
 Golden tests prealables:
 
-- Lot 9.0 et 9E.0 fermes;
-- `app/tests/test_minimal_validation_phase9.py` et phase 11;
-- smoke frontend load-order et inventaire des assets/globals/IDs.
+- [x] Lot 9.0 et 9E.0 fermes.
+- [x] `app/tests/test_minimal_validation_phase9.py` et phase 11.
+- [x] Smoke frontend load-order et inventaire des assets/globals/IDs.
 
 Patch attendu:
 
-- decomposer `_check_ui_assets` par responsabilite UI dans des modules de
-  validation nommes, sans modifier le runner global ni son schema de resultat;
-- ne pas transformer `minimal_validation.py` en condition de demarrage.
+- [x] Decomposer `_check_ui_assets` par responsabilite UI dans des modules de
+  validation nommes, sans modifier le runner global ni son schema de resultat.
+- [x] Ne pas transformer `minimal_validation.py` en condition de demarrage.
 
 Critere de sortie:
 
-- verdict et details identiques;
-- span, branches et dependances directes de `_check_ui_assets` reduits sans
+- [x] Verdict, ordre de validation et `46` details identiques.
+- [x] Span, branches et dependances directes de `_check_ui_assets` reduits sans
   nouveau seuil automatique.
+
+Statut: ferme le 18 aout 2026.
+
+Decision de methode:
+
+- le meilleur plan conserve `_check_ui_assets` comme facade historique de
+  deux lignes et extrait seulement les responsabilites deja presentes;
+- `ui_asset_validation.py` reste le coordinateur de l'inventaire et rejoue
+  explicitement l'ordre historique des validations, y compris la priorite de
+  la premiere erreur lorsque plusieurs contrats sont invalides;
+- les modules nommes isolent ordre de chargement/endpoints, coherence DOM
+  admin et marqueurs de pages; le contexte partage assemble les memes sources
+  JavaScript sans nouveau global, route, schema ou capacite produit.
+
+Fichiers de preuve:
+
+- `app/ui_asset_validation.py`: inventaire physique, lecture unique des assets,
+  sequence historique et reconstruction ordonnee des `46` details;
+- `app/ui_asset_validation_context.py`: sources composites admin,
+  hermeneutic-admin, Identity et Memory Admin partagees;
+- `app/ui_asset_load_order_validation.py`: load-order et ensembles d'endpoints;
+- `app/ui_admin_dom_validation.py`: hooks, IDs dynamiques, selectors, datasets
+  et marqueurs frontend admin;
+- `app/ui_page_marker_validation.py`: marqueurs/absences attendus des pages;
+- `app/tests/test_minimal_validation_phase9.py`: facade, egalite des details,
+  mutation load-order et priorite inter-validateur;
+- `app/tests/integration/frontend_admin/test_frontend_admin_contract.py`:
+  contrat source phase 7 aligne sur les modules nommes sans assertion retiree.
+
+Invariants figes:
+
+- le runner global appelle toujours `_check_ui_assets` sous le nom `ui_assets`
+  et conserve son schema de succes/echec;
+- l'inventaire requis/interdit, l'ordre de lecture et les messages de rejet
+  restent inchanges;
+- les `46` cles, leur ordre et leurs valeurs ont le meme hash canonique
+  content-free avant/apres:
+  `6d82a202c45896edba3aef54ff9b652963245d3d1d6cda534f5fb50084a839ed`;
+- en presence de plusieurs erreurs, le premier contrat signale reste celui de
+  la sequence historique;
+- `minimal_validation.py` n'est ni importe ni execute comme gate de demarrage.
+
+Sensibilite controlee:
+
+- RED initial: les deux nouvelles preuves echouent par
+  `ModuleNotFoundError: ui_asset_validation` avant implementation;
+- une permutation des deux premiers scripts admin est rejetee par le
+  validateur extrait;
+- une double mutation (hook DOM admin absent et endpoint hermeneutique absent)
+  doit encore signaler le hook DOM en premier; le premier regroupement des
+  appels ne respectait pas cette priorite et a ete corrige avant cloture;
+- le contrat phase 7 a detecte l'ancien couplage source-only a
+  `minimal_validation.py`; il lit maintenant le runner et les modules extraits
+  tout en conservant toutes ses assertions.
+
+Preuves executees:
+
+- baseline autoritative
+  `918f25fe8b46dbdb24a083c83e469b84fce7ded5`, worktree propre et divergence
+  `0/0`; runtime healthy, restart `0`, OOM false;
+- baseline et final frontend Node: `135/135`, sans fail, skip ni todo;
+- baseline et final Chromium hermetique: `17/17`, sans fail, skip ni todo;
+- baseline Python hermetique: `2632 tests`, OK;
+- phases minimal validation 4/9/11 et contrat frontend admin: `44/44`, OK;
+- decouverte Python finale avec checkout et benchmark read-only,
+  `--network none` et `/tmp` en tmpfs: `2635 tests`, OK, delta exact de trois
+  tests;
+- `git diff --check` et controle des fichiers autorises effectues avant commit.
+
+Reduction constatee:
+
+- `_check_ui_assets` passe de `957` a `2` lignes, de `64` a `0` branche et de
+  `117` a `5` noms charges directement;
+- les modules font `202`, `77`, `264`, `288` et `313` lignes. Le total brut
+  augmente pour rendre les interfaces explicites, sans chemin concurrent ni
+  duplication d'asset dans le resultat.
+
+Limites restantes:
+
+- aucun seuil automatique de taille ou de complexite n'est ajoute;
+- aucun asset frontend, runner global, format de resultat, route, backend,
+  configuration, secret, DB ou comportement produit n'est modifie;
+- le Lot 9F reste entierement ouvert et non commence.
 
 ## Lot 9F - Agenda runtime structure
 

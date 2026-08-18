@@ -791,7 +791,15 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertNotIn("admin-old.html", source)
 
     def test_minimal_validation_tracks_phase7_foundation(self) -> None:
-        source = (APP_DIR / "minimal_validation.py").read_text(encoding="utf-8")
+        source = "\n".join(
+            (APP_DIR / module_name).read_text(encoding="utf-8")
+            for module_name in (
+                "minimal_validation.py",
+                "ui_asset_load_order_validation.py",
+                "ui_admin_dom_validation.py",
+                "ui_page_marker_validation.py",
+            )
+        )
 
         self.assertIn("Admin de configuration", source)
         self.assertIn('href="admin.css"', source)

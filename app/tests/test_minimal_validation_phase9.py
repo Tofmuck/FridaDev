@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import inspect
+import shutil
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -204,6 +207,62 @@ class MinimalValidationPhase9Tests(unittest.TestCase):
         self.assertIn('id="restart"', details["admin_html_forbidden_markers"])
         self.assertIn("/api/admin/logs", details["admin_js_forbidden_markers"])
         self.assertIn("/api/admin/restart", details["admin_js_forbidden_markers"])
+
+    def test_check_ui_assets_delegates_to_named_responsibility_validators(self) -> None:
+        from ui_asset_validation import check_ui_assets
+
+        self.assertEqual(
+            minimal_validation._check_ui_assets(),
+            check_ui_assets(APP_DIR / "web"),
+        )
+        source = inspect.getsource(minimal_validation._check_ui_assets)
+        self.assertNotIn("read_text", source)
+        self.assertNotIn("re.findall", source)
+        self.assertNotIn(".exists()", source)
+
+    def test_check_ui_assets_rejects_admin_load_order_mutation_after_delegation(self) -> None:
+        from ui_asset_validation import check_ui_assets
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            web_dir = Path(temp_dir) / "web"
+            shutil.copytree(APP_DIR / "web", web_dir)
+            admin_html_path = web_dir / "admin.html"
+            admin_html = admin_html_path.read_text(encoding="utf-8")
+            first = '<script src="admin_api.js"></script>'
+            second = '<script src="admin_ui_common.js"></script>'
+            mutated = admin_html.replace(first, "__SECOND__", 1)
+            mutated = mutated.replace(second, first, 1).replace("__SECOND__", second, 1)
+            self.assertNotEqual(mutated, admin_html)
+            admin_html_path.write_text(mutated, encoding="utf-8")
+
+            with self.assertRaisesRegex(RuntimeError, "ordre scripts admin invalide"):
+                check_ui_assets(web_dir)
+
+    def test_check_ui_assets_preserves_first_failure_order_across_validators(self) -> None:
+        from ui_asset_validation import check_ui_assets
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            web_dir = Path(temp_dir) / "web"
+            shutil.copytree(APP_DIR / "web", web_dir)
+            admin_html_path = web_dir / "admin.html"
+            admin_html = admin_html_path.read_text(encoding="utf-8")
+            admin_html_path.write_text(
+                admin_html.replace('id="adminMainModelSave"', 'id="syntheticMissingHook"', 1),
+                encoding="utf-8",
+            )
+            hermeneutic_api_path = web_dir / "hermeneutic_admin" / "api.js"
+            hermeneutic_api = hermeneutic_api_path.read_text(encoding="utf-8")
+            hermeneutic_api_path.write_text(
+                hermeneutic_api.replace(
+                    "/api/admin/hermeneutics/dashboard",
+                    "/synthetic/missing/dashboard",
+                    1,
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(RuntimeError, "hooks DOM admin manquants"):
+                check_ui_assets(web_dir)
 
     def test_check_api_smoke_verifies_admin_route_and_admin_old_absence(self) -> None:
         original_http_json = minimal_validation._http_json
