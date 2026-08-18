@@ -2824,6 +2824,74 @@ Limites restantes:
 - 9F.1, 9F.2 et 9F.3 restent ouverts et non commences. Aucun split de
   resolution client, adaptateur d'execution ou read-model n'est anticipe ici.
 
+### Lot 9F.1 - Client resolution split - ferme le 18 aout 2026
+
+Decision de methode:
+
+- la resolution des clients modele Agenda et CalDAV read-only constituait une
+  responsabilite autonome d'environ 90 lignes encore portee par le
+  coordinateur de tour;
+- le split minimal cree `app/agenda/client_resolution.py` et laisse dans
+  `chat_runtime.py` uniquement le choix orchestral du moment ou une resolution
+  est necessaire;
+- les priorites, gates et statuts sont deplaces a l'identique: client injecte,
+  mode actif, presence redacted du secret, dependances runtime, gate de
+  verification de cible et classification calendrier.
+
+Fichiers de preuve et runtime:
+
+- `app/agenda/client_resolution.py`: resultat de resolution content-free,
+  client modele par defaut, client CalDAV read-only et gate des propositions;
+- `app/agenda/chat_runtime.py`: appels explicites a cette frontiere, sans
+  changement des branches read, proposal, final lock ou observabilite;
+- `app/tests/unit/agenda/test_client_resolution.py`: cinq tests directs de la
+  nouvelle frontiere, completes par les goldens transversaux 9F.0.
+
+Invariants figes:
+
+- un client modele ou read-only injecte garde la priorite et ne provoque aucune
+  lecture de secret;
+- le client modele par defaut n'existe que sous mode actif, secret configure
+  et dependances runtime completes;
+- la resolution CalDAV live lit le secret exactement une fois et marque le
+  client `live_caldav`; une valeur absente reste `unavailable`;
+- une exception de resolution ne conserve que `status`, `reason_code` et
+  classe d'erreur, jamais son texte ni la valeur du secret;
+- une proposition sans sequence de verification executable ne resout ni
+  secret ni client CalDAV;
+- les comportements toggle, read-only, pending, final lock et observabilite
+  restent ceux des goldens 9F.0.
+
+Sensibilite controlee:
+
+- ignorer le client modele injecte fait echouer la preuve de priorite;
+- forcer l'ouverture du gate de verification d'une proposition fait echouer
+  la preuve d'absence de resolution et lit a tort le secret synthetique.
+
+Preuves executees dans le runner hermetique `--network none`, checkout et
+benchmark read-only, `/tmp` en tmpfs, sans provider, secret ou CalDAV reels:
+
+- baseline avant patch: `2638 tests`, OK; runtime/goldens Agenda `83 tests`,
+  OK;
+- RED: `5` echecs d'assertion attendus car la frontiere
+  `agenda.client_resolution` n'existait pas;
+- tests directs de la nouvelle frontiere: `5/5`, OK;
+- runtime Agenda avec goldens 9F.0: `88/88`, OK;
+- suite Agenda elargie: `161/161`, OK;
+- mutants controles: `1` echec attendu pour chacun des deux mutants;
+- decouverte Python complete finale: `2643 tests`, OK, delta exact de cinq.
+
+Auto-audit et limites:
+
+- `chat_runtime.py` passe de `585` a `478` lignes; le nouveau module fait
+  `123` lignes et ne melange ni execution, rendu, pending store ni
+  observabilite;
+- aucun appel provider ou CalDAV live, aucune DB, migration, nouvelle
+  capacite Agenda ou modification de contrat produit;
+- 9F.2 et 9F.3 restent ouverts et non commences. `read_execution.py`,
+  `proposal_execution.py` et `observability_read_model.py` ne sont pas
+  refactores par ce lot.
+
 Sous-lots:
 
 - 9F.0 golden fake Agenda matrix;
@@ -2834,7 +2902,7 @@ Sous-lots:
 Checklist:
 
 - [x] Golden fake Agenda matrix.
-- [ ] Refactor client resolution only.
+- [x] Refactor client resolution only.
 - [ ] Refactor execution only.
 - [ ] Verify no product expansion.
 
