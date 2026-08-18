@@ -3243,6 +3243,90 @@ Auto-audit et limites:
   Catalogue/provider live, rebuild ou restart;
 - 9G.2, 9G.3 et 9G.4 restent ouverts et non commences.
 
+### Lot 9G.2 - Planner/method runtime separation - ferme le 18 aout 2026
+
+Decision de methode:
+
+- le meilleur split conserve `complete_product_method_loop` comme unique
+  coordinateur et isole seulement trois responsabilites deja presentes:
+  decisions pures de continuation, resolution de navigation structurelle et
+  execution mecanique d'un appel GET borne;
+- les outils, leurs handlers, la recherche/extraction de passages, l'answer
+  object et le rendu ne sont pas refactores dans ce lot;
+- le client Catalogue fake/local est transmis explicitement depuis
+  `librarian_agent_first`: le method runtime ne lit plus le detail prive
+  `registry._client`, et aucun second chemin d'execution n'est introduit.
+
+Fichiers de preuve et runtime:
+
+- `app/biblio/librarian_method_planning.py`: politique pure des continuations,
+  queries de repli bornees, locators et plages de pages explicites;
+- `app/biblio/librarian_method_navigation.py`: resolution du prochain sibling
+  structurel et reason codes de clarification, sans execution d'outil;
+- `app/biblio/librarian_method_execution.py`: construction et execution d'un
+  unique appel GET, garde de budget et append canonique du step;
+- `app/biblio/librarian_method_runtime.py`: coordinateur historique et
+  reparations de methode, sans planner mecanique ni lecture du registre prive;
+- `app/biblio/librarian_agent_first.py`: transmission explicite du client deja
+  construit, sans nouvelle construction ni appel live;
+- `app/tests/unit/biblio/test_librarian_method_boundaries.py`: quatre preuves
+  directes de politique, navigation, execution et cablage des frontieres.
+
+Invariants figes:
+
+- les decisions `scoped_search`, debut de section, plage explicite et queries
+  de repli restent identiques et sans I/O;
+- la navigation next-chapter choisit uniquement le prochain sibling de meme
+  niveau et meme parent, conserve les reason codes historiques si l'ancre ou
+  la cible manque, puis execute `section_bounds` avant `page_read`;
+- chaque continuation reste GET-only, copie ses params, respecte strictement
+  `max_tool_calls` et produit les memes statuts, reason codes et observations;
+- l'agent-first, les final locks, les answer objects, les rendus et la matrice
+  de methodes 9G.0 conservent leurs sorties content-free et leur ordre;
+- aucun outil, endpoint, methode produit, cas historique, prompt, provider,
+  route, format d'observabilite ou capacite n'est ajoute.
+
+Sensibilite controlee:
+
+- avant implementation, l'import des trois frontieres absentes produit
+  l'erreur RED attendue;
+- muter le garde de budget de `>=` vers `>` declenche un second appel GET et
+  fait echouer la preuve d'execution; la source restauree repasse `4/4`;
+- supprimer le prochain sibling, reutiliser le sibling courant, reintegrer le
+  planner mecanique ou `registry._client` dans le coordinateur fait echouer les
+  assertions de navigation ou de cablage;
+- les goldens 9G.0 et les contrats agent-first rendent sensibles une inversion
+  ou disparition des continuations summary/TOC/context et next-chapter.
+
+Preuves executees dans le runner hermetique `--network none`, checkout et
+benchmark read-only, `/tmp` en tmpfs, sans Catalogue, provider, secret, DB ou
+contenu operateur reels:
+
+- baseline complete avant patch: `2652 tests`, OK;
+- RED frontieres absentes: `1` erreur d'import attendue;
+- GREEN frontieres: `4/4`, OK;
+- planner, agent-first, registre et golden 9G.0 cibles: `137/137`, OK;
+- suite Biblio fake/local complete: `497/497`, OK;
+- contrats transversaux chat/Biblio, final locks, manifest, golden Lot 9 et
+  runtime inputs: `29/29`, OK;
+- mutation controlee du budget: `1` echec attendu sur double appel, puis
+  restauration et `4/4`, OK;
+- decouverte Python complete finale: `2656 tests`, OK, delta exact de quatre;
+- aucun frontend n'est concerne par ces frontieres Python internes.
+
+Auto-audit et limites:
+
+- `librarian_method_runtime.py` passe de `1176` a `828` lignes; planning,
+  navigation et execution font respectivement `254`, `145` et `41` lignes.
+  L'augmentation nette bornee vient des interfaces et preuves de frontiere,
+  tandis que le flow monolithique perd `348` lignes et trois responsabilites;
+- aucun helper n'est duplique entre ancien et nouveau chemins, aucun test n'est
+  supprime ou affaibli, et aucun contenu brut n'entre dans les nouvelles
+  fixtures ou sorties;
+- la separation interne de recherche/extraction reste reservee a 9G.3;
+  l'answer object et le rendu restent reserves a 9G.4;
+- aucun Catalogue/provider live, rebuild, restart ou deploiement runtime.
+
 Sous-lots:
 
 - 9G.0 golden Biblio method matrix;
@@ -3255,7 +3339,7 @@ Checklist:
 
 - [x] Golden method matrix.
 - [x] Refactor tool registry only.
-- [ ] Refactor planner/runtime only.
+- [x] Refactor planner/runtime only.
 - [ ] Refactor passage search/extraction only.
 - [ ] Verify no Catalogue live.
 

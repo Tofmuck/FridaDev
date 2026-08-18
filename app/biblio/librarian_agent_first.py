@@ -84,6 +84,7 @@ def run_agent_first_plan(
         loop_result,
         plan=plan,
         registry=registry,
+        catalogue_client=client,
         deterministic_plan=deterministic_plan,
         user_msg=user_msg,
         conversation_state=conversation_state,

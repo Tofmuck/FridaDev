@@ -11,11 +11,12 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Sequence
 
-from . import librarian_dialogue_navigation
+from . import librarian_method_execution as method_execution
+from . import librarian_method_navigation as method_navigation
+from . import librarian_method_planning as method_planning
 from . import librarian_planner
 from . import librarian_product_methods as product_methods
 from . import librarian_tools
-from .query_normalizer import fold_text
 
 
 _SUMMARY_COMPLETION_METHODS = frozenset(
@@ -58,59 +59,8 @@ _SEARCH_ASSISTED_CONTEXT_METHODS = frozenset(
     }
 )
 
-_SECTION_START_PAGE_BLOCK_METHODS = frozenset(
-    {
-        product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
-        product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_EXTERNAL_WORK,
-    }
-)
-
-_SECTION_START_PAGE_BLOCK_ANSWER_MODES = frozenset(
-    {
-        "bounded_context_extract_start_of_section",
-        "deliver_excerpt_context_from_section_start",
-        "section_start_page_block_2",
-    }
-)
-
 _SECTION_START_PAGE_COUNT = 2
 _SECTION_COMPLETE_PAGE_SEGMENT_MAX = 3
-_EXTRACTION_PAGE_REQUEST_MAX_PAGES = 3
-_NEXT_CHAPTER_ANCHOR_MISSING = "biblio_next_chapter_anchor_missing"
-_NEXT_CHAPTER_UNRESOLVED = "biblio_next_chapter_unresolved"
-
-_THEME_QUERY_STOPWORDS = frozenset(
-    {
-        "a",
-        "au",
-        "aux",
-        "ce",
-        "ces",
-        "cet",
-        "cette",
-        "dans",
-        "de",
-        "des",
-        "du",
-        "en",
-        "et",
-        "la",
-        "le",
-        "les",
-        "l",
-        "ou",
-        "où",
-        "par",
-        "pour",
-        "sa",
-        "se",
-        "ses",
-        "son",
-        "sur",
-        "un",
-        "une",
-    }
-)
 
 
 def complete_product_method_loop(
@@ -118,6 +68,7 @@ def complete_product_method_loop(
     *,
     plan: librarian_planner.BiblioLibrarianPlan,
     registry: librarian_tools.BiblioLibrarianToolRegistry,
+    catalogue_client: Any,
     deterministic_plan: Any,
     user_msg: str = "",
     conversation_state: Any = None,
@@ -134,6 +85,7 @@ def complete_product_method_loop(
             return _complete_next_chapter_navigation(
                 loop_result,
                 registry=registry,
+                catalogue_client=catalogue_client,
                 conversation_state=conversation_state,
             )
         return loop_result
@@ -145,7 +97,7 @@ def complete_product_method_loop(
             else _first_document_id(loop_result)
         )
         if doc_id:
-            loop_result = _append_tool_call(
+            loop_result = method_execution.append_get_tool_call(
                 loop_result,
                 registry=registry,
                 tool_name=librarian_tools.TOOL_DOCUMENT_OPEN_SUMMARY,
@@ -160,10 +112,14 @@ def complete_product_method_loop(
         )
         if not doc_id and product_method in _SEARCH_ASSISTED_TOC_METHODS:
             for _ in range(2):
-                fallback_query = _fallback_search_query(deterministic_plan, loop_result)
+                fallback_query = method_planning.fallback_search_query(
+                    deterministic_plan,
+                    loop_result,
+                    context_available=bool(_first_context_params(loop_result)),
+                )
                 if not fallback_query:
                     break
-                loop_result = _append_tool_call(
+                loop_result = method_execution.append_get_tool_call(
                     loop_result,
                     registry=registry,
                     tool_name=librarian_tools.TOOL_CATALOG_SEARCH,
@@ -176,14 +132,14 @@ def complete_product_method_loop(
                 if doc_id:
                     break
         if doc_id:
-            return _append_tool_call(
+            return method_execution.append_get_tool_call(
                 loop_result,
                 registry=registry,
                 tool_name=librarian_tools.TOOL_DOCUMENT_TOC,
                 params={"document_id": doc_id, "limit": 500},
             )
 
-    if _wants_section_start_page_block(product_method, plan):
+    if method_planning.wants_section_start_page_block(product_method, plan):
         repaired = _complete_section_start_page_block(
             loop_result,
             plan=plan,
@@ -193,7 +149,7 @@ def complete_product_method_loop(
             return repaired
         loop_result = repaired
 
-    if _wants_section_complete_extraction(product_method, plan):
+    if method_planning.wants_section_complete_extraction(product_method, plan):
         repaired = _complete_section_complete_extraction(
             loop_result,
             registry=registry,
@@ -209,7 +165,7 @@ def complete_product_method_loop(
     ):
         tool_name, params = _origin_check_current_anchor_tool(conversation_state)
         if tool_name and params:
-            repaired = _append_tool_call(
+            repaired = method_execution.append_get_tool_call(
                 loop_result,
                 registry=registry,
                 tool_name=tool_name,
@@ -248,6 +204,7 @@ def complete_product_method_loop(
         repaired = _complete_next_chapter_navigation(
             loop_result,
             registry=registry,
+            catalogue_client=catalogue_client,
             conversation_state=conversation_state,
         )
         if _has_endpoint(repaired, "page") or repaired.status == librarian_planner.STATUS_NEEDS_CLARIFICATION:
@@ -255,14 +212,18 @@ def complete_product_method_loop(
         loop_result = repaired
 
     if product_method in _CONTEXT_COMPLETION_METHODS and not _has_endpoint(loop_result, "context"):
-        if product_method in _SEARCH_ASSISTED_CONTEXT_METHODS and _method_allows_context_completion(plan):
+        if product_method in _SEARCH_ASSISTED_CONTEXT_METHODS and method_planning.allows_context_completion(plan):
             for _ in range(3):
                 if _first_context_params(loop_result):
                     break
-                fallback_query = _fallback_search_query(deterministic_plan, loop_result)
+                fallback_query = method_planning.fallback_search_query(
+                    deterministic_plan,
+                    loop_result,
+                    context_available=bool(_first_context_params(loop_result)),
+                )
                 if not fallback_query:
                     break
-                loop_result = _append_tool_call(
+                loop_result = method_execution.append_get_tool_call(
                     loop_result,
                     registry=registry,
                     tool_name=librarian_tools.TOOL_CATALOG_SEARCH,
@@ -274,10 +235,10 @@ def complete_product_method_loop(
         context_params = {}
         if product_method == product_methods.PRODUCT_METHOD_EXTRACTION:
             context_params = _unique_scoped_search_hit_context_params(loop_result)
-        elif _method_allows_context_completion(plan):
+        elif method_planning.allows_context_completion(plan):
             context_params = _first_context_params(loop_result)
         if context_params:
-            return _append_tool_call(
+            return method_execution.append_get_tool_call(
                 loop_result,
                 registry=registry,
                 tool_name=librarian_tools.TOOL_PASSAGE_CONTEXT,
@@ -285,49 +246,6 @@ def complete_product_method_loop(
             )
 
     return loop_result
-
-
-def _method_allows_context_completion(plan: librarian_planner.BiblioLibrarianPlan) -> bool:
-    product_method = _text(getattr(plan, "product_method", ""))
-    answer_mode = _text(getattr(plan, "answer_mode", ""))
-    if (
-        answer_mode == "scoped_search"
-        and product_method
-        in {
-            product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_IN_WORK,
-            product_methods.PRODUCT_METHOD_PASSAGE_SEARCH_EXTERNAL_WORK,
-        }
-    ):
-        return False
-    return True
-
-
-def _append_tool_call(
-    loop_result: librarian_planner.BiblioLibrarianLoopResult,
-    *,
-    registry: librarian_tools.BiblioLibrarianToolRegistry,
-    tool_name: str,
-    params: Mapping[str, Any],
-) -> librarian_planner.BiblioLibrarianLoopResult:
-    if loop_result.tool_call_count >= loop_result.options.max_tool_calls:
-        return loop_result
-    call = librarian_planner.BiblioLibrarianToolCall(tool_name=tool_name, method="GET", params=dict(params))
-    planner = librarian_planner.BiblioLibrarianPlanner(registry)
-    step = planner.run_tool_call(len(loop_result.steps), call)
-    steps = (*loop_result.steps, step)
-    status = librarian_planner.STATUS_TOOL_EXECUTED
-    reason = librarian_planner.REASON_TOOL_EXECUTED
-    if step.status != librarian_planner.STATUS_TOOL_EXECUTED:
-        status = step.status
-        reason = step.reason_code
-    return librarian_planner.BiblioLibrarianLoopResult(
-        status=status,
-        reason_code=reason,
-        steps=steps,
-        options=loop_result.options,
-        duration_ms=loop_result.duration_ms,
-        fallback_deterministic=loop_result.fallback_deterministic,
-    )
 
 
 def _has_endpoint(loop_result: librarian_planner.BiblioLibrarianLoopResult, endpoint_kind: str) -> bool:
@@ -349,36 +267,6 @@ def _has_document_summary(loop_result: librarian_planner.BiblioLibrarianLoopResu
     return any(
         step.tool_result is not None and bool(step.tool_result.document_summary)
         for step in loop_result.steps
-    )
-
-
-def _wants_section_start_page_block(
-    product_method: str,
-    plan: librarian_planner.BiblioLibrarianPlan,
-) -> bool:
-    answer_mode = _text(getattr(plan, "answer_mode", ""))
-    if product_method == product_methods.PRODUCT_METHOD_EXTRACTION:
-        return answer_mode in _SECTION_START_PAGE_BLOCK_ANSWER_MODES
-    if product_method not in _SECTION_START_PAGE_BLOCK_METHODS:
-        return False
-    if answer_mode in _SECTION_START_PAGE_BLOCK_ANSWER_MODES:
-        return True
-    for call in getattr(plan, "tool_calls", ()) or ():
-        if call.tool_name == librarian_tools.TOOL_SEARCH_CHAPTERS:
-            return True
-        if call.tool_name == librarian_tools.TOOL_LOCATE and _text(call.params.get("kind")) == "section":
-            return True
-    return False
-
-
-def _wants_section_complete_extraction(
-    product_method: str,
-    plan: librarian_planner.BiblioLibrarianPlan,
-) -> bool:
-    answer_mode = _text(getattr(plan, "answer_mode", ""))
-    return (
-        product_method == product_methods.PRODUCT_METHOD_SECTION_COMPLETE_EXTRACTION
-        or product_methods.is_section_complete_extraction_answer_mode(answer_mode)
     )
 
 
@@ -536,11 +424,11 @@ def _complete_section_start_page_block(
     if _text(getattr(plan, "product_method", "")) == product_methods.PRODUCT_METHOD_EXTRACTION:
         return _append_section_start_pages(loop_result, registry=registry, document_id=doc_id)
 
-    section_query = _planned_section_query(plan)
+    section_query = method_planning.planned_section_query(plan)
     if not section_query:
         return loop_result
     if not _has_endpoint(loop_result, "chapter_search"):
-        loop_result = _append_tool_call(
+        loop_result = method_execution.append_get_tool_call(
             loop_result,
             registry=registry,
             tool_name=librarian_tools.TOOL_SEARCH_CHAPTERS,
@@ -576,7 +464,7 @@ def _complete_section_complete_extraction(
     if not pages_to_read:
         return loop_result
     for page_no in pages_to_read:
-        loop_result = _append_tool_call(
+        loop_result = method_execution.append_get_tool_call(
             loop_result,
             registry=registry,
             tool_name=librarian_tools.TOOL_PAGE_READ,
@@ -594,7 +482,7 @@ def _complete_explicit_page_extraction(
     doc_id = _summary_completion_document_id(loop_result) or _first_document_id(loop_result)
     if not doc_id:
         return loop_result
-    page_numbers = _explicit_page_numbers(user_msg)
+    page_numbers = method_planning.explicit_page_numbers(user_msg)
     if not page_numbers:
         return loop_result
     available = max(0, loop_result.options.max_tool_calls - loop_result.tool_call_count)
@@ -606,7 +494,7 @@ def _complete_explicit_page_extraction(
     if not pages_to_read or len(pages_to_read) > available:
         return loop_result
     for page_no in pages_to_read:
-        loop_result = _append_tool_call(
+        loop_result = method_execution.append_get_tool_call(
             loop_result,
             registry=registry,
             tool_name=librarian_tools.TOOL_PAGE_READ,
@@ -631,7 +519,7 @@ def _complete_canonical_range_extraction(
     params = _canonical_range_extract_params(plan, deterministic_plan, loop_result)
     if not params:
         return loop_result
-    return _append_tool_call(
+    return method_execution.append_get_tool_call(
         loop_result,
         registry=registry,
         tool_name=librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT,
@@ -643,128 +531,30 @@ def _complete_next_chapter_navigation(
     loop_result: librarian_planner.BiblioLibrarianLoopResult,
     *,
     registry: librarian_tools.BiblioLibrarianToolRegistry,
+    catalogue_client: Any,
     conversation_state: Any,
 ) -> librarian_planner.BiblioLibrarianLoopResult:
-    doc_id, interval = _state_section_scope(conversation_state)
-    if not doc_id or not interval:
-        return _clarification_loop(loop_result, reason_code=_NEXT_CHAPTER_ANCHOR_MISSING)
-    next_params = _next_structural_sibling_params(registry, document_id=doc_id, interval=interval)
-    if not next_params:
-        return _clarification_loop(loop_result, reason_code=_NEXT_CHAPTER_UNRESOLVED)
-    repaired = _append_tool_call(
+    target = method_navigation.resolve_next_chapter_target(
+        conversation_state,
+        catalogue_client=catalogue_client,
+    )
+    if target.reason_code:
+        return _clarification_loop(loop_result, reason_code=target.reason_code)
+    repaired = method_execution.append_get_tool_call(
         loop_result,
         registry=registry,
         tool_name=librarian_tools.TOOL_SECTION_BOUNDS,
-        params={"document_id": doc_id, **next_params},
+        params={"document_id": target.document_id, **target.section_params},
     )
-    start_page = _first_section_start_page(repaired, document_id=doc_id)
+    start_page = _first_section_start_page(repaired, document_id=target.document_id)
     if start_page is None:
         return repaired
-    return _append_tool_call(
+    return method_execution.append_get_tool_call(
         repaired,
         registry=registry,
         tool_name=librarian_tools.TOOL_PAGE_READ,
-        params={"document_id": doc_id, "page_no": start_page},
+        params={"document_id": target.document_id, "page_no": start_page},
     )
-
-
-def _state_section_scope(conversation_state: Any) -> tuple[str, Mapping[str, Any]]:
-    last_result = getattr(conversation_state, "last_result", None)
-    if not isinstance(last_result, Mapping):
-        last_result = {}
-    current_document = getattr(conversation_state, "current_document", None)
-    if not isinstance(current_document, Mapping):
-        current_document = {}
-    doc_id = _text(last_result.get("document_id")) or _text(current_document.get("document_id"))
-    interval = last_result.get("interval_hint")
-    if not isinstance(interval, Mapping):
-        return doc_id, {}
-    if _text(interval.get("kind")) != "section":
-        return doc_id, {}
-    if not (
-        _text(interval.get("section_id"))
-        or _positive_int(interval.get("section_no"))
-        or _positive_int(interval.get("chapter_no"))
-    ):
-        return doc_id, {}
-    return doc_id, interval
-
-
-def _next_structural_sibling_params(
-    registry: librarian_tools.BiblioLibrarianToolRegistry,
-    *,
-    document_id: str,
-    interval: Mapping[str, Any],
-) -> dict[str, Any]:
-    rows = _structure_rows(registry, document_id=document_id)
-    if not rows:
-        return {}
-    current_index = _current_section_index(rows, interval=interval)
-    if current_index < 0:
-        return {}
-    current_row = rows[current_index]
-    current_level = _positive_int(current_row.get("level")) or _positive_int(interval.get("section_level")) or 1
-    current_parent = _text(current_row.get("parent_section_id")) or _text(interval.get("parent_section_id"))
-    for row in rows[current_index + 1 :]:
-        level = _positive_int(row.get("level")) or 1
-        parent = _text(row.get("parent_section_id"))
-        if level != current_level or parent != current_parent:
-            continue
-        section_id = _text(row.get("section_id"))
-        if section_id:
-            return {"section_id": section_id}
-        section_no = _positive_int(row.get("section_no") or row.get("chapter_no"))
-        if section_no:
-            return {"chapter_no": section_no}
-    return {}
-
-
-def _structure_rows(
-    registry: librarian_tools.BiblioLibrarianToolRegistry,
-    *,
-    document_id: str,
-) -> tuple[Mapping[str, Any], ...]:
-    client = getattr(registry, "_client", None)
-    sections_fn = getattr(client, "sections", None)
-    if callable(sections_fn):
-        try:
-            response = sections_fn(document_id, limit=500, offset=0)
-        except Exception:
-            response = None
-        rows = _payload_rows(getattr(response, "payload", {}), "sections") if response is not None else ()
-        if rows:
-            return rows
-    chapters_fn = getattr(client, "chapters", None)
-    if callable(chapters_fn):
-        try:
-            response = chapters_fn(document_id, limit=500, offset=0)
-        except Exception:
-            response = None
-        rows = _payload_rows(getattr(response, "payload", {}), "chapters") if response is not None else ()
-        if rows:
-            return rows
-    return ()
-
-
-def _payload_rows(payload: Any, key: str) -> tuple[Mapping[str, Any], ...]:
-    if not isinstance(payload, Mapping):
-        return ()
-    rows = payload.get(key)
-    if not isinstance(rows, Sequence) or isinstance(rows, (str, bytes, bytearray)):
-        return ()
-    return tuple(row for row in rows if isinstance(row, Mapping))
-
-
-def _current_section_index(rows: Sequence[Mapping[str, Any]], *, interval: Mapping[str, Any]) -> int:
-    section_id = _text(interval.get("section_id"))
-    section_no = _positive_int(interval.get("section_no")) or _positive_int(interval.get("chapter_no"))
-    for index, row in enumerate(rows):
-        if section_id and _text(row.get("section_id")) == section_id:
-            return index
-        row_no = _positive_int(row.get("section_no")) or _positive_int(row.get("chapter_no"))
-        if section_no and row_no == section_no:
-            return index
-    return -1
 
 
 def _clarification_loop(
@@ -790,7 +580,7 @@ def _canonical_range_extract_params(
     locator = _text(getattr(deterministic_plan, "locator", ""))
     locator_end = _text(getattr(deterministic_plan, "locator_end", ""))
     if not locator or not locator_end:
-        planned = _planned_locators(plan)
+        planned = method_planning.planned_locators(plan)
         locator = locator or (planned[0] if planned else "")
         locator_end = locator_end or (planned[1] if len(planned) > 1 else "")
     if not locator or not locator_end:
@@ -878,31 +668,6 @@ def _canonical_range_scope(loop_result: librarian_planner.BiblioLibrarianLoopRes
     return {}
 
 
-def _planned_locators(plan: librarian_planner.BiblioLibrarianPlan) -> tuple[str, ...]:
-    values: list[str] = []
-    for call in getattr(plan, "tool_calls", ()) or ():
-        if call.tool_name not in {librarian_tools.TOOL_LOCATE, librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT}:
-            continue
-        for key in ("locator", "label", "locator_end"):
-            value = _text(call.params.get(key))
-            if value and value not in values:
-                values.append(value)
-    return tuple(values[:2])
-
-
-def _explicit_page_numbers(user_msg: str) -> tuple[int, ...]:
-    folded = fold_text(str(user_msg or ""))
-    request = librarian_dialogue_navigation.page_request(folded)
-    if request is None:
-        return ()
-    start, end = request
-    if start <= 0 or end < start:
-        return ()
-    if (end - start) + 1 > _EXTRACTION_PAGE_REQUEST_MAX_PAGES:
-        return ()
-    return tuple(range(start, end + 1))
-
-
 def _append_section_start_pages(
     loop_result: librarian_planner.BiblioLibrarianLoopResult,
     *,
@@ -925,27 +690,13 @@ def _append_section_start_pages(
     if len(pages_to_read) > max(0, loop_result.options.max_tool_calls - loop_result.tool_call_count):
         return loop_result
     for page_no in pages_to_read:
-        loop_result = _append_tool_call(
+        loop_result = method_execution.append_get_tool_call(
             loop_result,
             registry=registry,
             tool_name=librarian_tools.TOOL_PAGE_READ,
             params={"document_id": document_id, "page_no": page_no},
         )
     return loop_result
-
-
-def _planned_section_query(plan: librarian_planner.BiblioLibrarianPlan) -> str:
-    for call in getattr(plan, "tool_calls", ()) or ():
-        if call.tool_name == librarian_tools.TOOL_SEARCH_CHAPTERS:
-            query = _text(call.params.get("query") or call.params.get("q"))
-            if query:
-                return query
-    for call in getattr(plan, "tool_calls", ()) or ():
-        if call.tool_name == librarian_tools.TOOL_LOCATE:
-            label = _text(call.params.get("label") or call.params.get("locator"))
-            if label:
-                return label
-    return ""
 
 
 def _first_section_start_page(
@@ -1046,52 +797,6 @@ def _has_page_read(
     return False
 
 
-def _fallback_search_query(deterministic_plan: Any, loop_result: librarian_planner.BiblioLibrarianLoopResult) -> str:
-    if _first_context_params(loop_result):
-        return ""
-    used = _used_search_queries(loop_result)
-    for raw_query in _deterministic_queries(deterministic_plan):
-        for candidate in _fallback_query_candidates(raw_query):
-            if candidate and candidate not in used:
-                return candidate
-    return ""
-
-
-def _used_search_queries(loop_result: librarian_planner.BiblioLibrarianLoopResult) -> set[str]:
-    queries: set[str] = set()
-    for step in loop_result.steps:
-        call = step.tool_call
-        if call is None or call.tool_name != librarian_tools.TOOL_CATALOG_SEARCH:
-            continue
-        for key in ("query", "q"):
-            value = _text(call.params.get(key))
-            if value:
-                queries.add(value)
-    return queries
-
-
-def _deterministic_queries(deterministic_plan: Any) -> tuple[str, ...]:
-    values: list[str] = []
-    for attr in (
-        "theme_query_variants",
-        "catalogue_query_variants",
-        "work_title_variants",
-        "document_title_variants",
-    ):
-        raw = getattr(deterministic_plan, attr, ())
-        if isinstance(raw, Sequence) and not isinstance(raw, (str, bytes, bytearray)):
-            for item in raw:
-                value = _text(item)
-                if value and value not in values:
-                    values.append(value)
-    for attr in ("theme_query", "catalogue_query", "work_title", "document_title", "author"):
-        value = _text(getattr(deterministic_plan, attr, ""))
-        if value and value not in values:
-            values.append(value)
-    values.sort(key=_query_priority)
-    return tuple(values)
-
-
 def _has_tool_reason(
     loop_result: librarian_planner.BiblioLibrarianLoopResult,
     tool_name: str,
@@ -1101,59 +806,6 @@ def _has_tool_reason(
         step.tool_name == tool_name and str(step.reason_code or "") == reason_code
         for step in loop_result.steps
     )
-
-
-def _query_priority(value: str) -> tuple[int, int]:
-    return (0 if _has_non_ascii(value) else 1, len(value))
-
-
-def _has_non_ascii(value: str) -> bool:
-    return any(ord(char) > 127 for char in value)
-
-
-def _fallback_query_candidates(raw_query: str) -> tuple[str, ...]:
-    query = _text(raw_query)
-    if not query:
-        return ()
-    tokens = [
-        token
-        for token in _query_tokens(query)
-        if len(token) > 2 and token.casefold() not in _THEME_QUERY_STOPWORDS
-    ]
-    candidates: list[str] = []
-    if len(tokens) >= 3:
-        candidates.append(" ".join(tokens[-3:]))
-    if len(tokens) >= 2:
-        candidates.append(" ".join(tokens[-2:]))
-    if tokens:
-        candidates.append(tokens[-1])
-    cleaned = " ".join(tokens)
-    if cleaned:
-        candidates.append(cleaned)
-    if not candidates and query:
-        candidates.append(query)
-    allow_original = len(tokens) == 1
-    out: list[str] = []
-    for candidate in candidates:
-        if not candidate or (not allow_original and candidate == query) or candidate in out:
-            continue
-        out.append(candidate)
-    return tuple(out)
-
-
-def _query_tokens(query: str) -> tuple[str, ...]:
-    tokens: list[str] = []
-    current: list[str] = []
-    for char in query:
-        if char.isalnum() or char in {"'", "’", "-"}:
-            current.append(char)
-            continue
-        if current:
-            tokens.append("".join(current).strip("'’-."))
-            current = []
-    if current:
-        tokens.append("".join(current).strip("'’-."))
-    return tuple(token for token in tokens if token)
 
 
 def _positive_int(value: Any) -> int:
