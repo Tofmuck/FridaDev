@@ -53,10 +53,19 @@ test('Lot 9 chat assets load once in dependency order and expose required global
   for (const globalName of REQUIRED_GLOBALS) {
     assert.equal(typeof context[globalName], 'object', `${globalName} must be available`);
   }
+  assert.deepEqual(Array.from(Object.keys(context.FridaWorkspaceFoldersSidebar)), [
+    'createWorkspaceFolderSidebarRenderer',
+  ]);
   assert.equal(vm.runInContext('typeof FridaChatThreadsFolderBindingModule', context), 'object');
   assert.equal(vm.runInContext('typeof FridaChatThreadsListRendererModule', context), 'object');
+  assert.equal(vm.runInContext('typeof FridaWorkspaceFolderArtifactPanelsModule', context), 'object');
+  assert.equal(vm.runInContext('typeof FridaWorkspaceFolderFileRowsModule', context), 'object');
+  assert.equal(vm.runInContext('typeof FridaWorkspaceFolderTreeRendererModule', context), 'object');
   assert.equal(context.FridaChatThreadsFolderBindingModule, undefined);
   assert.equal(context.FridaChatThreadsListRendererModule, undefined);
+  assert.equal(context.FridaWorkspaceFolderArtifactPanelsModule, undefined);
+  assert.equal(context.FridaWorkspaceFolderFileRowsModule, undefined);
+  assert.equal(context.FridaWorkspaceFolderTreeRendererModule, undefined);
   assert.deepEqual(validateRequiredGlobalPublicationCounts(publicationCounts), []);
 });
 
@@ -86,6 +95,28 @@ test('Lot 9 load-order validator rejects missing, duplicate and reversed depende
   assert.ok(
     validateChatScriptOrder(reversed).includes(
       'load_order:chat_workspace_folders_sidebar.js:chat_threads_sidebar.js',
+    ),
+  );
+
+  const missingFolderTree = sources.filter(
+    (source) => source !== 'chat_workspace_folder_tree_renderer.js',
+  );
+  assert.ok(
+    validateChatScriptOrder(missingFolderTree).includes(
+      'required_script_count:chat_workspace_folder_tree_renderer.js:0',
+    ),
+  );
+
+  const movedFolderTree = [...sources];
+  const treeIndex = movedFolderTree.indexOf('chat_workspace_folder_tree_renderer.js');
+  const sidebarIndex = movedFolderTree.indexOf('chat_workspace_folders_sidebar.js');
+  [movedFolderTree[treeIndex], movedFolderTree[sidebarIndex]] = [
+    movedFolderTree[sidebarIndex],
+    movedFolderTree[treeIndex],
+  ];
+  assert.ok(
+    validateChatScriptOrder(movedFolderTree).includes(
+      'load_order:chat_workspace_folder_tree_renderer.js:chat_workspace_folders_sidebar.js',
     ),
   );
 });

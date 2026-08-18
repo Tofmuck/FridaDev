@@ -2524,9 +2524,96 @@ Risques:
 
 Checklist:
 
-- [ ] Extraire file rows.
-- [ ] Extraire artifact panel hooks.
-- [ ] Verifier error visible.
+- [x] Extraire file rows.
+- [x] Extraire artifact panel hooks.
+- [x] Verifier error visible.
+
+Statut: ferme le 18 aout 2026.
+
+Decision de methode:
+
+- le meilleur plan ne redecoupe pas Notes, Exports et Images: leurs renderers
+  etaient deja des modules distincts avec leurs matrices vide/erreur et leurs
+  actions propres;
+- 9E.2 extrait seulement le renderer d'arbre, les lignes de fichiers et la
+  composition ordonnee des hooks de panels; les mutations upload, OCR,
+  selection, suppression, creation et l'editeur OCR restent dans le
+  coordinateur;
+- les trois nouveaux modules sont des bindings lexicaux de scripts classiques,
+  sans nouvelle propriete `window`; la facade publique
+  `FridaWorkspaceFoldersSidebar` conserve son unique factory historique.
+
+Fichiers de preuve:
+
+- `app/web/chat_workspace_folder_tree_renderer.js`: toolbar, etat sans dossier,
+  ligne de dossier, collapse/expand, actions et ordre des enfants;
+- `app/web/chat_workspace_folder_file_rows.js`: etats erreur/vide, metadata,
+  selection et boutons fichier;
+- `app/web/chat_workspace_folder_artifact_panels.js`: ordre Notes, Exports,
+  Images et hook de creation de note;
+- `app/web/chat_workspace_folders_sidebar.js`: coordinateur de mutations et
+  wiring public conserve;
+- `app/tests/unit/frontend_chat/test_workspace_folder_sidebar_boundaries.js`:
+  cinq preuves comportementales ciblees;
+- `app/tests/unit/frontend_chat/test_lot9_load_order_golden.js` et
+  `app/tests/support/frontend_load_order_contract.js`: ordre, unicite, surface
+  publique exacte et absence de nouveaux globals publics;
+- les matrices panels existantes, `test_threads_sidebar_module.js` et
+  `test_frontend_browser_workspace_folders.js` restent les preuves integrees
+  des chemins reels.
+
+Invariants figes:
+
+- un dossier replie ne rend aucun fichier, panel ni fil de conversation; un
+  dossier ouvert conserve l'ordre fichiers, Notes, Exports, Images puis fils;
+- toolbar, etat global vide, compte, icone, statut sync, ordre manuel et cible
+  drag/drop gardent leur DOM et leurs actions;
+- une erreur de chargement fichiers reste visible et distincte d'une liste
+  vide normale; les panels Notes, Exports et Images conservent la meme
+  distinction;
+- selection, suppression, OCR et edition Markdown d'un fichier sont delegues
+  exactement une fois avec les memes objets dossier/fichier;
+- aucune route, requete, payload, texte visible, CSS, backend ou capacite
+  produit n'est modifie.
+
+Sensibilite controlee:
+
+- RED initial: `5/5` echecs d'assertion attendus lorsque les trois factories
+  extraites sont absentes;
+- la preuve fichiers rejette error-as-empty, disparition du reason code,
+  selection perdue et action fichier retiree ou dupliquee;
+- la composition rejette un panel retire, ajoute ou deplace et la disparition
+  de la creation de note;
+- le renderer d'arbre rejette des enfants rendus sous dossier replie, un ordre
+  d'enfants modifie et une action dossier absente, dupliquee ou mal routee;
+- le golden rejette un script interne retire ou charge apres le sidebar, une
+  publication accidentelle sur `window` et toute modification de la surface
+  publique historique.
+
+Preuves executees:
+
+- baseline autoritative `8286e65e62e3e119758f1000ada65c6e524f3365`,
+  worktree propre et divergence `0/0`;
+- baseline frontend Node `130/130`, Chromium `17/17` et Python hermetique
+  `2632 tests`, OK;
+- RED controle: `5` echecs, aucun skip, todo ni erreur de runner;
+- nouveaux boundaries et golden: `9/9`, OK; suites workspace/sidebar/panels
+  voisines: `64/64`, OK;
+- contrats minimal validation phases 9/11 et frontend chat: `33/33`, OK;
+- frontend Node complet final: `135/135`, sans skip ni todo; delta exact de
+  cinq tests;
+- Chromium hermetique complet: `17/17`, sans skip ni todo;
+- decouverte Python complete avec checkout et benchmark read-only,
+  `--network none` et `/tmp` en tmpfs: `2632 tests`, OK.
+
+Limites restantes:
+
+- `app.js`, `app/minimal_validation.py`, CSS et backend restent intacts;
+- `chat_workspace_folders_sidebar.js` passe de `659` a `463` lignes; les
+  modules extraits font `26`, `151` et `168` lignes. Les interfaces explicites
+  augmentent le total brut, mais isolent trois responsabilites sans chemin
+  concurrent;
+- 9E.3 reste entierement ouvert et non commence.
 
 ### Lot 9E.3 - UI asset validator boundaries
 

@@ -20,6 +20,21 @@ const WorkspaceFolderNotesPanel = (
     ? window.FridaWorkspaceFolderNotesPanel
     : (typeof require !== 'undefined' ? require('./chat_workspace_folder_notes_panel.js') : null)
 );
+const WorkspaceFolderArtifactPanels = (
+  typeof FridaWorkspaceFolderArtifactPanelsModule !== 'undefined'
+    ? FridaWorkspaceFolderArtifactPanelsModule
+    : (typeof require !== 'undefined' ? require('./chat_workspace_folder_artifact_panels.js') : null)
+);
+const WorkspaceFolderFileRows = (
+  typeof FridaWorkspaceFolderFileRowsModule !== 'undefined'
+    ? FridaWorkspaceFolderFileRowsModule
+    : (typeof require !== 'undefined' ? require('./chat_workspace_folder_file_rows.js') : null)
+);
+const WorkspaceFolderTreeRenderer = (
+  typeof FridaWorkspaceFolderTreeRendererModule !== 'undefined'
+    ? FridaWorkspaceFolderTreeRendererModule
+    : (typeof require !== 'undefined' ? require('./chat_workspace_folder_tree_renderer.js') : null)
+);
 
 function createWorkspaceFolderSidebarRenderer({
   threadsUl,
@@ -107,6 +122,11 @@ function createWorkspaceFolderSidebarRenderer({
     renderThreads,
     setThreadStatus,
     consoleObj: logger,
+  });
+  const artifactPanels = WorkspaceFolderArtifactPanels.createWorkspaceFolderArtifactPanels({
+    notesPanel,
+    exportsPanel,
+    generatedImagesPanel,
   });
 
   const isFolderCollapsed = (folderId) => {
@@ -392,252 +412,36 @@ function createWorkspaceFolderSidebarRenderer({
     }
   };
 
-  const appendToolbar = () => {
-    const li = document.createElement('li');
-    li.className = 'workspace-folder-toolbar';
-    const label = document.createElement('span');
-    label.textContent = 'Répertoires';
-    li.appendChild(label);
-    const addBtn = document.createElement('button');
-    addBtn.type = 'button';
-    addBtn.className = 'workspace-folder-add';
-    addBtn.textContent = '+';
-    addBtn.title = 'Créer un répertoire';
-    addBtn.addEventListener('click', (event) => {
-      event.stopPropagation();
-      void requestCreate();
-    });
-    li.appendChild(addBtn);
-    threadsUl.appendChild(li);
-  };
-
-  const appendNoFoldersEmpty = () => {
-    const empty = document.createElement('li');
-    empty.className = 'workspace-folder-empty workspace-folder-empty-global';
-    empty.textContent = 'Aucun répertoire';
-    threadsUl.appendChild(empty);
-  };
-
-  const appendFolderRow = (folder, folderThreads, index, appendThreadRow) => {
-    const folders = getWorkspaceFolders();
-    const li = document.createElement('li');
-    const collapsed = isFolderCollapsed(folder.id);
-    li.className = 'workspace-folder-row';
-    if (collapsed) li.classList.add('workspace-folder-collapsed');
-    li.title = folder.description || folder.display_name;
-    li.dataset.workspaceFolderId = folder.id;
-
-    const main = document.createElement('div');
-    main.className = 'workspace-folder-main';
-
-    const toggle = document.createElement('button');
-    toggle.type = 'button';
-    toggle.className = 'workspace-folder-toggle';
-    toggle.title = collapsed ? 'Déplier le répertoire' : 'Replier le répertoire';
-    toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-    toggle.textContent = collapsed ? '▸' : '▾';
-    toggle.addEventListener('click', (event) => {
-      event.stopPropagation();
-      toggleFolderCollapsed(folder.id);
-    });
-    main.appendChild(toggle);
-
-    const icon = document.createElement('span');
-    icon.className = 'workspace-folder-icon';
-    icon.title = folder.icon_label || 'Dossier';
-    icon.innerHTML = folder.icon_svg || '';
-    if (!icon.innerHTML) icon.textContent = folder.icon_label || 'Dossier';
-    main.appendChild(icon);
-
-    const name = document.createElement('span');
-    name.className = 'workspace-folder-name';
-    name.textContent = folder.display_name;
-    main.appendChild(name);
-
-    const count = document.createElement('span');
-    count.className = 'workspace-folder-count';
-    count.textContent = String(folderThreads.length);
-    main.appendChild(count);
-
-    const syncLabel = WorkspaceFolderUiHelpers?.workspaceFolderNextcloudStatusLabel?.(folder) || '';
-    if (syncLabel) {
-      const sync = document.createElement('span');
-      sync.className = 'workspace-folder-sync-state';
-      sync.textContent = syncLabel;
-      sync.title = syncLabel;
-      main.appendChild(sync);
-    }
-
-    const actions = document.createElement('span');
-    actions.className = 'workspace-folder-actions';
-    const actionSpecs = [
-      ['↑', 'Monter', index === 0, () => reorder(folder.id, -1)],
-      ['↓', 'Descendre', index >= folders.length - 1, () => reorder(folder.id, 1)],
-      ['+F', 'Ajouter un fichier au répertoire', false, () => requestUploadFile(folder)],
-      ['··', 'Renommer', false, () => requestRename(folder)],
-      ['×', 'Supprimer', false, () => requestDelete(folder)],
-    ];
-    if (notesPanel?.requestCreateNote) {
-      actionSpecs.splice(3, 0, ['+N', 'Créer une note dans le répertoire', false, () => notesPanel.requestCreateNote(folder)]);
-    }
-    actionSpecs.forEach(([text, title, disabled, handler]) => {
-      const btn = document.createElement('button');
-      btn.className = 'workspace-folder-action';
-      btn.title = title;
-      btn.textContent = text;
-      btn.disabled = Boolean(disabled);
-      btn.addEventListener('click', (event) => {
-        event.stopPropagation();
-        void handler();
-      });
-      actions.appendChild(btn);
-    });
-    main.appendChild(actions);
-
-    li.appendChild(main);
-    li.addEventListener('click', (event) => {
-      if (event.target?.closest?.('button, input, textarea, select, a')) return;
-      toggleFolderCollapsed(folder.id);
-    });
-    if (typeof bindConversationDropTarget === 'function') {
-      bindConversationDropTarget(li, folder.id);
-    }
-    threadsUl.appendChild(li);
-
-    if (collapsed) return;
-
-    appendFileRows(folder);
-    notesPanel?.appendNoteRows(folder);
-    exportsPanel?.appendExportRows(folder);
-    generatedImagesPanel?.appendGeneratedImageRows(folder);
-
-    if (!folderThreads.length) {
-      const empty = document.createElement('li');
-      empty.className = 'workspace-folder-empty';
-      empty.textContent = 'Aucune conversation';
-      threadsUl.appendChild(empty);
-      return;
-    }
-    folderThreads.forEach((thread) => appendThreadRow(thread, true));
-  };
-
-  const appendFileRows = (folder) => {
-    const files = typeof getWorkspaceFiles === 'function' ? getWorkspaceFiles(folder.id) : [];
-    const li = document.createElement('li');
-    li.className = 'workspace-folder-files';
-    const fileStatus = typeof getWorkspaceFilesStatus === 'function'
-      ? getWorkspaceFilesStatus(folder.id)
-      : null;
-    if (fileStatus?.status === 'error') {
-      const error = document.createElement('div');
-      error.className = 'workspace-folder-file-error';
-      error.textContent = 'Chargement des fichiers impossible';
-      if (fileStatus.reason_code) {
-        error.dataset.reasonCode = String(fileStatus.reason_code);
-      }
-      li.appendChild(error);
-      threadsUl.appendChild(li);
-      return;
-    }
-    if (!files.length) {
-      const empty = document.createElement('div');
-      empty.className = 'workspace-folder-file-empty';
-      empty.textContent = 'Aucun fichier';
-      li.appendChild(empty);
-      threadsUl.appendChild(li);
-      return;
-    }
-    files.forEach((file) => {
-      const current = typeof getCurrentThread === 'function' ? getCurrentThread() : null;
-      const selections = typeof getWorkspaceFileSelections === 'function' && current?.id
-        ? getWorkspaceFileSelections(current.id)
-        : [];
-      const selection = selections.find((item) => item.workspace_file_id === file.id);
-      const selected = Boolean(selection?.selected && selection.selection_status !== 'stale');
-      const canSelect = Boolean(current?.id && current.workspace_folder_id === folder.id);
-      const row = document.createElement('div');
-      row.className = 'workspace-folder-file';
-      if (selected) row.classList.add('selected');
-      if (file.status && file.status !== 'active') {
-        row.dataset.status = file.status;
-      }
-      if (selection?.selection_status === 'stale') {
-        row.dataset.selection = 'stale';
-      }
-
-      const toggle = document.createElement('input');
-      toggle.type = 'checkbox';
-      toggle.className = 'workspace-folder-file-select';
-      toggle.title = 'Sélectionner pour cette conversation';
-      toggle.checked = selected;
-      toggle.disabled = !canSelect || file.status === 'deleted' || file.status === 'disk_missing';
-      toggle.addEventListener('click', (event) => event.stopPropagation());
-      toggle.addEventListener('change', (event) => {
-        event.stopPropagation();
-        void requestToggleSelection(folder, file, toggle.checked);
-      });
-      row.appendChild(toggle);
-
-      const name = document.createElement('span');
-      name.className = 'workspace-folder-file-name';
-      name.textContent = file.display_name || 'fichier';
-      row.appendChild(name);
-
-      const meta = document.createElement('span');
-      meta.className = 'workspace-folder-file-meta';
-      meta.textContent = WorkspaceFolderUiHelpers?.compactWorkspaceFileMeta
-        ? WorkspaceFolderUiHelpers.compactWorkspaceFileMeta(file)
-        : '';
-      row.appendChild(meta);
-
-      const statusLabel = WorkspaceFolderUiHelpers?.workspaceFileStatusLabel?.(file) || '';
-      if (selection?.selection_status === 'stale' || statusLabel) {
-        const stale = document.createElement('span');
-        stale.className = 'workspace-folder-file-state';
-        stale.textContent = selection?.selection_status === 'stale' ? 'Sélection invalide' : statusLabel;
-        row.appendChild(stale);
-      }
-
-      const del = document.createElement('button');
-      del.type = 'button';
-      del.className = 'workspace-folder-file-delete';
-      del.textContent = '×';
-      del.title = 'Supprimer le fichier';
-      del.addEventListener('click', (event) => {
-        event.stopPropagation();
-        void requestDeleteFile(folder, file);
-      });
-      row.appendChild(del);
-
-      if (WorkspaceFolderUiHelpers?.canRunWorkspaceOcr?.(file)) {
-        const ocr = document.createElement('button');
-        ocr.type = 'button';
-        ocr.className = 'workspace-folder-file-ocr';
-        ocr.textContent = 'OCR';
-        ocr.title = 'Extraire le texte en Markdown';
-        ocr.addEventListener('click', (event) => {
-          event.stopPropagation();
-          void requestOcrFile(folder, file);
-        });
-        row.appendChild(ocr);
-      }
-
-      if (WorkspaceFolderUiHelpers?.canEditWorkspaceOcrMarkdown?.(file)) {
-        const edit = document.createElement('button');
-        edit.type = 'button';
-        edit.className = 'workspace-folder-file-edit';
-        edit.textContent = 'Md';
-        edit.title = 'Éditer le Markdown OCR';
-        edit.addEventListener('click', (event) => {
-          event.stopPropagation();
-          void requestEditOcrMarkdown(folder, file);
-        });
-        row.appendChild(edit);
-      }
-      li.appendChild(row);
-    });
-    threadsUl.appendChild(li);
-  };
+  const fileRowsRenderer = WorkspaceFolderFileRows.createWorkspaceFolderFileRowsRenderer({
+    threadsUl,
+    getWorkspaceFiles,
+    getWorkspaceFilesStatus,
+    getCurrentThread,
+    getWorkspaceFileSelections,
+    onToggleSelection: requestToggleSelection,
+    onDeleteFile: requestDeleteFile,
+    onOcrFile: requestOcrFile,
+    onEditOcrMarkdown: requestEditOcrMarkdown,
+  });
+  const folderTreeRenderer = WorkspaceFolderTreeRenderer.createWorkspaceFolderTreeRenderer({
+    threadsUl,
+    getWorkspaceFolders,
+    isFolderCollapsed,
+    toggleFolderCollapsed,
+    onCreate: requestCreate,
+    onReorder: reorder,
+    onUploadFile: requestUploadFile,
+    onRename: requestRename,
+    onDelete: requestDelete,
+    fileRowsRenderer,
+    artifactPanels,
+    bindConversationDropTarget,
+  });
+  const {
+    appendToolbar,
+    appendNoFoldersEmpty,
+    appendFolderRow,
+  } = folderTreeRenderer;
 
   return Object.freeze({
     appendToolbar,
