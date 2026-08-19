@@ -3778,12 +3778,87 @@ Auto-audit et limites:
 - 9H.3 et 9H.4 restent ouverts et non commences. Runtime settings validation
   et read-model Identity sont inchanges.
 
+### Lot 9H.3 - Runtime settings validation split - ferme le 19 aout 2026
+
+Decision de methode:
+
+- le meilleur split ne deplace ni la resolution runtime, ni le write path, ni
+  les routes ou le read-model API: `runtime_settings_validation.py` reste la
+  facade stable appelee par `runtime_settings.validate_runtime_section`;
+- les regles sont separees selon leurs dependances reelles: sections
+  modeles/providers d'un cote, sections plateforme/gouvernance de l'autre;
+- un support commun borne porte uniquement lecture typee des champs, URL,
+  checks et statut de secret/transport partage. Il ne lit aucune DB, aucun
+  secret par lui-meme et ne connait ni route ni payload HTTP;
+- `runtime_settings_api_view.py` et 9H.4 restent hors diff: l'inventaire n'a
+  revele aucun couplage exigeant leur modification.
+
+Fichiers de runtime et de preuve:
+
+- `app/admin/runtime_settings_validation.py`: facade et enveloppe contractuelle
+  reduites de `716` a `50` lignes;
+- `app/admin/runtime_settings_model_validation.py`: dix sections modeles,
+  agents et transport OpenRouter, `369` lignes;
+- `app/admin/runtime_settings_platform_validation.py`: six sections Agenda,
+  embedding, database, services, resources et identity governance, `359`
+  lignes;
+- `app/admin/runtime_settings_validation_support.py`: primitives communes
+  content-free, `99` lignes;
+- `app/tests/unit/runtime_settings/test_runtime_settings_validation_boundaries.py`:
+  preuve TDD du routage exclusif model/platform et de l'enveloppe stable;
+- cette section 9H.3 est la seule documentation modifiee.
+
+Invariants figes:
+
+- les seize `SECTION_NAMES` sont couvertes exactement une fois: dix modeles et
+  six plateforme, sans intersection ni section oubliee;
+- `section`, `source`, `source_reason`, `valid` et l'ordre de `checks` restent
+  inchanges pour validate et pour la validation pre-write de patch;
+- valeurs autorisees, bornes numeriques, referers, reasoning effort, plafond
+  validation agent, budgets Biblio/Web et bootstrap DSN restent identiques;
+- Agenda continue de verifier uniquement la presence redacted du secret sans
+  le dechiffrer; les autres secrets gardent leurs statuts runtime et details
+  content-free sans valeur ni exception brute;
+- chemins Identity, host-state mirror et invariants identity governance
+  restent portes par leurs autorites vivantes existantes;
+- routes read/validate/patch, garde admin, chiffrement, persistance, cache et
+  API view ne sont pas modifies.
+
+Sensibilite et preuves hermetiques:
+
+- baseline complete avant patch: `2663 tests`, OK;
+- RED TDD: `1/1` echoue parce que les deux frontieres de validation sont
+  absentes;
+- GREEN frontiere et contrats detailles de validation: `32/32`, OK;
+- suite runtime settings unitaire complete: `134/134`, OK;
+- routes admin read/validate/patch, garde et golden 9H.0: `88/88`, OK;
+- import froid et partition executable: `16` sections, `10` modeles, `6`
+  plateforme, intersection vide, OK;
+- decouverte Python complete finale: `2664 tests`, OK, delta exact de un;
+- la mutation controlee qui route `main_model` vers le validateur plateforme
+  est rejetee par la nouvelle preuve;
+- tous les runners utilisent `--network none`, checkout et benchmark
+  read-only et `/tmp` en tmpfs, sans DB, provider, secret ou contenu operateur
+  reels.
+
+Auto-audit et limites:
+
+- aucune regle n'est conservee dans la facade et aucune section n'existe dans
+  les deux validateurs; le support commun elimine les resolutions de transport
+  partage auparavant repetees;
+- aucun test n'est supprime ou affaibli, aucun format, route, champ, source,
+  reason code, secret, seuil, modele, provider, log ou capacite n'est ajoute;
+- les trois modules extraits restent chacun sous `400` lignes et ont une
+  responsabilite explicite; les scinder davantage serait artificiel;
+- aucun rebuild, restart ou deploiement runtime n'est execute;
+- 9H.4 reste ouvert et non commence. Le read-model Identity est inchange.
+
 Checklist:
 
 - [x] Golden Memory/Admin matrix.
 - [x] Refactor memory traces only.
 - [x] Refactor arbiter support only.
-- [ ] Refactor settings validation only.
+- [x] Refactor settings validation only.
 - [ ] Refactor identity read-model only.
 - [ ] Verify no semantic identity change.
 
