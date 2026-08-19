@@ -3502,7 +3502,37 @@ un finding confirme ni un lot actif et interdit un patch speculatif. Les sujets
 pas l'artefact final et n'archive pas la TODO.
 
 - [x] P3 classes ou planifies post-audit.
-- [ ] Artefact final content-free.
+
+#### Passe Z.3 - Artefact final content-free
+
+Date de production: 2026-08-19.
+
+Artefact final:
+
+- `app/docs/states/baselines/mega-audit-smokes/frida-v1-mega-audit-lotz-final-20260819T094412Z.jsonl`;
+- `12` enregistrements JSONL, `12` `case_id` uniques, `0` erreur de parsing;
+- tous les enregistrements portent `content_free=true`; scan interdit `0`;
+- aucun log brut, prompt, payload provider, contenu operateur, secret, URL,
+  query, document, note ou transcript n'est conserve.
+
+Le verdict est `met_with_documented_limits`: les registres Z.1 et Z.2 sont
+exhaustifs, la suite complete hermetique reste verte a `2665/2665`, et les
+limites acceptees ou conditionnelles restent nommees sans etre transformees en
+corrections fictives. L'artefact conserve les compteurs, statuts, reason codes,
+chemins documentaires, bornes de test et frontieres runtime necessaires pour
+rejouer la decision de cloture.
+
+Frontiere de cette passe:
+
+- aucun code runtime, prompt, test, provider, secret, DB ou fichier plateforme
+  n'est modifie;
+- aucun rebuild, restart, migration, purge, backfill, reset observabilite,
+  activation Agenda ou Mail runtime n'est execute;
+- la TODO canonique reste volontairement dans `todo-todo/audits`; son
+  deplacement, la mise a jour des index et la fermeture du dernier point Z
+  constituent la passe d'archive distincte.
+
+- [x] Artefact final content-free.
 - [ ] TODO archivee dans `todo-done/audits`.
 
 ## Non-prolongation
