@@ -3703,10 +3703,86 @@ Auto-audit et limites:
 - 9H.2, 9H.3 et 9H.4 restent ouverts et non commences. Arbiter, runtime
   settings et read-model Identity sont inchanges.
 
+### Lot 9H.2 - Arbiter support boundaries - ferme le 19 aout 2026
+
+Decision de methode:
+
+- le meilleur split conserve dans `arbiter.py` l'orchestration publique, les
+  reglages runtime, les metriques, la temporalite, le chargement de prompt et
+  le transport provider; deplacer ces coutures vivantes aurait augmente le
+  risque sans clarifier la decision metier;
+- seul le support pur de decision est extrait: scores et identifiants des
+  candidats, validation JSON, fallback projete, completion des decisions puis
+  post-filtrage par redondance, utilite, seuils et plafond;
+- seuils, plafond et modele effectif sont injectes explicitement dans le
+  support. Le nouveau module ne lit donc ni runtime settings, ni secret, ni
+  provider et ne possede aucun chemin d'appel autonome;
+- les noms prives historiques utiles restent exposes par la facade et tous les
+  appelants continuent de traverser `filter_traces_with_diagnostics`.
+
+Fichiers de runtime et de preuve:
+
+- `app/memory/arbiter_decision_support.py`: validation et selection pures des
+  decisions arbitre;
+- `app/memory/arbiter.py`: facade/orchestrateur compatible, reduit de `789` a
+  `545` lignes;
+- `app/tests/unit/memory/test_arbiter_decision_support_boundary.py`: preuve TDD
+  content-free de liaison par `candidate_id`, preference du verdict explicite
+  `keep=true`, rejet d'un candidat inconnu, completion d'un candidat absent et
+  conservation de la provenance;
+- cette section 9H.2 est la seule documentation modifiee.
+
+Invariants figes:
+
+- l'ordre des decisions completees suit l'ordre des candidats, tandis que la
+  selection finale reste classee par score combine et bornee par le plafond;
+- un doublon de decision prefere `keep=true`, une decision inconnue est
+  ignoree et un candidat omis par le LLM devient un rejet
+  `missing_from_llm_output`;
+- `candidate_id`, `decision_source`, `model`, raisons, scores et indicateur de
+  redondance gardent leurs formes et leur provenance;
+- redondance explicite ou lexicale, penalite circonstancielle, seuils
+  semantique/contextual gain et fallback deterministe gardent exactement leurs
+  regles existantes;
+- prompts, payloads provider, resolution du modele, timeouts, metriques, logs,
+  Identity extractor et entrypoints legacy restent dans la facade et ne sont
+  pas modifies.
+
+Sensibilite et preuves hermetiques:
+
+- baseline complete avant patch: `2662 tests`, OK;
+- RED TDD: `1/1` echoue parce que la frontiere support est absente;
+- GREEN arbiter, Identity temporelle, stabilisation hermeneutique, verite
+  temporelle et golden 9H.0: `33/33`, OK;
+- suite Memory unitaire complete: `132/132`, OK;
+- suite chat unitaire complete: `146/146`, OK;
+- suite logs unitaire complete: `238/238`, OK;
+- facades Memory/Identity/Admin et golden 9H.0: `92/92`, OK;
+- decouverte Python complete finale: `2663 tests`, OK, delta exact de un;
+- la mutation controlee qui rattache le candidat garde au mauvais
+  `candidate_id` est rejetee par la nouvelle preuve;
+- tous les runners utilisent `--network none`, checkout et benchmark
+  read-only et `/tmp` en tmpfs, sans DB, provider, secret ou contenu operateur
+  reels.
+
+Auto-audit et limites:
+
+- il n'existe qu'une implementation des regles de selection; la facade ne
+  conserve que des delegations de compatibilite et l'orchestration;
+- aucun test n'est supprime ou affaibli, aucun contrat JSON, seuil, ordre,
+  prompt, route, modele, provider, log, persistance ou capacite n'est ajoute;
+- le support de `310` lignes reste volontairement unique: le subdiviser aurait
+  separe artificiellement validation, completion et selection d'un meme
+  verdict;
+- aucun rebuild, restart ou deploiement runtime n'est execute;
+- 9H.3 et 9H.4 restent ouverts et non commences. Runtime settings validation
+  et read-model Identity sont inchanges.
+
 Checklist:
 
 - [x] Golden Memory/Admin matrix.
 - [x] Refactor memory traces only.
+- [x] Refactor arbiter support only.
 - [ ] Refactor settings validation only.
 - [ ] Refactor identity read-model only.
 - [ ] Verify no semantic identity change.

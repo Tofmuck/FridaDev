@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Tuple
 
@@ -12,6 +11,7 @@ import config
 from admin import runtime_settings
 from core import llm_client
 from core.hermeneutic_node.inputs import time_input
+from memory import arbiter_decision_support
 from memory import identity_temporal_guard
 from memory import mutable_identity_judge_v2
 
@@ -77,37 +77,6 @@ _METRICS: Dict[str, int] = {
     'arbiter_fallback_count': 0,
 }
 
-_LEXICAL_TOKEN_RE = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ0-9']+")
-_LEXICAL_STOPWORDS = {
-    'a', 'au', 'aux', 'avec', 'ce', 'ces', 'cette', 'comme', 'dans', 'de', 'des', 'du',
-    'elle', 'en', 'et', 'est', 'il', 'ils', 'je', 'la', 'le', 'les', 'leur', 'lui', 'ma',
-    'mais', 'me', 'mes', 'mon', 'ne', 'nous', 'on', 'ou', 'par', 'pas', 'pour', 'que', 'qui',
-    'se', 'ses', 'son', 'sur', 'ta', 'te', 'tes', 'toi', 'ton', 'tu', 'un', 'une', 'vous',
-    'i', 'you', 'he', 'she', 'we', 'they', 'is', 'are', 'was', 'were', 'the', 'this', 'that',
-    'to', 'of', 'in', 'on', 'for', 'and', 'or', 'it',
-}
-_CIRCUMSTANTIAL_MARKERS = (
-    'ce soir',
-    'ce matin',
-    'cet apres-midi',
-    'cet après-midi',
-    "aujourd'hui",
-    "aujourd’hui",
-    'hier',
-    'demain',
-    'maintenant',
-    'en ce moment',
-    'cette semaine',
-    'week-end',
-    'weekend',
-    'tonight',
-    'today',
-    'yesterday',
-    'tomorrow',
-    'right now',
-    'this week',
-)
-
 def _inc_metric(name: str) -> int:
     _METRICS[name] = _METRICS.get(name, 0) + 1
     return _METRICS[name]
@@ -151,37 +120,11 @@ def _safe_json_loads(raw: str) -> Dict[str, Any]:
     return obj
 
 
-def _as_float_01(value: Any) -> float:
-    f = float(value)
-    if f < 0.0 or f > 1.0:
-        raise ValueError('value out of [0,1] range')
-    return f
-
-
-def _trace_retrieval_score(trace: Dict[str, Any]) -> float:
-    try:
-        value = trace.get('retrieval_score', trace.get('score'))
-        return float(value or 0.0)
-    except (TypeError, ValueError):
-        return 0.0
-
-
-def _trace_semantic_score(trace: Dict[str, Any]) -> float:
-    try:
-        if 'semantic_score' in trace:
-            return float(trace.get('semantic_score') or 0.0)
-        return _trace_retrieval_score(trace)
-    except (TypeError, ValueError):
-        return 0.0
-
-
-def _trace_candidate_id(trace: Dict[str, Any], fallback_index: int) -> str:
-    candidate_id = str(trace.get('candidate_id') or '').strip()
-    return candidate_id or str(fallback_index)
-
-
-def _trace_timestamp(trace: Dict[str, Any]) -> str:
-    return str(trace.get('timestamp_iso') or trace.get('timestamp') or '').strip()
+_as_float_01 = arbiter_decision_support.as_float_01
+_trace_retrieval_score = arbiter_decision_support.trace_retrieval_score
+_trace_semantic_score = arbiter_decision_support.trace_semantic_score
+_trace_candidate_id = arbiter_decision_support.trace_candidate_id
+_trace_timestamp = arbiter_decision_support.trace_timestamp
 
 
 def _temporal_reference(now_iso: str | None) -> dict[str, str]:
@@ -228,39 +171,10 @@ def _format_recent_turn_for_arbiter(turn: Dict[str, Any], *, now_iso: str | None
     return f"{prefix}{role}: {content}"
 
 
-def _append_reason(decision: Dict[str, Any], suffix: str) -> None:
-    base = str(decision.get('reason') or '').strip()
-    decision['reason'] = f'{base} | {suffix}' if base else suffix
-
-
-def _tokenize_lexical(text: str) -> set[str]:
-    tokens = {t.lower() for t in _LEXICAL_TOKEN_RE.findall(text or '') if len(t) >= 3}
-    return {t for t in tokens if t not in _LEXICAL_STOPWORDS}
-
-
-def _max_lexical_similarity(content: str, recent_turns: List[Dict[str, Any]]) -> float:
-    source = _tokenize_lexical(content)
-    if not source:
-        return 0.0
-
-    best = 0.0
-    for turn in recent_turns:
-        other = _tokenize_lexical(str(turn.get('content') or ''))
-        if not other:
-            continue
-        inter = len(source & other)
-        if inter == 0:
-            continue
-        union = len(source | other)
-        score = (inter / union) if union else 0.0
-        if score > best:
-            best = score
-    return best
-
-
-def _is_circumstantial_memory(content: str) -> bool:
-    normalized = str(content or '').lower()
-    return any(marker in normalized for marker in _CIRCUMSTANTIAL_MARKERS)
+_append_reason = arbiter_decision_support.append_reason
+_tokenize_lexical = arbiter_decision_support.tokenize_lexical
+_max_lexical_similarity = arbiter_decision_support.max_lexical_similarity
+_is_circumstantial_memory = arbiter_decision_support.is_circumstantial_memory
 
 
 def _build_fallback_decisions(
@@ -269,25 +183,13 @@ def _build_fallback_decisions(
     reason: str,
     model: str,
 ) -> List[Dict[str, Any]]:
-    decisions: List[Dict[str, Any]] = []
-    threshold = config.ARBITER_MIN_SEMANTIC_RELEVANCE
-    for i, trace in enumerate(traces):
-        candidate_id = _trace_candidate_id(trace, i)
-        semantic = max(0.0, min(1.0, _trace_semantic_score(trace)))
-        keep = candidate_id == keep_candidate_id and semantic >= threshold
-        decisions.append(
-            {
-                'candidate_id': candidate_id,
-                'keep': keep,
-                'semantic_relevance': semantic,
-                'contextual_gain': semantic if keep else 0.0,
-                'redundant_with_recent': False,
-                'reason': f'fallback:{reason}',
-                'model': model,
-                'decision_source': 'fallback',
-            }
-        )
-    return decisions
+    return arbiter_decision_support.build_fallback_decisions(
+        traces,
+        keep_candidate_id,
+        reason,
+        model,
+        min_semantic_relevance=config.ARBITER_MIN_SEMANTIC_RELEVANCE,
+    )
 
 
 def _deterministic_fallback(
@@ -326,62 +228,7 @@ def _deterministic_fallback(
 
 
 def _validate_arbiter_output(data: Dict[str, Any]) -> List[Dict[str, Any]]:
-    raw_decisions = data.get('decisions')
-    if raw_decisions is None:
-        # Backward compatibility: old schema {"ids": ["0", "1"]}
-        raw_ids = data.get('ids')
-        if not isinstance(raw_ids, list):
-            raise ValueError("missing 'decisions' list")
-        raw_decisions = [
-            {
-                'candidate_id': str(candidate_id),
-                'keep': True,
-                'semantic_relevance': 1.0,
-                'contextual_gain': 1.0,
-                'redundant_with_recent': False,
-                'reason': 'legacy_ids_format',
-            }
-            for candidate_id in raw_ids
-        ]
-
-    if not isinstance(raw_decisions, list):
-        raise ValueError("'decisions' must be a list")
-
-    validated: List[Dict[str, Any]] = []
-    for item in raw_decisions:
-        if not isinstance(item, dict):
-            continue
-
-        candidate_id = str(item.get('candidate_id', '')).strip()
-        keep = item.get('keep')
-        if not candidate_id or not isinstance(keep, bool):
-            continue
-
-        try:
-            semantic_relevance = _as_float_01(item.get('semantic_relevance'))
-            contextual_gain = _as_float_01(item.get('contextual_gain'))
-        except Exception:
-            continue
-
-        redundant_with_recent = item.get('redundant_with_recent', False)
-        if not isinstance(redundant_with_recent, bool):
-            redundant_with_recent = False
-
-        reason = str(item.get('reason', '')).strip()[:500]
-
-        validated.append(
-            {
-                'candidate_id': candidate_id,
-                'keep': keep,
-                'semantic_relevance': semantic_relevance,
-                'contextual_gain': contextual_gain,
-                'redundant_with_recent': redundant_with_recent,
-                'reason': reason,
-                'decision_source': 'llm',
-            }
-        )
-
-    return validated
+    return arbiter_decision_support.validate_arbiter_output(data)
 
 
 def filter_traces_with_diagnostics(
@@ -487,106 +334,15 @@ def filter_traces_with_diagnostics(
         logger.error('arbiter_parse_or_runtime_error err=%s parse_error_count=%s', exc, parse_count)
         return _deterministic_fallback(traces, 'parse_or_runtime_error', arbiter_model)
 
-    trace_by_candidate_id: Dict[str, Dict[str, Any]] = {
-        _trace_candidate_id(trace, index): trace
-        for index, trace in enumerate(traces)
-    }
-    ordered_candidate_ids = [_trace_candidate_id(trace, index) for index, trace in enumerate(traces)]
-    decisions_by_id: Dict[str, Dict[str, Any]] = {}
-    for decision in decisions:
-        candidate_id = str(decision['candidate_id'])
-        if candidate_id not in trace_by_candidate_id:
-            continue
-        if candidate_id in decisions_by_id:
-            # Prefer explicit keep=true when duplicated.
-            if decision['keep'] and not decisions_by_id[candidate_id]['keep']:
-                decisions_by_id[candidate_id] = decision
-        else:
-            decisions_by_id[candidate_id] = decision
-
-    completed_decisions: List[Dict[str, Any]] = []
-    for idx, trace in enumerate(traces):
-        candidate_id = ordered_candidate_ids[idx]
-        if candidate_id in decisions_by_id:
-            d = dict(decisions_by_id[candidate_id])
-        else:
-            d = {
-                'candidate_id': candidate_id,
-                'keep': False,
-                'semantic_relevance': max(0.0, min(1.0, _trace_semantic_score(trace))),
-                'contextual_gain': 0.0,
-                'redundant_with_recent': False,
-                'reason': 'missing_from_llm_output',
-                'decision_source': 'llm',
-            }
-        completed_decisions.append(d)
-
-    selected_candidates: List[tuple[float, str]] = []
-    for d in completed_decisions:
-        candidate_id = str(d['candidate_id'])
-        trace = trace_by_candidate_id.get(candidate_id)
-        if trace is None:
-            continue
-        trace_content = str(trace.get('content') or '')
-        if not d['keep']:
-            continue
-        if d['redundant_with_recent']:
-            d['keep'] = False
-            _append_reason(d, 'redundant_with_recent')
-            continue
-
-        lexical_similarity = _max_lexical_similarity(trace_content, recent_turns)
-        low_gain_cutoff = max(float(config.ARBITER_MIN_CONTEXTUAL_GAIN), 0.45)
-        if lexical_similarity >= 0.72 and d['contextual_gain'] < low_gain_cutoff:
-            d['keep'] = False
-            d['redundant_with_recent'] = True
-            _append_reason(
-                d,
-                f'lexical_near_duplicate_low_context_gain(sim={lexical_similarity:.2f})',
-            )
-            continue
-
-        if _is_circumstantial_memory(trace_content):
-            utility_score = (float(d['semantic_relevance']) * 0.4) + (float(d['contextual_gain']) * 0.6)
-            if utility_score < 0.62:
-                penalized_gain = max(0.0, float(d['contextual_gain']) - 0.18)
-                if penalized_gain < d['contextual_gain']:
-                    d['contextual_gain'] = penalized_gain
-                    _append_reason(d, 'circumstantial_penalty_applied')
-                if d['contextual_gain'] < config.ARBITER_MIN_CONTEXTUAL_GAIN:
-                    d['keep'] = False
-                    _append_reason(d, 'circumstantial_low_response_utility')
-                    continue
-
-        if d['semantic_relevance'] < config.ARBITER_MIN_SEMANTIC_RELEVANCE:
-            d['keep'] = False
-            _append_reason(d, 'below_semantic_threshold')
-            continue
-        if d['contextual_gain'] < config.ARBITER_MIN_CONTEXTUAL_GAIN:
-            d['keep'] = False
-            _append_reason(d, 'below_contextual_gain_threshold')
-            continue
-
-        blended_score = (d['semantic_relevance'] + d['contextual_gain']) / 2.0
-        selected_candidates.append((blended_score, candidate_id))
-
-    selected_candidates.sort(key=lambda x: x[0], reverse=True)
-
-    max_kept = max(0, config.ARBITER_MAX_KEPT_TRACES)
-    chosen: set[str] = set()
-    kept: List[Dict[str, Any]] = []
-    for _, candidate_id in selected_candidates:
-        if candidate_id in chosen:
-            continue
-        chosen.add(candidate_id)
-        kept.append(trace_by_candidate_id[candidate_id])
-        if len(kept) >= max_kept:
-            break
-
-    for d in completed_decisions:
-        candidate_id = str(d['candidate_id'])
-        d['keep'] = candidate_id in chosen
-        d['model'] = arbiter_model
+    kept, completed_decisions = arbiter_decision_support.complete_and_select_decisions(
+        traces,
+        decisions,
+        recent_turns=recent_turns,
+        model=arbiter_model,
+        min_semantic_relevance=config.ARBITER_MIN_SEMANTIC_RELEVANCE,
+        min_contextual_gain=config.ARBITER_MIN_CONTEXTUAL_GAIN,
+        max_kept_traces=config.ARBITER_MAX_KEPT_TRACES,
+    )
 
     logger.info(
         'arbiter_done raw=%s parsed=%s kept=%s rejected=%s model=%s',
