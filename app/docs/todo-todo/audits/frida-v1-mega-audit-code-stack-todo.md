@@ -1728,7 +1728,7 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P3-CEL-LARGE-FILES-01
 
-- Statut courant: superseded_and_absorbed_by_lot_10G_into_lot_9.
+- Statut courant: `superseded_by_complexity_hotspots_then_closed_by_lot_9Z`.
 - Severite: P3.
 - Alias/fusion: `P3-CEL-LARGE-FILES-AMPLIFIED-01`; la seconde passe le
   supersede par `P3-CEL-COMPLEXITY-HOTSPOTS-01`.
@@ -1785,7 +1785,7 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P3-CEL-FINAL-LOCK-CONFLICT-TEST-01
 
-- Statut courant: requalified_lot_9_golden_tests_by_lot_7.
+- Statut courant: `closed_by_lot_9B_golden_matrix`.
 - Severite: P3.
 - Fichiers suspects: `app/core/chat_service.py`.
 - Lot cible: Lot 7.
@@ -3445,7 +3445,63 @@ nouvelle decision operateur. Cette passe ne classe aucun P3, ne produit pas
 l'artefact final et n'archive pas la TODO.
 
 - [x] Tous P1/P2 fermes, invalides ou acceptes explicitement.
-- [ ] P3 classes ou planifies post-audit.
+
+#### Passe Z.2 - Registre final P3
+
+Date de revalidation: 2026-08-19.
+
+Perimetre inventorie: les memes sources versionnees que Z.1, completees par
+les audits d'execution et le journal d'ingenierie des Lots dialogique, 10F et
+9A. Ces traces ajoutent quatre findings confirmes puis fermes qui n'avaient pas
+ete recopies dans le registre versionne. L'univers final contient donc
+exactement `23` identifiants P3: `18 fermes`, `3 supersedes`, `1 accepted_limit`
+et `1 post_audit_trigger_only`. Aucun P3 ne reste sans classe ni destination.
+
+| Finding | Classe finale | Autorite ou destination post-audit |
+| --- | --- | --- |
+| `P3-CEL-AGENDA-DORMANT-WORDING-01` | `ferme` | Lot 4D.3; docs actives alignees sur runtime Agenda V1 et roadmap post-V1. |
+| `P3-CEL-BIBLIO-COMMENTS-STALE-01` | `ferme` | Lot 8; doctrine Biblio agent-first et references aux cas produit clarifiees. |
+| `P3-CEL-COMPLEXITY-HOTSPOTS-01` | `ferme` | Lot 10G puis Lots 9A-9Z; hotspots traites par micro-lots, limites residuelles classees `accepted_limit` ou `post_v1`. |
+| `P3-CEL-DIALOGIC-ACTIVE-OVERVIEW-STALE-01` | `ferme` | Correctif `df8d9ebc`; la reference active distingue le modele principal et l'override local `presence`. |
+| `P3-CEL-DOCUMENT-MULTIPART-EXACT-LIMIT-CONTRACT-01` | `ferme` | Lot 10B; distinction plafond fichier/lecteur et enveloppe multipart documentee et testee. |
+| `P3-CEL-FILENAMES-CONTENT-FREE-DECISION-01` | `ferme` | Lot 8; doctrine filenames visibles produit vs observabilite content-free. |
+| `P3-CEL-FINAL-LOCK-CONFLICT-TEST-01` | `ferme` | Lot 9B; matrice Agenda/Biblio, priorite, candidats ecartes et bypass provider verrouilles. |
+| `P3-CEL-LARGE-FILES-01` | `supersede` | Supersede par `P3-CEL-COMPLEXITY-HOTSPOTS-01`, puis absorbe par le Lot 9 ferme. |
+| `P3-CEL-LARGE-FILES-AMPLIFIED-01` | `supersede` | Alias du finding large-files, sans dette distincte. |
+| `P3-CEL-LARGE-FILES-HOTSPOTS-01` | `supersede` | Seconde passe remplacee par la matrice fonctionnelle `P3-CEL-COMPLEXITY-HOTSPOTS-01`. |
+| `P3-CEL-LOG-FRONTEND-DENYLIST-01` | `ferme` | Lot 7; allowlist frontend et test sentinelle champ inconnu. |
+| `P3-CEL-LOT10F-INVENTORY-COUNT-01` | `ferme` | Micro-lot docs-only Lot 10F; inventaire corrige `132 = 82 + 48 + 2`. |
+| `P3-CEL-LOT9A1-DASHBOARD-ROUTE-OWNER-DOC-01` | `ferme` | Commit `5a244fd1`; contrat dashboard attribue les routes au module extrait. |
+| `P3-CEL-LOT9A3-CHAT-ROUTE-OWNER-DOC-01` | `ferme` | Commit `27d66d8b`; architecture active attribue `/api/chat` a `chat_transport_routes.py`, wiring dans `server.py`. |
+| `P3-CEL-LOT9A3-SOURCE-OWNER-TEST-01` | `ferme` | Commit `efa004a0`; preuve AST accepte les deux proprietaires autorises et refuse zero/duplication. |
+| `P3-CEL-OPEN-CHECKBOXES-ARCHIVES-01` | `ferme` | Lot 8; index distingue TODO canonique et pieces historiques non executables. |
+| `P3-CEL-PROMPT-FAIL-OPEN-01` | `ferme` | Lot 10E; prompts critiques fail-closed et fallbacks locaux bornes. |
+| `P3-CEL-RAW-EXCEPTION-LOGS-01` | `ferme` | Lot 10F; inventaire par destination, transports sensibles bornes, logs prives qualifies famille par famille. |
+| `P3-CEL-SECRET-LIKE-FIXTURES-01` | `accepted_limit` | Lot 7; sentinelles synthetiques explicites, aucune valeur runtime; hygienisation cosmetique non requise. |
+| `P3-CEL-TEST-PROOF-MAPPING-01` | `ferme` | Lot 7; matrice tests/preuves et baseline JSONL content-free. |
+| `P3-IDENTITY-CANDIDATES-PROJECTION-VERSION-STALE` | `ferme` | Lot 6E.2; projection candidates active en `identity_candidates_content_minimized_v2`. |
+| `P3-IDENTITY-LEGACY-PROJECTION-VERSION-STALE` | `ferme` | Lot 6E.2; projection legacy active en `identity_legacy_content_minimized_v2`. |
+| `P3-SAU-CRAWL4AI-CHROMIUM-FAKE-PROXY-SOCKET-01` | `post_audit_trigger_only` | Non confirme apres 13 executions isolees; ne rouvrir que sur traceback, exception asynchrone ou `stderr` anormal reproduit par ce test. |
+
+Revalidation courante content-free:
+
+- univers versionne `19` + quatre findings d'execution fermes = `23`; chaque
+  identifiant apparait exactement une fois dans ce registre;
+- preuves ciblees hermetiques `92/92`: prompts requis, multipart, projections
+  Identity V2, source owner AST, allowlist logs et golden final-lock;
+- la reference dialogique active documente l'override `presence`; le contrat
+  dashboard pointe vers `admin_logs_dashboard_routes.py`; l'architecture chat
+  pointe vers `chat_transport_routes.py`; le contrat observabilite porte les
+  compteurs Lot 10F corriges;
+- baseline complete avant documentation: `2665 tests`, `0` echec, `0` erreur;
+  runtime FridaDev inchange, healthy, restart `0`, OOM false.
+
+Limites: `accepted_limit` n'est pas une correction; le suivi Crawl4AI n'est pas
+un finding confirme ni un lot actif et interdit un patch speculatif. Les sujets
+`post_v1` deja classes par le Lot 9 ne sont pas rouverts. Cette passe ne produit
+pas l'artefact final et n'archive pas la TODO.
+
+- [x] P3 classes ou planifies post-audit.
 - [ ] Artefact final content-free.
 - [ ] TODO archivee dans `todo-done/audits`.
 
