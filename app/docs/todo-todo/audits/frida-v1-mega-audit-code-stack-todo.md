@@ -917,10 +917,10 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P2-SAU-LOG-SECRETLIKE-01
 
 - Statut initial: open.
-- Statut courant: requalified_by Lot 2D;
-  `partially_confirmed_non_sensitive`. Caddy faux positif probable; Authelia ne
-  montre pas de secret exploitable dans la fenetre scannee, mais logge des URLs
-  de redirection completes.
+- Statut courant: `invalid_as_secret_exposure_by_lot_2D`. Caddy est un faux
+  positif probable; Authelia ne montre pas de secret exploitable dans la
+  fenetre scannee. Les URLs de redirection completes restent une option de
+  politique privacy, pas un finding P2 secret confirme.
 - Severite: P2.
 - Zones suspectes: logs recents Authelia/Caddy.
 - Lot cible: Lot 2.
@@ -945,8 +945,9 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P2-SAU-DOCKER-SOCKET-SURFACE-01
 
 - Statut initial: open.
-- Statut courant: no public exposure confirmed by Lot 3; governance/consumer
-  matrix still open as P2.
+- Statut courant: `accepted_explicitly_by_operator_decision_2026_06_25`;
+  aucune exposition publique confirmee par Lot 3, limite interne conservee et
+  reouvrable sur nouveau consommateur, nouvelle exposition ou decision Sauron.
 - Severite: P2.
 - Zones suspectes: `platform-docker-socket-proxy`, `platform_proxy_net`,
   compose global, service status avec socket direct selon contre-audit.
@@ -963,8 +964,9 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P2-SAU-ADMINER-LATERAL-01
 
 - Statut initial: open.
-- Statut courant: no public exposure confirmed by Lot 3; lateral Docker risk
-  remains open as P2.
+- Statut courant: `accepted_explicitly_by_operator_decision_2026_06_25`;
+  aucune exposition publique confirmee par Lot 3, risque lateral interne
+  conserve comme limite du serveur solo.
 - Severite: P2.
 - Zones suspectes: `platform-frida-adminer`, `platform_platform_net`,
   `fridadev-db.frida-system.fr`.
@@ -980,8 +982,9 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P2-SAU-COCKPIT-DOCKER-REACHABILITY-01
 
 - Statut initial: needs_targeted_validation.
-- Statut courant: needs_targeted_validation after Lot 3; no direct Internet
-  exposure confirmed, Caddy/Cockpit route still worth targeted validation.
+- Statut courant: `accepted_explicitly_by_operator_decision_2026_06_25`;
+  aucune exposition Internet directe confirmee par Lot 3; la validation ciblee
+  Caddy/Cockpit reste un declencheur de reouverture, pas un P2 bloquant.
 - Severite: P2.
 - Zones suspectes: Cockpit host port, UFW, ranges Docker.
 - Lot cible: Lot 3.
@@ -998,8 +1001,9 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P2-SAU-HEALTHCHECKS-ABSENT-01
 
 - Statut initial: open.
-- Statut courant: hygiene/service observability remains open; no unhealthy or
-  restarting container observed by Lot 3.
+- Statut courant: `accepted_explicitly_by_operator_decision_2026_06_25` comme
+  limite d'hygiene/observabilite service; aucun conteneur unhealthy ou en
+  restart observe par Lot 3.
 - Severite: P2.
 - Zones suspectes: Caddy, Nextcloud, Nextcloud DB/Redis/Cron, n8n, SearxNG,
   Adminer, doc-pipeline, socket proxy.
@@ -1015,6 +1019,9 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P2-SAU-FRIDADEV-CONTAINER-HARDENING-01
 
 - Statut initial: open.
+- Statut courant: `accepted_explicitly_by_operator_decision_2026_06_25` comme
+  limite de hardening interne du serveur solo; tout changement user/rootfs/
+  privileges exige un lot Sauron distinct avec rollback.
 - Severite: P2.
 - Zones suspectes: `platform-fridadev`.
 - Lot cible: Lot 3.
@@ -1027,6 +1034,9 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P2-SAU-NEXTCLOUD-DATA-RW-MOUNTS-01
 
 - Statut initial: open.
+- Statut courant: `accepted_explicitly_by_operator_decision_2026_06_25` comme
+  limite interne des services actifs; aucune reduction de mount sans lot
+  Sauron et preuve fonctionnelle doc-pipeline.
 - Severite: P2.
 - Zones suspectes: `doc-pipeline`, `doc-pipeline-api`, mounts data Nextcloud.
 - Lot cible: Lot 3.
@@ -1038,8 +1048,9 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P2-SAU-COMPOSE-PERMISSIONS-01
 
 - Statut initial: open.
-- Statut courant: partially_confirmed_by Lot 2F; correction candidate
-  documentee mais non appliquee; `hygiene_deferred` par recadrage Lot 2G.
+- Statut courant: `accepted_explicitly_by_operator_decision_2026_06_25`;
+  risque partiellement confirme par Lot 2F et classe `hygiene_deferred` par
+  Lot 2G, sans correction implicite.
 - Severite: P2.
 - Zones suspectes: Compose FridaDev group-writable.
 - Lot cible: Lot 2 ou 3.
@@ -1064,6 +1075,9 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 ### P2-SAU-PERMISSIONS-GOVERNANCE-01
 
 - Statut initial: open.
+- Statut courant: `accepted_explicitly_by_operator_decision_2026_06_25` comme
+  dette locale de gouvernance/retention; le risque P1 backup correspondant
+  reste accepte temporairement et toute mutation exige un GO Sauron distinct.
 - Severite: P2.
 - Zones suspectes: `/opt/platform/backups`, `_codex_backups`,
   `_codex_reports`, logs et dumps runtime.
@@ -1408,7 +1422,7 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-SERVER-ROUTE-GRAVITY-01
 
-- Statut courant: triaged_by_lot_4E_report_lot_9.
+- Statut courant: `closed_by_lot_9A_and_lot_9Z`.
 - Severite: P2.
 - Fichier suspect: `app/server.py`.
 - Alias/fusion: `P2-CEL-SERVER-BOUNDARY-GRAVITY-01`.
@@ -1422,7 +1436,7 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-CHAT-ORCHESTRATION-GRAVITY-01
 
-- Statut courant: triaged_by_lot_4E_report_lot_9.
+- Statut courant: `closed_by_lot_9B_and_lot_9Z`.
 - Severite: P2.
 - Fichier suspect: `app/core/chat_service.py`.
 - Lot cible: Lot 9.
@@ -1436,8 +1450,9 @@ restart, puis une decision documentaire sur le blocage ou non de l'audit code.
 
 ### P2-CEL-REQUESTS-TIMEOUT-01
 
-- Statut courant: triaged_by_lot_4A; finding global de depart eclate en lots
-  ciblables.
+- Statut courant: `invalid_as_global_finding_by_lot_4A`; aucun appel HTTP
+  externe evident sans timeout dans le perimetre audite, et les fail-open
+  ciblables isoles ensuite sont fermes par Lots 4B et 4D.
 - Severite: P2.
 - Fichiers suspects: clients HTTP detectes par scan heuristique.
 - Lot cible: Lot 4A/4B.
@@ -3343,7 +3358,93 @@ Regle Lot 10:
 
 ### Lot Z - Cloture mega-audit
 
-- [ ] Tous P1/P2 fermes, invalides ou acceptes explicitement.
+#### Passe Z.1 - Registre final P1/P2
+
+Date de revalidation: 2026-08-19.
+
+Perimetre inventorie: TODO canonique, audit source, contre-audit, seconde passe
+code-only et son archive de remediation, archive Lot 9. L'union contient
+exactement `47` identifiants: `2 P1` et `45 P2`. La classification finale est
+exhaustive: `32 fermes`, `6 invalides comme P1/P2` et `9 acceptes
+explicitement`; aucun identifiant ne reste `open`, `unknown` ou seulement
+`needs_targeted_validation` dans le registre P1/P2.
+
+| Finding | Issue finale P1/P2 | Autorite de cloture ou d'acceptation |
+| --- | --- | --- |
+| `P1-SAU-ENV-PERMISSIONS-01` | `ferme` | Lot 1B; `.env` et backups cibles resserres, compatibilite et health verifies. |
+| `P1-SAU-SENSITIVE-BACKUPS-PERMS-01` | `accepte_explicitement` | Decisions operateur Lots 1E/2G: risque local reconnu et accepte temporairement; nouveau GO Sauron requis pour agir. |
+| `P2-CEL-ADMIN-400-RAW-01` | `ferme` | Lot 6C; erreurs admin publiques bornees par codes stables et sentinelles. |
+| `P2-CEL-ADMIN-COMPAT-KNOBS-01` | `ferme` | Lot 5D; contrat loopback/proxy `Remote-User`, knobs legacy non operateurs. |
+| `P2-CEL-ADMIN-PROMPTS-DOM-01` | `ferme` | Lot 5B.1; JSON/DOM standard content-free et lecture brute sous acquittement explicite. |
+| `P2-CEL-AGENDA-CLIENT-UNAVAILABLE-AMBIGUITY-01` | `ferme` | Lot 4D.3; absence normale et panne de resolution client sont distinguees. |
+| `P2-CEL-AGENDA-PAYLOAD-GUARD-REJECTS-REAL-ERROR-01` | `ferme` | Lot 4D.3.1; payloads Agenda compacts acceptes, charges dangereuses refusees. |
+| `P2-CEL-AGENDA-READMODEL-CHILD-ERROR-MASKED-01` | `ferme` | Lot 4D.3.1; erreurs enfants prioritaires dans le read-model. |
+| `P2-CEL-ARBITER-PAYLOAD-GUARD-REJECTION-01` | `ferme` | Lot 6F.1; compteurs compacts allowlistes sans contenu candidat. |
+| `P2-CEL-CHAT-ORCHESTRATION-GRAVITY-01` | `ferme` | Lots 9B/9Z; orchestration extraite sous goldens, limite residuelle classee sans P1/P2 comportemental. |
+| `P2-CEL-CHAT-POST-PERSIST-AUX-01` | `ferme` | Lot 10C; succes canonique preserve malgre panne auxiliaire, sans double save. |
+| `P2-CEL-COMPACT-OBSERVABILITY-MESSAGES-COUNT-01` | `invalide` | Lot 6H; attente de test stale, compteur `2` conforme au payload reel. |
+| `P2-CEL-DASHBOARD-WEB-LEGACY-RAW-01` | `ferme` | Lot 6D; projection Web legacy sans URL/query/hash stable. |
+| `P2-CEL-DOC-CLOSURE-DRIFT-SERVER-01` | `invalide` | Seconde passe: partie code requalifiee P3 architectural, jamais confirmee comme P2 runtime. |
+| `P2-CEL-DOCS-ACTIVE-AUDITS-01` | `ferme` | Lot 8; index actif distingue sources historiques et TODO canonique. |
+| `P2-CEL-EXCEPTION-RAW-SURFACE-01` | `ferme` | Lots 6B/6C/6I/6J; surfaces exposees bornees, logs prives restants qualifies famille par famille. |
+| `P2-CEL-FRONTEND-EMPTY-ON-ERROR-01` | `ferme` | Lots 5C/5C.1; erreurs Notes/Documents/Exports/Images distinctes du vide normal. |
+| `P2-CEL-IDENTITY-HASH-POLICY-01` | `ferme` | Lots 6E/6E.1; hashes courts de contenu retires des surfaces actives. |
+| `P2-CEL-IDENTITY-RAW-LOG-01` | `invalide` | Decision produit explicite du 2026-07-16: non-finding pour les logs prives identity/memory existants, sans nouveau log ni secret. |
+| `P2-CEL-LLM-ERROR-RAW-01` | `ferme` | Lot 6B; erreurs provider exposees par codes/classes stables. |
+| `P2-CEL-LOG-SAFECODE-TOKENLIKE-01` | `ferme` | Lot 7.1; valeurs token-like refusees/redacted aux trois frontieres. |
+| `P2-CEL-LOG-SAFECODE-TOKENLIKE-VARIANTS-01` | `ferme` | Lot 7.2; variantes provider synthetiques bornees sans bloquer les codes normaux. |
+| `P2-CEL-MAIN-LLM-BASE-URL-01` | `ferme` | Lot 10D; resolver runtime unique pour stream/non-stream, absent sous override. |
+| `P2-CEL-MEMORY-INPUT-FAIL-OPEN-01` | `ferme` | Lot 4D.2; pannes summary/identity propagees comme erreurs content-free. |
+| `P2-CEL-MUTABLE-IDENTITY-STAGING-TEST-FAILURES-01` | `ferme` | Lot 6F; garde legitime corrigee, fixtures stale alignees, faux bugs invalides. |
+| `P2-CEL-NOTES-UI-GAP-01` | `ferme` | Lots 5B.2 a 5B.2.3; mode Notes minimal et garde dossier effectifs. |
+| `P2-CEL-OBSERVABILITY-PAYLOAD-REJECTED-CHAT-RESPONSE-01` | `ferme` | Lot 6J.1; refus non-stream compact conserve par la garde. |
+| `P2-CEL-OBSERVABILITY-PAYLOAD-REJECTED-STREAM-01` | `ferme` | Lot 6J; metadonnees stream compactes acceptees sans texte brut. |
+| `P2-CEL-REQUESTS-TIMEOUT-01` | `invalide` | Lot 4A; aucun appel externe evident sans timeout, sous-findings fail-open fermes en 4B/4D. |
+| `P2-CEL-SERVER-BOUNDARY-GRAVITY-01` | `invalide` | Alias fusionne dans `P2-CEL-SERVER-ROUTE-GRAVITY-01`, sans finding distinct. |
+| `P2-CEL-SERVER-ROUTE-GRAVITY-01` | `ferme` | Lots 9A/9Z; routes extraites sous route-map/goldens, sans P1/P2 comportemental residuel. |
+| `P2-CEL-STIMMUNG-PROMPT-GUARD-REJECTION-01` | `ferme` | Lot 6G; cles compactes allowlistees, prompt/payload brut toujours refuses. |
+| `P2-CEL-UPLOAD-LIMITS-01` | `ferme` | Lot 10B; corps et flux effectifs bornes, distinction multipart verrouillee. |
+| `P2-CEL-WEB-DISCOVERY-FAIL-OPEN-01` | `ferme` | Lot 4D; panne discovery distincte du vrai `no_data`. |
+| `P2-CEL-WEB-HTML-SSRF-GUARD-01` | `ferme` | Lot 10A; garde amont FridaDev et barriere aval Crawl4AI validees. |
+| `P2-CEL-WEB-SEARCH-FAIL-OPEN-01` | `ferme` | Lot 4B; panne SearXNG distincte du zero resultat. |
+| `P2-CEL-WEB-TURN-PROVENANCE-CONTINUITY-01` | `ferme` | Correctif audite le 2026-07-25 et validation dialogique live utilisateur du 2026-08-14. |
+| `P2-SAU-ADMINER-LATERAL-01` | `accepte_explicitement` | Decisions operateur Lots 2G/3: limite interne du serveur solo, sans exposition publique directe. |
+| `P2-SAU-AGENTS-ADMIN-TOKEN-STALE-01` | `ferme` | Lot 8; instructions Sauron alignees sur Caddy/Authelia et `Remote-User`. |
+| `P2-SAU-COCKPIT-DOCKER-REACHABILITY-01` | `accepte_explicitement` | Decisions operateur Lots 2G/3: pas d'exposition Internet directe confirmee, validation ciblee reouvrable. |
+| `P2-SAU-COMPOSE-PERMISSIONS-01` | `accepte_explicitement` | Decision operateur Lot 2G: `hygiene_deferred` pour serveur solo, correction seulement apres GO. |
+| `P2-SAU-DOCKER-SOCKET-SURFACE-01` | `accepte_explicitement` | Decisions operateur Lots 2G/3: pas de port public, gouvernance interne conservee comme limite. |
+| `P2-SAU-FRIDADEV-CONTAINER-HARDENING-01` | `accepte_explicitement` | Decisions operateur Lots 2G/3: hardening interne differe; changement uniquement par lot Sauron. |
+| `P2-SAU-HEALTHCHECKS-ABSENT-01` | `accepte_explicitement` | Decisions operateur Lots 2G/3: dette d'observabilite service non bloquante sur serveur solo. |
+| `P2-SAU-LOG-SECRETLIKE-01` | `invalide` | Lot 2D: aucun secret exploitable confirme; faux positifs et option privacy separes. |
+| `P2-SAU-NEXTCLOUD-DATA-RW-MOUNTS-01` | `accepte_explicitement` | Decisions operateur Lots 2G/3: mounts actifs conserves; reduction exige lot Sauron et preuve fonctionnelle. |
+| `P2-SAU-PERMISSIONS-GOVERNANCE-01` | `accepte_explicitement` | Decisions operateur Lots 1E/2G: dette locale reconnue, pas de mutation sans GO Sauron. |
+
+Revalidation courante content-free:
+
+- Git initial: branche `FridaV1-Lot9A-Route-Refactors`, HEAD/upstream/distant
+  `1ca33a11b8657cc93ec6c9dbeaa59f31468ddb8f`, divergence `0/0`, worktree
+  propre;
+- plateforme: `.env` en `0640 root:tof`; permissions sensibles residuelles et
+  Compose `0664` confirment que les risques acceptes ne sont pas declares
+  corriges; FridaDev reste root/rootfs writable sans options de hardening;
+  Adminer et socket proxy n'ont aucun port host; les mounts doc-pipeline
+  concernes restent RW; `18` conteneurs actifs sans healthcheck explicite,
+  `0` unhealthy/restarting/exited;
+- applicatif hermetique: decouverte complete `2665 tests`, `0` echec,
+  `0` erreur; bundle P1/P2 cible `269/269`; frontend workspace
+  `135/135`, tous sans reseau ni secret/provider reel;
+- runtime FridaDev avant documentation: conteneur
+  `3135a0c35d266766a3d35c5d68207cbeeca2f75268d6e07de0419a521cec8191`,
+  image `sha256:dec8afcf1ce9f21f05fe01dc6588425a0715ad3a8f979ef6f84f8da805bf9ba5`,
+  healthy, restart `0`, OOM false.
+
+Limites: les neuf acceptations explicites ne sont pas des corrections ni une
+affirmation d'absence de risque. Elles restent reouvrables sur exposition
+publique, secret confirme, panne, nouveau consommateur, changement de menace ou
+nouvelle decision operateur. Cette passe ne classe aucun P3, ne produit pas
+l'artefact final et n'archive pas la TODO.
+
+- [x] Tous P1/P2 fermes, invalides ou acceptes explicitement.
 - [ ] P3 classes ou planifies post-audit.
 - [ ] Artefact final content-free.
 - [ ] TODO archivee dans `todo-done/audits`.
