@@ -3853,14 +3853,91 @@ Auto-audit et limites:
 - aucun rebuild, restart ou deploiement runtime n'est execute;
 - 9H.4 reste ouvert et non commence. Le read-model Identity est inchange.
 
+### Lot 9H.4 - Identity read-model service split - ferme le 19 aout 2026
+
+Decision de methode:
+
+- le meilleur split conserve dans `admin_identity_read_model_service.py` les
+  lectures des stores, la verite du regime runtime, le staging, le fail-open,
+  les routes et l'enveloppe publique `identity_read_model_response`;
+- seule la projection deterministe des cinq couches par sujet est extraite:
+  statique et mutable canoniques, audit mutable compact, fragments legacy,
+  evidence et conflits;
+- le module extrait ne lit ni DB, ni logs, ni fichier identity, ni runtime
+  settings: la facade lui injecte exclusivement des snapshots deja lus;
+- les quatre coutures publiques consommees par les routes et services voisins,
+  ainsi que `LEGACY_RAW_TEXT_KEYS`, restent exposees par la facade. Aucun
+  appelant n'est migre et aucun second chemin de projection n'est conserve.
+
+Fichiers de runtime et de preuve:
+
+- `app/admin/admin_identity_read_model_projection.py`: projection pure des
+  couches Identity et minimisation du legacy, `281` lignes;
+- `app/admin/admin_identity_read_model_service.py`: facade/orchestrateur
+  compatible, reduite de `693` a `456` lignes;
+- `app/tests/unit/identity/test_identity_read_model_projection_boundary.py`:
+  preuve TDD synthetique de l'autorite canonique, de l'audit compact et des
+  trois couches legacy content-minimized;
+- cette section 9H.4 est la seule documentation modifiee.
+
+Invariants figes:
+
+- les sujets `llm` et `user` conservent exactement les couches `static`,
+  `mutable`, `legacy_fragments`, `evidence` et `conflicts`;
+- contenu, provenance, flags `stored` / `loaded_for_runtime` /
+  `actively_injected` et dernier audit des couches canoniques restent
+  inchanges sur la surface admin deliberement autorisee;
+- fragments, evidence et conflits restent `legacy_diagnostic_only`,
+  `historical_only`, non charges et non injectes, avec la projection
+  `identity_legacy_content_minimized_v2` et sans texte brut legacy;
+- ordre et nombre des lectures de snapshots, limite bornee, erreurs fail-open,
+  staging, regime mutable, champs top-level, routes et garde admin restent
+  portes par la facade et gardent leur comportement;
+- les constantes publiques historiques de la facade restent compatibles et
+  referencent l'unique autorite de projection.
+
+Sensibilite et preuves hermetiques:
+
+- baseline complete avant patch: `2664 tests`, OK;
+- RED TDD: `1/1` en erreur d'import attendue parce que la frontiere projection
+  n'existait pas;
+- GREEN frontiere, staging, audit mutable et golden 9H.0: `7/7`, OK;
+- suites Identity recursives: `148/148`, OK;
+- read-model, surface Identity, garde admin et goldens Lot 9: `31/31`, OK;
+- import froid conjoint facade/projection et alias de compatibilite: OK;
+- une premiere decouverte complete verte est restee a `2664` car le nouveau
+  test etait place dans `tests/unit/admin/`, repertoire non decouvert; le
+  contre-audit l'a deplace dans le package `tests/unit/identity/` puis a
+  revalide le test cible;
+- decouverte Python complete finale: `2665 tests`, OK, delta exact de un;
+- la mutation controlee qui inverse l'autorite d'une couche legacy vers
+  `active` est rejetee, tout comme toute fuite de la sentinelle brute legacy;
+- tous les runners utilisent `--network none`, checkout et benchmark
+  read-only et `/tmp` en tmpfs, sans DB, provider, secret ou contenu operateur
+  reels.
+
+Auto-audit et limites:
+
+- aucune lecture de store, resolution de modele, decision d'autorite ou
+  logique de staging n'a glisse dans le module de projection;
+- il n'existe qu'une implementation des projections; la facade ne conserve
+  qu'une orchestration de lecture et une delegation;
+- aucun test existant n'est supprime ou affaibli, aucun contenu reel ou secret
+  n'entre dans la fixture, le diff ou les sorties;
+- aucun contrat JSON, contenu canonique, reason code, limite, route, prompt,
+  provider, modele, log, persistence, garde ou capacite produit n'est ajoute
+  ou modifie;
+- aucun rebuild, restart ou deploiement runtime n'est execute. Le Lot 9H est
+  ferme; le stop point 9Z reste ouvert et non commence.
+
 Checklist:
 
 - [x] Golden Memory/Admin matrix.
 - [x] Refactor memory traces only.
 - [x] Refactor arbiter support only.
 - [x] Refactor settings validation only.
-- [ ] Refactor identity read-model only.
-- [ ] Verify no semantic identity change.
+- [x] Refactor identity read-model only.
+- [x] Verify no semantic identity change.
 
 ## Lot 9Z - Stop point / archive decision
 
