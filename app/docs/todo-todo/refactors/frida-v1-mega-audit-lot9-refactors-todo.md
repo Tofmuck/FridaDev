@@ -3544,9 +3544,93 @@ Sous-lots:
 - 9H.3 runtime settings validation split;
 - 9H.4 identity read-model service split.
 
+### Lot 9H.0 - Golden Memory/Admin matrix - ferme le 19 aout 2026
+
+Decision de methode:
+
+- les contrats vivants prouvaient deja separement retrieval public/interne,
+  summary lane, provenance arbiter, read-model Identity, settings V1 et garde
+  admin; 9H.0 ajoute trois projections transversales compactes sans recopier
+  ces suites ni anticiper les splits 9H.1 a 9H.4;
+- la fixture Memory traverse les facades publiques `memory_store.retrieve` et
+  `retrieve_for_arbiter`, puis le vrai `arbiter.filter_traces_with_diagnostics`
+  avec stockage, embedding et provider fakes locaux;
+- la fixture Identity traverse directement
+  `admin_identity_read_model_service.identity_read_model_response`; la fixture
+  settings traverse la facade stable `admin.runtime_settings` pour read,
+  validate et patch;
+- la garde admin n'etait pas un gap: les contrats canoniques
+  `test_server_admin_non_settings_contracts.py` et
+  `test_server_admin_settings_read_contract.py` restent les preuves exactes et
+  sont rejoues dans la suite voisine;
+- le lot reste strictement tests/docs-only. Les six modules runtime vises par
+  9H.1 a 9H.4 sont inchanges.
+
+Fichiers de preuve:
+
+- `app/tests/support/memory_admin_golden.py`: fakes synthetiques bornes,
+  exercices transversaux et projections content-free partagees;
+- `app/tests/unit/golden/test_lot9_memory_admin_golden_matrix.py`: trois
+  goldens Memory/arbiter, Identity et runtime settings avec mutations
+  controlees.
+
+Invariants figes:
+
+- le retrieval public ne recoit ni summary lane ni scores internes; le chemin
+  arbiter recoit la summary lane avant la trace globale, avec `source_kind`,
+  `source_lane` et `candidate_id` stables;
+- les decisions arbiter restent rattachees par `candidate_id`, portent
+  `decision_source=llm` et le modele effectif, et la selection conserve
+  exactement le candidat decide;
+- les contenus statique et mutable canoniques restent presents sur les
+  surfaces admin deliberees, tandis que fragments, evidence et conflits legacy
+  restent `historical_only`, non injectes et content-minimized sans texte brut;
+- le read-model conserve sa version, sa source active et le fait que le legacy
+  ne pilote pas l'injection runtime;
+- le read settings masque valeur et ciphertext secrets; validate conserve
+  section, validite, source et reason code; patch normalise types, origine et
+  secret chiffre sans echo de la valeur de remplacement;
+- toutes les projections restent exemptes de query, trace, summary, contenu
+  legacy, secret et ciphertext synthetiques bruts.
+
+Sensibilite controlee:
+
+- inverser l'ordre summary/trace ou remplacer la provenance LLM par fallback
+  fait echouer le golden Memory/arbiter;
+- rendre une couche legacy active ou injecter son contenu brut fait echouer le
+  golden Identity;
+- transformer une validation valide en echec ou exposer la valeur secrete fait
+  echouer le golden settings/content-free.
+
+Preuves executees dans le runner hermetique `--network none`, checkout et
+benchmark read-only, `/tmp` en tmpfs, sans provider, secret, DB ou contenu
+operateur reels:
+
+- baseline complete avant patch: `2658 tests`, OK;
+- RED TDD: import de `tests.support.memory_admin_golden` absent, `1 erreur`
+  attendue avant creation de la fixture;
+- nouveaux goldens avec mutations controlees: `3/3`, OK;
+- suite Memory unitaire voisine: `130/130`, OK;
+- suite runtime settings unitaire voisine: `133/133`, OK;
+- retrieval facade, Identity/admin guards et golden Lot 9: `70/70`, OK;
+- les premieres commandes de suites voisines n'ont atteint aucun test a cause
+  d'une expansion locale de `$PWD`; les memes commandes ont ete corrigees avec
+  expansion strictement distante et donnent les totaux ci-dessus;
+- decouverte Python complete finale: `2661 tests`, OK, delta exact de trois.
+
+Limites et non-extension:
+
+- les doubles sont locaux: aucune DB, donnee operateur, identite reelle,
+  provider, secret ou preuve live n'est lu;
+- 9H.0 etablit des goldens de refactor mais ne modifie aucune semantique
+  identity/memory/admin, aucun prompt, aucune route, aucun format ni capacite;
+- 9H.1, 9H.2, 9H.3 et 9H.4 restent ouverts et non commences. Aucun split de
+  memory traces, arbiter, validation settings ou read-model Identity n'est
+  anticipe.
+
 Checklist:
 
-- [ ] Golden Memory/Admin matrix.
+- [x] Golden Memory/Admin matrix.
 - [ ] Refactor memory traces only.
 - [ ] Refactor settings validation only.
 - [ ] Refactor identity read-model only.
