@@ -6,7 +6,7 @@ Statut: audit preparatoire docs-only. Aucun refactor runtime, aucun
 deplacement de code, aucun rebuild.
 
 Source canonique de suite:
-`app/docs/todo-todo/refactors/frida-v1-mega-audit-lot9-refactors-todo.md`
+`app/docs/todo-done/refactors/frida-v1-mega-audit-lot9-refactors-todo.md`
 
 ## Question pre-action
 

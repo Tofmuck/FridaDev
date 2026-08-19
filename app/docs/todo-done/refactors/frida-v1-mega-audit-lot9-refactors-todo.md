@@ -1,6 +1,9 @@
 # Frida V1 mega-audit - Lot 9 refactors TODO
 
-Statut: actif, docs-only a la creation.
+Statut: archive le 19 aout 2026 apres fermeture du stop point 9Z.
+
+Archive:
+`app/docs/todo-done/refactors/frida-v1-mega-audit-lot9-refactors-todo.md`
 
 Source readiness:
 `app/docs/states/audits/frida-v1-mega-audit-lot9-refactor-readiness-2026-06-26.md`
@@ -3953,13 +3956,59 @@ Critere de sortie:
 - TODO Lot 9 archivee seulement si les lots termines sont prouves et les
   restes explicitement acceptes.
 
+Statut:
+
+`FERME LE 19 AOUT 2026 - ROADMAP ARCHIVEE, AUCUN NOUVEAU REFACTOR OUVERT`
+
+Decision d'arret:
+
+- la demande explicite `9Z` de Tof autorise la decision d'archive; elle ne
+  ferme pas le `Lot Z` du mega-audit global et n'autorise ni merge, ni rebuild,
+  ni restart, ni deploiement;
+- 9.0 puis 9A a 9H sont fermes. L'historique Git lineaire porte chaque golden,
+  prerequis correctif et micro-lot dans un commit pousse distinct, de
+  `54f66119` a `2ef32bf3`; avant edition 9Z, HEAD, upstream et distant sont
+  egaux et la divergence vaut `0/0`;
+- la baseline hermetique autoritative avant archive execute `2665 tests`, sans
+  echec ni erreur, avec checkout et benchmark read-only, `--network none` et
+  `/tmp` en tmpfs;
+- aucun P1/P2 comportemental attribuable au Lot 9 ne reste ouvert. Le P2 Web
+  de continuite etait un prerequis externe ferme avant 9B; la contradiction du
+  compteur PDF, le benchmark Web non collecte et le P3 de contrat source-owner
+  etaient des dettes preexistantes traitees dans des passes separees avant les
+  extractions dependantes;
+- aucun lot structurel supplementaire n'est justifie par la taille seule. Les
+  frontieres restantes sont acceptees ou reportees ci-dessous; les rouvrir
+  exige un nouveau finding prouve et un lot distinct.
+
+Classification finale des restes:
+
+| Reste observe | Classification | Decision |
+| --- | --- | --- |
+| Coordinateurs encore denses mais coherents: echange LLM, validation contractuelle, retrieval Memory, moteur d'extraction Biblio et supports bornes | `accepted_limit` | Les scinder davantage separerait artificiellement une meme decision ou reintroduirait des coutures de compatibilite; aucune tache Lot 9 ne reste ouverte. |
+| Campagne benchmark `identity_periodic` legacy, uniquement chargee sur selection explicite et incompatible avec le writer retire | `post_v1` | Aucun effet sur le runtime ni sur la decouverte autoritative; archivage ou retrait eventuel dans un lot Identity distinct, jamais comme prolongation de 9C. |
+| Roadmap Agenda large post-V1, CalDAV live et validations Catalogue/provider live | `post_v1` | Travaux produit ou operateur distincts, exclus du refactor structurel fake/local Lot 9. |
+| Validation qualitative dialogique globale encore ouverte | `needs_operator_decision` | Validation produit distincte des preuves techniques; elle ne mesure pas la qualite hermeneutique par les goldens et ne rouvre aucun refactor. |
+| Cloture globale du mega-audit `Lot Z` | `needs_operator_decision` | Reste dans la TODO canonique du mega-audit avec ses quatre cases ouvertes; 9Z ne la coche ni ne l'archive. |
+
+Preuves et non-extension:
+
+- les index courants pointent desormais vers l'archive sous
+  `todo-done/refactors/`; les documents historiques conservent leur sens mais
+  leurs liens suivent le deplacement;
+- aucun fichier Python, JavaScript, CSS, prompt, fixture, benchmark ou runtime
+  n'est modifie par 9Z;
+- aucun provider, secret, DB, donnee operateur ou reseau externe n'est lu;
+- le conteneur live reste volontairement sur son image pre-refactor: 9Z ferme
+  la livraison Git et documentaire de la branche, pas un deploiement runtime.
+
 Checklist:
 
-- [ ] Mettre a jour le mega-audit Lot 9.
-- [ ] Mettre a jour `app/docs/README.md`.
-- [ ] Deplacer cette TODO vers `todo-done/refactors/` seulement apres decision
+- [x] Mettre a jour le mega-audit Lot 9.
+- [x] Mettre a jour `app/docs/README.md`.
+- [x] Deplacer cette TODO vers `todo-done/refactors/` seulement apres decision
   explicite.
-- [ ] Conserver Lot Z mega-audit separe.
+- [x] Conserver Lot Z mega-audit separe.
 
 ## Commandes communes de verification
 

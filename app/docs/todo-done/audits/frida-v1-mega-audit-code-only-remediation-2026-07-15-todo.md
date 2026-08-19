@@ -12,7 +12,7 @@ HEAD audite: `afdf19fa54c6a1602232e54e40bb23a6ba33787d`.
 - Registre canonique:
   `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-todo.md`.
 - Refactors structurels existants:
-  `app/docs/todo-todo/refactors/frida-v1-mega-audit-lot9-refactors-todo.md`.
+  `app/docs/todo-done/refactors/frida-v1-mega-audit-lot9-refactors-todo.md`.
 - Contrat observabilite:
   `app/docs/states/specs/frida-v1-agentic-observability-contract.md`.
 

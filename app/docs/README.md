@@ -16,11 +16,11 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 
 - Audit repo canonique: `todo-done/audits/fridadev_repo_audit.md`
 - Roadmap finale produit Frida 1.0: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
-- TODO refactors Lot 9 du mega-audit: `todo-todo/refactors/frida-v1-mega-audit-lot9-refactors-todo.md` pour la roadmap active golden-test-first des refactors structurels.
+- Archive des refactors Lot 9 du mega-audit: `todo-done/refactors/frida-v1-mega-audit-lot9-refactors-todo.md` pour la roadmap golden-test-first fermee et sa decision d'arret 9Z.
 - Prerequis avant Lot 9B ferme: `todo-done/refactors/frida-v1-mega-audit-lot9-refactor-before-9b-todo.md` conserve le triage et la preuve de remise au vert de la suite complete.
 - Audit readiness Lot 9 du mega-audit: `states/audits/frida-v1-mega-audit-lot9-refactor-readiness-2026-06-26.md` pour la preuve docs-only qui fonde la roadmap Lot 9.
 - Audit code-only Lot 10 du mega-audit: `states/audits/frida-v1-mega-audit-code-only-2026-07-15.md` pour la seconde passe autocritique, ses cinq P2 et ses trois P3 a revalider dans le HEAD courant.
-- Archive de remediation Lot 10: `todo-done/audits/frida-v1-mega-audit-code-only-remediation-2026-07-15-todo.md` pour les lots Celebrimbor 10A-10G fermes ou requalifies avec preuve; le finding de complexite est absorbe par l'unique roadmap Lot 9, qui reste ouverte a son gate 9.0. L'audit historique conserve son comptage initial de cinq P2 et trois P3.
+- Archive de remediation Lot 10: `todo-done/audits/frida-v1-mega-audit-code-only-remediation-2026-07-15-todo.md` pour les lots Celebrimbor 10A-10G fermes ou requalifies avec preuve; le finding de complexite a ete absorbe puis traite par la roadmap Lot 9 desormais archivee. L'audit historique conserve son comptage initial de cinq P2 et trois P3.
 - Archive de cloture finale Frida V1: `todo-done/product/frida-v1-final-audit-todo.md` pour l'audit final clos, le registre P2/P3, la preuve Lot Z, l'historique branche/main, l'integration fast-forward vers `main` du 2026-06-24, la preuve Capsule durable et la decision Mail spec-only.
 - Archive de livraison Continuity Payload Frida V1: `todo-done/product/frida-v1-continuity-payload-todo.md` pour le chantier cloture en Lot Z, les preuves content-free, `main_payload_manifest_v1` et la Continuity Capsule runtime bornee.
 - Contrat Continuity Payload Frida V1: `states/specs/frida-v1-continuity-payload-contract.md` pour `main_payload_manifest_v1`, la Continuity Capsule, l'observabilite content-free, la garde writer-side et les limites post-V1.
@@ -142,7 +142,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 ### Cleanup / refactor repo
 
 Lire d'abord:
-- `todo-todo/refactors/frida-v1-mega-audit-lot9-refactors-todo.md` pour les refactors actifs issus du mega-audit, obligatoirement precedes de golden tests.
+- `todo-done/refactors/frida-v1-mega-audit-lot9-refactors-todo.md` pour les refactors issus du mega-audit, fermes apres golden tests et decision d'arret 9Z.
 - `states/audits/frida-v1-mega-audit-lot9-refactor-readiness-2026-06-26.md` pour l'audit structurel docs-only qui fonde la granularite Lot 9.
 - `todo-done/audits/fridadev-global-audit-remediation-todo.md` pour l'archive de remediation cloturee issue de l'audit global du 2026-05-03.
 - `states/audits/fridadev-global-audit-2026-05-03.md` pour la source de verite des findings.
@@ -150,7 +150,7 @@ Lire d'abord:
 - `todo-done/audits/fridadev_repo_audit.md`
 - `states/architecture/fridadev-current-runtime-pipeline.md`
 
-But: pour un refactor actif, partir de la TODO Lot 9; pour l'historique, relire le cleanup priorise livre et les decisions de sortie sans reouvrir une roadmap terminee.
+But: pour l'historique des refactors du mega-audit, partir de l'archive Lot 9 et de sa decision de sortie; ne rouvrir une roadmap terminee qu'avec un nouveau finding comportemental prouve et un lot distinct.
 
 ### Runtime courant / chat
 

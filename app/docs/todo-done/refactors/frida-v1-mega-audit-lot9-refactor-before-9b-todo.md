@@ -3,7 +3,7 @@
 Statut: ferme le 16 aout 2026, suite complete verte.
 
 Roadmap parente:
-`app/docs/todo-todo/refactors/frida-v1-mega-audit-lot9-refactors-todo.md`
+`app/docs/todo-done/refactors/frida-v1-mega-audit-lot9-refactors-todo.md`
 
 ## Objet
 

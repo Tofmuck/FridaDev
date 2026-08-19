@@ -17,7 +17,8 @@ decide ce qui reste executable.
 - `../../todo-done/audits/frida-v1-mega-audit-code-only-remediation-2026-07-15-todo.md`:
   sous-TODO Lot 10 archivee le 2026-07-22 apres fermeture ou requalification
   prouvee des lots 10A-10G. Elle ne remplace pas le registre canonique; la
-  dette de complexite reste uniquement dans la roadmap Lot 9 ouverte.
+  dette de complexite a ete absorbee puis traitee dans la roadmap Lot 9
+  archivee sous `../../todo-done/refactors/`.
 
 ## Source d'audit code-only du Lot 10
 

@@ -3187,28 +3187,47 @@ Resultat Lot 8:
 
 ### Lot 9 - Refactors cibles
 
+Statut: ferme le 19 aout 2026; roadmap dediee archivee apres 9Z.
+
 - [x] Executer readiness audit docs-only Lot 9.
 - [x] Creer TODO canonique dediee:
-  `app/docs/todo-todo/refactors/frida-v1-mega-audit-lot9-refactors-todo.md`.
+  `app/docs/todo-done/refactors/frida-v1-mega-audit-lot9-refactors-todo.md`.
 - [x] Definir `Lot 9.0 - golden test harness / preuve avant refactor`.
 - [x] Decouper les refactors par responsabilite reelle: server routes,
   chat orchestration, web search, observabilite, frontend, Agenda, Biblio,
   Memory/Admin.
-- [ ] Executer Lot 9.0 avant toute extraction runtime.
-- [ ] Executer les sous-lots 9A-9H uniquement apres golden tests prealables.
-- [ ] Refuser refactor cosmetique sans reduction de risque.
+- [x] Executer Lot 9.0 avant toute extraction runtime.
+- [x] Executer les sous-lots 9A-9H uniquement apres golden tests prealables.
+- [x] Refuser refactor cosmetique sans reduction de risque.
 
-Resultat readiness Lot 9:
+Resultat readiness historique Lot 9:
 
 - Audit cree:
   `app/docs/states/audits/frida-v1-mega-audit-lot9-refactor-readiness-2026-06-26.md`.
 - TODO canonique creee:
-  `app/docs/todo-todo/refactors/frida-v1-mega-audit-lot9-refactors-todo.md`.
-- Aucun runtime modifie. Lot 9 reste ouvert: seuls l'audit preparatoire et la
-  planification granulaire sont termines.
+  `app/docs/todo-done/refactors/frida-v1-mega-audit-lot9-refactors-todo.md`.
+- A cette etape historique, aucun runtime n'etait modifie et seuls l'audit
+  preparatoire et la planification granulaire etaient termines.
 - Le Lot 10G ajoute au meme backlog la baseline statique courante et la matrice
   exhaustive des hotspots de la seconde passe. Il ne lance aucun sous-lot et
-  confirme 9.0 comme seul prochain lot executable.
+  confirmait alors 9.0 comme seul prochain lot executable.
+
+Resultat final Lot 9:
+
+- 9.0 et toutes les familles 9A a 9H sont fermees par des goldens prealables,
+  des micro-lots bornes, des commits distincts pousses et une baseline finale
+  hermetique de `2665 tests`, sans echec ni erreur;
+- aucun P1/P2 comportemental attribuable aux refactors ne reste ouvert et
+  aucune capacite produit n'a ete ajoutee;
+- les coordinateurs encore coherents sont classes `accepted_limit`; la
+  campagne benchmark Identity legacy et les travaux Agenda/Catalogue live sont
+  `post_v1`; la validation qualitative dialogique et ce registre `Lot Z`
+  restent `needs_operator_decision` hors de la roadmap structurelle;
+- la decision d'arret 9Z et les preuves detaillees sont archivees dans
+  `app/docs/todo-done/refactors/frida-v1-mega-audit-lot9-refactors-todo.md`;
+- aucun merge, rebuild, restart ou deploiement n'est execute par 9Z. Le
+  `Lot Z - Cloture mega-audit` ci-dessous reste integralement ouvert et
+  distinct.
 
 ### Lot 10 - Remediation de la seconde passe code-only
 
@@ -3307,8 +3326,9 @@ plateforme et ne rouvre pas Sauron.
   validateur UI, dashboard read-models et emission Web sont absorbees dans les
   familles existantes, sans `UNKNOWN`, nouveau backlog ou refactor anticipe.
   `P3-CEL-COMPLEXITY-HOTSPOTS-01` est absorbe dans le Lot 9; le Lot 10 est
-  ferme et sa TODO archivee. Lot 9 reste ouvert et 9.0 est le seul prochain
-  lot executable.
+  ferme et sa TODO archivee. A cette date, Lot 9 restait ouvert et 9.0 etait le
+  seul prochain lot executable; sa fermeture ulterieure est documentee dans la
+  section Lot 9 ci-dessus.
 
 Regle Lot 10:
 
