@@ -4,8 +4,8 @@ Statut: archive - cloture finale Frida V1 livree en Lot Z
 Date: 2026-06-23
 Branche courante: `FridaV1-Continuity-Payload-Audit`
 Roadmap generale: `app/docs/todo-todo/product/fridadev-final-product-roadmap-todo.md`
-Audit principal: `app/docs/todo-todo/audits/frida-v1-final-global-audit-2026-06-23.md`
-Contre-audit: `app/docs/todo-todo/audits/frida-v1-final-global-counter-audit-2026-06-23.md`
+Audit principal: `app/docs/todo-done/audits/frida-v1-final-global-audit-2026-06-23.md`
+Contre-audit: `app/docs/todo-done/audits/frida-v1-final-global-counter-audit-2026-06-23.md`
 Archive Lot Z: `app/docs/states/baselines/final-audit-smokes/frida-v1-final-audit-lotz-archive-20260624T124646Z.jsonl`
 
 Ce fichier archive le point de pilotage final de la cloture Frida V1. Il a
@@ -309,8 +309,8 @@ non-integration `main` documentent l'etat Lot 4/Lot Z avant ce merge.
 - Statut initial: accepted; clos par Lot 2C le 2026-06-23.
 - Severite: P2.
 - Fichiers suspects:
-  `app/docs/todo-todo/audits/frida-v1-continuity-payload-audit-2026-06-22.md`,
-  `app/docs/todo-todo/audits/frida-v1-continuity-payload-counter-audit-2026-06-22.md`,
+  `app/docs/todo-done/audits/frida-v1-continuity-payload-audit-2026-06-22.md`,
+  `app/docs/todo-done/audits/frida-v1-continuity-payload-counter-audit-2026-06-22.md`,
   `app/docs/todo-done/product/frida-v1-continuity-payload-todo.md`.
 - Lot cible: Lot 2C.
 - Critere de cloture: les audits sources ne peuvent plus etre lus comme

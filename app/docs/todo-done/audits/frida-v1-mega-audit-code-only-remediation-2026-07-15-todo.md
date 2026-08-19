@@ -10,7 +10,7 @@ HEAD audite: `afdf19fa54c6a1602232e54e40bb23a6ba33787d`.
 - Audit source:
   `app/docs/states/audits/frida-v1-mega-audit-code-only-2026-07-15.md`.
 - Registre canonique:
-  `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-todo.md`.
+  `app/docs/todo-done/audits/frida-v1-mega-audit-code-stack-todo.md`.
 - Refactors structurels existants:
   `app/docs/todo-done/refactors/frida-v1-mega-audit-lot9-refactors-todo.md`.
 - Contrat observabilite:

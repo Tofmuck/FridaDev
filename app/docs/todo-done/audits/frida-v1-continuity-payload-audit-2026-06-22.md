@@ -1,5 +1,7 @@
 # Frida V1 - Audit continuité conversationnelle et payload modèle - 2026-06-22
 
+Archive documentaire: `app/docs/todo-done/audits/frida-v1-continuity-payload-audit-2026-06-22.md`, deplacee lors de la cloture Lot Z globale du 2026-08-19.
+
 ## Statut Lot 2C - 2026-06-23
 
 Statut: audit historique superseded par la cloture Lot Z Continuity Payload.
@@ -70,7 +72,7 @@ Documents principaux:
 - `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
 - `app/docs/todo-done/audits/model-prompt-payload-interpretation-audit-2026-05-16.md`
 - `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`
-- `app/docs/todo-todo/audits/frida-v1-continuity-payload-counter-audit-2026-06-22.md`
+- `app/docs/todo-done/audits/frida-v1-continuity-payload-counter-audit-2026-06-22.md`
 - `app/docs/states/specs/mutable-identity-judge-contract.md`
 - `app/docs/states/policies/identity-new-contract-plan.md`
 - `app/docs/todo-done/refactors/identity-new-contract-todo.md`

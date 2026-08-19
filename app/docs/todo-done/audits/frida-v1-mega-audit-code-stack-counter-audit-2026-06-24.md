@@ -1,6 +1,7 @@
 # Frida V1 - Mega audit code + stack - contre-audit multi-agent - 2026-06-24
 
-Statut: contre-audit read-only, parallele au mega-audit principal.
+Statut: contre-audit historique archive apres cloture du mega-audit au Lot Z le 2026-08-19; preuve read-only parallele au mega-audit principal.
+Archive: `app/docs/todo-done/audits/frida-v1-mega-audit-code-stack-counter-audit-2026-06-24.md`.
 Branche: `FridaV1-Mega-Audit-Code-Stack`.
 Base verifiee: `bc8aee23499cd58fcd29abfb7314a9a2a688e3d6`, puis support Lot 0 principal `d43248e4` observe.
 Runtime modifie: non.

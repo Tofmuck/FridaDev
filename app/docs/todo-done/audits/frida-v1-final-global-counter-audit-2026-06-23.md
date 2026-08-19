@@ -1,5 +1,7 @@
 # Frida V1 - Final Global Counter-Audit - 2026-06-23
 
+Archive documentaire: `app/docs/todo-done/audits/frida-v1-final-global-counter-audit-2026-06-23.md`, deplacee lors de la cloture Lot Z globale du 2026-08-19.
+
 ## Statut
 
 Contre-audit read-only produit depuis la session lead, en parallele de l'audit
@@ -138,8 +140,8 @@ TODO comme carte de reprise, pas chantier actif.
 #### P2-CONTINUITY-AUDITS-ACTIVE-01 - Les audits Continuity sources restent dans `todo-todo/audits` avec findings vivants
 
 - Fichiers:
-  - `app/docs/todo-todo/audits/frida-v1-continuity-payload-audit-2026-06-22.md:468-554`
-  - `app/docs/todo-todo/audits/frida-v1-continuity-payload-counter-audit-2026-06-22.md:24-80`
+  - `app/docs/todo-done/audits/frida-v1-continuity-payload-audit-2026-06-22.md:468-554`
+  - `app/docs/todo-done/audits/frida-v1-continuity-payload-counter-audit-2026-06-22.md:24-80`
   - `app/docs/todo-done/product/frida-v1-continuity-payload-todo.md`
 
 La TODO Continuity Payload est archivee et tous les findings y sont clos ou

@@ -9,7 +9,7 @@ Source readiness:
 `app/docs/states/audits/frida-v1-mega-audit-lot9-refactor-readiness-2026-06-26.md`
 
 Source mega-audit:
-`app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-todo.md`
+`app/docs/todo-done/audits/frida-v1-mega-audit-code-stack-todo.md`
 
 ## Intention
 

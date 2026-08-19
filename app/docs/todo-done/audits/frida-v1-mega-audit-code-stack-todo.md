@@ -1,10 +1,11 @@
 # Frida V1 - Mega audit code + stack TODO
 
-Statut: TODO actif.
+Statut: archive le 2026-08-19; mega-audit code + stack clos au Lot Z avec verdict `met_with_documented_limits`.
+Archive: `app/docs/todo-done/audits/frida-v1-mega-audit-code-stack-todo.md`.
 Date d'ouverture: 2026-06-24.
 Branche de travail: `FridaV1-Mega-Audit-Code-Stack`.
-Audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-2026-06-24.md`.
-Contre-audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-counter-audit-2026-06-24.md`.
+Audit source: `app/docs/todo-done/audits/frida-v1-mega-audit-code-stack-2026-06-24.md`.
+Contre-audit source: `app/docs/todo-done/audits/frida-v1-mega-audit-code-stack-counter-audit-2026-06-24.md`.
 
 ## Etat global
 
@@ -3533,7 +3534,36 @@ Frontiere de cette passe:
   constituent la passe d'archive distincte.
 
 - [x] Artefact final content-free.
-- [ ] TODO archivee dans `todo-done/audits`.
+
+#### Passe Z.4 - Archive finale
+
+Date d'archivage: 2026-08-19.
+
+Actions de cloture:
+
+- registre canonique deplace vers
+  `app/docs/todo-done/audits/frida-v1-mega-audit-code-stack-todo.md`;
+- audit source et contre-audit du mega-audit deplaces dans le meme dossier
+  d'archive;
+- quatre audits V1 deja `superseded`, conserves provisoirement par le Lot 8,
+  deplaces eux aussi hors de `todo-todo/audits`;
+- pointeurs vivants, hub mainteneur, README racine, index des audits et
+  archives Lot 9/Lot 10 raccordes aux chemins `todo-done`;
+- artefact Z.3 conserve immuable: ses champs `canonical_todo_still_active` et
+  `canonical_todo_archived=false` photographient volontairement le preflight
+  precedant cette passe et ne sont pas une source d'etat courant.
+
+Verdict final: `met_with_documented_limits`. Aucun P1/P2 ne reste ouvert ou
+inconnu; chaque P3 est ferme, supersede, accepte ou assigne a un declencheur
+post-audit explicite. Une reouverture exige un nouveau finding prouve ou une
+decision operateur distincte.
+
+Cette passe est strictement documentaire: aucun code runtime, test, prompt,
+provider, secret, DB ou fichier plateforme n'est modifie; aucun rebuild,
+restart, deploiement, reset, purge, backfill, migration, Agenda ou Mail runtime
+n'est execute.
+
+- [x] TODO archivee dans `todo-done/audits`.
 
 ## Non-prolongation
 

@@ -1,5 +1,7 @@
 # Frida V1 - Continuity Payload Counter-Audit - 2026-06-22
 
+Archive documentaire: `app/docs/todo-done/audits/frida-v1-continuity-payload-counter-audit-2026-06-22.md`, deplacee lors de la cloture Lot Z globale du 2026-08-19.
+
 ## Statut
 
 Statut: contre-audit historique superseded par la cloture Lot Z Continuity
@@ -28,7 +30,7 @@ Ce document ne modifie pas le runtime. Il synthetise quatre axes de relecture in
 - Axe C: lanes agentiques et outils injectables.
 - Axe D: tests, observabilite et preuves content-free disponibles.
 
-Le fichier d'audit principal `app/docs/todo-todo/audits/frida-v1-continuity-payload-audit-2026-06-22.md` est laisse intact pour Celebrimbor.
+Le fichier d'audit principal `app/docs/todo-done/audits/frida-v1-continuity-payload-audit-2026-06-22.md` est laisse intact pour Celebrimbor.
 
 ## Verdict court
 

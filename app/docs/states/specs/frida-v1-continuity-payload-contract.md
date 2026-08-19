@@ -49,9 +49,9 @@ tardives.
 
 - TODO archivee: `app/docs/todo-done/product/frida-v1-continuity-payload-todo.md`
 - Audit principal:
-  `app/docs/todo-todo/audits/frida-v1-continuity-payload-audit-2026-06-22.md`
+  `app/docs/todo-done/audits/frida-v1-continuity-payload-audit-2026-06-22.md`
 - Contre-audit:
-  `app/docs/todo-todo/audits/frida-v1-continuity-payload-counter-audit-2026-06-22.md`
+  `app/docs/todo-done/audits/frida-v1-continuity-payload-counter-audit-2026-06-22.md`
 - Doctrine voix et reprise:
   `app/docs/states/specs/chat-enunciation-and-gap-contract.md`
 - Identite mutable active:

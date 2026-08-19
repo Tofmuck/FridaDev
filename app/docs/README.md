@@ -17,6 +17,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Audit repo canonique: `todo-done/audits/fridadev_repo_audit.md`
 - Roadmap finale produit Frida 1.0: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
 - Archive des refactors Lot 9 du mega-audit: `todo-done/refactors/frida-v1-mega-audit-lot9-refactors-todo.md` pour la roadmap golden-test-first fermee et sa decision d'arret 9Z.
+- Archive globale du mega-audit code et stack: `todo-done/audits/frida-v1-mega-audit-code-stack-todo.md` pour le registre final P1/P2/P3, l'artefact Lot Z content-free, les limites documentees et la fermeture du chantier.
 - Prerequis avant Lot 9B ferme: `todo-done/refactors/frida-v1-mega-audit-lot9-refactor-before-9b-todo.md` conserve le triage et la preuve de remise au vert de la suite complete.
 - Audit readiness Lot 9 du mega-audit: `states/audits/frida-v1-mega-audit-lot9-refactor-readiness-2026-06-26.md` pour la preuve docs-only qui fonde la roadmap Lot 9.
 - Audit code-only Lot 10 du mega-audit: `states/audits/frida-v1-mega-audit-code-only-2026-07-15.md` pour la seconde passe autocritique, ses cinq P2 et ses trois P3 a revalider dans le HEAD courant.
@@ -30,8 +31,8 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Contrat Exports Frida V1 2026-06-18: `states/specs/frida-v1-exports-contract.md` pour exports rattaches a `workspace_folders`, cible `/Frida/<dossier>/Exports`, sources explicites, formats Markdown/TXT/DOCX/PDF, read-model `workspace_folder_exports`, no overwrite, reutilisation bornee et observabilite content-free. TODO de livraison archivee: `todo-done/product/frida-v1-exports-todo.md`.
 - Contrat Images generees Frida V1 2026-06-19: `states/specs/frida-v1-generated-images-contract.md` pour images generees rattachees a `workspace_folders`, cible `/Frida/<dossier>/Images`, read-model `workspace_folder_generated_images`, formats PNG/JPEG/WebP, prompt brut non stocke durablement, separation outil V0 / V1 durable et observabilite content-free. TODO de livraison archivee: `todo-done/product/frida-v1-generated-images-todo.md`.
 - Contrat Observabilite agentique Frida V1 2026-06-20: `states/specs/frida-v1-agentic-observability-contract.md` pour taxonomie status/reason/severity, no-op agentiques, historique vs recent, JSONL content-free, Agenda runtime vs roadmap post-V1 et reset observabilite post-cloture. TODO de livraison archivee: `todo-done/product/frida-v1-agentic-observability-todo.md`.
-- Index des audits actifs et pieces historiques du mega-audit code + stack:
-  `todo-todo/audits/README.md`.
+- Index du dossier d'audits: `todo-todo/audits/README.md`; le mega-audit code
+  et stack n'y porte plus de chantier actif apres son archivage Lot Z.
 - Audit global date du 2026-05-03: `states/audits/fridadev-global-audit-2026-05-03.md`
 - Catalogue des appels modeles et services d'inference 2026-05-17: `states/audits/fridadev-model-call-catalog-2026-05-17.md`
 - Audit stack locale SearXNG/Crawl4AI vs benchmark web 2026-05-21: `states/audits/fridadev-local-web-search-stack-audit-2026-05-21.md`

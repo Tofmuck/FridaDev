@@ -153,9 +153,9 @@ Contrat source:
 `app/docs/states/specs/frida-v1-continuity-payload-contract.md`
 
 Sources d'audit:
-`app/docs/todo-todo/audits/frida-v1-continuity-payload-audit-2026-06-22.md`
+`app/docs/todo-done/audits/frida-v1-continuity-payload-audit-2026-06-22.md`
 et
-`app/docs/todo-todo/audits/frida-v1-continuity-payload-counter-audit-2026-06-22.md`
+`app/docs/todo-done/audits/frida-v1-continuity-payload-counter-audit-2026-06-22.md`
 
 Statut 2026-06-23: chantier cloture en Lot Z avec verdict `met`.
 `main_payload_manifest_v1` est livre et teste, la garde writer-side est

@@ -31,9 +31,9 @@ livraison et test de `main_payload_manifest_v1`.
 ## Sources de verite
 
 - Audit principal:
-  `app/docs/todo-todo/audits/frida-v1-continuity-payload-audit-2026-06-22.md`
+  `app/docs/todo-done/audits/frida-v1-continuity-payload-audit-2026-06-22.md`
 - Contre-audit:
-  `app/docs/todo-todo/audits/frida-v1-continuity-payload-counter-audit-2026-06-22.md`
+  `app/docs/todo-done/audits/frida-v1-continuity-payload-counter-audit-2026-06-22.md`
 - Contrat source-of-truth Continuity Payload:
   `app/docs/states/specs/frida-v1-continuity-payload-contract.md`
 - Doctrine voix, identite et reprise apres ecart:

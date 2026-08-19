@@ -1,5 +1,7 @@
 # Frida V1 - Audit final global - 2026-06-23
 
+Archive documentaire: `app/docs/todo-done/audits/frida-v1-final-global-audit-2026-06-23.md`, deplacee lors de la cloture Lot Z globale du 2026-08-19.
+
 Statut: audit source historique. Superseded par l'archive finale Lot Z:
 `app/docs/todo-done/product/frida-v1-final-audit-todo.md`. Les findings
 ci-dessous documentent l'etat observe avant les Lots 0-Z et ne constituent plus

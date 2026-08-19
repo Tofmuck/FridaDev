@@ -1,16 +1,19 @@
-# Audits actifs et pieces historiques
+# Audits - index actif et archives historiques
 
-Statut Lot 8 du mega-audit code + stack.
+Statut Lot Z du mega-audit code + stack, 2026-08-19.
 
 Ce dossier peut contenir a la fois des TODO actives et des pieces d'audit
 conservees comme preuves contradictoires. Une checkbox dans une piece
-historique n'est pas une tache active par defaut: la TODO canonique ci-dessous
-decide ce qui reste executable.
+historique n'est pas une tache active par defaut. Aucun chantier du mega-audit
+code + stack ne reste actif dans ce dossier apres sa cloture Lot Z.
 
-## Source active
+## Archive globale du mega-audit code + stack
 
-- `frida-v1-mega-audit-code-stack-todo.md`: registre canonique actif du
-  mega-audit.
+- `../../todo-done/audits/frida-v1-mega-audit-code-stack-todo.md`: registre
+  canonique ferme et archive; il porte les registres finaux P1/P2/P3, les
+  quatre passes Lot Z et le verdict `met_with_documented_limits`.
+- Artefact final content-free:
+  `../../states/baselines/mega-audit-smokes/frida-v1-mega-audit-lotz-final-20260819T094412Z.jsonl`.
 
 ## Archive de remediation Lot 10
 
@@ -27,25 +30,23 @@ decide ce qui reste executable.
   trois P3, sans P0/P1, et ne constitue pas une checklist executable sans la
   sous-TODO de remediation.
 
-## Pieces d'entree du mega-audit courant
+## Pieces d'entree archivees du mega-audit
 
-- `frida-v1-mega-audit-code-stack-2026-06-24.md`: audit source du mega-audit.
-  Ses constats initiaux peuvent etre supersedes par les lots documentes dans la
-  TODO canonique.
-- `frida-v1-mega-audit-code-stack-counter-audit-2026-06-24.md`: contre-audit
-  conserve comme piece de validation contradictoire. Il n'est pas une checklist
-  active autonome.
+- `../../todo-done/audits/frida-v1-mega-audit-code-stack-2026-06-24.md`:
+  audit source historique du mega-audit.
+- `../../todo-done/audits/frida-v1-mega-audit-code-stack-counter-audit-2026-06-24.md`:
+  contre-audit historique conserve comme validation contradictoire.
 
-## Pieces superseded conservees provisoirement
+## Pieces superseded archivees
 
-Ces fichiers portent deja un en-tete `superseded` et restent ici seulement pour
-ne pas casser les pointeurs pendant le mega-audit. Les sources courantes sont
-les archives `todo-done/product/` citees dans leurs en-tetes.
+Ces fichiers portent un en-tete `superseded`. Le Lot Z les a deplaces hors du
+dossier actif; leurs sources courantes restent les archives
+`todo-done/product/` citees dans leurs en-tetes.
 
-- `frida-v1-continuity-payload-audit-2026-06-22.md`
-- `frida-v1-continuity-payload-counter-audit-2026-06-22.md`
-- `frida-v1-final-global-audit-2026-06-23.md`
-- `frida-v1-final-global-counter-audit-2026-06-23.md`
+- `../../todo-done/audits/frida-v1-continuity-payload-audit-2026-06-22.md`
+- `../../todo-done/audits/frida-v1-continuity-payload-counter-audit-2026-06-22.md`
+- `../../todo-done/audits/frida-v1-final-global-audit-2026-06-23.md`
+- `../../todo-done/audits/frida-v1-final-global-counter-audit-2026-06-23.md`
 
-Lot Z pourra deplacer ou archiver ces pieces si la TODO canonique est elle-meme
-archivee.
+Une reouverture exige un finding courant prouve et une nouvelle TODO explicite;
+aucune checkbox de ces archives ne redevient executable par simple lecture.

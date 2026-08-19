@@ -1,10 +1,11 @@
 # Frida V1 - Mega audit code + stack OVH - 2026-06-24
 
-Statut: audit baseline Lot 0, read-only/docs-only.
+Statut: audit source historique archive apres cloture du mega-audit au Lot Z le 2026-08-19; baseline Lot 0 read-only/docs-only.
+Archive: `app/docs/todo-done/audits/frida-v1-mega-audit-code-stack-2026-06-24.md`.
 Branche: `FridaV1-Mega-Audit-Code-Stack`.
 Base: `main` a `bc8aee23499cd58fcd29abfb7314a9a2a688e3d6`.
 Roles: Sauron pour `/opt/platform`, Celebrimbor pour `/opt/platform/fridadev`.
-Contre-audit source: `app/docs/todo-todo/audits/frida-v1-mega-audit-code-stack-counter-audit-2026-06-24.md`.
+Contre-audit source: `app/docs/todo-done/audits/frida-v1-mega-audit-code-stack-counter-audit-2026-06-24.md`.
 
 ## Verdict court
 
