@@ -3628,10 +3628,85 @@ Limites et non-extension:
   memory traces, arbiter, validation settings ou read-model Identity n'est
   anticipe.
 
+### Lot 9H.1 - Trace/summary persistence extraction - ferme le 19 aout 2026
+
+Decision de methode:
+
+- le meilleur split ne deplace pas le moteur de retrieval hybride: ses
+  fonctions privees restent des coutures vivantes pour les tests et le panier
+  pre-arbitre, et leur migration aurait augmente le risque sur ranking, scores
+  internes et ordre summary/trace;
+- `memory_traces_summaries.py` reste la facade historique et le proprietaire
+  coherent de la generation/retrieval de candidats; seul le lifecycle
+  persistant traces/summaries est extrait dans un store dedie;
+- les wrappers historiques injectent explicitement eligibilite, detection de
+  doublon et embedding avec purpose. Les monkeypatches existants gardent donc
+  leur effet et aucun appelant n'est migre;
+- aucun second chemin n'est conserve: chaque implementation SQL de write/read
+  summary n'existe qu'une fois dans le nouveau module.
+
+Fichiers de runtime et de preuve:
+
+- `app/memory/memory_trace_summary_store.py`: eligibilite des messages,
+  deduplication avant insert, persistence traces/summaries, rattachement
+  `summary_id`, lookup parent et enrichissement cache;
+- `app/memory/memory_traces_summaries.py`: facade compatible et retrieval
+  hybride, reduit de `1055` a `854` lignes;
+- `app/tests/unit/memory/test_memory_trace_summary_store_boundary.py`: preuve
+  TDD que la facade traverse le store avec les trois coutures de compatibilite;
+- cette section 9H.1 est la seule documentation modifiee.
+
+Invariants figes:
+
+- seuls les messages user/assistant non vides, non deja embedded, non
+  interrompus et hors presence dialogique sont eligibles;
+- un doublon persistant marque le message embedded sans nouvel insert; un
+  echec embedding garde l'insert textuel avec vecteur nul et un echec DB reste
+  fail-open pour la conversation;
+- roles, timestamps, `summarized_by`, purposes `trace_user`,
+  `trace_assistant` et `summary`, SQL, commits et logs prives restent
+  inchanges;
+- `save_summary`, `update_traces_summary_id`, lookup par id ou recouvrement
+  temporel et cache d'enrichissement conservent leurs signatures et resultats;
+- retrieval public/interne, scores, limite summary lane, ordre pre-arbitre,
+  `MemoryRetrievalResult` et evenements `memory_retrieve` restent dans la
+  facade et ne sont pas modifies.
+
+Sensibilite et preuves hermetiques:
+
+- RED initial de test: une premiere assertion mal formee a produit `1 erreur`
+  locale, corrigee avant implementation; la preuve correcte echoue ensuite
+  `1/1` parce que la facade ne delegue pas encore au store;
+- GREEN frontiere nouvelle: `1/1`, OK;
+- store, candidate generation, retrieval facade, logs embeddings, Documents,
+  provenance Web et golden 9H.0: `69/69`, OK;
+- suite Memory unitaire complete: `131/131`, OK;
+- suite chat unitaire complete: `146/146`, OK;
+- suite logs unitaire complete: `238/238`, OK;
+- import froid conjoint facade/store: OK, sans cycle ni resolution externe;
+- decouverte Python complete finale: `2662 tests`, OK, delta exact de un;
+- tous les runners utilisent `--network none`, checkout et benchmark
+  read-only et `/tmp` en tmpfs, sans DB, provider, secret ou contenu operateur
+  reels.
+
+Auto-audit et limites:
+
+- le diff n'ajoute ni format, route, prompt, provider, modele, log, capacite ou
+  semantique Memory; aucun test existant n'est supprime ou affaibli;
+- le store de `300` lignes porte une responsabilite unique. Les wrappers
+  expliquent l'augmentation locale de lignes mais evitent une migration large
+  des appelants et preservent les coutures historiques;
+- `memory_traces_summaries.py` reste volontairement un module de retrieval
+  dense: extraire ses algorithmes dans ce lot aurait melange une deuxieme
+  responsabilite et augmente le risque sans condition de sortie contractuelle;
+- aucun rebuild, restart ou deploiement runtime n'est execute;
+- 9H.2, 9H.3 et 9H.4 restent ouverts et non commences. Arbiter, runtime
+  settings et read-model Identity sont inchanges.
+
 Checklist:
 
 - [x] Golden Memory/Admin matrix.
-- [ ] Refactor memory traces only.
+- [x] Refactor memory traces only.
 - [ ] Refactor settings validation only.
 - [ ] Refactor identity read-model only.
 - [ ] Verify no semantic identity change.

@@ -7,8 +7,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable
 
-from core import assistant_turn_state
 from memory import memory_lexical_sql
+from memory import memory_trace_summary_store
 from observability import chat_turn_logger
 
 
@@ -599,19 +599,7 @@ def _embed_with_purpose(
 
 
 def _message_is_trace_eligible(message: dict[str, Any]) -> bool:
-    role = str(message.get('role') or '').strip()
-    if role not in {'user', 'assistant'}:
-        return False
-    if message.get('embedded'):
-        return False
-    if not str(message.get('content') or '').strip():
-        return False
-    if role == 'assistant':
-        if assistant_turn_state.is_interrupted_assistant_turn(message):
-            return False
-        if assistant_turn_state.is_dialogic_presence_assistant_turn(message):
-            return False
-    return True
+    return memory_trace_summary_store.message_is_trace_eligible(message)
 
 
 def _trace_exists_for_message(
@@ -621,45 +609,12 @@ def _trace_exists_for_message(
     conn_factory: Callable[[], Any],
     logger: Any,
 ) -> bool:
-    role = str(message.get('role') or '').strip()
-    content = str(message.get('content') or '')
-    timestamp = message.get('timestamp')
-    if not conversation_id or not role or not content:
-        return False
-
-    try:
-        with conn_factory() as conn:
-            with conn.cursor() as cur:
-                if timestamp:
-                    cur.execute(
-                        '''
-                        SELECT 1
-                        FROM traces
-                        WHERE conversation_id = %s
-                          AND role = %s
-                          AND content = %s
-                          AND timestamp = %s::timestamptz
-                        LIMIT 1
-                        ''',
-                        (conversation_id, role, content, timestamp),
-                    )
-                else:
-                    cur.execute(
-                        '''
-                        SELECT 1
-                        FROM traces
-                        WHERE conversation_id = %s
-                          AND role = %s
-                          AND content = %s
-                          AND timestamp IS NULL
-                        LIMIT 1
-                        ''',
-                        (conversation_id, role, content),
-                    )
-                return cur.fetchone() is not None
-    except Exception as exc:
-        logger.warning('trace_exists_check_failed conv=%s err=%s', conversation_id, exc)
-        return False
+    return memory_trace_summary_store.trace_exists_for_message(
+        conversation_id,
+        message,
+        conn_factory=conn_factory,
+        logger=logger,
+    )
 
 
 def save_new_traces(
@@ -669,69 +624,15 @@ def save_new_traces(
     embed_fn: Callable[..., list[float]],
     logger: Any,
 ) -> None:
-    """
-    Embed and persist user/assistant messages not yet marked as embedded.
-    Never raises: conversation save must not depend on this.
-    """
-    conv_id = conversation.get('id', '')
-    to_embed = [
-        m
-        for m in conversation.get('messages', [])
-        if _message_is_trace_eligible(m)
-    ]
-    if not to_embed:
-        return
-
-    for m in to_embed:
-        if _trace_exists_for_message(
-            conv_id,
-            m,
-            conn_factory=conn_factory,
-            logger=logger,
-        ):
-            m['embedded'] = True
-            logger.info(
-                'trace_exists_skip conv=%s role=%s ts=%s',
-                conv_id,
-                m.get('role'),
-                m.get('timestamp'),
-            )
-            continue
-
-        try:
-            purpose = 'trace_user' if str(m.get('role')) == 'user' else 'trace_assistant'
-            vec = _embed_with_purpose(
-                embed_fn,
-                m['content'],
-                mode='passage',
-                purpose=purpose,
-            )
-        except Exception as exc:
-            logger.warning('embed_skip role=%s err=%s', m.get('role'), exc)
-            vec = None
-
-        try:
-            with conn_factory() as conn:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        '''
-                        INSERT INTO traces
-                            (conversation_id, role, content, timestamp, embedding, summary_id)
-                        VALUES (%s, %s, %s, %s, %s::vector, %s)
-                        ''',
-                        (
-                            conv_id,
-                            m['role'],
-                            m['content'],
-                            m.get('timestamp'),
-                            str(vec) if vec is not None else None,
-                            m.get('summarized_by'),
-                        ),
-                    )
-                conn.commit()
-            m['embedded'] = True
-        except Exception as exc:
-            logger.error('save_trace_error conv=%s err=%s', conv_id, exc)
+    memory_trace_summary_store.save_new_traces(
+        conversation,
+        conn_factory=conn_factory,
+        embed_fn=embed_fn,
+        logger=logger,
+        message_is_trace_eligible_fn=_message_is_trace_eligible,
+        trace_exists_for_message_fn=_trace_exists_for_message,
+        embed_with_purpose_fn=_embed_with_purpose,
+    )
 
 
 def _emit_retrieval_error_result(
@@ -900,45 +801,14 @@ def save_summary(
     embed_fn: Callable[..., list[float]],
     logger: Any,
 ) -> None:
-    """
-    Persist a summary into `summaries`.
-    Embedding failure does not prevent text persistence.
-    """
-    content = summary.get('content', '')
-    try:
-        vec = _embed_with_purpose(
-            embed_fn,
-            content,
-            mode='passage',
-            purpose='summary',
-        )
-    except Exception as exc:
-        logger.warning('summary_embed_skip err=%s', exc)
-        vec = None
-
-    try:
-        with conn_factory() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    '''
-                    INSERT INTO summaries
-                        (id, conversation_id, start_ts, end_ts, content, embedding)
-                    VALUES (%s, %s, %s, %s, %s, %s::vector)
-                    ON CONFLICT (id) DO NOTHING
-                    ''',
-                    (
-                        summary['id'],
-                        conversation_id,
-                        summary.get('start_ts') or None,
-                        summary.get('end_ts') or None,
-                        content,
-                        str(vec) if vec is not None else None,
-                    ),
-                )
-            conn.commit()
-        logger.info('summary_saved conv=%s summary_id=%s', conversation_id, summary['id'][:8])
-    except Exception as exc:
-        logger.error('save_summary_error conv=%s err=%s', conversation_id, exc)
+    memory_trace_summary_store.save_summary(
+        conversation_id,
+        summary,
+        conn_factory=conn_factory,
+        embed_fn=embed_fn,
+        logger=logger,
+        embed_with_purpose_fn=_embed_with_purpose,
+    )
 
 
 def update_traces_summary_id(
@@ -950,29 +820,14 @@ def update_traces_summary_id(
     conn_factory: Callable[[], Any],
     logger: Any,
 ) -> None:
-    """
-    Set summary_id on traces covered by [start_ts, end_ts] where summary_id is still NULL.
-    """
-    if not start_ts or not end_ts:
-        return
-    try:
-        with conn_factory() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    '''
-                    UPDATE traces
-                    SET    summary_id = %s
-                    WHERE  conversation_id = %s
-                      AND  timestamp >= %s::timestamptz
-                      AND  timestamp <= %s::timestamptz
-                      AND  summary_id IS NULL
-                    ''',
-                    (summary_id, conversation_id, start_ts, end_ts),
-                )
-            conn.commit()
-        logger.debug('traces_summary_id_updated conv=%s summary_id=%s', conversation_id, summary_id[:8])
-    except Exception as exc:
-        logger.error('update_traces_summary_id_error conv=%s err=%s', conversation_id, exc)
+    memory_trace_summary_store.update_traces_summary_id(
+        conversation_id,
+        summary_id,
+        start_ts,
+        end_ts,
+        conn_factory=conn_factory,
+        logger=logger,
+    )
 
 
 def get_summary_for_trace(
@@ -981,57 +836,11 @@ def get_summary_for_trace(
     conn_factory: Callable[[], Any],
     logger: Any,
 ) -> dict[str, Any] | None:
-    """
-    Return parent summary for a trace:
-    - by summary_id when available,
-    - otherwise by time overlap on same conversation_id.
-    """
-    if str(trace.get('source_kind') or '') == 'summary' or str(trace.get('role') or '') == 'summary':
-        return None
-    summary_id = trace.get('summary_id')
-    conv_id = trace.get('conversation_id')
-    ts = trace.get('timestamp')
-
-    try:
-        with conn_factory() as conn:
-            with conn.cursor() as cur:
-                if summary_id:
-                    cur.execute(
-                        '''
-                        SELECT id, conversation_id, start_ts, end_ts, content
-                        FROM   summaries
-                        WHERE  id = %s
-                        ''',
-                        (summary_id,),
-                    )
-                elif conv_id and ts:
-                    cur.execute(
-                        '''
-                        SELECT id, conversation_id, start_ts, end_ts, content
-                        FROM   summaries
-                        WHERE  conversation_id = %s
-                          AND  start_ts <= %s::timestamptz
-                          AND  end_ts   >= %s::timestamptz
-                        ORDER  BY end_ts DESC
-                        LIMIT  1
-                        ''',
-                        (conv_id, ts, ts),
-                    )
-                else:
-                    return None
-                row = cur.fetchone()
-        if not row:
-            return None
-        return {
-            'id': str(row[0]),
-            'conversation_id': row[1],
-            'start_ts': str(row[2]) if row[2] else None,
-            'end_ts': str(row[3]) if row[3] else None,
-            'content': row[4],
-        }
-    except Exception as exc:
-        logger.warning('get_summary_for_trace_error err=%s', exc)
-        return None
+    return memory_trace_summary_store.get_summary_for_trace(
+        trace,
+        conn_factory=conn_factory,
+        logger=logger,
+    )
 
 
 def enrich_traces_with_summaries(
@@ -1039,17 +848,7 @@ def enrich_traces_with_summaries(
     *,
     get_summary_for_trace_fn: Callable[[dict[str, Any]], dict[str, Any] | None],
 ) -> list[dict[str, Any]]:
-    """
-    Add trace['parent_summary'] for each trace with internal cache to avoid redundant DB calls.
-    """
-    cache: dict[str, dict[str, Any] | None] = {}
-    for trace in traces:
-        if str(trace.get('source_kind') or '') == 'summary' or str(trace.get('role') or '') == 'summary':
-            trace['parent_summary'] = None
-            continue
-        summary_id = trace.get('summary_id')
-        cache_key = summary_id or f"{trace.get('conversation_id')}@{trace.get('timestamp')}"
-        if cache_key not in cache:
-            cache[cache_key] = get_summary_for_trace_fn(trace)
-        trace['parent_summary'] = cache[cache_key]
-    return traces
+    return memory_trace_summary_store.enrich_traces_with_summaries(
+        traces,
+        get_summary_for_trace_fn=get_summary_for_trace_fn,
+    )
