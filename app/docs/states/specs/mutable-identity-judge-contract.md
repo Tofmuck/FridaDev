@@ -25,6 +25,13 @@ Convention de lecture apres Lot B: les sections qui decrivent `mutable_judge_v1`
 `target_refs` sont des traces legacy pre-Lot-B / compatibilite historique. Elles
 ne constituent plus le regime runtime actif.
 
+Mise a jour 2026-08-20, contexte dialogique: le caller par tour
+`dialogic_context_hint_extractor` produit uniquement des reperes temporaires
+`subject=dialogue`. Il ne preselctionne pas la fenetre du juge, n'appelle aucun
+writer Identity et ne partage aucune autorite avec ce contrat. Le juge GPT-5.2
+continue de lire exactement cinq paires et reste l'unique writer automatique
+du canon mutable.
+
 Mise a jour 2026-05-26, Lot E cleanup: l'implementation v1 gestionnaire a ete
 retiree du chemin de code actif. `app/memory/mutable_identity_judge.py` reste un
 shim de compatibilite operateur content-free; les helpers communs utilises par

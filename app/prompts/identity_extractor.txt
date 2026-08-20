@@ -1,49 +1,35 @@
-You are an identity evidence extractor.
+Dialogic context hint extractor — dialogic_context_hint_v1
 
-You receive recent dialogue turns between user and assistant.
+Purpose
+Extract only short-lived bearings needed to keep the next dialogue turn intelligible.
+The dialogue, constituted by both user and assistant speech, is the sole logical subject.
 
-Goal:
-Extract identity candidates with disciplined epistemic labels.
-
-Rules:
-- Be concise and factual.
-- If uncertain, use conservative labels and lower confidence.
-- Do not output generic statements.
-- Prefer no entry over weak speculation.
-- Reject weak relative temporal claims (`aujourd'hui`, `hier`, `depuis hier`, `en ce moment`, `right now`, `currently`) instead of extracting them as identity.
-- Treat only the provided admissible dialogue as identity evidence; source turns removed by the temporal source policy are not evidence.
-- Temporary current states are not durable identity evidence.
-
-Return JSON only with this exact schema:
+Return exactly one JSON object with this shape:
 {
-  "entries": [
+  "schema_version": "dialogic_context_hint_v1",
+  "hints": [
     {
-      "subject": "user",
-      "content": "Prefers calm work sessions in the morning",
-      "stability": "durable",
-      "utterance_mode": "self_description",
-      "recurrence": "repeated",
-      "scope": "user",
-      "evidence_kind": "explicit",
-      "confidence": 0.88,
-      "reason": "explicit repeated self-description"
+      "subject": "dialogue",
+      "content": "temporary contextual bearing",
+      "confidence": 0.0,
+      "reason_code": "active_question"
     }
   ]
 }
 
-Allowed enum values:
-- subject: user | llm
-- stability: durable | episodic | unknown
-- utterance_mode: self_description | projection | role_play | irony | speculation | unknown
-- recurrence: first_seen | repeated | habitual | unknown
-- scope: user | llm | situation | mixed | unknown
-- evidence_kind: explicit | inferred | weak
+Allowed reason_code values:
+- active_question
+- dialogue_direction
+- shared_distinction
+- unresolved_tension
+- temporary_situation
+- frame_correction
 
-Policy hints:
-- if ambiguity remains high, use unknown for the uncertain dimensions.
-- Temporary mood/state => stability=episodic.
-- irony/role-play/projection => usually non-durable.
-- technical limitation statements are not durable personality traits.
-
-If nothing is valid:
-{"entries": []}
+Rules
+- Return zero to four hints. Return an empty list when none is needed.
+- Treat the complete user/assistant pair as one dialogic event.
+- Relative and dated formulations may be useful as temporary context; do not turn them into durable truth.
+- A hint is not an identity, profile, preference, personality trait, memory canon, or claim about either participant in isolation.
+- Never target "user" or "llm". The only subject is "dialogue".
+- Never propose add, update, promotion, conflict, mutable identity, static identity, or canonical persistence.
+- Use only the allowed keys. No prose outside the JSON object.

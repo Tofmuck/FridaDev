@@ -1906,6 +1906,28 @@ function hermeneuticAdminMockScript({
           last_completed_agent: { present: false },
           latest_agent_activity: ${JSON.stringify(latestIdentityActivity)},
         },
+        dialogic_context: {
+          classification: "temporary_dialogic_context",
+          authority: "prompt_context_only",
+          logical_subject: "dialogue",
+          active_caller: "dialogic_context_hint_extractor",
+          identity_writer: false,
+          mutable_authority: false,
+          present: true,
+          count: 1,
+          total_count: 1,
+          runtime: {
+            selection: { max_items: 2, max_tokens: 120, max_age_days: 7, min_confidence: 0.6 },
+          },
+          latest_activity: {
+            present: true,
+            status: "ok",
+            reason_code: "hints_persisted",
+            hint_count: 1,
+            identity_write: false,
+            mutable_authority: false,
+          },
+        },
         subjects: {
           llm: {
             static: {
@@ -2042,6 +2064,7 @@ function hermeneuticAdminMockScript({
             identity_input_schema_version: "v2",
             same_identity_basis: true,
             identity_staging: identityReadModel.identity_staging,
+            dialogic_context: identityReadModel.dialogic_context,
             structured_identity: {
               technical_name: "identity_input",
               role: "hermeneutic_judgment",
@@ -2221,6 +2244,25 @@ test('identity surfaces render a verified previously applied write recovery', as
 });
 
 test('identity surfaces render authoritative active claim and finalization recovery states', async () => {
+  const assertDialogicContext = (text, surface) => {
+    assert.equal(
+      text.includes('Contexte dialogique temporaire'),
+      true,
+      `temporary dialogic context must render on ${surface}`,
+    );
+    assert.equal(
+      text.includes('caller=dialogic_context_hint_extractor'),
+      true,
+      `authoritative dialogic caller must render on ${surface}`,
+    );
+    assert.equal(text.includes('sujet=dialogue'), true, `dialogue subject must render on ${surface}`);
+    assert.equal(text.includes('identity_writer=false'), true, `non-writer status must render on ${surface}`);
+    assert.equal(text.includes('canonique=false'), true, `non-canonical status must render on ${surface}`);
+    assert.equal(text.includes('budget_tokens=120'), true, `selection budget must render on ${surface}`);
+    assert.equal(text.includes('max_age_days=7'), true, `selection age must render on ${surface}`);
+    assert.equal(text.includes('identity_writer=true'), false, `false writer claim forbidden on ${surface}`);
+  };
+
   for (const currentStagingStatus of [
     "running",
     "judge_attempt_started",
@@ -2235,6 +2277,7 @@ test('identity surfaces render authoritative active claim and finalization recov
       const text = String(await page.locator('#identityRuntimeSummary').textContent() || '');
       assert.equal(text.includes(expectedChip), true, `${expectedChip} must render on /identity`);
       assert.equal(text.includes('buffer_status=ok'), false, 'active staging cannot render as ok');
+      assertDialogicContext(text, '/identity');
     });
 
     await openBrowserPage({ pathSuffix: '/hermeneutic-admin.html', mockScript }, async (page) => {
@@ -2243,6 +2286,7 @@ test('identity surfaces render authoritative active claim and finalization recov
       const text = String(await page.locator('#hermeneuticIdentityReadModel').textContent() || '');
       assert.equal(text.includes(expectedChip), true, `${expectedChip} must render on /hermeneutic-admin`);
       assert.equal(text.includes('buffer_status=ok'), false, 'active staging cannot render as ok');
+      assertDialogicContext(text, '/hermeneutic-admin');
     });
   }
 });

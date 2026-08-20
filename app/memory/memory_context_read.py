@@ -150,6 +150,7 @@ def get_recent_context_hints(
                     """
                     SELECT
                         conversation_id,
+                        subject,
                         content,
                         content_norm,
                         created_ts,
@@ -162,9 +163,12 @@ def get_recent_context_hints(
                             * (1.0 / (1.0 + GREATEST(EXTRACT(EPOCH FROM (now() - created_ts)) / 3600.0, 0.0)))
                         ) AS score
                     FROM identity_evidence
-                    WHERE subject = %s
+                    WHERE (
+                            (subject = %s AND stability = %s AND scope = %s)
+                            OR
+                            (subject = %s AND (stability = %s OR scope = %s))
+                          )
                       AND created_ts >= (now() - make_interval(days => %s))
-                      AND (stability = %s OR scope = %s)
                       AND COALESCE(confidence, 0.0) >= %s
                       AND COALESCE(utterance_mode, %s) NOT IN (%s, %s, %s)
                       AND COALESCE(status, %s) IN (%s, %s)
@@ -172,10 +176,13 @@ def get_recent_context_hints(
                     LIMIT %s
                     """,
                     (
+                        "dialogue",
+                        "episodic",
+                        "dialogue",
                         "user",
-                        max(1, int(max_age_days)),
                         "episodic",
                         "situation",
+                        max(1, int(max_age_days)),
                         float(min_confidence),
                         "unknown",
                         "irony",
@@ -192,10 +199,10 @@ def get_recent_context_hints(
         hints: list[dict[str, Any]] = []
         seen_norm: set[str] = set()
         for row in rows:
-            content = str(row[1] or "").strip()
+            content = str(row[2] or "").strip()
             if not content:
                 continue
-            norm = str(row[2] or "").strip()
+            norm = str(row[3] or "").strip()
             if norm and norm in seen_norm:
                 continue
             if norm:
@@ -204,13 +211,14 @@ def get_recent_context_hints(
             hints.append(
                 {
                     "conversation_id": str(row[0] or ""),
+                    "subject": str(row[1] or "dialogue"),
                     "content": content,
-                    "timestamp": row[3].isoformat() if isinstance(row[3], datetime) else "",
-                    "confidence": float(row[4] or 0.0),
-                    "scope": str(row[5] or "user"),
-                    "stability": str(row[6] or "unknown"),
-                    "utterance_mode": str(row[7] or "unknown"),
-                    "score": float(row[8] or 0.0),
+                    "timestamp": row[4].isoformat() if isinstance(row[4], datetime) else "",
+                    "confidence": float(row[5] or 0.0),
+                    "scope": str(row[6] or "dialogue"),
+                    "stability": str(row[7] or "unknown"),
+                    "utterance_mode": str(row[8] or "unknown"),
+                    "score": float(row[9] or 0.0),
                 }
             )
             if len(hints) >= max_items:
@@ -221,8 +229,8 @@ def get_recent_context_hints(
                 'identities_read',
                 status='ok',
                 payload=identity_observability.build_identities_read_payload(
-                    target_side='user',
-                    source_kind='context_hint',
+                    target_side='dialogue',
+                    source_kind='dialogic_context_hint',
                     selected_count=len(hints),
                     content_values=[hint['content'] for hint in hints],
                     requested_limit=max_items,
@@ -235,8 +243,8 @@ def get_recent_context_hints(
             status='error',
             error_code='upstream_error',
             payload={
-                'target_side': 'user',
-                'source_kind': 'context_hint',
+                'target_side': 'dialogue',
+                'source_kind': 'dialogic_context_hint',
                 'frida_count': 0,
                 'user_count': 0,
                 'selected_count': 0,

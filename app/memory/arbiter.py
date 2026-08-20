@@ -71,11 +71,28 @@ _ALLOWED_EVIDENCE_KIND = {'explicit', 'inferred', 'weak'}
 _METRICS: Dict[str, int] = {
     'arbiter_call_count': 0,
     'identity_extractor_call_count': 0,
+    'dialogic_context_hint_extractor_call_count': 0,
+    'dialogic_context_hint_parse_error_count': 0,
+    'dialogic_context_hint_transport_error_count': 0,
     'identity_legacy_rewriter_disabled_count': 0,
     'arbiter_parse_error_count': 0,
     'identity_parse_error_count': 0,
     'arbiter_fallback_count': 0,
 }
+
+DIALOGIC_CONTEXT_HINT_SCHEMA_VERSION = 'dialogic_context_hint_v1'
+DIALOGIC_CONTEXT_HINT_PROMPT_KIND = 'dialogic_context_hint_extractor_v1'
+DIALOGIC_CONTEXT_HINT_CALLER = 'dialogic_context_hint_extractor'
+_DIALOGIC_HINT_REASON_CODES = {
+    'active_question',
+    'dialogue_direction',
+    'shared_distinction',
+    'unresolved_tension',
+    'temporary_situation',
+    'frame_correction',
+}
+_DIALOGIC_HINT_MAX_ITEMS = 4
+_DIALOGIC_HINT_MAX_CHARS = 600
 
 def _inc_metric(name: str) -> int:
     _METRICS[name] = _METRICS.get(name, 0) + 1
@@ -366,20 +383,50 @@ def filter_traces(
     return kept
 
 
+def _validate_dialogic_context_hint_output(data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    if set(data) != {'schema_version', 'hints'}:
+        raise ValueError('dialogic context root keys invalid')
+    if data.get('schema_version') != DIALOGIC_CONTEXT_HINT_SCHEMA_VERSION:
+        raise ValueError('dialogic context schema version invalid')
+    raw_hints = data.get('hints')
+    if not isinstance(raw_hints, list) or len(raw_hints) > _DIALOGIC_HINT_MAX_ITEMS:
+        raise ValueError('dialogic context hints invalid')
+    validated: List[Dict[str, Any]] = []
+    for hint in raw_hints:
+        if not isinstance(hint, dict) or set(hint) != {'subject', 'content', 'confidence', 'reason_code'}:
+            raise ValueError('dialogic context hint keys invalid')
+        subject = str(hint.get('subject') or '').strip()
+        content = str(hint.get('content') or '').strip()
+        reason_code = str(hint.get('reason_code') or '').strip()
+        if subject != 'dialogue':
+            raise ValueError('dialogic context subject invalid')
+        if not content or len(content) > _DIALOGIC_HINT_MAX_CHARS:
+            raise ValueError('dialogic context content invalid')
+        if reason_code not in _DIALOGIC_HINT_REASON_CODES:
+            raise ValueError('dialogic context reason code invalid')
+        confidence = _as_float_01(hint.get('confidence'))
+        validated.append(
+            {
+                'subject': 'dialogue',
+                'content': content,
+                'confidence': confidence,
+                'reason_code': reason_code,
+            }
+        )
+    return validated
+
+
 def _validate_identity_output(
-    data: Dict[str, Any],
-    *,
-    source_summary: Mapping[str, Any] | None = None,
+    data: Dict[str, Any], *, source_summary: Mapping[str, Any] | None = None
 ) -> List[Dict[str, Any]]:
+    """Legacy-only validator retained for inactive historical compatibility."""
     raw_entries = data.get('entries')
     if not isinstance(raw_entries, list):
         raise ValueError("'entries' must be a list")
-
     validated: List[Dict[str, Any]] = []
     for entry in raw_entries:
         if not isinstance(entry, dict):
             continue
-
         subject = str(entry.get('subject', '')).strip()
         content = str(entry.get('content', '')).strip()
         if subject not in {'user', 'llm'} or not content:
@@ -388,102 +435,87 @@ def _validate_identity_output(
             continue
         if not identity_temporal_guard.subject_has_admissible_source(source_summary, subject):
             continue
-
         stability = str(entry.get('stability', '')).strip()
         utterance_mode = str(entry.get('utterance_mode', '')).strip()
         recurrence = str(entry.get('recurrence', '')).strip()
         scope = str(entry.get('scope', '')).strip()
         evidence_kind = str(entry.get('evidence_kind', '')).strip()
-
-        if stability not in _ALLOWED_STABILITY:
+        if (
+            stability not in _ALLOWED_STABILITY
+            or utterance_mode not in _ALLOWED_UTTERANCE_MODE
+            or recurrence not in _ALLOWED_RECURRENCE
+            or scope not in _ALLOWED_SCOPE
+            or evidence_kind not in _ALLOWED_EVIDENCE_KIND
+        ):
             continue
-        if utterance_mode not in _ALLOWED_UTTERANCE_MODE:
-            continue
-        if recurrence not in _ALLOWED_RECURRENCE:
-            continue
-        if scope not in _ALLOWED_SCOPE:
-            continue
-        if evidence_kind not in _ALLOWED_EVIDENCE_KIND:
-            continue
-
-        try:
-            confidence = _as_float_01(entry.get('confidence'))
-        except Exception:
-            continue
-
-        reason = str(entry.get('reason', '')).strip()[:500]
-
-        validated.append(
-            {
-                'subject': subject,
-                'content': content,
-                'stability': stability,
-                'utterance_mode': utterance_mode,
-                'recurrence': recurrence,
-                'scope': scope,
-                'evidence_kind': evidence_kind,
-                'confidence': confidence,
-                'reason': reason,
-            }
-        )
-
+        validated.append({
+            'subject': subject,
+            'content': content,
+            'stability': stability,
+            'utterance_mode': utterance_mode,
+            'recurrence': recurrence,
+            'scope': scope,
+            'evidence_kind': evidence_kind,
+            'confidence': _as_float_01(entry.get('confidence')),
+            'reason': str(entry.get('reason', '')).strip()[:500],
+        })
     return validated
 
 
-def extract_identities(recent_turns: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    _inc_metric('identity_extractor_call_count')
-    """
-    Extract identity candidates from recent turns using strict JSON schema.
-    Returns [] on any runtime/parse failure to avoid breaking user response flow.
-    """
+def extract_dialogic_context_hints(recent_turns: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Extract temporary dialogue context without any Identity write authority."""
+    _inc_metric('dialogic_context_hint_extractor_call_count')
     if not recent_turns:
-        return []
+        return {
+            'status': 'not_selected',
+            'reason_code': 'dialogic_context_empty_input',
+            'hints': [],
+            'schema_version': DIALOGIC_CONTEXT_HINT_SCHEMA_VERSION,
+            'prompt_kind': DIALOGIC_CONTEXT_HINT_PROMPT_KIND,
+        }
 
     identity_settings = _runtime_identity_extractor_settings()
     identity_model = str(identity_settings['model'])
-    system_prompt = _load_prompt(config.IDENTITY_EXTRACTOR_PROMPT_PATH, 'identity_extractor')
+    system_prompt = _load_prompt(config.IDENTITY_EXTRACTOR_PROMPT_PATH, DIALOGIC_CONTEXT_HINT_CALLER)
     if not system_prompt:
-        return []
-
-    admissible_turns, source_summary = identity_temporal_guard.admissible_turns_with_source_summary(
-        recent_turns
-    )
-    dialogue = '\n'.join(
-        f"{t.get('role', '?').upper()}: {t.get('content', '')}"
-        for t in admissible_turns
-    )
-    temporal_policy = (
-        "Temporal identity policy:\n"
-        "- Relative claims such as aujourd'hui, hier, depuis hier, en ce moment, "
-        "right now or currently are weak situational signals.\n"
-        "- Source turns containing those weak signals are removed from the admissible identity dialogue.\n"
-        "- Do not extract them as identity entries; prefer no entry.\n\n"
-        f"Temporal source summary:\n{json.dumps(source_summary, ensure_ascii=False, indent=2)}\n\n"
-    )
+        return {
+            'status': 'failed', 'reason_code': 'dialogic_context_prompt_missing', 'hints': [],
+            'schema_version': DIALOGIC_CONTEXT_HINT_SCHEMA_VERSION,
+            'prompt_kind': DIALOGIC_CONTEXT_HINT_PROMPT_KIND,
+        }
+    dialogue = [
+        {
+            'role': str(turn.get('role') or '').strip(),
+            'content': str(turn.get('content') or ''),
+            'timestamp': str(turn.get('timestamp') or turn.get('timestamp_iso') or ''),
+        }
+        for turn in recent_turns
+        if str(turn.get('role') or '').strip() in {'user', 'assistant'}
+    ]
     payload = {
         'model': identity_model,
         'messages': [
             {'role': 'system', 'content': system_prompt},
-            {'role': 'user', 'content': f'{temporal_policy}Here is the admissible dialogue:\\n\\n{dialogue}'},
+            {'role': 'user', 'content': json.dumps({'dialogue_turns': dialogue}, ensure_ascii=False)},
         ],
         'temperature': float(identity_settings['temperature']),
         'top_p': float(identity_settings['top_p']),
         'max_tokens': int(identity_settings['max_tokens']),
     }
-    payload = llm_client.with_provider_attribution(payload, caller='identity_extractor')
+    payload = llm_client.with_provider_attribution(payload, caller=DIALOGIC_CONTEXT_HINT_CALLER)
 
     try:
         response = requests.post(
             llm_client.or_chat_completions_url(),
             json=payload,
-            headers=llm_client.or_headers(caller='identity_extractor'),
+            headers=llm_client.or_headers(caller=DIALOGIC_CONTEXT_HINT_CALLER),
             timeout=int(identity_settings['timeout_s']),
         )
         response.raise_for_status()
         response_payload = llm_client.read_openrouter_response_payload(response)
         llm_client.log_provider_metadata(
             logger,
-            'identity_extractor_provider_response',
+            'dialogic_context_hint_provider_response',
             llm_client.extract_openrouter_provider_metadata(
                 response_payload,
                 requested_model=identity_model,
@@ -491,24 +523,87 @@ def extract_identities(recent_turns: List[Dict[str, Any]]) -> List[Dict[str, Any
         )
         raw = llm_client.extract_openrouter_text(response_payload)
         result = _safe_json_loads(raw)
-        entries = _validate_identity_output(result, source_summary=source_summary)
-        logger.info('identity_extracted count=%s', len(entries))
-        return entries
+        hints = _validate_dialogic_context_hint_output(result)
+        return {
+            'status': 'ok' if hints else 'not_selected',
+            'reason_code': 'dialogic_context_hints_extracted' if hints else 'dialogic_context_no_hint',
+            'hints': hints,
+            'schema_version': DIALOGIC_CONTEXT_HINT_SCHEMA_VERSION,
+            'prompt_kind': DIALOGIC_CONTEXT_HINT_PROMPT_KIND,
+        }
     except requests.exceptions.Timeout:
-        logger.warning('identity_extractor_timeout model=%s', identity_model)
+        logger.warning('dialogic_context_hint_timeout model=%s', identity_model)
+        reason_code = 'dialogic_context_timeout'
+    except requests.exceptions.RequestException as exc:
+        transport_count = _inc_metric('dialogic_context_hint_transport_error_count')
+        logger.error(
+            'dialogic_context_hint_error reason=provider_transport_error '
+            'err_class=%s transport_error_count=%s',
+            exc.__class__.__name__,
+            transport_count,
+        )
+        reason_code = 'dialogic_context_transport_error'
+    except Exception as exc:
+        parse_count = _inc_metric('dialogic_context_hint_parse_error_count')
+        logger.error('dialogic_context_hint_invalid err_class=%s parse_error_count=%s', exc.__class__.__name__, parse_count)
+        reason_code = 'dialogic_context_schema_invalid'
+    return {
+        'status': 'failed', 'reason_code': reason_code, 'hints': [],
+        'schema_version': DIALOGIC_CONTEXT_HINT_SCHEMA_VERSION,
+        'prompt_kind': DIALOGIC_CONTEXT_HINT_PROMPT_KIND,
+    }
+
+
+def extract_identities(recent_turns: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Inactive legacy compatibility API; the post-save path never calls it."""
+    _inc_metric('identity_extractor_call_count')
+    if not recent_turns:
+        return []
+    settings = _runtime_identity_extractor_settings()
+    model = str(settings['model'])
+    system_prompt = _load_prompt(config.IDENTITY_EXTRACTOR_PROMPT_PATH, 'identity_extractor')
+    if not system_prompt:
+        return []
+    admissible_turns, source_summary = identity_temporal_guard.admissible_turns_with_source_summary(recent_turns)
+    dialogue = '\n'.join(f"{t.get('role', '?').upper()}: {t.get('content', '')}" for t in admissible_turns)
+    temporal_policy = (
+        "Temporal identity policy:\n- Relative claims are weak situational signals.\n"
+        "- Source turns containing those weak signals are removed from the admissible identity dialogue.\n"
+        "- Do not extract them as identity entries; prefer no entry.\n\n"
+        f"Temporal source summary:\n{json.dumps(source_summary, ensure_ascii=False, indent=2)}\n\n"
+    )
+    payload = {
+        'model': model,
+        'messages': [
+            {'role': 'system', 'content': system_prompt},
+            {'role': 'user', 'content': f'{temporal_policy}Here is the admissible dialogue:\\n\\n{dialogue}'},
+        ],
+        'temperature': float(settings['temperature']),
+        'top_p': float(settings['top_p']),
+        'max_tokens': int(settings['max_tokens']),
+    }
+    payload = llm_client.with_provider_attribution(payload, caller='identity_extractor')
+    try:
+        response = requests.post(
+            llm_client.or_chat_completions_url(), json=payload,
+            headers=llm_client.or_headers(caller='identity_extractor'), timeout=int(settings['timeout_s'])
+        )
+        response.raise_for_status()
+        response_payload = llm_client.read_openrouter_response_payload(response)
+        llm_client.log_provider_metadata(
+            logger, 'identity_extractor_provider_response',
+            llm_client.extract_openrouter_provider_metadata(response_payload, requested_model=model),
+        )
+        return _validate_identity_output(_safe_json_loads(llm_client.extract_openrouter_text(response_payload)), source_summary=source_summary)
+    except requests.exceptions.Timeout:
         return []
     except requests.exceptions.RequestException as exc:
         parse_count = _inc_metric('identity_parse_error_count')
-        logger.error(
-            'identity_extractor_error reason=provider_transport_error '
-            'err_class=%s parse_error_count=%s',
-            exc.__class__.__name__,
-            parse_count,
-        )
+        logger.error('identity_extractor_error reason=provider_transport_error err_class=%s parse_error_count=%s', exc.__class__.__name__, parse_count)
         return []
     except Exception as exc:
         parse_count = _inc_metric('identity_parse_error_count')
-        logger.error('identity_extractor_error err=%s parse_error_count=%s', exc, parse_count)
+        logger.error('identity_extractor_error err_class=%s parse_error_count=%s', exc.__class__.__name__, parse_count)
         return []
 
 

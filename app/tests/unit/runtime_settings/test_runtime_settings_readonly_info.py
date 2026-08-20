@@ -170,8 +170,9 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
             readonly_info['benchmark_decision']['value'],
             'benchmark/results/identity_extractor/2026-05-18-identity-extractor-human-hermeneutic.md',
         )
-        self.assertIn('extract_identities() uses identity_extractor_model', readonly_info['transition_note']['value'])
-        self.assertIn('mutable_identity_judge_v2 uses identity_periodic_model', readonly_info['transition_note']['value'])
+        self.assertIn('extract_dialogic_context_hints()', readonly_info['transition_note']['value'])
+        self.assertIn('never write Identity', readonly_info['transition_note']['value'])
+        self.assertIn('sole mutable canon writer', readonly_info['transition_note']['value'])
 
     def test_get_section_readonly_info_identity_periodic_model_exposes_prompt_transport_and_decision(self) -> None:
         readonly_info = runtime_settings.get_section_readonly_info('identity_periodic_model')

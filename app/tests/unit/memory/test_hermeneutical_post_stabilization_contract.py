@@ -649,7 +649,7 @@ class HermeneuticalPostStabilizationContractTests(unittest.TestCase):
             "prompt_prepared.memory_items_used",
         })
         self.assertEqual(set(available_duration_counters), {"llm_call.duration_ms", "turn_end.duration_ms"})
-        self.assertEqual(set(latency_summary), {"retrieve", "arbiter", "identity_extractor"})
+        self.assertEqual(set(latency_summary), {"retrieve", "arbiter", "identity_extractor", "dialogic_context_hint_extractor"})
         self.assertNotIn("identity_periodic_agent", latency_summary)
         self.assertNotIn("hermeneutic_node_insertion", latency_summary)
 
@@ -745,7 +745,7 @@ class HermeneuticalPostStabilizationContractTests(unittest.TestCase):
             ]
         )
 
-        self.assertEqual(set(summary.keys()), {"retrieve", "arbiter", "identity_extractor"})
+        self.assertEqual(set(summary.keys()), {"retrieve", "arbiter", "identity_extractor", "dialogic_context_hint_extractor"})
         self.assertEqual(summary["retrieve"], {"count": 2, "p50_ms": 20.0, "p95_ms": 29.0})
         self.assertEqual(summary["arbiter"], {"count": 1, "p50_ms": 50.0, "p95_ms": 50.0})
         self.assertEqual(summary["identity_extractor"], {"count": 1, "p50_ms": 70.0, "p95_ms": 70.0})

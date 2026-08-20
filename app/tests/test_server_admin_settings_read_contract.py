@@ -407,7 +407,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             data['readonly_info']['transition_note']['value'],
         )
         self.assertIn(
-            'mutable_identity_judge_v2 uses identity_periodic_model',
+            'extract_dialogic_context_hints()',
             data['readonly_info']['transition_note']['value'],
         )
 

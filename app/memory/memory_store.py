@@ -83,6 +83,7 @@ __all__ = [
     'set_identity_override',
     'relabel_identity',
     'record_identity_evidence',
+    'record_dialogic_context_hints',
     'add_identity',
     'detect_and_record_conflicts',
     'preview_identity_entries',
@@ -702,6 +703,20 @@ def record_identity_evidence(
         conversation_id,
         entries,
         source_trace_id=source_trace_id,
+        conn_factory=_conn,
+        normalize_identity_content_fn=_normalize_identity_content,
+        trace_float_fn=_trace_float,
+        logger=logger,
+    )
+
+
+def record_dialogic_context_hints(
+    conversation_id: str,
+    hints: list[dict[str, Any]],
+) -> dict[str, Any]:
+    return memory_identity_write.record_dialogic_context_hints(
+        conversation_id,
+        hints,
         conn_factory=_conn,
         normalize_identity_content_fn=_normalize_identity_content,
         trace_float_fn=_trace_float,

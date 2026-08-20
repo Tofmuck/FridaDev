@@ -183,10 +183,10 @@ def _prompt_content_specs() -> dict[tuple[str, str], dict[str, Any]]:
             'load': lambda: prompt_loader.read_prompt_text(str(config.ARBITER_PROMPT_PATH)),
         },
         ('identity_extractor_model', 'system_prompt'): {
-            'label': 'identity_extractor_prompt',
+            'label': 'dialogic_context_hint_extractor_prompt',
             'source': 'app_prompt_file',
             'path': str(config.IDENTITY_EXTRACTOR_PROMPT_PATH),
-            'loader': 'memory.arbiter._load_prompt(config.IDENTITY_EXTRACTOR_PROMPT_PATH, "identity_extractor")',
+            'loader': 'memory.arbiter._load_prompt(config.IDENTITY_EXTRACTOR_PROMPT_PATH, "dialogic_context_hint_extractor")',
             'load': lambda: prompt_loader.read_prompt_text(str(config.IDENTITY_EXTRACTOR_PROMPT_PATH)),
         },
         ('identity_periodic_model', 'system_prompt'): {
@@ -355,8 +355,8 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'source': 'config_py',
             },
             'prompt_loader': {
-                'label': 'IDENTITY_EXTRACTOR_PROMPT_RUNTIME_SOURCE',
-                'value': 'memory.arbiter._load_prompt(config.IDENTITY_EXTRACTOR_PROMPT_PATH, "identity_extractor")',
+                'label': 'DIALOGIC_CONTEXT_HINT_PROMPT_RUNTIME_SOURCE',
+                'value': 'memory.arbiter._load_prompt(config.IDENTITY_EXTRACTOR_PROMPT_PATH, "dialogic_context_hint_extractor")',
                 'is_editable': False,
                 'source': 'backend_loader',
             },
@@ -377,11 +377,11 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
                 'source': 'benchmark_artifact',
             },
             'transition_note': {
-                'label': 'IDENTITY_EXTRACTOR_DECOUPLING',
+                'label': 'DIALOGIC_CONTEXT_HINT_RUNTIME_ROLE',
                 'value': (
-                    'extract_identities() uses identity_extractor_model. '
-                    'mutable_identity_judge_v2 uses identity_periodic_model; arbiter_model is no longer an '
-                    'effective source for active model callers.'
+                    'identity_extractor_model is a compatibility slot for extract_dialogic_context_hints(). '
+                    'Its outputs are temporary dialogue context only and never write Identity; '
+                    'mutable_identity_judge_v2 remains the sole mutable canon writer.'
                 ),
                 'is_editable': False,
                 'source': 'runtime_contract',

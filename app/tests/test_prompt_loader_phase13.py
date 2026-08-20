@@ -304,8 +304,10 @@ class PromptLoaderPhase13Tests(unittest.TestCase):
 
         self.assertIn("Temporal discipline", arbiter_prompt)
         self.assertIn("Do not infer the local day from raw UTC timestamps.", arbiter_prompt)
-        self.assertIn("Reject weak relative temporal claims", identity_prompt)
-        self.assertIn("admissible dialogue", identity_prompt)
+        self.assertIn("dialogic_context_hint_v1", identity_prompt)
+        self.assertIn('sole logical subject', identity_prompt)
+        self.assertIn('Relative and dated formulations may be useful as temporary context', identity_prompt)
+        self.assertIn('Never target "user" or "llm"', identity_prompt)
         self.assertIn("Reject weak relative temporal claims", periodic_prompt)
         self.assertIn("source_summary", periodic_prompt)
         self.assertIn("ontological test", periodic_prompt)

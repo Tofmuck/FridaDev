@@ -12,8 +12,8 @@
     },
     {
       key: "identity_extractor_model",
-      title: "Extracteur identity",
-      description: "Extraction identity au tour individualisee, modele benchmarke et reglages propres.",
+      title: "Extracteur de contexte dialogique",
+      description: "Caller contextuel actif par tour. La cle identity_extractor_model reste un slot de compatibilite et ne configure aucun writer Identity.",
     },
     {
       key: "identity_periodic_model",
@@ -106,8 +106,8 @@
     },
     {
       key: "referer_identity_extractor",
-      label: "Referer extracteur d'identite",
-      hint: "Referer OpenRouter nominal du flux d'extraction d'identite.",
+      label: "Referer contexte dialogique",
+      hint: "Referer OpenRouter nominal du caller de contexte dialogique temporaire.",
       inputType: "url",
       autocomplete: "url",
     },
@@ -169,8 +169,8 @@
     },
     {
       key: "title_identity_extractor",
-      label: "Titre extracteur d'identite",
-      hint: "Titre OpenRouter du flux d'extraction d'identite.",
+      label: "Titre contexte dialogique",
+      hint: "Titre OpenRouter du caller de contexte dialogique temporaire.",
       inputType: "text",
       autocomplete: "off",
     },

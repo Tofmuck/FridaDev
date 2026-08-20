@@ -376,6 +376,23 @@ rester dans un log serveur prive que lorsque la matrice ci-dessous classe
 explicitement sa famille `PRIVATE_OPERATOR_LOG_ACCEPTED`. Les secrets sont
 interdits dans tous les cas.
 
+### Contexte dialogique temporaire
+
+Le stage actif `dialogic_context_hint_extractor` est distinct de
+`mutable_identity_judge`. Son evenement n'expose que le contrat/schema, le
+sujet logique `dialogue`, statut et reason code, `hint_count`,
+`persisted_count`, borne d'items, mode/effet d'ecriture temporaire et les
+drapeaux `identity_write=false`, `mutable_authority=false`. Aucun hint,
+dialogue, prompt ou payload provider brut n'est admissible.
+
+Les metriques actives sont
+`dialogic_context_hint_extractor_call_count` et
+`dialogic_context_hint_parse_error_count`; les erreurs transport sont comptees
+separement par `dialogic_context_hint_transport_error_count`. Les compteurs et latences
+`identity_extractor*` restent historiques/legacy. Les read-models et les deux
+frontends consomment ces champs autoritatifs et ne deduisent pas un etat depuis
+un texte libre.
+
 ### Matrice Lot 10F - revalidation du 22 juillet 2026
 
 Le scan a ete reconstruit sur la base

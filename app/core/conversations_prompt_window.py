@@ -252,8 +252,7 @@ def make_context_hints_message(
             continue
         ts_hint = str(hint.get("timestamp") or "")
         label = delta_t_label_func(ts_hint, ts_now) if ts_hint else ""
-        scope = str(hint.get("scope") or "user")
-        kind = "Situation" if scope == "situation" else "Utilisateur"
+        kind = "Dialogue"
         confidence = float(hint.get("confidence") or 0.0)
         prefix = f"[{label}] " if label else ""
         line = f"- {prefix}{kind}: {content} (confidence: {confidence:.2f})"

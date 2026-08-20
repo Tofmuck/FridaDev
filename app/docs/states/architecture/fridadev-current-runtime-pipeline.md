@@ -58,6 +58,8 @@ et roadmaps fermées restent dans `app/docs/todo-done/`.
   |- résumés parents et context hints
   |- pré-panier puis arbitrage
   |- traces finalement retenues
+  |- lecture des context hints temporaires: nouvelles evidences subject=dialogue
+     + anciennes evidences user compatibles jusqu'a expiration
   v
 [Entrées runtime et agents]
   |- stimmung
@@ -142,6 +144,19 @@ Le coordinateur prépare ensuite :
 
 Un save intermédiaire peut matérialiser un résumé. Il ne crée pas de message
 assistant et ne change pas la règle de canonisation finale.
+
+Apres la sauvegarde assistant, deux chemins sans autorite partagee s'executent:
+
+- la paire user/assistant complete traverse `dialogic_context_hint_extractor`
+  (`openai/gpt-5.4-mini`, slot de compatibilite `identity_extractor_model`),
+  puis les hints strictement valides `subject=dialogue` sont stockes comme
+  evidences temporaires et bornes par age, confiance, nombre et budget tokens;
+- la paire projetee pour Identity alimente le staging cinq paires, puis
+  `mutable_identity_judge_v2_add_only` peut seul ecrire le canon mutable.
+
+Le premier chemin n'appelle ni `add_identity`, ni la detection de conflits, ni
+les politiques de promotion/defer legacy. Les donnees `identities`, evidences
+`user/llm` et conflits anterieurs restent consultables comme historique.
 
 ## 3. Web, Adobe, Biblio, Agenda et herméneutique
 

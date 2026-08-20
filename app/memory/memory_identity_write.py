@@ -214,6 +214,73 @@ def record_identity_evidence(
         logger.error('record_identity_evidence_error conv=%s err=%s', conversation_id, exc)
 
 
+def record_dialogic_context_hints(
+    conversation_id: str,
+    hints: list[dict[str, Any]],
+    *,
+    conn_factory: Callable[[], Any],
+    normalize_identity_content_fn: Callable[[str], str],
+    trace_float_fn: Callable[[Any], float],
+    logger: Any,
+) -> dict[str, Any]:
+    """Persist bounded temporary dialogue context without Identity authority."""
+    if not hints:
+        return {'status': 'not_selected', 'reason_code': 'dialogic_context_no_hint', 'persisted_count': 0}
+    persisted_count = 0
+    try:
+        with conn_factory() as conn:
+            with conn.cursor() as cur:
+                for hint in hints[:4]:
+                    content = str(hint.get('content') or '').strip()
+                    subject = str(hint.get('subject') or '').strip()
+                    reason_code = str(hint.get('reason_code') or '').strip()
+                    if subject != 'dialogue' or not content or len(content) > 600:
+                        continue
+                    cur.execute(
+                        '''
+                        INSERT INTO identity_evidence (
+                            conversation_id, subject, content, content_norm, stability,
+                            utterance_mode, recurrence, scope, evidence_kind, confidence,
+                            status, reason, source_trace_id
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ''',
+                        (
+                            conversation_id,
+                            'dialogue',
+                            content,
+                            normalize_identity_content_fn(content),
+                            'episodic',
+                            'dialogic_context',
+                            'first_seen',
+                            'dialogue',
+                            'inferred',
+                            trace_float_fn(hint.get('confidence')),
+                            'accepted',
+                            reason_code[:64],
+                            None,
+                        ),
+                    )
+                    persisted_count += 1
+            conn.commit()
+        return {
+            'status': 'ok',
+            'reason_code': 'dialogic_context_hints_persisted',
+            'persisted_count': persisted_count,
+        }
+    except Exception as exc:
+        logger.error(
+            'record_dialogic_context_hints_error conv=%s err_class=%s',
+            conversation_id,
+            exc.__class__.__name__,
+        )
+        return {
+            'status': 'failed',
+            'reason_code': 'dialogic_context_persistence_failed',
+            'persisted_count': 0,
+        }
+
+
 def add_identity(
     subject: str,
     content: str,

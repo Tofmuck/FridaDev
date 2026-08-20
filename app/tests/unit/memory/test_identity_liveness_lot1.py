@@ -1364,7 +1364,13 @@ class IdentityLivenessLot1ConcurrencyTests(unittest.TestCase):
         events: list[tuple[str, dict[str, Any]]] = []
         admin_logs = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
         arbiter = SimpleNamespace(
-            extract_identities=lambda _turn_pair: [],
+            extract_dialogic_context_hints=lambda _turn_pair: {
+                'status': 'not_selected',
+                'reason_code': 'dialogic_context_no_hint',
+                'schema_version': 'dialogic_context_hint_v1',
+                'prompt_kind': 'dialogic_context_hint_extractor_v1',
+                'hints': [],
+            },
             run_mutable_identity_judge=lambda _payload: self.fail("judge called below threshold"),
         )
         timestamp = "2030-01-01T00:00:00Z"
@@ -1413,7 +1419,7 @@ class IdentityLivenessLot1ConcurrencyTests(unittest.TestCase):
             [item.get("turn_id") for item in state["buffer_pairs"]],
             ["turn-post-save-a", "turn-post-save-b"],
         )
-        self.assertEqual(len(store.legacy_persist_calls), 2)
+        self.assertEqual(len(store.legacy_persist_calls), 0)
 
 
 if __name__ == "__main__":

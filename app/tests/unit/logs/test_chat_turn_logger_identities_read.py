@@ -223,7 +223,7 @@ class ChatTurnLoggerIdentitiesReadTests(unittest.TestCase):
         self.assertNotIn("'messages'", serialized)
         self.assertNotIn("'history'", serialized)
 
-    def test_get_recent_context_hints_emits_identities_read_for_user_side(self) -> None:
+    def test_get_recent_context_hints_emits_identities_read_for_dialogue(self) -> None:
         observed: list[dict[str, Any]] = []
         original_insert = log_store.insert_chat_log_event
 
@@ -240,8 +240,8 @@ class ChatTurnLoggerIdentitiesReadTests(unittest.TestCase):
             def fetchall(self) -> list[tuple[Any, ...]]:
                 now = datetime(2026, 3, 27, 12, 0, tzinfo=timezone.utc)
                 return [
-                    ('conv-u1', 'User context hint alpha ' + ('a' * 200), 'norm-alpha', now, 0.9, 'user', 'episodic', 'self_description', 1.2),
-                    ('conv-u2', 'User context hint beta ' + ('b' * 200), 'norm-beta', now, 0.8, 'user', 'episodic', 'self_description', 1.1),
+                    ('conv-u1', 'dialogue', 'Synthetic hint alpha ' + ('a' * 200), 'norm-alpha', now, 0.9, 'dialogue', 'episodic', 'dialogic_context', 1.2),
+                    ('conv-u2', 'dialogue', 'Synthetic hint beta ' + ('b' * 200), 'norm-beta', now, 0.8, 'dialogue', 'episodic', 'dialogic_context', 1.1),
                 ]
 
         class FakeConn:
@@ -283,10 +283,11 @@ class ChatTurnLoggerIdentitiesReadTests(unittest.TestCase):
         identities_events = [event for event in observed if event['stage'] == 'identities_read']
         self.assertTrue(identities_events)
         payload = identities_events[0]['payload_json']
-        self.assertEqual(payload['target_side'], 'user')
-        self.assertEqual(payload['source_kind'], 'context_hint')
+        self.assertEqual(payload['target_side'], 'dialogue')
+        self.assertEqual(payload['source_kind'], 'dialogic_context_hint')
         self.assertEqual(payload['frida_count'], 0)
-        self.assertEqual(payload['user_count'], 2)
+        self.assertEqual(payload['user_count'], 0)
+        self.assertEqual(payload['dialogue_count'], 2)
         self.assertEqual(payload['selected_count'], 2)
         self.assertTrue(payload['content_present'])
         self.assertGreater(payload['total_chars'], 0)

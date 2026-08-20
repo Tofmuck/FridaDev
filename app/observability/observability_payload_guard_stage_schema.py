@@ -82,6 +82,7 @@ _GENERAL_SCALAR_KEYS = set(
     web_evidence_external_fallback_used web_evidence_requires_caveat web_search_enabled
     web_search_requested
     attempt_current attempt_limit next_buffer_pairs_count writes_previously_applied
+    hint_count identity_write mutable_authority max_items
     web_pdf_read_pages
     agent_json_validated ambiguous arbiter_followed_upstream available buffer_target_pairs caldav_access catalog_saved confirmation_required
     confidence content_free conversation_saved current_embedding_blocked current_embedding_calls

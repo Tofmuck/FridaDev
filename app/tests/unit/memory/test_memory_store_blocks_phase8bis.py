@@ -300,6 +300,7 @@ class MemoryContextReadBlockTests(unittest.TestCase):
                 return [
                     (
                         "conv-1",
+                        "dialogue",
                         "Indice A",
                         "indice-a",
                         datetime(2026, 3, 26, 10, 0, tzinfo=timezone.utc),
@@ -311,6 +312,7 @@ class MemoryContextReadBlockTests(unittest.TestCase):
                     ),
                     (
                         "conv-2",
+                        "dialogue",
                         "Indice A bis",
                         "indice-a",
                         datetime(2026, 3, 26, 9, 0, tzinfo=timezone.utc),
@@ -322,6 +324,7 @@ class MemoryContextReadBlockTests(unittest.TestCase):
                     ),
                     (
                         "conv-3",
+                        "user",
                         "Indice B",
                         "indice-b",
                         datetime(2026, 3, 26, 8, 0, tzinfo=timezone.utc),

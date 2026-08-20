@@ -4,7 +4,10 @@ from typing import Any, Mapping, Sequence
 
 
 def _canonical_side(target_side: str) -> str:
-    return 'frida' if str(target_side) == 'frida' else 'user'
+    side = str(target_side)
+    if side in {'frida', 'dialogue'}:
+        return side
+    return 'user'
 
 
 def _text(value: Any) -> str:
@@ -94,6 +97,7 @@ def build_identities_read_payload(
         'source_kind': str(source_kind or '').strip(),
         'frida_count': int(selected_count) if side == 'frida' else 0,
         'user_count': int(selected_count) if side == 'user' else 0,
+        'dialogue_count': int(selected_count) if side == 'dialogue' else 0,
         'selected_count': int(selected_count),
         'content_present': bool(content_present),
         'total_chars': int(total_chars),

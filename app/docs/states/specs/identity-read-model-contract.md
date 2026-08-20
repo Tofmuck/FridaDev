@@ -10,6 +10,14 @@ Transition refonte mutable 2026-05-26:
 - les champs de fenetre, statut, reason code, presence, longueurs, compteurs, IDs opaques et timestamps racontent `5 paires completes -> juge LLM mutable_judge_v2 -> add/no_change -> identity_mutables`;
 - le scoring local et la promotion mutable -> static restent visibles seulement comme legacy pre-refonte inactive.
 
+Transition contexte dialogique 2026-08-20:
+- `dialogic_context` expose le caller actif par tour comme contexte temporaire,
+  non comme writer Identity;
+- son sujet logique est `dialogue`; le slot `identity_extractor_model` reste un
+  nom de compatibilite pour GPT-5.4 mini et ses reglages;
+- les collections `user/llm` restent historiques, tandis que le juge GPT-5.2
+  demeure l'unique writer automatique du canon mutable.
+
 ## But
 
 Ce contrat definit une lecture unifiee et honnete du systeme identity reel, y compris le regime periodique `staging -> agent -> canon`, sans rouvrir le canon injecte lui-meme.
@@ -53,6 +61,11 @@ Le read-model doit exposer explicitement:
 - `mutable_judge_runtime` comme fiche operateur du juge mutable actif: module `mutable_identity_judge_v2_add_only`, caller `mutable_identity_judge`, slot runtime `identity_periodic_model`, modele effectif, prompt actif, contrat `mutable_judge_v2`, structured output strict et verdicts `add` / `no_change`
 - `identity_runtime_regime` comme rappel compact du regime runtime actif: `runtime_pipeline`, `window_target_pairs=5`, budget mutable, stages actifs, writer score-first desactive et promotion static desactivee
 - `identity_staging` comme verite read-only distincte du canon actif injecte
+- `dialogic_context` comme projection content-free de la couche temporaire:
+  caller, sujet logique, statut/reason code, presence et comptes bornes,
+  slot/model ainsi que la selection autoritative par age, confiance, nombre et
+  budget tokens, et les drapeaux `identity_writer=false`,
+  `mutable_authority=false`
 
 Le read-model ne doit pas:
 - reparser le prompt rendu comme source de verite;
@@ -70,6 +83,7 @@ Top-level:
   "ok": true,
   "read_model_version": "v2",
   "active_runtime": {},
+  "dialogic_context": {},
   "identity_staging": {},
   "subjects": {
     "llm": {},
@@ -77,6 +91,12 @@ Top-level:
   }
 }
 ```
+
+`dialogic_context` est une couche top-level distincte des sujets identitaires.
+Sa persistance compatible utilise `identity_evidence` avec `subject=dialogue`,
+sans migration; les items bruts restent minimises dans la projection. Les
+evidences historiques `subject=user` eligibles peuvent encore etre lues par le
+prompt jusqu'a leur expiration normale, sans reecriture ni autorite canonique.
 
 Chaque sujet expose exactement ces couches:
 - `static`

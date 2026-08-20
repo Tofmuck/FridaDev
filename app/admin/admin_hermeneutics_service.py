@@ -26,6 +26,7 @@ _STABLE_REASON_CODES = frozenset(
 _STABLE_REASON_CODE_PREFIXES = (
     'admin_',
     'auto_',
+    'dialogic_',
     'identity_',
     'legacy_',
     'manual_',
@@ -232,10 +233,10 @@ def dashboard_response(
     runtime_metrics = arbiter_module.get_runtime_metrics()
 
     parse_error_count = int(runtime_metrics.get('arbiter_parse_error_count', 0)) + int(
-        runtime_metrics.get('identity_parse_error_count', 0)
+        runtime_metrics.get('dialogic_context_hint_parse_error_count', 0)
     )
     parse_denominator = int(runtime_metrics.get('arbiter_call_count', 0)) + int(
-        runtime_metrics.get('identity_extractor_call_count', 0)
+        runtime_metrics.get('dialogic_context_hint_extractor_call_count', 0)
     )
     parse_error_rate = (float(parse_error_count) / parse_denominator) if parse_denominator > 0 else 0.0
 

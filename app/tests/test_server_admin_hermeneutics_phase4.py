@@ -434,9 +434,9 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
         def fake_get_runtime_metrics():
             return {
                 'arbiter_parse_error_count': 2,
-                'identity_parse_error_count': 1,
+                'dialogic_context_hint_parse_error_count': 1,
                 'arbiter_call_count': 20,
-                'identity_extractor_call_count': 10,
+                'dialogic_context_hint_extractor_call_count': 10,
                 'arbiter_fallback_count': 1,
             }
 
@@ -446,7 +446,7 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
                 {'event': 'stage_latency', 'stage': 'retrieve', 'duration_ms': 10},
                 {'event': 'stage_latency', 'stage': 'retrieve', 'duration_ms': 30},
                 {'event': 'stage_latency', 'stage': 'arbiter', 'duration_ms': 50},
-                {'event': 'stage_latency', 'stage': 'identity_extractor', 'duration_ms': 20},
+                {'event': 'stage_latency', 'stage': 'dialogic_context_hint_extractor', 'duration_ms': 20},
                 {'event': 'other_event', 'stage': 'retrieve', 'duration_ms': 999},
             ]
 

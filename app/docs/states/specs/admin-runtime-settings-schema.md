@@ -153,7 +153,7 @@ Notes:
 
 ### `arbiter_model`
 
-Slot legacy conserve pour compatibilite. Aucun caller modele actif ne lit plus `arbiter_model` comme source effective: l'arbitre memoire utilise `memory_arbiter_model`, l'extracteur identity utilise `identity_extractor_model`, et le juge mutable utilise le slot de compatibilite `identity_periodic_model`.
+Slot legacy conserve pour compatibilite. Aucun caller modele actif ne lit plus `arbiter_model` comme source effective: l'arbitre memoire utilise `memory_arbiter_model`, l'extracteur de contexte dialogique utilise le slot de compatibilite `identity_extractor_model`, et le juge mutable utilise le slot de compatibilite `identity_periodic_model`.
 
 | Champ | Type | Secret | Source actuelle |
 | --- | --- | --- | --- |
@@ -164,7 +164,18 @@ Slot legacy conserve pour compatibilite. Aucun caller modele actif ne lit plus `
 
 ### `identity_extractor_model`
 
-Slot individualise de l'extracteur identity au tour (`extract_identities()`). Il partage le transport OpenRouter de `main_model` (`base_url`, `api_key`, `referer_identity_extractor`, `title_identity_extractor`) mais possede son propre modele, son propre echantillonnage, son budget de sortie et son timeout. La decision humaine du 2026-05-18 conserve `openai/gpt-5.4-mini`.
+Nom de compatibilite du slot individualise du caller actif
+`extract_dialogic_context_hints()`. Il partage le transport OpenRouter de
+`main_model` (`base_url`, `api_key`, `referer_identity_extractor`,
+`title_identity_extractor`) mais possede son propre modele, son propre
+echantillonnage, son budget de sortie et son timeout. La decision humaine du
+2026-05-18 conserve `openai/gpt-5.4-mini`.
+
+Depuis le Lot 2 dialogique du 2026-08-20, ce caller produit uniquement du
+contexte temporaire `subject=dialogue`. Il n'appelle aucun writer Identity et
+ne partage aucune autorite avec le juge mutable. Le nom de section, les champs
+referer/title et les variables `IDENTITY_EXTRACTOR_*` sont conserves sans
+migration de settings.
 
 | Champ | Type | Secret | Source actuelle |
 | --- | --- | --- | --- |
@@ -385,6 +396,9 @@ Convention explicite:
 Convention explicite:
 
 - cette section runtime porte seulement le sous-ensemble identity gouvernable en live;
+- les champs `CONTEXT_HINTS_*` bornent la selection du contexte dialogique
+  temporaire par nombre, budget tokens, age et confiance; ils ne gouvernent
+  aucune ecriture canonique;
 - elle ne remplace ni le read-model identity, ni les editeurs static/mutable;
 - la surface operateur de lecture/edition reste `/hermeneutic-admin`;
 - `/admin` generique peut exposer cette section comme metadonnee runtime, mais ce n'est pas la surface produit de gouvernance identity.

@@ -4,7 +4,7 @@ from typing import Any, Mapping, Tuple
 
 import config
 from admin import admin_identity_judge_activity_projection, admin_identity_read_model_projection
-from memory import memory_identity_periodic_agent, mutable_identity_judge_common, mutable_identity_judge_v2
+from memory import arbiter, memory_identity_periodic_agent, mutable_identity_judge_common, mutable_identity_judge_v2
 
 
 READ_MODEL_VERSION = 'v2'
@@ -77,6 +77,64 @@ def _latest_periodic_agent_event(
         if isinstance(items, list) and items:
             return _mapping(items[0])
     return {}
+
+
+def _latest_dialogic_context_event(*, log_store_module: Any) -> Mapping[str, Any]:
+    read_chat_log_events = getattr(log_store_module, 'read_chat_log_events', None)
+    if not callable(read_chat_log_events):
+        return {}
+    try:
+        payload = read_chat_log_events(limit=1, stage='dialogic_context_hint_extractor')
+    except Exception:
+        return {}
+    items = payload.get('items') if isinstance(payload, Mapping) else []
+    return _mapping(items[0]) if isinstance(items, list) and items else {}
+
+
+def build_dialogic_context_runtime_block(*, runtime_settings_module: Any = None) -> dict[str, Any]:
+    model = str(config.IDENTITY_EXTRACTOR_MODEL or '').strip()
+    timeout_s = int(config.IDENTITY_EXTRACTOR_TIMEOUT_S)
+    max_items = int(config.CONTEXT_HINTS_MAX_ITEMS)
+    max_tokens = int(config.CONTEXT_HINTS_MAX_TOKENS)
+    max_age_days = int(config.CONTEXT_HINTS_MAX_AGE_DAYS)
+    min_confidence = float(config.CONTEXT_HINTS_MIN_CONFIDENCE)
+    if runtime_settings_module is not None:
+        try:
+            view = runtime_settings_module.get_identity_extractor_model_settings()
+            model = str(_runtime_payload_value(view.payload, 'model') or model).strip()
+            timeout_s = int(_runtime_payload_value(view.payload, 'timeout_s') or timeout_s)
+        except Exception:
+            pass
+        try:
+            governance = runtime_settings_module.get_identity_governance_settings()
+            max_items = int(_runtime_payload_value(governance.payload, 'CONTEXT_HINTS_MAX_ITEMS') or max_items)
+            max_tokens = int(_runtime_payload_value(governance.payload, 'CONTEXT_HINTS_MAX_TOKENS') or max_tokens)
+            max_age_days = int(_runtime_payload_value(governance.payload, 'CONTEXT_HINTS_MAX_AGE_DAYS') or max_age_days)
+            min_confidence_value = _runtime_payload_value(governance.payload, 'CONTEXT_HINTS_MIN_CONFIDENCE')
+            if min_confidence_value is not None:
+                min_confidence = float(min_confidence_value)
+        except Exception:
+            pass
+    return {
+        'module': 'dialogic_context_hint_extractor',
+        'caller': arbiter.DIALOGIC_CONTEXT_HINT_CALLER,
+        'runtime_slot': 'identity_extractor_model',
+        'runtime_slot_compatibility': 'legacy_compatible_name',
+        'model': model,
+        'timeout_s': timeout_s,
+        'prompt_kind': arbiter.DIALOGIC_CONTEXT_HINT_PROMPT_KIND,
+        'contract': arbiter.DIALOGIC_CONTEXT_HINT_SCHEMA_VERSION,
+        'logical_subject': 'dialogue',
+        'identity_writer': False,
+        'mutable_authority': False,
+        'role': 'temporary_dialogic_context_for_next_turn',
+        'selection': {
+            'max_items': max_items,
+            'max_tokens': max_tokens,
+            'max_age_days': max_age_days,
+            'min_confidence': min_confidence,
+        },
+    }
 
 
 def _build_latest_agent_activity(
@@ -430,6 +488,11 @@ def identity_read_model_response(
                 limit=limit,
             ),
         }
+        dialogic_context = admin_identity_read_model_projection.build_dialogic_context_block(
+            evidence=memory_store_module.list_identity_evidence('dialogue', limit=limit),
+            latest_activity=_latest_dialogic_context_event(log_store_module=log_store_module),
+            runtime=build_dialogic_context_runtime_block(runtime_settings_module=runtime_settings_module),
+        )
     except Exception as exc:
         return (
             {
@@ -468,6 +531,7 @@ def identity_read_model_response(
                 'identity_runtime_regime': build_identity_runtime_regime(),
             },
             'identity_staging': identity_staging,
+            'dialogic_context': dialogic_context,
             'subjects': subjects,
         },
         200,

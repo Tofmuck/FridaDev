@@ -578,6 +578,18 @@
         ? safePayload.subjects
         : {};
     const staging = identityStaging(safePayload);
+    const dialogicContext = safePayload.dialogic_context && typeof safePayload.dialogic_context === "object"
+      ? safePayload.dialogic_context
+      : {};
+    const contextActivity = dialogicContext.latest_activity && typeof dialogicContext.latest_activity === "object"
+      ? dialogicContext.latest_activity
+      : {};
+    const contextRuntime = dialogicContext.runtime && typeof dialogicContext.runtime === "object"
+      ? dialogicContext.runtime
+      : {};
+    const contextSelection = contextRuntime.selection && typeof contextRuntime.selection === "object"
+      ? contextRuntime.selection
+      : {};
     const buffer = currentBuffer(staging);
     const completedAgent = lastCompletedAgent(staging);
     const viewMode = toText(options.viewMode).toLowerCase() === "summary" ? "summary" : "full";
@@ -588,6 +600,7 @@
       appendMetaChip(metaTarget, "compile", toText(activeRuntime.active_prompt_contract));
       metaTarget.appendChild(createChip("pilotage_systeme=distinct"));
       metaTarget.appendChild(createChip("staging=separe"));
+      metaTarget.appendChild(createChip(`contexte_dialogique=${toText(contextActivity.status) || "n/a"}`));
       if (toText(activeRuntime.legacy_identity_pipeline_status)) {
         metaTarget.appendChild(createChip(`legacy=${toText(activeRuntime.legacy_identity_pipeline_status)}`));
       }
@@ -621,6 +634,33 @@
       runtimeGroup.appendChild(runtimeGrid);
       target.appendChild(runtimeGroup);
     }
+
+    const contextGroup = document.createElement("section");
+    contextGroup.className = "admin-readonly-group";
+    const contextHead = document.createElement("div");
+    contextHead.className = "admin-readonly-group-head";
+    const contextTitle = document.createElement("h4");
+    contextTitle.textContent = "Contexte dialogique temporaire";
+    contextHead.appendChild(contextTitle);
+    contextGroup.appendChild(contextHead);
+    contextGroup.appendChild(createNote(
+      "Caller actif par tour, sujet logique dialogue, persistance temporaire et aucune autorite sur le canon Identity. Les couches legacy restent historiques."
+    ));
+    const contextMeta = document.createElement("div");
+    contextMeta.className = "admin-readonly-meta";
+    contextMeta.appendChild(createChip(`caller=${toText(dialogicContext.active_caller) || "n/a"}`));
+    contextMeta.appendChild(createChip(`sujet=${toText(dialogicContext.logical_subject) || "n/a"}`));
+    contextMeta.appendChild(createChip(`statut=${toText(contextActivity.status) || "n/a"}`));
+    contextMeta.appendChild(createChip(`raison=${toText(contextActivity.reason_code) || "n/a"}`));
+    contextMeta.appendChild(createChip(`hints=${Number(contextActivity.hint_count) || 0}`));
+    contextMeta.appendChild(createChip(`stockes=${Number(dialogicContext.total_count) || 0}`));
+    contextMeta.appendChild(createChip(`max_items=${Number(contextSelection.max_items) || 0}`));
+    contextMeta.appendChild(createChip(`budget_tokens=${Number(contextSelection.max_tokens) || 0}`));
+    contextMeta.appendChild(createChip(`max_age_days=${Number(contextSelection.max_age_days) || 0}`));
+    contextMeta.appendChild(createChip(`identity_writer=${Boolean(dialogicContext.identity_writer)}`));
+    contextMeta.appendChild(createChip(`canonique=${Boolean(dialogicContext.mutable_authority)}`));
+    contextGroup.appendChild(contextMeta);
+    target.appendChild(contextGroup);
 
     renderIdentityStaging(target, staging, viewMode);
 

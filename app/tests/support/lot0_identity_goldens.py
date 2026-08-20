@@ -247,6 +247,7 @@ class RealStagingIdentityStore:
         self.canonical_update_batches: list[list[dict[str, Any]]] = []
         self.canonical_successful_update_batches: list[list[dict[str, Any]]] = []
         self.legacy_persist_calls: list[dict[str, Any]] = []
+        self.dialogic_context_persist_calls: list[dict[str, Any]] = []
         self.fail_canonical_updates = False
 
     def append_identity_staging_pair(self, conversation_id: str, pair: Any, *, target_pairs: int) -> Any:
@@ -297,6 +298,17 @@ class RealStagingIdentityStore:
         self.legacy_persist_calls.append(
             {"conversation_id": conversation_id, "entries_count": len(list(entries or []))}
         )
+
+    def record_dialogic_context_hints(self, conversation_id: str, hints: Any) -> dict[str, Any]:
+        items = list(hints or [])
+        self.dialogic_context_persist_calls.append(
+            {'conversation_id': conversation_id, 'hints_count': len(items)}
+        )
+        return {
+            'status': 'ok' if items else 'not_selected',
+            'reason_code': 'dialogic_context_hints_persisted' if items else 'dialogic_context_no_hint',
+            'persisted_count': len(items),
+        }
 
     def get_mutable_identity(self, subject: str) -> dict[str, Any] | None:
         value = self.mutable.get(subject)
@@ -394,10 +406,11 @@ def assert_identity_cardinality(actual: Mapping[str, Any]) -> None:
         "assistant_saves": 5,
         "final_user_messages": 5,
         "final_assistant_messages": 5,
-        "extractor_calls": 5,
+        "context_extractor_calls": 5,
         "judge_calls": 1,
-        "judge_extract_counts": [5],
-        "legacy_persist_calls": 5,
+        "judge_context_extract_counts": [5],
+        "context_persist_calls": 5,
+        "legacy_persist_calls": 0,
         "canonical_update_count": 0,
     }
     if dict(actual) != expected:

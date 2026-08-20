@@ -279,3 +279,38 @@ def build_subject_block(
             snapshot=conflicts,
         ),
     }
+
+
+def build_dialogic_context_block(
+    *,
+    evidence: Mapping[str, Any],
+    latest_activity: Mapping[str, Any],
+    runtime: Mapping[str, Any],
+) -> dict[str, Any]:
+    items = [_compact_legacy_evidence_item(item) for item in list(evidence.get('items') or [])]
+    activity_payload = _mapping(latest_activity.get('payload_json'))
+    return {
+        'classification': 'temporary_dialogic_context',
+        'runtime_authority': 'prompt_context_only',
+        'storage_kind': 'identity_evidence_compatible_storage',
+        'logical_subject': 'dialogue',
+        'identity_writer': False,
+        'mutable_authority': False,
+        'active_caller': 'dialogic_context_hint_extractor',
+        'legacy_setting_slot': 'identity_extractor_model',
+        'stored': int(evidence.get('total_count') or len(items)) > 0,
+        'total_count': int(evidence.get('total_count') or len(items)),
+        'limit': int(evidence.get('limit') or len(items) or DEFAULT_LAYER_LIMIT),
+        'items': items,
+        'content_minimized': True,
+        'latest_activity': {
+            'present': bool(latest_activity),
+            'status': _optional_text(latest_activity.get('status')),
+            'reason_code': _optional_text(activity_payload.get('reason_code')),
+            'hint_count': int(activity_payload.get('hint_count') or 0),
+            'persisted_count': int(activity_payload.get('persisted_count') or 0),
+            'prompt_kind': _optional_text(activity_payload.get('prompt_kind')),
+            'raw_content_included': False,
+        },
+        'runtime': dict(runtime),
+    }

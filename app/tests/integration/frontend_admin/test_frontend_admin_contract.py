@@ -223,9 +223,9 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('referer_identity_extractor', catalog_source)
         self.assertIn('referer_identity_periodic', catalog_source)
         self.assertIn('referer_validation_agent', catalog_source)
-        self.assertIn("Titre extracteur d'identite", catalog_source)
+        self.assertIn("Titre contexte dialogique", catalog_source)
         self.assertIn("Titre juge mutable", catalog_source)
-        self.assertIn("Referer extracteur d'identite", catalog_source)
+        self.assertIn("Referer contexte dialogique", catalog_source)
         self.assertIn("Referer juge mutable", catalog_source)
         self.assertIn("Referer validation", catalog_source)
 
@@ -587,7 +587,7 @@ class AdminPhase7FoundationTests(unittest.TestCase):
         self.assertIn('label: "Referer LLM"', source)
         self.assertIn('label: "Referer reformulation web"', source)
         self.assertIn('label: "Referer arbitre"', source)
-        self.assertIn('label: "Referer extracteur d\'identite"', source)
+        self.assertIn('label: "Referer contexte dialogique"', source)
         self.assertIn('label: "Referer juge mutable"', source)
         self.assertIn('label: "Referer validation"', source)
 

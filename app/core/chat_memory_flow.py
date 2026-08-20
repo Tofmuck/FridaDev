@@ -658,31 +658,74 @@ def record_identity_entries_for_mode(
         )
         return
 
-    identity_turn_pair = [dict(turn or {}) for turn in list(turn_pair or [])]
+    dialogic_turn_pair = [dict(turn or {}) for turn in list(turn_pair or [])]
+    identity_turn_pair = [dict(turn) for turn in dialogic_turn_pair]
     for turn in identity_turn_pair:
         if assistant_turn_state.is_dialogic_presence_assistant_turn(turn):
             turn['content'] = ''
 
     extract_t0 = time.perf_counter()
-    id_entries = arbiter_module.extract_identities(identity_turn_pair)
+    context_extractor = getattr(arbiter_module, 'extract_dialogic_context_hints', None)
+    context_result = (
+        context_extractor(dialogic_turn_pair)
+        if callable(context_extractor)
+        else {
+            'status': 'failed',
+            'reason_code': 'dialogic_context_extractor_unavailable',
+            'hints': [],
+        }
+    )
     _log_stage_latency(
         conversation_id,
-        'identity_extractor',
+        'dialogic_context_hint_extractor',
         extract_t0,
         admin_logs_module=admin_logs_module,
     )
-    filtered_entries, guard_filtered_entries = hermeneutics_policy.filter_unsupported_web_reading_identities(
-        id_entries,
-        web_input=web_input,
+    if isinstance(context_result, Mapping):
+        context_status = str(context_result.get('status') or 'failed')
+        context_reason_code = str(context_result.get('reason_code') or 'dialogic_context_unknown')
+        context_hints = list(context_result.get('hints') or [])
+        context_schema_version = str(context_result.get('schema_version') or '')
+        context_prompt_kind = str(context_result.get('prompt_kind') or '')
+    else:
+        context_status = 'failed'
+        context_reason_code = 'dialogic_context_result_invalid'
+        context_hints = []
+        context_schema_version = ''
+        context_prompt_kind = ''
+
+    persistence_result = {'status': 'not_selected', 'reason_code': 'dialogic_context_no_hint', 'persisted_count': 0}
+    if context_status == 'ok' and context_hints:
+        persistence_result = memory_store_module.record_dialogic_context_hints(
+            conversation_id,
+            context_hints,
+        )
+    persisted_count = int(persistence_result.get('persisted_count') or 0)
+    final_context_status = context_status
+    final_context_reason = context_reason_code
+    if str(persistence_result.get('status') or '') == 'failed':
+        final_context_status = 'failed'
+        final_context_reason = str(persistence_result.get('reason_code') or 'dialogic_context_persistence_failed')
+    chat_turn_logger.emit(
+        'dialogic_context_hint_extractor',
+        status=final_context_status,
+        reason_code=final_context_reason,
+        prompt_kind=context_prompt_kind or None,
+        payload={
+            'schema_version': context_schema_version,
+            'subject': 'dialogue',
+            'hint_count': len(context_hints),
+            'persisted_count': persisted_count,
+            'write_mode': 'temporary_dialogic_context',
+            'write_effect': 'prompt_context_only',
+            'identity_write': False,
+            'mutable_authority': False,
+            'max_items': 4,
+        },
     )
-    guard_filtered_count = len(guard_filtered_entries)
-    guard_counts_by_side, guard_reason_codes_by_side = _guard_filtered_summary(guard_filtered_entries)
     buffered_turn_pair = [dict(turn) for turn in identity_turn_pair]
 
     if mode_enforces_identity(mode):
-        # This legacy extractor path remains diagnostic/history only; mutable canon
-        # writes happen exclusively through the judge-first staging runtime.
-        memory_store_module.persist_identity_entries(conversation_id, filtered_entries)
         periodic_summary = _run_periodic_identity_agent(
             conversation_id,
             buffered_turn_pair,
@@ -695,12 +738,12 @@ def record_identity_entries_for_mode(
             'identity_mode_apply',
             conversation_id=conversation_id,
             mode=mode,
-            action='record_legacy_identity_diagnostics_and_mutable_judge',
-            entries=len(filtered_entries),
-            extracted_entries=len(id_entries),
-            guard_filtered_count=guard_filtered_count,
-            guard_filtered_by_side=guard_counts_by_side,
-            guard_reason_codes_by_side=guard_reason_codes_by_side,
+            action='record_dialogic_context_and_mutable_judge',
+            context_hint_count=len(context_hints),
+            context_hint_persisted_count=persisted_count,
+            context_hint_status=final_context_status,
+            context_hint_reason_code=final_context_reason,
+            legacy_identity_writes=0,
             staging_status=str(periodic_summary.get('status') or ''),
             staging_reason_code=str(periodic_summary.get('reason_code') or ''),
             buffer_pairs_count=int(periodic_summary.get('buffer_pairs_count') or 0),
@@ -720,23 +763,6 @@ def record_identity_entries_for_mode(
         )
         return
 
-    preview_entries = memory_store_module.preview_identity_entries(filtered_entries)
-    memory_store_module.record_identity_evidence(conversation_id, preview_entries)
-    side_counts = {'frida': 0, 'user': 0}
-    for entry in preview_entries:
-        subject = str(entry.get('subject') or '').strip().lower()
-        if subject == 'llm':
-            side_counts['frida'] += 1
-        elif subject == 'user':
-            side_counts['user'] += 1
-    _emit_identity_write_skipped_by_side(
-        reason_code='not_applicable',
-        reason_short='identity_write_shadow_mode',
-        mode=mode,
-        write_mode='legacy_diagnostic_shadow',
-        write_effect='evidence_only',
-        side_entry_counts=side_counts,
-    )
     periodic_summary = _run_periodic_identity_agent(
         conversation_id,
         buffered_turn_pair,
@@ -749,12 +775,12 @@ def record_identity_entries_for_mode(
         'identity_mode_apply',
         conversation_id=conversation_id,
         mode=mode,
-        action='record_legacy_identity_evidence_and_shadow_mutable_judge',
-        entries=len(preview_entries),
-        extracted_entries=len(id_entries),
-        guard_filtered_count=guard_filtered_count,
-        guard_filtered_by_side=guard_counts_by_side,
-        guard_reason_codes_by_side=guard_reason_codes_by_side,
+        action='record_dialogic_context_and_shadow_mutable_judge',
+        context_hint_count=len(context_hints),
+        context_hint_persisted_count=persisted_count,
+        context_hint_status=final_context_status,
+        context_hint_reason_code=final_context_reason,
+        legacy_identity_writes=0,
         staging_status=str(periodic_summary.get('status') or ''),
         staging_reason_code=str(periodic_summary.get('reason_code') or ''),
         buffer_pairs_count=int(periodic_summary.get('buffer_pairs_count') or 0),

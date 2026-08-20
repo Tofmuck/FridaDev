@@ -853,8 +853,8 @@ extracteur legacy, schema de DB ou contenu operateur n'a ete modifie. Aucun Lot
 
 # LOT 2 - Specialiser l'extracteur en contexte dialogique
 
-Statut: non commence; recadre le 2026-08-20 apres invalidation de l'objectif de
-suppression; aucune implementation livree
+Statut: ferme le 2026-08-20; implementation, preuves hermetiques,
+observabilite backend/frontend, commit et livraison cibles par ce lot
 Nature: consolidation runtime, prompt, persistance et observabilite a capacite
 produit constante
 Dependance: Lot 1 ferme et progression prouvee
@@ -895,23 +895,27 @@ L'arret n'a modifie aucun fichier, test, runtime, prompt, modele, provider,
 schema ou donnee operateur. Le present recadrage remplace l'objectif invalide;
 il ne commence pas son implementation.
 
+La presente fermeture realise le recadrage sans supprimer l'alimentation des
+context hints. Les faits historiques ci-dessus expliquent la decision qui a
+precede l'implementation.
+
 ## Contradictions actuelles a revalider avant patch
 
-- [ ] Le caller actif est nomme et prompte comme `identity_extractor`, alors
+- [x] Le caller actif est nomme et prompte comme `identity_extractor`, alors
   que sa sortie produit encore necessaire alimente les context hints.
-- [ ] `persist_identity_entries(...)` enregistre d'abord
+- [x] `persist_identity_entries(...)` enregistre d'abord
   `identity_evidence`, puis appelle aussi `add_identity(...)`, les politiques
   legacy de defer et la detection de conflits.
-- [ ] `get_recent_context_hints(...)` selectionne actuellement
+- [x] `get_recent_context_hints(...)` selectionne actuellement
   `subject = user`, ce qui rabat le contexte dialogique sur un profil
   utilisateur.
-- [ ] Le rendu des hints distingue principalement `Utilisateur` et
+- [x] Le rendu des hints distingue principalement `Utilisateur` et
   `Situation`, sans nommer leur sujet logique: le dialogue.
-- [ ] La politique temporelle de l'ancien extracteur ecarte des formulations
+- [x] La politique temporelle de l'ancien extracteur ecarte des formulations
   relatives faibles parce qu'elles ne conviennent pas a une identite durable;
   cette regle ne peut pas etre transposee automatiquement a des hints
   temporaires, dates et soumis a expiration.
-- [ ] Les reglages, metriques, latences et surfaces admin presentent encore le
+- [x] Les reglages, metriques, latences et surfaces admin presentent encore le
   caller comme extracteur Identity actif.
 
 ## Objectif
@@ -944,34 +948,34 @@ l'autre.
 
 ## Inventaire avant patch
 
-- [ ] Cartographier le prompt, l'input, le schema de sortie, le validateur, le
+- [x] Cartographier le prompt, l'input, le schema de sortie, le validateur, le
   caller, le slot modele et les metriques de l'extracteur actuel.
-- [ ] Recenser tous les writers et readers de `identities`,
+- [x] Recenser tous les writers et readers de `identities`,
   `identity_evidence`, `identity_conflicts` et `identity_mutables`.
-- [ ] Distinguer les evidences historiques consultables, les nouvelles
+- [x] Distinguer les evidences historiques consultables, les nouvelles
   ecritures necessaires aux context hints et les ecritures Identity legacy a
   arreter.
-- [ ] Prouver que les context hints restent effectivement selectionnes,
+- [x] Prouver que les context hints restent effectivement selectionnes,
   bornes et injectes dans le payload principal.
-- [ ] Cartographier les contrats JSON, streaming, erreur et final lock Presence
+- [x] Cartographier les contrats JSON, streaming, erreur et final lock Presence
   du chemin post-save concerne.
-- [ ] Verifier si `identity_evidence` peut porter honnetement un sujet logique
+- [x] Verifier si `identity_evidence` peut porter honnetement un sujet logique
   `dialogue` sans migration ni reecriture de donnees; sinon arreter avant toute
   modification de schema et rapporter la contradiction.
-- [ ] Recenser les labels API, read-model, frontend et documentation qui
+- [x] Recenser les labels API, read-model, frontend et documentation qui
   presentent encore le caller comme writer ou extracteur Identity.
 
 ## Contrat du contexte dialogique
 
 Un hint admissible doit etre:
 
-- [ ] relatif a l'etat du dialogue, jamais a un profil individuel;
-- [ ] temporaire, date et soumis aux gardes d'age existantes;
-- [ ] fonde sur le dialogue effectivement observe;
-- [ ] utile a l'intelligibilite du prochain tour;
-- [ ] borne par confiance, nombre d'items et budget tokens;
-- [ ] non canonique et incapable de declencher une ecriture Identity;
-- [ ] compatible avec l'absence de hint lorsque le tour n'en justifie aucun.
+- [x] relatif a l'etat du dialogue, jamais a un profil individuel;
+- [x] temporaire, date et soumis aux gardes d'age existantes;
+- [x] fonde sur le dialogue effectivement observe;
+- [x] utile a l'intelligibilite du prochain tour;
+- [x] borne par confiance, nombre d'items et budget tokens;
+- [x] non canonique et incapable de declencher une ecriture Identity;
+- [x] compatible avec l'absence de hint lorsque le tour n'en justifie aucun.
 
 Il peut notamment porter sur un enjeu en cours, une question ouverte, une
 correction qui deplace le cadre commun, une distinction a ne pas perdre, une
@@ -983,31 +987,31 @@ sur Frida ou sur Tof.
 
 ## Travail obligatoire
 
-- [ ] Conserver un appel semantique par tour pour alimenter les context hints;
+- [x] Conserver un appel semantique par tour pour alimenter les context hints;
   ne pas le supprimer ni le remplacer par une regex.
-- [ ] Specialiser son prompt, son schema et son validateur sur le contexte
+- [x] Specialiser son prompt, son schema et son validateur sur le contexte
   dialogique uniquement.
-- [ ] Renommer conceptuellement le caller actif en
+- [x] Renommer conceptuellement le caller actif en
   `context_hint_extractor` ou vocabulaire local equivalent.
-- [ ] Conserver `openai/gpt-5.4-mini`, son timeout et ses parametres courants;
+- [x] Conserver `openai/gpt-5.4-mini`, son timeout et ses parametres courants;
   aucun cutover modele dans ce lot.
-- [ ] Persister les nouvelles sorties uniquement dans la couche necessaire aux
+- [x] Persister les nouvelles sorties uniquement dans la couche necessaire aux
   context hints.
-- [ ] Retirer du chemin actif `add_identity(...)`, la detection de conflits et
+- [x] Retirer du chemin actif `add_identity(...)`, la detection de conflits et
   les politiques Identity legacy associees aux sorties de ce caller.
-- [ ] Ne jamais utiliser `user` ou `llm` comme sujet logique des nouveaux
+- [x] Ne jamais utiliser `user` ou `llm` comme sujet logique des nouveaux
   context hints. Preferer la representation minimale honnete du `dialogue` si
   le schema existant la supporte sans migration.
-- [ ] Conserver en lecture les anciennes evidences `user` episodiques ou de
+- [x] Conserver en lecture les anciennes evidences `user` episodiques ou de
   situation pendant leur duree de vie normale, sans les requalifier ni les
   reecrire.
-- [ ] Requalifier la politique temporelle: une formulation trop relative pour
+- [x] Requalifier la politique temporelle: une formulation trop relative pour
   l'identite durable n'est pas automatiquement invalide comme hint temporaire;
   elle doit rester datee, bornee et non canonique.
-- [ ] Conserver le staging cinq paires, le juge reciproque GPT-5.2, le contrat
+- [x] Conserver le staging cinq paires, le juge reciproque GPT-5.2, le contrat
   add-only et les edits administrateur gouvernes.
-- [ ] Prouver JSON, streaming, erreurs post-save et final lock Presence.
-- [ ] Ne creer ni table, migration, ecran, modele, provider ou pipeline
+- [x] Prouver JSON, streaming, erreurs post-save et final lock Presence.
+- [x] Ne creer ni table, migration, ecran, modele, provider ou pipeline
   substitutif sans arret et decision explicite.
 
 Le slot technique historique `identity_extractor_model` peut rester comme cle
@@ -1040,25 +1044,25 @@ dialogique, pas un writer Identity.
 
 ## Tests obligatoires
 
-- [ ] une paire dialogique complete traverse le vrai chemin post-save;
-- [ ] un tour pertinent produit exactement un appel context-hint, et un no-op
+- [x] une paire dialogique complete traverse le vrai chemin post-save;
+- [x] un tour pertinent produit exactement un appel context-hint, et un no-op
   legitime ne produit aucune fausse ecriture;
-- [ ] une sortie valide est lue puis injectee dans le payload principal sous
+- [x] une sortie valide est lue puis injectee dans le payload principal sous
   les plafonds existants;
-- [ ] aucune nouvelle entree `identities`, aucun conflit et aucun appel a
+- [x] aucune nouvelle entree `identities`, aucun conflit et aucun appel a
   `add_identity(...)` depuis ce caller;
-- [ ] les nouveaux hints ont pour sujet logique le dialogue, jamais `user` ou
+- [x] les nouveaux hints ont pour sujet logique le dialogue, jamais `user` ou
   `llm`;
-- [ ] les evidences historiques compatibles restent lisibles jusqu'a leur
+- [x] les evidences historiques compatibles restent lisibles jusqu'a leur
   expiration normale;
-- [ ] aucun changement du canon mutable avant le cinquieme tour;
-- [ ] un seul appel juge mutable au cinquieme tour;
-- [ ] absence de hint, timeout, transport et schema invalide restent fail-open
+- [x] aucun changement du canon mutable avant le cinquieme tour;
+- [x] un seul appel juge mutable au cinquieme tour;
+- [x] absence de hint, timeout, transport et schema invalide restent fail-open
   pour la reponse sans devenir un faux succes d'extraction;
-- [ ] JSON, streaming, erreur et final lock Presence gardent leurs contrats;
-- [ ] API, read-model, frontend et navigateur distinguent temporaire, legacy et
+- [x] JSON, streaming, erreur et final lock Presence gardent leurs contrats;
+- [x] API, read-model, frontend et navigateur distinguent temporaire, legacy et
   canonique;
-- [ ] le marqueur technique de persistance et le contrat interne n'atteignent
+- [x] le marqueur technique de persistance et le contrat interne n'atteignent
   ni le prompt principal ni l'observabilite content-free.
 
 Cardinalite attendue sur cinq tours apres ce lot: cinq appels necessaires a
@@ -1070,21 +1074,85 @@ ces six appels comme six appels concurrents d'autorite Identity.
 
 Les goldens doivent rejeter au minimum:
 
-- [ ] la suppression de l'alimentation des context hints;
-- [ ] le retour d'un sujet logique `user` ou `llm` pour une nouvelle sortie;
-- [ ] une ecriture `identities`, un conflit ou un appel `add_identity(...)`;
-- [ ] une sortie temporaire promue dans le canon mutable;
-- [ ] un hint valide absent du payload principal;
-- [ ] la disparition prematuree de l'historique compatible;
-- [ ] un juge mutable appele avant la cinquieme paire;
-- [ ] un frontend presentant le caller comme writer Identity;
-- [ ] une mutation stream/non-stream ou Presence;
-- [ ] une fuite de hint, prompt ou dialogue brut dans event, snapshot ou diff.
+- [x] la suppression de l'alimentation des context hints;
+- [x] le retour d'un sujet logique `user` ou `llm` pour une nouvelle sortie;
+- [x] une ecriture `identities`, un conflit ou un appel `add_identity(...)`;
+- [x] une sortie temporaire promue dans le canon mutable;
+- [x] un hint valide absent du payload principal;
+- [x] la disparition prematuree de l'historique compatible;
+- [x] un juge mutable appele avant la cinquieme paire;
+- [x] un frontend presentant le caller comme writer Identity;
+- [x] une mutation stream/non-stream ou Presence;
+- [x] une fuite de hint, prompt ou dialogue brut dans event, snapshot ou diff.
 
 Ne pas snapshotter le prompt complet. Figer sa version, sa structure de sortie,
 son vocabulaire dialogique, ses reason codes et les rejets du validateur. Un
 test hermetique ne prouve pas la qualite semantique live du modele; ne pas
 pretendre avoir benchmarke cette qualite dans ce lot.
+
+## Fermeture livree le 2026-08-20
+
+Contradictions C1 a C6 validees. Le storage `identity_evidence.subject` est un
+`TEXT` sans contrainte enum: `dialogue` est donc representable sans table,
+migration ni reecriture. Le chemin actif est desormais:
+
+```text
+paire user/assistant complete
+-> dialogic_context_hint_extractor (GPT-5.4 mini, timeout 10 s)
+-> dialogic_context_hint_v1 strict, zero a quatre hints subject=dialogue
+-> identity_evidence temporaire uniquement
+-> lecture dialogue + ancien user compatible
+-> gardes age/confiance/nombre/tokens
+-> contexte du prochain tour
+```
+
+En parallele, le staging cinq paires et le juge GPT-5.2 add-only restent seuls
+habilites a ecrire `identity_mutables`. Le caller contextuel n'appelle plus
+`persist_identity_entries`, `record_identity_evidence`, `add_identity`, la
+detection de conflits ou les politiques defer/promotion legacy. Les anciens
+readers et tables restent consultables sans mutation.
+
+Preuves principales:
+
+- `app/tests/unit/memory/test_dialogic_context_hints_lot2.py`: prompt/schema,
+  paire complete, temporalite relative temporaire, erreurs fail-open, writer,
+  reader, injection et garde content-free;
+- `app/tests/unit/golden/test_lot0_identity_goldens.py` et support: cardinalite
+  cinq appels contextuels, zero writer legacy, zero juge avant seuil, un juge
+  au cinquieme tour;
+- tests post-save/content guards requalifies: aucun mode secondaire ne
+  rebranche les writers legacy; Presence reste complete pour le contexte mais
+  non substantive pour le juge mutable;
+- tests API/read-model/settings et frontend admin: temporaire, legacy et canon
+  sont des couches distinctes; `/identity` et `/hermeneutic-admin` lisent le
+  bloc backend autoritatif;
+- goldens Lots 0/1, chat, persistence, JSON/streaming, Presence/final locks,
+  observabilite, Lot 9, JavaScript et Chromium conserves.
+
+Reproduction rouge executee contre l'export read-only du commit baseline
+`4ea53b49aaaf859d5aa8418228000628476d0325`: 7 tests, 2 echecs et 5 erreurs
+attendus (caller/schema/writer `dialogue` absents, ancien label Utilisateur,
+ancien reader `subject=user`). Sur le correctif, ces 7 tests puis la mutation
+content-free passent.
+
+Mutations rejetees: sujet `user` ou `llm`; cles `stability=durable` ou
+`verdict=add`; disparition du caller/persister contextuel; rebranchement d'un
+writer legacy; appel juge avant la cinquieme paire; absence du hint dans le
+prompt; label frontend profilant; ajout de contenu brut dans l'evenement.
+
+Commandes executees: baseline Python/JS/Chromium avec depot complet read-only;
+reproduction rouge sur export du HEAD; suites ciblees prompt/schema/writer,
+post-save, Lots 0/1, API/admin/frontend; decouverte Python complete; runner JS
+et Chromium; `git diff --check` et controles de perimetre avant commit. Total
+Python: 2696 avant, 2704 apres (8 tests nouveaux); JavaScript: 135; Chromium:
+15. Aucun provider reel ni secret n'a ete utilise.
+
+Limites: la cle/settings et le chemin de prompt conservent leur nom historique
+`identity_extractor*` pour eviter une migration inutile; le shim direct
+`extract_identities()` reste inactif pour compatibilite de tests/historique,
+mais aucun caller produit ne l'invoque. La qualite semantique live de GPT-5.4
+mini n'a pas ete benchmarkee dans ce lot. Aucun code Presence, Stimmung,
+Validation, modele, provider, schema DB ou donnee operateur n'a change.
 
 ## Stop-rules
 
@@ -1103,13 +1171,13 @@ Arreter avant patch ou avant livraison si:
 
 ## Condition de fermeture
 
-- [ ] Les context hints restent une capacite active et alimentent le dialogue.
-- [ ] Leur sujet logique est le dialogue, pas un profil utilisateur ou Frida.
-- [ ] Le caller par tour n'ecrit plus aucune Identity legacy ni aucun conflit.
-- [ ] GPT-5.2 reste l'unique writer automatique du canon mutable.
-- [ ] Historique, JSON, streaming, erreurs et Presence sont preserves.
-- [ ] Observabilite active, historique et canonique est non ambigue.
-- [ ] Aucun nouveau modele, provider, table, migration, ecran ou capacite.
+- [x] Les context hints restent une capacite active et alimentent le dialogue.
+- [x] Leur sujet logique est le dialogue, pas un profil utilisateur ou Frida.
+- [x] Le caller par tour n'ecrit plus aucune Identity legacy ni aucun conflit.
+- [x] GPT-5.2 reste l'unique writer automatique du canon mutable.
+- [x] Historique, JSON, streaming, erreurs et Presence sont preserves.
+- [x] Observabilite active, historique et canonique est non ambigue.
+- [x] Aucun nouveau modele, provider, table, migration, ecran ou capacite.
 
 # LOT 3 - Corpus d'evaluation Presence
 

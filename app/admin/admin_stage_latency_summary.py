@@ -22,6 +22,7 @@ def compute_stage_latencies(log_entries: List[Dict[str, Any]]) -> Dict[str, Dict
         'retrieve': [],
         'arbiter': [],
         'identity_extractor': [],
+        'dialogic_context_hint_extractor': [],
     }
     for entry in log_entries:
         if entry.get('event') != 'stage_latency':

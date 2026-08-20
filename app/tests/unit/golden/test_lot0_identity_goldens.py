@@ -323,27 +323,37 @@ class Lot0IdentityGoldensTests(unittest.TestCase):
             with self.assertRaises(AssertionError):
                 lot0_identity_goldens.assert_error_case(mutated, expected)
 
-    def test_five_saved_assistant_turns_call_legacy_extractor_five_times_and_judge_once(self) -> None:
+    def test_five_saved_assistant_turns_call_context_extractor_five_times_and_judge_once(self) -> None:
         store = lot0_identity_goldens.RealStagingIdentityStore()
-        extractor_calls = 0
+        context_extractor_calls = 0
         judge_calls = 0
-        judge_extract_counts: list[int] = []
+        judge_context_extract_counts: list[int] = []
 
-        def extract_identities(_turn_pair):
-            nonlocal extractor_calls
-            extractor_calls += 1
-            return []
+        def extract_dialogic_context_hints(_turn_pair):
+            nonlocal context_extractor_calls
+            context_extractor_calls += 1
+            return {
+                'status': 'ok',
+                'reason_code': 'dialogic_context_hints_extracted',
+                'schema_version': 'dialogic_context_hint_v1',
+                'prompt_kind': 'dialogic_context_hint_extractor_v1',
+                'hints': [{
+                    'subject': 'dialogue', 'content': 'SYNTHETIC_HINT',
+                    'confidence': 0.8, 'reason_code': 'dialogue_direction',
+                }],
+            }
 
         def run_judge(_payload):
             nonlocal judge_calls
             judge_calls += 1
-            judge_extract_counts.append(extractor_calls)
+            judge_context_extract_counts.append(context_extractor_calls)
             return lot0_identity_goldens.ok_judge_result(lot0_identity_goldens.no_change_contract())
 
         replacements = {
-            (self.server.arbiter, "extract_identities"): extract_identities,
+            (self.server.arbiter, "extract_dialogic_context_hints"): extract_dialogic_context_hints,
             (self.server.arbiter, "run_mutable_identity_judge"): run_judge,
-            (self.server.memory_store, "persist_identity_entries"): store.persist_identity_entries,
+            (self.server.memory_store, "persist_identity_entries"): lambda *_args: self.fail('legacy writer called'),
+            (self.server.memory_store, "record_dialogic_context_hints"): store.record_dialogic_context_hints,
             (self.server.memory_store, "append_identity_staging_pair"): store.append_identity_staging_pair,
             (self.server.memory_store, "get_identity_staging_state"): store.get_identity_staging_state,
             (
@@ -379,18 +389,20 @@ class Lot0IdentityGoldensTests(unittest.TestCase):
             "assistant_saves": len(result["observed"]["save_calls"]),
             "final_user_messages": sum(message.get("role") == "user" for message in final_messages),
             "final_assistant_messages": sum(message.get("role") == "assistant" for message in final_messages),
-            "extractor_calls": extractor_calls,
+            "context_extractor_calls": context_extractor_calls,
             "judge_calls": judge_calls,
-            "judge_extract_counts": judge_extract_counts,
+            "judge_context_extract_counts": judge_context_extract_counts,
+            "context_persist_calls": len(store.dialogic_context_persist_calls),
             "legacy_persist_calls": len(store.legacy_persist_calls),
             "canonical_update_count": sum(len(batch) for batch in store.canonical_update_batches),
         }
         lot0_identity_goldens.assert_identity_cardinality(actual)
         self.assertTrue(all(response.status_code == 200 for response in result["responses"]))
         for key, value in (
-            ("extractor_calls", 4),
+            ("context_extractor_calls", 4),
             ("judge_calls", 2),
-            ("judge_extract_counts", [4]),
+            ("judge_context_extract_counts", [4]),
+            ("legacy_persist_calls", 1),
         ):
             mutated = dict(actual)
             mutated[key] = value

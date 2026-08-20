@@ -48,7 +48,7 @@ Verdict court:
 - Les chemins OpenRouter partagent aujourd'hui **un seul secret applicatif**: `main_model.api_key`.
 - Sur OVH, ce secret est configure et resolu via les runtime settings chiffrés (`db_encrypted`), avec origine historique `env_backfill`. Le repo ne prouve pas a lui seul la separation ou non des projets cote console OpenRouter.
 - Le systeme est fonctionnel mais heterogene: certains callers utilisent `llm_client.or_chat_completions_url()` et donc `main_model.base_url` runtime; d'autres utilisent encore `config.OR_BASE`.
-- L'arbitre memoire, l'extracteur identity au tour et le juge mutable sont maintenant individualises: `memory_arbiter_model`, `identity_extractor_model` et `identity_periodic_model` portent leurs modeles, parametres et timeouts propres. Le slot `identity_periodic_model` garde un nom de compatibilite mais pilote le caller actif `mutable_identity_judge`. Le slot legacy `arbiter_model` ne pilote plus aucun caller actif.
+- L'arbitre memoire, l'extracteur de contexte dialogique au tour et le juge mutable sont individualises: `memory_arbiter_model`, le slot de compatibilite `identity_extractor_model` et `identity_periodic_model` portent leurs modeles, parametres et timeouts propres. Le premier caller n'ecrit aucune Identity; le juge reste l'unique writer automatique du canon mutable.
 
 ## Perimetre et methode
 
@@ -115,7 +115,7 @@ Chemins explicitement absents ou retires:
 | Reformulation web | `web_search.reformulate()` | `prompts/web_reformulation.txt` | OpenRouter | `openai/gpt-5.4-mini` | `WEB_REFORMULATION_MODEL=openai/gpt-5.4-mini` | `web_reformulation_model.model`; base via `llm_client.or_chat_completions_url()` | `main_model.api_key`, caller `web_reformulation` | `0.2` | non envoye | `40` | `10` | aucun | non | texte court, fallback vers message utilisateur si erreur | oui: `web_reformulation_model` pour model/temp/max/timeout; transport/token et referer/title partages via `main_model` | `web_reformulation_prompt_prepared`, `web_search` |
 | Arbitre memoire | `arbiter.filter_traces_with_diagnostics()` | `prompts/arbiter.txt` | OpenRouter | `mistralai/mistral-small-2603` | `MEMORY_ARBITER_MODEL=mistralai/mistral-small-2603` | `memory_arbiter_model` runtime DB: model/temp/top_p/max_tokens/timeout | `main_model.api_key`, caller `arbiter`, transport `llm_client.or_chat_completions_url()` | `0.0` | `1.0` | `600` | `10` | aucun | non | JSON `decisions[]`, puis post-filtrage deterministe | oui: section dediee `memory_arbiter_model`; benchmark final conserve sous `benchmark/results/arbiter/` | provider logs, metrics, `record_arbiter_decisions()` avec modele effectif |
 | Resume conversationnel | `summarizer.summarize_conversation()` | `prompts/summary_system.txt` | OpenRouter | `openai/gpt-5.4-mini` | `SUMMARY_MODEL=openai/gpt-5.4-mini` | `summary_model` runtime DB: model/temp/top_p/max_tokens/timeout | `main_model.api_key`, caller `resumer`, transport `llm_client.or_chat_completions_url()` | `0.3` | `1.0` | `2000` | `90` | aucun | non | texte libre de resume; persiste en summary actif | oui: section dediee `summary_model`; decision humaine conservee sous `benchmark/results/summary/` | provider metadata log; summary persistence |
-| Extracteur identity | `arbiter.extract_identities()` | `prompts/identity_extractor.txt` | OpenRouter | `openai/gpt-5.4-mini` | `IDENTITY_EXTRACTOR_MODEL=openai/gpt-5.4-mini` | `identity_extractor_model` runtime DB: model/temp/top_p/max_tokens/timeout | `main_model.api_key`, caller `identity_extractor`, transport `llm_client.or_chat_completions_url()` | `0.0` | `1.0` | `700` | `10` | aucun | non | JSON `entries[]`; invalides skips; erreur => `[]` | oui: section dediee `identity_extractor_model`; benchmark humain conserve sous `benchmark/results/identity_extractor/` | provider log, metrics parse/call; staging identity |
+| Extracteur contexte dialogique | `arbiter.extract_dialogic_context_hints()` | `prompts/identity_extractor.txt` (chemin de compatibilite) | OpenRouter | `openai/gpt-5.4-mini` | `IDENTITY_EXTRACTOR_MODEL=openai/gpt-5.4-mini` | `identity_extractor_model` runtime DB: model/temp/top_p/max_tokens/timeout | `main_model.api_key`, caller `dialogic_context_hint_extractor`, transport `llm_client.or_chat_completions_url()` | `0.0` | `1.0` | `700` | `10` | aucun | non | JSON strict `dialogic_context_hint_v1`, `subject=dialogue`, zero a quatre hints; echec fail-open explicite | oui: slot historique conserve sans migration | provider log, metrics/latence `dialogic_context_hint_*`, event content-free; aucune ecriture Identity |
 | Mutable identity judge | `mutable_identity_judge_v2.run_mutable_identity_judge_v2()` via `mutable_identity_runtime.run_mutable_identity_window()` | `prompts/identity_mutable_judge_v2.txt` | OpenRouter | `openai/gpt-5.2` | `IDENTITY_PERIODIC_MODEL` env reste fallback; runtime actif via DB | `identity_periodic_model` runtime DB: model/temp/top_p/max_tokens/timeout, nom conserve par compatibilite | `main_model.api_key`, caller `mutable_identity_judge`, transport `llm_client.or_chat_completions_url()` | omis pour `openai/gpt-5*` | omis pour `openai/gpt-5*` | `1400` | `10` | aucun | non | JSON `mutable_judge_v2`; `response_format` JSON Schema strict + `provider.require_parameters=true`; validation stricte dans `mutable_identity_judge_v2.py`; erreur => `skipped` content-free et fenetre preservee | oui: section dediee `identity_periodic_model`; nom conserve par compatibilite | provider log `mutable_identity_judge_provider_response`; events `mutable_identity_judge` / `mutable_identity_judge_apply` content-free |
 | Stimmung agent primaire | `chat_turn_runtime_inputs.run_stimmung_agent_stage()` -> `stimmung_agent.build_affective_turn_signal()` | `prompts/stimmung_agent.txt` | OpenRouter | `google/gemini-3.1-flash-lite` | `PRIMARY_MODEL=google/gemini-3.1-flash-lite` | `stimmung_agent_model.primary_model` runtime DB | `main_model.api_key`, caller `stimmung_agent` | `0.1` | `1.0` | `220` | `10` | aucun | non | JSON affectif strict v1 | oui: primary/fallback/temp/top_p/max/timeout | provider log; `stimmung_agent` stage |
 | Stimmung agent fallback | meme | meme | OpenRouter | `openai/gpt-5.4-nano` | `FALLBACK_MODEL=openai/gpt-5.4-nano` | `stimmung_agent_model.fallback_model` | meme | `0.1` | `1.0` | `220` | `10` | aucun | non | meme; fail-open si echec | oui | meme |
@@ -135,7 +135,7 @@ Cette section rend explicites les champs envoyes qui ne sont pas tous visibles d
 | Chat principal | JSON OpenRouter construit par `llm_client.build_payload()` | `model`, `messages`, `temperature`, `top_p`, `max_tokens`, `stop=["<\|endoftext\|>", "<\|return\|>", "<\|call\|>"]`; si modele GPT-5.1 compatible: `reasoning={"effort": main_model.reasoning_effort, "exclude": true}`; si streaming: `stream=true`, `stream_options={"include_usage": true}` | `max_tokens` vient du runtime `response_max_tokens` sauf override de requete; pas de `response_format`, pas de `include_reasoning`; les champs `reasoning` / `reasoning_details` provider sont filtres au read path et ne sont pas rendus ni persistés |
 | Reformulation web | JSON OpenRouter dans `web_search.reformulate()` | `model` depuis `web_reformulation_model.model`, `messages` system/user, `max_tokens` depuis `web_reformulation_model.max_tokens`, `temperature` depuis `web_reformulation_model.temperature` | defauts `openai/gpt-5.4-mini`, `40`, `0.2`, timeout `10`; pas de `top_p`, pas de `stop`, pas de streaming, pas de `response_format` |
 | Arbitre memoire | JSON OpenRouter dans `arbiter.filter_traces_with_diagnostics()` | `model`, `messages`, `temperature`, `top_p`, `max_tokens` depuis `memory_arbiter_model` | defaut benchmarke `mistralai/mistral-small-2603`, `0.0`, `1.0`, `600`, timeout `10`; pas de `stop`, pas de streaming, pas de `response_format`; JSON impose par prompt |
-| Extracteur identity | JSON OpenRouter dans `arbiter.extract_identities()` | `model`, `messages`, `temperature`, `top_p`, `max_tokens` depuis `identity_extractor_model` | defaut benchmarke/conserve `openai/gpt-5.4-mini`, `0.0`, `1.0`, `700`, timeout `10`; pas de `stop`, pas de streaming, pas de `response_format`; JSON impose par prompt |
+| Extracteur contexte dialogique | JSON OpenRouter dans `arbiter.extract_dialogic_context_hints()` | `model`, paire user/assistant complete serialisee, `temperature`, `top_p`, `max_tokens` depuis `identity_extractor_model` | `openai/gpt-5.4-mini`, `0.0`, `1.0`, `700`, timeout `10`; pas de `stop`, streaming ni `response_format`; schema/version et validateur local stricts |
 | Mutable identity judge | JSON OpenRouter dans `mutable_identity_judge_v2.run_mutable_identity_judge_v2()` | `model`, `messages`, `max_tokens` depuis `identity_periodic_model`; `temperature` / `top_p` seulement si le modele les supporte; `response_format.type=json_schema`; `response_format.json_schema.name=mutable_judge_v2`; `response_format.json_schema.strict=true`; `provider.require_parameters=true`; `provider.order` seulement pour les modeles Anthropic | runtime DB `openai/gpt-5.2`, `1400`, timeout `10`; pas de `stop`, pas de streaming; JSON `mutable_judge_v2` impose par structured output puis revalide par le validateur metier FridaDev |
 | Resume conversationnel | JSON OpenRouter dans `summarizer.summarize_conversation()` | `model`, `messages`, `temperature`, `top_p`, `max_tokens` depuis `summary_model` | defaut benchmarke `openai/gpt-5.4-mini`, `0.3`, `1.0`, `2000`, timeout `90`; la fonction ne prend plus de modele en argument; pas de `stop`, pas de streaming, pas de `response_format`; texte libre attendu |
 | Stimmung agent | JSON OpenRouter dans `stimmung_agent._call_model()` | `model`, `messages`, `temperature`, `top_p`, `max_tokens` | primary/fallback partagent la meme forme; pas de `stop`, pas de streaming, pas de `response_format` |
@@ -156,7 +156,8 @@ Le secret est lu par `llm_client.or_headers()`, appele par:
 
 - `chat_llm_flow.py`;
 - `web_search.py`;
-- `arbiter.py` pour `arbiter`, `identity_extractor`, `identity_periodic_agent`;
+- `arbiter.py` pour `arbiter`, `dialogic_context_hint_extractor` et le shim
+  legacy inactif `extract_identities`; le juge mutable vit dans son module v2;
 - `summarizer.py`;
 - `stimmung_agent.py`;
 - `validation_agent.py`.
@@ -179,7 +180,7 @@ Donc la source de verite applicative actuelle est:
 | `llm` | `llm` | `main_model.api_key` | chat: `config.OR_BASE`; helper: runtime `main_model.base_url` | `main_model.referer_llm` = `https://fridadev.frida-system.fr/openrouter/main-chat`; `main_model.title_llm` = `FridaDev / Main Chat` | `metadata.frida_caller=main_chat`, `metadata.frida_slot=main_model`, `trace.generation_name=FridaDev / Main Chat` | chemin `/api/chat`: construit puis retire par `_RequestsChatLogProxy` avant l'appel externe | chat principal n'utilise pas encore le helper URL |
 | `web_reformulation` | `web_reformulation` | meme | runtime `main_model.base_url` via helper | `main_model.referer_web_reformulation` = `https://fridadev.frida-system.fr/openrouter/web-reformulation`; `main_model.title_web_reformulation` = `FridaDev / Web Reformulation` | `metadata.frida_caller=web_reformulation`, `metadata.frida_slot=web_reformulation_model`, `trace.generation_name=FridaDev / Web Reformulation` | chemin `/api/chat`: construit puis retire par `_RequestsChatLogProxy`; appel direct de module: transmis | modele et petits parametres dedies via `web_reformulation_model` |
 | `arbiter` | `arbiter` | meme | runtime `main_model.base_url` via helper | `main_model.referer_arbiter` = `https://fridadev.frida-system.fr/openrouter/memory-arbiter`; `main_model.title_arbiter` = `FridaDev / Memory Arbiter` | `metadata.frida_caller=memory_arbiter`, `metadata.frida_slot=memory_arbiter_model`, `trace.generation_name=FridaDev / Memory Arbiter` | transmis: appel direct `requests.post()` sans proxy | modele et parametres dedies via `memory_arbiter_model` |
-| `identity_extractor` | `identity_extractor` | meme | runtime `main_model.base_url` via helper | `main_model.referer_identity_extractor` = `https://fridadev.frida-system.fr/openrouter/identity-extractor`; `main_model.title_identity_extractor` = `FridaDev / Identity Extractor` | `metadata.frida_caller=identity_extractor`, `metadata.frida_slot=identity_extractor_model`, `trace.generation_name=FridaDev / Identity Extractor` | transmis: appel direct `requests.post()` sans proxy | modele et parametres dedies via `identity_extractor_model` |
+| `dialogic_context_hint_extractor` | `dialogic_context_hint_extractor` | meme | runtime `main_model.base_url` via helper | champs de compatibilite `main_model.referer_identity_extractor` et `main_model.title_identity_extractor` | `metadata.frida_caller=dialogic_context_hint_extractor`, `metadata.frida_slot=identity_extractor_model` | transmis: appel direct `requests.post()` sans proxy | contexte temporaire seulement; aucun writer Identity |
 | `identity_periodic_agent` | `identity_periodic_agent` | meme | runtime `main_model.base_url` via helper | `main_model.referer_identity_periodic` = `https://fridadev.frida-system.fr/openrouter/identity-periodic`; `main_model.title_identity_periodic` = `FridaDev / Identity Periodic` | `metadata.frida_caller=identity_periodic`, `metadata.frida_slot=identity_periodic_model`, `trace.generation_name=FridaDev / Identity Periodic` | transmis: appel direct `requests.post()` sans proxy | modele et parametres dedies via `identity_periodic_model` |
 | `resumer` | `resumer` | meme | runtime `main_model.base_url` via helper | `main_model.referer_resumer` = `https://fridadev.frida-system.fr/openrouter/summary`; `main_model.title_resumer` = `FridaDev / Summary` | `metadata.frida_caller=summary`, `metadata.frida_slot=summary_model`, `trace.generation_name=FridaDev / Summary` | transmis: appel direct `requests.post()` sans proxy | modele et parametres dedies via `summary_model` |
 | `stimmung_agent` | `stimmung_agent` | meme | runtime `main_model.base_url` via helper | `main_model.referer_stimmung_agent` = `https://fridadev.frida-system.fr/openrouter/stimmung`; `main_model.title_stimmung_agent` = `FridaDev / Stimmung` | `metadata.frida_caller=stimmung_agent`, `metadata.frida_slot=stimmung_agent_model`, `trace.generation_name=FridaDev / Stimmung` | chemin `/api/chat`: construit puis retire par `_RequestsChatLogProxy`; appel direct de module: transmis | primary/fallback propres |
@@ -215,7 +216,7 @@ Pour une separation par projets OpenRouter, il faudra verifier dans l'interface 
 | Web reformulation | texte libre court | strip guillemets; aucun JSON | fail-open vers message utilisateur original | query utilisee pour SearXNG/Crawl4AI; observabilite hashes/chars |
 | Arbitre memoire | JSON `{"decisions":[...]}` | `_safe_json_loads()`, `_validate_arbiter_output()`, completion deterministe des candidats manquants | fallback deterministe sur timeout/parse/runtime | decisions persistees dans audit arbitre; traces gardees injectees |
 | Summary | texte libre resume | extraction texte provider seulement | exception remontee dans `maybe_summarize()` et log; pas de summary si echec | resume persiste, messages couverts marques `summarized_by`, embedding du summary |
-| Identity extractor | JSON `{"entries":[...]}` | `_validate_identity_output()` filtre enums/champs invalides | erreur => `[]`, donc pas de staging | entrees valides stagees/appliquees dans identity pipeline |
+| Dialogic context hint extractor | JSON `dialogic_context_hint_v1` avec `hints[]` | `_validate_dialogic_context_hint_output()` exige les cles exactes, `subject=dialogue`, reason code allowliste et bornes | timeout/transport/schema invalide => statut `failed` content-free, hints vides, reponse utilisateur preservee | evidences temporaires `subject=dialogue`; jamais `identities`, conflits, `add_identity` ou canon mutable |
 | Mutable identity judge | JSON `mutable_judge_v2` avec `schema_version`, `verdicts[]`, `meta` | `validate_mutable_judge_contract_v2()` exige sujets `llm` et `user`, verdicts `add` / `no_change`, proposition add non vide/declarative et `source_refs` bornees a `pair_01..pair_05` | timeout/transport/JSON invalide/contrat invalide => `skipped` content-free et fenetre preservee | verdicts `add` appliques en append-only par `mutable_identity_apply`; events content-free `mutable_identity_judge` / `mutable_identity_judge_apply` |
 | Stimmung agent | JSON strict v1 | validation enums, strengths, confidence, dominant tone | fail-open signal avec raison, pas de blocage | signal dans meta du tour et stage observabilite |
 | Validation agent | JSON strict v1 | `_validated_model_verdict()` + hard guards | fail-open controle vers posture/regime sur echec | `validated_output`, projection compacte dans `[JUGEMENT HERMENEUTIQUE]` |
@@ -250,34 +251,27 @@ Validation:
 - candidats absents de la reponse LLM sont completes en rejet avec `missing_from_llm_output`;
 - post-filtrage Python applique seuils, redondance et plafond.
 
-#### Identity extractor
+#### Dialogic context hint extractor
 
 ```json
 {
-  "entries": [
+  "schema_version": "dialogic_context_hint_v1",
+  "hints": [
     {
-      "subject": "user",
-      "content": "One compact identity candidate",
-      "stability": "durable",
-      "utterance_mode": "self_description",
-      "recurrence": "repeated",
-      "scope": "user",
-      "evidence_kind": "explicit",
+      "subject": "dialogue",
+      "content": "One temporary dialogic bearing",
       "confidence": 0.88,
-      "reason": "short reason"
+      "reason_code": "unresolved_tension"
     }
   ]
 }
 ```
 
-Enums autorises:
-
-- `subject`: `user`, `llm`;
-- `stability`: `durable`, `episodic`, `unknown`;
-- `utterance_mode`: `self_description`, `projection`, `role_play`, `irony`, `speculation`, `unknown`;
-- `recurrence`: `first_seen`, `repeated`, `habitual`, `unknown`;
-- `scope`: `user`, `llm`, `situation`, `mixed`, `unknown`;
-- `evidence_kind`: `explicit`, `inferred`, `weak`.
+Le validateur exige les cles exactes, zero a quatre hints, `subject=dialogue`,
+une confiance dans `[0,1]`, un contenu borne et un reason code parmi
+`active_question`, `dialogue_direction`, `shared_distinction`,
+`unresolved_tension`, `temporary_situation`, `frame_correction`. Toute cle
+identitaire/canonique, ou un sujet `user` / `llm`, invalide toute la sortie.
 
 #### Mutable identity judge
 
@@ -367,8 +361,8 @@ Chat user turn
   -> main chat LLM OpenRouter text/stream
   -> post-turn memory
        -> embedding passage service for traces/summaries
-       -> identity_extractor OpenRouter JSON
-       -> identity_periodic_agent OpenRouter JSON when staged window completes
+       -> dialogic_context_hint_extractor OpenRouter JSON puis persistance temporaire bornee
+       -> mutable_identity_judge OpenRouter JSON quand la fenetre de cinq paires est complete
 
 Voice dictation path
   -> /api/chat/transcribe
@@ -393,12 +387,14 @@ Active document upload path
 
 ### Divergences sans raison claire documentee dans le code
 
-- `chat_llm_flow.py` appelle encore `config.OR_BASE` au lieu de `llm_client.or_chat_completions_url()`. L'arbitre memoire, l'extracteur identity au tour, l'agent periodic identity et le resume conversationnel utilisent desormais le transport runtime partage.
+- `chat_llm_flow.py` appelle encore `config.OR_BASE` au lieu de `llm_client.or_chat_completions_url()`. L'arbitre memoire, l'extracteur de contexte dialogique, le juge mutable et le resume conversationnel utilisent le transport runtime partage.
 - `arbiter_model` existe encore dans le schema runtime par compatibilite, mais ne pilote plus un caller actif. Il peut etre supprime dans un lot separe si la migration de compatibilite devient explicitement souhaitable.
 
 ### Endroits fragiles ou implicites
 
-- Les sorties `identity_extractor` fail-open vers `[]`, ce qui est volontaire pour ne pas casser le tour, mais rend les erreurs invisibles dans le comportement utilisateur direct.
+- Les sorties `dialogic_context_hint_extractor` fail-open sans casser le tour;
+  le stage distingue toutefois timeout, transport, schema invalide, absence
+  legitime et persistance echouee par statuts/reason codes content-free.
 - Le summary ne possede pas de schema JSON; c'est un texte libre. C'est normal pour une synthese, mais plus fragile a verifier automatiquement.
 - `extract_openrouter_text()` suppose `choices[0].message.content`; il n'y a pas de contrat alternatif si un provider renvoie une autre forme.
 - Le chat principal envoie un `reasoning` cache pour les modeles compatibles;

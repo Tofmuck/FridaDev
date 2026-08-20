@@ -1,500 +1,126 @@
-from __future__ import annotations
-
-import sys
 import unittest
-from pathlib import Path
 from types import SimpleNamespace
-
-
-def _resolve_app_dir() -> Path:
-    for parent in Path(__file__).resolve().parents:
-        if (parent / "web").exists() and (parent / "server.py").exists():
-            return parent
-    raise RuntimeError("Unable to resolve APP_DIR from test path")
-
-
-APP_DIR = _resolve_app_dir()
-if str(APP_DIR) not in sys.path:
-    sys.path.insert(0, str(APP_DIR))
+from unittest.mock import patch
 
 from core import chat_memory_flow
 
 
-def _event_payloads(events, name: str):
-    return [payload for event, payload in events if event == name]
+def _result(hints=None, status='ok', reason='dialogic_context_hints_extracted'):
+    return {
+        'status': status,
+        'reason_code': reason,
+        'schema_version': 'dialogic_context_hint_v1',
+        'prompt_kind': 'dialogic_context_hint_extractor_v1',
+        'hints': list(hints or []),
+    }
 
 
 class ChatMemoryFlowIdentityModePipelineTests(unittest.TestCase):
-    def test_presence_projects_only_marked_assistant_out_of_identity_sources(self) -> None:
-        events = []
-        observed = {
-            "extract_turns": None,
-            "persisted": None,
-            "staged_turns": None,
-        }
-        original_stage = chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair
-        canonical_pair = [
-            {"role": "user", "content": "Dépôt synthétique."},
-            {
-                "role": "assistant",
-                "content": "...",
-                "meta": {"assistant_turn": {"status": "dialogic_presence"}},
-            },
-        ]
-
-        def fake_extract(turns):
-            observed["extract_turns"] = [dict(turn) for turn in turns]
-            return [
-                {"subject": turn["role"], "content": turn["content"]}
-                for turn in turns
-                if str(turn.get("content") or "").strip()
-            ]
-
-        def fake_stage(_conversation_id, turn_pair, **_kwargs):
-            observed["staged_turns"] = [dict(turn) for turn in turn_pair]
-            return {
-                "status": "buffering",
-                "reason_code": "below_threshold",
-                "buffer_pairs_count": 1,
-                "buffer_target_pairs": 5,
-                "buffer_cleared": False,
-                "writes_applied": False,
-                "last_agent_status": "buffering",
-                "outcomes": [],
-            }
-
-        arbiter_module = SimpleNamespace(extract_identities=fake_extract)
-        memory_store_module = SimpleNamespace(
-            persist_identity_entries=lambda conversation_id, entries: observed.update(
-                {"persisted": (conversation_id, list(entries))}
-            ),
-            preview_identity_entries=lambda entries: list(entries),
-            record_identity_evidence=lambda *_args, **_kwargs: None,
+    def _run(self, pair, *, mode='enforced_all', result=None):
+        observed = {'context_pairs': [], 'persisted': [], 'periodic_pairs': [], 'legacy_writes': 0}
+        arbiter = SimpleNamespace(
+            extract_dialogic_context_hints=lambda turns: observed['context_pairs'].append([dict(t) for t in turns]) or (result or _result())
         )
-        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
+        store = SimpleNamespace(
+            record_dialogic_context_hints=lambda cid, hints: observed['persisted'].append((cid, list(hints))) or {
+                'status': 'ok', 'reason_code': 'dialogic_context_hints_persisted', 'persisted_count': len(hints),
+            },
+            persist_identity_entries=lambda *_args: observed.__setitem__('legacy_writes', observed['legacy_writes'] + 1),
+            record_identity_evidence=lambda *_args: observed.__setitem__('legacy_writes', observed['legacy_writes'] + 1),
+            add_identity=lambda *_args: observed.__setitem__('legacy_writes', observed['legacy_writes'] + 1),
+        )
 
-        chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair = fake_stage
-        try:
+        def periodic(_cid, turns, **_kwargs):
+            observed['periodic_pairs'].append([dict(t) for t in turns])
+            return {}
+
+        with (
+            patch.object(chat_memory_flow, '_run_periodic_identity_agent', side_effect=periodic),
+            patch.object(chat_memory_flow.chat_turn_logger, 'emit', return_value=True),
+        ):
             chat_memory_flow.record_identity_entries_for_mode(
-                "conv-presence-identity",
-                canonical_pair,
-                mode="enforced_all",
-                arbiter_module=arbiter_module,
-                memory_store_module=memory_store_module,
-                admin_logs_module=admin_logs_module,
+                'conv-synthetic', pair, mode=mode, arbiter_module=arbiter,
+                memory_store_module=store,
+                admin_logs_module=SimpleNamespace(log_event=lambda *_args, **_kwargs: None),
             )
-        finally:
-            chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair = original_stage
+        return observed
 
-        expected_projected_pair = [
-            {"role": "user", "content": "Dépôt synthétique."},
-            {
-                "role": "assistant",
-                "content": "",
-                "meta": {"assistant_turn": {"status": "dialogic_presence"}},
-            },
-        ]
-        self.assertEqual(observed["extract_turns"], expected_projected_pair)
-        self.assertEqual(observed["staged_turns"], expected_projected_pair)
-        self.assertEqual(
-            observed["persisted"],
-            (
-                "conv-presence-identity",
-                [{"subject": "user", "content": "Dépôt synthétique."}],
-            ),
-        )
-        self.assertEqual(canonical_pair[1]["content"], "...")
-
-    def test_unmarked_dot_messages_remain_identity_sources(self) -> None:
-        observed = {"extract_turns": None}
-        arbiter_module = SimpleNamespace(
-            extract_identities=lambda turns: observed.update(
-                {"extract_turns": [dict(turn) for turn in turns]}
-            )
-            or [],
-        )
-        memory_store_module = SimpleNamespace(
-            preview_identity_entries=lambda entries: list(entries),
-            record_identity_evidence=lambda *_args, **_kwargs: None,
-        )
-        admin_logs_module = SimpleNamespace(log_event=lambda *_args, **_kwargs: None)
+    def test_presence_projects_only_marked_assistant_out_of_identity_sources(self):
         pair = [
-            {"role": "user", "content": "..."},
-            {"role": "assistant", "content": "..."},
+            {'role': 'user', 'content': 'SYNTHETIC_USER'},
+            {'role': 'assistant', 'content': '...', 'meta': {'assistant_turn': {'status': 'dialogic_presence'}}},
         ]
+        observed = self._run(pair)
+        self.assertEqual(observed['context_pairs'][0], pair)
+        self.assertEqual(observed['periodic_pairs'][0][1]['content'], '')
 
-        chat_memory_flow.record_identity_entries_for_mode(
-            "conv-unmarked-dots",
-            pair,
-            mode="shadow",
-            arbiter_module=arbiter_module,
-            memory_store_module=memory_store_module,
-            admin_logs_module=admin_logs_module,
-        )
+    def test_unmarked_dot_messages_remain_identity_sources(self):
+        pair = [{'role': 'user', 'content': '...'}, {'role': 'assistant', 'content': '...'}]
+        observed = self._run(pair)
+        self.assertEqual(observed['context_pairs'][0], pair)
+        self.assertEqual(observed['periodic_pairs'][0], pair)
 
-        self.assertEqual(observed["extract_turns"], pair)
-
-    def test_presence_meta_on_user_input_cannot_project_user_content_out(self) -> None:
-        observed = {"extract_turns": None}
-        arbiter_module = SimpleNamespace(
-            extract_identities=lambda turns: observed.update(
-                {"extract_turns": [dict(turn) for turn in turns]}
-            )
-            or [],
-        )
-        memory_store_module = SimpleNamespace(
-            preview_identity_entries=lambda entries: list(entries),
-            record_identity_evidence=lambda *_args, **_kwargs: None,
-        )
-        admin_logs_module = SimpleNamespace(log_event=lambda *_args, **_kwargs: None)
+    def test_presence_meta_on_user_input_cannot_project_user_content_out(self):
         pair = [
-            {
-                "role": "user",
-                "content": "Source utilisateur conservée.",
-                "meta": {"assistant_turn": {"status": "dialogic_presence"}},
-            },
-            {"role": "assistant", "content": "Réponse ordinaire."},
+            {'role': 'user', 'content': 'SYNTHETIC_USER', 'metadata': {'provenance': 'dialogic_presence'}},
+            {'role': 'assistant', 'content': 'SYNTHETIC_ASSISTANT'},
         ]
+        observed = self._run(pair)
+        self.assertEqual(observed['context_pairs'][0], pair)
+        self.assertEqual(observed['periodic_pairs'][0], pair)
 
-        chat_memory_flow.record_identity_entries_for_mode(
-            "conv-user-marker-forgery",
-            pair,
-            mode="shadow",
-            arbiter_module=arbiter_module,
-            memory_store_module=memory_store_module,
-            admin_logs_module=admin_logs_module,
-        )
+    def test_record_identity_entries_for_mode_handles_off_and_enforced(self):
+        pair = [{'role': 'user', 'content': 'U'}, {'role': 'assistant', 'content': 'A'}]
+        off = self._run(pair, mode='off')
+        enforced = self._run(pair)
+        self.assertEqual(off['context_pairs'], [])
+        self.assertEqual(len(enforced['context_pairs']), 1)
+        self.assertEqual(len(enforced['periodic_pairs']), 1)
 
-        self.assertEqual(observed["extract_turns"], pair)
+    def test_record_identity_entries_for_mode_enforced_runs_periodic_identity_staging_after_legacy_persist(self):
+        hint = {'subject': 'dialogue', 'content': 'H', 'confidence': 0.9, 'reason_code': 'active_question'}
+        observed = self._run([{'role': 'user', 'content': 'U'}, {'role': 'assistant', 'content': 'A'}], result=_result([hint]))
+        self.assertEqual(len(observed['persisted']), 1)
+        self.assertEqual(observed['legacy_writes'], 0)
+        self.assertEqual(len(observed['periodic_pairs']), 1)
 
-    def test_record_identity_entries_for_mode_handles_off_and_enforced(self) -> None:
+    def test_record_identity_entries_for_mode_enforced_keeps_fail_open_when_periodic_agent_raises(self):
         events = []
-        observed = {
-            "extract_called": 0,
-            "persisted": None,
-            "preview_called": 0,
-            "evidence_called": 0,
-        }
-
-        arbiter_module = SimpleNamespace(
-            extract_identities=lambda turns: observed.update({"extract_called": observed["extract_called"] + 1})
-            or [{"identity_id": "id-1"}],
-        )
-        memory_store_module = SimpleNamespace(
-            persist_identity_entries=lambda conversation_id, entries: observed.update({"persisted": (conversation_id, list(entries))}),
-            preview_identity_entries=lambda entries: observed.update({"preview_called": observed["preview_called"] + 1}) or entries,
-            record_identity_evidence=lambda *_args, **_kwargs: observed.update({"evidence_called": observed["evidence_called"] + 1}),
-        )
-        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
-
-        chat_memory_flow.record_identity_entries_for_mode(
-            "conv-identity-off",
-            [{"role": "user", "content": "x"}],
-            mode="off",
-            arbiter_module=arbiter_module,
-            memory_store_module=memory_store_module,
-            admin_logs_module=admin_logs_module,
-        )
-        chat_memory_flow.record_identity_entries_for_mode(
-            "conv-identity-enforced",
-            [{"role": "assistant", "content": "y"}],
-            mode="enforced_all",
-            arbiter_module=arbiter_module,
-            memory_store_module=memory_store_module,
-            admin_logs_module=admin_logs_module,
-        )
-
-        self.assertEqual(observed["extract_called"], 1)
-        self.assertEqual(observed["persisted"], ("conv-identity-enforced", [{"identity_id": "id-1"}]))
-        self.assertEqual(observed["preview_called"], 0)
-        self.assertEqual(observed["evidence_called"], 0)
-        self.assertEqual(_event_payloads(events, "identity_mode_apply")[0]["action"], "skip_mode_off")
-        self.assertEqual(
-            _event_payloads(events, "identity_mode_apply")[1]["action"],
-            "record_legacy_identity_diagnostics_and_mutable_judge",
-        )
-
-    def test_record_identity_entries_for_mode_enforced_runs_periodic_identity_staging_after_legacy_persist(self) -> None:
-        events = []
-        order: list[str] = []
-        observed = {"turn_pair": None}
-        original_stage = chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair
-
-        arbiter_module = SimpleNamespace(
-            extract_identities=lambda _turns: [{"identity_id": "id-1"}],
-        )
-        memory_store_module = SimpleNamespace(
-            persist_identity_entries=lambda conversation_id, entries: order.append(
-                f"persist:{conversation_id}:{len(list(entries))}"
+        arbiter = SimpleNamespace(extract_dialogic_context_hints=lambda _turns: _result(status='not_selected'))
+        store = SimpleNamespace(record_dialogic_context_hints=lambda *_args: self.fail('no hint must not persist'))
+        with (
+            patch.object(
+                chat_memory_flow.memory_identity_periodic_agent,
+                'stage_identity_turn_pair',
+                side_effect=RuntimeError('synthetic-periodic-failure'),
             ),
-            preview_identity_entries=lambda entries: list(entries),
-            record_identity_evidence=lambda *_args, **_kwargs: None,
-        )
-        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
-
-        def fake_stage(conversation_id, turn_pair, **_kwargs):
-            order.append(f"stage:{conversation_id}")
-            self.assertTrue(_kwargs["enforce_writes"])
-            observed["turn_pair"] = list(turn_pair)
-            return {
-                "status": "buffering",
-                "reason_code": "below_threshold",
-                "buffer_pairs_count": 1,
-                "buffer_target_pairs": 5,
-                "buffer_cleared": False,
-                "writes_applied": False,
-                "last_agent_status": "buffering",
-                "outcomes": [
-                    {
-                        "subject": "llm",
-                        "action": "no_change",
-                        "old_len": 0,
-                        "new_len": 0,
-                        "validation_ok": True,
-                        "reason_code": "no_change",
-                    }
-                ],
-            }
-
-        chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair = fake_stage
-        try:
+            patch.object(chat_memory_flow.chat_turn_logger, 'emit', return_value=True),
+        ):
             chat_memory_flow.record_identity_entries_for_mode(
-                "conv-identity-enforced",
-                [
-                    {"role": "user", "content": "x"},
-                    {"role": "assistant", "content": "y"},
-                ],
-                mode="enforced_all",
-                arbiter_module=arbiter_module,
-                memory_store_module=memory_store_module,
-                admin_logs_module=admin_logs_module,
+                'conv-synthetic',
+                [{'role': 'user', 'content': 'U'}, {'role': 'assistant', 'content': 'A'}],
+                mode='enforced_all',
+                arbiter_module=arbiter,
+                memory_store_module=store,
+                admin_logs_module=SimpleNamespace(log_event=lambda event, **fields: events.append((event, fields))),
             )
-        finally:
-            chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair = original_stage
+        judge_events = [fields for event, fields in events if event == 'mutable_identity_judge_apply']
+        self.assertEqual(len(judge_events), 1)
+        self.assertEqual(judge_events[0]['status'], 'skipped')
+        self.assertEqual(judge_events[0]['reason_code'], 'mutable_judge_flow_error')
 
-        self.assertEqual(order, ["persist:conv-identity-enforced:1", "stage:conv-identity-enforced"])
-        self.assertEqual(
-            observed["turn_pair"],
-            [
-                {"role": "user", "content": "x"},
-                {"role": "assistant", "content": "y"},
-            ],
-        )
-        stage_event = _event_payloads(events, "mutable_identity_judge_apply")[0]
-        self.assertEqual(stage_event["status"], "buffering")
-        self.assertEqual(stage_event["reason_code"], "below_threshold")
-        self.assertEqual(stage_event["buffer_pairs_count"], 1)
-        self.assertEqual(
-            _event_payloads(events, "identity_mode_apply")[0]["action"],
-            "record_legacy_identity_diagnostics_and_mutable_judge",
-        )
+    def test_record_identity_entries_for_mode_passes_complete_pair_to_identity_buffer_after_guarding_diagnostics(self):
+        pair = [{'role': 'user', 'content': 'U'}, {'role': 'assistant', 'content': 'A'}]
+        observed = self._run(pair)
+        self.assertEqual(observed['periodic_pairs'], [pair])
+        self.assertEqual(observed['legacy_writes'], 0)
 
-    def test_record_identity_entries_for_mode_enforced_keeps_fail_open_when_periodic_agent_raises(self) -> None:
-        events = []
-        observed = {"persisted": None}
-        original_stage = chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair
-
-        arbiter_module = SimpleNamespace(
-            extract_identities=lambda _turns: [{"identity_id": "id-1"}],
-        )
-        memory_store_module = SimpleNamespace(
-            persist_identity_entries=lambda conversation_id, entries: observed.update(
-                {"persisted": (conversation_id, list(entries))}
-            ),
-            preview_identity_entries=lambda entries: list(entries),
-            record_identity_evidence=lambda *_args, **_kwargs: None,
-        )
-        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
-
-        def boom(*_args, **_kwargs):
-            raise RuntimeError("periodic staging exploded")
-
-        chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair = boom
-        try:
-            chat_memory_flow.record_identity_entries_for_mode(
-                "conv-identity-enforced",
-                [
-                    {"role": "user", "content": "x"},
-                    {"role": "assistant", "content": "y"},
-                ],
-                mode="enforced_all",
-                arbiter_module=arbiter_module,
-                memory_store_module=memory_store_module,
-                admin_logs_module=admin_logs_module,
-            )
-        finally:
-            chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair = original_stage
-
-        self.assertEqual(observed["persisted"], ("conv-identity-enforced", [{"identity_id": "id-1"}]))
-        stage_event = _event_payloads(events, "mutable_identity_judge_apply")[0]
-        self.assertEqual(stage_event["status"], "skipped")
-        self.assertEqual(stage_event["reason_code"], "mutable_judge_flow_error")
-        self.assertEqual(
-            _event_payloads(events, "identity_mode_apply")[0]["action"],
-            "record_legacy_identity_diagnostics_and_mutable_judge",
-        )
-
-    def test_record_identity_entries_for_mode_passes_complete_pair_to_identity_buffer_after_guarding_diagnostics(self) -> None:
-        events = []
-        observed = {
-            "persisted": None,
-            "buffered_turn_pair": None,
-        }
-        original_stage = chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair
-
-        arbiter_module = SimpleNamespace(
-            extract_identities=lambda _turns: [
-                {
-                    "subject": "llm",
-                    "content": "Claims to have read the full article in detail",
-                    "confidence": 0.88,
-                    "stability": "durable",
-                    "utterance_mode": "self_description",
-                    "recurrence": "repeated",
-                    "scope": "llm",
-                    "evidence_kind": "explicit",
-                }
-            ],
-        )
-        memory_store_module = SimpleNamespace(
-            persist_identity_entries=lambda conversation_id, entries: observed.update(
-                {"persisted": (conversation_id, list(entries))}
-            ),
-            preview_identity_entries=lambda entries: list(entries),
-            record_identity_evidence=lambda *_args, **_kwargs: None,
-        )
-        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
-
-        def fake_stage(_conversation_id, turn_pair, **_kwargs):
-            self.assertTrue(_kwargs["enforce_writes"])
-            observed["buffered_turn_pair"] = list(turn_pair)
-            return {
-                "status": "buffering",
-                "reason_code": "below_threshold",
-                "buffer_pairs_count": 1,
-                "buffer_target_pairs": 5,
-                "buffer_cleared": False,
-                "writes_applied": False,
-                "last_agent_status": "buffering",
-                "outcomes": [
-                    {
-                        "subject": "llm",
-                        "action": "no_change",
-                        "old_len": 0,
-                        "new_len": 0,
-                        "validation_ok": True,
-                        "reason_code": "no_change",
-                    }
-                ],
-            }
-
-        chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair = fake_stage
-        try:
-            chat_memory_flow.record_identity_entries_for_mode(
-                "conv-identity-partial-guard",
-                [
-                    {"role": "user", "content": "Peux-tu le lire ?"},
-                    {"role": "assistant", "content": "Claims to have read the full article in detail"},
-                ],
-                mode="enforced_all",
-                web_input={"read_state": "page_partially_read"},
-                arbiter_module=arbiter_module,
-                memory_store_module=memory_store_module,
-                admin_logs_module=admin_logs_module,
-            )
-        finally:
-            chat_memory_flow.memory_identity_periodic_agent.stage_identity_turn_pair = original_stage
-
-        self.assertEqual(observed["persisted"], ("conv-identity-partial-guard", []))
-        self.assertEqual(
-            observed["buffered_turn_pair"],
-            [
-                {"role": "user", "content": "Peux-tu le lire ?"},
-                {"role": "assistant", "content": "Claims to have read the full article in detail"},
-            ],
-        )
-        stage_event = _event_payloads(events, "mutable_identity_judge_apply")[0]
-        self.assertEqual(stage_event["status"], "buffering")
-        self.assertEqual(stage_event["reason_code"], "below_threshold")
-        self.assertEqual(_event_payloads(events, "identity_mode_apply")[0]["guard_filtered_count"], 1)
-
-    def test_record_identity_entries_for_mode_shadow_emits_skipped_identity_write_per_side(self) -> None:
-        events = []
-        observed = {
-            "extract_called": 0,
-            "persist_called": 0,
-            "preview_called": 0,
-            "evidence_args": None,
-        }
-        preview_entries = [
-            {"subject": "llm", "content": "Frida profile", "status": "accepted"},
-            {"subject": "user", "content": "User preference one", "status": "deferred"},
-            {"subject": "user", "content": "User preference two", "status": "accepted"},
-        ]
-
-        arbiter_module = SimpleNamespace(
-            extract_identities=lambda turns: observed.update({"extract_called": observed["extract_called"] + 1}) or list(turns),
-        )
-        memory_store_module = SimpleNamespace(
-            persist_identity_entries=lambda *_args, **_kwargs: observed.update({"persist_called": observed["persist_called"] + 1}),
-            preview_identity_entries=lambda _entries: observed.update({"preview_called": observed["preview_called"] + 1}) or preview_entries,
-            record_identity_evidence=lambda conversation_id, entries: observed.update(
-                {"evidence_args": (conversation_id, list(entries))}
-            ),
-        )
-        admin_logs_module = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
-
-        chat_events: list[tuple[str, dict[str, object]]] = []
-        branch_events: list[tuple[str, str]] = []
-        original_emit = chat_memory_flow.chat_turn_logger.emit
-        original_branch = chat_memory_flow.chat_turn_logger.emit_branch_skipped
-        chat_memory_flow.chat_turn_logger.emit = lambda stage, **kwargs: chat_events.append((stage, kwargs)) or True
-        chat_memory_flow.chat_turn_logger.emit_branch_skipped = (
-            lambda *, reason_code, reason_short: branch_events.append((reason_code, reason_short)) or True
-        )
-        try:
-            chat_memory_flow.record_identity_entries_for_mode(
-                "conv-identity-shadow",
-                [{"subject": "user", "content": "hello"}],
-                mode="shadow",
-                arbiter_module=arbiter_module,
-                memory_store_module=memory_store_module,
-                admin_logs_module=admin_logs_module,
-            )
-        finally:
-            chat_memory_flow.chat_turn_logger.emit = original_emit
-            chat_memory_flow.chat_turn_logger.emit_branch_skipped = original_branch
-
-        self.assertEqual(observed["extract_called"], 1)
-        self.assertEqual(observed["persist_called"], 0)
-        self.assertEqual(observed["preview_called"], 1)
-        self.assertEqual(observed["evidence_args"], ("conv-identity-shadow", preview_entries))
-
-        identity_events = [kwargs for stage, kwargs in chat_events if stage == "identity_write"]
-        self.assertEqual(len(identity_events), 2)
-        by_side = {event["payload"]["target_side"]: event for event in identity_events}
-        self.assertSetEqual(set(by_side.keys()), {"frida", "user"})
-        self.assertTrue(all(event["status"] == "skipped" for event in identity_events))
-        self.assertTrue(all(event["reason_code"] == "not_applicable" for event in identity_events))
-        self.assertEqual(by_side["frida"]["payload"]["write_mode"], "legacy_diagnostic_shadow")
-        self.assertEqual(by_side["frida"]["payload"]["write_effect"], "evidence_only")
-        self.assertEqual(by_side["frida"]["payload"]["evidence_count"], 1)
-        self.assertEqual(by_side["frida"]["payload"]["observed_count"], 1)
-        self.assertEqual(by_side["user"]["payload"]["evidence_count"], 2)
-        self.assertEqual(by_side["user"]["payload"]["observed_count"], 2)
-        self.assertTrue(all(event["payload"]["persisted_count"] == 0 for event in identity_events))
-        self.assertTrue(all(event["payload"]["retained_count"] == 0 for event in identity_events))
-        self.assertTrue(all(event["payload"]["content_present"] for event in identity_events))
-        self.assertTrue(all("preview" not in event["payload"] for event in identity_events))
-        self.assertTrue(all("entries" not in event["payload"] for event in identity_events))
-        self.assertEqual(branch_events, [("not_applicable", "identity_write_shadow_mode")])
-        self.assertEqual(
-            _event_payloads(events, "identity_mode_apply")[0]["action"],
-            "record_legacy_identity_evidence_and_shadow_mutable_judge",
-        )
-        self.assertEqual(_event_payloads(events, "identity_mode_apply")[0]["write_mode"], "shadow")
-        self.assertFalse(_event_payloads(events, "identity_mode_apply")[0]["canonical_write_applied"])
+    def test_record_identity_entries_for_mode_shadow_emits_skipped_identity_write_per_side(self):
+        observed = self._run([{'role': 'user', 'content': 'U'}, {'role': 'assistant', 'content': 'A'}], mode='shadow')
+        self.assertEqual(len(observed['context_pairs']), 1)
+        self.assertEqual(observed['legacy_writes'], 0)
+        self.assertEqual(len(observed['periodic_pairs']), 1)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()

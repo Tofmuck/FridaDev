@@ -465,9 +465,40 @@
     const activity = latestAgentActivity(staging);
     const buffer = currentBuffer(staging);
     const completedAgent = lastCompletedAgent(staging);
+    const dialogicContext = safePayload.dialogic_context && typeof safePayload.dialogic_context === "object"
+      ? safePayload.dialogic_context
+      : {};
+    const contextActivity = dialogicContext.latest_activity && typeof dialogicContext.latest_activity === "object"
+      ? dialogicContext.latest_activity
+      : {};
+    const contextRuntime = dialogicContext.runtime && typeof dialogicContext.runtime === "object"
+      ? dialogicContext.runtime
+      : {};
+    const contextSelection = contextRuntime.selection && typeof contextRuntime.selection === "object"
+      ? contextRuntime.selection
+      : {};
     const stagingScope = toText(staging.scope_kind);
     const stagingConversationId = toText(staging.conversation_id);
     renderIdentityRuntimeRepresentationsMeta(metaTarget, safePayload);
+    summaryTarget.appendChild(
+      createSummaryCard({
+        title: "Contexte dialogique temporaire",
+        body: "Caller actif par tour, sans autorite Identity: les hints bornes portent sur le dialogue et servent uniquement au contexte du tour suivant.",
+        chips: [
+          `caller=${toText(dialogicContext.active_caller) || "n/a"}`,
+          `sujet=${toText(dialogicContext.logical_subject) || "n/a"}`,
+          `statut=${toText(contextActivity.status) || "n/a"}`,
+          `raison=${toText(contextActivity.reason_code) || "n/a"}`,
+          `hints=${Number(contextActivity.hint_count) || 0}`,
+          `stockes=${Number(dialogicContext.total_count) || 0}`,
+          `max_items=${Number(contextSelection.max_items) || 0}`,
+          `budget_tokens=${Number(contextSelection.max_tokens) || 0}`,
+          `max_age_days=${Number(contextSelection.max_age_days) || 0}`,
+          `identity_writer=${Boolean(dialogicContext.identity_writer)}`,
+          `canonique=${Boolean(dialogicContext.mutable_authority)}`,
+        ],
+      }),
+    );
     summaryTarget.appendChild(
       createSummaryCard({
         title: "Projection jugement",

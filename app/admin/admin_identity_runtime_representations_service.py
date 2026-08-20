@@ -20,6 +20,7 @@ def identity_runtime_representations_response(
     identity_module: Any,
     memory_store_module: Any = None,
     log_store_module: Any = None,
+    runtime_settings_module: Any = None,
 ) -> Tuple[dict[str, Any], int]:
     try:
         structured_identity = identity_module.build_identity_input()
@@ -43,6 +44,15 @@ def identity_runtime_representations_response(
         memory_store_module=memory_store_module,
         log_store_module=log_store_module,
     )
+    dialogic_context = admin_identity_read_model_service.admin_identity_read_model_projection.build_dialogic_context_block(
+        evidence=memory_store_module.list_identity_evidence('dialogue', limit=20),
+        latest_activity=admin_identity_read_model_service._latest_dialogic_context_event(
+            log_store_module=log_store_module
+        ),
+        runtime=admin_identity_read_model_service.build_dialogic_context_runtime_block(
+            runtime_settings_module=runtime_settings_module
+        ),
+    )
 
     return (
         {
@@ -61,6 +71,7 @@ def identity_runtime_representations_response(
                 'auto_canonization_suspended': bool(identity_staging.get('auto_canonization_suspended')),
             },
             'identity_staging': identity_staging,
+            'dialogic_context': dialogic_context,
             'structured_identity': {
                 'technical_name': 'identity_input',
                 'role': 'hermeneutic_judgment',
