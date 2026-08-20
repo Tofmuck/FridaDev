@@ -170,7 +170,11 @@ class Lot9GoldenHarnessTests(unittest.TestCase):
             surface='override_stream',
             regime='presence',
         )
-        for case in (answer_override, presence_override):
+        presence_json = server_chat_pipeline.exercise_chat_llm_surface(
+            surface='override_non_stream',
+            regime='presence',
+        )
+        for case in (answer_override, presence_override, presence_json):
             with self.subTest(regime=case['regime'], stream=case['stream_req']):
                 self.assertIsNone(case['raised_exception'])
                 self.assertEqual(case['observed']['post_calls'], 0)
@@ -183,6 +187,8 @@ class Lot9GoldenHarnessTests(unittest.TestCase):
                 )
         self.assertEqual(presence_override['visible_text'], '...')
         self.assertEqual(presence_override['assistant_text'], '...')
+        self.assertEqual(presence_json['result']['payload']['text'], '...')
+        self.assertEqual(presence_json['result']['status'], 200)
         presence_meta = presence_override['conversation']['messages'][-1]['meta']
         self.assertEqual(
             presence_meta['assistant_turn'],
@@ -196,7 +202,49 @@ class Lot9GoldenHarnessTests(unittest.TestCase):
                 'web_context_injected_to_main_model': False,
             },
         )
+        self.assertEqual(
+            presence_json['conversation']['messages'][-1]['meta'],
+            presence_meta,
+        )
         self.assertEqual(presence_override['terminal']['event'], 'done')
+
+        presence_summary = {
+            'text': presence_override['assistant_text'],
+            'provider_calls': presence_override['observed']['post_calls'],
+            'secret_calls': presence_override['observed']['secret_calls'],
+            'url_calls': presence_override['observed']['url_calls'],
+            'assistant_saves': presence_override['observed']['save_calls'],
+            'assistant_messages': sum(
+                message['role'] == 'assistant'
+                for message in presence_override['conversation']['messages']
+            ),
+            'response_origin': presence_meta['assistant_runtime_provenance']['response_origin'],
+        }
+
+        def assert_presence_boundary(summary):
+            if summary != {
+                'text': '...',
+                'provider_calls': 0,
+                'secret_calls': 0,
+                'url_calls': 0,
+                'assistant_saves': 1,
+                'assistant_messages': 1,
+                'response_origin': 'final_lock',
+            }:
+                raise AssertionError('dialogic Presence assistant boundary changed')
+
+        assert_presence_boundary(presence_summary)
+        for key, value in (
+            ('provider_calls', 1),
+            ('secret_calls', 1),
+            ('url_calls', 1),
+            ('assistant_saves', 2),
+            ('assistant_messages', 2),
+        ):
+            mutated_presence = dict(presence_summary)
+            mutated_presence[key] = value
+            with self.assertRaises(AssertionError):
+                assert_presence_boundary(mutated_presence)
 
     def test_route_map_is_exact_by_family_method_endpoint_and_guard(self) -> None:
         actual = lot9_route_map_contract.route_contracts_from_app(self.server.app)
@@ -436,10 +484,13 @@ class Lot9GoldenHarnessTests(unittest.TestCase):
             (('agenda',), (), 'agenda_readonly_response', False),
             (('agenda', 'biblio'), (), 'agenda_readonly_response', False),
             (('presence',), (), 'hermeneutic_presence', False),
+            (('biblio', 'presence'), (), 'biblio_rendered_answer', False),
             (('agenda', 'presence'), (), 'agenda_readonly_response', False),
+            (('agenda', 'biblio', 'presence'), (), 'agenda_readonly_response', False),
             ((), ('biblio',), None, True),
             ((), ('agenda',), None, True),
         )
+        selected_by_locks = {}
         for locks, invalid, expected_source, provider_called in cases:
             with self.subTest(locks=locks, invalid=invalid):
                 case = server_chat_pipeline.exercise_chat_orchestration_golden(
@@ -452,6 +503,7 @@ class Lot9GoldenHarnessTests(unittest.TestCase):
                     manifest['final_response_lock']['source'] or None,
                     expected_source,
                 )
+                selected_by_locks[locks] = manifest['final_response_lock']['source'] or None
                 self.assertEqual(case['observed']['provider_calls'], int(provider_called))
                 self.assertEqual(case['observed']['secret_calls'], int(provider_called))
                 self.assertEqual(case['observed']['url_calls'], int(provider_called))
@@ -473,6 +525,30 @@ class Lot9GoldenHarnessTests(unittest.TestCase):
                     capsule['reason_code'],
                     'continuity_capsule_final_lock_bypass' if not provider_called else 'continuity_capsule_ready',
                 )
+
+        priority_summary = {
+            'presence': selected_by_locks[('presence',)],
+            'biblio_presence': selected_by_locks[('biblio', 'presence')],
+            'agenda_biblio_presence': selected_by_locks[('agenda', 'biblio', 'presence')],
+        }
+
+        def assert_three_way_priority(summary):
+            if summary != {
+                'presence': 'hermeneutic_presence',
+                'biblio_presence': 'biblio_rendered_answer',
+                'agenda_biblio_presence': 'agenda_readonly_response',
+            }:
+                raise AssertionError('Agenda/Biblio/Presence priority changed')
+
+        assert_three_way_priority(priority_summary)
+        for key, value in (
+            ('biblio_presence', 'hermeneutic_presence'),
+            ('agenda_biblio_presence', 'biblio_rendered_answer'),
+        ):
+            inverted_priority = dict(priority_summary)
+            inverted_priority[key] = value
+            with self.assertRaises(AssertionError):
+                assert_three_way_priority(inverted_priority)
 
         conflict = server_chat_pipeline.exercise_chat_orchestration_golden(
             self.server,

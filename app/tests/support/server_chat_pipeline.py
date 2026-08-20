@@ -800,6 +800,9 @@ def exercise_chat_orchestration_golden(
     final_locks: tuple[str, ...] = (),
     invalid_locks: tuple[str, ...] = (),
     stream_req: bool = False,
+    turn_count: int = 1,
+    preserve_identity_effects: bool = False,
+    hermeneutic_mode: str = 'off',
 ) -> dict[str, Any]:
     """Traverse chat_response with synthetic lane, transport, and persistence fakes."""
 
@@ -847,6 +850,7 @@ def exercise_chat_orchestration_golden(
         observed['decision_trace'].append('provider_call')
         return FakeResponse()
 
+    identity_effect = server_module.chat_service._record_identity_entries_for_mode
     base_observed, restore_base = patch_server_chat_pipeline(
         server_module,
         conversation=conversation,
@@ -858,9 +862,11 @@ def exercise_chat_orchestration_golden(
         ),
         existing_conversation=True,
         summarize_user_turn=False,
-        hermeneutic_mode='off',
+        hermeneutic_mode=hermeneutic_mode,
         disable_chat_log_storage=True,
     )
+    if preserve_identity_effects:
+        server_module.chat_service._record_identity_entries_for_mode = identity_effect
     originals: list[tuple[Any, str, Any]] = []
 
     def patch_attr(obj: Any, name: str, value: Any) -> None:
@@ -1107,18 +1113,28 @@ def exercise_chat_orchestration_golden(
             lambda manifest, **_kwargs: observed['manifests'].append(copy.deepcopy(manifest)),
         )
 
-        response = server_module.app.test_client().post(
-            '/api/chat',
-            json={
-                'message': 'LOT9B_SYNTHETIC_USER_TURN',
-                'conversation_id': conversation['id'],
-                'stream': stream_req,
-                'web_search': 'web' in enabled,
-                'agenda_enabled': 'agenda' in enabled,
-                'biblio_enabled': 'biblio' in enabled,
-            },
-        )
-        response_bytes = response.get_data()
+        responses = []
+        response_bytes_by_turn = []
+        for turn_index in range(1, max(1, int(turn_count)) + 1):
+            user_turn = (
+                'LOT9B_SYNTHETIC_USER_TURN'
+                if int(turn_count) == 1
+                else f'LOT9B_SYNTHETIC_USER_TURN_{turn_index:02d}'
+            )
+            response = server_module.app.test_client().post(
+                '/api/chat',
+                json={
+                    'message': user_turn,
+                    'conversation_id': conversation['id'],
+                    'stream': stream_req,
+                    'web_search': 'web' in enabled,
+                    'agenda_enabled': 'agenda' in enabled,
+                    'biblio_enabled': 'biblio' in enabled,
+                },
+            )
+            responses.append(response)
+            response_bytes_by_turn.append(response.get_data())
+        response_bytes = response_bytes_by_turn[-1]
     finally:
         while originals:
             obj, name, value = originals.pop()
@@ -1137,7 +1153,9 @@ def exercise_chat_orchestration_golden(
         'invalid_locks': tuple(invalid_locks),
         'observed': observed,
         'response': response,
+        'responses': responses,
         'response_bytes': response_bytes,
+        'response_bytes_by_turn': response_bytes_by_turn,
         'terminal': terminal,
         'visible_text': visible_text,
     }

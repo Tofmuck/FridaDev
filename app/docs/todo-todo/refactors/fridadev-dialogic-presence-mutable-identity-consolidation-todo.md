@@ -293,7 +293,7 @@ modifier que les surfaces reellement concernees.
 
 # LOT 0 - Goldens et cartographie d'observabilite
 
-Statut: non commence
+Statut: ferme le 2026-08-20
 Nature: tests/docs-only
 Livraison live: interdite
 
@@ -301,23 +301,80 @@ Livraison live: interdite
 
 Figer les comportements et les dettes avant toute modification runtime.
 
+## Decision de plan appliquee
+
+Oui, un plan plus simple et plus sur existait: reutiliser les preuves Lot 9
+pour la frontiere assistant et les final locks, faire traverser aux nouvelles
+preuves Identity le vrai staging SQL et le vrai wrapper periodique, puis
+ajouter seulement les matrices et mutations absentes. Aucun algorithme de
+staging n'est recopie dans le golden: l'adaptateur synthetique ne fait
+qu'appliquer les parametres SQL calcules par `memory_identity_staging.py`.
+
+Le HEAD de depart du Lot 0 est `211797c1638454278d90b26250510a03667478e9`,
+issu du micro-lot documentaire autorise `docs: clarify baseline runner
+adaptation`. La baseline initiale verifiee avant ce micro-lot restait
+`c28eda9b63e6fa67835037bc07682b66591f1233`.
+
+Le runner documentaire qui montait seulement `app/` etait mecaniquement trop
+etroit: le test Web repo-level doit aussi lire `benchmark/`. Il produisait
+artificiellement `2653` tests plus une erreur de chargement; le module non
+charge contient 13 tests, soit `2653 + 13 - 1 = 2665`. Le depot complet monte
+read-only dans `/workspace`, avec `-w /workspace/app`, `--network none`, rootfs
+read-only et `/tmp` en tmpfs, a reproduit `2665`, zero echec, zero erreur,
+zero skip et zero expected failure avant patch. Cette adaptation n'ouvre
+aucune surface d'ecriture et n'affaiblit pas l'hermeticite.
+
+## Inventaire des preuves avant patch
+
+| Invariant | Couverture avant Lot 0 | Classement | Decision |
+|---|---|---|---|
+| seuil de cinq paires et absence de juge avant le seuil | `test_does_not_call_agent_before_five_pairs` | preuve exacte du wrapper, store synthetique | reutilisee |
+| preservation sur `window_too_large` | `test_preserves_buffer_when_agent_skips_window_too_large` | preuve partielle: retour juge fake et store recopiant le gel | completee par vrai staging et vrai garde de taille |
+| retry de la meme fenetre | `test_retry_reuses_exact_same_five_pair_window_after_failed_attempt` | preuve partielle: comparaison de contenu avec store local | completee par empreinte content-free et vrai staging |
+| timeout, transport, contrat invalide et apply en echec | `test_identity_periodic_agent_phase1.py` | preuves separees, matrice incomplete | rassemblees sans affaiblir les tests existants |
+| cardinalite post-save sur cinq tours | tests `chat_memory_flow` et `chat_llm_flow` | absence reelle du chemin complet sur cinq tours | ajoutee via `/api/chat -> chat_response -> save -> post-save` |
+| Presence exacte, save unique, provenance, bypass provider | `test_chat_fixture_covers_persistence_error_and_provider_free_overrides` | preuve exacte Lot 9 | reutilisee et completee pour JSON non-stream |
+| priorite Agenda/Biblio | `test_lot9b_final_lock_matrix_preserves_priority_and_bypasses_provider` | preuve exacte Agenda > Biblio et Agenda > Presence | completee pour Biblio > Presence et les trois locks |
+| exclusion Identity d'une Presence marquee | `test_presence_projects_only_marked_assistant_out_of_identity_sources` | preuve exacte | reutilisee |
+| Presence impossible depuis fail-open | tests Validation fail-open | preuve exacte du contrat, sensibilite transversale absente | completee par contrat -> override |
+| question, demande, detresse, risque, hard guard, ambiguite materielle | prompt Validation et corpus dialogique | preuve partielle, contre-matrice incomplete | matrice content-free ajoutee |
+| staging backend -> read-model -> frontend | route Identity et tests de source frontend | preuve partielle, aucun etat 5/5 gele rendu en navigateur | golden read-model et smoke navigateur ajoutes |
+| sources Stimmung/Validation et verdict final | events et cockpit existants | contradiction de projection partielle | figee et documentee comme gap |
+
+## Fichiers de preuve livres
+
+- `app/tests/support/lot0_identity_goldens.py`: adaptateur SQL synthetique,
+  contrats juge et validateurs de mutation;
+- `app/tests/unit/golden/test_lot0_identity_goldens.py`: staging gele, matrice
+  d'erreurs et cardinalite post-save;
+- `app/tests/support/lot0_presence_countercases.json` et
+  `app/tests/unit/golden/test_lot0_presence_countercases.py`: contre-cas et
+  fail-open;
+- `app/tests/unit/golden/test_lot0_observability_goldens.py`: projection
+  Identity et pertes actuelles du cockpit;
+- `app/tests/support/server_chat_pipeline.py` et
+  `app/tests/unit/golden/test_lot9_golden_harness.py`: cinq tours reels,
+  Presence JSON/stream et priorite Agenda > Biblio > Presence;
+- `app/tests/integration/frontend_browser/test_frontend_browser_smoke.js`:
+  rendu reel `5/5`, `gele=true`, `window_too_large`, refus d'un faux `ok`.
+
 ## Travail obligatoire
 
-- [ ] Reproduire hermetiquement le buffer `5/5` fige apres
+- [x] Reproduire hermetiquement le buffer `5/5` fige apres
   `window_too_large`.
-- [ ] Prouver qu'un sixieme tour ne remplace ni ne fait progresser la fenetre.
-- [ ] Prouver la repetition de la meme empreinte content-free.
-- [ ] Figer les comportements transitoires actuels: timeout, transport,
+- [x] Prouver qu'un sixieme tour ne remplace ni ne fait progresser la fenetre.
+- [x] Prouver la repetition de la meme empreinte content-free.
+- [x] Figer les comportements transitoires actuels: timeout, transport,
   schema invalide, applicateur en echec.
-- [ ] Prouver le nombre d'appels Identity sur cinq tours: cinq extracteurs
+- [x] Prouver le nombre d'appels Identity sur cinq tours: cinq extracteurs
   legacy plus un juge mutable quand le seuil est atteint.
-- [ ] Figer la Presence valide: `answer/presence`, reponse exacte, un save,
+- [x] Figer la Presence valide: `answer/presence`, reponse exacte, un save,
   aucun modele principal et provenance conservee.
-- [ ] Figer les contre-cas: question, demande, detresse, risque, hard guard,
+- [x] Figer les contre-cas: question, demande, detresse, risque, hard guard,
   ambiguite materielle, final lock Agenda/Biblio.
-- [ ] Inventorier pour chaque stage les events, API/read-model et rendus
+- [x] Inventorier pour chaque stage les events, API/read-model et rendus
   frontend actuels.
-- [ ] Produire une matrice `backend -> API -> frontend -> test` dans cette
+- [x] Produire une matrice `backend -> API -> frontend -> test` dans cette
   section lors de la cloture.
 
 ## Sensibilite obligatoire
@@ -330,6 +387,21 @@ Les goldens doivent echouer si:
   le comportement pre-retrait;
 - une Presence appelle le modele principal ou est sauvegardee deux fois;
 - un statut backend critique disparait du read-model ou du rendu frontend.
+
+Mutations controlees effectivement rejetees, sans patch temporaire du produit:
+
+- ajout ou remplacement silencieux du sixieme tour;
+- empreinte de retry differente declaree identique;
+- timeout consommant la fenetre;
+- `window_too_large` requalifie en `completed_no_change`;
+- ecriture canonique sous echec;
+- extracteur retire d'un des cinq tours ou juge appele avant/apres le seuil;
+- appel modele principal sous Presence, double save ou provenance perdue
+  (validateurs Lot 9 reutilises);
+- Presence issue d'un fail-open;
+- Biblio cede a Presence ou Agenda cede a Biblio;
+- statut/reason/freeze retire du read-model;
+- rendu `window_too_large` remplace par un faux `ok`.
 
 ## Fichiers probables
 
@@ -352,12 +424,62 @@ Les goldens doivent echouer si:
 - verdict final, fail-open et Presence retenue/refusee;
 - coherence entre API et frontend.
 
+## Matrice backend -> API/read-model -> frontend -> test
+
+| Stage | Evenement backend | Champs compacts autoritatifs | API/read-model | Frontend | Test exact | Gap |
+|---|---|---|---|---|---|---|
+| Identity staging | `mutable_identity_judge` emis par le wrapper | `status`, `reason_code`, `buffer_pairs_count`, `buffer_target_pairs`, `buffer_frozen`, `buffer_cleared`, tailles et timestamp d'event | `/api/admin/identity/read-model`: `identity_staging.current_buffer` et `latest_agent_activity` | renderer partage `/identity` et `/hermeneutic-admin` | `test_frozen_identity_event_projects_authoritative_status_reason_size_and_freeze`; smoke navigateur | aucune empreinte de retry n'est emise; le golden la calcule localement |
+| Identity judge | `mutable_identity_judge` | `judge_status`, `judge_reason_code`, `verdict_count(s)`, sujets et reason codes compacts | bloc runtime juge + latest activity du read-model Identity | detail Identity et diagnostic generique de tour | `test_identity_error_matrix_preserves_or_consumes_window_and_canon_exactly`; route read-model phase 2 | pas de panneau de tour dedie au juge |
+| Identity apply | champs embarques dans `mutable_identity_judge` | `apply_status`, `apply_reason_code`, `writes_applied`, compteurs et outcomes minimises | `latest_agent_activity` conserve ces champs | detail complet du renderer Identity | matrice d'erreurs Lot 0 + projection phase 2 | contradiction: `active_log_stages` annonce `mutable_identity_judge_apply`, mais aucun emitter actif autonome n'existe |
+| Identity extractor legacy | `stage_latency` + event admin `identity_mode_apply` | caller, duree, action, extracted/filtered counts, statut staging | dashboard hermeneutique agrege + catalogue settings/read-model runtime | `/hermeneutic-admin`, `/log`, `/admin` settings | `test_five_saved_assistant_turns_call_legacy_extractor_five_times_and_judge_once`; server hermeneutics phase 4 | pas d'event chat par tour nomme `identity_extractor`; trace surtout agregee/latence |
+| Stimmung prompt | `stimmung_prompt_prepared` | caller, modele, source de tentative, sampling, tailles de messages/fenetre | checklist et `turn_pipeline.providers.secondary.stimmung` | diagnostic `/hermeneutic-admin`; filtre `/log`; settings `/admin` | tests Stimmung existants + `test_secondary_sources_final_verdict_and_fail_open_are_in_events_but_partly_lost_in_cockpit` | le cockpit perd `attempt_decision_source` |
+| Stimmung result | `stimmung_agent` | status, modele, `decision_source`, reason, presence/tones/count/confidence | checklist + provider secondaire | renderer generique de stage | meme golden observabilite + tests Stimmung | le cockpit ne projette pas `decision_source`; le detail d'event le garde |
+| Validation prompt | `validation_prompt_prepared` | caller, modele, source de tentative, sampling, caps et hard-guard counts | checklist + provider secondaire Validation | diagnostic `/hermeneutic-admin`; filtre `/log`; settings `/admin` | tests Validation existants + golden observabilite Lot 0 | le cockpit perd `attempt_decision_source` |
+| Validation result | `validation_agent` | status, modele, `decision_source`, posture/regime finaux, hard guards et reason | checklist + provider secondaire Validation | renderer generique de stage | `test_build_validated_output_accepts_positive_presence_as_answer_output_regime`; golden observabilite | le cockpit ne projette ni source finale ni verdict final |
+| fail-open | `primary_node` (`fail_open`, fallback, reason/error class) et Validation `decision_source=fail_open` | booleens, source, reason, error class bornee | `turn_pipeline.hermeneutic.node_state` + `errors.fallback_count` | stages de tour et anomalies `/log` | tests fail-open Validation + `test_real_fail_open_contract_cannot_reach_presence_override_and_mutation_is_rejected` | aucun champ explicite ne relie un fail-open au refus de Presence |
+| Presence retenue/refusee | `validation_agent`; puis `main_payload_manifest` si lock retenu | posture/regime, source finale `hermeneutic_presence`, bypass main, meta assistant | logs de tour et manifeste; pas de read-model Presence dedie | diagnostic generique de tour | goldens Lot 9, contre-matrice Lot 0, exclusion Identity marquee | refus de Presence et motif de suppression par un lock concurrent non projetes comme decision dediee |
+| final lock concurrent | `main_payload_manifest` | source retenue, candidates, source supprimee, policy, main model called | event de tour seulement | visible via renderer generique si l'event est inspecte | `test_lot9b_final_lock_matrix_preserves_priority_and_bypasses_provider` | aucun panneau/read-model frontend de premier rang pour Agenda > Biblio > Presence |
+
+## Commandes et resultats
+
+- pre-patch, montage `app/` seul: `2653` + une erreur de chargement
+  repo-level, diagnostic runner;
+- pre-patch, depot complet read-only: `2665`, OK;
+- goldens Identity/Presence/observabilite et Lot 9 cibles: OK;
+- smoke Chromium hermetique: 13 tests, OK, apres montage read-only du cache
+  Playwright 1.59.1; l'image Playwright 1.54 seule a d'abord prouve une
+  incompatibilite mecanique de version, pas une regression frontend;
+- suites voisines chat, streaming, persistance, admin/frontend: OK;
+- decouverte finale depot complet read-only: `2672`, zero echec, zero erreur,
+  zero skip, zero expected failure, soit exactement 7 nouveaux tests Python.
+
+## Limites et contradictions restantes
+
+- la vivacite n'est volontairement pas corrigee: la fenetre 5/5 reste gelee,
+  le sixieme tour est ignore et le retry rejoue la meme fenetre;
+- aucune empreinte runtime content-free de fenetre/retry n'est emise;
+- le stage apply autonome annonce dans le read-model n'existe pas dans le
+  chemin actif; les champs apply restent embarques dans le stage juge;
+- les events Stimmung/Validation gardent leurs sources primaire/fallback et
+  le verdict final, mais le cockpit agrege les perd;
+- Presence retenue ou refusee et la suppression par un final lock n'ont pas
+  de projection operateur dediee;
+- les contre-cas Presence fixent le corpus attendu et les frontieres
+  fail-open/hard-guard; ils ne transforment pas le modele en classifieur
+  deterministe.
+
 ## Condition de fermeture
 
-- [ ] Aucun runtime, prompt, modele ou setting modifie.
-- [ ] Goldens sensibles livres.
-- [ ] Matrice d'observabilite complete.
-- [ ] Baseline hermetique finale verte.
+- [x] Aucun runtime, prompt, modele ou setting modifie.
+- [x] Goldens sensibles livres.
+- [x] Matrice d'observabilite complete.
+- [x] Baseline hermetique finale verte.
+
+Confirmation: aucun fichier sous `app/core/`, `app/memory/`, `app/identity/`,
+`app/observability/`, `app/admin/` ou `app/web/` produit n'a ete modifie.
+Aucun prompt, modele, provider, setting, secret, schema de DB ou contenu
+operateur n'a ete lu ou ecrit. Aucun rebuild, restart ni deploiement n'a ete
+effectue. Les Lots 1 a 8 et Z restent integralement non commences.
 
 # LOT 1 - Retablir la vivacite du juge Identity
 

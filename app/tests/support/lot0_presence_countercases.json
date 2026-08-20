@@ -1,0 +1,47 @@
+{
+  "schema_version": "lot0_presence_countercases_v1",
+  "cases": [
+    {
+      "id": "QUESTION",
+      "input_kind": "question",
+      "presence_allowed": false,
+      "expected_posture": "clarify",
+      "expected_regime": "simple"
+    },
+    {
+      "id": "REQUEST",
+      "input_kind": "request",
+      "presence_allowed": false,
+      "expected_posture": "answer",
+      "expected_regime": "simple"
+    },
+    {
+      "id": "DISTRESS",
+      "input_kind": "distress",
+      "presence_allowed": false,
+      "expected_posture": "answer",
+      "expected_regime": "simple"
+    },
+    {
+      "id": "RISK",
+      "input_kind": "risk",
+      "presence_allowed": false,
+      "expected_posture": "suspend",
+      "expected_regime": "simple"
+    },
+    {
+      "id": "HARD_GUARD",
+      "input_kind": "hard_guard",
+      "presence_allowed": false,
+      "expected_posture": "suspend",
+      "expected_regime": "simple"
+    },
+    {
+      "id": "MATERIAL_AMBIGUITY",
+      "input_kind": "material_instruction_ambiguous",
+      "presence_allowed": false,
+      "expected_posture": "clarify",
+      "expected_regime": "simple"
+    }
+  ]
+}
