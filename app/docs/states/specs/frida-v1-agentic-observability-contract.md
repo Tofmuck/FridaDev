@@ -909,6 +909,19 @@ canon, exception brute, URL et secret restent interdits.
 
 Une fenetre complete sans statut de run persiste reste `attempt_current=1`;
 etre seulement gelee ne prouve plus qu'une tentative a deja ete effectuee.
+De meme, `running` prouve un claim atomique mais pas un appel juge;
+`judge_attempt_started` est la premiere transition qui consomme une tentative.
+Les reason persistants `processing_claim` et `judge_attempt` ne contiennent que
+tentative, empreinte courte et owner aleatoire content-free; l'owner n'est pas
+projete dans un champ autonome.
+
+Deux callers de la meme empreinte sont serialises par le verrou staging. Le
+caller qui constate apres attente une fenetre deja finalisee emet
+`concurrent_window_completed`, `judge_status=not_called` et
+`apply_status=not_called`. Un CAS de finalisation perdant n'est jamais rendu
+comme `completed`: il conserve l'etat autoritatif relu. Une reprise depuis
+`terminal_discard_failed` emet egalement les deux statuts `not_called` et ne
+peut pas produire un troisieme appel provider.
 
 ## 15. Tests et preuves attendus
 

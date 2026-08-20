@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from typing import Any, Callable, Mapping, Sequence
 
 
 DEFAULT_BUFFER_TARGET_PAIRS = 5
+_UNSET = object()
 _TERMINAL_AGENT_STATUSES_RESET_ON_NEW_BUFFER = {
     'applied',
     'completed_no_change',
@@ -62,6 +64,90 @@ def _normalize_pair(value: Any) -> dict[str, Any] | None:
         'user': user,
         'assistant': assistant,
     }
+
+
+def _processing_lock_key(conversation_id: str, window_fingerprint: str) -> int:
+    digest = hashlib.sha256(
+        f'{_text(conversation_id)}\0{_text(window_fingerprint)}'.encode('utf-8')
+    ).digest()[:8]
+    return int.from_bytes(digest, byteorder='big', signed=True)
+
+
+class _IdentityStagingProcessingLock:
+    def __init__(
+        self,
+        *,
+        conversation_id: str,
+        window_fingerprint: str,
+        conn_factory: Callable[[], Any],
+        logger: Any,
+    ) -> None:
+        self.conversation_id = conversation_id
+        self.window_fingerprint = window_fingerprint
+        self.conn_factory = conn_factory
+        self.logger = logger
+        self.lock_key = _processing_lock_key(conversation_id, window_fingerprint)
+        self._conn_context: Any = None
+        self._conn: Any = None
+        self._acquired = False
+
+    def __enter__(self) -> bool:
+        try:
+            self._conn_context = self.conn_factory()
+            self._conn = self._conn_context.__enter__()
+            with self._conn.cursor() as cur:
+                cur.execute('SELECT pg_advisory_lock(%s)', (self.lock_key,))
+                cur.fetchone()
+            self._acquired = True
+            return True
+        except Exception as exc:
+            self.logger.error(
+                'identity_staging_processing_lock_error conversation_id=%s fingerprint=%s err=%s',
+                self.conversation_id,
+                self.window_fingerprint,
+                exc,
+            )
+            if self._conn_context is not None:
+                self._conn_context.__exit__(None, None, None)
+            self._conn_context = None
+            self._conn = None
+            return False
+
+    def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> bool:
+        try:
+            if self._acquired and self._conn is not None:
+                with self._conn.cursor() as cur:
+                    cur.execute('SELECT pg_advisory_unlock(%s)', (self.lock_key,))
+                    cur.fetchone()
+        except Exception as unlock_exc:
+            self.logger.error(
+                'identity_staging_processing_unlock_error conversation_id=%s fingerprint=%s err=%s',
+                self.conversation_id,
+                self.window_fingerprint,
+                unlock_exc,
+            )
+        finally:
+            if self._conn_context is not None:
+                self._conn_context.__exit__(exc_type, exc, traceback)
+            self._acquired = False
+            self._conn_context = None
+            self._conn = None
+        return False
+
+
+def identity_staging_processing_lock(
+    conversation_id: str,
+    window_fingerprint: str,
+    *,
+    conn_factory: Callable[[], Any],
+    logger: Any,
+) -> _IdentityStagingProcessingLock:
+    return _IdentityStagingProcessingLock(
+        conversation_id=_text(conversation_id),
+        window_fingerprint=_text(window_fingerprint),
+        conn_factory=conn_factory,
+        logger=logger,
+    )
 
 
 def _row_to_staging_state(row: Any) -> dict[str, Any] | None:
@@ -204,11 +290,12 @@ def append_identity_staging_pair(
                 target_changed = bool(current_state) and current_target != buffer_target
                 if target_changed:
                     current_pairs = []
+                pair_already_present = normalized_pair in current_pairs
                 buffer_already_frozen = len(current_pairs) >= buffer_target
                 next_pairs = (
                     list(current_pairs[:buffer_target])
                     if buffer_already_frozen
-                    else current_pairs + [normalized_pair]
+                    else current_pairs if pair_already_present else current_pairs + [normalized_pair]
                 )
                 buffer_frozen = len(next_pairs) >= buffer_target
                 next_status = _text((current_state or {}).get('last_agent_status')) or 'buffering'
@@ -266,7 +353,8 @@ def append_identity_staging_pair(
             conn.commit()
         state = _row_to_staging_state(row)
         if state is not None:
-            state['pair_appended'] = not bool(buffer_already_frozen)
+            state['pair_appended'] = not bool(buffer_already_frozen or pair_already_present)
+            state['pair_already_present'] = bool(pair_already_present)
         return state
     except Exception as exc:
         logger.error('append_identity_staging_pair_error conversation_id=%s err=%s', conversation_key, exc)
@@ -280,6 +368,9 @@ def mark_identity_staging_status(
     reason: str = '',
     touch_run_ts: bool = False,
     auto_canonization_suspended: bool | None = None,
+    expected_buffer_pairs: Any = _UNSET,
+    expected_status: Any = _UNSET,
+    expected_reason: Any = _UNSET,
     conn_factory: Callable[[], Any],
     logger: Any,
 ) -> dict[str, Any] | None:
@@ -291,8 +382,19 @@ def mark_identity_staging_status(
     try:
         with conn_factory() as conn:
             with conn.cursor() as cur:
+                where_clauses = ['conversation_id = %s']
+                where_values: list[Any] = [conversation_key]
+                if expected_buffer_pairs is not _UNSET:
+                    where_clauses.append('buffer_pairs_json = %s::jsonb')
+                    where_values.append(json.dumps(list(expected_buffer_pairs or []), ensure_ascii=False))
+                if expected_status is not _UNSET:
+                    where_clauses.append('last_agent_status IS NOT DISTINCT FROM %s')
+                    where_values.append(_text(expected_status) or None)
+                if expected_reason is not _UNSET:
+                    where_clauses.append('last_agent_reason IS NOT DISTINCT FROM %s')
+                    where_values.append(_text(expected_reason) or None)
                 cur.execute(
-                    '''
+                    f'''
                     UPDATE identity_mutable_staging
                     SET
                         last_agent_status = %s,
@@ -300,7 +402,7 @@ def mark_identity_staging_status(
                         last_agent_run_ts = CASE WHEN %s THEN now() ELSE last_agent_run_ts END,
                         auto_canonization_suspended = COALESCE(%s, auto_canonization_suspended),
                         updated_ts = now()
-                    WHERE conversation_id = %s
+                    WHERE {' AND '.join(where_clauses)}
                     RETURNING
                         conversation_id,
                         buffer_pairs_json,
@@ -318,12 +420,21 @@ def mark_identity_staging_status(
                         _text(reason) or None,
                         bool(touch_run_ts),
                         auto_canonization_suspended,
-                        conversation_key,
+                        *where_values,
                     ),
                 )
                 row = cur.fetchone()
             conn.commit()
-        return _row_to_staging_state(row)
+        state = _row_to_staging_state(row)
+        if state is None:
+            state = get_identity_staging_state(
+                conversation_key,
+                conn_factory=conn_factory,
+                logger=logger,
+            )
+        if state is not None:
+            state['transition_applied'] = bool(row)
+        return state
     except Exception as exc:
         logger.error('mark_identity_staging_status_error conversation_id=%s err=%s', conversation_key, exc)
         return None
@@ -336,6 +447,9 @@ def clear_identity_staging_buffer(
     reason: str = '',
     auto_canonization_suspended: bool = False,
     next_pair: Any = None,
+    expected_buffer_pairs: Any = _UNSET,
+    expected_status: Any = _UNSET,
+    expected_reason: Any = _UNSET,
     conn_factory: Callable[[], Any],
     logger: Any,
 ) -> dict[str, Any] | None:
@@ -353,8 +467,19 @@ def clear_identity_staging_buffer(
     try:
         with conn_factory() as conn:
             with conn.cursor() as cur:
+                where_clauses = ['conversation_id = %s']
+                where_values: list[Any] = [conversation_key]
+                if expected_buffer_pairs is not _UNSET:
+                    where_clauses.append('buffer_pairs_json = %s::jsonb')
+                    where_values.append(json.dumps(list(expected_buffer_pairs or []), ensure_ascii=False))
+                if expected_status is not _UNSET:
+                    where_clauses.append('last_agent_status IS NOT DISTINCT FROM %s')
+                    where_values.append(_text(expected_status) or None)
+                if expected_reason is not _UNSET:
+                    where_clauses.append('last_agent_reason IS NOT DISTINCT FROM %s')
+                    where_values.append(_text(expected_reason) or None)
                 cur.execute(
-                    '''
+                    f'''
                     UPDATE identity_mutable_staging
                     SET
                         buffer_pairs_json = %s::jsonb,
@@ -364,7 +489,7 @@ def clear_identity_staging_buffer(
                         last_agent_run_ts = now(),
                         auto_canonization_suspended = %s,
                         updated_ts = now()
-                    WHERE conversation_id = %s
+                    WHERE {' AND '.join(where_clauses)}
                     RETURNING
                         conversation_id,
                         buffer_pairs_json,
@@ -383,14 +508,21 @@ def clear_identity_staging_buffer(
                         stored_status,
                         stored_reason,
                         bool(auto_canonization_suspended),
-                        conversation_key,
+                        *where_values,
                     ),
                 )
                 row = cur.fetchone()
             conn.commit()
         state = _row_to_staging_state(row)
+        if state is None:
+            state = get_identity_staging_state(
+                conversation_key,
+                conn_factory=conn_factory,
+                logger=logger,
+            )
         if state is not None:
-            state['next_pair_staged'] = bool(next_pairs)
+            state['transition_applied'] = bool(row)
+            state['next_pair_staged'] = bool(row and next_pairs)
         return state
     except Exception as exc:
         logger.error('clear_identity_staging_buffer_error conversation_id=%s err=%s', conversation_key, exc)

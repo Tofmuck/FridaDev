@@ -346,6 +346,10 @@ class Lot0IdentityGoldensTests(unittest.TestCase):
             (self.server.memory_store, "persist_identity_entries"): store.persist_identity_entries,
             (self.server.memory_store, "append_identity_staging_pair"): store.append_identity_staging_pair,
             (self.server.memory_store, "get_identity_staging_state"): store.get_identity_staging_state,
+            (
+                self.server.memory_store,
+                "identity_staging_processing_lock",
+            ): store.identity_staging_processing_lock,
             (self.server.memory_store, "mark_identity_staging_status"): store.mark_identity_staging_status,
             (self.server.memory_store, "clear_identity_staging_buffer"): store.clear_identity_staging_buffer,
             (self.server.memory_store, "get_mutable_identity"): store.get_mutable_identity,

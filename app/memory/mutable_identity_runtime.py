@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 import config
 from identity import identity
@@ -186,6 +186,7 @@ def run_mutable_identity_window(
     memory_store_module: Any,
     enforce_writes: bool,
     window_fingerprint: str | None = None,
+    before_judge_call: Callable[[], Mapping[str, Any] | None] | None = None,
 ) -> dict[str, Any]:
     try:
         judge_input = _build_judge_input(
@@ -204,6 +205,21 @@ def run_mutable_identity_window(
     run_judge = getattr(arbiter_module, 'run_mutable_identity_judge', None)
     if not callable(run_judge):
         run_judge = mutable_identity_judge_v2.run_mutable_identity_judge_v2
+
+    judge_attempt_state: Mapping[str, Any] = staging_state
+    if before_judge_call is not None:
+        persisted_attempt = before_judge_call()
+        if not isinstance(persisted_attempt, Mapping) or not bool(
+            persisted_attempt.get('transition_applied')
+        ):
+            return _summary(
+                status='skipped',
+                reason_code='processing_claim_lost',
+                last_agent_status='processing_claim_lost',
+                judge_observability=_empty_observability('processing_claim_lost'),
+                enforce_writes=enforce_writes,
+            )
+        judge_attempt_state = persisted_attempt
 
     try:
         judge_result = run_judge(judge_input)
@@ -259,6 +275,9 @@ def run_mutable_identity_window(
             },
             staging_conversation_id=_text(staging_state.get('conversation_id')) or None,
             staging_window_fingerprint=_text(window_fingerprint) or None,
+            staging_expected_buffer_pairs=list(staging_state.get('buffer_pairs') or []),
+            staging_expected_status=_text(judge_attempt_state.get('last_agent_status')) or None,
+            staging_expected_reason=_text(judge_attempt_state.get('last_agent_reason')) or None,
         )
     except Exception:
         return _summary(

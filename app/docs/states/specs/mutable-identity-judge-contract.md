@@ -678,10 +678,13 @@ faux `no_change`.
 
 La borne est `attempt_limit = 2`. Elle ne depend d'aucun compteur global en
 memoire. Une fenetre complete seulement persistee, encore `buffering` et sans
-run enregistre, commence a `attempt_current=1`. Une tentative est persistante
-quand le staging porte `running`, `retry_pending`, `write_recovery_pending` ou
-`terminal_discard_failed`; sa reprise devient alors la tentative 2, y compris
-apres restart.
+run enregistre, commence a `attempt_current=1`. `running` signifie seulement
+qu'un owner content-free a acquis la fenetre; un crash apres ce claim et avant
+l'appel du juge ne consomme aucune tentative. La tentative devient persistante
+au CAS `judge_attempt_started`. Sa reprise prudente devient la tentative
+suivante; `retry_pending` et `write_recovery_pending` portent de meme la preuve
+d'une tentative precedente. `terminal_discard_failed` ne rend jamais la main au
+juge: il reprend exclusivement le CAS de consommation/finalisation.
 
 - `transient`: `judge_timeout`, transport sans statut, HTTP
   `408/409/425/429`, `5xx` et `runtime_safety_violation`; reprise preservee,
@@ -705,8 +708,27 @@ Si l'ecriture canonique a reussi mais que la finalisation du staging echoue, le
 staging porte un statut de reprise de finalisation; la reprise ne rappelle ni le
 juge ni l'applicateur.
 
+Une seule execution peut posseder une fenetre donnee. Le wrapper tient pendant
+juge, application et finalisation un verrou consultatif PostgreSQL de session
+derive de `conversation_id + window_fingerprint`; la fermeture de connexion le
+libere aussi apres crash. Sous ce verrou, l'acquisition persistante est un CAS
+sur la liste JSON complete, le statut et le reason attendus. Le reason
+`processing_claim` contient seulement tentative, empreinte courte et owner
+aleatoire content-free. Le CAS `judge_attempt_started`, execute juste avant
+l'appel effectif du juge, distingue donc acquisition et tentative.
+
+Tout changement de statut et tout clear apres acquisition reutilisent la meme
+precondition de fenetre, statut et owner/reason. Un clear tardif devient un
+no-op explicite: il ne peut effacer ni la premiere paire suivante ni une
+nouvelle fenetre. Un appel concurrent attend le verrou; apres la finalisation,
+sa paire est reappendue avec deduplication exacte ou reconnue comme deja
+presente, exactement une fois.
+
 Pour une fenetre active, l'applicateur ecrit le canon, l'audit et le verrou
-`canonical_write_committed` du staging dans une seule transaction. Le reason
+`canonical_write_committed` du staging dans une seule transaction. Ce fence
+compare aussi la fenetre JSON, `judge_attempt_started` et son owner/reason; un
+verdict concurrent ou tardif perdant provoque donc le rollback de ses ecritures
+et audits. Le reason
 persistant contient `canonical_write_recovery_pending` et l'empreinte courte de
 la fenetre. Un retour d'application incoherent apres commit est donc reconnu
 avant tout nouveau jugement: le verdict suivant, identique, different ou

@@ -4,6 +4,7 @@ import copy
 import json
 import sys
 import unittest
+from contextlib import nullcontext
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -144,6 +145,7 @@ class _HpsIdentityStore:
         reason: str = "",
         touch_run_ts: bool = False,
         auto_canonization_suspended: bool | None = None,
+        **_expected: Any,
     ) -> dict[str, Any] | None:
         state = self.get_identity_staging_state(conversation_id)
         if state is None:
@@ -154,8 +156,16 @@ class _HpsIdentityStore:
             state["last_agent_run_ts"] = "2026-05-04T00:00:00Z"
         if auto_canonization_suspended is not None:
             state["auto_canonization_suspended"] = bool(auto_canonization_suspended)
+        state["transition_applied"] = True
         self.staging[conversation_id] = copy.deepcopy(state)
         return copy.deepcopy(state)
+
+    def identity_staging_processing_lock(
+        self,
+        _conversation_id: str,
+        _window_fingerprint: str,
+    ) -> Any:
+        return nullcontext(True)
 
     def clear_identity_staging_buffer(
         self,
@@ -165,6 +175,7 @@ class _HpsIdentityStore:
         reason: str = "",
         auto_canonization_suspended: bool = False,
         next_pair: list[dict[str, Any]] | None = None,
+        **_expected: Any,
     ) -> dict[str, Any] | None:
         state = self.get_identity_staging_state(conversation_id)
         if state is None:
@@ -179,6 +190,7 @@ class _HpsIdentityStore:
         state["last_agent_reason"] = reason or None
         state["last_agent_run_ts"] = "2026-05-04T00:00:00Z"
         state["auto_canonization_suspended"] = bool(auto_canonization_suspended)
+        state["transition_applied"] = True
         self.staging[conversation_id] = copy.deepcopy(state)
         return copy.deepcopy(state)
 

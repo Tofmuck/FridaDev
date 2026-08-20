@@ -532,11 +532,13 @@ large et aucune troncature n'est introduite.
 
 La borne `attempt_limit=2` repose sur l'etat persistant existant. Une fenetre
 complete mais seulement `buffering`, sans run enregistre, commence a la
-tentative 1. Seuls `running`, `retry_pending`, `write_recovery_pending` et
-`terminal_discard_failed` prouvent une tentative anterieure et font reprendre a
-la tentative 2 apres restart. Les transitions reussies ou terminales utilisent
-un seul `UPDATE` pour remplacer l'ancienne fenetre par zero paire ou par la
-paire courante, exactement une fois, comme premiere paire suivante.
+tentative 1. `running` prouve seulement le claim atomique; seul
+`judge_attempt_started` consomme une tentative. `retry_pending` et
+`write_recovery_pending` prouvent une tentative anterieure;
+`terminal_discard_failed` reprend uniquement le CAS de finalisation, sans juge.
+Les transitions reussies ou terminales remplacent l'ancienne fenetre par zero
+paire ou par la paire courante, exactement une fois, comme premiere paire
+suivante.
 
 ## Travail obligatoire
 
@@ -625,7 +627,7 @@ pas un faux `ok`.
   `app/tests/support/lot1_identity_liveness_goldens.py` et extension des
   goldens Lot 0;
 - preuve principale:
-  `app/tests/unit/memory/test_identity_liveness_lot1.py` (16 tests);
+  `app/tests/unit/memory/test_identity_liveness_lot1.py` (21 tests);
 - staging/wrapper/apply/judge: suites unitaires Identity existantes;
 - read-model/API/frontend:
   `test_identity_read_model_lot2/3/4.py`, projections, contrats serveur,
@@ -707,6 +709,60 @@ Preuves ajoutees ou completees: applicateur et verrou transactionnel dans
 `latest_agent_activity`; rendu et mutation des deux surfaces dans
 `test_frontend_browser_smoke.js`. Aucun schema, migration, table, queue, prompt,
 modele, provider, extracteur legacy ou nouveau stage n'a ete ajoute.
+
+### Passe corrective concurrence/CAS du 2026-08-20
+
+Le contre-audit concurrent est valide. Le marqueur `running` inconditionnel ne
+constituait pas un verrou: deux wrappers pouvaient juger la meme empreinte et
+les clears ne comparaient ni la fenetre ni l'owner. Le correctif utilise sans
+migration un verrou consultatif PostgreSQL de session dont la cle 64 bits est
+derivee de `conversation_id + window_fingerprint`. Il reste tenu pendant juge,
+application et finalisation; une fermeture de connexion apres crash le libere.
+
+Sous ce verrou, `running` est acquis par CAS sur la liste JSON complete, le
+statut et le reason precedents. Un owner aleatoire content-free est persiste
+avec tentative et empreinte. `judge_attempt_started`, lui aussi CAS, est ecrit
+juste avant l'appel juge: un crash entre claim et juge repart donc en tentative
+1. Les retries restent strictement bornes a deux appels juge. Une reprise de
+`terminal_discard_failed` appelle seulement le clear CAS et projette juge et
+applicateur `not_called`.
+
+Tous les marks, le fence transactionnel canonique et les clears comparent la
+fenetre, le statut et l'owner/reason attendus. Un clear tardif est un no-op et
+ne peut effacer la premiere paire suivante. Un caller concurrent attend le
+holder puis reappend sa paire avec deduplication exacte; les interleavings
+cinquieme/sixieme tour la conservent une fois. Le fence canonique perdant fait
+rollback de toute ecriture et de tout audit, meme si son verdict `add` differe.
+
+Fichiers runtime: `memory_identity_staging.py`,
+`memory_identity_periodic_agent.py`, `mutable_identity_runtime.py`,
+`mutable_identity_apply.py`, `memory_identity_mutables.py` et facade
+`memory_store.py`. Preuves: staging SQL synthetique structure dans
+`lot0_identity_goldens.py`, goldens/mutations dans
+`lot1_identity_liveness_goldens.py` et
+`test_identity_liveness_lot1.py`, fence transactionnel dans
+`test_identity_mutables_phase1b.py`, read-model dans la preuve Lot 1 et rendu
+des deux surfaces dans le smoke Chromium.
+
+Reproduction rouge initiale de cette passe: cinq tests hermetiques, dont trois
+failures et une erreur attendues; seul l'`add` alternatif valide passait deja le
+validateur produit. Apres correctif: 21/21 preuves Lot 1 et 15/15 smoke
+Chromium. La decouverte complete intermediaire puis finale compte `2693` tests,
+zero echec, zero erreur, zero skip et zero expected failure: exactement cinq
+nouveaux tests Python depuis `5844d0b19be3e6eaed0ad8bd31f7303441293b64`.
+
+Mutations rejetees: deuxieme juge concurrent; second batch canonique ou audit;
+`add` concurrent different accepte; sixieme paire absente ou dupliquee; mauvais
+statut, mauvais owner/reason ou ancienne fenetre acceptes par un clear;
+`running` compte comme tentative consommee; unique timeout terminal apres crash;
+troisieme juge/provider depuis `terminal_discard_failed`; frontend rendant
+`buffer_status=ok` pour `running`, `judge_attempt_started` ou
+`terminal_discard_failed`. La preuve du clear tardif synchronise deux
+finalisations par une barriere puis force le CAS gagnant avant le CAS tardif;
+la sixieme et la septieme paire restent chacune presentes exactement une fois.
+
+Aucun schema, migration, table, queue, route, prompt, modele, provider,
+extracteur legacy, setting, contenu operateur ou Lot 2 a 8/Z n'a ete modifie.
 
 ## Condition de fermeture
 

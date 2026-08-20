@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any, Callable, Mapping, Sequence
 
 _ALLOWED_SUBJECTS = {'llm', 'user'}
@@ -218,6 +219,9 @@ def apply_mutable_identity_subject_updates(
     *,
     staging_conversation_id: str | None = None,
     staging_window_fingerprint: str | None = None,
+    staging_expected_buffer_pairs: Sequence[Mapping[str, Any]] | None = None,
+    staging_expected_status: str | None = None,
+    staging_expected_reason: str | None = None,
     conn_factory: Callable[[], Any],
     logger: Any,
 ) -> list[dict[str, Any]] | None:
@@ -228,6 +232,13 @@ def apply_mutable_identity_subject_updates(
     if staging_fingerprint and (
         len(staging_fingerprint) != 12
         or any(character not in '0123456789abcdef' for character in staging_fingerprint)
+    ):
+        return None
+    expected_pairs = list(staging_expected_buffer_pairs or [])
+    expected_status = str(staging_expected_status or '').strip() or None
+    expected_reason = str(staging_expected_reason or '').strip() or None
+    if staging_conversation_key and (
+        len(expected_pairs) != 5 or expected_status != 'judge_attempt_started' or not expected_reason
     ):
         return None
 
@@ -382,11 +393,17 @@ def apply_mutable_identity_subject_updates(
                             updated_ts = now()
                         WHERE conversation_id = %s
                           AND buffer_pairs_count = 5
+                          AND buffer_pairs_json = %s::jsonb
+                          AND last_agent_status IS NOT DISTINCT FROM %s
+                          AND last_agent_reason IS NOT DISTINCT FROM %s
                         RETURNING conversation_id
                         ''',
                         (
                             f'canonical_write_recovery_pending:{staging_fingerprint}',
                             staging_conversation_key,
+                            json.dumps(expected_pairs, ensure_ascii=False),
+                            expected_status,
+                            expected_reason,
                         ),
                     )
                     fence_row = cur.fetchone()

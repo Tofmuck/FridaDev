@@ -226,6 +226,9 @@ def apply_mutable_judge_contract(
     static_identity_by_subject: Mapping[str, str] | None = None,
     staging_conversation_id: str | None = None,
     staging_window_fingerprint: str | None = None,
+    staging_expected_buffer_pairs: Sequence[Mapping[str, Any]] | None = None,
+    staging_expected_status: str | None = None,
+    staging_expected_reason: str | None = None,
 ) -> dict[str, Any]:
     active_names = mutable_identity_judge_v2.active_identity_names_by_subject(
         static_identity_by_subject=static_identity_by_subject or {}
@@ -321,6 +324,9 @@ def apply_mutable_judge_contract(
             persistence_kwargs = {
                 'staging_conversation_id': _text(staging_conversation_id),
                 'staging_window_fingerprint': _text(staging_window_fingerprint),
+                'staging_expected_buffer_pairs': list(staging_expected_buffer_pairs or []),
+                'staging_expected_status': _text(staging_expected_status) or None,
+                'staging_expected_reason': _text(staging_expected_reason) or None,
             }
         result = apply_subject_updates(
             subject_updates,

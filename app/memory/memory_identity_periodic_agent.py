@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import secrets
 from typing import Any, Mapping, Sequence
 
 from memory import mutable_identity_runtime
@@ -21,10 +22,9 @@ _DETERMINISTIC_INPUT_REASONS = {
     'window_too_large',
 }
 _RECORDED_RETRY_STATUSES = {
-    'running',
     'retry_pending',
     'write_recovery_pending',
-    'terminal_discard_failed',
+    'judge_attempt_started',
 }
 _WRITE_RECOVERY_REASONS = {
     'canonical_write_failed',
@@ -93,12 +93,44 @@ def _window_fingerprint(staging_state: Mapping[str, Any]) -> str:
     return hashlib.sha256(serialized.encode('utf-8')).hexdigest()[:12]
 
 
-def _attempt_for_persisted_state(*, pair_appended: bool, previous_status: str) -> int:
+def _attempt_from_reason(reason: str) -> int:
+    parts = _text(reason).split(':')
+    for index, value in enumerate(parts):
+        if value in {'processing_claim', 'judge_attempt'} and index + 1 < len(parts):
+            try:
+                return max(1, int(parts[index + 1]))
+            except (TypeError, ValueError):
+                return 1
+    return 1
+
+
+def _attempt_for_persisted_state(
+    *,
+    pair_appended: bool,
+    previous_status: str,
+    previous_reason: str = '',
+) -> int:
     if pair_appended:
         return 1
-    if _text(previous_status) in _RECORDED_RETRY_STATUSES:
+    status = _text(previous_status)
+    if status in {'running', 'judge_attempt_started'}:
+        attempt = _attempt_from_reason(previous_reason)
+        return attempt + 1 if status == 'judge_attempt_started' else attempt
+    if status in _RECORDED_RETRY_STATUSES:
         return FAILURE_ATTEMPT_LIMIT
     return 1
+
+
+def _transition_applied(state: Any) -> bool:
+    return isinstance(state, Mapping) and bool(state.get('transition_applied'))
+
+
+def _claim_reason(*, attempt: int, fingerprint: str, owner_token: str) -> str:
+    return f'processing_claim:{max(1, int(attempt))}:{_text(fingerprint)}:{_text(owner_token)}'
+
+
+def _judge_attempt_reason(*, attempt: int, fingerprint: str, owner_token: str) -> str:
+    return f'judge_attempt:{max(1, int(attempt))}:{_text(fingerprint)}:{_text(owner_token)}'
 
 
 def _committed_window_reason(fingerprint: str) -> str:
@@ -262,12 +294,22 @@ def stage_identity_turn_pair(
     arbiter_module: Any,
     memory_store_module: Any,
     enforce_writes: bool = True,
+    _staging_state: Mapping[str, Any] | None = None,
+    _pair_appended: bool | None = None,
+    _processing_lock_held: bool = False,
 ) -> dict[str, Any]:
     append_pair = getattr(memory_store_module, 'append_identity_staging_pair', None)
     get_staging_state = getattr(memory_store_module, 'get_identity_staging_state', None)
     mark_status = getattr(memory_store_module, 'mark_identity_staging_status', None)
     clear_buffer = getattr(memory_store_module, 'clear_identity_staging_buffer', None)
-    if not callable(append_pair) or not callable(get_staging_state) or not callable(mark_status) or not callable(clear_buffer):
+    processing_lock = getattr(memory_store_module, 'identity_staging_processing_lock', None)
+    if (
+        not callable(append_pair)
+        or not callable(get_staging_state)
+        or not callable(mark_status)
+        or not callable(clear_buffer)
+        or not callable(processing_lock)
+    ):
         summary = {
             'status': 'skipped',
             'reason_code': 'staging_store_unavailable',
@@ -308,11 +350,13 @@ def stage_identity_turn_pair(
         _emit_periodic_agent_event(status='skipped', reason_code='incomplete_turn_pair', summary=summary)
         return summary
 
-    staging_state = append_pair(
-        conversation_id,
-        normalized_turn_pair,
-        target_pairs=BUFFER_TARGET_PAIRS,
-    )
+    staging_state = _staging_state
+    if staging_state is None:
+        staging_state = append_pair(
+            conversation_id,
+            normalized_turn_pair,
+            target_pairs=BUFFER_TARGET_PAIRS,
+        )
     if not isinstance(staging_state, Mapping):
         summary = {
             'status': 'skipped',
@@ -355,15 +399,108 @@ def stage_identity_turn_pair(
             'legacy_writer_disabled': False,
         }
 
-    pair_appended = bool(staging_state.get('pair_appended', True))
+    pair_appended = (
+        bool(_pair_appended)
+        if _pair_appended is not None
+        else bool(staging_state.get('pair_appended', True))
+    )
     next_pair = None if pair_appended else normalized_turn_pair
     next_pairs_count = 0 if pair_appended else 1
     fingerprint = _window_fingerprint(staging_state)
+    if not _processing_lock_held:
+        with processing_lock(conversation_id, fingerprint) as lock_acquired:
+            if not lock_acquired:
+                summary = {
+                    'status': 'skipped',
+                    'reason_code': 'processing_lock_unavailable',
+                    'buffer_pairs_count': buffer_pairs_count,
+                    'buffer_target_pairs': buffer_target_pairs,
+                    'last_agent_status': _text(staging_state.get('last_agent_status')),
+                    'buffer_cleared': False,
+                    'buffer_frozen': buffer_frozen,
+                    'auto_canonization_suspended': auto_canonization_suspended,
+                    'writes_applied': False,
+                    'judge_status': 'not_called',
+                    'apply_status': 'not_called',
+                    **_policy_fields(
+                        failure_class='write_recovery',
+                        recovery_action='apply_recovery',
+                        processing_state='write_failed',
+                        attempt_current=0,
+                        window_fingerprint=fingerprint,
+                        next_window_progress='blocked_write_recovery',
+                        next_buffer_pairs_count=buffer_pairs_count,
+                    ),
+                }
+                _emit_periodic_agent_event(
+                    status='skipped',
+                    reason_code='processing_lock_unavailable',
+                    summary=summary,
+                )
+                return summary
+
+            current_state = get_staging_state(conversation_id)
+            current_count = int(_mapping(current_state).get('buffer_pairs_count') or 0)
+            current_fingerprint = (
+                _window_fingerprint(_mapping(current_state))
+                if current_count >= buffer_target_pairs
+                else ''
+            )
+            if current_fingerprint != fingerprint:
+                if not pair_appended:
+                    return stage_identity_turn_pair(
+                        conversation_id,
+                        normalized_turn_pair,
+                        arbiter_module=arbiter_module,
+                        memory_store_module=memory_store_module,
+                        enforce_writes=enforce_writes,
+                    )
+                summary = {
+                    'status': 'skipped',
+                    'reason_code': 'concurrent_window_completed',
+                    'buffer_pairs_count': buffer_pairs_count,
+                    'buffer_target_pairs': buffer_target_pairs,
+                    'last_agent_status': _text(_mapping(current_state).get('last_agent_status')),
+                    'buffer_cleared': True,
+                    'buffer_frozen': buffer_frozen,
+                    'auto_canonization_suspended': auto_canonization_suspended,
+                    'writes_applied': False,
+                    'judge_status': 'not_called',
+                    'apply_status': 'not_called',
+                    **_policy_fields(
+                        failure_class='',
+                        recovery_action='completed',
+                        processing_state='completed',
+                        attempt_current=0,
+                        window_fingerprint=fingerprint,
+                        next_window_progress='concurrent_window_completed',
+                        next_buffer_pairs_count=current_count,
+                    ),
+                }
+                _emit_periodic_agent_event(
+                    status='skipped',
+                    reason_code='concurrent_window_completed',
+                    summary=summary,
+                )
+                return summary
+
+            return stage_identity_turn_pair(
+                conversation_id,
+                normalized_turn_pair,
+                arbiter_module=arbiter_module,
+                memory_store_module=memory_store_module,
+                enforce_writes=enforce_writes,
+                _staging_state=_mapping(current_state),
+                _pair_appended=pair_appended,
+                _processing_lock_held=True,
+            )
+
     previous_status = _text(staging_state.get('last_agent_status'))
     previous_reason = _text(staging_state.get('last_agent_reason'))
     attempt_current = _attempt_for_persisted_state(
         pair_appended=pair_appended,
         previous_status=previous_status,
+        previous_reason=previous_reason,
     )
 
     committed_write_recovery = _canonical_window_write_is_committed(
@@ -371,6 +508,80 @@ def stage_identity_turn_pair(
         fingerprint,
     )
     finalization_recovery = previous_status in _FINALIZATION_RECOVERY_STATUSES
+    if not pair_appended and previous_status == 'terminal_discard_failed':
+        cleared_state = clear_buffer(
+            conversation_id,
+            status='terminal_discarded',
+            reason=previous_reason or 'staging_finalize_recovered',
+            auto_canonization_suspended=auto_canonization_suspended,
+            next_pair=next_pair,
+            expected_buffer_pairs=staging_state.get('buffer_pairs'),
+            expected_status=previous_status,
+            expected_reason=previous_reason or None,
+        )
+        if _transition_applied(cleared_state):
+            summary = {
+                'status': 'skipped',
+                'reason_code': 'terminal_discard_recovered',
+                'last_agent_status': 'terminal_discarded',
+                'buffer_pairs_count': buffer_pairs_count,
+                'buffer_target_pairs': buffer_target_pairs,
+                'buffer_cleared': True,
+                'buffer_frozen': buffer_frozen,
+                'auto_canonization_suspended': auto_canonization_suspended,
+                'writes_applied': False,
+                'promotion_count': 0,
+                'promotions': [],
+                'outcomes': [],
+                'rejection_reasons': {},
+                'legacy_writer_disabled': True,
+                'judge_status': 'not_called',
+                'apply_status': 'not_called',
+                **_policy_fields(
+                    failure_class='write_recovery',
+                    recovery_action='terminal_consume_without_write',
+                    processing_state='write_failed',
+                    attempt_current=FAILURE_ATTEMPT_LIMIT,
+                    window_fingerprint=fingerprint,
+                    next_window_progress='current_pair_staged',
+                    next_buffer_pairs_count=int(cleared_state.get('buffer_pairs_count') or 0),
+                ),
+            }
+            _emit_periodic_agent_event(
+                status='skipped',
+                reason_code='terminal_discard_recovered',
+                summary=summary,
+            )
+            return summary
+        summary = {
+            'status': 'skipped',
+            'reason_code': 'staging_finalize_failed',
+            'last_agent_status': 'terminal_discard_failed',
+            'buffer_pairs_count': buffer_pairs_count,
+            'buffer_target_pairs': buffer_target_pairs,
+            'buffer_cleared': False,
+            'buffer_frozen': buffer_frozen,
+            'auto_canonization_suspended': auto_canonization_suspended,
+            'writes_applied': False,
+            'judge_status': 'not_called',
+            'apply_status': 'not_called',
+            **_policy_fields(
+                failure_class='write_recovery',
+                recovery_action='apply_recovery',
+                processing_state='write_failed',
+                attempt_current=FAILURE_ATTEMPT_LIMIT,
+                window_fingerprint=fingerprint,
+                next_window_progress='blocked_write_recovery',
+                next_buffer_pairs_count=buffer_pairs_count,
+            ),
+        }
+        _emit_periodic_agent_event(
+            status='skipped',
+            reason_code='staging_finalize_failed',
+            summary=summary,
+        )
+        return summary
+
     if not pair_appended and (committed_write_recovery or finalization_recovery):
         recovery_reason = (
             'write_recovery_completed' if committed_write_recovery else 'staging_finalize_recovered'
@@ -384,8 +595,11 @@ def stage_identity_turn_pair(
             reason=recovery_reason,
             auto_canonization_suspended=auto_canonization_suspended,
             next_pair=next_pair,
+            expected_buffer_pairs=staging_state.get('buffer_pairs'),
+            expected_status=previous_status,
+            expected_reason=previous_reason or None,
         )
-        if isinstance(cleared_state, Mapping):
+        if _transition_applied(cleared_state):
             summary = {
                 'status': 'ok',
                 'reason_code': recovery_reason,
@@ -422,6 +636,9 @@ def stage_identity_turn_pair(
             status=previous_status,
             reason=previous_reason or 'staging_finalize_failed',
             touch_run_ts=False,
+            expected_buffer_pairs=staging_state.get('buffer_pairs'),
+            expected_status=previous_status,
+            expected_reason=previous_reason or None,
         )
         summary = {
             'status': 'skipped',
@@ -454,19 +671,143 @@ def stage_identity_turn_pair(
         _emit_periodic_agent_event(status='skipped', reason_code='staging_finalize_failed', summary=summary)
         return summary
 
-    mark_status(
+    if attempt_current > FAILURE_ATTEMPT_LIMIT:
+        cleared_state = clear_buffer(
+            conversation_id,
+            status='terminal_discarded',
+            reason='attempt_limit_recovered',
+            auto_canonization_suspended=auto_canonization_suspended,
+            next_pair=next_pair,
+            expected_buffer_pairs=staging_state.get('buffer_pairs'),
+            expected_status=previous_status,
+            expected_reason=previous_reason or None,
+        )
+        summary = {
+            'status': 'skipped',
+            'reason_code': (
+                'attempt_limit_recovered'
+                if _transition_applied(cleared_state)
+                else 'staging_finalize_failed'
+            ),
+            'last_agent_status': (
+                'terminal_discarded'
+                if _transition_applied(cleared_state)
+                else previous_status
+            ),
+            'buffer_pairs_count': buffer_pairs_count,
+            'buffer_target_pairs': buffer_target_pairs,
+            'buffer_cleared': _transition_applied(cleared_state),
+            'buffer_frozen': buffer_frozen,
+            'auto_canonization_suspended': auto_canonization_suspended,
+            'writes_applied': False,
+            'judge_status': 'not_called',
+            'apply_status': 'not_called',
+            **_policy_fields(
+                failure_class='write_recovery',
+                recovery_action=(
+                    'terminal_consume_without_write'
+                    if _transition_applied(cleared_state)
+                    else 'apply_recovery'
+                ),
+                processing_state='write_failed',
+                attempt_current=FAILURE_ATTEMPT_LIMIT,
+                window_fingerprint=fingerprint,
+                next_window_progress=(
+                    'current_pair_staged'
+                    if _transition_applied(cleared_state)
+                    else 'blocked_write_recovery'
+                ),
+                next_buffer_pairs_count=(
+                    int(cleared_state.get('buffer_pairs_count') or 0)
+                    if _transition_applied(cleared_state)
+                    else buffer_pairs_count
+                ),
+            ),
+        }
+        _emit_periodic_agent_event(
+            status='skipped',
+            reason_code=str(summary['reason_code']),
+            summary=summary,
+        )
+        return summary
+
+    owner_token = secrets.token_hex(8)
+    claim_reason = _claim_reason(
+        attempt=attempt_current,
+        fingerprint=fingerprint,
+        owner_token=owner_token,
+    )
+    claimed_state = mark_status(
         conversation_id,
         status='running',
-        reason='threshold_reached',
+        reason=claim_reason,
         touch_run_ts=True,
+        expected_buffer_pairs=staging_state.get('buffer_pairs'),
+        expected_status=previous_status or None,
+        expected_reason=previous_reason or None,
     )
-    staging_state = get_staging_state(conversation_id) or staging_state
+    if not _transition_applied(claimed_state):
+        summary = {
+            'status': 'skipped',
+            'reason_code': 'processing_claim_lost',
+            'last_agent_status': _text(_mapping(claimed_state).get('last_agent_status')),
+            'buffer_pairs_count': buffer_pairs_count,
+            'buffer_target_pairs': buffer_target_pairs,
+            'buffer_cleared': False,
+            'buffer_frozen': buffer_frozen,
+            'auto_canonization_suspended': auto_canonization_suspended,
+            'writes_applied': False,
+            'judge_status': 'not_called',
+            'apply_status': 'not_called',
+            **_policy_fields(
+                failure_class='write_recovery',
+                recovery_action='apply_recovery',
+                processing_state='write_failed',
+                attempt_current=attempt_current,
+                window_fingerprint=fingerprint,
+                next_window_progress='blocked_write_recovery',
+                next_buffer_pairs_count=buffer_pairs_count,
+            ),
+        }
+        _emit_periodic_agent_event(
+            status='skipped',
+            reason_code='processing_claim_lost',
+            summary=summary,
+        )
+        return summary
+
+    owned_state = {
+        'status': 'running',
+        'reason': claim_reason,
+    }
+
+    def persist_judge_attempt() -> Mapping[str, Any] | None:
+        attempt_reason = _judge_attempt_reason(
+            attempt=attempt_current,
+            fingerprint=fingerprint,
+            owner_token=owner_token,
+        )
+        attempt_state = mark_status(
+            conversation_id,
+            status='judge_attempt_started',
+            reason=attempt_reason,
+            touch_run_ts=True,
+            expected_buffer_pairs=staging_state.get('buffer_pairs'),
+            expected_status=owned_state['status'],
+            expected_reason=owned_state['reason'],
+        )
+        if _transition_applied(attempt_state):
+            owned_state['status'] = 'judge_attempt_started'
+            owned_state['reason'] = attempt_reason
+        return attempt_state
+
     runtime_summary = mutable_identity_runtime.run_mutable_identity_window(
-        staging_state=staging_state,
+        staging_state=claimed_state,
         arbiter_module=arbiter_module,
         memory_store_module=memory_store_module,
         enforce_writes=bool(enforce_writes),
         window_fingerprint=fingerprint,
+        before_judge_call=persist_judge_attempt,
     )
 
     if _text(runtime_summary.get('status')) != 'ok':
@@ -512,8 +853,11 @@ def stage_identity_turn_pair(
                 reason=reason_code,
                 auto_canonization_suspended=auto_canonization_suspended,
                 next_pair=next_pair,
+                expected_buffer_pairs=staging_state.get('buffer_pairs'),
+                expected_status=owned_state['status'],
+                expected_reason=owned_state['reason'],
             )
-            if isinstance(cleared_state, Mapping):
+            if _transition_applied(cleared_state):
                 summary = {
                     **dict(runtime_summary),
                     'status': 'skipped',
@@ -544,6 +888,9 @@ def stage_identity_turn_pair(
                 status='terminal_discard_failed',
                 reason='staging_finalize_failed',
                 touch_run_ts=False,
+                expected_buffer_pairs=staging_state.get('buffer_pairs'),
+                expected_status=owned_state['status'],
+                expected_reason=owned_state['reason'],
             )
             summary = {
                 **dict(runtime_summary),
@@ -569,12 +916,20 @@ def stage_identity_turn_pair(
             return summary
 
         last_status = 'write_recovery_pending' if failure_class == 'write_recovery' else 'retry_pending'
-        mark_status(
+        retry_state = mark_status(
             conversation_id,
             status=last_status,
             reason=reason_code,
             touch_run_ts=False,
+            expected_buffer_pairs=staging_state.get('buffer_pairs'),
+            expected_status=owned_state['status'],
+            expected_reason=owned_state['reason'],
         )
+        if not _transition_applied(retry_state):
+            last_status = _text(_mapping(retry_state).get('last_agent_status')) or 'processing_claim_lost'
+            reason_code = 'processing_claim_lost'
+            failure_class = 'write_recovery'
+            processing_state = 'write_failed'
         summary = {
             **dict(runtime_summary),
             'last_agent_status': last_status,
@@ -596,6 +951,21 @@ def stage_identity_turn_pair(
             ),
         }
         _emit_periodic_agent_event(status='skipped', reason_code=reason_code, summary=summary)
+        if (
+            _transition_applied(retry_state)
+            and not pair_appended
+            and previous_status == 'running'
+        ):
+            return stage_identity_turn_pair(
+                conversation_id,
+                normalized_turn_pair,
+                arbiter_module=arbiter_module,
+                memory_store_module=memory_store_module,
+                enforce_writes=enforce_writes,
+                _staging_state=retry_state,
+                _pair_appended=False,
+                _processing_lock_held=True,
+            )
         return summary
 
     completion_status = _text(runtime_summary.get('last_agent_status')) or 'completed_no_change'
@@ -617,8 +987,11 @@ def stage_identity_turn_pair(
                 reason='write_recovery_unverified',
                 auto_canonization_suspended=auto_canonization_suspended,
                 next_pair=next_pair,
+                expected_buffer_pairs=staging_state.get('buffer_pairs'),
+                expected_status=owned_state['status'],
+                expected_reason=owned_state['reason'],
             )
-            if isinstance(cleared_state, Mapping):
+            if _transition_applied(cleared_state):
                 summary = {
                     **dict(runtime_summary),
                     'status': 'skipped',
@@ -650,6 +1023,9 @@ def stage_identity_turn_pair(
                 status='terminal_discard_failed',
                 reason='staging_finalize_failed',
                 touch_run_ts=False,
+                expected_buffer_pairs=staging_state.get('buffer_pairs'),
+                expected_status=owned_state['status'],
+                expected_reason=owned_state['reason'],
             )
             summary = {
                 **dict(runtime_summary),
@@ -674,14 +1050,24 @@ def stage_identity_turn_pair(
             _emit_periodic_agent_event(status='skipped', reason_code='staging_finalize_failed', summary=summary)
             return summary
 
+    completion_expected_status = owned_state['status']
+    completion_expected_reason = owned_state['reason']
+    persisted_completion_state = get_staging_state(conversation_id) or {}
+    if _canonical_window_write_is_committed(persisted_completion_state, fingerprint):
+        completion_expected_status = _COMMITTED_WINDOW_STATUS
+        completion_expected_reason = _committed_window_reason(fingerprint)
+
     cleared_state = clear_buffer(
         conversation_id,
         status=completion_status,
         reason=completion_reason,
         auto_canonization_suspended=auto_canonization_suspended,
         next_pair=next_pair,
+        expected_buffer_pairs=staging_state.get('buffer_pairs'),
+        expected_status=completion_expected_status,
+        expected_reason=completion_expected_reason,
     )
-    if not isinstance(cleared_state, Mapping):
+    if not _transition_applied(cleared_state):
         finalization_status = (
             'finalization_recovery_applied'
             if bool(runtime_summary.get('writes_applied')) or completion_status == 'write_recovery_completed'
@@ -692,6 +1078,9 @@ def stage_identity_turn_pair(
             status=finalization_status,
             reason='staging_finalize_failed',
             touch_run_ts=False,
+            expected_buffer_pairs=staging_state.get('buffer_pairs'),
+            expected_status=completion_expected_status,
+            expected_reason=completion_expected_reason,
         )
         summary = {
             **dict(runtime_summary),

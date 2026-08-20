@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -153,9 +154,15 @@ class _MutableIdentityCursor:
             return
 
         if normalized.startswith('update identity_mutable_staging'):
-            fingerprint, conversation_id = params
+            fingerprint, conversation_id, pairs_json, expected_status, expected_reason = params
             row = self._staging_state.get(str(conversation_id))
-            if row and int(row.get('buffer_pairs_count') or 0) == 5:
+            if (
+                row
+                and int(row.get('buffer_pairs_count') or 0) == 5
+                and row.get('buffer_pairs') == json.loads(str(pairs_json))
+                and row.get('last_agent_status') == expected_status
+                and row.get('last_agent_reason') == expected_reason
+            ):
                 row['last_agent_status'] = 'canonical_write_committed'
                 row['last_agent_reason'] = str(fingerprint)
                 self._results = [(str(conversation_id),)]
@@ -301,11 +308,19 @@ class IdentityMutablesPhase1BTests(unittest.TestCase):
         audit_state: list[dict[str, object]] = []
         query_log: list[str] = []
         connections: list[_MutableIdentityConnection] = []
+        expected_pairs = [
+            {
+                'user': {'role': 'user', 'content': f'SYNTHETIC_USER_{index}'},
+                'assistant': {'role': 'assistant', 'content': f'SYNTHETIC_ASSISTANT_{index}'},
+            }
+            for index in range(1, 6)
+        ]
         staging_state = {
             'lot1-fenced-window': {
                 'buffer_pairs_count': 5,
-                'last_agent_status': 'running',
-                'last_agent_reason': 'threshold_reached',
+                'buffer_pairs': expected_pairs,
+                'last_agent_status': 'judge_attempt_started',
+                'last_agent_reason': 'judge_attempt:1:0123456789ab:owner-token',
             }
         }
         original_conn = memory_store._conn
@@ -344,6 +359,9 @@ class IdentityMutablesPhase1BTests(unittest.TestCase):
                 updates,
                 staging_conversation_id='lot1-fenced-window',
                 staging_window_fingerprint='0123456789ab',
+                staging_expected_buffer_pairs=expected_pairs,
+                staging_expected_status='judge_attempt_started',
+                staging_expected_reason='judge_attempt:1:0123456789ab:owner-token',
             )
             invalid_fence_result = memory_store.apply_mutable_identity_subject_updates(
                 updates,
@@ -365,6 +383,7 @@ class IdentityMutablesPhase1BTests(unittest.TestCase):
             staging_state['lot1-fenced-window'],
             {
                 'buffer_pairs_count': 5,
+                'buffer_pairs': expected_pairs,
                 'last_agent_status': 'canonical_write_committed',
                 'last_agent_reason': 'canonical_write_recovery_pending:0123456789ab',
             },

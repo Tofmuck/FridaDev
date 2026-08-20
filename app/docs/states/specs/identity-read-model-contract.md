@@ -163,6 +163,14 @@ Semantique:
 - `window_fingerprint` est uniquement le prefixe de 12 caracteres d'un SHA-256
   stable de la fenetre, destine a prouver qu'un retry porte sur la meme capture;
   aucun texte source, proposition, prompt ou canon ne l'accompagne;
+- `last_agent_status=running` est un claim de traitement, pas la preuve d'une
+  tentative consommee; `judge_attempt_started` porte cette preuve persistante;
+- `terminal_discard_failed` est un blocage de finalisation uniquement. Son run
+  suivant doit projeter `judge_status=not_called` et `apply_status=not_called`,
+  puis `terminal_consume_without_write` si le CAS de consommation reussit;
+- un event `concurrent_window_completed` signifie que le holder de la meme
+  empreinte a deja finalise avant le second caller; il ne doit ni fabriquer un
+  second verdict ni requalifier un blocage en succes;
 - `raise_tension` ne fait plus partie du contrat actif `mutable_judge_v2`; les champs `open_tension_*` peuvent rester vides par compatibilite read-model, ou compacter uniquement d'anciens events pre-Lot-B;
 - ces anciennes tensions compactes ne requalifient pas `identity_conflicts` en source active et ne rejoignent pas le canon injecte.
 - `latest_agent_activity.outcome_summaries` peut exposer seulement des summaries content-free: sujet, verdict, statut, reason code, continuity kind, compteurs et longueurs; il ne contient jamais proposition brute, fenetre brute, prompt, contenu mutable ni hash court stable derive de ces textes.

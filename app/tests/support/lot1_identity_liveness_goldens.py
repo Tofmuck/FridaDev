@@ -140,3 +140,51 @@ def assert_runtime_safety_retry(actual: Mapping[str, Any]) -> None:
     }
     if dict(actual) != expected:
         raise AssertionError("Lot 1 runtime safety failure retry policy changed")
+
+
+def assert_concurrent_window_exclusion(actual: Mapping[str, Any]) -> None:
+    expected = {
+        "judge_calls": 1,
+        "canonical_batches": 1,
+        "audit_count": 1,
+        "sixth_pair_occurrences": 1,
+    }
+    if dict(actual) != expected:
+        raise AssertionError("Lot 1 concurrent window exclusion changed")
+
+
+def assert_compare_and_set_finalization(actual: Mapping[str, Any]) -> None:
+    expected = {
+        "wrong_status_rejected": True,
+        "wrong_owner_rejected": True,
+        "late_window_rejected": True,
+        "next_pairs_count": 2,
+        "sixth_pair_occurrences": 1,
+        "seventh_pair_occurrences": 1,
+    }
+    if dict(actual) != expected:
+        raise AssertionError("Lot 1 staging finalization CAS changed")
+
+
+def assert_running_crash_recovery(actual: Mapping[str, Any]) -> None:
+    expected = {
+        "judge_calls": 2,
+        "attempt_current": 2,
+        "action": "completed",
+        "buffer_cleared": True,
+        "sixth_pair_occurrences": 1,
+    }
+    if dict(actual) != expected:
+        raise AssertionError("Lot 1 running-before-judge crash recovery changed")
+
+
+def assert_terminal_discard_recovery(actual: Mapping[str, Any]) -> None:
+    expected = {
+        "judge_calls": 2,
+        "judge_status": "not_called",
+        "apply_status": "not_called",
+        "action": "terminal_consume_without_write",
+        "seventh_pair_occurrences": 1,
+    }
+    if dict(actual) != expected:
+        raise AssertionError("Lot 1 terminal discard finalization recovery changed")

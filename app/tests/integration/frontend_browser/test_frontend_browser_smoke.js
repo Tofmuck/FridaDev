@@ -1828,7 +1828,11 @@ test('memory admin recent turns keep explicit zero snapshot counts over fallback
   });
 });
 
-function hermeneuticAdminMockScript({ verifiedWriteRecovery = false } = {}) {
+function hermeneuticAdminMockScript({
+  verifiedWriteRecovery = false,
+  currentStagingStatus = "buffering",
+} = {}) {
+  const currentStagingFrozen = currentStagingStatus !== "buffering";
   const latestIdentityActivity = verifiedWriteRecovery
     ? {
         present: true,
@@ -1883,17 +1887,21 @@ function hermeneuticAdminMockScript({ verifiedWriteRecovery = false } = {}) {
         identity_staging: {
           present: true,
           actively_injected: false,
-          buffer_pairs_count: 1,
+          buffer_pairs_count: ${currentStagingFrozen ? 5 : 1},
           buffer_target_pairs: 5,
-          buffer_frozen: false,
-          last_agent_status: "buffering",
-          last_agent_reason: null,
+          buffer_frozen: ${currentStagingFrozen},
+          last_agent_status: ${JSON.stringify(currentStagingStatus)},
+          last_agent_reason: ${JSON.stringify(
+            currentStagingFrozen ? "synthetic_content_free_reason" : null
+          )},
           current_buffer: {
-            status: "buffering",
-            reason_code: "below_threshold",
-            pairs_count: 1,
+            status: ${JSON.stringify(currentStagingStatus)},
+            reason_code: ${JSON.stringify(
+              currentStagingFrozen ? "synthetic_content_free_reason" : "below_threshold"
+            )},
+            pairs_count: ${currentStagingFrozen ? 5 : 1},
             target_pairs: 5,
-            frozen: false,
+            frozen: ${currentStagingFrozen},
           },
           last_completed_agent: { present: false },
           latest_agent_activity: ${JSON.stringify(latestIdentityActivity)},
@@ -2210,4 +2218,31 @@ test('identity surfaces render a verified previously applied write recovery', as
       /verified prior canonical write must render/,
     );
   });
+});
+
+test('identity surfaces render authoritative active claim and finalization recovery states', async () => {
+  for (const currentStagingStatus of [
+    "running",
+    "judge_attempt_started",
+    "terminal_discard_failed",
+  ]) {
+    const mockScript = hermeneuticAdminMockScript({ currentStagingStatus });
+    const expectedChip = `buffer_status=${currentStagingStatus}`;
+
+    await openBrowserPage({ pathSuffix: '/identity.html', mockScript }, async (page) => {
+      await page.waitForFunction(() =>
+        document.querySelector('#identityStatusBanner')?.textContent.includes('Lecture Identity ok'));
+      const text = String(await page.locator('#identityRuntimeSummary').textContent() || '');
+      assert.equal(text.includes(expectedChip), true, `${expectedChip} must render on /identity`);
+      assert.equal(text.includes('buffer_status=ok'), false, 'active staging cannot render as ok');
+    });
+
+    await openBrowserPage({ pathSuffix: '/hermeneutic-admin.html', mockScript }, async (page) => {
+      await page.waitForFunction(() =>
+        document.querySelector('#hermeneuticAdminStatusBanner')?.textContent.includes('Lecture hermeneutique ok'));
+      const text = String(await page.locator('#hermeneuticIdentityReadModel').textContent() || '');
+      assert.equal(text.includes(expectedChip), true, `${expectedChip} must render on /hermeneutic-admin`);
+      assert.equal(text.includes('buffer_status=ok'), false, 'active staging cannot render as ok');
+    });
+  }
 });

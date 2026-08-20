@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import threading
 from types import SimpleNamespace
 from typing import Any, Mapping
 
@@ -111,53 +112,91 @@ class _Cursor:
     def execute(self, statement: str, params: tuple[Any, ...] | None = None) -> None:
         sql = " ".join(statement.split())
         values = tuple(params or ())
+        if sql.startswith("SELECT pg_advisory_lock"):
+            self.backend.advisory_lock(int(values[0])).acquire()
+            self.row = (True,)
+            return
+        if sql.startswith("SELECT pg_advisory_unlock"):
+            self.backend.advisory_lock(int(values[0])).release()
+            self.row = (True,)
+            return
         if sql.startswith("SELECT") and "WHERE conversation_id = %s" in sql:
-            self.row = self.backend.rows.get(str(values[0]))
+            with self.backend.state_lock:
+                self.row = self.backend.rows.get(str(values[0]))
             return
         if sql.startswith("INSERT INTO identity_mutable_staging"):
-            conversation_id, pairs_json, count, target, suspended, status, reason = values
-            previous = self.backend.rows.get(str(conversation_id))
-            created_ts = previous[8] if previous else "2026-08-20T00:00:00Z"
-            last_run = previous[7] if previous else None
-            self.row = (
-                str(conversation_id),
-                str(pairs_json),
-                int(count),
-                int(target),
-                bool(suspended),
-                status,
-                reason,
-                last_run,
-                created_ts,
-                "2026-08-20T00:00:01Z",
-            )
-            self.backend.rows[str(conversation_id)] = self.row
+            with self.backend.state_lock:
+                conversation_id, pairs_json, count, target, suspended, status, reason = values
+                previous = self.backend.rows.get(str(conversation_id))
+                created_ts = previous[8] if previous else "2026-08-20T00:00:00Z"
+                last_run = previous[7] if previous else None
+                self.row = (
+                    str(conversation_id),
+                    str(pairs_json),
+                    int(count),
+                    int(target),
+                    bool(suspended),
+                    status,
+                    reason,
+                    last_run,
+                    created_ts,
+                    "2026-08-20T00:00:01Z",
+                )
+                self.backend.rows[str(conversation_id)] = self.row
             return
         if sql.startswith("UPDATE identity_mutable_staging SET last_agent_status"):
-            status, reason, touch_run, suspended, conversation_id = values
-            current = list(self.backend.rows[str(conversation_id)])
-            current[5] = status
-            current[6] = reason
-            if touch_run:
-                current[7] = "2026-08-20T00:00:02Z"
-            if suspended is not None:
-                current[4] = bool(suspended)
-            current[9] = "2026-08-20T00:00:03Z"
-            self.row = tuple(current)
-            self.backend.rows[str(conversation_id)] = self.row
+            status, reason, touch_run, suspended = values[:4]
+            where_values = list(values[4:])
+            conversation_id = str(where_values.pop(0))
+            with self.backend.state_lock:
+                current_row = self.backend.rows.get(conversation_id)
+                matches = current_row is not None
+                if matches and "buffer_pairs_json = %s::jsonb" in sql:
+                    matches = json.loads(str(current_row[1])) == json.loads(str(where_values.pop(0)))
+                if matches and "last_agent_status IS NOT DISTINCT FROM %s" in sql:
+                    matches = current_row[5] == where_values.pop(0)
+                if matches and "last_agent_reason IS NOT DISTINCT FROM %s" in sql:
+                    matches = current_row[6] == where_values.pop(0)
+                if not matches:
+                    self.row = None
+                    return
+                current = list(current_row)
+                current[5] = status
+                current[6] = reason
+                if touch_run:
+                    current[7] = "2026-08-20T00:00:02Z"
+                if suspended is not None:
+                    current[4] = bool(suspended)
+                current[9] = "2026-08-20T00:00:03Z"
+                self.row = tuple(current)
+                self.backend.rows[conversation_id] = self.row
             return
         if sql.startswith("UPDATE identity_mutable_staging SET buffer_pairs_json"):
-            pairs_json, count, status, reason, suspended, conversation_id = values
-            current = list(self.backend.rows[str(conversation_id)])
-            current[1] = str(pairs_json)
-            current[2] = int(count)
-            current[4] = bool(suspended)
-            current[5] = status
-            current[6] = reason
-            current[7] = "2026-08-20T00:00:04Z"
-            current[9] = "2026-08-20T00:00:04Z"
-            self.row = tuple(current)
-            self.backend.rows[str(conversation_id)] = self.row
+            pairs_json, count, status, reason, suspended = values[:5]
+            where_values = list(values[5:])
+            conversation_id = str(where_values.pop(0))
+            with self.backend.state_lock:
+                current_row = self.backend.rows.get(conversation_id)
+                matches = current_row is not None
+                if matches and "buffer_pairs_json = %s::jsonb" in sql:
+                    matches = json.loads(str(current_row[1])) == json.loads(str(where_values.pop(0)))
+                if matches and "last_agent_status IS NOT DISTINCT FROM %s" in sql:
+                    matches = current_row[5] == where_values.pop(0)
+                if matches and "last_agent_reason IS NOT DISTINCT FROM %s" in sql:
+                    matches = current_row[6] == where_values.pop(0)
+                if not matches:
+                    self.row = None
+                    return
+                current = list(current_row)
+                current[1] = str(pairs_json)
+                current[2] = int(count)
+                current[4] = bool(suspended)
+                current[5] = status
+                current[6] = reason
+                current[7] = "2026-08-20T00:00:04Z"
+                current[9] = "2026-08-20T00:00:04Z"
+                self.row = tuple(current)
+                self.backend.rows[conversation_id] = self.row
             return
         raise AssertionError(f"unsupported staging SQL: {sql[:80]}")
 
@@ -188,6 +227,12 @@ class SyntheticSqlStagingBackend:
     def __init__(self) -> None:
         self.rows: dict[str, tuple[Any, ...]] = {}
         self.commit_count = 0
+        self.state_lock = threading.RLock()
+        self._advisory_locks: dict[int, threading.RLock] = {}
+
+    def advisory_lock(self, key: int) -> threading.RLock:
+        with self.state_lock:
+            return self._advisory_locks.setdefault(key, threading.RLock())
 
     def connection(self) -> _Connection:
         return _Connection(self)
@@ -216,6 +261,18 @@ class RealStagingIdentityStore:
     def get_identity_staging_state(self, conversation_id: str) -> Any:
         return memory_identity_staging.get_identity_staging_state(
             conversation_id,
+            conn_factory=self.backend.connection,
+            logger=self.logger,
+        )
+
+    def identity_staging_processing_lock(
+        self,
+        conversation_id: str,
+        window_fingerprint: str,
+    ) -> Any:
+        return memory_identity_staging.identity_staging_processing_lock(
+            conversation_id,
+            window_fingerprint,
             conn_factory=self.backend.connection,
             logger=self.logger,
         )
@@ -251,39 +308,57 @@ class RealStagingIdentityStore:
         *,
         staging_conversation_id: str | None = None,
         staging_window_fingerprint: str | None = None,
+        staging_expected_buffer_pairs: list[dict[str, Any]] | None = None,
+        staging_expected_status: str | None = None,
+        staging_expected_reason: str | None = None,
     ) -> Any:
         batch = copy.deepcopy(list(updates))
         self.canonical_update_batches.append(batch)
         if self.fail_canonical_updates:
             return None
-        results = []
-        for update in batch:
-            subject = str(update["subject"])
-            payload = {
-                "subject": subject,
-                "content": str(update.get("content") or ""),
-                "source_trace_id": update.get("source_trace_id"),
-                "updated_by": str(update.get("updated_by") or ""),
-                "update_reason": str(update.get("update_reason") or ""),
-            }
-            self.mutable[subject] = payload
-            self.mutable_audits.append(
-                {
+        with self.backend.state_lock:
+            if batch and staging_conversation_id and staging_window_fingerprint:
+                expected_state = self.get_identity_staging_state(staging_conversation_id)
+                if (
+                    expected_state is None
+                    or expected_state.get("buffer_pairs") != list(staging_expected_buffer_pairs or [])
+                    or expected_state.get("last_agent_status") != staging_expected_status
+                    or expected_state.get("last_agent_reason") != staging_expected_reason
+                ):
+                    return None
+            results = []
+            for update in batch:
+                subject = str(update["subject"])
+                payload = {
                     "subject": subject,
+                    "content": str(update.get("content") or ""),
                     "source_trace_id": update.get("source_trace_id"),
+                    "updated_by": str(update.get("updated_by") or ""),
+                    "update_reason": str(update.get("update_reason") or ""),
                 }
-            )
-            results.append(copy.deepcopy(payload))
-        if batch:
-            self.canonical_successful_update_batches.append(copy.deepcopy(batch))
-            if staging_conversation_id and staging_window_fingerprint:
-                self.mark_identity_staging_status(
-                    staging_conversation_id,
-                    status="canonical_write_committed",
-                    reason=f"canonical_write_recovery_pending:{staging_window_fingerprint}",
-                    touch_run_ts=False,
+                self.mutable[subject] = payload
+                self.mutable_audits.append(
+                    {
+                        "subject": subject,
+                        "source_trace_id": update.get("source_trace_id"),
+                    }
                 )
-        return results
+                results.append(copy.deepcopy(payload))
+            if batch:
+                self.canonical_successful_update_batches.append(copy.deepcopy(batch))
+                if staging_conversation_id and staging_window_fingerprint:
+                    fenced = self.mark_identity_staging_status(
+                        staging_conversation_id,
+                        status="canonical_write_committed",
+                        reason=f"canonical_write_recovery_pending:{staging_window_fingerprint}",
+                        touch_run_ts=False,
+                        expected_buffer_pairs=staging_expected_buffer_pairs,
+                        expected_status=staging_expected_status,
+                        expected_reason=staging_expected_reason,
+                    )
+                    if not fenced or not fenced.get("transition_applied"):
+                        raise AssertionError("synthetic canonical fence lost")
+            return results
 
 
 

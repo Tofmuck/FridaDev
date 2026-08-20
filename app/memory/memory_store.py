@@ -67,6 +67,7 @@ __all__ = [
     'get_identity_staging_state',
     'get_latest_identity_staging_state',
     'append_identity_staging_pair',
+    'identity_staging_processing_lock',
     'mark_identity_staging_status',
     'clear_identity_staging_buffer',
     'list_identity_fragments',
@@ -419,11 +420,17 @@ def apply_mutable_identity_subject_updates(
     *,
     staging_conversation_id: str | None = None,
     staging_window_fingerprint: str | None = None,
+    staging_expected_buffer_pairs: Sequence[Mapping[str, Any]] | None = None,
+    staging_expected_status: str | None = None,
+    staging_expected_reason: str | None = None,
 ) -> list[dict[str, Any]] | None:
     return memory_identity_mutables.apply_mutable_identity_subject_updates(
         updates,
         staging_conversation_id=staging_conversation_id,
         staging_window_fingerprint=staging_window_fingerprint,
+        staging_expected_buffer_pairs=staging_expected_buffer_pairs,
+        staging_expected_status=staging_expected_status,
+        staging_expected_reason=staging_expected_reason,
         conn_factory=_conn,
         logger=logger,
     )
@@ -459,6 +466,18 @@ def append_identity_staging_pair(
     )
 
 
+def identity_staging_processing_lock(
+    conversation_id: str,
+    window_fingerprint: str,
+) -> Any:
+    return memory_identity_staging.identity_staging_processing_lock(
+        conversation_id,
+        window_fingerprint,
+        conn_factory=_conn,
+        logger=logger,
+    )
+
+
 def mark_identity_staging_status(
     conversation_id: str,
     *,
@@ -466,6 +485,9 @@ def mark_identity_staging_status(
     reason: str = '',
     touch_run_ts: bool = False,
     auto_canonization_suspended: bool | None = None,
+    expected_buffer_pairs: Any = memory_identity_staging._UNSET,
+    expected_status: Any = memory_identity_staging._UNSET,
+    expected_reason: Any = memory_identity_staging._UNSET,
 ) -> dict[str, Any] | None:
     return memory_identity_staging.mark_identity_staging_status(
         conversation_id,
@@ -473,6 +495,9 @@ def mark_identity_staging_status(
         reason=reason,
         touch_run_ts=touch_run_ts,
         auto_canonization_suspended=auto_canonization_suspended,
+        expected_buffer_pairs=expected_buffer_pairs,
+        expected_status=expected_status,
+        expected_reason=expected_reason,
         conn_factory=_conn,
         logger=logger,
     )
@@ -485,6 +510,9 @@ def clear_identity_staging_buffer(
     reason: str = '',
     auto_canonization_suspended: bool = False,
     next_pair: Any = None,
+    expected_buffer_pairs: Any = memory_identity_staging._UNSET,
+    expected_status: Any = memory_identity_staging._UNSET,
+    expected_reason: Any = memory_identity_staging._UNSET,
 ) -> dict[str, Any] | None:
     return memory_identity_staging.clear_identity_staging_buffer(
         conversation_id,
@@ -492,6 +520,9 @@ def clear_identity_staging_buffer(
         reason=reason,
         auto_canonization_suspended=auto_canonization_suspended,
         next_pair=next_pair,
+        expected_buffer_pairs=expected_buffer_pairs,
+        expected_status=expected_status,
+        expected_reason=expected_reason,
         conn_factory=_conn,
         logger=logger,
     )

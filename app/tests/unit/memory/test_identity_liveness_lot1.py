@@ -3,7 +3,9 @@ from __future__ import annotations
 import copy
 import json
 import sys
+import threading
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -34,7 +36,7 @@ def _failure(reason_code: str, **observability: Any) -> dict[str, Any]:
 def _different_add_contract() -> dict[str, Any]:
     contract = lot0_identity_goldens.add_contract()
     contract["verdicts"][1]["proposition"] = (
-        "Tof maintient une seconde limite synthetique explicite stable."
+        "Tof exige une seconde limite synthetique explicite stable."
     )
     return contract
 
@@ -73,6 +75,49 @@ class _FinalizeFailsOnceStore(lot0_identity_goldens.RealStagingIdentityStore):
         if self.clear_calls == 1:
             return None
         return super().clear_identity_staging_buffer(conversation_id, **kwargs)
+
+
+class _ConcurrentAppendBarrierStore(lot0_identity_goldens.RealStagingIdentityStore):
+    def __init__(self) -> None:
+        super().__init__()
+        self.frozen_append_barrier = threading.Barrier(2)
+
+    def append_identity_staging_pair(
+        self,
+        conversation_id: str,
+        pair: Any,
+        *,
+        target_pairs: int,
+    ) -> Any:
+        state = super().append_identity_staging_pair(
+            conversation_id,
+            pair,
+            target_pairs=target_pairs,
+        )
+        if state and int(state.get("buffer_pairs_count") or 0) >= target_pairs:
+            self.frozen_append_barrier.wait(timeout=2)
+        return state
+
+
+class _ConcurrentFinalizeBarrierStore(lot0_identity_goldens.RealStagingIdentityStore):
+    def __init__(self) -> None:
+        super().__init__()
+        self.finalize_barrier = threading.Barrier(2)
+        self.winner_completed = threading.Event()
+        self.interleave_finalizations = False
+
+    def clear_identity_staging_buffer(self, conversation_id: str, **kwargs: Any) -> Any:
+        if not self.interleave_finalizations:
+            return super().clear_identity_staging_buffer(conversation_id, **kwargs)
+        self.finalize_barrier.wait(timeout=2)
+        if kwargs.get("reason") == "synthetic_late_clear":
+            if not self.winner_completed.wait(timeout=2):
+                raise AssertionError("winning finalization did not complete")
+            return super().clear_identity_staging_buffer(conversation_id, **kwargs)
+        try:
+            return super().clear_identity_staging_buffer(conversation_id, **kwargs)
+        finally:
+            self.winner_completed.set()
 
 
 class IdentityLivenessLot1Tests(unittest.TestCase):
@@ -838,6 +883,328 @@ class IdentityLivenessLot1Tests(unittest.TestCase):
                 self.assertEqual(activity["attempt_current"], 1)
                 self.assertEqual(activity["attempt_limit"], 2)
                 self.assertEqual(activity["writes_previously_applied"], action == "completed")
+
+        for status, reason in (
+            ("running", "processing_claim:1:0123456789ab:synthetic-owner"),
+            ("judge_attempt_started", "judge_attempt:1:0123456789ab:synthetic-owner"),
+            ("terminal_discard_failed", "staging_finalize_failed"),
+        ):
+            with self.subTest(staging_status=status):
+                staging_state = {
+                    "conversation_id": "synthetic-observability",
+                    "buffer_pairs_count": 5,
+                    "buffer_target_pairs": 5,
+                    "buffer_frozen": True,
+                    "last_agent_status": status,
+                    "last_agent_reason": reason,
+                    "last_agent_run_ts": "2026-08-20T00:00:00Z",
+                    "updated_ts": "2026-08-20T00:00:01Z",
+                    "auto_canonization_suspended": False,
+                }
+                block = admin_identity_read_model_service.build_identity_staging_block(
+                    memory_store_module=SimpleNamespace(
+                        get_latest_identity_staging_state=lambda value=staging_state: value
+                    ),
+                    log_store_module=SimpleNamespace(
+                        read_chat_log_events=lambda **_kwargs: {"items": []}
+                    ),
+                )
+                current = block["current_buffer"]
+                self.assertEqual(current["status"], status)
+                self.assertEqual(current["reason_code"], reason)
+                self.assertTrue(current["frozen"])
+
+
+class IdentityLivenessLot1ConcurrencyTests(unittest.TestCase):
+    def setUp(self) -> None:
+        runtime = memory_identity_periodic_agent.mutable_identity_runtime
+        self._original_llm_identity = runtime.identity.load_llm_identity
+        self._original_user_identity = runtime.identity.load_user_identity
+        runtime.identity.load_llm_identity = lambda: "Synthetic Frida identity."
+        runtime.identity.load_user_identity = lambda: "Synthetic user identity."
+
+    def tearDown(self) -> None:
+        runtime = memory_identity_periodic_agent.mutable_identity_runtime
+        runtime.identity.load_llm_identity = self._original_llm_identity
+        runtime.identity.load_user_identity = self._original_user_identity
+
+    def _stage_four(self, conversation_id: str, store: Any, arbiter: Any) -> None:
+        for index in range(1, 5):
+            summary = memory_identity_periodic_agent.stage_identity_turn_pair(
+                conversation_id,
+                lot0_identity_goldens.synthetic_pair(index),
+                arbiter_module=arbiter,
+                memory_store_module=store,
+            )
+            self.assertEqual(summary["status"], "buffering")
+
+    def test_concurrent_fifth_and_sixth_turn_share_one_judge_write_and_audit(self) -> None:
+        store = _ConcurrentAppendBarrierStore()
+        arbiter_stub = SimpleNamespace(
+            run_mutable_identity_judge=lambda _payload: lot0_identity_goldens.ok_judge_result(
+                lot0_identity_goldens.no_change_contract()
+            )
+        )
+        self._stage_four("lot1-concurrent-window", store, arbiter_stub)
+        judge_entered = threading.Event()
+        duplicate_judge_entered = threading.Event()
+        release_judge = threading.Event()
+        counter_lock = threading.Lock()
+        judge_calls = 0
+
+        def run_judge(_payload: dict[str, Any]) -> dict[str, Any]:
+            nonlocal judge_calls
+            with counter_lock:
+                judge_calls += 1
+                current = judge_calls
+            if current == 1:
+                judge_entered.set()
+                self.assertTrue(release_judge.wait(timeout=2))
+            else:
+                duplicate_judge_entered.set()
+            return lot0_identity_goldens.ok_judge_result(
+                (
+                    lot0_identity_goldens.add_contract()
+                    if current == 1
+                    else _different_add_contract()
+                )
+            )
+
+        arbiter = SimpleNamespace(run_mutable_identity_judge=run_judge)
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            fifth = executor.submit(
+                memory_identity_periodic_agent.stage_identity_turn_pair,
+                "lot1-concurrent-window",
+                lot0_identity_goldens.synthetic_pair(5),
+                arbiter_module=arbiter,
+                memory_store_module=store,
+            )
+            sixth = executor.submit(
+                memory_identity_periodic_agent.stage_identity_turn_pair,
+                "lot1-concurrent-window",
+                lot0_identity_goldens.synthetic_pair(6),
+                arbiter_module=arbiter,
+                memory_store_module=store,
+            )
+            self.assertTrue(judge_entered.wait(timeout=2))
+            self.assertFalse(duplicate_judge_entered.wait(timeout=0.2))
+            release_judge.set()
+            fifth.result(timeout=2)
+            sixth.result(timeout=2)
+
+        state = store.get_identity_staging_state("lot1-concurrent-window")
+        actual = {
+            "judge_calls": judge_calls,
+            "canonical_batches": len(store.canonical_successful_update_batches),
+            "audit_count": len(store.mutable_audits),
+            "sixth_pair_occurrences": _count_marker(state, "LOT0_USER_06"),
+        }
+        lot1_identity_liveness_goldens.assert_concurrent_window_exclusion(actual)
+        for key, value in (
+            ("judge_calls", 2),
+            ("canonical_batches", 2),
+            ("audit_count", 2),
+            ("sixth_pair_occurrences", 0),
+        ):
+            mutated = dict(actual, **{key: value})
+            with self.assertRaises(AssertionError):
+                lot1_identity_liveness_goldens.assert_concurrent_window_exclusion(mutated)
+
+    def test_compare_and_set_clear_rejects_late_finalization_after_window_changes(self) -> None:
+        store = _ConcurrentFinalizeBarrierStore()
+        for index in range(1, 6):
+            store.append_identity_staging_pair(
+                "lot1-late-clear",
+                lot0_identity_goldens.synthetic_pair(index),
+                target_pairs=memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
+            )
+        frozen = store.get_identity_staging_state("lot1-late-clear")
+        fingerprint = lot0_identity_goldens.window_fingerprint(frozen)
+        running = store.mark_identity_staging_status(
+            "lot1-late-clear",
+            status="running",
+            reason=f"processing_claim:1:{fingerprint}:owner-a",
+            touch_run_ts=True,
+            expected_buffer_pairs=frozen["buffer_pairs"],
+            expected_status=frozen["last_agent_status"],
+            expected_reason=frozen["last_agent_reason"],
+        )
+        wrong_status = store.clear_identity_staging_buffer(
+            "lot1-late-clear",
+            status="completed_no_change",
+            reason="completed_no_change",
+            expected_buffer_pairs=frozen["buffer_pairs"],
+            expected_status="retry_pending",
+            expected_reason=running["last_agent_reason"],
+        )
+        wrong_owner = store.clear_identity_staging_buffer(
+            "lot1-late-clear",
+            status="completed_no_change",
+            reason="completed_no_change",
+            expected_buffer_pairs=frozen["buffer_pairs"],
+            expected_status=running["last_agent_status"],
+            expected_reason=f"processing_claim:1:{fingerprint}:owner-b",
+        )
+        unchanged = store.get_identity_staging_state("lot1-late-clear")
+        self.assertFalse(wrong_status["transition_applied"])
+        self.assertFalse(wrong_owner["transition_applied"])
+        self.assertEqual(unchanged["buffer_pairs_count"], 5)
+        self.assertEqual(
+            unchanged["last_agent_reason"],
+            running["last_agent_reason"],
+        )
+        store.interleave_finalizations = True
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            winning_finalization = executor.submit(
+                store.clear_identity_staging_buffer,
+                "lot1-late-clear",
+                status="completed_no_change",
+                reason="completed_no_change",
+                next_pair=lot0_identity_goldens.synthetic_pair(6),
+                expected_buffer_pairs=frozen["buffer_pairs"],
+                expected_status=running["last_agent_status"],
+                expected_reason=running["last_agent_reason"],
+            )
+            late_finalization = executor.submit(
+                store.clear_identity_staging_buffer,
+                "lot1-late-clear",
+                status="completed_no_change",
+                reason="synthetic_late_clear",
+                expected_buffer_pairs=frozen["buffer_pairs"],
+                expected_status=running["last_agent_status"],
+                expected_reason=running["last_agent_reason"],
+            )
+            first = winning_finalization.result(timeout=2)
+            late = late_finalization.result(timeout=2)
+        self.assertTrue(first["transition_applied"])
+        self.assertFalse(late["transition_applied"])
+        store.append_identity_staging_pair(
+            "lot1-late-clear",
+            lot0_identity_goldens.synthetic_pair(7),
+            target_pairs=memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
+        )
+        state = store.get_identity_staging_state("lot1-late-clear")
+        actual = {
+            "wrong_status_rejected": not wrong_status["transition_applied"],
+            "wrong_owner_rejected": not wrong_owner["transition_applied"],
+            "late_window_rejected": not late["transition_applied"],
+            "next_pairs_count": state["buffer_pairs_count"],
+            "sixth_pair_occurrences": _count_marker(state, "LOT0_USER_06"),
+            "seventh_pair_occurrences": _count_marker(state, "LOT0_USER_07"),
+        }
+        lot1_identity_liveness_goldens.assert_compare_and_set_finalization(actual)
+        for key, value in (
+            ("wrong_status_rejected", False),
+            ("wrong_owner_rejected", False),
+            ("late_window_rejected", False),
+            ("next_pairs_count", 0),
+        ):
+            mutated = dict(actual, **{key: value})
+            with self.assertRaises(AssertionError):
+                lot1_identity_liveness_goldens.assert_compare_and_set_finalization(mutated)
+
+    def test_persisted_running_before_judge_does_not_consume_first_attempt(self) -> None:
+        store = lot0_identity_goldens.RealStagingIdentityStore()
+        for index in range(1, 6):
+            store.append_identity_staging_pair(
+                "lot1-running-crash",
+                lot0_identity_goldens.synthetic_pair(index),
+                target_pairs=memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
+            )
+        frozen = store.get_identity_staging_state("lot1-running-crash")
+        fingerprint = lot0_identity_goldens.window_fingerprint(frozen)
+        store.mark_identity_staging_status(
+            "lot1-running-crash",
+            status="running",
+            reason=f"processing_claim:{fingerprint}:crashed-owner:1",
+            touch_run_ts=True,
+        )
+        judge_calls = 0
+        responses = [
+            _failure("judge_timeout"),
+            lot0_identity_goldens.ok_judge_result(lot0_identity_goldens.no_change_contract()),
+        ]
+
+        def timeout(_payload: dict[str, Any]) -> dict[str, Any]:
+            nonlocal judge_calls
+            judge_calls += 1
+            return copy.deepcopy(responses.pop(0))
+
+        summary = memory_identity_periodic_agent.stage_identity_turn_pair(
+            "lot1-running-crash",
+            lot0_identity_goldens.synthetic_pair(6),
+            arbiter_module=SimpleNamespace(run_mutable_identity_judge=timeout),
+            memory_store_module=store,
+        )
+        state = store.get_identity_staging_state("lot1-running-crash")
+        actual = {
+            "judge_calls": judge_calls,
+            "attempt_current": summary["attempt_current"],
+            "action": summary["recovery_action"],
+            "buffer_cleared": summary["buffer_cleared"],
+            "sixth_pair_occurrences": _count_marker(state, "LOT0_USER_06"),
+        }
+        lot1_identity_liveness_goldens.assert_running_crash_recovery(actual)
+        mutated = dict(actual, judge_calls=1, attempt_current=2)
+        with self.assertRaises(AssertionError):
+            lot1_identity_liveness_goldens.assert_running_crash_recovery(mutated)
+
+    def test_terminal_discard_failure_retries_only_finalization_without_third_judge(self) -> None:
+        store = _FinalizeFailsOnceStore()
+        judge_calls = 0
+
+        def timeout(_payload: dict[str, Any]) -> dict[str, Any]:
+            nonlocal judge_calls
+            judge_calls += 1
+            if judge_calls > 2:
+                raise AssertionError("terminal_discard_failed must not rejudge")
+            return _failure("judge_timeout")
+
+        arbiter = SimpleNamespace(run_mutable_identity_judge=timeout)
+        self._stage_four("lot1-terminal-finalize", store, arbiter)
+        memory_identity_periodic_agent.stage_identity_turn_pair(
+            "lot1-terminal-finalize",
+            lot0_identity_goldens.synthetic_pair(5),
+            arbiter_module=arbiter,
+            memory_store_module=store,
+        )
+        failed = memory_identity_periodic_agent.stage_identity_turn_pair(
+            "lot1-terminal-finalize",
+            lot0_identity_goldens.synthetic_pair(6),
+            arbiter_module=arbiter,
+            memory_store_module=store,
+        )
+        recovered = memory_identity_periodic_agent.stage_identity_turn_pair(
+            "lot1-terminal-finalize",
+            lot0_identity_goldens.synthetic_pair(7),
+            arbiter_module=arbiter,
+            memory_store_module=store,
+        )
+        state = store.get_identity_staging_state("lot1-terminal-finalize")
+        self.assertEqual(failed["last_agent_status"], "terminal_discard_failed")
+        actual = {
+            "judge_calls": judge_calls,
+            "judge_status": recovered["judge_status"],
+            "apply_status": recovered["apply_status"],
+            "action": recovered["recovery_action"],
+            "seventh_pair_occurrences": _count_marker(state, "LOT0_USER_07"),
+        }
+        lot1_identity_liveness_goldens.assert_terminal_discard_recovery(actual)
+        for key, value in (
+            ("judge_calls", 3),
+            ("judge_status", "ok"),
+            ("apply_status", "ok"),
+        ):
+            mutated = dict(actual, **{key: value})
+            with self.assertRaises(AssertionError):
+                lot1_identity_liveness_goldens.assert_terminal_discard_recovery(mutated)
+
+    def test_different_retry_add_is_accepted_by_product_validator(self) -> None:
+        validated, reason = mutable_identity_judge_v2.validate_mutable_judge_contract_v2(
+            _different_add_contract()
+        )
+        self.assertIsNotNone(validated)
+        self.assertEqual(reason, "")
 
 
 if __name__ == "__main__":
