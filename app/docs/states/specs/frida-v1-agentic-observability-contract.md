@@ -879,6 +879,30 @@ Decision livree Lot Z:
   `operator_go_required` jusqu'a un futur GO operateur humain explicite, date,
   separe, avec scope exact, backup et rollback affiches juste avant execution.
 
+### Correctif de vivacite Identity mutable
+
+Le stage de tour existant `mutable_identity_judge` porte la politique Lot 1;
+aucun stage autonome d'application n'est ajoute. Sa projection content-free
+autorise seulement:
+
+- `failure_class`: `transient`, `deterministic_input`,
+  `deterministic_contract` ou `write_recovery`;
+- `recovery_action`: `retry_preserve`,
+  `terminal_consume_without_write`, `apply_recovery` ou `completed`;
+- `processing_state`: `judge_not_called`, `judge_failed`, `write_failed` ou
+  `completed`;
+- `attempt_current`, `attempt_limit=2`, `window_fingerprint` SHA-256 tronquee a
+  12 caracteres, `next_window_progress`, `next_buffer_pairs_count` et
+  `writes_previously_applied`;
+- les tailles et plafonds content-free deja mesures: nombre de paires,
+  caracteres et estimation de tokens.
+
+Ces champs sont allowlistes par la garde d'observabilite, projetes par le
+read-model Identity, puis lus tels quels par `/identity` et
+`/hermeneutic-admin`. Une absence historique de ces champs reste `unknown`; elle
+ne devient ni `ok` ni `completed`. Fenetre, messages, proposition, prompt,
+canon, exception brute, URL et secret restent interdits.
+
 ## 15. Tests et preuves attendus
 
 Tests minimaux futurs:

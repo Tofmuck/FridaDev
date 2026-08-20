@@ -85,7 +85,7 @@ class Lot0IdentityGoldensTests(unittest.TestCase):
             memory_identity_periodic_agent.chat_turn_logger.emit = original_emit
         return store, summary, events, judge_calls
 
-    def test_frozen_window_replays_exact_five_pair_fingerprint_and_ignores_sixth_turn(self) -> None:
+    def test_irreducible_window_is_terminal_and_sixth_turn_starts_next_window(self) -> None:
         store = lot0_identity_goldens.RealStagingIdentityStore()
         events: list[dict[str, Any]] = []
         provider_calls = 0
@@ -112,68 +112,70 @@ class Lot0IdentityGoldensTests(unittest.TestCase):
             lambda stage, **kwargs: events.append({"stage": stage, **copy.deepcopy(kwargs)}) or True
         )
         arbiter = SimpleNamespace(run_mutable_identity_judge=mutable_identity_judge_v2.run_mutable_identity_judge_v2)
-        summaries = []
-        fingerprints = []
-        states = []
         try:
             for index in range(1, 5):
                 buffering = memory_identity_periodic_agent.stage_identity_turn_pair(
                     "lot0-frozen-window",
-                    lot0_identity_goldens.synthetic_pair(index, chars_per_message=3600),
+                    lot0_identity_goldens.synthetic_pair(index, chars_per_message=5000),
                     arbiter_module=arbiter,
                     memory_store_module=store,
                 )
                 self.assertEqual(buffering["status"], "buffering")
-            for index in (5, 6):
-                summaries.append(
-                    memory_identity_periodic_agent.stage_identity_turn_pair(
-                        "lot0-frozen-window",
-                        lot0_identity_goldens.synthetic_pair(index, chars_per_message=3600),
-                        arbiter_module=arbiter,
-                        memory_store_module=store,
-                    )
-                )
-                state = store.get_identity_staging_state("lot0-frozen-window")
-                states.append(state)
-                fingerprints.append(lot0_identity_goldens.window_fingerprint(state))
+            terminal = memory_identity_periodic_agent.stage_identity_turn_pair(
+                "lot0-frozen-window",
+                lot0_identity_goldens.synthetic_pair(5, chars_per_message=5000),
+                arbiter_module=arbiter,
+                memory_store_module=store,
+            )
+            state_after_terminal = store.get_identity_staging_state("lot0-frozen-window")
+            sixth = memory_identity_periodic_agent.stage_identity_turn_pair(
+                "lot0-frozen-window",
+                lot0_identity_goldens.synthetic_pair(6, chars_per_message=5000),
+                arbiter_module=arbiter,
+                memory_store_module=store,
+            )
+            state_after_sixth = store.get_identity_staging_state("lot0-frozen-window")
         finally:
             mutable_identity_judge_v2.load_prompt_v2 = original_prompt
             mutable_identity_judge_v2.judge_common.runtime_model_settings = original_settings
             mutable_identity_judge_v2.requests.post = original_post
             memory_identity_periodic_agent.chat_turn_logger.emit = original_emit
 
-        final_state = states[-1]
-        serialized_window = repr(final_state["buffer_pairs"])
+        serialized_window = repr(state_after_sixth["buffer_pairs"])
         golden = {
-            "pairs_count": final_state["buffer_pairs_count"],
-            "target_pairs": final_state["buffer_target_pairs"],
-            "frozen": final_state["buffer_frozen"],
-            "pair_fingerprints_equal": len(set(fingerprints)) == 1,
-            "sixth_absent": "LOT0_USER_06" not in serialized_window and "LOT0_ASSISTANT_06" not in serialized_window,
-            "statuses": [summary["last_agent_status"] for summary in summaries],
-            "reasons": [summary["reason_code"] for summary in summaries],
-            "buffer_cleared": [summary["buffer_cleared"] for summary in summaries],
+            "processed_pairs_count": terminal["buffer_pairs_count"],
+            "target_pairs": terminal["buffer_target_pairs"],
+            "reason_code": terminal["reason_code"],
+            "failure_class": terminal["failure_class"],
+            "action": terminal["recovery_action"],
+            "attempt": terminal["attempt_current"],
+            "terminal_buffer_cleared": terminal["buffer_cleared"],
+            "pairs_after_terminal": state_after_terminal["buffer_pairs_count"],
+            "pairs_after_sixth": state_after_sixth["buffer_pairs_count"],
+            "sixth_staged_once": serialized_window.count("LOT0_USER_06") == 1,
+            "sixth_window_frozen": state_after_sixth["buffer_frozen"],
             "canonical_update_count": sum(len(batch) for batch in store.canonical_update_batches),
         }
-        lot0_identity_goldens.assert_frozen_window_golden(golden)
+        lot0_identity_goldens.assert_frozen_window_regression_golden(golden)
         self.assertEqual(provider_calls, 0)
-        self.assertEqual(len(events), 2)
-        self.assertTrue(all(event["stage"] == "mutable_identity_judge" for event in events))
-        self.assertTrue(all(event["reason_code"] == "window_too_large" for event in events))
-        self.assertTrue(all(not _contains_forbidden_content_key(event) for event in events))
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["stage"], "mutable_identity_judge")
+        self.assertEqual(events[0]["reason_code"], "window_too_large")
+        self.assertTrue(not _contains_forbidden_content_key(events[0]))
+        self.assertEqual(sixth["status"], "buffering")
         self.assertEqual(store.mutable, {})
 
         for key, value in (
-            ("pairs_count", 6),
-            ("pair_fingerprints_equal", False),
-            ("sixth_absent", False),
-            ("statuses", ["no_change", "no_change"]),
+            ("pairs_after_terminal", 5),
+            ("pairs_after_sixth", 5),
+            ("sixth_staged_once", False),
+            ("action", "retry_preserve"),
             ("canonical_update_count", 1),
         ):
             mutated = copy.deepcopy(golden)
             mutated[key] = value
             with self.assertRaises(AssertionError):
-                lot0_identity_goldens.assert_frozen_window_golden(mutated)
+                lot0_identity_goldens.assert_frozen_window_regression_golden(mutated)
 
     def test_identity_error_matrix_preserves_or_consumes_window_and_canon_exactly(self) -> None:
         def raising(exc):
@@ -204,14 +206,14 @@ class Lot0IdentityGoldensTests(unittest.TestCase):
             self.assertEqual(reason, "")
 
         cases = (
-            ("timeout", raising(TimeoutError("synthetic timeout")), False, "judge_transport_error", "judge_call_error", False, 5, 0),
-            ("transport", raising(ConnectionError("synthetic transport")), False, "judge_transport_error", "judge_call_error", False, 5, 0),
+            ("timeout", raising(TimeoutError("synthetic timeout")), False, "judge_transport_error", "retry_pending", False, 5, 0),
+            ("transport", raising(ConnectionError("synthetic transport")), False, "judge_transport_error", "retry_pending", False, 5, 0),
             (
                 "schema_invalid",
                 lambda _payload: rejected_contract({}),
                 False,
                 "schema_invalid",
-                "schema_invalid",
+                "retry_pending",
                 False,
                 5,
                 0,
@@ -221,7 +223,7 @@ class Lot0IdentityGoldensTests(unittest.TestCase):
                 lambda _payload: rejected_contract(invalid_business_contract),
                 False,
                 "non_ontological_proposition",
-                "non_ontological_proposition",
+                "retry_pending",
                 False,
                 5,
                 0,
@@ -240,9 +242,9 @@ class Lot0IdentityGoldensTests(unittest.TestCase):
                 },
                 False,
                 "window_too_large",
-                "window_too_large",
-                False,
-                5,
+                "terminal_discarded",
+                True,
+                0,
                 0,
             ),
             (
@@ -250,7 +252,7 @@ class Lot0IdentityGoldensTests(unittest.TestCase):
                 lambda _payload: lot0_identity_goldens.ok_judge_result(lot0_identity_goldens.add_contract()),
                 True,
                 "canonical_write_failed",
-                "apply_failed",
+                "write_recovery_pending",
                 False,
                 5,
                 0,
@@ -297,7 +299,7 @@ class Lot0IdentityGoldensTests(unittest.TestCase):
                     "event_content_free": not _contains_forbidden_content_key(events[0]),
                 }
                 expected = {
-                    "status": "ok" if consumed else "skipped",
+                    "status": "ok" if name in {"no_change", "add"} else "skipped",
                     "reason_code": reason,
                     "last_agent_status": last_status,
                     "window_consumed": consumed,

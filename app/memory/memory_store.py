@@ -477,12 +477,14 @@ def clear_identity_staging_buffer(
     status: str,
     reason: str = '',
     auto_canonization_suspended: bool = False,
+    next_pair: Any = None,
 ) -> dict[str, Any] | None:
     return memory_identity_staging.clear_identity_staging_buffer(
         conversation_id,
         status=status,
         reason=reason,
         auto_canonization_suspended=auto_canonization_suspended,
+        next_pair=next_pair,
         conn_factory=_conn,
         logger=logger,
     )

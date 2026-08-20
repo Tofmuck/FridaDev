@@ -105,6 +105,9 @@ Champs minimaux:
 - `structured_output_schema = "json_schema_strict"`
 - `provider_require_parameters = true`
 - `window_target_pairs = 5`
+- `attempt_limit = 2`
+- `max_window_chars = 40000`
+- `max_estimated_prompt_tokens = 16000`
 - `verdicts = ["add", "no_change"]`
 - `role = "5_pairs_to_add_no_change_ontological_identity_mutables"`
 
@@ -145,8 +148,15 @@ Semantique:
 - `buffer_target_pairs` designe toujours la cible runtime active de la fenetre judge-first; une ancienne valeur stockee en DB peut rester visible seulement via `stored_buffer_target_pairs` / `legacy_stored_buffer_target_pairs`, non autoritatifs;
 - il separe explicitement l'etat du buffer courant (`current_buffer`) du dernier run agent termine (`last_completed_agent`) sans dump du buffer brut;
 - quand un nouveau buffer est en cours, `last_agent_reason` ne doit pas porter une ancienne raison terminale comme `completed_no_change`; cette raison reste lisible via `last_completed_agent.reason_code` quand disponible;
-- `latest_agent_activity` resume compactement le dernier verdict utile, les compteurs, statuts, reason codes, longueurs, tailles de fenetre et eventuels evenements legacy compactes pour cette conversation, sans hash court stable derive de texte identity, proposition ou reason libre;
+- `latest_agent_activity` resume compactement le dernier verdict utile, les compteurs, statuts, reason codes, longueurs, tailles de fenetre et eventuels evenements legacy compactes pour cette conversation;
 - `latest_agent_activity.reason_code` lit le `reason_code` compact de l'event actif `mutable_identity_judge`, avec fallback historique vers `identity_periodic_agent`;
+- `latest_agent_activity` projette explicitement `failure_class`,
+  `recovery_action`, `processing_state`, `attempt_current`, `attempt_limit`,
+  `window_fingerprint`, `next_window_progress`, `next_buffer_pairs_count` et
+  `writes_previously_applied`;
+- `window_fingerprint` est uniquement le prefixe de 12 caracteres d'un SHA-256
+  stable de la fenetre, destine a prouver qu'un retry porte sur la meme capture;
+  aucun texte source, proposition, prompt ou canon ne l'accompagne;
 - `raise_tension` ne fait plus partie du contrat actif `mutable_judge_v2`; les champs `open_tension_*` peuvent rester vides par compatibilite read-model, ou compacter uniquement d'anciens events pre-Lot-B;
 - ces anciennes tensions compactes ne requalifient pas `identity_conflicts` en source active et ne rejoignent pas le canon injecte.
 - `latest_agent_activity.outcome_summaries` peut exposer seulement des summaries content-free: sujet, verdict, statut, reason code, continuity kind, compteurs et longueurs; il ne contient jamais proposition brute, fenetre brute, prompt, contenu mutable ni hash court stable derive de ces textes.
@@ -285,6 +295,13 @@ Cette surface montre:
 - les couches stockees legacy/evidence/conflicts;
 - la separation `stored` vs `actively_injected`;
 - le fait que le pilotage systeme reste distinct de cette lecture identity.
+- les etats autoritatifs attente normale, retry gele, consommation terminale
+  sans ecriture, reprise d'ecriture et progression effective;
+- la classe, l'action, la tentative bornee, l'empreinte courte et le reason
+  code sans deduire un faux `ok` de l'absence d'un champ;
+- une consommation terminale propre suivie d'une progression n'est pas rendue
+  comme une panne active; un retry ou write recovery bloque n'est jamais rendu
+  healthy.
 
 Depuis la fermeture du lot 5 de la surface `/identity`, cette page reemploie ce meme contrat:
 - pour l'etat courant par sujet;

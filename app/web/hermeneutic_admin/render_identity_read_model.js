@@ -215,6 +215,12 @@
     if (toText(activity.runtime_pipeline)) {
       meta.appendChild(createChip(`pipeline=${toText(activity.runtime_pipeline)}`));
     }
+    if (toText(activity.processing_state)) meta.appendChild(createChip(`etat=${toText(activity.processing_state)}`));
+    if (toText(activity.failure_class)) meta.appendChild(createChip(`classe=${toText(activity.failure_class)}`));
+    if (toText(activity.recovery_action)) meta.appendChild(createChip(`action=${toText(activity.recovery_action)}`));
+    if (Number(activity.attempt_current)) meta.appendChild(createChip(`tentative=${Number(activity.attempt_current)}/${Number(activity.attempt_limit) || 0}`));
+    if (toText(activity.window_fingerprint)) meta.appendChild(createChip(`empreinte=${toText(activity.window_fingerprint)}`));
+    if (toText(activity.next_window_progress)) meta.appendChild(createChip(`progression=${toText(activity.next_window_progress)}`));
     group.appendChild(meta);
 
     const summaryEntries = [

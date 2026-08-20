@@ -226,12 +226,17 @@ class _ConversationCrashStore:
         status: str,
         reason: str = "",
         auto_canonization_suspended: bool = False,
+        next_pair: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any] | None:
         state = self.get_identity_staging_state(conversation_id)
         if state is None:
             return None
-        state["buffer_pairs"] = []
-        state["buffer_pairs_count"] = 0
+        state["buffer_pairs"] = (
+            [{"user": copy.deepcopy(next_pair[0]), "assistant": copy.deepcopy(next_pair[1])}]
+            if next_pair is not None
+            else []
+        )
+        state["buffer_pairs_count"] = len(state["buffer_pairs"])
         state["buffer_frozen"] = False
         state["last_agent_status"] = status
         state["last_agent_reason"] = reason or None

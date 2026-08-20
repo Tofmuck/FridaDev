@@ -147,10 +147,10 @@ class _Cursor:
             self.backend.rows[str(conversation_id)] = self.row
             return
         if sql.startswith("UPDATE identity_mutable_staging SET buffer_pairs_json"):
-            pairs_json, status, reason, suspended, conversation_id = values
+            pairs_json, count, status, reason, suspended, conversation_id = values
             current = list(self.backend.rows[str(conversation_id)])
             current[1] = str(pairs_json)
-            current[2] = 0
+            current[2] = int(count)
             current[4] = bool(suspended)
             current[5] = status
             current[6] = reason
@@ -199,6 +199,7 @@ class RealStagingIdentityStore:
         self.logger = SimpleNamespace(error=lambda *_args, **_kwargs: None)
         self.mutable: dict[str, dict[str, Any]] = {}
         self.canonical_update_batches: list[list[dict[str, Any]]] = []
+        self.canonical_successful_update_batches: list[list[dict[str, Any]]] = []
         self.legacy_persist_calls: list[dict[str, Any]] = []
         self.fail_canonical_updates = False
 
@@ -260,23 +261,28 @@ class RealStagingIdentityStore:
             }
             self.mutable[subject] = payload
             results.append(copy.deepcopy(payload))
+        if batch:
+            self.canonical_successful_update_batches.append(copy.deepcopy(batch))
         return results
 
 
-def assert_frozen_window_golden(summary: Mapping[str, Any]) -> None:
+def assert_frozen_window_regression_golden(summary: Mapping[str, Any]) -> None:
     expected = {
-        "pairs_count": 5,
+        "processed_pairs_count": 5,
         "target_pairs": 5,
-        "frozen": True,
-        "pair_fingerprints_equal": True,
-        "sixth_absent": True,
-        "statuses": ["window_too_large", "window_too_large"],
-        "reasons": ["window_too_large", "window_too_large"],
-        "buffer_cleared": [False, False],
+        "reason_code": "window_too_large",
+        "failure_class": "deterministic_input",
+        "action": "terminal_consume_without_write",
+        "attempt": 1,
+        "terminal_buffer_cleared": True,
+        "pairs_after_terminal": 0,
+        "pairs_after_sixth": 1,
+        "sixth_staged_once": True,
+        "sixth_window_frozen": False,
         "canonical_update_count": 0,
     }
     if dict(summary) != expected:
-        raise AssertionError("Lot 0 frozen Identity window contract changed")
+        raise AssertionError("Lot 1 regression restored the Lot 0 infinite frozen Identity window")
 
 
 def assert_error_case(actual: Mapping[str, Any], expected: Mapping[str, Any]) -> None:

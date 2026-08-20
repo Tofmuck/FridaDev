@@ -15,31 +15,38 @@ from admin import admin_identity_read_model_service
 from observability import hermeneutic_node_logger, turn_pipeline_read_model
 
 
-def assert_frozen_read_model(payload):
+def assert_liveness_read_model(payload):
     expected = {
-        "status": "window_too_large",
-        "reason_code": "window_too_large",
-        "pairs_count": 5,
+        "status": "buffering",
+        "reason_code": "below_threshold",
+        "pairs_count": 1,
         "target_pairs": 5,
-        "frozen": True,
-        "window_chars": 33000,
-        "payload_chars": 34000,
-        "estimated_prompt_tokens": 12100,
+        "frozen": False,
+        "failure_class": "deterministic_input",
+        "recovery_action": "terminal_consume_without_write",
+        "processing_state": "judge_not_called",
+        "attempt_current": 1,
+        "attempt_limit": 2,
+        "window_fingerprint": "0123456789ab",
+        "next_window_progress": "current_pair_staged",
+        "window_chars": 50000,
+        "payload_chars": 54000,
+        "estimated_prompt_tokens": 13500,
     }
     if payload != expected:
-        raise AssertionError("Lot 0 Identity read-model critical state changed")
+        raise AssertionError("Lot 1 Identity liveness read-model critical state changed")
 
 
 class Lot0ObservabilityGoldensTests(unittest.TestCase):
-    def test_frozen_identity_event_projects_authoritative_status_reason_size_and_freeze(self) -> None:
+    def test_terminal_identity_event_projects_authoritative_policy_and_next_window_progress(self) -> None:
         staging_state = {
             "conversation_id": "lot0-observability",
-            "buffer_pairs_count": 5,
+            "buffer_pairs_count": 1,
             "buffer_target_pairs": 5,
-            "buffer_frozen": True,
+            "buffer_frozen": False,
             "auto_canonization_suspended": False,
-            "last_agent_status": "window_too_large",
-            "last_agent_reason": "window_too_large",
+            "last_agent_status": "buffering",
+            "last_agent_reason": None,
             "last_agent_run_ts": "2026-08-20T00:00:02Z",
             "updated_ts": "2026-08-20T00:00:03Z",
         }
@@ -55,15 +62,23 @@ class Lot0ObservabilityGoldensTests(unittest.TestCase):
                 "buffer_pairs_count": 5,
                 "buffer_target_pairs": 5,
                 "buffer_frozen": True,
-                "buffer_cleared": False,
+                "buffer_cleared": True,
                 "writes_applied": False,
+                "failure_class": "deterministic_input",
+                "recovery_action": "terminal_consume_without_write",
+                "processing_state": "judge_not_called",
+                "attempt_current": 1,
+                "attempt_limit": 2,
+                "window_fingerprint": "0123456789ab",
+                "next_window_progress": "current_pair_staged",
+                "next_buffer_pairs_count": 1,
                 "judge_status": "skipped",
                 "judge_reason_code": "window_too_large",
-                "window_chars": 33000,
-                "payload_chars": 34000,
-                "estimated_prompt_tokens": 12100,
-                "max_window_chars": 32000,
-                "max_estimated_prompt_tokens": 12000,
+                "window_chars": 50000,
+                "payload_chars": 54000,
+                "estimated_prompt_tokens": 13500,
+                "max_window_chars": 40000,
+                "max_estimated_prompt_tokens": 16000,
             },
         }
         block = admin_identity_read_model_service.build_identity_staging_block(
@@ -78,25 +93,33 @@ class Lot0ObservabilityGoldensTests(unittest.TestCase):
             "pairs_count": block["current_buffer"]["pairs_count"],
             "target_pairs": block["current_buffer"]["target_pairs"],
             "frozen": block["current_buffer"]["frozen"],
+            "failure_class": block["latest_agent_activity"]["failure_class"],
+            "recovery_action": block["latest_agent_activity"]["recovery_action"],
+            "processing_state": block["latest_agent_activity"]["processing_state"],
+            "attempt_current": block["latest_agent_activity"]["attempt_current"],
+            "attempt_limit": block["latest_agent_activity"]["attempt_limit"],
+            "window_fingerprint": block["latest_agent_activity"]["window_fingerprint"],
+            "next_window_progress": block["latest_agent_activity"]["next_window_progress"],
             "window_chars": block["latest_agent_activity"]["window_chars"],
             "payload_chars": block["latest_agent_activity"]["payload_chars"],
             "estimated_prompt_tokens": block["latest_agent_activity"]["estimated_prompt_tokens"],
         }
-        assert_frozen_read_model(compact)
+        assert_liveness_read_model(compact)
         self.assertNotIn("buffer_pairs", block)
         self.assertNotIn("buffer_pairs_json", block)
         self.assertFalse(block["actively_injected"])
 
         for key, value in (
             ("status", "ok"),
-            ("reason_code", "completed_no_change"),
-            ("frozen", False),
-            ("pairs_count", 0),
+            ("reason_code", "window_too_large"),
+            ("frozen", True),
+            ("pairs_count", 5),
+            ("recovery_action", "retry_preserve"),
         ):
             mutated = dict(compact)
             mutated[key] = value
             with self.assertRaises(AssertionError):
-                assert_frozen_read_model(mutated)
+                assert_liveness_read_model(mutated)
 
     def test_secondary_sources_final_verdict_and_fail_open_are_in_events_but_partly_lost_in_cockpit(self) -> None:
         stimmung_prompt = hermeneutic_node_logger.build_stimmung_prompt_prepared_payload(

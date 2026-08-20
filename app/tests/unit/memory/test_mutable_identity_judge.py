@@ -519,8 +519,8 @@ class MutableIdentityJudgeV2ActiveTests(unittest.TestCase):
         self.assertEqual(no_change_schema['properties']['source_refs']['maxItems'], 0)
         self.assertEqual(no_change_schema['properties']['guard_notes']['maxItems'], 0)
         self.assertEqual(no_change_schema['properties']['continuity_kind']['enum'], ['none'])
-        self.assertEqual(mutable_identity_judge_v2.JUDGE_WINDOW_MAX_CHARS, 32_000)
-        self.assertEqual(mutable_identity_judge_v2.JUDGE_ESTIMATED_PROMPT_TOKEN_LIMIT, 12_000)
+        self.assertEqual(mutable_identity_judge_v2.JUDGE_WINDOW_MAX_CHARS, 40_000)
+        self.assertEqual(mutable_identity_judge_v2.JUDGE_ESTIMATED_PROMPT_TOKEN_LIMIT, 16_000)
 
     def test_v2_payload_for_openai_gpt54_mini_omits_unsupported_sampling_parameters(self) -> None:
         judge_input = mutable_identity_judge_v2.build_judge_input(

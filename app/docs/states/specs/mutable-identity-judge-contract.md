@@ -77,8 +77,14 @@ Cadence:
 - le juge s'active quand la cinquieme paire complete est disponible;
 - si la fenetre est incomplete, il n'y a pas d'appel juge;
 - apres un run techniquement termine, la fenetre est consommee;
-- en cas de timeout, JSON invalide, erreur transport ou schema invalide, la meme fenetre reste disponible pour retry;
-- les tours suivants ne remplacent pas silencieusement une fenetre bloquee.
+- timeout, erreur transport, JSON/schema ou verdict invalide conservent la meme
+  fenetre pour une seconde et derniere tentative;
+- `window_too_large` et `runtime_safety_violation` consomment immediatement la
+  fenetre sans ecriture canonique;
+- apres la seconde tentative en echec, la fenetre est consommee sans ecriture
+  canonique et garde son reason code d'echec;
+- une paire arrivee pendant le traitement est promue atomiquement, exactement
+  une fois, comme premiere paire de la fenetre suivante.
 
 Cette fenetre est une capture technique, pas un staging semantique.
 
@@ -101,8 +107,12 @@ Regles runtime:
 - `app/prompts/identity_periodic_agent.txt` est un artefact legacy desactive, conserve pour compatibilite documentaire/admin, pas un prompt runtime actif;
 - en `shadow`, le juge peut etre appele et observe, mais l'applicateur n'est pas lance et `identity_mutables` ne change pas;
 - en `enforced`, un contrat `mutable_judge_v2` valide peut ajouter dans `identity_mutables`;
-- si le juge echoue, timeout, renvoie JSON/schema invalide ou `window_too_large`, la fenetre est preservee;
-- si l'applicateur echoue, la fenetre est preservee;
+- timeout, erreur transport et echec de contrat conservent la fenetre pour une
+  unique reprise; un second echec la consomme sans ecriture;
+- `window_too_large` et `runtime_safety_violation` sont des echecs d'input
+  deterministes terminaux, consommes sans appel provider ni ecriture canonique;
+- si l'applicateur echoue, la fenetre est preservee pour une reprise
+  idempotente; un second echec la consomme sans etre renomme succes;
 - si le run se termine proprement par `no_change` ou par `add` applique, la fenetre est consommee;
 - aucun chemin actif n'appelle `memory_identity_periodic_apply.apply_periodic_agent_contract(...)` ni `memory_identity_periodic_scoring.score_operation(...)`; les modules legacy correspondants ont ete retires en Lot 6;
 - aucun chemin actif n'ecrit `static`.
@@ -626,13 +636,20 @@ Autorise:
 - operation;
 - counts;
 - longueurs;
-- hashes courts;
+- empreinte SHA-256 tronquee a 12 caracteres de la fenetre, stable seulement
+  pour reconnaitre un retry et jamais accompagnee du contenu source;
 - ids courts;
 - timestamps;
 - `window_pairs_count`;
 - `window_complete`;
 - timeout / parse error / apply error.
-- stages actifs `mutable_identity_judge` et `mutable_identity_judge_apply`.
+- stage de tour actif `mutable_identity_judge`; l'etat apply reste projete dans
+  ses champs compacts et ne cree pas un nouveau stage de tour opportuniste;
+- `failure_class`, `recovery_action`, `processing_state`, `attempt_current`,
+  `attempt_limit`, `window_fingerprint`, `next_window_progress` et
+  `next_buffer_pairs_count`;
+- `window_chars`, `payload_chars`, `estimated_prompt_tokens`,
+  `max_window_chars` et `max_estimated_prompt_tokens`;
 - diagnostics d'invalidation content-free: `validation_reason`,
   `invalid_verdict_index`, `invalid_subject`, `invalid_verdict`,
   `invalid_operation`, `invalid_reason_code`, `invalid_proposition_chars`,
@@ -649,11 +666,41 @@ Interdit:
 - justification longue du juge dans l'observabilite compacte.
 - presenter `identity_periodic_agent` ou ses seuils score-first comme writer mutable actif.
 
-Une invalidation `empty_proposition` conserve la fenetre pour retry et expose
-le verdict/operation fautif sous forme de compteurs et codes seulement. La
-spec ne vide pas automatiquement le buffer apres N echecs identiques; une
-suspension operateur explicite reste un futur durcissement possible si les
-retries repetes deviennent trop bruyants.
+Une invalidation `empty_proposition` conserve la fenetre pour une unique reprise
+et expose le verdict/operation fautif sous forme de compteurs et codes seulement.
+Si la seconde tentative echoue, la fenetre est consommee sans ecriture et sans
+faux `no_change`.
+
+## Politique De Vivacite Lot 1
+
+La borne est `attempt_limit = 2`. Elle ne depend d'aucun compteur global en
+memoire: la premiere tentative est celle qui vient de completer le buffer; une
+fenetre deja gelee et persistante est la seconde tentative, y compris apres un
+restart.
+
+- `transient`: `judge_timeout`, transport sans statut, HTTP
+  `408/409/425/429` et `5xx`; reprise preservee, puis consommation terminale
+  sans ecriture si elle echoue encore;
+- `deterministic_input`: `window_too_large`, `runtime_safety_violation`;
+  consommation terminale immediate sans ecriture;
+- `deterministic_contract`: autres refus techniques, HTTP `4xx` non
+  recuperables, JSON/schema/verdict et refus metier invalides; une reprise
+  preservee puis consommation terminale;
+- `write_recovery`: `canonical_write_failed`, `mutable_store_unavailable`,
+  `staging_finalize_failed`; reprise idempotente, puis consommation terminale
+  sans faux succes si la preuve canonique reste impossible.
+
+Les gardes locales sont `40000` caracteres de fenetre et `16000` tokens de
+prompt estimes. Elles ne tronquent rien: au-dela, la fenetre entiere est refusee
+comme `window_too_large`. La cadence reste exactement cinq paires completes.
+
+La transition terminale ou reussie remplace atomiquement l'ancien buffer par
+zero paire ou par la paire courante comme premiere paire de la fenetre suivante.
+Si l'ecriture canonique a reussi mais que la finalisation du staging echoue, le
+staging porte un statut de reprise de finalisation; le retry ne rappelle ni le
+juge ni l'applicateur. Si un retour d'application est incoherent apres commit,
+le contrat add-only permet de verifier `already_covered_by_mutable` sans seconde
+ecriture ni second audit.
 
 ## Contrat De Sortie Du Lot 0
 

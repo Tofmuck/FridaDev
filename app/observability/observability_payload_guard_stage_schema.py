@@ -25,6 +25,7 @@ _GENERAL_TEXT_KEYS = set(
     calendar_ambiguity content_hash draft_title_hash
     apply_reason_code apply_status dominant_tone error_class error_code epistemic_regime execution_status fallback_source
     final_judgment_posture final_output_regime final_status guarded_original_status
+    failure_class recovery_action processing_state window_fingerprint next_window_progress
     geste_dialogique_dominant hard_guard_effect injection_class
     fallback_reason finish_reason
     main_llm_reasoning_effort_effective main_llm_reasoning_effort_requested
@@ -80,6 +81,7 @@ _GENERAL_SCALAR_KEYS = set(
     web_confidence_score web_evidence_can_answer web_evidence_can_suggest_reformulation
     web_evidence_external_fallback_used web_evidence_requires_caveat web_search_enabled
     web_search_requested
+    attempt_current attempt_limit next_buffer_pairs_count writes_previously_applied
     web_pdf_read_pages
     agent_json_validated ambiguous arbiter_followed_upstream available buffer_target_pairs caldav_access catalog_saved confirmation_required
     confidence content_free conversation_saved current_embedding_blocked current_embedding_calls

@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif, non commence
+Statut: TODO actif; Lots 0 et 1 fermes; Lots 2 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -483,7 +483,7 @@ effectue. Les Lots 1 a 8 et Z restent integralement non commences.
 
 # LOT 1 - Retablir la vivacite du juge Identity
 
-Statut: non commence
+Statut: ferme le 2026-08-20
 Nature: correctif runtime borne
 Dependance: Lot 0 ferme
 
@@ -492,28 +492,65 @@ Dependance: Lot 0 ferme
 Garantir qu'une fenetre impossible ou irreparablement invalide ne bloque jamais
 toutes les fenetres futures, sans tronquer ni preselectionner le dialogue.
 
-## Decision a prendre avant patch
+## Decision avant patch
 
-Mesurer les tailles content-free historiques disponibles et choisir le plus
-petit plafond qui couvre l'usage reel avec marge. Verifier la capacite du
-modele/provider courant depuis une source primaire. Ne pas deduire un plafond
-depuis la seule fenetre actuellement bloquee.
+Oui, un plan plus simple et plus sur existait: conserver la ligne persistante
+de staging, limiter la politique a deux tentatives, terminer sans ecriture les
+inputs irreductibles et remplacer atomiquement l'ancienne fenetre par la paire
+courante. Aucun compteur global en memoire, table, migration, queue, job ou
+nouveau stage autonome n'etait necessaire.
+
+Mesures historiques content-free disponibles avant patch: 189 events juge,
+maximum `window_chars=37339`, `payload_chars=45755` et
+`estimated_prompt_tokens=12668`; anciennes gardes `32000` caracteres et `12000`
+tokens estimes. La fiche modele officielle OpenAI courante donne pour GPT-5.2
+une fenetre contextuelle de 400000 tokens et 128000 tokens de sortie. Les gardes
+passent donc au plus petit palier rond couvrant les maxima observes:
+`40000` caracteres et `16000` tokens estimes. La marge contextuelle reste tres
+large et aucune troncature n'est introduite.
+
+## Findings revalides
+
+- F1 valide: `window_too_large` preservait indefiniment le meme buffer 5/5;
+  chaque nouveau tour relancait le juge et sa paire n'etait pas stagiee.
+- F2 nuance: timeout, transport, contrat invalide et echec d'ecriture etaient
+  tous preserves sans borne explicite; `window_too_large` etait refuse avant
+  provider mais preservait lui aussi la fenetre.
+- F3 valide: un simple clear aurait retabli la progression mais perdu la paire
+  courante et rendu ambigu un commit canonique suivi d'un echec de finalisation.
+- F4 valide: le gel et le reason code existaient, mais classe, action, tentative,
+  empreinte et progression n'etaient projetes ni par l'API ni par les frontends.
+
+## Politique livree
+
+| Classe | Premiere action | Action terminale | Ecriture canonique |
+|---|---|---|---|
+| `transient` | `retry_preserve` pour timeout, transport sans statut, HTTP 408/409/425/429 et 5xx | seconde tentative puis `terminal_consume_without_write` | aucune sous echec |
+| `deterministic_input` | `terminal_consume_without_write` immediate | fenetre consommee, paire courante promue | aucune |
+| `deterministic_contract` | `retry_preserve` pour contrat/verdict/refus invalide et HTTP 4xx non recuperable | seconde tentative puis consommation sans ecriture | aucune sous echec |
+| `write_recovery` | `apply_recovery` | verification idempotente, puis consommation sans faux succes si reprise epuisee | au plus une application prouvee |
+
+La borne `attempt_limit=2` repose sur l'etat persistant existant: completer la
+cinquieme paire est la tentative 1; rencontrer une fenetre deja gelee est la
+tentative 2, y compris apres restart. Les transitions reussies ou terminales
+utilisent un seul `UPDATE` pour remplacer l'ancienne fenetre par zero paire ou
+par la paire courante, exactement une fois, comme premiere paire suivante.
 
 ## Travail obligatoire
 
-- [ ] Classer les echecs en `transient`, `deterministic_input`,
+- [x] Classer les echecs en `transient`, `deterministic_input`,
   `deterministic_contract` et `write_recovery` ou vocabulaire local equivalent.
-- [ ] Augmenter les gardes taille uniquement si les mesures le justifient.
-- [ ] Conserver exactement cinq paires completes; aucune troncature silencieuse.
-- [ ] Preserver la fenetre pour un echec transitoire selon une politique de
+- [x] Augmenter les gardes taille uniquement si les mesures le justifient.
+- [x] Conserver exactement cinq paires completes; aucune troncature silencieuse.
+- [x] Preserver la fenetre pour un echec transitoire selon une politique de
   retry bornee.
-- [ ] Ne jamais rejouer indefiniment un meme echec deterministe immutable.
-- [ ] Consommer ou mettre en quarantaine technique la fenetre terminale sans
+- [x] Ne jamais rejouer indefiniment un meme echec deterministe immutable.
+- [x] Consommer ou mettre en quarantaine technique la fenetre terminale sans
   ecriture canonique, puis accepter les paires suivantes.
-- [ ] Garantir l'idempotence si le verdict est valide mais l'ecriture canonique
+- [x] Garantir l'idempotence si le verdict est valide mais l'ecriture canonique
   echoue.
-- [ ] Ne jamais transformer un echec en `no_change` ou en succes canonique.
-- [ ] Ne modifier ni `add_only`, ni les sujets, ni la cadence nominale, ni le
+- [x] Ne jamais transformer un echec en `no_change` ou en succes canonique.
+- [x] Ne modifier ni `add_only`, ni les sujets, ni la cadence nominale, ni le
   canon existant.
 
 ## Observabilite backend dans le meme commit
@@ -531,6 +568,14 @@ Exposer de maniere compacte:
 
 Aucun contenu de fenetre, proposition ou canon ne doit etre journalise.
 
+Livre dans l'event existant `mutable_identity_judge`, sa garde allowlistee et
+ses projections: `failure_class`, `recovery_action`, `processing_state`,
+`attempt_current`, `attempt_limit`, `window_fingerprint`,
+`next_window_progress`, `next_buffer_pairs_count`,
+`writes_previously_applied`, tailles et plafonds compares. L'empreinte est le
+prefixe de 12 caracteres d'un SHA-256 stable et n'est jamais accompagnee du
+contenu source.
+
 ## Observabilite frontend dans le meme commit
 
 Les surfaces Identity existantes doivent rendre:
@@ -544,25 +589,82 @@ Les surfaces Identity existantes doivent rendre:
 
 Ne pas creer un nouvel ecran si `/identity` ou `/hermeneutic-admin` suffit.
 
+Les deux renderers existants lisent les champs backend autoritatifs. Ils
+distinguent attente, retry gele, consommation terminale sans ecriture,
+write-recovery et progression; l'absence historique d'un champ ne devient pas
+un faux `ok`.
+
 ## Tests obligatoires
 
-- [ ] fenetre nominale sous plafond;
-- [ ] fenetre actuellement representative au-dessus de l'ancien plafond;
-- [ ] fenetre irreductiblement trop grande;
-- [ ] sixieme puis dixieme tour apres echec terminal;
-- [ ] timeout transitoire puis succes;
-- [ ] schema invalide repete et borne;
-- [ ] echec ecriture puis reprise idempotente;
-- [ ] aucun save mutable sous echec;
-- [ ] API/read-model/frontend coherents pour chaque etat;
-- [ ] mutation: restaurer le gel infini fait echouer le golden.
+- [x] fenetre nominale sous plafond;
+- [x] fenetre actuellement representative au-dessus de l'ancien plafond;
+- [x] fenetre irreductiblement trop grande;
+- [x] sixieme puis dixieme tour apres echec terminal;
+- [x] timeout transitoire puis succes;
+- [x] schema invalide repete et borne;
+- [x] echec ecriture puis reprise idempotente;
+- [x] aucun save mutable sous echec;
+- [x] API/read-model/frontend coherents pour chaque etat;
+- [x] mutation: restaurer le gel infini fait echouer le golden.
+
+## Fichiers de preuve et tests
+
+- goldens partages:
+  `app/tests/support/lot1_identity_liveness_goldens.py` et extension des
+  goldens Lot 0;
+- preuve principale:
+  `app/tests/unit/memory/test_identity_liveness_lot1.py` (13 tests);
+- staging/wrapper/apply/judge: suites unitaires Identity existantes;
+- read-model/API/frontend:
+  `test_identity_read_model_lot2/3/4.py`, projections, contrats serveur,
+  `test_frontend_identity_surface_phase6.py` et smoke navigateur;
+- non-regression: 146 tests chat, 27 tests orchestration/Presence/final locks et
+  Lot 9, 44 tests routes/persistance/observabilite chat, 19 tests streaming JS.
+
+Commandes executees avec depot complet read-only, `--network none`, conteneur
+read-only, `/tmp` tmpfs et `PYTHONDONTWRITEBYTECODE=1`:
+
+- decouverte baseline: `python -m unittest discover` -> 2672 OK;
+- reproduction rouge initiale:
+  `python -m unittest tests.unit.memory.test_identity_liveness_lot1` -> les 9
+  premieres preuves refusaient l'ancien contrat (1 failure, 8 errors);
+- cible coeur: 70 tests OK, puis preuve Lot 1 seule: 13 tests OK;
+- projection/API/garde/frontend statique: 64 puis 6 tests OK;
+- navigateur cache Playwright 1.54, sans pull: 13 tests OK;
+- suites chat et voisines ci-dessus: 146 + 27 + 44 tests Python et 19 tests JS
+  OK;
+- decouverte complete finale: `2685`, zero echec, zero erreur, zero skip, zero
+  expected failure, soit exactement 13 nouveaux tests Python.
+
+Deux erreurs de scan intermediaires provenaient de fichiers AppleDouble
+`._*.py` crees par le transfert macOS; ces temporaires non versionnes ont ete
+supprimes. Deux anciennes fakes de staging ne portaient pas l'argument atomique
+`next_pair`; elles ont ete mises au niveau sans affaiblir leurs assertions.
+
+## Sensibilite et limites
+
+Les validateurs rejettent: retour du gel infini, consommation au premier
+timeout, retry non borne, empreinte changee presentee comme identique, paire
+courante perdue ou dupliquee, echec terminal renomme `no_change`, double batch
+canonique ou double audit, disparition classe/action/empreinte, read-model
+stale et frontend affichant `completed` pendant un blocage.
+
+Limites restantes: l'extracteur legacy reste volontairement actif jusqu'au Lot
+2. Si le store de staging reste indisponible, aucune progression durable ne
+peut etre prouvee; le statut reste alors `write_recovery`/echec de finalisation,
+jamais succes. Le staging operateur existant n'a pas ete modifie manuellement:
+il adoptera la nouvelle politique lors d'un prochain tour normal.
 
 ## Condition de fermeture
 
-- [ ] Une fenetre impossible ne bloque plus les suivantes.
-- [ ] Aucune matiere dialogique n'est preselectionnee ou tronquee.
-- [ ] Aucun faux succes Identity.
-- [ ] Observabilite backend et frontend livree simultanement.
+- [x] Une fenetre impossible ne bloque plus les suivantes.
+- [x] Aucune matiere dialogique n'est preselectionnee ou tronquee.
+- [x] Aucun faux succes Identity.
+- [x] Observabilite backend et frontend livree simultanement.
+
+Confirmation: aucun prompt, modele, provider, setting, sujet, contrat add-only,
+extracteur legacy, schema de DB ou contenu operateur n'a ete modifie. Aucun Lot
+2 a 8 ou Z n'a ete commence.
 
 # LOT 2 - Retirer l'extracteur Identity legacy du chemin actif
 

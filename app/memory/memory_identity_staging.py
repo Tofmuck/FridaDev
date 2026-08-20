@@ -10,6 +10,9 @@ _TERMINAL_AGENT_STATUSES_RESET_ON_NEW_BUFFER = {
     'completed_no_change',
     'completed_with_open_tension',
     'shadow_completed',
+    'staging_finalize_recovered',
+    'terminal_discarded',
+    'write_recovery_completed',
     'not_run',
 }
 
@@ -332,6 +335,7 @@ def clear_identity_staging_buffer(
     status: str,
     reason: str = '',
     auto_canonization_suspended: bool = False,
+    next_pair: Any = None,
     conn_factory: Callable[[], Any],
     logger: Any,
 ) -> dict[str, Any] | None:
@@ -339,6 +343,12 @@ def clear_identity_staging_buffer(
     status_text = _text(status)
     if not conversation_key or not status_text:
         return None
+    normalized_next_pair = _normalize_pair(next_pair) if next_pair is not None else None
+    if next_pair is not None and normalized_next_pair is None:
+        return None
+    next_pairs = [normalized_next_pair] if normalized_next_pair is not None else []
+    stored_status = 'buffering' if next_pairs else status_text
+    stored_reason = None if next_pairs else (_text(reason) or None)
 
     try:
         with conn_factory() as conn:
@@ -348,7 +358,7 @@ def clear_identity_staging_buffer(
                     UPDATE identity_mutable_staging
                     SET
                         buffer_pairs_json = %s::jsonb,
-                        buffer_pairs_count = 0,
+                        buffer_pairs_count = %s,
                         last_agent_status = %s,
                         last_agent_reason = %s,
                         last_agent_run_ts = now(),
@@ -368,16 +378,20 @@ def clear_identity_staging_buffer(
                         updated_ts
                     ''',
                     (
-                        json.dumps([], ensure_ascii=False),
-                        status_text,
-                        _text(reason) or None,
+                        json.dumps(next_pairs, ensure_ascii=False),
+                        len(next_pairs),
+                        stored_status,
+                        stored_reason,
                         bool(auto_canonization_suspended),
                         conversation_key,
                     ),
                 )
                 row = cur.fetchone()
             conn.commit()
-        return _row_to_staging_state(row)
+        state = _row_to_staging_state(row)
+        if state is not None:
+            state['next_pair_staged'] = bool(next_pairs)
+        return state
     except Exception as exc:
         logger.error('clear_identity_staging_buffer_error conversation_id=%s err=%s', conversation_key, exc)
         return None

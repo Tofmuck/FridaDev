@@ -1852,23 +1852,30 @@ function hermeneuticAdminMockScript() {
         identity_staging: {
           present: true,
           actively_injected: false,
-          buffer_pairs_count: 5,
+          buffer_pairs_count: 1,
           buffer_target_pairs: 5,
-          buffer_frozen: true,
-          last_agent_status: "window_too_large",
-          last_agent_reason: "window_too_large",
+          buffer_frozen: false,
+          last_agent_status: "buffering",
+          last_agent_reason: null,
           current_buffer: {
-            status: "window_too_large",
-            reason_code: "window_too_large",
-            pairs_count: 5,
+            status: "buffering",
+            reason_code: "below_threshold",
+            pairs_count: 1,
             target_pairs: 5,
-            frozen: true,
+            frozen: false,
           },
           last_completed_agent: { present: false },
           latest_agent_activity: {
             present: true,
             reason_code: "window_too_large",
             runtime_pipeline: "mutable_identity_judge_v2_add_only",
+            failure_class: "deterministic_input",
+            recovery_action: "terminal_consume_without_write",
+            processing_state: "judge_not_called",
+            attempt_current: 1,
+            attempt_limit: 2,
+            window_fingerprint: "0123456789ab",
+            next_window_progress: "current_pair_staged",
             promotion_count: 0,
             open_tension_count: 0,
           },
@@ -2071,22 +2078,27 @@ test('hermeneutic admin keeps turn selection targeted and stage payloads content
     assert.ok(await page.locator('#hermeneuticTurnStages details.admin-disclosure').count() >= 1);
 
     const identityText = String(await page.locator('#hermeneuticIdentityReadModel').textContent() || '');
-    const assertFrozenIdentityRendering = (text) => {
-      assert.equal(text.includes('buffer=5/5'), true, 'frozen buffer cardinality must render');
-      assert.equal(text.includes('gele=true'), true, 'frozen state must render');
+    const assertIdentityLivenessRendering = (text) => {
+      assert.equal(text.includes('buffer=1/5'), true, 'next buffer cardinality must render');
+      assert.equal(text.includes('gele=false'), true, 'effective progression must unfreeze the current buffer');
       assert.equal(
-        text.includes('buffer_status=window_too_large'),
+        text.includes('buffer_status=buffering'),
         true,
-        'authoritative staging failure must render',
+        'authoritative current staging state must render',
       );
+      assert.equal(text.includes('classe=deterministic_input'), true, 'failure class must render');
+      assert.equal(text.includes('action=terminal_consume_without_write'), true, 'terminal action must render');
+      assert.equal(text.includes('tentative=1/2'), true, 'bounded attempt must render');
+      assert.equal(text.includes('empreinte=0123456789ab'), true, 'window fingerprint must render');
+      assert.equal(text.includes('progression=current_pair_staged'), true, 'effective progression must render');
       assert.equal(text.includes('buffer_status=ok'), false, 'critical staging failure cannot render as ok');
     };
-    assertFrozenIdentityRendering(identityText);
+    assertIdentityLivenessRendering(identityText);
     assert.throws(
-      () => assertFrozenIdentityRendering(
-        identityText.replace('buffer_status=window_too_large', 'buffer_status=ok'),
+      () => assertIdentityLivenessRendering(
+        identityText.replace('action=terminal_consume_without_write', 'action=completed'),
       ),
-      /authoritative staging failure must render|critical staging failure cannot render as ok/,
+      /terminal action must render/,
     );
 
     const firstTurnText = String(await page.locator('#hermeneuticTurnStages').textContent() || '');

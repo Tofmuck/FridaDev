@@ -205,6 +205,19 @@ def build_identity_runtime_regime() -> dict[str, Any]:
         'staging_target_pairs': target_pairs,
         'window_target_pairs': target_pairs,
         'window_contract': 'five_complete_pairs_to_llm_judge',
+        'liveness_policy': {
+            'attempt_limit': int(memory_identity_periodic_agent.FAILURE_ATTEMPT_LIMIT),
+            'deterministic_input_action': 'terminal_consume_without_write',
+            'retryable_failure_action': 'retry_preserve_then_terminal_consume_without_write',
+            'write_failure_action': 'apply_recovery_then_terminal_consume_without_write',
+            'current_pair_transition': 'atomic_first_pair_of_next_window',
+        },
+        'judge_size_guards': {
+            'max_window_chars': int(mutable_identity_judge_common.JUDGE_WINDOW_MAX_CHARS),
+            'max_estimated_prompt_tokens': int(
+                mutable_identity_judge_common.JUDGE_ESTIMATED_PROMPT_TOKEN_LIMIT
+            ),
+        },
         'staging_not_injected': True,
         'active_log_stages': ['mutable_identity_judge', 'mutable_identity_judge_apply'],
         'legacy_log_stages': ['identity_periodic_agent', 'identity_periodic_agent_apply'],
@@ -275,6 +288,11 @@ def build_mutable_judge_runtime_block(*, runtime_settings_module: Any = None) ->
         'structured_output_schema': 'json_schema_strict',
         'provider_require_parameters': True,
         'window_target_pairs': int(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS),
+        'attempt_limit': int(memory_identity_periodic_agent.FAILURE_ATTEMPT_LIMIT),
+        'max_window_chars': int(mutable_identity_judge_common.JUDGE_WINDOW_MAX_CHARS),
+        'max_estimated_prompt_tokens': int(
+            mutable_identity_judge_common.JUDGE_ESTIMATED_PROMPT_TOKEN_LIMIT
+        ),
         'verdicts': ['add', 'no_change'],
         'role': '5_pairs_to_add_no_change_ontological_identity_mutables',
     }

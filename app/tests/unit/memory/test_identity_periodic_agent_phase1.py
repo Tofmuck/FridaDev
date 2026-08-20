@@ -269,6 +269,7 @@ class _InMemoryIdentityStore:
         state['buffer_pairs_count'] = len(state['buffer_pairs'])
         state['buffer_target_pairs'] = int(target_pairs)
         state['buffer_frozen'] = state['buffer_pairs_count'] >= int(target_pairs)
+        state['pair_appended'] = not buffer_already_frozen
         self.staging[conversation_id] = copy.deepcopy(state)
         return copy.deepcopy(state)
 
@@ -300,14 +301,19 @@ class _InMemoryIdentityStore:
         status: str,
         reason: str = '',
         auto_canonization_suspended: bool = False,
+        next_pair: Any = None,
     ) -> dict[str, Any] | None:
         state = self.get_identity_staging_state(conversation_id)
         if state is None:
             return None
-        state['buffer_pairs'] = []
-        state['buffer_pairs_count'] = 0
-        state['last_agent_status'] = status
-        state['last_agent_reason'] = reason or None
+        state['buffer_pairs'] = (
+            [copy.deepcopy({'user': next_pair[0], 'assistant': next_pair[1]})]
+            if next_pair is not None
+            else []
+        )
+        state['buffer_pairs_count'] = len(state['buffer_pairs'])
+        state['last_agent_status'] = 'buffering' if next_pair is not None else status
+        state['last_agent_reason'] = None if next_pair is not None else (reason or None)
         state['last_agent_run_ts'] = '2026-04-17T00:00:00Z'
         state['auto_canonization_suspended'] = bool(auto_canonization_suspended)
         self.staging[conversation_id] = copy.deepcopy(state)
@@ -493,7 +499,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
         self.assertEqual(event['status'], 'skipped')
         self.assertEqual(summary['reason_code'], 'invalid_verdict')
-        self.assertEqual(summary['last_agent_status'], 'apply_failed')
+        self.assertEqual(summary['last_agent_status'], 'retry_pending')
         self.assertEqual(payload['reason_code'], 'invalid_verdict')
         self.assertFalse(payload['writes_applied'])
         self.assertTrue(payload['legacy_writer_disabled'])
@@ -624,14 +630,14 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
         self.assertEqual(summary['status'], 'skipped')
         self.assertEqual(summary['reason_code'], 'invalid_verdict')
-        self.assertEqual(summary['last_agent_status'], 'apply_failed')
+        self.assertEqual(summary['last_agent_status'], 'retry_pending')
         self.assertFalse(summary['buffer_cleared'])
         self.assertFalse(summary['writes_applied'])
         self.assertTrue(summary['legacy_writer_disabled'])
         self.assertEqual(summary['verdict_counts']['raise_tension'], 1)
         staging_state = store.get_identity_staging_state('conv-open-tension')
         self.assertEqual(staging_state['buffer_pairs_count'], memory_identity_periodic_agent.BUFFER_TARGET_PAIRS)
-        self.assertEqual(staging_state['last_agent_status'], 'apply_failed')
+        self.assertEqual(staging_state['last_agent_status'], 'retry_pending')
         self.assertEqual(staging_state['last_agent_reason'], 'invalid_verdict')
 
         next_summary = memory_identity_periodic_agent.stage_identity_turn_pair(
@@ -643,7 +649,8 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
         self.assertEqual(next_summary['status'], 'skipped')
         self.assertEqual(next_summary['reason_code'], 'invalid_verdict')
-        self.assertEqual(store.get_identity_staging_state('conv-open-tension')['buffer_pairs_count'], memory_identity_periodic_agent.BUFFER_TARGET_PAIRS)
+        self.assertEqual(next_summary['last_agent_status'], 'terminal_discarded')
+        self.assertEqual(store.get_identity_staging_state('conv-open-tension')['buffer_pairs_count'], 1)
 
     def test_reject_and_defer_are_invalid_v2_and_preserve_buffer(self) -> None:
         store = _InMemoryIdentityStore()
@@ -673,7 +680,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
         self.assertEqual(summary['status'], 'skipped')
         self.assertEqual(summary['reason_code'], 'invalid_verdict')
-        self.assertEqual(summary['last_agent_status'], 'apply_failed')
+        self.assertEqual(summary['last_agent_status'], 'retry_pending')
         self.assertFalse(summary['buffer_cleared'])
         self.assertFalse(summary['writes_applied'])
         self.assertEqual(summary['verdict_counts'], {'defer': 1, 'reject': 1})
@@ -755,7 +762,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
         self.assertEqual(summary['status'], 'skipped')
         self.assertEqual(summary['reason_code'], 'mutable_content_too_long')
-        self.assertEqual(summary['last_agent_status'], 'apply_failed')
+        self.assertEqual(summary['last_agent_status'], 'retry_pending')
         self.assertFalse(summary['buffer_cleared'])
         self.assertFalse(summary['writes_applied'])
         self.assertTrue(summary['legacy_writer_disabled'])
@@ -809,14 +816,14 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
         self.assertEqual(summary['status'], 'skipped')
         self.assertEqual(summary['reason_code'], 'canonical_write_failed')
-        self.assertEqual(summary['last_agent_status'], 'apply_failed')
+        self.assertEqual(summary['last_agent_status'], 'write_recovery_pending')
         self.assertFalse(summary['buffer_cleared'])
         self.assertTrue(summary['buffer_frozen'])
         self.assertFalse(summary['writes_applied'])
         self.assertEqual(summary['failed_count'], 1)
         staging = store.get_identity_staging_state('conv-apply-raises')
         self.assertEqual(staging['buffer_pairs_count'], memory_identity_periodic_agent.BUFFER_TARGET_PAIRS)
-        self.assertEqual(staging['last_agent_status'], 'apply_failed')
+        self.assertEqual(staging['last_agent_status'], 'write_recovery_pending')
         self.assertEqual(staging['last_agent_reason'], 'canonical_write_failed')
         self.assertEqual(store.mutable, {})
         self.assertEqual(store.upsert_calls, [])
@@ -848,7 +855,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         )
 
         self.assertEqual(summary['status'], 'skipped')
-        self.assertEqual(summary['last_agent_status'], 'schema_invalid')
+        self.assertEqual(summary['last_agent_status'], 'retry_pending')
         self.assertFalse(summary['buffer_cleared'])
         self.assertTrue(summary['buffer_frozen'])
         self.assertFalse(summary['writes_applied'])
@@ -887,7 +894,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
         self.assertEqual(summary['status'], 'skipped')
         self.assertEqual(summary['reason_code'], 'schema_invalid')
-        self.assertEqual(summary['last_agent_status'], 'schema_invalid')
+        self.assertEqual(summary['last_agent_status'], 'retry_pending')
         self.assertFalse(summary['buffer_cleared'])
         self.assertTrue(summary['buffer_frozen'])
         self.assertFalse(summary['writes_applied'])
@@ -933,8 +940,8 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
         self.assertEqual(summary['status'], 'skipped')
         self.assertEqual(summary['reason_code'], 'window_too_large')
-        self.assertEqual(summary['last_agent_status'], 'window_too_large')
-        self.assertFalse(summary['buffer_cleared'])
+        self.assertEqual(summary['last_agent_status'], 'terminal_discarded')
+        self.assertTrue(summary['buffer_cleared'])
         self.assertTrue(summary['buffer_frozen'])
         self.assertFalse(summary['writes_applied'])
         self.assertEqual(summary['window_chars'], 25000)
@@ -944,7 +951,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertEqual(summary['max_estimated_prompt_tokens'], 12000)
         self.assertEqual(
             store.get_identity_staging_state('conv-window-too-large')['buffer_pairs_count'],
-            memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
+            0,
         )
         self.assertEqual(store.upsert_calls, [])
 
@@ -989,7 +996,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         )
 
         self.assertEqual(first_summary['status'], 'skipped')
-        self.assertEqual(first_summary['last_agent_status'], 'schema_invalid')
+        self.assertEqual(first_summary['last_agent_status'], 'retry_pending')
         self.assertFalse(first_summary['buffer_cleared'])
         self.assertEqual(len(observed_payloads), 2)
         self.assertEqual(len(observed_payloads[0]['window_pairs']), memory_identity_periodic_agent.BUFFER_TARGET_PAIRS)
@@ -1003,7 +1010,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
         self.assertTrue(second_summary['buffer_cleared'])
         self.assertEqual(second_summary['reason_code'], 'applied')
         self.assertTrue(second_summary['writes_applied'])
-        self.assertEqual(store.get_identity_staging_state('conv-retry-frozen')['buffer_pairs_count'], 0)
+        self.assertEqual(store.get_identity_staging_state('conv-retry-frozen')['buffer_pairs_count'], 1)
         self.assertEqual(store.mutable['user']['content'], proposition)
 
     def test_new_runtime_does_not_call_legacy_scoring_or_static_writer(self) -> None:
@@ -1112,7 +1119,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
         self.assertEqual(summary['status'], 'skipped')
         self.assertEqual(summary['reason_code'], 'judge_transport_error')
-        self.assertEqual(summary['last_agent_status'], 'judge_call_error')
+        self.assertEqual(summary['last_agent_status'], 'retry_pending')
         self.assertFalse(summary['buffer_cleared'])
         self.assertEqual(
             store.get_identity_staging_state('conv-timeout')['buffer_pairs_count'],
@@ -1144,7 +1151,7 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
 
         self.assertEqual(summary['status'], 'skipped')
         self.assertEqual(summary['reason_code'], 'judge_transport_error')
-        self.assertEqual(summary['last_agent_status'], 'judge_call_error')
+        self.assertEqual(summary['last_agent_status'], 'retry_pending')
         self.assertFalse(summary['buffer_cleared'])
         self.assertTrue(summary['buffer_frozen'])
         self.assertEqual(

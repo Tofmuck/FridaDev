@@ -173,6 +173,8 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertNotIn("n'est injecte ni au jugement ni a la reponse finale", render_source)
         self.assertIn("n'est pas un etat global du systeme", render_source)
         self.assertIn("scope=", render_source)
+        for field in ("processing_state", "failure_class", "recovery_action", "attempt_current", "attempt_limit", "window_fingerprint", "next_window_progress"):
+            self.assertIn(field, render_source)
         self.assertNotIn("prompt=", render_source)
 
     def test_identity_current_state_uses_summary_read_model_mode(self) -> None:
@@ -188,6 +190,8 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
             read_model_source,
         )
         self.assertIn("Fenetre juge mutable", read_model_source)
+        for field in ("processing_state", "failure_class", "recovery_action", "attempt_current", "attempt_limit", "window_fingerprint", "next_window_progress"):
+            self.assertIn(field, read_model_source)
         self.assertIn("hors canon actif", read_model_source)
         self.assertIn("historiques visibles plus bas", read_model_source)
         self.assertIn('const viewMode = toText(options.viewMode).toLowerCase() === "summary"', read_model_source)
