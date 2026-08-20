@@ -1208,6 +1208,14 @@ observabilite; JavaScript et Chromium complets; decouverte Python hermetique
 finale. Total final Python: 2701, soit trois preuves nouvelles et six doublons
 faux supprimes; JavaScript: 135; Chromium: 15. Aucun skip ou expected failure.
 
+Passe documentaire post-audit du 2026-08-20: les references actives qui
+decrivaient encore l'ancien extracteur Identity ou `persist_identity_entries`
+comme un pipeline execute ont ete alignees sur le runtime courant. Elles
+distinguent maintenant le contexte dialogique temporaire, le juge mutable
+canonique et l'historique legacy inactif. Controle docs-only: inventaire des
+references et statuts, coherence avec les contrats vivants et le pipeline
+courant, `git diff --check`; aucun test, rebuild, restart ou deploiement.
+
 Limite conservee: les cles techniques et le chemin de prompt historiques
 `identity_extractor*` ne sont pas renommes. Aucun prompt, modele, provider,
 setting, stockage, donnee, cadence, budget ou comportement de context hints n'a

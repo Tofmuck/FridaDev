@@ -69,7 +69,11 @@ La surface `Identity` reemploie les contrats deja fermes:
 - `GET /api/admin/hermeneutics/corrections-export`
 
 Le legacy `identity-candidates` reste visible seulement comme couche legacy/evidence-only et ne redevient pas une verite d'injection active.
-Depuis B6, il doit etre lu comme pipeline legacy diagnostique (`persist_identity_entries` -> `identities` / `identity_evidence` / `identity_conflicts`) et non comme une source active concurrente.
+Depuis la transition dialogique du 2026-08-20, il conserve l'historique de
+l'ancien pipeline diagnostique (`persist_identity_entries` -> `identities` /
+`identity_evidence` / `identity_conflicts`). Ce pipeline est
+`legacy_inactive_historical`: ce n'est ni un caller encore execute, ni une
+source active concurrente.
 Depuis le lot Hermeneutic Node Observability 1, puis le durcissement Lot 6E/6E.1 du mega-audit, `/api/admin/hermeneutics/identity-candidates` est content-minimized par defaut: la reponse expose les metadonnees legacy, presence, longueurs, statuts, reason codes compacts, IDs opaques et timestamps, mais ne sert ni les cles brutes `content`, `content_norm`, `last_reason` ou `override_reason`, ni des hashes courts stables derives de ces textes. Les champs texte libre `last_reason` et `override_reason` ne sont jamais transformes en `reason_code` lisible: ils deviennent seulement `text_reason_present` / `override_note_present` avec presence et longueur.
 Depuis le lot Admin observability cockpit Lot 1, puis le durcissement Lot 6E du mega-audit, les couches legacy de `GET /api/admin/identity/read-model` suivent la meme regle content-free par defaut: `legacy_fragments`, `evidence` et `conflicts` exposent les IDs techniques, sujets, statuts, metadonnees, counts, longueurs et marqueurs compacts de raisons, mais ne servent pas les cles brutes `content`, `content_norm`, `last_reason`, `override_reason`, `reason`, `content_a` ou `content_b`, ni de hash court stable derive de ces textes. Cette regle ne s'applique pas aux couches canoniques editables `static` et `mutable`, qui peuvent continuer a afficher leur contenu explicite dans les surfaces d'edition assumees.
 

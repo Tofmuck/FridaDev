@@ -141,6 +141,11 @@ Minimum event-specific details:
   - side mapping is explicit: `frida` side includes assistant/LLM identity material, `user` side includes user identity material
   - forbidden for identity: `preview`, `keys`, raw excerpts, raw identity ids
 
+Transition contexte dialogique 2026-08-20: `identity_write` decrit seulement
+les evenements historiques de l'ancien pipeline diagnostique. Le caller actif
+par tour est `dialogic_context_hint_extractor`; il n'emet pas d'`identity_write`
+et ne possede aucune autorite Identity ou canonique.
+
 - `identity_write`
   - `target_side` (mandatory): `frida` | `user`
   - one event is emitted per side; if both sides are written in one turn, emit two `identity_write` events
@@ -149,11 +154,11 @@ Minimum event-specific details:
   - `content_present`, `observed_total_chars`, `observed_max_chars`
   - `actions_count` map with stable action keys:
     - `add`, `update`, `override`, `reject`, `defer`
-  - stable `write_mode` values on the active B6 seam:
+  - historical `write_mode` values from the retired B6 seam:
     - `legacy_diagnostic`
     - `legacy_diagnostic_shadow`
     - `disabled`
-  - goal: visibility on the legacy diagnostic persistence path (`persist_identity_entries`) without raw dump and without presenting it as the active canon write path
+  - goal: preserve visibility on historical events from the retired `persist_identity_entries` path without raw dump or false active-runtime presentation
   - forbidden for identity: `preview`, textual excerpts, fragment dumps
 
 - `identity_periodic_agent`

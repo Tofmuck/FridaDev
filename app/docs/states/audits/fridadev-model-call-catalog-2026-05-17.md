@@ -80,7 +80,7 @@ Ce que l'audit ne prouve pas:
 
 ### Synthese des slots actifs
 
-La table ci-dessous liste les **slots modele/service** observables. Les **11 chemins fonctionnels** regroupent `stimmung_agent` primary/fallback en un seul chemin et `validation_agent` primary/fallback en un seul chemin: chat principal, reformulation web, arbitre memoire, resume, extracteur identity, juge mutable, stimmung, validation, embeddings, Whisper, OCR.
+La table ci-dessous liste les **slots modele/service** observables. Les **11 chemins fonctionnels** regroupent `stimmung_agent` primary/fallback en un seul chemin et `validation_agent` primary/fallback en un seul chemin: chat principal, reformulation web, arbitre memoire, resume, extracteur de contexte dialogique, juge mutable, stimmung, validation, embeddings, Whisper, OCR.
 
 | # | Slot modele/service | Type | Caller / fichier principal | Modele ou service runtime OVH | Statut |
 |---|---|---|---|---|---|
@@ -88,7 +88,7 @@ La table ci-dessous liste les **slots modele/service** observables. Les **11 che
 | 2 | Reformulation web | OpenRouter chat completion | `app/tools/web_search.py` | `openai/gpt-5.4-mini` | actif quand web active |
 | 3 | Arbitre memoire | OpenRouter chat completion | `app/memory/arbiter.py` | `mistralai/mistral-small-2603` | actif, individualise |
 | 4 | Resume conversationnel | OpenRouter chat completion | `app/memory/summarizer.py` | `openai/gpt-5.4-mini` | actif au seuil de summary |
-| 5 | Extracteur identity | OpenRouter chat completion | `app/memory/arbiter.py` | `openai/gpt-5.4-mini` | actif apres tour assistant |
+| 5 | Extracteur de contexte dialogique | OpenRouter chat completion | `app/memory/arbiter.py` | `openai/gpt-5.4-mini` | actif apres tour assistant |
 | 6 | Mutable identity judge | OpenRouter chat completion | `app/memory/mutable_identity_judge_v2.py` via `memory_identity_periodic_agent.py` / `mutable_identity_runtime.py` | `openai/gpt-5.2` via le slot de compatibilite `identity_periodic_model` | actif quand la fenetre mutable atteint 5 paires completes |
 | 7 | Stimmung agent primaire | OpenRouter chat completion | `app/core/stimmung_agent.py` | `google/gemini-3.1-flash-lite` | actif avant noeud hermeneutique |
 | 8 | Stimmung agent fallback | OpenRouter chat completion | `app/core/stimmung_agent.py` | `openai/gpt-5.4-nano` | fallback |

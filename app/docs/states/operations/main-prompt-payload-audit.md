@@ -28,7 +28,7 @@ global de FridaDev.
 | `stimmung_agent` | agent Stimmung | Secondaire fail-open local | Résultat local `prompt_missing`; le chat continue | Non |
 | `validation_agent` | agent Validation | Secondaire fail-open local | Validation fail-open `prompt_missing`; le chat continue | Non |
 | `arbiter` | arbitre Memory | Secondaire fail-open local | Sélection déterministe `prompt_missing` | Non |
-| `identity_extractor` | extracteur Identity | Secondaire fail-open local | Liste vide | Non |
+| `identity_extractor` (chemin de compatibilite) | `dialogic_context_hint_extractor` | Secondaire fail-open local | `dialogic_context_prompt_missing`; aucun hint ni ecriture Identity | Non |
 | `identity_periodic_agent` | Aucun consommateur de prompt actif | Legacy pré-refactor | Aucun blocage import, validation offline ou chat | Non |
 | `identity_mutable_rewriter` | Aucun consommateur de prompt actif; rewriter retiré | Legacy | Aucun blocage import, validation offline ou chat | Non |
 | `identity_mutable_judge` v1 | Aucun consommateur actif | Legacy | Aucun blocage import, validation offline ou chat | Non |
@@ -72,7 +72,7 @@ Ces éléments peuvent influencer le pipeline, mais ne deviennent pas automatiqu
 - le prompt interne du `stimmung_agent`;
 - les sorties brutes du primary hermeneutic node et du `validation_agent`, sauf le jugement final synthétisé;
 - les traces mémoire candidates rejetées;
-- les prompts du summarizer, de l'identity extractor et de l'identity periodic agent;
+- les prompts du summarizer, de l'extracteur de contexte dialogique et de l'identity periodic agent legacy;
 - les prompts/outils de recherche web avant synthèse du `context_block`;
 - les fichiers workspace non cochés;
 - les documents exclus pour taille, type, modèle incompatible, disque absent ou OCR requis;

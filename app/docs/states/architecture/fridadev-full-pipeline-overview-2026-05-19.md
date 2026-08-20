@@ -306,21 +306,30 @@ Les tours interrompus peuvent etre marques comme tels, mais ils ne valent pas un
 
 Apres une reponse canonisee, `memory_store.save_new_traces()` transforme le dialogue persistant en nouvelles traces exploitables. Les pieces actives non persistantes ne deviennent pas des traces.
 
-### Identity extractor
+### Contexte dialogique temporaire
 
-L'extracteur identity travaille apres le tour assistant sur le dernier couple utilisateur/assistant persistant. Il cherche des candidats d'identite dans un JSON strict, avec garde temporelle:
+Apres le tour assistant persiste, `dialogic_context_hint_extractor` lit la
+paire user/assistant complete et produit au plus quatre reperes temporaires
+`subject=dialogue` sous contrat JSON strict. Ces reperes alimentent les
+`context_hints` bornes par age, confiance, nombre et budget tokens.
 
-- les claims faibles du type "aujourd'hui", "hier", "en ce moment" ne sont pas promus en identite durable;
-- les entrees invalides sont ignorees;
-- en cas d'erreur, il retourne une liste vide pour ne pas casser la reponse utilisateur.
+Ce chemin peut conserver une formulation relative utile au dialogue, mais il
+n'a aucune autorite Identity: il n'appelle ni `persist_identity_entries`, ni
+`add_identity`, ni la detection de conflits. En cas d'absence de hint ou
+d'erreur, il echoue localement sans casser la reponse utilisateur.
 
-En mode shadow, les resultats peuvent rester evidence/diagnostic. En mode enforced identity, l'ancien chemin de persistance legacy reste diagnostic et le vrai chemin canonique passe par le buffer periodic.
+Les anciennes evidences `user/llm`, identites et conflits restent lisibles
+comme historique. Le pipeline qui les produisait est inactif; il ne doit plus
+etre presente comme un diagnostic encore execute.
 
 ### Mutable identity judge
 
 Le chemin mutable actif ne passe plus par l'ancien agent periodic score-first.
 
-L'extracteur repere encore des signaux immediats dans un couple de messages comme diagnostics hors canon. Le chemin mutable canonique attend une fenetre technique de 5 paires completes, relit les identites `static` et `mutable_current`, puis appelle le juge actif `mutable_judge_v2` add-only ontologique.
+En parallele du contexte dialogique, sans autorite partagee, le staging
+Identity attend une fenetre technique de 5 paires completes, relit les
+identites `static` et `mutable_current`, puis appelle le juge actif
+`mutable_judge_v2` add-only ontologique.
 
 Si le juge echoue, timeout, renvoie un contrat invalide ou si l'applicateur echoue, la fenetre est preservee. Les seules ecritures canoniques automatiques sont des `add` append-only via `mutable_identity_apply.apply_mutable_judge_contract(...)`; l'ancien applicateur `memory_identity_periodic_apply` a ete retire.
 
@@ -441,7 +450,8 @@ Navigateur
      ou prompt final + documents/images actifs -> modele principal
   -> reponse non-stream ou stream
   -> sauvegarde canonique
-  -> traces memoire + identity extractor + periodic identity + observabilite
+  -> traces memoire + contexte dialogique temporaire
+     + staging/juge Identity mutable + observabilite
 
 Outil image lateral
   -> /api/tools/image-generation

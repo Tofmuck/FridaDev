@@ -275,7 +275,7 @@ Champs minimaux:
 - `items[]`
 
 Semantique:
-- conserve l'historique fragmentaire legacy du pipeline diagnostique `persist_identity_entries(...)`;
+- conserve l'historique fragmentaire de l'ancien pipeline diagnostique `persist_identity_entries(...)`, desormais inactif;
 - n'est plus une verite d'injection active;
 - expose `classification = "legacy_diagnostic_only"` et `runtime_authority = "historical_only"` pour empecher toute lecture canonique.
 
