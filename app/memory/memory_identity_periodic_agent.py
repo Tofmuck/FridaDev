@@ -75,6 +75,17 @@ def _normalize_complete_turn_pair(turn_pair: Sequence[Mapping[str, Any]]) -> lis
     return [user, assistant]
 
 
+def _staging_turn_pair(
+    turn_pair: Sequence[Mapping[str, Any]],
+    *,
+    turn_id: str,
+) -> list[dict[str, Any]]:
+    staged = [dict(turn_pair[0]), dict(turn_pair[1])]
+    if _text(turn_id):
+        staged[0]['_identity_staging_turn_id'] = _text(turn_id)
+    return staged
+
+
 def _completed_summary_state(apply_summary: Mapping[str, Any]) -> tuple[str, str]:
     reason_code = _text(apply_summary.get('reason_code'))
     if bool(apply_summary.get('writes_applied')):
@@ -294,6 +305,7 @@ def stage_identity_turn_pair(
     arbiter_module: Any,
     memory_store_module: Any,
     enforce_writes: bool = True,
+    turn_id: str = '',
     _staging_state: Mapping[str, Any] | None = None,
     _pair_appended: bool | None = None,
     _processing_lock_held: bool = False,
@@ -349,12 +361,13 @@ def stage_identity_turn_pair(
         }
         _emit_periodic_agent_event(status='skipped', reason_code='incomplete_turn_pair', summary=summary)
         return summary
+    staged_turn_pair = _staging_turn_pair(normalized_turn_pair, turn_id=turn_id)
 
     staging_state = _staging_state
     if staging_state is None:
         staging_state = append_pair(
             conversation_id,
-            normalized_turn_pair,
+            staged_turn_pair,
             target_pairs=BUFFER_TARGET_PAIRS,
         )
     if not isinstance(staging_state, Mapping):
@@ -404,7 +417,7 @@ def stage_identity_turn_pair(
         if _pair_appended is not None
         else bool(staging_state.get('pair_appended', True))
     )
-    next_pair = None if pair_appended else normalized_turn_pair
+    next_pair = None if pair_appended else staged_turn_pair
     next_pairs_count = 0 if pair_appended else 1
     fingerprint = _window_fingerprint(staging_state)
     if not _processing_lock_held:
@@ -454,6 +467,7 @@ def stage_identity_turn_pair(
                         arbiter_module=arbiter_module,
                         memory_store_module=memory_store_module,
                         enforce_writes=enforce_writes,
+                        turn_id=turn_id,
                     )
                 summary = {
                     'status': 'skipped',
@@ -490,6 +504,7 @@ def stage_identity_turn_pair(
                 arbiter_module=arbiter_module,
                 memory_store_module=memory_store_module,
                 enforce_writes=enforce_writes,
+                turn_id=turn_id,
                 _staging_state=_mapping(current_state),
                 _pair_appended=pair_appended,
                 _processing_lock_held=True,
@@ -962,6 +977,7 @@ def stage_identity_turn_pair(
                 arbiter_module=arbiter_module,
                 memory_store_module=memory_store_module,
                 enforce_writes=enforce_writes,
+                turn_id=turn_id,
                 _staging_state=retry_state,
                 _pair_appended=False,
                 _processing_lock_held=True,

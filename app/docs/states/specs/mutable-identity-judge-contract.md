@@ -86,6 +86,11 @@ Cadence:
   canonique et garde son reason code d'echec;
 - une paire arrivee pendant le traitement est promue atomiquement, exactement
   une fois, comme premiere paire de la fenetre suivante.
+- deux tours reels restent deux paires meme si roles, contenus et timestamps a
+  la seconde sont identiques; seul le meme `turn_id` content-free deduplique
+  une reentree technique de la paire transportee;
+- ce `turn_id` est une metadonnee interne du staging: la normalisation de la
+  fenetre l'omet avant le payload du juge.
 
 Cette fenetre est une capture technique, pas un staging semantique.
 

@@ -169,6 +169,7 @@ def _run_periodic_identity_agent(
             arbiter_module=arbiter_module,
             memory_store_module=memory_store_module,
             enforce_writes=enforce_writes,
+            turn_id=chat_turn_logger.current_turn_id(),
         )
     except Exception as exc:
         summary = {

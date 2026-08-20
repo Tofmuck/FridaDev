@@ -764,6 +764,74 @@ la sixieme et la septieme paire restent chacune presentes exactement une fois.
 Aucun schema, migration, table, queue, route, prompt, modele, provider,
 extracteur legacy, setting, contenu operateur ou Lot 2 a 8/Z n'a ete modifie.
 
+### Reouverture corrective finale: identite de tour et deduplication bornee
+
+Le finding bloquant est valide. `append_identity_staging_pair(...)` comparait
+globalement les paires normalisees par role, contenu et timestamp. Deux tours
+reels distincts portant les memes contenus et les memes timestamps a la
+seconde etaient donc confondus: le second restait persiste dans la conversation
+mais n'entrait pas dans le staging Identity.
+
+Le chemin post-save transmet desormais le `turn_id` content-free deja produit
+par `chat_turn_logger`. Le wrapper l'attache a la paire technique; le vrai
+staging le persiste comme metadonnee de paire et deduplique uniquement une
+reentree portant exactement le meme identifiant. L'egalite
+role/contenu/timestamp n'est plus une identite globale. Deux tours reels
+identiques restent deux paires; deux executions techniques du meme tour restent
+une paire. Le normaliseur du juge ignore cette metadonnee avant construction du
+payload: ni dialogue, ni prompt, ni contrat provider ne change.
+
+La reproduction rouge traverse d'abord le vrai wrapper, puis
+`run_chat_post_persistence_effects(...) -> record_identity_entries_for_mode(...)`
+avec le vrai staging SQL synthetique: les deux preuves observaient 1 paire au
+lieu de 2. La preuve concurrente complementaire bloque le cinquieme tour dans
+le juge, fait attendre deux reentrees du meme sixieme tour sur l'ancienne
+fenetre, puis verifie apres finalisation que le sixieme et le septieme tour
+figurent chacun exactement une fois. Elle a passe cinq interleavings repetes.
+Le golden de crash utilise maintenant le format runtime reel
+`processing_claim:<attempt>:<fingerprint>:<owner>`.
+
+Mutations rejetees: restauration de la deduplication globale (le second tour
+reel disparait); suppression de la deduplication bornee (la paire transportee
+apparait deux fois); second appel juge pendant la reentree; sixieme ou septieme
+tour absent. Les preuves sont dans
+`app/tests/unit/memory/test_identity_liveness_lot1.py` (24 tests) et
+`app/tests/support/lot1_identity_liveness_goldens.py`.
+
+Commandes hermetiques executees depuis la baseline `99b4e42a`:
+
+- baseline: Python 2693/2693, JS 135/135, Chromium 15/15;
+- reproduction rouge: 2 tests, 2 failures attendues (wrapper et post-save a
+  1 paire au lieu de 2);
+- preuve Lot 1: 24/24; interleaving carry-over repete cinq fois: 5/5;
+- Identity memory: 88/88; staging, wrapper, Lot 0 et chat Identity voisins:
+  67/67; API/read-model/frontend Python: 19/19;
+- chat: 146/146; Presence, final locks, Lot 9 et transport: 27/27;
+- frontend JS: 135/135;
+- Chromium: un premier passage 14/15 a subi un SIGSEGV du binaire au lancement
+  d'un sous-test, sans assertion produit; la meme invocation, sans changement
+  ni installation, a ensuite passe 15/15;
+- decouverte Python finale: 2696 tests, zero echec, zero erreur, zero skip et
+  zero expected failure, soit exactement trois nouveaux tests justifies.
+
+Une tentative intermediaire de transmettre une mapping au store a revele 30
+erreurs de fakes historiques qui exigeaient a raison la sequence user/assistant
+du contrat existant. La forme de paire a ete retablie avant la validation; les
+fakes n'ont ete ni modifiees ni affaiblies.
+
+Dette architecturale restante: `stage_identity_turn_pair(...)` demeure un
+hotspot de 847 lignes (842 avant cette passe). Le correctif ajoute seulement le
+passage explicite du marqueur aux trois reentrees et extrait sa construction
+dans un helper cohesif. Aucun refactor general n'est engage dans ce lot.
+
+Fichiers runtime modifies par cette passe finale:
+`app/core/chat_memory_flow.py`,
+`app/memory/memory_identity_periodic_agent.py` et
+`app/memory/memory_identity_staging.py`. Le contrat vivant correspondant est
+`app/docs/states/specs/mutable-identity-judge-contract.md`. Aucun schema,
+migration, table, queue, route, prompt, modele, provider, extracteur legacy,
+setting, contenu operateur ou Lot 2 a 8/Z n'a ete modifie.
+
 ## Condition de fermeture
 
 - [x] Une fenetre impossible ne bloque plus les suivantes.

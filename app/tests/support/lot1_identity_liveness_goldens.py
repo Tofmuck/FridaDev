@@ -188,3 +188,27 @@ def assert_terminal_discard_recovery(actual: Mapping[str, Any]) -> None:
     }
     if dict(actual) != expected:
         raise AssertionError("Lot 1 terminal discard finalization recovery changed")
+
+
+def assert_scoped_turn_reentry_deduplication(actual: Mapping[str, Any]) -> None:
+    expected = {
+        "first_count": 1,
+        "distinct_count": 2,
+        "reentry_count": 2,
+        "final_count": 2,
+        "turn_a_occurrences": 1,
+        "turn_b_occurrences": 1,
+    }
+    if dict(actual) != expected:
+        raise AssertionError("Lot 1 distinct-turn staging or scoped reentry deduplication changed")
+
+
+def assert_concurrent_carry_reentry_deduplication(actual: Mapping[str, Any]) -> None:
+    expected = {
+        "judge_calls": 1,
+        "next_pairs_count": 2,
+        "sixth_pair_occurrences": 1,
+        "seventh_pair_occurrences": 1,
+    }
+    if dict(actual) != expected:
+        raise AssertionError("Lot 1 concurrent carry-over reentry deduplication changed")

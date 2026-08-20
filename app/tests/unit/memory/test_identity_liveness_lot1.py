@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
+from unittest.mock import patch
 
 
 APP_DIR = Path(__file__).resolve().parents[3]
@@ -16,6 +17,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from admin import admin_identity_judge_activity_projection, admin_identity_read_model_service
+from core import chat_assistant_finalization, chat_memory_flow
 from memory import memory_identity_periodic_agent, mutable_identity_judge_v2
 from tests.support import lot0_identity_goldens, lot1_identity_liveness_goldens
 
@@ -118,6 +120,30 @@ class _ConcurrentFinalizeBarrierStore(lot0_identity_goldens.RealStagingIdentityS
             return super().clear_identity_staging_buffer(conversation_id, **kwargs)
         finally:
             self.winner_completed.set()
+
+
+class _DuplicateCarryBarrierStore(lot0_identity_goldens.RealStagingIdentityStore):
+    def __init__(self) -> None:
+        super().__init__()
+        self.duplicate_append_barrier = threading.Barrier(2)
+        self.duplicates_appended = threading.Event()
+
+    def append_identity_staging_pair(
+        self,
+        conversation_id: str,
+        pair: Any,
+        *,
+        target_pairs: int,
+    ) -> Any:
+        state = super().append_identity_staging_pair(
+            conversation_id,
+            pair,
+            target_pairs=target_pairs,
+        )
+        if "LOT0_USER_06" in repr(pair) and int(state.get("buffer_pairs_count") or 0) >= target_pairs:
+            if self.duplicate_append_barrier.wait(timeout=2) == 0:
+                self.duplicates_appended.set()
+        return state
 
 
 class IdentityLivenessLot1Tests(unittest.TestCase):
@@ -1103,6 +1129,77 @@ class IdentityLivenessLot1ConcurrencyTests(unittest.TestCase):
             with self.assertRaises(AssertionError):
                 lot1_identity_liveness_goldens.assert_compare_and_set_finalization(mutated)
 
+    def test_duplicate_sixth_reentry_after_finalization_is_scoped_to_one_turn(self) -> None:
+        store = _DuplicateCarryBarrierStore()
+        judge_entered = threading.Event()
+        release_judge = threading.Event()
+        judge_calls = 0
+
+        def run_judge(_payload: dict[str, Any]) -> dict[str, Any]:
+            nonlocal judge_calls
+            judge_calls += 1
+            self.assertNotIn("_identity_staging_turn_id", repr(_payload))
+            self.assertNotIn("turn-carry-fifth", repr(_payload))
+            judge_entered.set()
+            self.assertTrue(release_judge.wait(timeout=2))
+            return lot0_identity_goldens.ok_judge_result(
+                lot0_identity_goldens.no_change_contract()
+            )
+
+        arbiter = SimpleNamespace(run_mutable_identity_judge=run_judge)
+        self._stage_four("lot1-duplicate-carry", store, arbiter)
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            fifth = executor.submit(
+                memory_identity_periodic_agent.stage_identity_turn_pair,
+                "lot1-duplicate-carry",
+                lot0_identity_goldens.synthetic_pair(5),
+                arbiter_module=arbiter,
+                memory_store_module=store,
+                turn_id="turn-carry-fifth",
+            )
+            self.assertTrue(judge_entered.wait(timeout=2))
+            duplicate_sixth = [
+                executor.submit(
+                    memory_identity_periodic_agent.stage_identity_turn_pair,
+                    "lot1-duplicate-carry",
+                    lot0_identity_goldens.synthetic_pair(6),
+                    arbiter_module=arbiter,
+                    memory_store_module=store,
+                    turn_id="turn-carry-sixth",
+                )
+                for _index in range(2)
+            ]
+            self.assertTrue(store.duplicates_appended.wait(timeout=2))
+            release_judge.set()
+            fifth.result(timeout=2)
+            for future in duplicate_sixth:
+                self.assertEqual(future.result(timeout=2)["status"], "buffering")
+
+        seventh = memory_identity_periodic_agent.stage_identity_turn_pair(
+            "lot1-duplicate-carry",
+            lot0_identity_goldens.synthetic_pair(7),
+            arbiter_module=arbiter,
+            memory_store_module=store,
+            turn_id="turn-carry-seventh",
+        )
+        state = store.get_identity_staging_state("lot1-duplicate-carry")
+        actual = {
+            "judge_calls": judge_calls,
+            "next_pairs_count": seventh["buffer_pairs_count"],
+            "sixth_pair_occurrences": _count_marker(state, "LOT0_USER_06"),
+            "seventh_pair_occurrences": _count_marker(state, "LOT0_USER_07"),
+        }
+        lot1_identity_liveness_goldens.assert_concurrent_carry_reentry_deduplication(actual)
+        for key, value in (
+            ("judge_calls", 2),
+            ("next_pairs_count", 3),
+            ("sixth_pair_occurrences", 2),
+            ("seventh_pair_occurrences", 0),
+        ):
+            mutated = dict(actual, **{key: value})
+            with self.assertRaises(AssertionError):
+                lot1_identity_liveness_goldens.assert_concurrent_carry_reentry_deduplication(mutated)
+
     def test_persisted_running_before_judge_does_not_consume_first_attempt(self) -> None:
         store = lot0_identity_goldens.RealStagingIdentityStore()
         for index in range(1, 6):
@@ -1116,7 +1213,7 @@ class IdentityLivenessLot1ConcurrencyTests(unittest.TestCase):
         store.mark_identity_staging_status(
             "lot1-running-crash",
             status="running",
-            reason=f"processing_claim:{fingerprint}:crashed-owner:1",
+            reason=f"processing_claim:1:{fingerprint}:crashed-owner",
             touch_run_ts=True,
         )
         judge_calls = 0
@@ -1205,6 +1302,118 @@ class IdentityLivenessLot1ConcurrencyTests(unittest.TestCase):
         )
         self.assertIsNotNone(validated)
         self.assertEqual(reason, "")
+
+    def test_distinct_identical_same_second_turns_survive_scoped_reentry_deduplication(self) -> None:
+        store = lot0_identity_goldens.RealStagingIdentityStore()
+        arbiter = SimpleNamespace(
+            run_mutable_identity_judge=lambda _payload: self.fail("judge called below threshold")
+        )
+        pair = [
+            {"role": "user", "content": "SAME_SECOND_USER", "timestamp": "2030-01-01T00:00:00Z"},
+            {
+                "role": "assistant",
+                "content": "SAME_SECOND_ASSISTANT",
+                "timestamp": "2030-01-01T00:00:00Z",
+            },
+        ]
+        first = memory_identity_periodic_agent.stage_identity_turn_pair(
+            "lot1-same-second-wrapper",
+            pair,
+            arbiter_module=arbiter,
+            memory_store_module=store,
+            turn_id="turn-same-second-a",
+        )
+        second = memory_identity_periodic_agent.stage_identity_turn_pair(
+            "lot1-same-second-wrapper",
+            pair,
+            arbiter_module=arbiter,
+            memory_store_module=store,
+            turn_id="turn-same-second-b",
+        )
+        after_distinct = store.get_identity_staging_state("lot1-same-second-wrapper")
+        reentry = memory_identity_periodic_agent.stage_identity_turn_pair(
+            "lot1-same-second-wrapper",
+            pair,
+            arbiter_module=arbiter,
+            memory_store_module=store,
+            turn_id="turn-same-second-b",
+        )
+        final_state = store.get_identity_staging_state("lot1-same-second-wrapper")
+        turn_ids = [str(item.get("turn_id") or "") for item in final_state["buffer_pairs"]]
+        actual = {
+            "first_count": first["buffer_pairs_count"],
+            "distinct_count": after_distinct["buffer_pairs_count"],
+            "reentry_count": reentry["buffer_pairs_count"],
+            "final_count": final_state["buffer_pairs_count"],
+            "turn_a_occurrences": turn_ids.count("turn-same-second-a"),
+            "turn_b_occurrences": turn_ids.count("turn-same-second-b"),
+        }
+        lot1_identity_liveness_goldens.assert_scoped_turn_reentry_deduplication(actual)
+        for key, value in (
+            ("distinct_count", 1),
+            ("reentry_count", 3),
+            ("turn_b_occurrences", 2),
+        ):
+            mutated = dict(actual, **{key: value})
+            with self.assertRaises(AssertionError):
+                lot1_identity_liveness_goldens.assert_scoped_turn_reentry_deduplication(mutated)
+
+    def test_post_save_path_stages_two_distinct_identical_same_second_turns(self) -> None:
+        store = lot0_identity_goldens.RealStagingIdentityStore()
+        store.save_new_traces = lambda _conversation: None
+        events: list[tuple[str, dict[str, Any]]] = []
+        admin_logs = SimpleNamespace(log_event=lambda event, **kwargs: events.append((event, kwargs)))
+        arbiter = SimpleNamespace(
+            extract_identities=lambda _turn_pair: [],
+            run_mutable_identity_judge=lambda _payload: self.fail("judge called below threshold"),
+        )
+        timestamp = "2030-01-01T00:00:00Z"
+        user_message = {"role": "user", "content": "POST_SAVE_SAME_USER", "timestamp": timestamp}
+        assistant_message = {
+            "role": "assistant",
+            "content": "POST_SAVE_SAME_ASSISTANT",
+            "timestamp": timestamp,
+        }
+        conversation = {
+            "id": "lot1-same-second-post-save",
+            "messages": [dict(user_message), dict(assistant_message)],
+        }
+
+        def run_effects() -> None:
+            chat_assistant_finalization.run_chat_post_persistence_effects(
+                conversation=conversation,
+                assistant_text="POST_SAVE_SAME_ASSISTANT",
+                assistant_timestamp=timestamp,
+                runtime_main_model="synthetic-main-model",
+                current_mode="enforced_identities",
+                identity_ids=[],
+                web_input=None,
+                memory_store_module=store,
+                token_utils_module=SimpleNamespace(estimate_tokens=lambda _messages, _model: 1),
+                admin_logs_module=admin_logs,
+                logger=SimpleNamespace(error=lambda *_args, **_kwargs: None),
+                arbiter_module=arbiter,
+                record_identity_entries_for_mode=chat_memory_flow.record_identity_entries_for_mode,
+                mode_enforces_identity=chat_memory_flow.mode_enforces_identity,
+                traces_after_identity=True,
+            )
+
+        with patch.object(
+            chat_memory_flow.chat_turn_logger,
+            "current_turn_id",
+            side_effect=("turn-post-save-a", "turn-post-save-b"),
+        ):
+            run_effects()
+            conversation["messages"].extend((dict(user_message), dict(assistant_message)))
+            run_effects()
+
+        state = store.get_identity_staging_state("lot1-same-second-post-save")
+        self.assertEqual(state["buffer_pairs_count"], 2)
+        self.assertEqual(
+            [item.get("turn_id") for item in state["buffer_pairs"]],
+            ["turn-post-save-a", "turn-post-save-b"],
+        )
+        self.assertEqual(len(store.legacy_persist_calls), 2)
 
 
 if __name__ == "__main__":

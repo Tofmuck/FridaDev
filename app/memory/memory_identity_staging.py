@@ -56,14 +56,24 @@ def _normalize_pair(value: Any) -> dict[str, Any] | None:
     items = list(value)
     if len(items) != 2:
         return None
-    user = _normalize_message(items[0], expected_role='user')
-    assistant = _normalize_message(items[1], expected_role='assistant')
+    user_value, assistant_value = items
+    turn_id = _text(_mapping(user_value).get('_identity_staging_turn_id'))
+    user = _normalize_message(user_value, expected_role='user')
+    assistant = _normalize_message(assistant_value, expected_role='assistant')
     if user is None or assistant is None:
         return None
-    return {
+    normalized = {
         'user': user,
         'assistant': assistant,
     }
+    if turn_id:
+        normalized['turn_id'] = turn_id
+    return normalized
+
+
+def _same_staging_turn(left: Any, right: Any) -> bool:
+    left_turn_id = _text(_mapping(left).get('turn_id'))
+    return bool(left_turn_id and left_turn_id == _text(_mapping(right).get('turn_id')))
 
 
 def _processing_lock_key(conversation_id: str, window_fingerprint: str) -> int:
@@ -290,7 +300,10 @@ def append_identity_staging_pair(
                 target_changed = bool(current_state) and current_target != buffer_target
                 if target_changed:
                     current_pairs = []
-                pair_already_present = normalized_pair in current_pairs
+                pair_already_present = any(
+                    _same_staging_turn(normalized_pair, current_pair)
+                    for current_pair in current_pairs
+                )
                 buffer_already_frozen = len(current_pairs) >= buffer_target
                 next_pairs = (
                     list(current_pairs[:buffer_target])
