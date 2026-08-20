@@ -12,9 +12,9 @@
   ];
 
   const LEGACY_LAYERS = [
-    { key: "legacy_fragments", label: "Fragments legacy diagnostiques" },
-    { key: "evidence", label: "Evidences legacy diagnostiques" },
-    { key: "conflicts", label: "Conflits legacy diagnostiques" },
+    { key: "legacy_fragments", label: "Fragments legacy historiques" },
+    { key: "evidence", label: "Evidences legacy historiques" },
+    { key: "conflicts", label: "Conflits legacy historiques" },
   ];
   const LEGACY_RAW_TEXT_KEYS = [
     "content",
@@ -379,7 +379,7 @@
       labelWrap.appendChild(kicker);
       labelWrap.appendChild(itemTitle);
       itemHead.appendChild(labelWrap);
-      itemHead.appendChild(createChip("legacy diagnostique"));
+      itemHead.appendChild(createChip("historique legacy inactif"));
       itemPanel.appendChild(itemHead);
 
       const itemGrid = document.createElement("div");
@@ -401,7 +401,7 @@
     const subjects = payload?.subjects && typeof payload.subjects === "object" ? payload.subjects : {};
 
     if (!Object.keys(subjects).length) {
-      renderEmpty(target, "Aucune couche legacy diagnostique disponible.");
+      renderEmpty(target, "Aucune couche historique legacy disponible.");
       return;
     }
 
@@ -424,7 +424,7 @@
       const note = document.createElement("p");
       note.className = "admin-section-note admin-section-note-left";
       note.textContent =
-        "Ces couches viennent du pipeline legacy diagnostique (`persist_identity_entries`) et restent hors canon actif comme hors staging.";
+        "Ces couches proviennent du pipeline legacy desormais inactif (`persist_identity_entries`) et restent hors canon actif comme hors staging.";
       group.appendChild(note);
 
       LEGACY_LAYERS.forEach(({ key: layerKey, label: layerLabel }) => {
@@ -489,8 +489,8 @@
           `sujet=${toText(dialogicContext.logical_subject) || "n/a"}`,
           `statut=${toText(contextActivity.status) || "n/a"}`,
           `raison=${toText(contextActivity.reason_code) || "n/a"}`,
-          `hints=${Number(contextActivity.hint_count) || 0}`,
-          `stockes=${Number(dialogicContext.total_count) || 0}`,
+          `hints=${Number(contextActivity.hint_count) || 0}`, `persistes=${Number(contextActivity.persisted_count) || 0}`,
+          `prompt=${toText(contextActivity.prompt_kind) || "n/a"}`, `stockes=${Number(dialogicContext.total_count) || 0}`,
           `max_items=${Number(contextSelection.max_items) || 0}`,
           `budget_tokens=${Number(contextSelection.max_tokens) || 0}`,
           `max_age_days=${Number(contextSelection.max_age_days) || 0}`,

@@ -77,7 +77,7 @@ class ChatMemoryFlowIdentityModePipelineTests(unittest.TestCase):
         self.assertEqual(len(enforced['context_pairs']), 1)
         self.assertEqual(len(enforced['periodic_pairs']), 1)
 
-    def test_record_identity_entries_for_mode_enforced_runs_periodic_identity_staging_after_legacy_persist(self):
+    def test_enforced_persists_dialogic_hints_then_runs_mutable_staging_without_legacy_writes(self):
         hint = {'subject': 'dialogue', 'content': 'H', 'confidence': 0.9, 'reason_code': 'active_question'}
         observed = self._run([{'role': 'user', 'content': 'U'}, {'role': 'assistant', 'content': 'A'}], result=_result([hint]))
         self.assertEqual(len(observed['persisted']), 1)
@@ -109,13 +109,13 @@ class ChatMemoryFlowIdentityModePipelineTests(unittest.TestCase):
         self.assertEqual(judge_events[0]['status'], 'skipped')
         self.assertEqual(judge_events[0]['reason_code'], 'mutable_judge_flow_error')
 
-    def test_record_identity_entries_for_mode_passes_complete_pair_to_identity_buffer_after_guarding_diagnostics(self):
+    def test_enforced_passes_complete_pair_to_mutable_identity_staging(self):
         pair = [{'role': 'user', 'content': 'U'}, {'role': 'assistant', 'content': 'A'}]
         observed = self._run(pair)
         self.assertEqual(observed['periodic_pairs'], [pair])
         self.assertEqual(observed['legacy_writes'], 0)
 
-    def test_record_identity_entries_for_mode_shadow_emits_skipped_identity_write_per_side(self):
+    def test_shadow_runs_context_extraction_and_mutable_staging_without_legacy_writes(self):
         observed = self._run([{'role': 'user', 'content': 'U'}, {'role': 'assistant', 'content': 'A'}], mode='shadow')
         self.assertEqual(len(observed['context_pairs']), 1)
         self.assertEqual(observed['legacy_writes'], 0)

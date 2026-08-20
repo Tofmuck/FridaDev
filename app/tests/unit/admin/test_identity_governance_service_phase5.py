@@ -171,6 +171,13 @@ class IdentityGovernanceServicePhase5Tests(unittest.TestCase):
         self.assertEqual(items_by_key['IDENTITY_MUTABLE_TARGET_CHARS']['category'], 'doctrine_locked_readonly')
         self.assertEqual(items_by_key['identity_extractor_max_tokens']['source_kind'], 'runtime_settings')
         self.assertEqual(items_by_key['identity_extractor_max_tokens']['source_ref'], 'identity_extractor_model.max_tokens')
+        self.assertEqual(items_by_key['identity_extractor_max_tokens']['label'], 'Dialogic context extractor max tokens')
+        self.assertEqual(
+            items_by_key['identity_extractor_max_tokens']['active_scope'],
+            'dialogic_context_hint_extractor',
+        )
+        self.assertIn('contexte dialogique', items_by_key['identity_extractor_max_tokens']['operator_note'])
+        self.assertNotIn('extracteur identity', items_by_key['identity_extractor_max_tokens']['operator_note'])
         self.assertEqual(items_by_key['IDENTITY_TOP_N']['category'], 'legacy_inactive_readonly')
         self.assertEqual(items_by_key['IDENTITY_MAX_TOKENS']['category'], 'legacy_inactive_readonly')
         self.assertEqual(sections_by_key['staging_contract']['classification'], 'active_readonly')
@@ -200,6 +207,15 @@ class IdentityGovernanceServicePhase5Tests(unittest.TestCase):
         self.assertEqual(sections_by_key['mutable_budget_contract']['classification'], 'doctrine_locked')
         self.assertEqual(sections_by_key['mutable_budget_contract']['details']['target_chars'], 3000)
         self.assertEqual(sections_by_key['legacy_identity_contract']['classification'], 'legacy_inactive')
+        self.assertEqual(
+            sections_by_key['legacy_identity_contract']['source_kind'],
+            'legacy_historical_contract',
+        )
+        self.assertEqual(
+            sections_by_key['legacy_identity_contract']['details']['pipeline_status'],
+            'legacy_inactive_historical',
+        )
+        self.assertNotIn('diagnostic', sections_by_key['legacy_identity_contract']['operator_note'].lower())
         self.assertFalse(sections_by_key['legacy_identity_contract']['details']['actively_injected'])
         self.assertGreater(payload['editable_count'], 0)
         self.assertGreater(payload['readonly_count'], 0)

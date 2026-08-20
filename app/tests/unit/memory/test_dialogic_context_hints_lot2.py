@@ -1,13 +1,16 @@
 import json
 import unittest
+from datetime import datetime, timezone
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
 import requests
 
+from admin import admin_identity_read_model_projection
 from core import chat_memory_flow, conversations_prompt_window
 from memory import arbiter, memory_context_read, memory_identity_write
-from observability import observability_payload_guard
+from observability import chat_turn_logger, log_store, observability_payload_guard
 
 
 VALID_HINT = {
@@ -66,7 +69,207 @@ class _Conn:
         self.commits += 1
 
 
+class _LogReaderCursor:
+    def __init__(self, event):
+        self.event = event
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+    def execute(self, _query, _params):
+        return None
+
+    def fetchone(self):
+        return (1,)
+
+    def fetchall(self):
+        return [(
+            self.event['event_id'],
+            self.event['conversation_id'],
+            self.event['turn_id'],
+            datetime(2026, 8, 20, 18, 0, tzinfo=timezone.utc),
+            self.event['stage'],
+            self.event['status'],
+            self.event['duration_ms'],
+            self.event['payload_json'],
+        )]
+
+
+class _LogReaderConn:
+    def __init__(self, event):
+        self.event = event
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+    def cursor(self):
+        return _LogReaderCursor(self.event)
+
+
 class DialogicContextHintsLot2Tests(unittest.TestCase):
+    def _capture_dialogic_context_event(self, *, result, persistence_result=None):
+        observed = []
+        store = SimpleNamespace(
+            record_dialogic_context_hints=lambda _cid, _hints: persistence_result or {
+                'status': 'ok',
+                'reason_code': 'dialogic_context_hints_persisted',
+                'persisted_count': len(result.get('hints') or []),
+            },
+        )
+        with (
+            patch.object(log_store, 'insert_chat_log_event', side_effect=lambda event: observed.append(event) or True),
+            patch.object(chat_memory_flow, '_run_periodic_identity_agent', return_value={}),
+        ):
+            token = chat_turn_logger.begin_turn(
+                conversation_id='conv-observability-sentinel',
+                user_msg='S',
+                web_search_enabled=False,
+            )
+            try:
+                chat_memory_flow.record_identity_entries_for_mode(
+                    'conv-observability-sentinel',
+                    [{'role': 'user', 'content': 'U'}, {'role': 'assistant', 'content': 'A'}],
+                    mode='enforced_all',
+                    arbiter_module=SimpleNamespace(extract_dialogic_context_hints=lambda _turns: result),
+                    memory_store_module=store,
+                    admin_logs_module=SimpleNamespace(log_event=lambda *_args, **_kwargs: None),
+                )
+            finally:
+                chat_turn_logger.end_turn(token, final_status='ok')
+        events = [event for event in observed if event['stage'] == 'dialogic_context_hint_extractor']
+        self.assertEqual(len(events), 1)
+        return events[0]
+
+    def _read_event(self, event):
+        return log_store.read_chat_log_events(
+            limit=1,
+            stage='dialogic_context_hint_extractor',
+            fail_closed=True,
+            conn_factory=lambda: _LogReaderConn(event),
+        )['items'][0]
+
+    def test_success_reason_code_survives_real_stage_writer(self):
+        event = self._capture_dialogic_context_event(
+            result={
+                'status': 'ok',
+                'reason_code': 'dialogic_context_hints_extracted',
+                'schema_version': arbiter.DIALOGIC_CONTEXT_HINT_SCHEMA_VERSION,
+                'prompt_kind': arbiter.DIALOGIC_CONTEXT_HINT_PROMPT_KIND,
+                'hints': [VALID_HINT],
+            }
+        )
+
+        self.assertEqual(event['payload_json']['reason_code'], 'dialogic_context_hints_extracted')
+
+    def test_projection_reads_real_log_reader_payload_shape(self):
+        event = self._capture_dialogic_context_event(
+            result={
+                'status': 'ok',
+                'reason_code': 'dialogic_context_hints_extracted',
+                'schema_version': arbiter.DIALOGIC_CONTEXT_HINT_SCHEMA_VERSION,
+                'prompt_kind': arbiter.DIALOGIC_CONTEXT_HINT_PROMPT_KIND,
+                'hints': [VALID_HINT, VALID_HINT],
+            }
+        )
+        item = self._read_event(event)
+        self.assertIn('payload', item)
+        self.assertNotIn('payload_json', item)
+
+        block = admin_identity_read_model_projection.build_dialogic_context_block(
+            evidence={'items': [], 'total_count': 2, 'limit': 20},
+            latest_activity=item,
+            runtime={
+                'selection': {
+                    'max_items': 2,
+                    'max_tokens': 120,
+                    'max_age_days': 7,
+                    'min_confidence': 0.6,
+                }
+            },
+        )
+
+        fixture_path = Path(__file__).resolve().parents[2] / 'fixtures' / 'dialogic_context_observability_lot2.json'
+        fixture = json.loads(fixture_path.read_text(encoding='utf-8'))
+        self.assertEqual(block, fixture)
+        serialized = json.dumps(block, sort_keys=True)
+        self.assertNotIn('SENTINEL_HINT', serialized)
+        self.assertNotIn('payload_json', serialized)
+
+        conflicting_legacy_shape = {
+            **item,
+            'payload_json': {
+                'reason_code': 'mutant_wrong_payload_shape',
+                'hint_count': 0,
+                'persisted_count': 0,
+                'prompt_kind': None,
+            },
+        }
+        self.assertEqual(
+            admin_identity_read_model_projection.build_dialogic_context_block(
+                evidence={'items': [], 'total_count': 2, 'limit': 20},
+                latest_activity=conflicting_legacy_shape,
+                runtime=block['runtime'],
+            ),
+            fixture,
+        )
+        for field, mutant_value in (
+            ('reason_code', None),
+            ('hint_count', 0),
+            ('persisted_count', 0),
+            ('prompt_kind', None),
+        ):
+            with self.subTest(mutant_field=field):
+                mutant = json.loads(json.dumps(block))
+                mutant['latest_activity'][field] = mutant_value
+                with self.assertRaises(AssertionError):
+                    self.assertEqual(mutant, fixture)
+
+    def test_projection_preserves_status_reason_counts_and_prompt_kind_for_all_outcomes(self):
+        cases = (
+            (
+                'ok',
+                'dialogic_context_hints_extracted',
+                [VALID_HINT, VALID_HINT],
+                {'status': 'ok', 'reason_code': 'dialogic_context_hints_persisted', 'persisted_count': 2},
+                2,
+            ),
+            ('not_selected', 'dialogic_context_no_hint', [], None, 0),
+            ('failed', 'dialogic_context_transport_error', [], None, 0),
+        )
+        for status, reason_code, hints, persistence_result, persisted_count in cases:
+            with self.subTest(status=status):
+                event = self._capture_dialogic_context_event(
+                    result={
+                        'status': status,
+                        'reason_code': reason_code,
+                        'schema_version': arbiter.DIALOGIC_CONTEXT_HINT_SCHEMA_VERSION,
+                        'prompt_kind': arbiter.DIALOGIC_CONTEXT_HINT_PROMPT_KIND,
+                        'hints': hints,
+                    },
+                    persistence_result=persistence_result,
+                )
+                item = self._read_event(event)
+                block = admin_identity_read_model_projection.build_dialogic_context_block(
+                    evidence={'items': [], 'total_count': 0, 'limit': 20},
+                    latest_activity=item,
+                    runtime={},
+                )
+                self.assertEqual(block['latest_activity'], {
+                    'present': True,
+                    'status': status,
+                    'reason_code': reason_code,
+                    'hint_count': len(hints),
+                    'persisted_count': persisted_count,
+                    'prompt_kind': arbiter.DIALOGIC_CONTEXT_HINT_PROMPT_KIND,
+                    'raw_content_included': False,
+                })
+
     def test_validator_accepts_only_dialogue_and_rejects_identity_mutants(self):
         valid = {'schema_version': arbiter.DIALOGIC_CONTEXT_HINT_SCHEMA_VERSION, 'hints': [VALID_HINT]}
         self.assertEqual(arbiter._validate_dialogic_context_hint_output(valid), [VALID_HINT])

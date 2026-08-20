@@ -1,0 +1,32 @@
+{
+  "classification": "temporary_dialogic_context",
+  "runtime_authority": "prompt_context_only",
+  "storage_kind": "identity_evidence_compatible_storage",
+  "logical_subject": "dialogue",
+  "identity_writer": false,
+  "mutable_authority": false,
+  "active_caller": "dialogic_context_hint_extractor",
+  "legacy_setting_slot": "identity_extractor_model",
+  "stored": true,
+  "total_count": 2,
+  "limit": 20,
+  "items": [],
+  "content_minimized": true,
+  "latest_activity": {
+    "present": true,
+    "status": "ok",
+    "reason_code": "dialogic_context_hints_extracted",
+    "hint_count": 2,
+    "persisted_count": 2,
+    "prompt_kind": "dialogic_context_hint_extractor_v1",
+    "raw_content_included": false
+  },
+  "runtime": {
+    "selection": {
+      "max_items": 2,
+      "max_tokens": 120,
+      "max_age_days": 7,
+      "min_confidence": 0.6
+    }
+  }
+}

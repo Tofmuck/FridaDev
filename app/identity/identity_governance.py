@@ -208,17 +208,20 @@ _READONLY_ITEM_SPECS: tuple[GovernanceItemSpec, ...] = (
     ),
     GovernanceItemSpec(
         key='identity_extractor_max_tokens',
-        label='Identity extractor max tokens',
+        label='Dialogic context extractor max tokens',
         category='active_subpipeline_readonly',
         value_type='int',
         unit='tokens',
         source_kind='runtime_settings',
         source_ref='identity_extractor_model.max_tokens',
-        active_scope='identity_extractor',
+        active_scope='dialogic_context_hint_extractor',
         editable=False,
         editable_via=None,
         validation={'min': 1},
-        operator_note='Budget effectif de l extracteur identity, edite depuis le slot admin identity_extractor_model.',
+        operator_note=(
+            'Budget effectif de l extracteur de contexte dialogique, edite depuis le slot de compatibilite '
+            'admin identity_extractor_model.'
+        ),
     ),
     GovernanceItemSpec(
         key='IDENTITY_DECAY_FACTOR',
@@ -490,15 +493,15 @@ def build_regime_section_payloads(
             'label': 'Legacy identity inactif',
             'classification': 'legacy_inactive',
             'active_scope': 'inactive_legacy',
-            'source_kind': 'legacy_diagnostic_contract',
+            'source_kind': 'legacy_historical_contract',
             'source_ref': 'persist_identity_entries + identities + identity_evidence + identity_conflicts',
             'editable': False,
             'operator_note': (
-                'Le legacy identity reste relisible pour diagnostic et historique seulement. '
-                'Il ne pilote plus le canon actif, le staging ni l injection runtime.'
+                'Le legacy identity reste relisible comme historique inactif seulement. '
+                'Il ne pilote ni le canon actif, ni le staging, ni l injection runtime.'
             ),
             'details': {
-                'pipeline_status': 'legacy_diagnostic_only',
+                'pipeline_status': 'legacy_inactive_historical',
                 'storage': list(LEGACY_DIAGNOSTIC_STORAGE),
                 'actively_injected': False,
                 'editable_via_governance': False,

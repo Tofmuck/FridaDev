@@ -503,8 +503,9 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
             'active_replacements': {
                 'label': 'ARBITER_MODEL_ACTIVE_REPLACEMENTS',
                 'value': (
-                    'memory_arbiter_model drives memory arbitration; identity_extractor_model drives '
-                    'per-turn identity extraction; identity_periodic_model drives mutable_identity_judge_v2.'
+                    'memory_arbiter_model drives memory arbitration; identity_extractor_model configures '
+                    'the per-turn dialogic context extractor; identity_periodic_model drives '
+                    'mutable_identity_judge_v2.'
                 ),
                 'is_editable': False,
                 'source': 'runtime_contract',

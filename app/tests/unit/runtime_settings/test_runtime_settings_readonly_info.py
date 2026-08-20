@@ -149,6 +149,11 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
             'identity_periodic_model drives mutable_identity_judge',
             readonly_info['active_replacements']['value'],
         )
+        self.assertIn(
+            'identity_extractor_model configures the per-turn dialogic context extractor',
+            readonly_info['active_replacements']['value'],
+        )
+        self.assertNotIn('per-turn identity extraction', readonly_info['active_replacements']['value'])
         self.assertIn('not an effective source', readonly_info['legacy_scope']['value'])
 
     def test_get_section_readonly_info_identity_extractor_model_exposes_prompt_transport_and_benchmark(self) -> None:

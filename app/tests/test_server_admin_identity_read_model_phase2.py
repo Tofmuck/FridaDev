@@ -176,9 +176,22 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
             source='db',
             source_reason='db_row',
         )
-        self.server.log_store.read_chat_log_events = lambda **_kwargs: {
+        self.server.log_store.read_chat_log_events = lambda **kwargs: {
             'items': [
-                {
+                ({
+                    'event_id': 'evt-dialogic-context-1',
+                    'conversation_id': 'conv-stage-1',
+                    'turn_id': 'turn-15',
+                    'ts': '2026-04-16T10:00:32Z',
+                    'stage': 'dialogic_context_hint_extractor',
+                    'status': 'ok',
+                    'payload': {
+                        'reason_code': 'dialogic_context_hints_extracted',
+                        'hint_count': 2,
+                        'persisted_count': 2,
+                        'prompt_kind': 'dialogic_context_hint_extractor_v1',
+                    },
+                } if kwargs.get('stage') == 'dialogic_context_hint_extractor' else {
                     'event_id': 'evt-stage-1',
                     'conversation_id': 'conv-stage-1',
                     'turn_id': 'turn-15',
@@ -232,7 +245,7 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
                         'promotions': [],
                         'rejection_reasons': {},
                     },
-                }
+                })
             ],
         }
         self.server.memory_store.get_identities = lambda *_args, **_kwargs: self.fail(
@@ -271,8 +284,11 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
             data['active_runtime']['runtime_representations_read_via'],
             '/api/admin/identity/runtime-representations',
         )
-        self.assertEqual(data['active_runtime']['legacy_identity_pipeline_status'], 'legacy_diagnostic_only')
-        self.assertEqual(data['active_runtime']['legacy_identity_pipeline_recorded_via'], 'persist_identity_entries')
+        self.assertEqual(data['active_runtime']['legacy_identity_pipeline_status'], 'legacy_inactive_historical')
+        self.assertEqual(
+            data['active_runtime']['legacy_identity_pipeline_recorded_via'],
+            'historical_persist_identity_entries',
+        )
         self.assertEqual(
             data['active_runtime']['legacy_identity_pipeline_storage'],
             'identities + identity_evidence + identity_conflicts',
@@ -419,6 +435,15 @@ class ServerAdminIdentityReadModelPhase2Tests(unittest.TestCase):
         self.assertEqual(data['dialogic_context']['runtime']['selection']['max_tokens'], 120)
         self.assertEqual(data['dialogic_context']['runtime']['selection']['max_age_days'], 7)
         self.assertEqual(data['dialogic_context']['runtime']['selection']['min_confidence'], 0.6)
+        self.assertEqual(data['dialogic_context']['latest_activity'], {
+            'present': True,
+            'status': 'ok',
+            'reason_code': 'dialogic_context_hints_extracted',
+            'hint_count': 2,
+            'persisted_count': 2,
+            'prompt_kind': 'dialogic_context_hint_extractor_v1',
+            'raw_content_included': False,
+        })
         self.assertEqual(observed['conflicts'], [('llm', 20), ('user', 20)])
         self.assertEqual(data['subjects']['llm']['static']['content'], 'Frida static canonique')
         self.assertTrue(data['subjects']['llm']['static']['loaded_for_runtime'])

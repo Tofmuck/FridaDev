@@ -17,6 +17,11 @@ Transition contexte dialogique 2026-08-20:
   nom de compatibilite pour GPT-5.4 mini et ses reglages;
 - les collections `user/llm` restent historiques, tandis que le juge GPT-5.2
   demeure l'unique writer automatique du canon mutable.
+- la projection de l'activite lit la forme autoritative `payload` retournee par
+  `read_chat_log_events`; `payload_json` reste un detail du writer/stockage et
+  n'est pas un champ du read-model;
+- le reason code de succes du stage est porte explicitement dans son payload
+  compact, comme les compteurs et le `prompt_kind`.
 
 ## But
 
@@ -49,8 +54,8 @@ Le read-model doit exposer explicitement:
 - `active_prompt_contract = "static + mutable narrative"`
 - `active_prompt_contract` reste le nom technique du contrat de compilation identity runtime, pas un prompt canonique source-of-truth
 - `identity_input_schema_version = "v2"`
-- `legacy_identity_pipeline_status = "legacy_diagnostic_only"`
-- `legacy_identity_pipeline_recorded_via = "persist_identity_entries"`
+- `legacy_identity_pipeline_status = "legacy_inactive_historical"`
+- `legacy_identity_pipeline_recorded_via = "historical_persist_identity_entries"`
 - `legacy_identity_pipeline_storage = "identities + identity_evidence + identity_conflicts"`
 - `read_surface_stage = "lot_b5_identity_operator_truth"`
 - `used_identity_ids = []`

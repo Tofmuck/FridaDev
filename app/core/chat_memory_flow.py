@@ -714,6 +714,7 @@ def record_identity_entries_for_mode(
         payload={
             'schema_version': context_schema_version,
             'subject': 'dialogue',
+            'reason_code': final_context_reason,
             'hint_count': len(context_hints),
             'persisted_count': persisted_count,
             'write_mode': 'temporary_dialogic_context',

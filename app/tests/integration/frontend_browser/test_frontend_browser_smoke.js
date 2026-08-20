@@ -2,6 +2,7 @@
 
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const dialogicContextObservabilityFixture = require('../../fixtures/dialogic_context_observability_lot2.json');
 
 const {
   assertTextContains,
@@ -1876,7 +1877,7 @@ function hermeneuticAdminMockScript({
           active_identity_source: "identity_mutables",
           active_prompt_contract: "static + mutable narrative",
           identity_input_schema_version: "v2",
-          legacy_identity_pipeline_status: "legacy_diagnostic_only",
+          legacy_identity_pipeline_status: "legacy_inactive_historical",
           used_identity_ids_count: 0,
           identity_runtime_regime: {
             mutable_budget: { target_chars: 3000, max_chars: 3300 },
@@ -1906,28 +1907,7 @@ function hermeneuticAdminMockScript({
           last_completed_agent: { present: false },
           latest_agent_activity: ${JSON.stringify(latestIdentityActivity)},
         },
-        dialogic_context: {
-          classification: "temporary_dialogic_context",
-          authority: "prompt_context_only",
-          logical_subject: "dialogue",
-          active_caller: "dialogic_context_hint_extractor",
-          identity_writer: false,
-          mutable_authority: false,
-          present: true,
-          count: 1,
-          total_count: 1,
-          runtime: {
-            selection: { max_items: 2, max_tokens: 120, max_age_days: 7, min_confidence: 0.6 },
-          },
-          latest_activity: {
-            present: true,
-            status: "ok",
-            reason_code: "hints_persisted",
-            hint_count: 1,
-            identity_write: false,
-            mutable_authority: false,
-          },
-        },
+        dialogic_context: ${JSON.stringify(dialogicContextObservabilityFixture)},
         subjects: {
           llm: {
             static: {
@@ -2260,6 +2240,18 @@ test('identity surfaces render authoritative active claim and finalization recov
     assert.equal(text.includes('canonique=false'), true, `non-canonical status must render on ${surface}`);
     assert.equal(text.includes('budget_tokens=120'), true, `selection budget must render on ${surface}`);
     assert.equal(text.includes('max_age_days=7'), true, `selection age must render on ${surface}`);
+    assert.equal(
+      text.includes('raison=dialogic_context_hints_extracted'),
+      true,
+      `backend success reason must render on ${surface}`,
+    );
+    assert.equal(text.includes('hints=2'), true, `backend hint count must render on ${surface}`);
+    assert.equal(text.includes('persistes=2'), true, `backend persisted count must render on ${surface}`);
+    assert.equal(
+      text.includes('prompt=dialogic_context_hint_extractor_v1'),
+      true,
+      `backend prompt kind must render on ${surface}`,
+    );
     assert.equal(text.includes('identity_writer=true'), false, `false writer claim forbidden on ${surface}`);
   };
 
@@ -2278,6 +2270,10 @@ test('identity surfaces render authoritative active claim and finalization recov
       assert.equal(text.includes(expectedChip), true, `${expectedChip} must render on /identity`);
       assert.equal(text.includes('buffer_status=ok'), false, 'active staging cannot render as ok');
       assertDialogicContext(text, '/identity');
+      assert.throws(
+        () => assertDialogicContext(text.replace('persistes=2', 'persistes=0'), '/identity mutant'),
+        /persisted count must render/,
+      );
     });
 
     await openBrowserPage({ pathSuffix: '/hermeneutic-admin.html', mockScript }, async (page) => {
@@ -2287,6 +2283,13 @@ test('identity surfaces render authoritative active claim and finalization recov
       assert.equal(text.includes(expectedChip), true, `${expectedChip} must render on /hermeneutic-admin`);
       assert.equal(text.includes('buffer_status=ok'), false, 'active staging cannot render as ok');
       assertDialogicContext(text, '/hermeneutic-admin');
+      assert.throws(
+        () => assertDialogicContext(
+          text.replace('persistes=2', 'persistes=0'),
+          '/hermeneutic-admin mutant',
+        ),
+        /persisted count must render/,
+      );
     });
   }
 });

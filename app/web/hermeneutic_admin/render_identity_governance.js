@@ -317,7 +317,7 @@
           ? "Contrat du regime identity actif: canon, fenetre juge-first et budgets visibles sans exposer de contenu sensible."
           : classification === "doctrine_locked"
             ? "Doctrine visible, bornee et volontairement non editable."
-            : "Legacy conserve pour diagnostic seulement.",
+            : "Historique legacy inactif, conserve en lecture seule.",
       );
       groupSections.forEach((section) => renderRegimeSection(target, section));
     });

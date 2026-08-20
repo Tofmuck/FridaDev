@@ -179,7 +179,10 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
         self.assertIn("scope=", render_source)
         for field in ("processing_state", "failure_class", "recovery_action", "attempt_current", "attempt_limit", "window_fingerprint", "next_window_progress"):
             self.assertIn(field, render_source)
-        self.assertNotIn("prompt=", render_source)
+        self.assertIn('persistes=${Number(contextActivity.persisted_count)', render_source)
+        self.assertIn('prompt=${toText(contextActivity.prompt_kind)', render_source)
+        self.assertIn('pipeline legacy desormais inactif', render_source)
+        self.assertNotIn('legacy diagnostique', render_source)
 
     def test_identity_current_state_uses_summary_read_model_mode(self) -> None:
         main_source = (APP_DIR / "web" / "identity" / "main.js").read_text(encoding="utf-8")

@@ -1154,6 +1154,65 @@ mais aucun caller produit ne l'invoque. La qualite semantique live de GPT-5.4
 mini n'a pas ete benchmarkee dans ce lot. Aucun code Presence, Stimmung,
 Validation, modele, provider, schema DB ou donnee operateur n'a change.
 
+## Passe corrective observabilite du 2026-08-20
+
+Le Lot 2 a ete rouvert puis referme sans changer son comportement dialogique.
+F1 a F5 ont ete valides: le reader courant rendait `payload` mais la projection
+lisait `payload_json`; le reason code d'un succes restait hors du payload; les
+preuves API/frontend fabriquaient une activite deja correcte; des metadonnees
+operateur racontaient encore une extraction Identity active; six tests aux noms
+Web/Identity traversaient tous le meme helper sans exercer l'invariant annonce.
+
+Correction livree:
+
+- le seul event `dialogic_context_hint_extractor` porte localement son
+  `reason_code` content-free pour `ok`, `not_selected` et `failed`, sans changer
+  le writer generique;
+- la projection lit exclusivement la forme autoritative `payload` de
+  `read_chat_log_events` et expose statut, raison, `hint_count`,
+  `persisted_count` et `prompt_kind`;
+- un golden JSON content-free commun est produit/verifie par la chaine reelle
+  stage -> writer -> reader -> projection, puis consomme par les deux surfaces
+  Chromium; `/identity` et `/hermeneutic-admin` rendent aussi le nombre persiste
+  et le `prompt_kind`;
+- le slot technique `identity_extractor_model` reste compatible, mais les
+  labels actifs le qualifient comme extracteur de contexte dialogique; le
+  pipeline legacy est `legacy_inactive_historical` et sa provenance est
+  `historical_persist_identity_entries`;
+- les six doublons trompeurs de
+  `test_chat_memory_flow_identity_content_guards.py` sont supprimes; trois tests
+  voisins sont renommes selon l'invariant effectivement prouve. Les tests
+  directs de `filter_unsupported_web_reading_identities()` restent intacts comme
+  couverture de compatibilite historique.
+
+Preuves et mutations rejetees: retour a `payload_json`; disparition du reason
+code de succes; remise a zero de `hint_count` ou `persisted_count`; perte du
+`prompt_kind`; fixture frontend non egale a la projection backend; retour d'un
+label actif `identity extraction`, `identity writer` ou diagnostic legacy
+execute. Aucun hint, dialogue, prompt, payload provider ou secret brut n'entre
+dans l'event, le golden ou les projections.
+
+Fichiers de preuve principaux:
+`app/tests/unit/memory/test_dialogic_context_hints_lot2.py`,
+`app/tests/fixtures/dialogic_context_observability_lot2.json`,
+`app/tests/test_server_admin_identity_read_model_phase2.py`,
+`app/tests/unit/admin/test_identity_governance_service_phase5.py`,
+`app/tests/unit/runtime_settings/test_runtime_settings_readonly_info.py` et
+`app/tests/integration/frontend_browser/test_frontend_browser_smoke.js`.
+
+Commandes executees: baseline hermetique Python 2704, JavaScript 135 et Chromium
+15; reproductions rouges F1/F2; suites ciblees stage/logger/log-store,
+projection/read-model/routes/settings/governance/renderers; suites voisines Lots
+0/1/2, post-save, chat, persistance, JSON/streaming, Presence, final locks et
+observabilite; JavaScript et Chromium complets; decouverte Python hermetique
+finale. Total final Python: 2701, soit trois preuves nouvelles et six doublons
+faux supprimes; JavaScript: 135; Chromium: 15. Aucun skip ou expected failure.
+
+Limite conservee: les cles techniques et le chemin de prompt historiques
+`identity_extractor*` ne sont pas renommes. Aucun prompt, modele, provider,
+setting, stockage, donnee, cadence, budget ou comportement de context hints n'a
+ete modifie. Les Lots 3 a 8 et Z restent non commences.
+
 ## Stop-rules
 
 Arreter avant patch ou avant livraison si:

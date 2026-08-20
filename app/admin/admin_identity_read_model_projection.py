@@ -5,7 +5,8 @@ from typing import Any, Mapping
 
 ACTIVE_IDENTITY_SOURCE = 'identity_mutables'
 DEFAULT_LAYER_LIMIT = 20
-LEGACY_IDENTITY_PIPELINE_STATUS = 'legacy_diagnostic_only'
+LEGACY_IDENTITY_PIPELINE_STATUS = 'legacy_inactive_historical'
+LEGACY_LAYER_CLASSIFICATION = 'legacy_diagnostic_only'
 MUTABLE_AUDIT_STORAGE_KIND = 'identity_mutable_audit'
 LEGACY_PROJECTION_VERSION = 'identity_legacy_content_minimized_v2'
 LEGACY_RAW_TEXT_KEYS = {
@@ -236,7 +237,7 @@ def _build_collection_layer(*, storage_kind: str, snapshot: Mapping[str, Any]) -
     total_count = int(snapshot.get('total_count') or len(items))
     return {
         'storage_kind': storage_kind,
-        'classification': LEGACY_IDENTITY_PIPELINE_STATUS,
+        'classification': LEGACY_LAYER_CLASSIFICATION,
         'runtime_authority': 'historical_only',
         'projection_version': LEGACY_PROJECTION_VERSION,
         'content_minimized': True,
@@ -288,7 +289,7 @@ def build_dialogic_context_block(
     runtime: Mapping[str, Any],
 ) -> dict[str, Any]:
     items = [_compact_legacy_evidence_item(item) for item in list(evidence.get('items') or [])]
-    activity_payload = _mapping(latest_activity.get('payload_json'))
+    activity_payload = _mapping(latest_activity.get('payload'))
     return {
         'classification': 'temporary_dialogic_context',
         'runtime_authority': 'prompt_context_only',

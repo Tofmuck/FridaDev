@@ -431,7 +431,7 @@
 
     subjectGroup.appendChild(
       createNote(
-        "Le detail editable du statique et de la mutable reste dans Pilotage canonique actif. Ici, on garde une synthese par sujet et les volumes legacy diagnostiques utiles.",
+        "Le detail editable du statique et de la mutable reste dans Pilotage canonique actif. Ici, on garde une synthese par sujet et les volumes historiques legacy utiles.",
       ),
     );
 
@@ -472,7 +472,7 @@
       [
         "legacy_summary",
         {
-          label: "Fragments legacy diagnostiques",
+          label: "Fragments legacy historiques",
           value: `${Number(legacyLayer.total_count) || 0} element(s) historiques visibles plus bas`,
           source: "identity_read_model",
         },
@@ -480,7 +480,7 @@
       [
         "evidence_summary",
         {
-          label: "Evidences legacy diagnostiques",
+          label: "Evidences legacy historiques",
           value: `${Number(evidenceLayer.total_count) || 0} element(s) historiques visibles plus bas`,
           source: "identity_read_model",
         },
@@ -488,7 +488,7 @@
       [
         "conflicts_summary",
         {
-          label: "Conflits legacy diagnostiques",
+          label: "Conflits legacy historiques",
           value: `${Number(conflictsLayer.total_count) || 0} element(s) historiques visibles plus bas`,
           source: "identity_read_model",
         },
@@ -538,21 +538,21 @@
       },
       {
         key: "legacy_fragments",
-        label: "Fragments legacy diagnostiques",
+        label: "Fragments legacy historiques",
         identifyTitle: (item, index) => toText(item?.identity_id) || `Fragment legacy ${index + 1}`,
-        emptyMessage: "Aucun fragment legacy diagnostique pour ce sujet.",
+        emptyMessage: "Aucun fragment historique legacy pour ce sujet.",
       },
       {
         key: "evidence",
-        label: "Evidences legacy diagnostiques",
+        label: "Evidences legacy historiques",
         identifyTitle: (item, index) => toText(item?.evidence_id) || `Evidence ${index + 1}`,
-        emptyMessage: "Aucune evidence legacy diagnostique pour ce sujet.",
+        emptyMessage: "Aucune evidence historique legacy pour ce sujet.",
       },
       {
         key: "conflicts",
-        label: "Conflits legacy diagnostiques",
+        label: "Conflits legacy historiques",
         identifyTitle: (item, index) => toText(item?.conflict_id) || `Conflict ${index + 1}`,
-        emptyMessage: "Aucun conflit legacy diagnostique pour ce sujet.",
+        emptyMessage: "Aucun conflit historique legacy pour ce sujet.",
       },
     ].forEach((layerSpec) => {
       renderLayer(subjectGroup, layerSpec, subject[layerSpec.key]);
@@ -653,6 +653,8 @@
     contextMeta.appendChild(createChip(`statut=${toText(contextActivity.status) || "n/a"}`));
     contextMeta.appendChild(createChip(`raison=${toText(contextActivity.reason_code) || "n/a"}`));
     contextMeta.appendChild(createChip(`hints=${Number(contextActivity.hint_count) || 0}`));
+    contextMeta.appendChild(createChip(`persistes=${Number(contextActivity.persisted_count) || 0}`));
+    contextMeta.appendChild(createChip(`prompt=${toText(contextActivity.prompt_kind) || "n/a"}`));
     contextMeta.appendChild(createChip(`stockes=${Number(dialogicContext.total_count) || 0}`));
     contextMeta.appendChild(createChip(`max_items=${Number(contextSelection.max_items) || 0}`));
     contextMeta.appendChild(createChip(`budget_tokens=${Number(contextSelection.max_tokens) || 0}`));

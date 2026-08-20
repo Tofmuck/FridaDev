@@ -385,6 +385,12 @@ sujet logique `dialogue`, statut et reason code, `hint_count`,
 drapeaux `identity_write=false`, `mutable_authority=false`. Aucun hint,
 dialogue, prompt ou payload provider brut n'est admissible.
 
+Le stage place son `reason_code` dans le payload compact y compris lorsque son
+statut est `ok`; cette exception locale ne modifie pas le contrat generique du
+writer. `read_chat_log_events` projette ensuite le corps sous la cle
+autoritative `payload`. Le read-model Identity et les frontends lisent cette
+forme, jamais la cle de stockage interne `payload_json`.
+
 Les metriques actives sont
 `dialogic_context_hint_extractor_call_count` et
 `dialogic_context_hint_parse_error_count`; les erreurs transport sont comptees
