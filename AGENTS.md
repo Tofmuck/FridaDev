@@ -137,6 +137,19 @@ que d'appliquer des chemins ou des operations runtime OVH.
 - Distinguer fait observe, inference et risque residuel. Ne jamais presenter un
   test non execute, un comportement suppose ou un document ancien comme preuve.
 
+### Adapter une commande de preuve devenue trop etroite
+
+Ne pas confondre un ecart de commande avec un ecart de baseline. Lorsqu'une
+commande prescrite ou documentaire est mecaniquement incompatible avec
+l'arborescence courante, mais qu'une invocation equivalente ou plus stricte
+permet de verifier exactement les invariants attendus sans elargir le
+perimetre de mutation ni affaiblir l'hermeticite, adapter la commande,
+documenter l'ecart et poursuivre.
+
+S'arreter seulement si l'etat Git, le runtime, les resultats fonctionnels ou
+la securite different reellement. La commande n'est pas superieure aux sources
+de verite qu'elle sert a mesurer.
+
 ## Git et livraison
 
 Commit et push ne sont jamais automatiques. Les faire seulement si le lot ou
