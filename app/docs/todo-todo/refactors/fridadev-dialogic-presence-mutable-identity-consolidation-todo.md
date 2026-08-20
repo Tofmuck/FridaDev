@@ -1,0 +1,1020 @@
+# FridaDev - Consolidation Presence dialogique et Identity mutable
+
+Statut: TODO actif, non commence
+Date d'ouverture: 2026-08-20
+Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
+Agent cible: GPT-5.6, raisonnement approfondi
+Racine autoritative: `/opt/platform/fridadev`
+Branche canonique attendue a l'ouverture: `main`
+
+## 1. Finalite
+
+Cette roadmap consolide deux structures existantes sans en perdre la finalite:
+
+1. la **Presence dialogique validee**, qui permet a Frida de produire la
+   reponse locale exacte `...` lorsqu'un geste de reception, de depot ou de
+   cloture appelle une presence sans contenu propositionnel;
+2. l'**Identity mutable reciproque**, qui permet au meme juge de lire cinq
+   paires completes et d'admettre, pour `user` comme pour `llm`, une nouvelle
+   proposition ontologique durable dans le canon mutable add-only.
+
+Le chantier vise quatre gains:
+
+- retablir la vivacite effective du juge mutable;
+- supprimer les appels modele legacy sans autorite canonique;
+- mesurer puis renforcer la qualite et la robustesse de la Presence;
+- reduire les erreurs de transport, la latence et la duplication de prompt
+  seulement apres preuve.
+
+Ce chantier n'ajoute aucune nouvelle capacite produit.
+
+## 2. Decision de plan
+
+### Existe-t-il un meilleur plan, plus simple, plus sur et avec moins d'effets de bord ?
+
+Oui. Le meilleur plan n'est pas de changer simultanement les modeles, les
+prompts, l'architecture Identity et l'architecture hermeneutique.
+
+L'ordre obligatoire est:
+
+1. figer les preuves et le contrat d'observabilite;
+2. debloquer la progression Identity;
+3. retirer le chemin legacy devenu sans autorite;
+4. construire l'evaluation specifique de la Presence;
+5. mesurer l'utilite causale de Stimmung;
+6. fiabiliser les sorties structurees des callers conserves;
+7. simplifier les inputs et prompts a comportement constant;
+8. borner la latence cumulee;
+9. benchmarker les modeles sur le contrat reel;
+10. mettre a jour les references courantes, dont le `README.md`, puis archiver.
+
+Cette sequence evite qu'un changement de modele masque un bug architectural et
+evite d'optimiser un caller qui serait ensuite retire.
+
+## 3. Invariant transversal d'observabilite synchrone
+
+Aucun micro-lot ne peut etre ferme si le comportement, le transport, le prompt,
+le modele ou le statut actif a change mais que l'observabilite correspondante
+reste ancienne.
+
+L'observabilite n'est ni un lot final ni une dette acceptee pour plus tard.
+Chaque micro-lot doit mettre a jour dans le meme commit, lorsque ces surfaces
+existent:
+
+- l'evenement backend et son schema compact;
+- le read-model ou l'API admin qui projette cet etat;
+- le rendu frontend `/identity`, `/hermeneutic-admin`, `/log` ou `/admin`;
+- les etats `loading`, `empty`, `ok`, `degraded`, `error`, `legacy` ou
+  `not_applicable` concernes;
+- les tests backend, API, frontend et navigateur voisins;
+- le contrat vivant et le catalogue des callers si leur verite change.
+
+Une projection frontend ne doit jamais deduire un statut critique depuis du
+texte libre ou l'absence fortuite d'un champ. Elle doit lire un statut et un
+reason code backend autoritatifs.
+
+Observabilite autorisee:
+
+- presence/absence;
+- nombres, tailles, durees et timestamps techniques;
+- versions de schema ou de prompt;
+- noms de stages, callers, slots et modeles;
+- statuts, reason codes, error classes bornees et provenance technique;
+- hash courts et empreintes content-free;
+- decisions `retry`, `consume`, `quarantine`, `apply`, `no_change`, `fallback`
+  ou `not_applicable`.
+
+Observabilite interdite:
+
+- dialogue brut, prompt complet ou proposition identitaire;
+- contenu Memory, Summary, Capsule, document, note ou resultat Web;
+- query, URL sensible, secret, credential, DSN ou traceback brut;
+- nouvelle collecte de contenu sous pretexte de debug;
+- duplication d'un event quand un champ compact ou un read-model suffit.
+
+Les logs prives Identity/Memory deja intentionnellement disponibles a
+l'operateur ne sont pas requalifies. Ce chantier n'en ajoute pas et ne les
+exporte pas.
+
+## 4. Etat de depart a revalider
+
+Instantane content-free observe le 2026-08-20, a ne jamais reutiliser comme
+preuve future sans revalidation:
+
+- branche `main`;
+- HEAD local/upstream `02efcff11773668de7baf8b40eba519cd47c6928`;
+- divergence `0/0`;
+- worktree propre;
+- `platform-fridadev` healthy, restart `0`, OOM false;
+- runtime Presence: `stimmung_agent` puis noeud primaire deterministe puis
+  `validation_agent`;
+- modele Stimmung primaire `google/gemini-3.1-flash-lite`, fallback
+  `openai/gpt-5.4-nano`, timeout par tentative `10` secondes;
+- modele Validation primaire `google/gemini-3.1-flash-lite`, fallback
+  `openai/gpt-5.4-nano`, timeout par tentative `15` secondes;
+- modele juge mutable `openai/gpt-5.2`, timeout `10` secondes;
+- modele extracteur Identity legacy `openai/gpt-5.4-mini`, timeout `10`
+  secondes;
+- buffer Identity le plus recent: `5/5`, `buffer_frozen=true`, statut et
+  raison `window_too_large`;
+- trois tentatives identiques ont observe `window_chars=37339`,
+  `payload_chars=45755`, `estimated_prompt_tokens=12668`, sans afficher le
+  contenu;
+- limites locales du juge: `32000` caracteres de fenetre et `12000` tokens
+  estimes;
+- l'extracteur Identity legacy est encore appele apres chaque save assistant,
+  alors que le canon mutable actif est ecrit uniquement par
+  `mutable_identity_judge_v2_add_only`;
+- le benchmark Validation du 2026-05-19 contient 13 cas mais aucun cas tague
+  `presence`; la Presence runtime date du 2026-07-23;
+- Stimmung et Validation parsers lisent encore un JSON textuel sans
+  `response_format=json_schema` strict dans leur transport actif;
+- le juge mutable utilise deja le structured output strict et la validation
+  metier locale.
+
+Baseline tests historique au meme HEAD: `2665` tests hermetiques. Ce nombre est
+un repere, pas une preuve future. Chaque lot doit relancer la decouverte et
+expliquer exactement toute variation.
+
+Si branche, HEAD attendu par le lot, upstream, worktree, runtime utile ou
+baseline tests different, arreter avant edition et rapporter l'ecart. Ne jamais
+requalifier silencieusement la baseline.
+
+## 5. Sources a lire avant tout lot
+
+Toujours lire integralement et dans cet ordre:
+
+1. `/opt/platform/fridadev/AGENTS.md`;
+2. cette roadmap;
+3. `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`;
+4. `app/docs/states/specs/mutable-identity-judge-contract.md`;
+5. `app/docs/states/specs/identity-read-model-contract.md`;
+6. `app/docs/states/specs/hermeneutic-node-validation-agent-contract.md`;
+7. `app/docs/states/specs/hermeneutic-node-stimmung-input-contract.md`;
+8. `app/docs/states/specs/response-arbiter-power-contract.md`;
+9. `app/docs/states/specs/frida-v1-agentic-observability-contract.md`;
+10. `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md`.
+
+Puis lire le code, les tests, les benchmarks et les surfaces admin nommes dans
+le micro-lot. Les documents archives orientent; le code, les tests et le
+runtime courant tranchent.
+
+## 6. Regles d'execution pour GPT-5.6 approfondi
+
+- Executer un seul micro-lot par `GO`.
+- Ne jamais enchainer automatiquement vers le suivant.
+- Avant toute edition, repondre a la question: `Existe-t-il un meilleur plan ?`
+- Revalider le finding dans le HEAD courant; un finding de cette roadmap reste
+  une hypothese jusqu'a preuve.
+- Faire le changement minimal qui ferme le lot.
+- Ne pas ajouter une abstraction generique pour un besoin futur.
+- Ne pas changer de modele dans un lot de code ou de prompt non consacre au
+  benchmark/cutover modele.
+- Ne pas modifier la plateforme, les secrets, la DB operateur ou les donnees
+  de conversation.
+- Ne pas lancer de provider reel dans la suite hermetique.
+- Un smoke provider borne exige le GO explicite du lot benchmark concerne.
+- Tout fichier modifie dans le depot doit finir committe et pousse sur la
+  branche canonique courante.
+- Toute livraison live doit etre explicitement comprise dans le GO du lot et
+  suivre la procedure courante sans modifier Docker/Caddy/Authelia.
+- Pour un changement runtime livre live: preuve healthy, restart stable, OOM
+  false, comportement cible, observabilite backend et rendu frontend coherent.
+- Aucun contenu operateur brut ne doit apparaitre dans le retour.
+
+Retour obligatoire de chaque micro-lot:
+
+```text
+PLAN
+DECISION
+BASELINE
+FINDING
+OBSERVABILITE BACKEND
+OBSERVABILITE FRONTEND
+PATCH
+TESTS
+AUTO-AUDIT
+DOCS
+RUNTIME
+GIT
+STATUS
+RISKS
+```
+
+## 7. Definition globale de fermeture d'un micro-lot
+
+Un micro-lot runtime n'est ferme que si:
+
+- [ ] le bug ou la dette est reproduit avant patch;
+- [ ] le changement comportemental est borne et documente;
+- [ ] une mutation controlee prouve la sensibilite du test principal;
+- [ ] aucun ancien chemin concurrent ne reste actif;
+- [ ] le backend d'observabilite expose la nouvelle verite;
+- [ ] les read-models/API existants exposent cette meme verite;
+- [ ] les frontends existants la rendent sans heuristique stale;
+- [ ] les tests frontend couvrent `ok`, absence/no-op et erreur utile;
+- [ ] les contrats vivants sont a jour dans le meme commit;
+- [ ] les tests cibles, voisins et la decouverte hermetique sont verts;
+- [ ] `git diff --check` est vert;
+- [ ] seuls les fichiers autorises par le lot sont touches;
+- [ ] aucun temporaire, `__pycache__` ou `.pyc` n'est laisse;
+- [ ] le diff utile a ete relu integralement;
+- [ ] commit et push sont effectues;
+- [ ] worktree propre, HEAD local = upstream = distant et divergence `0/0`;
+- [ ] si livre live, le runtime et les surfaces operateur sont verifies apres
+  deploiement.
+
+## 8. Matrice des surfaces existantes a maintenir
+
+### Identity
+
+Backend/runtime:
+
+- `app/core/chat_memory_flow.py`;
+- `app/memory/memory_identity_periodic_agent.py`;
+- `app/memory/memory_identity_staging.py`;
+- `app/memory/mutable_identity_runtime.py`;
+- `app/memory/mutable_identity_judge_v2.py`;
+- `app/memory/mutable_identity_judge_common.py`;
+- `app/memory/arbiter.py`.
+
+Observabilite/read-model:
+
+- `app/admin/admin_identity_read_model_service.py`;
+- `app/admin/admin_identity_judge_activity_projection.py`;
+- `app/admin/admin_identity_runtime_representations_service.py`;
+- `app/admin/admin_hermeneutics_service.py`;
+- `app/admin/admin_stage_latency_summary.py`;
+- `app/observability/chat_turn_logger.py` et schemas voisins;
+- `app/observability/turn_observability_checklist.py`;
+- `app/observability/turn_pipeline_read_model.py`.
+
+Frontend existant:
+
+- `app/web/hermeneutic_admin/render_identity_read_model.js`;
+- `app/web/identity/render_identity_runtime_representations.js`;
+- `app/web/hermeneutic-admin.html`;
+- `app/web/log/`;
+- `app/web/admin_settings_catalog.js` si le statut d'un slot change.
+
+### Presence, Stimmung et Validation
+
+Backend/runtime:
+
+- `app/core/stimmung_agent.py`;
+- `app/core/hermeneutic_node/inputs/stimmung_input.py`;
+- `app/core/hermeneutic_node/runtime/primary_node.py`;
+- `app/core/hermeneutic_node/validation/`;
+- `app/core/chat_agent_lane_orchestration.py`;
+- `app/core/chat_service.py`.
+
+Observabilite/read-model:
+
+- `app/observability/hermeneutic_node_logger.py`;
+- `app/observability/turn_observability_checklist.py`;
+- `app/observability/turn_pipeline_read_model.py`;
+- `app/observability/log_store.py`;
+- `app/admin/admin_hermeneutics_service.py`;
+- `app/admin/admin_stage_latency_summary.py`;
+- `app/admin/runtime_settings_api_view.py`;
+- `app/admin/runtime_settings_model_validation.py`.
+
+Frontend existant:
+
+- `app/web/hermeneutic_admin/render.js`;
+- `app/web/hermeneutic-admin.html`;
+- `app/web/log/log.js` et `app/web/log.html`;
+- `app/web/admin_section_stimmung_agent_model.js`;
+- `app/web/admin_section_validation_agent_model.js`;
+- `app/web/admin.html` et `app/web/admin.js`.
+
+Cette liste est un point de depart. Chaque lot doit suivre les appelants et ne
+modifier que les surfaces reellement concernees.
+
+# LOT 0 - Goldens et cartographie d'observabilite
+
+Statut: non commence
+Nature: tests/docs-only
+Livraison live: interdite
+
+## Objectif
+
+Figer les comportements et les dettes avant toute modification runtime.
+
+## Travail obligatoire
+
+- [ ] Reproduire hermetiquement le buffer `5/5` fige apres
+  `window_too_large`.
+- [ ] Prouver qu'un sixieme tour ne remplace ni ne fait progresser la fenetre.
+- [ ] Prouver la repetition de la meme empreinte content-free.
+- [ ] Figer les comportements transitoires actuels: timeout, transport,
+  schema invalide, applicateur en echec.
+- [ ] Prouver le nombre d'appels Identity sur cinq tours: cinq extracteurs
+  legacy plus un juge mutable quand le seuil est atteint.
+- [ ] Figer la Presence valide: `answer/presence`, reponse exacte, un save,
+  aucun modele principal et provenance conservee.
+- [ ] Figer les contre-cas: question, demande, detresse, risque, hard guard,
+  ambiguite materielle, final lock Agenda/Biblio.
+- [ ] Inventorier pour chaque stage les events, API/read-model et rendus
+  frontend actuels.
+- [ ] Produire une matrice `backend -> API -> frontend -> test` dans cette
+  section lors de la cloture.
+
+## Sensibilite obligatoire
+
+Les goldens doivent echouer si:
+
+- la fenetre gelee accepte silencieusement un sixieme tour;
+- une empreinte differente est presentee comme le meme retry;
+- l'extracteur legacy n'est pas appele alors que la baseline pretend mesurer
+  le comportement pre-retrait;
+- une Presence appelle le modele principal ou est sauvegardee deux fois;
+- un statut backend critique disparait du read-model ou du rendu frontend.
+
+## Fichiers probables
+
+- `app/tests/unit/memory/test_identity_staging_lot2.py`;
+- `app/tests/unit/memory/test_identity_periodic_agent_phase1.py`;
+- `app/tests/unit/chat/test_chat_memory_flow_identity_mode_pipeline.py`;
+- `app/tests/unit/chat/test_mutable_identity_judge_final_validation.py`;
+- `app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py`;
+- `app/tests/unit/chat/test_dialogic_regime_corpus.py`;
+- `app/tests/unit/golden/test_lot9_golden_harness.py`;
+- tests admin/frontend existants.
+
+## Observabilite a prouver sans la changer
+
+- statut/reason du staging;
+- taille de fenetre, taille payload et estimation tokens;
+- gel du buffer et horodatage du dernier run;
+- callers Identity actifs;
+- source primaire/fallback de Stimmung et Validation;
+- verdict final, fail-open et Presence retenue/refusee;
+- coherence entre API et frontend.
+
+## Condition de fermeture
+
+- [ ] Aucun runtime, prompt, modele ou setting modifie.
+- [ ] Goldens sensibles livres.
+- [ ] Matrice d'observabilite complete.
+- [ ] Baseline hermetique finale verte.
+
+# LOT 1 - Retablir la vivacite du juge Identity
+
+Statut: non commence
+Nature: correctif runtime borne
+Dependance: Lot 0 ferme
+
+## Objectif
+
+Garantir qu'une fenetre impossible ou irreparablement invalide ne bloque jamais
+toutes les fenetres futures, sans tronquer ni preselectionner le dialogue.
+
+## Decision a prendre avant patch
+
+Mesurer les tailles content-free historiques disponibles et choisir le plus
+petit plafond qui couvre l'usage reel avec marge. Verifier la capacite du
+modele/provider courant depuis une source primaire. Ne pas deduire un plafond
+depuis la seule fenetre actuellement bloquee.
+
+## Travail obligatoire
+
+- [ ] Classer les echecs en `transient`, `deterministic_input`,
+  `deterministic_contract` et `write_recovery` ou vocabulaire local equivalent.
+- [ ] Augmenter les gardes taille uniquement si les mesures le justifient.
+- [ ] Conserver exactement cinq paires completes; aucune troncature silencieuse.
+- [ ] Preserver la fenetre pour un echec transitoire selon une politique de
+  retry bornee.
+- [ ] Ne jamais rejouer indefiniment un meme echec deterministe immutable.
+- [ ] Consommer ou mettre en quarantaine technique la fenetre terminale sans
+  ecriture canonique, puis accepter les paires suivantes.
+- [ ] Garantir l'idempotence si le verdict est valide mais l'ecriture canonique
+  echoue.
+- [ ] Ne jamais transformer un echec en `no_change` ou en succes canonique.
+- [ ] Ne modifier ni `add_only`, ni les sujets, ni la cadence nominale, ni le
+  canon existant.
+
+## Observabilite backend dans le meme commit
+
+Exposer de maniere compacte:
+
+- classe de l'echec;
+- action prise: retry preserve, window consumed without write, quarantine,
+  apply recovery;
+- nombre de tentatives borne ou indicateur equivalent;
+- empreinte courte de la fenetre;
+- tailles et plafonds effectivement compares;
+- progression vers la fenetre suivante;
+- distinction `judge_not_called`, `judge_failed`, `write_failed`, `completed`.
+
+Aucun contenu de fenetre, proposition ou canon ne doit etre journalise.
+
+## Observabilite frontend dans le meme commit
+
+Les surfaces Identity existantes doivent rendre:
+
+- buffer en attente, gelee pour retry, ecartee sans ecriture ou consommee;
+- raison technique lisible;
+- derniere action et progression;
+- absence de faux statut healthy lorsque le pipeline est bloque;
+- absence de faux statut error lorsque la fenetre terminale a ete proprement
+  ecartee et que la progression a repris.
+
+Ne pas creer un nouvel ecran si `/identity` ou `/hermeneutic-admin` suffit.
+
+## Tests obligatoires
+
+- [ ] fenetre nominale sous plafond;
+- [ ] fenetre actuellement representative au-dessus de l'ancien plafond;
+- [ ] fenetre irreductiblement trop grande;
+- [ ] sixieme puis dixieme tour apres echec terminal;
+- [ ] timeout transitoire puis succes;
+- [ ] schema invalide repete et borne;
+- [ ] echec ecriture puis reprise idempotente;
+- [ ] aucun save mutable sous echec;
+- [ ] API/read-model/frontend coherents pour chaque etat;
+- [ ] mutation: restaurer le gel infini fait echouer le golden.
+
+## Condition de fermeture
+
+- [ ] Une fenetre impossible ne bloque plus les suivantes.
+- [ ] Aucune matiere dialogique n'est preselectionnee ou tronquee.
+- [ ] Aucun faux succes Identity.
+- [ ] Observabilite backend et frontend livree simultanement.
+
+# LOT 2 - Retirer l'extracteur Identity legacy du chemin actif
+
+Statut: non commence
+Nature: simplification runtime
+Dependance: Lot 1 ferme et progression prouvee
+
+## Objectif
+
+Supprimer l'appel `identity_extractor` execute apres chaque reponse alors qu'il
+ne gouverne plus le canon mutable, sans effacer l'historique operateur.
+
+## Inventaire avant patch
+
+- [ ] Recenser tous les lecteurs de `identities`, `identity_evidence` et
+  `identity_conflicts`.
+- [ ] Distinguer donnees historiques consultables et nouvelles ecritures
+  necessaires.
+- [ ] Prouver que `mutable_identity_judge_v2_add_only` est l'unique writer du
+  canon mutable actif.
+- [ ] Rechercher les tests ou labels qui presentent encore l'extracteur comme
+  caller actif necessaire.
+
+## Travail obligatoire
+
+- [ ] Retirer `arbiter.extract_identities(...)` du chemin post-save actif.
+- [ ] Retirer les nouvelles persistences legacy associees si aucun contrat
+  vivant ne les exige.
+- [ ] Conserver les tables et l'historique read-only si leur suppression
+  demanderait une migration ou detruirait une preuve operateur.
+- [ ] Ne pas remplacer l'extracteur par un autre modele, une regex ou un
+  nouveau pipeline.
+- [ ] Conserver le staging cinq paires et le juge reciproque.
+- [ ] Prouver JSON/streaming et final lock Presence.
+
+## Observabilite backend dans le meme commit
+
+- retirer `identity_extractor` de la liste des callers actifs;
+- marquer ses evenements historiques `legacy/inactive` dans les read-models;
+- ne pas emettre un faux event no-op a chaque tour pour remplacer l'appel;
+- conserver les latences historiques sans les melanger au juge mutable;
+- exposer un pipeline actif exact: staging puis juge mutable au seuil.
+
+## Observabilite frontend dans le meme commit
+
+- les reglages ou cartes existants ne doivent plus presenter
+  `identity_extractor_model` comme chemin canonique actif;
+- si le slot reste pour compatibilite, l'etiqueter explicitement legacy et
+  inactif;
+- l'historique reste consultable sans faire croire que le caller tourne encore;
+- les compteurs actifs n'incluent plus l'extracteur.
+
+## Tests obligatoires
+
+- [ ] zero appel extracteur sur un tour enforced;
+- [ ] un appel juge seulement a la cinquieme paire;
+- [ ] cinq tours = un appel Identity actif au lieu de six;
+- [ ] historique legacy toujours lisible;
+- [ ] aucun changement du canon avant le seuil;
+- [ ] aucune regression post-save, streaming, erreur ou Presence;
+- [ ] mutation: rebrancher l'extracteur fait echouer le golden de cardinalite;
+- [ ] contrats API/frontend alignes.
+
+## Condition de fermeture
+
+- [ ] Reduction prouvee de cinq appels Identity sur six dans une sequence de
+  cinq tours.
+- [ ] Aucun consumer vivant casse.
+- [ ] Aucun nouveau caller substitut.
+- [ ] Observabilite active et historique non ambigues.
+
+# LOT 3 - Corpus d'evaluation Presence
+
+Statut: non commence
+Nature: tests/benchmark/docs-only
+Dependance: Lots Identity independants termines ou explicitement pauses
+Livraison live: interdite
+
+## Objectif
+
+Mesurer la capacite exacte `answer/presence`, absente du benchmark qui a choisi
+le modele Validation courant.
+
+## Corpus minimal
+
+Construire des fixtures synthetiques, sans conversation operateur, couvrant:
+
+- depot recu;
+- cloture partagee;
+- silence explicitement autorise;
+- question courte;
+- demande directe ou implicite;
+- detresse, risque ou vulnerabilite;
+- instruction materielle;
+- ambiguite substantielle;
+- correction et desaccord;
+- ironie;
+- ponctuation ou fragments seuls;
+- reponse assistant precedente qui change le sens du dernier tour;
+- final lock Agenda et Biblio;
+- hard guard Web;
+- fail-open provider;
+- contexte tronque ou support secondaire absent.
+
+Chaque cas doit porter:
+
+- ID opaque;
+- famille semantique;
+- verdict attendu ou ensemble borne acceptable;
+- gravite d'un faux positif;
+- justification humaine courte;
+- tags de provenance synthetique;
+- aucune sortie brute de modele conservee apres decision.
+
+## Metriques
+
+- faux `presence` sur cas interdit;
+- Presence manquee sur cas positif;
+- `clarify` ou `suspend` bureaucratique;
+- schema/transport valide;
+- latence primaire et fallback;
+- cout estime;
+- stabilite sur repetitions;
+- difference avec/sans contexte recent.
+
+## Observabilite a figer dans les tests
+
+Le benchmark doit verifier le meme vocabulaire que le runtime:
+
+- caller, modele demande et provider observe;
+- source primaire/fallback;
+- posture et regime finaux;
+- hard guards appliques;
+- Presence retenue/refusee et raison compacte;
+- aucun contenu de fixture dans les artefacts content-free de decision.
+
+## Condition de fermeture
+
+- [ ] Aucun changement runtime ou modele.
+- [ ] Corpus Presence valide humainement.
+- [ ] Baseline du modele courant documentee.
+- [ ] Seuils de securite explicites avant toute optimisation.
+
+# LOT 4 - Ablation Stimmung et decision d'architecture
+
+Statut: non commence
+Nature: benchmark puis decision, sans cutover implicite
+Dependance: Lot 3 ferme
+
+## Objectif
+
+Determiner si Stimmung ameliore effectivement la decision hermeneutique finale
+et justifie un appel modele a chaque tour.
+
+## Comparaison obligatoire
+
+Rejouer le meme corpus:
+
+- pipeline courant avec Stimmung;
+- validation sans signal Stimmung;
+- variante deterministe sans appel modele seulement si elle existe deja;
+- primaire et fallback distingues.
+
+Mesurer:
+
+- precision Presence;
+- faux silences;
+- psychologisation ou surcodage affectif;
+- `clarify/suspend` injustifies;
+- latence et cout;
+- impact reel de `stimmung_caution` sur le verdict final.
+
+## Decision de sortie obligatoire
+
+Choisir et documenter exactement une option:
+
+1. `keep`: gain semantique net et reproductible;
+2. `remove`: gain absent ou insuffisant face au cout/latence;
+3. `inconclusive`: aucun changement runtime, nouveau corpus borne necessaire.
+
+Interdits:
+
+- remplacer Stimmung par des regex emotionnelles;
+- garder le caller par intuition sans preuve;
+- le retirer sur le seul critere de cout;
+- fusionner silencieusement ses donnees avec Identity.
+
+## Si decision `remove`
+
+Ouvrir un micro-lot 4R separe avec GO explicite:
+
+- retirer le caller et le stockage metier de nouveaux signaux s'ils ne servent
+  plus;
+- ne pas effacer retroactivement les metadonnees historiques;
+- rendre le stage `not_applicable/retired`, pas `missing/error`;
+- mettre a jour `/hermeneutic-admin`, `/log`, `/admin`, settings et docs;
+- prouver l'identite du comportement hors differences acceptees par le corpus;
+- mesurer la latence gagnee.
+
+## Si decision `keep`
+
+Le caller entre dans le Lot 5 structured output et conserve sa frontiere:
+signal local, pas identite, pas diagnostic durable, pas souverainete finale.
+
+## Condition de fermeture
+
+- [ ] Decision humaine tracee.
+- [ ] Aucun caller ajoute.
+- [ ] Toute modification runtime eventuelle est un lot 4R distinct avec
+  observabilite backend/frontend simultanee.
+
+# LOT 5 - Structured outputs des callers conserves
+
+Statut: non commence
+Nature: robustesse transport
+Dependance: decision Lot 4
+
+## Objectif
+
+Remplacer le JSON demande en texte libre par un schema provider strict pour
+Validation et, si conserve, Stimmung, tout en gardant la validation metier
+locale souveraine.
+
+## Travail obligatoire
+
+- [ ] Definir des schemas minimaux versionnes et sans champ libre inutile.
+- [ ] Envoyer `response_format.type=json_schema` et `strict=true`.
+- [ ] Exiger `provider.require_parameters=true`.
+- [ ] Verifier les endpoints/provider reellement compatibles avant cutover.
+- [ ] Conserver le parseur/fail-open de securite ou le remplacer par une
+  validation locale equivalente, jamais par une confiance aveugle au provider.
+- [ ] Distinguer erreur transport, schema provider et validation metier.
+- [ ] Ne pas activer de plugin de healing ou autre intermediaire sans decision
+  explicite et preuve d'utilite.
+
+## Observabilite backend dans le meme commit
+
+- version du contrat de sortie;
+- `structured_output_requested`;
+- `require_parameters` effectif;
+- statut transport, schema provider et validation metier separes;
+- modele/provider effectivement choisi;
+- primaire/fallback;
+- fail-open et raison bornees.
+
+## Observabilite frontend dans le meme commit
+
+- les cartes settings affichent le contrat actif et la compatibilite effective;
+- `/hermeneutic-admin` distingue transport, schema et semantique;
+- `/log` ne presente pas une erreur schema comme une decision hermeneutique;
+- aucun JSON brut ou prompt n'est affiche.
+
+## Tests obligatoires
+
+- [ ] payload exact et `require_parameters`;
+- [ ] schema valide;
+- [ ] enum ou champ supplementaire refuse;
+- [ ] provider incompatible;
+- [ ] schema valide mais semantiquement interdit;
+- [ ] fallback compatible;
+- [ ] fail-open ne produit jamais Presence;
+- [ ] frontend/API pour chaque classe d'echec;
+- [ ] mutation: retrait du `response_format` fait echouer le test de transport.
+
+## Condition de fermeture
+
+- [ ] Zero confiance implicite dans le JSON libre.
+- [ ] Validation metier locale conservee.
+- [ ] Observabilite de bout en bout alignee.
+
+# LOT 6 - Simplifier l'input et le prompt de Validation
+
+Statut: non commence
+Nature: refactor a comportement constant
+Dependance: Lots 3 et 5 fermes
+
+## Objectif
+
+Reduire la duplication d'autorite et les previews JSON fragiles sans affaiblir
+la lecture dialogique ni les garde-fous.
+
+## Travail obligatoire
+
+- [ ] Cartographier chaque instruction entre prompt systeme et message de
+  tache technique.
+- [ ] Identifier l'autorite contractuelle de chaque instruction.
+- [ ] Garder la doctrine dans un prompt systeme versionne unique.
+- [ ] Construire un `validation_input_v2` ou nom local equivalent, compact et
+  type, depuis les champs contractuels deja disponibles.
+- [ ] Conserver le dialogue recent comme matiere hermeneutique principale.
+- [ ] Remplacer les troncatures aveugles par des projections bornees par champ.
+- [ ] Conserver les hard guards deterministes et leur souverainete.
+- [ ] Ne pas transformer question, detresse, ironie ou ambiguite en regex.
+- [ ] Ne pas modifier la sortie exacte Presence.
+
+## Observabilite backend dans le meme commit
+
+- version de l'input et hash court du prompt;
+- taille par bloc, compteurs de messages et flags de troncature;
+- presence/absence des familles de source sans leur contenu;
+- version des hard guards;
+- decision finale et provenance inchangees.
+
+## Observabilite frontend dans le meme commit
+
+- cartes settings/read-only avec prompt et input versions actifs;
+- taille et troncature visibles de maniere content-free si deja projetees;
+- aucune ancienne version presentee comme active;
+- historique explicitement versionne si conserve.
+
+## Tests obligatoires
+
+- [ ] corpus Presence integral avant/apres;
+- [ ] corpus `answer/clarify/suspend` integral avant/apres;
+- [ ] ordre et priorite du dialogue recent;
+- [ ] bornes par champ;
+- [ ] hard guards non affaiblis;
+- [ ] prompt systeme unique et absence de duplication normative;
+- [ ] mutation: reintroduire la doctrine concurrente dans le message technique
+  fait echouer le test structurel.
+
+## Condition de fermeture
+
+- [ ] Aucun ecart comportemental non decide.
+- [ ] Payload plus petit ou plus stable, mesure a l'appui.
+- [ ] Observabilite versionnee simultanement.
+
+# LOT 7 - Budget de latence et fallback borne
+
+Statut: non commence
+Nature: robustesse/performance
+Dependance: callers finaux connus apres Lots 4-6
+
+## Objectif
+
+Empecher les timeouts primaire et fallback de s'additionner sans borne globale
+avant l'appel du modele principal.
+
+## Inventaire avant patch
+
+- [ ] Mesurer les latences content-free p50/p95/p99 par caller et source.
+- [ ] Distinguer timeout configure, duree reelle et temps total du stage.
+- [ ] Verifier si les appels sont necessairement sequentiels.
+- [ ] Ne pas introduire de concurrence si le gain n'est pas prouve ou si elle
+  complique la causalite des logs.
+
+## Travail obligatoire
+
+- [ ] Definir une enveloppe murale par stage ou un mecanisme local equivalent.
+- [ ] Donner au fallback seulement le budget restant.
+- [ ] Conserver le fail-open et l'absence de Presence sur erreur.
+- [ ] Ne pas raccourcir le timeout du juge Identity dans ce lot.
+- [ ] Ne pas modifier les modeles.
+
+## Observabilite backend dans le meme commit
+
+- duree primaire, fallback et totale;
+- budget initial, budget restant et cause de terminaison;
+- nombre de tentatives;
+- source retenue;
+- distinction timeout stage et erreur provider.
+
+## Observabilite frontend dans le meme commit
+
+- `/hermeneutic-admin` et `/log` montrent la duree totale et la contribution du
+  fallback sans addition trompeuse;
+- `/admin` valide la coherence des timeouts avec l'enveloppe active;
+- aucun statut degrade si le primaire reussit dans le budget.
+
+## Tests obligatoires
+
+- [ ] primaire rapide;
+- [ ] primaire en echec puis fallback dans budget;
+- [ ] primaire consomme presque tout le budget;
+- [ ] aucun appel fallback quand budget epuise;
+- [ ] fail-open terminal correct;
+- [ ] horloge fake, aucun sleep reel;
+- [ ] mutation: rendre les deux timeouts integralement cumulables fait echouer
+  le test de budget.
+
+## Condition de fermeture
+
+- [ ] Borne murale prouvee.
+- [ ] Aucune degradation du corpus.
+- [ ] Read-model et frontend racontent la vraie chronologie.
+
+# LOT 8 - Benchmark modele sur les contrats reels
+
+Statut: non commence
+Nature: benchmark et decision, cutover interdit dans le meme micro-lot
+Dependance: architecture, schemas, prompts et budgets stabilises
+
+## Objectif
+
+Decider si les modeles actuels restent les meilleurs pour les roles reels de
+Presence/Stimmung et Identity.
+
+## Regles
+
+- Utiliser des sources primaires recentes pour capacites, contexte, structured
+  outputs, couts et parametres.
+- Benchmarker le payload et le prompt effectivement livres, pas une simulation
+  simplifiee.
+- Utiliser uniquement des fixtures synthetiques structurees.
+- Ne conserver aucun texte brut de sortie apres decision; garder hashes,
+  tailles, scores, latences, couts et verdict humain.
+- Ne pas choisir par reputation generale du modele.
+
+## Presence/Validation
+
+Comparer au minimum:
+
+- modele primaire courant;
+- fallback courant;
+- un candidat leger actuel;
+- un candidat plus robuste seulement si sa latence reste compatible.
+
+Critere prioritaire: zero ou minimum de faux `presence` sur les cas interdits,
+puis qualite globale `answer/clarify/suspend`, latence et cout.
+
+## Identity
+
+Comparer le juge courant a des candidats seulement apres reparation de la
+vivacite et retrait du legacy.
+
+Le corpus doit couvrir:
+
+- auto-attribution durable;
+- attribution reciproque correcte;
+- negation et correction;
+- citation, hypothese, roleplay et consigne locale;
+- humeur transitoire;
+- confusion de sujet;
+- contradiction avec le canon existant;
+- `no_change` prudent;
+- longue fenetre proche du plafond;
+- fausse addition, qui reste l'erreur la plus grave.
+
+## Decision de sortie
+
+Produire pour chaque caller:
+
+- `keep_current`;
+- `switch_candidate`;
+- `inconclusive`.
+
+Un `switch_candidate` ouvre un Lot 8C separe, avec GO explicite, validation
+technique admin, rollback du setting, smoke synthetique borne, mise a jour des
+read-models/frontend et preuve live. Aucun cutover dans le lot benchmark.
+
+## Observabilite
+
+La decision et, le cas echeant, le futur cutover doivent mettre a jour:
+
+- catalogue des callers;
+- chemin de l'artefact de benchmark dans les infos read-only;
+- modele demande, provider observe et source du setting;
+- frontend `/admin`;
+- latences et erreurs apres cutover;
+- rollback documente.
+
+## Condition de fermeture
+
+- [ ] Decision humaine explicite par caller.
+- [ ] Aucun changement runtime dans le lot benchmark.
+- [ ] Aucun modele change sans Lot 8C distinct.
+
+# LOT Z - Contre-audit, documentation courante et README
+
+Statut: non commence
+Nature: cloture globale
+Dependance: tous les lots obligatoires fermes; lots conditionnels decides
+
+## Contre-audit obligatoire
+
+Chercher activement:
+
+- test qui recopie l'implementation;
+- test vert malgre buffer Identity a nouveau bloque;
+- retry infini masque par une limite de fixture;
+- nouvelle troncature ou preselection identitaire;
+- ancien extracteur encore actif par un autre appelant;
+- historique legacy presente comme runtime courant;
+- faux `presence`, Presence stateful ou Presence derivee d'un fail-open;
+- hard guard affaibli;
+- Stimmung conserve sans preuve ou retire sans corpus;
+- structured output non exige chez le provider effectif;
+- prompt duplique ou contrat concurrent;
+- timeouts encore cumulables sans borne;
+- frontend en retard sur le backend;
+- API/read-model stale;
+- collecte de contenu ou secret ajoutee;
+- changement de capacite produit;
+- vraie mutabilite revisionnelle commencee sans decision separee.
+
+## Documentation a mettre a jour
+
+Dans le meme lot de cloture:
+
+- [ ] `README.md` racine pour decrire uniquement l'architecture effectivement
+  livree;
+- [ ] `app/docs/README.md`;
+- [ ] `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`;
+- [ ] `app/docs/states/specs/mutable-identity-judge-contract.md`;
+- [ ] `app/docs/states/specs/identity-read-model-contract.md`;
+- [ ] `app/docs/states/specs/hermeneutic-node-validation-agent-contract.md`;
+- [ ] contrat Stimmung si le caller est conserve, ou note de retrait si retire;
+- [ ] `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md` ou
+  son successeur vivant;
+- [ ] contrats d'observabilite et surfaces admin concernees;
+- [ ] cette roadmap avec commandes, commits, totals et limites reels.
+
+Le README racine ne doit jamais annoncer une architecture cible non livree. Il
+est mis a jour a la fin, a partir du code, des contrats et du runtime verifies.
+
+## Preuves finales
+
+- [ ] suites Identity;
+- [ ] suites Presence/Stimmung/Validation;
+- [ ] chat JSON et streaming;
+- [ ] persistence et effets post-save;
+- [ ] observabilite/log/read-model;
+- [ ] API admin;
+- [ ] frontend admin/hermeneutic/identity/log;
+- [ ] golden Lot 9;
+- [ ] decouverte hermetique complete;
+- [ ] smoke live synthetique content-free si les lots runtime ont ete deployes;
+- [ ] coherence `README.md` / pipeline / code / UI.
+
+## Archivage
+
+Quand toutes les cases obligatoires sont reellement fermees:
+
+- deplacer ce fichier vers
+  `app/docs/todo-done/refactors/fridadev-dialogic-presence-mutable-identity-consolidation-todo.md`;
+- remplacer dans `app/docs/README.md` le lien actif par le lien archive;
+- laisser visibles les decisions `keep`, `remove`, `inconclusive` et
+  `keep_current` sans forcer artificiellement un changement;
+- conserver les limites et risques residuels;
+- commit, push, worktree propre et divergence `0/0`.
+
+## Condition d'arret globale
+
+Le chantier est termine lorsque:
+
+- Identity progresse apres une fenetre terminale;
+- l'extracteur legacy n'est plus un caller actif;
+- Presence est evaluee sur son contrat reel;
+- Stimmung a une decision fondee sur une ablation;
+- les callers conserves utilisent un transport structure et observable;
+- les prompts/inputs et la latence sont consolides sans perte semantique;
+- les modeles ont une decision explicite, meme si elle consiste a conserver
+  l'existant;
+- backend, API, frontend, tests et docs racontent la meme architecture;
+- le `README.md` racine decrit exactement l'etat livre;
+- aucune extension fonctionnelle n'a ete ajoutee.
+
+## Hors-scope absolu
+
+- nouvelle feature produit, route publique, agent, outil ou integration;
+- nouvelle UI ou dashboard si une surface existante suffit;
+- remplacement de l'hermeneutique par des regex;
+- modele principal du chat;
+- semantique des final locks Agenda/Biblio/Presence;
+- format exact de la reponse Presence;
+- persistance d'un etat Presence entre les tours;
+- promotion automatique mutable vers static;
+- revision, suppression, merge ou supersession automatique du canon mutable;
+- migration/destruction des tables historiques Identity;
+- nouveau worker, queue ou infrastructure asynchrone sans decision distincte;
+- DB operateur, secrets, Docker, Caddy, Authelia, reseaux ou plateforme;
+- reset ou backfill massif de l'observabilite;
+- contenu operateur dans fixtures, snapshots, artefacts ou retours.
+
+Une vraie mutabilite revisionnelle `supersede/contest` avec provenance et
+confirmation humaine peut etre pensee dans une decision produit separee. Elle
+ne fait pas partie de cette consolidation.
