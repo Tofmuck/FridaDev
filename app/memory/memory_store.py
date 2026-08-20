@@ -414,9 +414,16 @@ def clear_mutable_identity(
     )
 
 
-def apply_mutable_identity_subject_updates(updates: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]] | None:
+def apply_mutable_identity_subject_updates(
+    updates: Sequence[Mapping[str, Any]],
+    *,
+    staging_conversation_id: str | None = None,
+    staging_window_fingerprint: str | None = None,
+) -> list[dict[str, Any]] | None:
     return memory_identity_mutables.apply_mutable_identity_subject_updates(
         updates,
+        staging_conversation_id=staging_conversation_id,
+        staging_window_fingerprint=staging_window_fingerprint,
         conn_factory=_conn,
         logger=logger,
     )

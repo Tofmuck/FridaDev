@@ -93,3 +93,50 @@ def assert_http_failure_classes(actual: Mapping[int, str]) -> None:
     }
     if dict(actual) != expected:
         raise AssertionError("Lot 1 Identity HTTP failure classification changed")
+
+
+def assert_ambiguous_commit_recovery(actual: Mapping[str, Any]) -> None:
+    expected = {
+        "judge_calls": 1,
+        "canonical_successful_batches": 1,
+        "nonempty_audits": 1,
+        "reason_code": "write_recovery_completed",
+        "action": "completed",
+        "judge_status": "not_called",
+        "apply_status": "not_called",
+        "writes_previously_applied": True,
+        "projected_writes_previously_applied": True,
+        "next_pairs_count": 1,
+        "current_pair_occurrences": 1,
+    }
+    if dict(actual) != expected:
+        raise AssertionError("Lot 1 ambiguous canonical commit recovery changed")
+
+
+def assert_crash_before_judge_attempt(actual: Mapping[str, Any]) -> None:
+    expected = {
+        "pre_crash_status": "buffering",
+        "pre_crash_attempt_recorded": False,
+        "attempt_current": 1,
+        "judge_calls": 1,
+        "action": "completed",
+        "next_pairs_count": 1,
+        "current_pair_occurrences": 1,
+    }
+    if dict(actual) != expected:
+        raise AssertionError("Lot 1 crash-before-judge attempt accounting changed")
+
+
+def assert_runtime_safety_retry(actual: Mapping[str, Any]) -> None:
+    expected = {
+        "reason_code": "runtime_safety_violation",
+        "failure_class": "transient",
+        "first_action": "retry_preserve",
+        "first_attempt": 1,
+        "first_buffer_cleared": False,
+        "second_action": "terminal_consume_without_write",
+        "second_attempt": 2,
+        "next_pairs_count": 1,
+    }
+    if dict(actual) != expected:
+        raise AssertionError("Lot 1 runtime safety failure retry policy changed")

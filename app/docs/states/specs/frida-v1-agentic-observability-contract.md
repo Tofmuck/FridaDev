@@ -894,6 +894,10 @@ autorise seulement:
 - `attempt_current`, `attempt_limit=2`, `window_fingerprint` SHA-256 tronquee a
   12 caracteres, `next_window_progress`, `next_buffer_pairs_count` et
   `writes_previously_applied`;
+- `writes_previously_applied=true` uniquement quand le verrou persistant de la
+  meme empreinte prouve qu'un commit canonique a deja eu lieu; le retry de
+  finalisation expose alors `judge_status=not_called` et
+  `apply_status=not_called`;
 - les tailles et plafonds content-free deja mesures: nombre de paires,
   caracteres et estimation de tokens.
 
@@ -902,6 +906,9 @@ read-model Identity, puis lus tels quels par `/identity` et
 `/hermeneutic-admin`. Une absence historique de ces champs reste `unknown`; elle
 ne devient ni `ok` ni `completed`. Fenetre, messages, proposition, prompt,
 canon, exception brute, URL et secret restent interdits.
+
+Une fenetre complete sans statut de run persiste reste `attempt_current=1`;
+etre seulement gelee ne prouve plus qu'une tentative a deja ete effectuee.
 
 ## 15. Tests et preuves attendus
 

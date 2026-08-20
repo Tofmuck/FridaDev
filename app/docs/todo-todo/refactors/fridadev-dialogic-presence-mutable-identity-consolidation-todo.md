@@ -525,16 +525,18 @@ large et aucune troncature n'est introduite.
 
 | Classe | Premiere action | Action terminale | Ecriture canonique |
 |---|---|---|---|
-| `transient` | `retry_preserve` pour timeout, transport sans statut, HTTP 408/409/425/429 et 5xx | seconde tentative puis `terminal_consume_without_write` | aucune sous echec |
+| `transient` | `retry_preserve` pour timeout, transport sans statut, HTTP 408/409/425/429, 5xx et `runtime_safety_violation` technique | seconde tentative puis `terminal_consume_without_write` | aucune sous echec |
 | `deterministic_input` | `terminal_consume_without_write` immediate | fenetre consommee, paire courante promue | aucune |
 | `deterministic_contract` | `retry_preserve` pour contrat/verdict/refus invalide et HTTP 4xx non recuperable | seconde tentative puis consommation sans ecriture | aucune sous echec |
 | `write_recovery` | `apply_recovery` | verification idempotente, puis consommation sans faux succes si reprise epuisee | au plus une application prouvee |
 
-La borne `attempt_limit=2` repose sur l'etat persistant existant: completer la
-cinquieme paire est la tentative 1; rencontrer une fenetre deja gelee est la
-tentative 2, y compris apres restart. Les transitions reussies ou terminales
-utilisent un seul `UPDATE` pour remplacer l'ancienne fenetre par zero paire ou
-par la paire courante, exactement une fois, comme premiere paire suivante.
+La borne `attempt_limit=2` repose sur l'etat persistant existant. Une fenetre
+complete mais seulement `buffering`, sans run enregistre, commence a la
+tentative 1. Seuls `running`, `retry_pending`, `write_recovery_pending` et
+`terminal_discard_failed` prouvent une tentative anterieure et font reprendre a
+la tentative 2 apres restart. Les transitions reussies ou terminales utilisent
+un seul `UPDATE` pour remplacer l'ancienne fenetre par zero paire ou par la
+paire courante, exactement une fois, comme premiere paire suivante.
 
 ## Travail obligatoire
 
@@ -591,8 +593,10 @@ Ne pas creer un nouvel ecran si `/identity` ou `/hermeneutic-admin` suffit.
 
 Les deux renderers existants lisent les champs backend autoritatifs. Ils
 distinguent attente, retry gele, consommation terminale sans ecriture,
-write-recovery et progression; l'absence historique d'un champ ne devient pas
-un faux `ok`.
+write-recovery et progression; une reprise apres commit ambigu rend
+`ecriture_precedente=true` seulement depuis
+`writes_previously_applied=true`. L'absence historique d'un champ ne devient
+pas un faux `ok`.
 
 ## Tests obligatoires
 
@@ -606,6 +610,14 @@ un faux `ok`.
 - [x] aucun save mutable sous echec;
 - [x] API/read-model/frontend coherents pour chaque etat;
 - [x] mutation: restaurer le gel infini fait echouer le golden.
+- [x] commit canonique ambigu: aucun second jugement ni second audit pour un
+  retry identique, different ou `no_change`;
+- [x] crash apres append de la cinquieme paire et avant juge: reprise en
+  tentative 1;
+- [x] `runtime_safety_violation` technique preserve une fois, tandis que
+  `window_too_large` reste terminal immediat;
+- [x] `writes_previously_applied=true` projete et rendu par les deux surfaces
+  apres reprise verifiee.
 
 ## Fichiers de preuve et tests
 
@@ -613,7 +625,7 @@ un faux `ok`.
   `app/tests/support/lot1_identity_liveness_goldens.py` et extension des
   goldens Lot 0;
 - preuve principale:
-  `app/tests/unit/memory/test_identity_liveness_lot1.py` (13 tests);
+  `app/tests/unit/memory/test_identity_liveness_lot1.py` (16 tests);
 - staging/wrapper/apply/judge: suites unitaires Identity existantes;
 - read-model/API/frontend:
   `test_identity_read_model_lot2/3/4.py`, projections, contrats serveur,
@@ -633,8 +645,20 @@ read-only, `/tmp` tmpfs et `PYTHONDONTWRITEBYTECODE=1`:
 - navigateur cache Playwright 1.54, sans pull: 13 tests OK;
 - suites chat et voisines ci-dessus: 146 + 27 + 44 tests Python et 19 tests JS
   OK;
-- decouverte complete finale: `2685`, zero echec, zero erreur, zero skip, zero
-  expected failure, soit exactement 13 nouveaux tests Python.
+- cloture initiale: `2685`, zero echec, zero erreur, zero skip, zero expected
+  failure, soit exactement 13 nouveaux tests Python;
+- baseline de la passe corrective: `2685` OK;
+- reproductions rouges correctives: 16 tests coeur avec 5 failures attendues;
+  smoke navigateur 14 tests avec 1 failure attendue;
+- apres correctif: wrapper/applicateur/persistance 21 tests, suites Identity
+  memory 81 tests plus 5 de persistance, read-model/API/frontend 35 tests;
+- smoke Chromium: 14/14 avec image et cache existants montes read-only, sans
+  installation, pull ni reseau; frontend unitaire: 135/135;
+- non-regression: chat 146/146; orchestration, Presence, Stimmung, Validation et
+  Lot 9: 78/78; goldens Lot 0: 7/7;
+- decouverte complete corrective: `2688`, zero echec, zero erreur, zero skip,
+  zero expected failure, soit exactement 3 nouveaux tests Python depuis
+  `eaffe9a160dcaedb6179b232776b1a3baef6708d`.
 
 Deux erreurs de scan intermediaires provenaient de fichiers AppleDouble
 `._*.py` crees par le transfert macOS; ces temporaires non versionnes ont ete
@@ -647,13 +671,42 @@ Les validateurs rejettent: retour du gel infini, consommation au premier
 timeout, retry non borne, empreinte changee presentee comme identique, paire
 courante perdue ou dupliquee, echec terminal renomme `no_change`, double batch
 canonique ou double audit, disparition classe/action/empreinte, read-model
-stale et frontend affichant `completed` pendant un blocage.
+stale et frontend affichant `completed` pendant un blocage. La passe corrective
+rejette aussi: second jugement apres commit ambigu pour des verdicts identique,
+different ou `no_change`; tentative 2 fabriquee par un append sans run;
+consommation immediate d'une panne technique `runtime_safety_violation`; champ
+`writes_previously_applied` faux ou absent dans l'event, la projection ou les
+deux renderers.
 
 Limites restantes: l'extracteur legacy reste volontairement actif jusqu'au Lot
 2. Si le store de staging reste indisponible, aucune progression durable ne
 peut etre prouvee; le statut reste alors `write_recovery`/echec de finalisation,
 jamais succes. Le staging operateur existant n'a pas ete modifie manuellement:
 il adoptera la nouvelle politique lors d'un prochain tour normal.
+
+### Passe corrective apres contre-audit du 2026-08-20
+
+Les quatre defects reproduits sont valides. Le correctif n'utilise ni le
+contenu mutable ni `source_trace_id` comme cle d'idempotence. Pour une fenetre
+active, `memory_identity_mutables.apply_mutable_identity_subject_updates`
+persiste dans une transaction unique les mutations canoniques, leurs audits et
+le verrou `canonical_write_committed` avec reason
+`canonical_write_recovery_pending:<empreinte-12>`. Si le commit est devenu
+visible mais que son retour est incoherent, le wrapper reconnait ce verrou,
+n'appelle plus ni juge ni applicateur et finalise le staging avec
+`writes_previously_applied=true`.
+
+Le comptage ne confond plus gel et tentative: `buffering` complet sans run vaut
+tentative 1; seuls les statuts persistants de run ou de reprise font passer a la
+tentative 2. `runtime_safety_violation` rejoint `transient`; seul
+`window_too_large` reste `deterministic_input` terminal immediat.
+
+Preuves ajoutees ou completees: applicateur et verrou transactionnel dans
+`test_identity_mutables_phase1b.py`; wrapper/staging et mutations dans
+`test_identity_liveness_lot1.py`; projection backend via
+`latest_agent_activity`; rendu et mutation des deux surfaces dans
+`test_frontend_browser_smoke.js`. Aucun schema, migration, table, queue, prompt,
+modele, provider, extracteur legacy ou nouveau stage n'a ete ajoute.
 
 ## Condition de fermeture
 

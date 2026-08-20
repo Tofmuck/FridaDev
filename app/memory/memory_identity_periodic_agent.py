@@ -10,14 +10,21 @@ from observability import chat_turn_logger
 
 BUFFER_TARGET_PAIRS = 5
 FAILURE_ATTEMPT_LIMIT = 2
+_COMMITTED_WINDOW_STATUS = 'canonical_write_committed'
 
 _TRANSIENT_REASONS = {
     'judge_timeout',
     'judge_transport_error',
+    'runtime_safety_violation',
 }
 _DETERMINISTIC_INPUT_REASONS = {
-    'runtime_safety_violation',
     'window_too_large',
+}
+_RECORDED_RETRY_STATUSES = {
+    'running',
+    'retry_pending',
+    'write_recovery_pending',
+    'terminal_discard_failed',
 }
 _WRITE_RECOVERY_REASONS = {
     'canonical_write_failed',
@@ -84,6 +91,24 @@ def _window_fingerprint(staging_state: Mapping[str, Any]) -> str:
         separators=(',', ':'),
     )
     return hashlib.sha256(serialized.encode('utf-8')).hexdigest()[:12]
+
+
+def _attempt_for_persisted_state(*, pair_appended: bool, previous_status: str) -> int:
+    if pair_appended:
+        return 1
+    if _text(previous_status) in _RECORDED_RETRY_STATUSES:
+        return FAILURE_ATTEMPT_LIMIT
+    return 1
+
+
+def _committed_window_reason(fingerprint: str) -> str:
+    return f'canonical_write_recovery_pending:{_text(fingerprint)}'
+
+
+def _canonical_window_write_is_committed(staging_state: Mapping[str, Any], fingerprint: str) -> bool:
+    return _text(staging_state.get('last_agent_status')) == _COMMITTED_WINDOW_STATUS and _text(
+        staging_state.get('last_agent_reason')
+    ) == _committed_window_reason(fingerprint)
 
 
 def _failure_class(reason_code: str, summary: Mapping[str, Any] | None = None) -> str:
@@ -331,33 +356,47 @@ def stage_identity_turn_pair(
         }
 
     pair_appended = bool(staging_state.get('pair_appended', True))
-    attempt_current = 1 if pair_appended else FAILURE_ATTEMPT_LIMIT
     next_pair = None if pair_appended else normalized_turn_pair
     next_pairs_count = 0 if pair_appended else 1
     fingerprint = _window_fingerprint(staging_state)
     previous_status = _text(staging_state.get('last_agent_status'))
     previous_reason = _text(staging_state.get('last_agent_reason'))
+    attempt_current = _attempt_for_persisted_state(
+        pair_appended=pair_appended,
+        previous_status=previous_status,
+    )
 
-    if not pair_appended and previous_status in _FINALIZATION_RECOVERY_STATUSES:
+    committed_write_recovery = _canonical_window_write_is_committed(
+        staging_state,
+        fingerprint,
+    )
+    finalization_recovery = previous_status in _FINALIZATION_RECOVERY_STATUSES
+    if not pair_appended and (committed_write_recovery or finalization_recovery):
+        recovery_reason = (
+            'write_recovery_completed' if committed_write_recovery else 'staging_finalize_recovered'
+        )
+        writes_previously_applied = committed_write_recovery or bool(
+            _FINALIZATION_RECOVERY_STATUSES.get(previous_status)
+        )
         cleared_state = clear_buffer(
             conversation_id,
-            status='staging_finalize_recovered',
-            reason='staging_finalize_recovered',
+            status=recovery_reason,
+            reason=recovery_reason,
             auto_canonization_suspended=auto_canonization_suspended,
             next_pair=next_pair,
         )
         if isinstance(cleared_state, Mapping):
             summary = {
                 'status': 'ok',
-                'reason_code': 'staging_finalize_recovered',
+                'reason_code': recovery_reason,
                 'buffer_pairs_count': buffer_pairs_count,
                 'buffer_target_pairs': buffer_target_pairs,
-                'last_agent_status': 'staging_finalize_recovered',
+                'last_agent_status': recovery_reason,
                 'buffer_cleared': True,
                 'buffer_frozen': buffer_frozen,
                 'auto_canonization_suspended': auto_canonization_suspended,
                 'writes_applied': False,
-                'writes_previously_applied': bool(_FINALIZATION_RECOVERY_STATUSES[previous_status]),
+                'writes_previously_applied': writes_previously_applied,
                 'promotion_count': 0,
                 'promotions': [],
                 'outcomes': [],
@@ -375,7 +414,7 @@ def stage_identity_turn_pair(
                     next_buffer_pairs_count=int(cleared_state.get('buffer_pairs_count') or next_pairs_count),
                 ),
             }
-            _emit_periodic_agent_event(status='ok', reason_code='staging_finalize_recovered', summary=summary)
+            _emit_periodic_agent_event(status='ok', reason_code=recovery_reason, summary=summary)
             return summary
 
         mark_status(
@@ -394,6 +433,7 @@ def stage_identity_turn_pair(
             'buffer_frozen': buffer_frozen,
             'auto_canonization_suspended': auto_canonization_suspended,
             'writes_applied': False,
+            'writes_previously_applied': writes_previously_applied,
             'promotion_count': 0,
             'promotions': [],
             'outcomes': [],
@@ -426,9 +466,41 @@ def stage_identity_turn_pair(
         arbiter_module=arbiter_module,
         memory_store_module=memory_store_module,
         enforce_writes=bool(enforce_writes),
+        window_fingerprint=fingerprint,
     )
 
     if _text(runtime_summary.get('status')) != 'ok':
+        persisted_after_runtime = get_staging_state(conversation_id) or {}
+        if _canonical_window_write_is_committed(persisted_after_runtime, fingerprint):
+            summary = {
+                **dict(runtime_summary),
+                'status': 'skipped',
+                'reason_code': 'canonical_write_recovery_pending',
+                'last_agent_status': _COMMITTED_WINDOW_STATUS,
+                'buffer_pairs_count': buffer_pairs_count,
+                'buffer_target_pairs': buffer_target_pairs,
+                'buffer_cleared': False,
+                'buffer_frozen': buffer_frozen,
+                'auto_canonization_suspended': auto_canonization_suspended,
+                'writes_applied': False,
+                'writes_previously_applied': True,
+                **_policy_fields(
+                    failure_class='write_recovery',
+                    recovery_action='apply_recovery',
+                    processing_state='write_failed',
+                    attempt_current=attempt_current,
+                    window_fingerprint=fingerprint,
+                    next_window_progress='blocked_write_recovery',
+                    next_buffer_pairs_count=buffer_pairs_count,
+                ),
+            }
+            _emit_periodic_agent_event(
+                status='skipped',
+                reason_code='canonical_write_recovery_pending',
+                summary=summary,
+            )
+            return summary
+
         reason_code = _text(runtime_summary.get('reason_code')) or 'judge_failed'
         failure_class = _failure_class(reason_code, runtime_summary)
         processing_state = _failure_processing_state(failure_class)
@@ -532,6 +604,10 @@ def stage_identity_turn_pair(
         runtime_summary.get('writes_applied')
     ):
         if _write_recovery_is_verified(runtime_summary):
+            runtime_summary = {
+                **dict(runtime_summary),
+                'writes_previously_applied': True,
+            }
             completion_status = 'write_recovery_completed'
             completion_reason = 'write_recovery_completed'
         else:

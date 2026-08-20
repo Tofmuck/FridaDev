@@ -31,6 +31,14 @@ def _failure(reason_code: str, **observability: Any) -> dict[str, Any]:
     }
 
 
+def _different_add_contract() -> dict[str, Any]:
+    contract = lot0_identity_goldens.add_contract()
+    contract["verdicts"][1]["proposition"] = (
+        "Tof maintient une seconde limite synthetique explicite stable."
+    )
+    return contract
+
+
 def _count_marker(state: dict[str, Any], marker: str) -> int:
     return repr(state.get("buffer_pairs") or []).count(marker)
 
@@ -41,8 +49,12 @@ class _CommittedThenIncoherentStore(lot0_identity_goldens.RealStagingIdentitySto
         self.nonempty_audit_count = 0
         self.return_incoherent_once = True
 
-    def apply_mutable_identity_subject_updates(self, updates: list[dict[str, Any]]) -> Any:
-        result = super().apply_mutable_identity_subject_updates(updates)
+    def apply_mutable_identity_subject_updates(
+        self,
+        updates: list[dict[str, Any]],
+        **kwargs: Any,
+    ) -> Any:
+        result = super().apply_mutable_identity_subject_updates(updates, **kwargs)
         if updates:
             self.nonempty_audit_count += 1
         if self.return_incoherent_once:
@@ -382,6 +394,174 @@ class IdentityLivenessLot1Tests(unittest.TestCase):
             mutated[key] = value
             with self.assertRaises(AssertionError):
                 lot1_identity_liveness_goldens.assert_idempotent_write_recovery(mutated)
+
+    def test_ambiguous_commit_fence_blocks_identical_different_and_no_change_rejudgment(self) -> None:
+        cases = (
+            ("identical", lot0_identity_goldens.add_contract()),
+            ("different", _different_add_contract()),
+            ("no_change", lot0_identity_goldens.no_change_contract()),
+        )
+        for label, retry_contract in cases:
+            with self.subTest(retry_verdict=label):
+                store = _CommittedThenIncoherentStore()
+                judge_calls = 0
+                responses = [
+                    lot0_identity_goldens.ok_judge_result(lot0_identity_goldens.add_contract()),
+                    lot0_identity_goldens.ok_judge_result(retry_contract),
+                ]
+                events: list[dict[str, Any]] = []
+                original_emit = memory_identity_periodic_agent.chat_turn_logger.emit
+
+                def run_judge(_payload: dict[str, Any]) -> dict[str, Any]:
+                    nonlocal judge_calls
+                    judge_calls += 1
+                    return copy.deepcopy(responses.pop(0))
+
+                memory_identity_periodic_agent.chat_turn_logger.emit = (
+                    lambda stage, **kwargs: events.append(
+                        {"stage": stage, **copy.deepcopy(kwargs)}
+                    )
+                    or True
+                )
+                arbiter = SimpleNamespace(run_mutable_identity_judge=run_judge)
+                try:
+                    self._stage_four(f"lot1-ambiguous-{label}", store, arbiter)
+                    first = memory_identity_periodic_agent.stage_identity_turn_pair(
+                        f"lot1-ambiguous-{label}",
+                        lot0_identity_goldens.synthetic_pair(5),
+                        arbiter_module=arbiter,
+                        memory_store_module=store,
+                    )
+                    second = memory_identity_periodic_agent.stage_identity_turn_pair(
+                        f"lot1-ambiguous-{label}",
+                        lot0_identity_goldens.synthetic_pair(6),
+                        arbiter_module=arbiter,
+                        memory_store_module=store,
+                    )
+                finally:
+                    memory_identity_periodic_agent.chat_turn_logger.emit = original_emit
+
+                self.assertEqual(first["recovery_action"], "apply_recovery")
+                projected = admin_identity_judge_activity_projection.latest_agent_activity(
+                    {
+                        "stage": "mutable_identity_judge",
+                        "status": events[-1]["status"],
+                        "payload": copy.deepcopy(events[-1]["payload"]),
+                    }
+                )
+                state = store.get_identity_staging_state(f"lot1-ambiguous-{label}")
+                actual = {
+                    "judge_calls": judge_calls,
+                    "canonical_successful_batches": len(
+                        store.canonical_successful_update_batches
+                    ),
+                    "nonempty_audits": store.nonempty_audit_count,
+                    "reason_code": second.get("reason_code"),
+                    "action": second.get("recovery_action"),
+                    "judge_status": second.get("judge_status"),
+                    "apply_status": second.get("apply_status"),
+                    "writes_previously_applied": second.get(
+                        "writes_previously_applied"
+                    ),
+                    "projected_writes_previously_applied": projected.get(
+                        "writes_previously_applied"
+                    ),
+                    "next_pairs_count": state["buffer_pairs_count"],
+                    "current_pair_occurrences": _count_marker(state, "LOT0_USER_06"),
+                }
+                lot1_identity_liveness_goldens.assert_ambiguous_commit_recovery(actual)
+                for field in (
+                    "writes_previously_applied",
+                    "projected_writes_previously_applied",
+                ):
+                    for mutation in (False, None):
+                        mutated = dict(actual)
+                        if mutation is None:
+                            mutated.pop(field)
+                        else:
+                            mutated[field] = mutation
+                        with self.assertRaises(AssertionError):
+                            lot1_identity_liveness_goldens.assert_ambiguous_commit_recovery(mutated)
+
+    def test_complete_window_after_crash_before_judge_starts_at_attempt_one(self) -> None:
+        store = lot0_identity_goldens.RealStagingIdentityStore()
+        for index in range(1, 6):
+            store.append_identity_staging_pair(
+                "lot1-crash-before-judge",
+                lot0_identity_goldens.synthetic_pair(index),
+                target_pairs=memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
+            )
+        pre_crash = store.get_identity_staging_state("lot1-crash-before-judge")
+        judge_calls = 0
+
+        def run_judge(_payload: dict[str, Any]) -> dict[str, Any]:
+            nonlocal judge_calls
+            judge_calls += 1
+            return lot0_identity_goldens.ok_judge_result(
+                lot0_identity_goldens.no_change_contract()
+            )
+
+        summary = memory_identity_periodic_agent.stage_identity_turn_pair(
+            "lot1-crash-before-judge",
+            lot0_identity_goldens.synthetic_pair(6),
+            arbiter_module=SimpleNamespace(run_mutable_identity_judge=run_judge),
+            memory_store_module=store,
+        )
+        state = store.get_identity_staging_state("lot1-crash-before-judge")
+        actual = {
+            "pre_crash_status": pre_crash["last_agent_status"],
+            "pre_crash_attempt_recorded": bool(pre_crash["last_agent_run_ts"]),
+            "attempt_current": summary["attempt_current"],
+            "judge_calls": judge_calls,
+            "action": summary["recovery_action"],
+            "next_pairs_count": state["buffer_pairs_count"],
+            "current_pair_occurrences": _count_marker(state, "LOT0_USER_06"),
+        }
+        lot1_identity_liveness_goldens.assert_crash_before_judge_attempt(actual)
+        mutated = dict(actual, attempt_current=2)
+        with self.assertRaises(AssertionError):
+            lot1_identity_liveness_goldens.assert_crash_before_judge_attempt(mutated)
+
+    def test_runtime_safety_violation_retries_before_terminal_consumption(self) -> None:
+        store = lot0_identity_goldens.RealStagingIdentityStore()
+        arbiter = SimpleNamespace(
+            run_mutable_identity_judge=lambda _payload: self.fail(
+                "judge must not be called when the local runtime input cannot load"
+            )
+        )
+        self._stage_four("lot1-runtime-safety", store, arbiter)
+        runtime = memory_identity_periodic_agent.mutable_identity_runtime
+        original_load = runtime.identity.load_llm_identity
+        runtime.identity.load_llm_identity = lambda: (_ for _ in ()).throw(
+            OSError("synthetic load failure")
+        )
+        try:
+            first = memory_identity_periodic_agent.stage_identity_turn_pair(
+                "lot1-runtime-safety",
+                lot0_identity_goldens.synthetic_pair(5),
+                arbiter_module=arbiter,
+                memory_store_module=store,
+            )
+            second = memory_identity_periodic_agent.stage_identity_turn_pair(
+                "lot1-runtime-safety",
+                lot0_identity_goldens.synthetic_pair(6),
+                arbiter_module=arbiter,
+                memory_store_module=store,
+            )
+        finally:
+            runtime.identity.load_llm_identity = original_load
+        state = store.get_identity_staging_state("lot1-runtime-safety")
+        actual = {
+            "reason_code": first.get("reason_code"),
+            "failure_class": first.get("failure_class"),
+            "first_action": first.get("recovery_action"),
+            "first_attempt": first.get("attempt_current"),
+            "first_buffer_cleared": first.get("buffer_cleared"),
+            "second_action": second.get("recovery_action"),
+            "second_attempt": second.get("attempt_current"),
+            "next_pairs_count": state["buffer_pairs_count"],
+        }
+        lot1_identity_liveness_goldens.assert_runtime_safety_retry(actual)
 
     def test_unverified_write_recovery_is_terminal_without_false_success(self) -> None:
         store = lot0_identity_goldens.RealStagingIdentityStore()

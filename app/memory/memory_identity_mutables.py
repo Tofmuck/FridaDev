@@ -216,9 +216,21 @@ def get_latest_mutable_identity_audit(
 def apply_mutable_identity_subject_updates(
     updates: Sequence[Mapping[str, Any]],
     *,
+    staging_conversation_id: str | None = None,
+    staging_window_fingerprint: str | None = None,
     conn_factory: Callable[[], Any],
     logger: Any,
 ) -> list[dict[str, Any]] | None:
+    staging_conversation_key = str(staging_conversation_id or '').strip()
+    staging_fingerprint = str(staging_window_fingerprint or '').strip()
+    if bool(staging_conversation_key) != bool(staging_fingerprint):
+        return None
+    if staging_fingerprint and (
+        len(staging_fingerprint) != 12
+        or any(character not in '0123456789abcdef' for character in staging_fingerprint)
+    ):
+        return None
+
     normalized_updates: list[dict[str, Any]] = []
     for raw_update in list(updates or []):
         payload = raw_update if isinstance(raw_update, Mapping) else {}
@@ -360,6 +372,26 @@ def apply_mutable_identity_subject_updates(
                     if normalized_row is None:
                         raise RuntimeError('mutable_clear_return_missing')
                     results.append(normalized_row)
+                if normalized_updates and staging_conversation_key:
+                    cur.execute(
+                        '''
+                        UPDATE identity_mutable_staging
+                        SET
+                            last_agent_status = 'canonical_write_committed',
+                            last_agent_reason = %s,
+                            updated_ts = now()
+                        WHERE conversation_id = %s
+                          AND buffer_pairs_count = 5
+                        RETURNING conversation_id
+                        ''',
+                        (
+                            f'canonical_write_recovery_pending:{staging_fingerprint}',
+                            staging_conversation_key,
+                        ),
+                    )
+                    fence_row = cur.fetchone()
+                    if not fence_row:
+                        raise RuntimeError('identity_staging_write_fence_missing')
             conn.commit()
             return results
     except Exception as exc:

@@ -224,6 +224,8 @@ def apply_mutable_judge_contract(
     *,
     memory_store_module: Any,
     static_identity_by_subject: Mapping[str, str] | None = None,
+    staging_conversation_id: str | None = None,
+    staging_window_fingerprint: str | None = None,
 ) -> dict[str, Any]:
     active_names = mutable_identity_judge_v2.active_identity_names_by_subject(
         static_identity_by_subject=static_identity_by_subject or {}
@@ -314,7 +316,16 @@ def apply_mutable_judge_contract(
         )
 
     try:
-        result = apply_subject_updates(subject_updates)
+        persistence_kwargs: dict[str, Any] = {}
+        if subject_updates and _text(staging_conversation_id) and _text(staging_window_fingerprint):
+            persistence_kwargs = {
+                'staging_conversation_id': _text(staging_conversation_id),
+                'staging_window_fingerprint': _text(staging_window_fingerprint),
+            }
+        result = apply_subject_updates(
+            subject_updates,
+            **persistence_kwargs,
+        )
         if result is None or len(result) != len(subject_updates) or any(item is None for item in result):
             raise RuntimeError('canonical_write_failed')
         writes_applied = bool(subject_updates)

@@ -195,7 +195,11 @@ class _InMemoryIdentityStore:
         self.upsert_calls.append((subject, content, updated_by, update_reason))
         return copy.deepcopy(payload)
 
-    def apply_mutable_identity_subject_updates(self, updates: list[dict[str, Any]]) -> list[dict[str, Any]] | None:
+    def apply_mutable_identity_subject_updates(
+        self,
+        updates: list[dict[str, Any]],
+        **_staging_fence: Any,
+    ) -> list[dict[str, Any]] | None:
         next_mutable = copy.deepcopy(self.mutable)
         upsert_calls: list[tuple[str, str, str, str]] = []
         results: list[dict[str, Any]] = []

@@ -79,8 +79,9 @@ Cadence:
 - apres un run techniquement termine, la fenetre est consommee;
 - timeout, erreur transport, JSON/schema ou verdict invalide conservent la meme
   fenetre pour une seconde et derniere tentative;
-- `window_too_large` et `runtime_safety_violation` consomment immediatement la
-  fenetre sans ecriture canonique;
+- `runtime_safety_violation`, qui peut couvrir un echec technique local ou de
+  chargement, conserve la fenetre pour une seconde et derniere tentative;
+- `window_too_large` consomme immediatement la fenetre sans ecriture canonique;
 - apres la seconde tentative en echec, la fenetre est consommee sans ecriture
   canonique et garde son reason code d'echec;
 - une paire arrivee pendant le traitement est promue atomiquement, exactement
@@ -109,8 +110,10 @@ Regles runtime:
 - en `enforced`, un contrat `mutable_judge_v2` valide peut ajouter dans `identity_mutables`;
 - timeout, erreur transport et echec de contrat conservent la fenetre pour une
   unique reprise; un second echec la consomme sans ecriture;
-- `window_too_large` et `runtime_safety_violation` sont des echecs d'input
-  deterministes terminaux, consommes sans appel provider ni ecriture canonique;
+- `runtime_safety_violation` est un echec technique transitoire borne, preserve
+  une fois puis consomme sans ecriture s'il se repete;
+- `window_too_large` reste l'echec d'input deterministe terminal, consomme sans
+  appel provider ni ecriture canonique;
 - si l'applicateur echoue, la fenetre est preservee pour une reprise
   idempotente; un second echec la consomme sans etre renomme succes;
 - si le run se termine proprement par `no_change` ou par `add` applique, la fenetre est consommee;
@@ -674,15 +677,17 @@ faux `no_change`.
 ## Politique De Vivacite Lot 1
 
 La borne est `attempt_limit = 2`. Elle ne depend d'aucun compteur global en
-memoire: la premiere tentative est celle qui vient de completer le buffer; une
-fenetre deja gelee et persistante est la seconde tentative, y compris apres un
-restart.
+memoire. Une fenetre complete seulement persistee, encore `buffering` et sans
+run enregistre, commence a `attempt_current=1`. Une tentative est persistante
+quand le staging porte `running`, `retry_pending`, `write_recovery_pending` ou
+`terminal_discard_failed`; sa reprise devient alors la tentative 2, y compris
+apres restart.
 
 - `transient`: `judge_timeout`, transport sans statut, HTTP
-  `408/409/425/429` et `5xx`; reprise preservee, puis consommation terminale
-  sans ecriture si elle echoue encore;
-- `deterministic_input`: `window_too_large`, `runtime_safety_violation`;
-  consommation terminale immediate sans ecriture;
+  `408/409/425/429`, `5xx` et `runtime_safety_violation`; reprise preservee,
+  puis consommation terminale sans ecriture si elle echoue encore;
+- `deterministic_input`: `window_too_large`; consommation terminale immediate
+  sans ecriture;
 - `deterministic_contract`: autres refus techniques, HTTP `4xx` non
   recuperables, JSON/schema/verdict et refus metier invalides; une reprise
   preservee puis consommation terminale;
@@ -697,10 +702,19 @@ comme `window_too_large`. La cadence reste exactement cinq paires completes.
 La transition terminale ou reussie remplace atomiquement l'ancien buffer par
 zero paire ou par la paire courante comme premiere paire de la fenetre suivante.
 Si l'ecriture canonique a reussi mais que la finalisation du staging echoue, le
-staging porte un statut de reprise de finalisation; le retry ne rappelle ni le
-juge ni l'applicateur. Si un retour d'application est incoherent apres commit,
-le contrat add-only permet de verifier `already_covered_by_mutable` sans seconde
-ecriture ni second audit.
+staging porte un statut de reprise de finalisation; la reprise ne rappelle ni le
+juge ni l'applicateur.
+
+Pour une fenetre active, l'applicateur ecrit le canon, l'audit et le verrou
+`canonical_write_committed` du staging dans une seule transaction. Le reason
+persistant contient `canonical_write_recovery_pending` et l'empreinte courte de
+la fenetre. Un retour d'application incoherent apres commit est donc reconnu
+avant tout nouveau jugement: le verdict suivant, identique, different ou
+`no_change`, n'est jamais consulte. La finalisation expose
+`writes_previously_applied=true`; aucune seconde ecriture ni aucun second audit
+n'est possible pour cette empreinte. Le fallback historique
+`already_covered_by_mutable` reste seulement une verification des etats
+anterieurs au verrou transactionnel.
 
 ## Contrat De Sortie Du Lot 0
 

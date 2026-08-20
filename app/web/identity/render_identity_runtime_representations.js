@@ -508,6 +508,7 @@
           ...(Number(activity.attempt_current) ? [`tentative=${Number(activity.attempt_current)}/${Number(activity.attempt_limit) || 0}`] : []),
           ...(toText(activity.window_fingerprint) ? [`empreinte=${toText(activity.window_fingerprint)}`] : []),
           ...(toText(activity.next_window_progress) ? [`progression=${toText(activity.next_window_progress)}`] : []),
+          ...(activity.writes_previously_applied === true ? ["ecriture_precedente=true"] : []),
           `dernier_run=${toText(completedAgent.reason_code) || "n/a"}`,
           `suspendu=${Boolean(staging.auto_canonization_suspended)}`,
           `legacy_promotions=${Number(activity.promotion_count) || 0}`,

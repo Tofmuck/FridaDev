@@ -185,6 +185,7 @@ def run_mutable_identity_window(
     arbiter_module: Any,
     memory_store_module: Any,
     enforce_writes: bool,
+    window_fingerprint: str | None = None,
 ) -> dict[str, Any]:
     try:
         judge_input = _build_judge_input(
@@ -256,6 +257,8 @@ def run_mutable_identity_window(
                 'llm': _text(_mapping(_mapping(judge_input.get('identities')).get('llm')).get('static')),
                 'user': _text(_mapping(_mapping(judge_input.get('identities')).get('user')).get('static')),
             },
+            staging_conversation_id=_text(staging_state.get('conversation_id')) or None,
+            staging_window_fingerprint=_text(window_fingerprint) or None,
         )
     except Exception:
         return _summary(

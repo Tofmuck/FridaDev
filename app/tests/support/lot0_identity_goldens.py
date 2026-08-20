@@ -198,6 +198,7 @@ class RealStagingIdentityStore:
         self.backend = SyntheticSqlStagingBackend()
         self.logger = SimpleNamespace(error=lambda *_args, **_kwargs: None)
         self.mutable: dict[str, dict[str, Any]] = {}
+        self.mutable_audits: list[dict[str, Any]] = []
         self.canonical_update_batches: list[list[dict[str, Any]]] = []
         self.canonical_successful_update_batches: list[list[dict[str, Any]]] = []
         self.legacy_persist_calls: list[dict[str, Any]] = []
@@ -244,7 +245,13 @@ class RealStagingIdentityStore:
         value = self.mutable.get(subject)
         return copy.deepcopy(value) if value is not None else None
 
-    def apply_mutable_identity_subject_updates(self, updates: list[dict[str, Any]]) -> Any:
+    def apply_mutable_identity_subject_updates(
+        self,
+        updates: list[dict[str, Any]],
+        *,
+        staging_conversation_id: str | None = None,
+        staging_window_fingerprint: str | None = None,
+    ) -> Any:
         batch = copy.deepcopy(list(updates))
         self.canonical_update_batches.append(batch)
         if self.fail_canonical_updates:
@@ -260,10 +267,24 @@ class RealStagingIdentityStore:
                 "update_reason": str(update.get("update_reason") or ""),
             }
             self.mutable[subject] = payload
+            self.mutable_audits.append(
+                {
+                    "subject": subject,
+                    "source_trace_id": update.get("source_trace_id"),
+                }
+            )
             results.append(copy.deepcopy(payload))
         if batch:
             self.canonical_successful_update_batches.append(copy.deepcopy(batch))
+            if staging_conversation_id and staging_window_fingerprint:
+                self.mark_identity_staging_status(
+                    staging_conversation_id,
+                    status="canonical_write_committed",
+                    reason=f"canonical_write_recovery_pending:{staging_window_fingerprint}",
+                    touch_run_ts=False,
+                )
         return results
+
 
 
 def assert_frozen_window_regression_golden(summary: Mapping[str, Any]) -> None:

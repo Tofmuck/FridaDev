@@ -221,6 +221,9 @@
     if (Number(activity.attempt_current)) meta.appendChild(createChip(`tentative=${Number(activity.attempt_current)}/${Number(activity.attempt_limit) || 0}`));
     if (toText(activity.window_fingerprint)) meta.appendChild(createChip(`empreinte=${toText(activity.window_fingerprint)}`));
     if (toText(activity.next_window_progress)) meta.appendChild(createChip(`progression=${toText(activity.next_window_progress)}`));
+    if (activity.writes_previously_applied === true) {
+      meta.appendChild(createChip("ecriture_precedente=true"));
+    }
     group.appendChild(meta);
 
     const summaryEntries = [

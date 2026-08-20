@@ -154,6 +154,12 @@ Semantique:
   `recovery_action`, `processing_state`, `attempt_current`, `attempt_limit`,
   `window_fingerprint`, `next_window_progress`, `next_buffer_pairs_count` et
   `writes_previously_applied`;
+- `writes_previously_applied=true` signifie que la meme empreinte porte deja un
+  commit canonique verifie par le verrou transactionnel du staging; ce champ
+  reste faux ou absent pour un simple retry, un echec avant ecriture et une
+  consommation terminale sans ecriture;
+- `/identity` et `/hermeneutic-admin` rendent ce booleen autoritatif sans
+  l'inferer du reason code, d'un texte libre ou de l'absence d'un champ;
 - `window_fingerprint` est uniquement le prefixe de 12 caracteres d'un SHA-256
   stable de la fenetre, destine a prouver qu'un retry porte sur la meme capture;
   aucun texte source, proposition, prompt ou canon ne l'accompagne;

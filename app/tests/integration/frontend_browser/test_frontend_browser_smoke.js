@@ -1828,7 +1828,38 @@ test('memory admin recent turns keep explicit zero snapshot counts over fallback
   });
 });
 
-function hermeneuticAdminMockScript() {
+function hermeneuticAdminMockScript({ verifiedWriteRecovery = false } = {}) {
+  const latestIdentityActivity = verifiedWriteRecovery
+    ? {
+        present: true,
+        reason_code: "write_recovery_completed",
+        runtime_pipeline: "mutable_identity_judge_v2_add_only",
+        failure_class: null,
+        recovery_action: "completed",
+        processing_state: "completed",
+        attempt_current: 1,
+        attempt_limit: 2,
+        window_fingerprint: "0123456789ab",
+        next_window_progress: "current_pair_staged",
+        writes_previously_applied: true,
+        promotion_count: 0,
+        open_tension_count: 0,
+      }
+    : {
+        present: true,
+        reason_code: "window_too_large",
+        runtime_pipeline: "mutable_identity_judge_v2_add_only",
+        failure_class: "deterministic_input",
+        recovery_action: "terminal_consume_without_write",
+        processing_state: "judge_not_called",
+        attempt_current: 1,
+        attempt_limit: 2,
+        window_fingerprint: "0123456789ab",
+        next_window_progress: "current_pair_staged",
+        writes_previously_applied: false,
+        promotion_count: 0,
+        open_tension_count: 0,
+      };
   return `
     (() => {
       const state = { calls: [] };
@@ -1865,20 +1896,7 @@ function hermeneuticAdminMockScript() {
             frozen: false,
           },
           last_completed_agent: { present: false },
-          latest_agent_activity: {
-            present: true,
-            reason_code: "window_too_large",
-            runtime_pipeline: "mutable_identity_judge_v2_add_only",
-            failure_class: "deterministic_input",
-            recovery_action: "terminal_consume_without_write",
-            processing_state: "judge_not_called",
-            attempt_current: 1,
-            attempt_limit: 2,
-            window_fingerprint: "0123456789ab",
-            next_window_progress: "current_pair_staged",
-            promotion_count: 0,
-            open_tension_count: 0,
-          },
+          latest_agent_activity: ${JSON.stringify(latestIdentityActivity)},
         },
         subjects: {
           llm: {
@@ -2156,5 +2174,40 @@ test('hermeneutic admin keeps turn selection targeted and stage payloads content
 
     assert.ok(await page.locator('#hermeneuticIdentityStaticEditors textarea[name="content"]').count() >= 2);
     assert.ok(await page.locator('#hermeneuticIdentityMutableEditors textarea[name="content"]').count() >= 2);
+  });
+});
+
+test('identity surfaces render a verified previously applied write recovery', async () => {
+  const mockScript = hermeneuticAdminMockScript({ verifiedWriteRecovery: true });
+  const assertVerifiedRecovery = (text) => {
+    assert.equal(text.includes('action=completed'), true, 'completed recovery action must render');
+    assert.equal(text.includes('tentative=1/2'), true, 'recorded judge attempt must render');
+    assert.equal(
+      text.includes('ecriture_precedente=true'),
+      true,
+      'verified prior canonical write must render from the authoritative field',
+    );
+  };
+
+  await openBrowserPage({ pathSuffix: '/identity.html', mockScript }, async (page) => {
+    await page.waitForFunction(() =>
+      document.querySelector('#identityStatusBanner')?.textContent.includes('Lecture Identity ok'));
+    const text = String(await page.locator('#identityRuntimeSummary').textContent() || '');
+    assertVerifiedRecovery(text);
+    assert.throws(
+      () => assertVerifiedRecovery(text.replace('ecriture_precedente=true', 'ecriture_precedente=false')),
+      /verified prior canonical write must render/,
+    );
+  });
+
+  await openBrowserPage({ pathSuffix: '/hermeneutic-admin.html', mockScript }, async (page) => {
+    await page.waitForFunction(() =>
+      document.querySelector('#hermeneuticAdminStatusBanner')?.textContent.includes('Lecture hermeneutique ok'));
+    const text = String(await page.locator('#hermeneuticIdentityReadModel').textContent() || '');
+    assertVerifiedRecovery(text);
+    assert.throws(
+      () => assertVerifiedRecovery(text.replace('ecriture_precedente=true', 'ecriture_precedente=false')),
+      /verified prior canonical write must render/,
+    );
   });
 });

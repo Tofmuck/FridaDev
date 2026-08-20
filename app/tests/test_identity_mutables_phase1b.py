@@ -50,10 +50,12 @@ class _MutableIdentityCursor:
         state: dict[str, dict[str, object]],
         audit_state: list[dict[str, object]],
         query_log: list[str],
+        staging_state: dict[str, dict[str, object]] | None = None,
     ) -> None:
         self._state = state
         self._audit_state = audit_state
         self._query_log = query_log
+        self._staging_state = staging_state if staging_state is not None else {}
         self._counter = 0
         self._results: list[tuple[object, ...]] = []
 
@@ -150,6 +152,17 @@ class _MutableIdentityCursor:
             self._results = [self._row(entry)] if entry else []
             return
 
+        if normalized.startswith('update identity_mutable_staging'):
+            fingerprint, conversation_id = params
+            row = self._staging_state.get(str(conversation_id))
+            if row and int(row.get('buffer_pairs_count') or 0) == 5:
+                row['last_agent_status'] = 'canonical_write_committed'
+                row['last_agent_reason'] = str(fingerprint)
+                self._results = [(str(conversation_id),)]
+            else:
+                self._results = []
+            return
+
         if 'from identity_mutable_audit' in normalized and 'where subject = %s' in normalized:
             subject = str(params[0])
             matches = [entry for entry in self._audit_state if entry.get('subject') == subject]
@@ -184,10 +197,12 @@ class _MutableIdentityConnection:
         state: dict[str, dict[str, object]],
         audit_state: list[dict[str, object]],
         query_log: list[str],
+        staging_state: dict[str, dict[str, object]] | None = None,
     ) -> None:
         self._state = state
         self._audit_state = audit_state
         self._query_log = query_log
+        self._staging_state = staging_state if staging_state is not None else {}
         self.committed = False
 
     def __enter__(self):
@@ -197,7 +212,12 @@ class _MutableIdentityConnection:
         return False
 
     def cursor(self):
-        return _MutableIdentityCursor(self._state, self._audit_state, self._query_log)
+        return _MutableIdentityCursor(
+            self._state,
+            self._audit_state,
+            self._query_log,
+            self._staging_state,
+        )
 
     def commit(self):
         self.committed = True
@@ -281,44 +301,74 @@ class IdentityMutablesPhase1BTests(unittest.TestCase):
         audit_state: list[dict[str, object]] = []
         query_log: list[str] = []
         connections: list[_MutableIdentityConnection] = []
+        staging_state = {
+            'lot1-fenced-window': {
+                'buffer_pairs_count': 5,
+                'last_agent_status': 'running',
+                'last_agent_reason': 'threshold_reached',
+            }
+        }
         original_conn = memory_store._conn
 
         def fake_conn():
-            connection = _MutableIdentityConnection(state, audit_state, query_log)
+            connection = _MutableIdentityConnection(
+                state,
+                audit_state,
+                query_log,
+                staging_state,
+            )
             connections.append(connection)
             return connection
 
+        updates = [
+            {
+                'subject': 'llm',
+                'mutation_kind': 'set',
+                'content': 'Frida garde une posture stable.',
+                'updated_by': 'mutable_identity_judge_apply',
+                'update_reason': 'mutable_judge_persist',
+                'audit_reason_code': 'mutable_judge_add',
+            },
+            {
+                'subject': 'user',
+                'mutation_kind': 'set',
+                'content': 'L utilisateur garde une limite stable.',
+                'updated_by': 'mutable_identity_judge_apply',
+                'update_reason': 'mutable_judge_persist',
+                'audit_reason_code': 'mutable_judge_add',
+            },
+        ]
         memory_store._conn = fake_conn
         try:
             result = memory_store.apply_mutable_identity_subject_updates(
-                [
-                    {
-                        'subject': 'llm',
-                        'mutation_kind': 'set',
-                        'content': 'Frida garde une posture stable.',
-                        'updated_by': 'mutable_identity_judge_apply',
-                        'update_reason': 'mutable_judge_persist',
-                        'audit_reason_code': 'mutable_judge_add',
-                    },
-                    {
-                        'subject': 'user',
-                        'mutation_kind': 'set',
-                        'content': 'L utilisateur garde une limite stable.',
-                        'updated_by': 'mutable_identity_judge_apply',
-                        'update_reason': 'mutable_judge_persist',
-                        'audit_reason_code': 'mutable_judge_add',
-                    },
-                ]
+                updates,
+                staging_conversation_id='lot1-fenced-window',
+                staging_window_fingerprint='0123456789ab',
+            )
+            invalid_fence_result = memory_store.apply_mutable_identity_subject_updates(
+                updates,
+                staging_conversation_id='lot1-fenced-window',
+                staging_window_fingerprint='not-content-free',
             )
         finally:
             memory_store._conn = original_conn
 
         self.assertIsNotNone(result)
+        self.assertIsNone(invalid_fence_result)
         self.assertEqual(sorted(state), ['llm', 'user'])
         self.assertEqual(len(audit_state), 2)
         self.assertEqual(len(connections), 1)
         self.assertTrue(connections[0].committed)
         self.assertEqual(len([query for query in query_log if query.startswith('insert into identity_mutables')]), 2)
+        self.assertTrue(all(item.get('source_trace_id') is None for item in audit_state))
+        self.assertEqual(
+            staging_state['lot1-fenced-window'],
+            {
+                'buffer_pairs_count': 5,
+                'last_agent_status': 'canonical_write_committed',
+                'last_agent_reason': 'canonical_write_recovery_pending:0123456789ab',
+            },
+        )
 
     def test_mutable_identity_audit_records_set_and_clear_without_raw_content(self) -> None:
         state: dict[str, dict[str, object]] = {}

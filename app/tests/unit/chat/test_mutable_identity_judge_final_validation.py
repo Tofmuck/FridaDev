@@ -97,7 +97,11 @@ class _ConversationCrashStore:
         item = self.mutable.get(subject)
         return copy.deepcopy(item) if item is not None else None
 
-    def apply_mutable_identity_subject_updates(self, updates: list[dict[str, Any]]) -> list[dict[str, Any]] | None:
+    def apply_mutable_identity_subject_updates(
+        self,
+        updates: list[dict[str, Any]],
+        **_staging_fence: Any,
+    ) -> list[dict[str, Any]] | None:
         next_mutable = copy.deepcopy(self.mutable)
         next_audit = copy.deepcopy(self.audit)
         next_upserts = list(self.upsert_calls)
