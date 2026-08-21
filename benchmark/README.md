@@ -447,6 +447,71 @@ fallback fails the required-Presence recall threshold (`0%`, minimum `80%`).
 The benchmark decision is therefore not ready and Lot 3 remains open. This
 result does not authorize a prompt, model or runtime-settings change.
 
+### GPT-5.6 fallback screening
+
+The runner can test an explicit OpenAI reasoning effort without retaining the
+reasoning text. It sends the OpenRouter form
+`reasoning={"effort": <level>, "exclude": true}` and records only the requested
+level plus bounded `reasoning_tokens` usage metadata when the provider returns
+it.
+
+A live screening run has no fake primary/fallback role, is limited to one
+repetition and can never set `benchmark_decision_ready=true`:
+
+```bash
+OPENROUTER_API_KEY=... python3 benchmark/run_benchmark.py \
+  --suite validation_agent \
+  --validation-agent-corpus presence \
+  --validation-agent-screening \
+  --models openai/gpt-5.6-luna openai/gpt-5.6-terra \
+  --validation-agent-reasoning-effort low \
+  --validation-agent-repetitions 1 \
+  --timeout-s 15 \
+  --campaign-id <date>-lot3-gpt56-low-screening \
+  --output-dir /tmp/fridadev-lot3-gpt56
+```
+
+Use one separate campaign for each requested effort. The retained Lot 3
+screening compared `none`, `low` and `medium`, 144 calls in total. The complete
+role-aware candidate command keeps the primary on its default transport and
+sets reasoning only for the fallback:
+
+```bash
+OPENROUTER_API_KEY=... python3 benchmark/run_benchmark.py \
+  --suite validation_agent \
+  --validation-agent-corpus presence \
+  --validation-agent-primary-model google/gemini-3.1-flash-lite \
+  --validation-agent-fallback-model openai/gpt-5.6-luna \
+  --validation-agent-fallback-reasoning-effort medium \
+  --validation-agent-max-tokens 500 \
+  --validation-agent-repetitions 3 \
+  --timeout-s 15 \
+  --campaign-id <date>-lot3-presence-luna-medium-max500 \
+  --output-dir benchmark/results/validation_agent
+```
+
+Retained content-free evidence:
+
+- `benchmark/results/validation_agent/2026-08-21-lot3-presence-gpt56-screening.json`
+  and `.md`;
+- `benchmark/results/validation_agent/2026-08-21-lot3-presence-luna-low-max300.json`
+  and `.md`;
+- `benchmark/results/validation_agent/2026-08-21-lot3-presence-luna-medium-max500.json`
+  and `.md`.
+
+Neither candidate passed the three-repetition safety contract. Luna `low/300`
+failed on high-severity false Presence. Luna `medium/500` failed on
+high-severity false Presence and 75% repetition stability. Terra already failed
+high-severity false Presence in the one-repetition screening while costing
+roughly ten times Luna on this corpus. No model, prompt, runtime setting or
+service was changed, and Lot 3 remains open.
+
+Official pricing and reasoning-level references used for this comparison:
+
+- <https://developers.openai.com/api/docs/models/gpt-5.6-luna>
+- <https://developers.openai.com/api/docs/models/gpt-5.6-terra>
+- <https://developers.openai.com/api/docs/guides/latest-model>
+
 Example live run:
 
 ```bash

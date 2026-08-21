@@ -102,6 +102,23 @@ def main() -> int:
     )
     parser.add_argument("--validation-agent-primary-model", default=None)
     parser.add_argument("--validation-agent-fallback-model", default=None)
+    parser.add_argument(
+        "--validation-agent-reasoning-effort",
+        choices=sorted(validation_agent_adapter.REASONING_EFFORTS),
+        default=None,
+        help="single explicit effort for every model in a screening run",
+    )
+    parser.add_argument(
+        "--validation-agent-primary-reasoning-effort",
+        choices=sorted(validation_agent_adapter.REASONING_EFFORTS),
+        default=None,
+    )
+    parser.add_argument(
+        "--validation-agent-fallback-reasoning-effort",
+        choices=sorted(validation_agent_adapter.REASONING_EFFORTS),
+        default=None,
+    )
+    parser.add_argument("--validation-agent-screening", action="store_true")
     parser.add_argument("--validation-agent-repetitions", type=int, default=1)
     parser.add_argument("--web-search-arms", nargs="*", default=None)
     parser.add_argument("--web-search-max-results", type=int, default=web_search_adapter.DEFAULT_MAX_RESULTS)
@@ -136,6 +153,7 @@ def main() -> int:
     else:
         default_models = DEFAULT_ARBITER_MODELS
     validation_model_roles: dict[str, str] = {}
+    validation_reasoning_efforts: dict[str, str] = {}
     explicit_validation_roles = bool(
         args.validation_agent_primary_model or args.validation_agent_fallback_model
     )
@@ -157,6 +175,36 @@ def main() -> int:
         models = ensure_unique_models(args.models)
     if not models:
         raise SystemExit("at least one model is required")
+    if suite == "validation_agent":
+        if args.validation_agent_screening:
+            if args.validation_agent_corpus != "presence":
+                raise SystemExit("validation-agent screening requires the Presence corpus")
+            if explicit_validation_roles:
+                raise SystemExit("validation-agent screening cannot assign runtime roles")
+            if args.models is None:
+                raise SystemExit("validation-agent screening requires explicit --models")
+            if not args.validation_agent_reasoning_effort:
+                raise SystemExit("validation-agent screening requires an explicit reasoning effort")
+            validation_reasoning_efforts = {
+                model: args.validation_agent_reasoning_effort for model in models
+            }
+        else:
+            if args.validation_agent_reasoning_effort:
+                raise SystemExit(
+                    "validation-agent-reasoning-effort is reserved for screening runs"
+                )
+            if args.validation_agent_primary_reasoning_effort:
+                if not args.validation_agent_primary_model:
+                    raise SystemExit("primary reasoning effort requires an explicit primary model")
+                validation_reasoning_efforts[args.validation_agent_primary_model] = (
+                    args.validation_agent_primary_reasoning_effort
+                )
+            if args.validation_agent_fallback_reasoning_effort:
+                if not args.validation_agent_fallback_model:
+                    raise SystemExit("fallback reasoning effort requires an explicit fallback model")
+                validation_reasoning_efforts[args.validation_agent_fallback_model] = (
+                    args.validation_agent_fallback_reasoning_effort
+                )
     if suite == "arbiter" and "openai/gpt-5.4-nano" in models:
         raise SystemExit("openai/gpt-5.4-nano is intentionally excluded from the first arbiter campaign")
     output_dir = args.output_dir or f"benchmark/results/{suite}"
@@ -266,7 +314,9 @@ def main() -> int:
             comparison_path=(Path(args.validation_agent_compare_with) if args.validation_agent_compare_with else None),
             fixture_path=repo_root / validation_fixture_path,
             model_roles=validation_model_roles,
+            reasoning_efforts=validation_reasoning_efforts,
             repetitions=args.validation_agent_repetitions,
+            screening=bool(args.validation_agent_screening),
         )
         print(f"wrote {result['json_path']}")
         print(f"wrote {result['markdown_path']}")

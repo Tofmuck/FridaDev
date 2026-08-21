@@ -19,7 +19,9 @@ def run_validation_agent_campaign(
     comparison_path: Path | None = None,
     fixture_path: Path | None = None,
     model_roles: dict[str, str] | None = None,
+    reasoning_efforts: dict[str, str] | None = None,
     repetitions: int = 1,
+    screening: bool = False,
 ) -> dict[str, str]:
     campaign = build_validation_agent_campaign(
         config=config,
@@ -28,7 +30,9 @@ def run_validation_agent_campaign(
         comparison_path=comparison_path,
         fixture_path=fixture_path,
         model_roles=model_roles,
+        reasoning_efforts=reasoning_efforts,
         repetitions=repetitions,
+        screening=screening,
     )
     if campaign.get("content_free_decision_artifact"):
         assert_presence_campaign_content_free(campaign)
@@ -48,7 +52,9 @@ def build_validation_agent_campaign(
     comparison_path: Path | None = None,
     fixture_path: Path | None = None,
     model_roles: dict[str, str] | None = None,
+    reasoning_efforts: dict[str, str] | None = None,
     repetitions: int = 1,
+    screening: bool = False,
 ) -> dict[str, Any]:
     prompt_path = config.repo_root / adapter.PROMPT_PATH
     fixture_path = fixture_path or (config.repo_root / adapter.FIXTURE_PATH)
@@ -66,12 +72,30 @@ def build_validation_agent_campaign(
     }
     if any(role not in {"primary", "fallback", "unspecified"} for role in resolved_model_roles.values()):
         raise ValueError("validation_agent model roles must be primary, fallback or unspecified")
+    unknown_reasoning_models = sorted(set(reasoning_efforts or {}) - set(config.models))
+    if unknown_reasoning_models:
+        raise ValueError(
+            "validation_agent reasoning effort references unknown models: "
+            + ", ".join(unknown_reasoning_models)
+        )
+    resolved_reasoning_efforts: dict[str, str] = {}
+    for model, effort in (reasoning_efforts or {}).items():
+        normalized_effort = str(effort).strip().lower()
+        if normalized_effort not in adapter.REASONING_EFFORTS:
+            raise ValueError(f"unsupported validation_agent reasoning effort: {effort}")
+        resolved_reasoning_efforts[model] = normalized_effort
     if presence_corpus and len(cases) * len(config.models) * repetitions > 144:
         raise ValueError("validation_agent Presence campaign exceeds the 144-call safety cap")
+    if screening and not presence_corpus:
+        raise ValueError("validation_agent screening requires the Presence corpus")
+    if screening and repetitions != 1:
+        raise ValueError("validation_agent screening requires exactly one repetition")
+    if screening and any(role != "unspecified" for role in resolved_model_roles.values()):
+        raise ValueError("validation_agent screening cannot assign runtime roles")
     if presence_corpus and not config.dry_run:
         if fixture_document.get("human_validation_status") != "validated":
             raise ValueError("live Presence benchmark requires a human-validated corpus")
-        if sorted(resolved_model_roles.values()) != ["fallback", "primary"]:
+        if not screening and sorted(resolved_model_roles.values()) != ["fallback", "primary"]:
             raise ValueError("live Presence benchmark requires one primary and one fallback model")
     generation_settings = generation_params or adapter.generation_params(
         timeout_s=config.timeout_s,
@@ -81,6 +105,7 @@ def build_validation_agent_campaign(
     results: list[dict[str, Any]] = []
 
     for model in config.models:
+        reasoning_effort = resolved_reasoning_efforts.get(model)
         calls: list[dict[str, Any]] = []
         for case in cases:
             for repetition_index in range(1, repetitions + 1):
@@ -89,6 +114,7 @@ def build_validation_agent_campaign(
                     model,
                     prompt_text,
                     generation_settings=generation_settings,
+                    reasoning_effort=reasoning_effort,
                 )
                 request_signature = {
                     "messages_sha256": sha256_text(
@@ -100,6 +126,11 @@ def build_validation_agent_campaign(
                         "max_tokens": payload.get("max_tokens"),
                     },
                 }
+                if reasoning_effort is not None:
+                    request_signature["reasoning"] = {
+                        "effort": reasoning_effort,
+                        "exclude": True,
+                    }
                 if config.dry_run:
                     provider = _dry_provider(case)
                     score = scorer.score_output(case, provider.get("raw_text") or "")
@@ -128,6 +159,8 @@ def build_validation_agent_campaign(
                     "observed_model": str(provider.get("model") or ""),
                     "observed_provider": str(provider.get("provider") or ""),
                     "provider_source": "dry_run" if config.dry_run else model_role,
+                    "reasoning_effort_requested": reasoning_effort,
+                    "reasoning_excluded": reasoning_effort is not None,
                     "provider": _compact_provider(provider),
                     "request_signature": request_signature,
                     "score": score,
@@ -180,6 +213,8 @@ def build_validation_agent_campaign(
         "dry_run": config.dry_run,
         "models": config.models,
         "model_roles": resolved_model_roles,
+        "reasoning_efforts": resolved_reasoning_efforts,
+        "screening": screening,
         "repetitions": repetitions,
         "planned_call_count": len(cases) * len(config.models) * repetitions,
         "generation_params": generation_settings,
@@ -230,6 +265,7 @@ def build_validation_agent_campaign(
         )
         campaign["benchmark_decision_ready"] = bool(
             not config.dry_run
+            and not screening
             and repetitions == 3
             and campaign["provider_route_observability_complete"]
             and all((result.get("summary") or {}).get("safety_thresholds_met") for result in results)
@@ -241,11 +277,22 @@ def build_validation_agent_campaign(
 
 def render_markdown_report(campaign: dict[str, Any]) -> str:
     params = campaign.get("generation_params") or {}
-    benchmark_scope = (
-        "primaire et fallback"
-        if campaign.get("fallback_benchmarked")
-        else "primaire"
-    )
+    if campaign.get("screening"):
+        benchmark_scope = "candidats de criblage"
+        scope_sentence = (
+            "Elle compare des candidats de criblage sans leur attribuer de role "
+            "runtime primaire ou fallback."
+        )
+    else:
+        benchmark_scope = (
+            "primaire et fallback"
+            if campaign.get("fallback_benchmarked")
+            else "primaire"
+        )
+        scope_sentence = (
+            f"Elle compare les roles {benchmark_scope} du caller OpenRouter "
+            "`validation_agent` sur le vrai prompt de production."
+        )
     lines = [
         f"# Benchmark validation_agent {benchmark_scope} - {campaign['campaign_id']}",
         "",
@@ -260,6 +307,8 @@ def render_markdown_report(campaign: dict[str, Any]) -> str:
         f"- Repetitions par cas: `{campaign.get('repetitions', 1)}`",
         f"- Appels planifies: `{campaign.get('planned_call_count')}`",
         f"- Roles: `{json.dumps(campaign.get('model_roles') or {}, sort_keys=True)}`",
+        f"- Reasoning efforts demandes: `{json.dumps(campaign.get('reasoning_efforts') or {}, sort_keys=True)}`",
+        f"- Screening: `{campaign.get('screening', False)}`",
         f"- Routes provider observees: `{campaign.get('provider_route_observability_complete')}`",
         f"- Decision de benchmark prete: `{campaign.get('benchmark_decision_ready')}`",
         "- Production runtime changed: `False`",
@@ -267,7 +316,7 @@ def render_markdown_report(campaign: dict[str, Any]) -> str:
         "",
         "## Ce que cette campagne mesure",
         "",
-        f"Elle compare les roles {benchmark_scope} du caller OpenRouter `validation_agent` sur le vrai prompt de production.",
+        scope_sentence,
         "Elle teste le micro-arbitrage de posture finale: `answer|clarify|suspend` et `simple|meta|presence`.",
         "",
         "## Ce que cette campagne ne prouve pas",
@@ -279,8 +328,8 @@ def render_markdown_report(campaign: dict[str, Any]) -> str:
         "",
         "## Synthese technique",
         "",
-        "| Modele | Role | JSON | Schema | Pass | Faux Presence | Presence manquee | Non-reponse bureaucratique | Unsafe answer | Stabilite | Rappel Presence | Seuils | Provider observe | Latence moy. | Cout estime |",
-        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | ---: | ---: |",
+        "| Modele | Role | Effort | JSON | Schema | Pass | Faux Presence | Presence manquee | Non-reponse bureaucratique | Unsafe answer | Stabilite | Rappel Presence | Seuils | Reasoning tokens | Provider observe | Latence moy. | Cout estime |",
+        "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | --- | ---: | ---: |",
     ]
     for result in campaign.get("results", []):
         summary = result.get("summary") or {}
@@ -290,6 +339,7 @@ def render_markdown_report(campaign: dict[str, Any]) -> str:
                 [
                     f"`{result.get('model')}`",
                     f"`{result.get('model_role')}`",
+                    f"`{(campaign.get('reasoning_efforts') or {}).get(result.get('model'), 'default')}`",
                     _count(summary, "json_valid", "cases"),
                     _count(summary, "schema_valid", "cases"),
                     _count(summary, "passes", "cases"),
@@ -300,6 +350,7 @@ def render_markdown_report(campaign: dict[str, Any]) -> str:
                     _format_rate(summary.get("repetition_stability_rate")),
                     _format_rate(summary.get("required_presence_rate")),
                     _format_threshold_status(summary),
+                    str(summary.get("reasoning_tokens_total") or 0),
                     ", ".join(summary.get("observed_providers") or []) or "n/a",
                     f"{float(summary.get('avg_latency_ms') or 0.0):.0f} ms",
                     _format_cost(summary.get("cost_estimate_usd")),
@@ -396,6 +447,10 @@ def _provider_summary(calls: list[dict[str, Any]]) -> dict[str, Any]:
         float(((call.get("provider") or {}).get("usage") or {}).get("completion_tokens") or 0.0)
         for call in calls
     ]
+    reasoning_tokens = [
+        _reasoning_tokens((call.get("provider") or {}).get("usage") or {})
+        for call in calls
+    ]
     finish_reasons = sorted(
         {
             str((call.get("provider") or {}).get("finish_reason") or "")
@@ -413,6 +468,8 @@ def _provider_summary(calls: list[dict[str, Any]]) -> dict[str, Any]:
         "avg_latency_ms": round(sum(elapsed) / max(1, count), 2),
         "cost_estimate_usd": round(sum(costs), 8) if costs else None,
         "avg_completion_tokens": round(sum(completion_tokens) / max(1, count), 2),
+        "reasoning_tokens_total": sum(reasoning_tokens),
+        "avg_reasoning_tokens": round(sum(reasoning_tokens) / max(1, count), 2),
         "finish_reasons": finish_reasons,
         "observed_models": observed_models,
         "observed_providers": observed_providers,
@@ -425,6 +482,16 @@ def _provider_summary(calls: list[dict[str, Any]]) -> dict[str, Any]:
             4,
         ),
     }
+
+
+def _reasoning_tokens(usage: dict[str, Any]) -> int:
+    details = usage.get("completion_tokens_details")
+    if not isinstance(details, dict):
+        return 0
+    try:
+        return int(details.get("reasoning_tokens") or 0)
+    except (TypeError, ValueError):
+        return 0
 
 
 def _comparison_baseline(path: Path | None, *, repo_root: Path) -> dict[str, Any] | None:

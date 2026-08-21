@@ -31,6 +31,7 @@ TEMPERATURE = 0.0
 TOP_P = 1.0
 MAX_TOKENS = 140
 TIMEOUT_S = 15
+REASONING_EFFORTS = frozenset({"none", "low", "medium", "high", "xhigh", "max"})
 
 ALLOWED_POSTURES = set(validation_contract.ALLOWED_PRIMARY_JUDGMENT_POSTURES)
 ALLOWED_OUTPUT_REGIMES = set(validation_contract.ALLOWED_FINAL_OUTPUT_REGIMES)
@@ -173,17 +174,24 @@ def build_payload(
     prompt: str | None = None,
     *,
     generation_settings: dict[str, Any] | None = None,
+    reasoning_effort: str | None = None,
 ) -> dict[str, Any]:
     prompt_text = prompt if prompt is not None else load_prompt()
     settings = generation_settings or generation_params()
     messages = build_messages(case, prompt_text)
-    return {
+    payload = {
         "model": model,
         "messages": messages,
         "temperature": settings["temperature"],
         "top_p": settings["top_p"],
         "max_tokens": settings["max_tokens"],
     }
+    if reasoning_effort is not None:
+        normalized_effort = str(reasoning_effort).strip().lower()
+        if normalized_effort not in REASONING_EFFORTS:
+            raise ValueError(f"unsupported validation_agent reasoning effort: {reasoning_effort}")
+        payload["reasoning"] = {"effort": normalized_effort, "exclude": True}
+    return payload
 
 
 def build_messages(case: dict[str, Any], prompt_text: str) -> list[dict[str, str]]:

@@ -91,6 +91,28 @@ class ValidationAgentBenchmarkSuiteTests(unittest.TestCase):
         self.assertEqual(payload["top_p"], 1.0)
         self.assertEqual(payload["max_tokens"], 140)
 
+    def test_validation_agent_payload_sends_explicit_hidden_reasoning_effort(self) -> None:
+        cases = validation_adapter.load_fixtures(REPO_ROOT / validation_adapter.FIXTURE_PATH)
+        prompt = (REPO_ROOT / validation_adapter.PROMPT_PATH).read_text(encoding="utf-8").strip()
+        payload = validation_adapter.build_payload(
+            cases[0],
+            "openai/gpt-5.6-luna",
+            prompt,
+            generation_settings=validation_adapter.generation_params(max_tokens=300),
+            reasoning_effort="low",
+        )
+
+        self.assertEqual(payload["max_tokens"], 300)
+        self.assertEqual(payload["reasoning"], {"effort": "low", "exclude": True})
+        self.assertNotIn("reasoning_effort", payload)
+        with self.assertRaisesRegex(ValueError, "reasoning effort"):
+            validation_adapter.build_payload(
+                cases[0],
+                "openai/gpt-5.6-luna",
+                prompt,
+                reasoning_effort="invented",
+            )
+
     def test_validation_agent_scorer_flags_hard_guard_answer_violation(self) -> None:
         cases = validation_adapter.load_fixtures(REPO_ROOT / validation_adapter.FIXTURE_PATH)
         case = next(item for item in cases if item["id"] == "repo_explicit_url_not_read_blocks_answer")

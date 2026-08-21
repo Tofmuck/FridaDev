@@ -1248,7 +1248,7 @@ Arreter avant patch ou avant livraison si:
 
 # LOT 3 - Corpus d'evaluation Presence
 
-Statut: en cours - passes 1 et 2 livrees; baseline primaire/fallback documentee, seuil fallback non atteint
+Statut: en cours - passes 1 a 3 livrees; fallback courant et candidats GPT-5.6 rejetes par les seuils
 Nature: tests/benchmark/docs-only
 Dependance: Lots Identity independants termines ou explicitement pauses
 Livraison live: interdite
@@ -1499,6 +1499,110 @@ Limite bloquante restante:
   decision distincte de Tof: accepter explicitement cette degradation bornee
   du fallback, ou autoriser un micro-lot separe de correction puis rejouer la
   meme campagne. Aucun de ces deux choix n'est infere dans cette passe.
+
+## Passe 3 - criblage Luna/Terra et niveaux de raisonnement (2026-08-21)
+
+Decision de methode:
+
+- Tof a autorise explicitement l'evaluation de GPT-5.6 Luna et Terra, de leur
+  cout et des niveaux de raisonnement `none`, `low` et `medium`;
+- le corpus, le prompt, les attentes, les seuils, le timeout, la temperature et
+  le `top_p` sont restes inchanges; aucune regex ou heuristique lexicale n'a
+  ete ajoutee;
+- le criblage initial a execute exactement 144 appels: 24 cas, deux modeles,
+  trois niveaux, une repetition;
+- le niveau demande est porte par le payload OpenRouter
+  `reasoning.effort`, avec `exclude=true`; l'artefact conserve le niveau
+  demande et les `reasoning_tokens` numeriques observes, jamais le contenu du
+  raisonnement;
+- le runner distingue maintenant un criblage sans faux roles runtime, incapable
+  de fermer la decision, et une campagne finale `primary/fallback` a trois
+  repetitions;
+- la documentation officielle OpenAI du 2026-08-21 donne Luna a 0,20 USD/M
+  tokens d'entree et 1,20 USD/M de sortie, Terra a 2 USD/M et 12 USD/M; le guide
+  recommande de mesurer le niveau plutot que d'adopter automatiquement le plus
+  eleve.
+
+Criblage `max_tokens=140`:
+
+- Luna `none`: 24/24 schemas, rappel Presence 100 %, mais trois faux Presence,
+  dont deux haute gravite; cout estime 0,01305155 USD;
+- Terra `none`: 24/24 schemas, rappel Presence 100 %, mais deux faux Presence,
+  dont un haute gravite; cout estime 0,12752750 USD;
+- Luna `low`: zero faux Presence sur cette repetition, mais seulement 19/24
+  schemas, 1 182 tokens de raisonnement et des fins `length`;
+- Luna `medium`: zero faux Presence sur cette repetition, mais seulement 17/24
+  schemas, 1 751 tokens de raisonnement et des fins `length`;
+- Terra `low` et `medium`: 24/24 schemas, mais respectivement trois et deux
+  faux Presence, avec des cas haute gravite; aucun prolongement n'etait
+  justifie;
+- Terra a coute environ dix fois Luna sans gain de securite semantique sur ce
+  corpus; cout total du criblage: 0,42588675 USD.
+
+Validation des budgets et campagnes finales:
+
+- Luna `low/max_tokens=300` a franchi les seuils sur une repetition, puis a
+  echoue sur trois repetitions: 72/72 schemas, rappel Presence 100 %, stabilite
+  83,33 %, cinq faux Presence et echec `critical_or_high_false_presence`;
+- Luna `medium/max_tokens=500` a franchi les seuils sur une repetition, puis a
+  echoue sur trois repetitions: 72/72 schemas, rappel Presence 100 %, stabilite
+  75 %, trois faux Presence dont deux sur un cas haute gravite, echecs
+  `critical_or_high_false_presence` et `repetition_stability`;
+- le primaire Google, rejoue avec les plafonds communs 300 puis 500, reste a
+  72/72 schemas, rappel Presence 100 %, stabilite 100 % et tous ses seuils
+  predeclares satisfaits;
+- `benchmark_decision_ready=false` dans les deux campagnes. Aucun resultat a
+  une repetition n'a ete substitue a la preuve de stabilite obligatoire.
+
+Preuves et sensibilite:
+
+- `benchmark/results/validation_agent/2026-08-21-lot3-presence-gpt56-screening.json`
+  et `.md` figent les six configurations, les routes, couts, latences, fins et
+  tokens de raisonnement content-free;
+- `benchmark/results/validation_agent/2026-08-21-lot3-presence-luna-low-max300.json`
+  et `.md` figent la premiere campagne finale rejetee;
+- `benchmark/results/validation_agent/2026-08-21-lot3-presence-luna-medium-max500.json`
+  et `.md` figent la seconde campagne finale rejetee;
+- les goldens rejettent la disparition du niveau demande, l'exposition du
+  raisonnement, un criblage dote de faux roles, un criblage qui fermerait la
+  decision, l'absence des tokens de raisonnement, une requalification de
+  `benchmark_decision_ready` et la disparition des echecs haute gravite;
+- les artefacts ont ete controles recursivement contre tout dialogue,
+  justification humaine, sortie brute, raison libre, erreur brute ou secret.
+
+Decision de sortie de la passe 3:
+
+- ni Luna ni Terra ne remplace proprement le fallback runtime sous le contrat
+  Presence valide;
+- aucun changement de modele, niveau de raisonnement, plafond runtime, prompt,
+  provider ou setting n'est autorise par ces resultats;
+- le fallback actuel reste imparfait mais n'est pas remplace par un candidat
+  qui introduirait des faux Presence haute gravite;
+- le Lot 3 reste ouvert. Sa derniere case ne pourra etre fermee que par une
+  correction ulterieure prouvee ou par l'acceptation humaine explicite de la
+  degradation deja documentee; aucun nouveau benchmark opportuniste n'est
+  lance dans cette passe.
+
+Commandes et preuves finales de la passe 3:
+
+- baseline autoritative avant patch: Python `2713/2713`, JavaScript `135/135`
+  et Chromium `19/19`;
+- reproduction rouge runner/reasoning/screening: 21 tests, deux erreurs et un
+  echec attendus avant implementation;
+- preuves benchmark finales ciblees: `22/22`;
+- suites voisines Validation, Presence, final locks, runtime settings et Lot 9:
+  `101/101`;
+- decouverte Python finale: `2716/2716`, zero echec, erreur, skip ou expected
+  failure, soit trois nouveaux tests decouvrables; le quatrieme test ajoute au
+  fichier benchmark historiquement hors decouverte passe dans la suite ciblee;
+- frontend Node final: `135/135`; navigateur Chromium complet: `19/19`, sous
+  reseau coupe, checkout et cache navigateur en lecture seule;
+- cinq campagnes provider bornees: `504/504` appels sans erreur transport,
+  cout total estime `0,55724594 USD`; les deux criblages intermediaires non
+  decisifs sont documentes mais non versions en doublon;
+- `git diff --check`, controle des fichiers, controle content-free recursif,
+  recherche de temporaires et relecture integrale du diff executes avant
+  commit.
 
 ## Condition de fermeture
 

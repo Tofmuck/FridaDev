@@ -347,6 +347,209 @@ class ValidationAgentPresenceCorpusTests(unittest.TestCase):
             self.assertTrue((output_dir / "lot3-presence-entrypoint-dry-run.json").is_file())
             self.assertTrue((output_dir / "lot3-presence-entrypoint-dry-run.md").is_file())
 
+    def test_role_aware_entrypoint_records_fallback_reasoning_without_exposing_it(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "results"
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    "benchmark/run_benchmark.py",
+                    "--suite",
+                    "validation_agent",
+                    "--validation-agent-corpus",
+                    "presence",
+                    "--validation-agent-primary-model",
+                    "synthetic/primary",
+                    "--validation-agent-fallback-model",
+                    "synthetic/fallback",
+                    "--validation-agent-fallback-reasoning-effort",
+                    "low",
+                    "--validation-agent-max-tokens",
+                    "300",
+                    "--dry-run",
+                    "--campaign-id",
+                    "lot3-presence-reasoning-dry-run",
+                    "--output-dir",
+                    str(output_dir),
+                ],
+                cwd=REPO_ROOT,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            artifact = json.loads(
+                (output_dir / "lot3-presence-reasoning-dry-run.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+        self.assertEqual(artifact["generation_params"]["max_tokens"], 300)
+        self.assertEqual(
+            artifact["reasoning_efforts"],
+            {"synthetic/fallback": "low"},
+        )
+        by_model = {result["model"]: result for result in artifact["results"]}
+        fallback_call = by_model["synthetic/fallback"]["calls"][0]
+        primary_call = by_model["synthetic/primary"]["calls"][0]
+        self.assertEqual(
+            fallback_call["request_signature"]["reasoning"],
+            {"effort": "low", "exclude": True},
+        )
+        self.assertNotIn("reasoning", primary_call["request_signature"])
+        self.assertEqual(by_model["synthetic/fallback"]["summary"]["reasoning_tokens_total"], 0)
+        campaign.assert_presence_campaign_content_free(artifact)
+
+    def test_live_presence_screening_has_no_fake_runtime_roles_and_cannot_close_decision(self) -> None:
+        class SyntheticClient:
+            @staticmethod
+            def chat_completion(payload: dict, *, caller: str, timeout_s: int) -> dict:
+                return {
+                    "ok": True,
+                    "status_code": 200,
+                    "elapsed_ms": 1.0,
+                    "error": None,
+                    "raw_text": _model_output("answer", "simple"),
+                    "finish_reason": "stop",
+                    "native_finish_reason": "stop",
+                    "usage": {
+                        "prompt_tokens": 10,
+                        "completion_tokens": 12,
+                        "completion_tokens_details": {"reasoning_tokens": 4},
+                    },
+                    "cost_estimate_usd": 0.001,
+                    "cost_estimate_source": "synthetic",
+                    "generation_id": "synthetic-screening",
+                    "model": payload["model"],
+                    "provider": "synthetic-provider",
+                }
+
+        with TemporaryDirectory() as tmp:
+            config = CampaignConfig(
+                campaign_id="lot3-presence-screening-live",
+                suite="validation_agent",
+                repo_root=REPO_ROOT,
+                output_dir=Path(tmp) / "results",
+                models=["openai/gpt-5.6-luna"],
+                dry_run=False,
+                timeout_s=15,
+            )
+            result = campaign.build_validation_agent_campaign(
+                config=config,
+                client=SyntheticClient(),
+                fixture_path=self.fixture_path,
+                reasoning_efforts={"openai/gpt-5.6-luna": "low"},
+                repetitions=1,
+                screening=True,
+            )
+
+            self.assertEqual(result["model_roles"], {"openai/gpt-5.6-luna": "unspecified"})
+            self.assertTrue(result["screening"])
+            self.assertFalse(result["benchmark_decision_ready"])
+            self.assertEqual(result["planned_call_count"], 24)
+            self.assertEqual(result["results"][0]["summary"]["reasoning_tokens_total"], 96)
+            campaign.assert_presence_campaign_content_free(result)
+            screening_markdown = campaign.render_markdown_report(result)
+            self.assertIn("candidats de criblage", screening_markdown)
+            self.assertNotIn("roles primaire", screening_markdown)
+
+            with self.assertRaisesRegex(ValueError, "one repetition"):
+                campaign.build_validation_agent_campaign(
+                    config=config,
+                    client=SyntheticClient(),
+                    fixture_path=self.fixture_path,
+                    repetitions=2,
+                    screening=True,
+                )
+
+    def test_retained_gpt56_artifacts_prove_reasoning_cost_and_candidate_rejection(self) -> None:
+        result_dir = REPO_ROOT / "benchmark/results/validation_agent"
+        screening = json.loads(
+            (result_dir / "2026-08-21-lot3-presence-gpt56-screening.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        low = json.loads(
+            (result_dir / "2026-08-21-lot3-presence-luna-low-max300.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        medium = json.loads(
+            (result_dir / "2026-08-21-lot3-presence-luna-medium-max500.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+        self.assertEqual(screening["completed_call_count"], 144)
+        self.assertEqual(len(screening["results"]), 6)
+        screening_by_key = {
+            (result["model"], result["reasoning_effort_requested"]): result
+            for result in screening["results"]
+        }
+        self.assertEqual(
+            screening_by_key[("openai/gpt-5.6-luna", "none")]["summary"][
+                "reasoning_tokens_total"
+            ],
+            0,
+        )
+        self.assertGreater(
+            screening_by_key[("openai/gpt-5.6-luna", "low")]["summary"][
+                "reasoning_tokens_total"
+            ],
+            0,
+        )
+        self.assertGreater(
+            screening_by_key[("openai/gpt-5.6-luna", "medium")]["summary"][
+                "reasoning_tokens_total"
+            ],
+            screening_by_key[("openai/gpt-5.6-luna", "low")]["summary"][
+                "reasoning_tokens_total"
+            ],
+        )
+        self.assertLess(
+            screening_by_key[("openai/gpt-5.6-luna", "none")]["summary"][
+                "cost_estimate_usd"
+            ]
+            * 5,
+            screening_by_key[("openai/gpt-5.6-terra", "none")]["summary"][
+                "cost_estimate_usd"
+            ],
+        )
+
+        for artifact, effort, max_tokens in (
+            (low, "low", 300),
+            (medium, "medium", 500),
+        ):
+            with self.subTest(effort=effort):
+                campaign.assert_presence_campaign_content_free(artifact)
+                self.assertEqual(artifact["planned_call_count"], 144)
+                self.assertEqual(artifact["repetitions"], 3)
+                self.assertEqual(artifact["generation_params"]["max_tokens"], max_tokens)
+                self.assertEqual(
+                    artifact["reasoning_efforts"],
+                    {"openai/gpt-5.6-luna": effort},
+                )
+                self.assertTrue(artifact["provider_route_observability_complete"])
+                self.assertFalse(artifact["benchmark_decision_ready"])
+                self.assertFalse(artifact["production_runtime_changed"])
+                fallback = next(
+                    result for result in artifact["results"] if result["model_role"] == "fallback"
+                )
+                self.assertFalse(fallback["summary"]["safety_thresholds_met"])
+                self.assertIn(
+                    "critical_or_high_false_presence",
+                    fallback["summary"]["safety_threshold_failures"],
+                )
+                self.assertGreater(fallback["summary"]["reasoning_tokens_total"], 0)
+
+        self.assertIn(
+            "repetition_stability",
+            next(
+                result for result in medium["results"] if result["model_role"] == "fallback"
+            )["summary"]["safety_threshold_failures"],
+        )
+
     def test_campaign_records_runtime_timeout_model_roles_and_three_repetitions(self) -> None:
         with TemporaryDirectory() as tmp:
             config = CampaignConfig(
