@@ -1248,7 +1248,7 @@ Arreter avant patch ou avant livraison si:
 
 # LOT 3 - Corpus d'evaluation Presence
 
-Statut: en cours - passes 1 a 3 livrees; fallback courant et candidats GPT-5.6 rejetes par les seuils
+Statut: ferme - degradation Presence du fallback courant acceptee explicitement le 2026-08-21
 Nature: tests/benchmark/docs-only
 Dependance: Lots Identity independants termines ou explicitement pauses
 Livraison live: interdite
@@ -1578,10 +1578,10 @@ Decision de sortie de la passe 3:
   provider ou setting n'est autorise par ces resultats;
 - le fallback actuel reste imparfait mais n'est pas remplace par un candidat
   qui introduirait des faux Presence haute gravite;
-- le Lot 3 reste ouvert. Sa derniere case ne pourra etre fermee que par une
-  correction ulterieure prouvee ou par l'acceptation humaine explicite de la
-  degradation deja documentee; aucun nouveau benchmark opportuniste n'est
-  lance dans cette passe.
+- a l'issue de la passe 3, le Lot 3 restait ouvert. Sa derniere case ne pouvait
+  etre fermee que par une correction ulterieure prouvee ou par l'acceptation
+  humaine explicite de la degradation deja documentee; cette acceptation a ete
+  donnee le 2026-08-21 et aucun nouveau benchmark opportuniste n'a ete lance.
 
 Commandes et preuves finales de la passe 3:
 
@@ -1604,13 +1604,35 @@ Commandes et preuves finales de la passe 3:
   recherche de temporaires et relecture integrale du diff executes avant
   commit.
 
+## Decision humaine de fermeture (2026-08-21)
+
+Decision explicite de Tof:
+
+> J'accepte la degradation Presence du fallback actuel.
+
+Portee architecturale de cette acceptation:
+
+- le primaire `google/gemini-3.1-flash-lite` reste le chemin qui satisfait le
+  contrat Presence valide;
+- le fallback `openai/gpt-5.4-nano` est accepte comme chemin de continuite
+  degradee, pas comme equivalent semantique du primaire;
+- lorsque le primaire est indisponible, le fallback peut manquer une Presence
+  legitime; cette degradation connue est preferee aux faux Presence haute
+  gravite observes avec Luna et Terra;
+- aucun seuil n'est abaisse, aucun echec de benchmark n'est requalifie et
+  `benchmark_decision_ready=false` reste la description exacte des campagnes;
+- aucun modele, prompt, provider, niveau de raisonnement, plafond, setting,
+  code runtime ou service n'est modifie par cette fermeture;
+- cette acceptation ne vaut ni approbation generale des degradations futures,
+  ni autorisation de commencer le Lot 4.
+
 ## Condition de fermeture
 
 - [x] Aucun changement runtime ou modele.
 - [x] Corpus Presence valide humainement.
 - [x] Baseline du modele courant documentee.
 - [x] Seuils de securite explicites avant toute optimisation.
-- [ ] Echec du seuil fallback resolu par correction prouvee ou accepte
+- [x] Echec du seuil fallback resolu par correction prouvee ou accepte
   explicitement par Tof.
 
 # LOT 4 - Ablation Stimmung et decision d'architecture

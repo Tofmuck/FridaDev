@@ -444,8 +444,9 @@ provider actually observed for every call:
 
 The current primary satisfies all predeclared Presence thresholds. The current
 fallback fails the required-Presence recall threshold (`0%`, minimum `80%`).
-The benchmark decision is therefore not ready and Lot 3 remains open. This
-result does not authorize a prompt, model or runtime-settings change.
+This baseline alone did not authorize a prompt, model or runtime-settings
+change. Lot 3 was later closed by an explicit human acceptance of this bounded
+fallback degradation after the candidate campaign documented below.
 
 ### GPT-5.6 fallback screening
 
@@ -504,7 +505,13 @@ failed on high-severity false Presence. Luna `medium/500` failed on
 high-severity false Presence and 75% repetition stability. Terra already failed
 high-severity false Presence in the one-repetition screening while costing
 roughly ten times Luna on this corpus. No model, prompt, runtime setting or
-service was changed, and Lot 3 remains open.
+service was changed.
+
+On 2026-08-21, Tof explicitly accepted the current fallback degradation. The
+fallback remains a conservative continuity path, not a semantically equivalent
+Presence implementation: it may miss a legitimate Presence response when the
+primary is unavailable, but it is not replaced by candidates that introduced
+high-severity false Presence. Lot 3 is closed without a runtime change.
 
 Official pricing and reasoning-level references used for this comparison:
 
