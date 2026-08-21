@@ -6,8 +6,9 @@ from pathlib import Path
 import sys
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+if str(REPO_ROOT) in sys.path:
+    sys.path.remove(str(REPO_ROOT))
+sys.path.insert(0, str(REPO_ROOT))
 
 from benchmark.core.campaign import CampaignConfig, ensure_unique_models, run_model_campaign, write_json
 from benchmark.core.openrouter import OpenRouterClient
@@ -94,6 +95,11 @@ def main() -> int:
     parser.add_argument("--summary-max-tokens", type=int, default=None)
     parser.add_argument("--validation-agent-max-tokens", type=int, default=None)
     parser.add_argument("--validation-agent-compare-with", default=None)
+    parser.add_argument(
+        "--validation-agent-corpus",
+        choices=("primary", "presence"),
+        default="primary",
+    )
     parser.add_argument("--web-search-arms", nargs="*", default=None)
     parser.add_argument("--web-search-max-results", type=int, default=web_search_adapter.DEFAULT_MAX_RESULTS)
     parser.add_argument("--web-search-max-total-results", type=int, default=web_search_adapter.DEFAULT_MAX_TOTAL_RESULTS)
@@ -219,6 +225,11 @@ def main() -> int:
         return 0
 
     if suite == "validation_agent":
+        validation_fixture_path = (
+            validation_agent_adapter.PRESENCE_FIXTURE_PATH
+            if args.validation_agent_corpus == "presence"
+            else validation_agent_adapter.FIXTURE_PATH
+        )
         result = validation_agent_campaign.run_validation_agent_campaign(
             config=config,
             client=client,
@@ -226,6 +237,7 @@ def main() -> int:
                 max_tokens=args.validation_agent_max_tokens,
             ),
             comparison_path=(Path(args.validation_agent_compare_with) if args.validation_agent_compare_with else None),
+            fixture_path=repo_root / validation_fixture_path,
         )
         print(f"wrote {result['json_path']}")
         print(f"wrote {result['markdown_path']}")

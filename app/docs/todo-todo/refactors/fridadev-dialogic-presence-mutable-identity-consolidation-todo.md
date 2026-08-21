@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 et 1 fermes; Lots 2 a 8 et Z non commences
+Statut: TODO actif; Lots 0 a 2 fermes; Lot 3 en cours; Lots 4 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -1248,7 +1248,7 @@ Arreter avant patch ou avant livraison si:
 
 # LOT 3 - Corpus d'evaluation Presence
 
-Statut: non commence
+Statut: en cours - passe 1 corpus/scorer livree, validation humaine et benchmark provider attendus
 Nature: tests/benchmark/docs-only
 Dependance: Lots Identity independants termines ou explicitement pauses
 Livraison live: interdite
@@ -1310,6 +1310,95 @@ Le benchmark doit verifier le meme vocabulaire que le runtime:
 - hard guards appliques;
 - Presence retenue/refusee et raison compacte;
 - aucun contenu de fixture dans les artefacts content-free de decision.
+
+## Passe 1 - corpus et scorer hermetiques (2026-08-21)
+
+Decision de methode:
+
+- aucun appel provider reel avant validation humaine du corpus;
+- aucune regex ni heuristique lexicale pour decider Presence;
+- le benchmark reutilise le constructeur de messages, les enums de sortie et
+  les hard guards du runtime au lieu de maintenir une seconde doctrine;
+- les final locks et le fail-open sont rejoues par les contrats runtime reels
+  dans les tests, pas reimplementes dans le scorer;
+- le corpus historique `answer/clarify/suspend` reste selectionnable separement.
+
+Inventaire et gaps prouves avant patch:
+
+- le benchmark historique de 13 cas ne couvrait aucun cas Presence;
+- son adapter limitait encore `final_output_regime` a `simple|meta` et
+  reconstruisait un ancien message de tache devenu divergent du runtime;
+- son scorer ne mesurait ni faux Presence, ni Presence manquee, ni non-reponse
+  bureaucratique et conservait la raison libre du modele;
+- les fixtures partagees `dialogic_regime_corpus.json`, les contre-cas Lot 0,
+  les hard guards Web, le fail-open et la priorite Agenda > Biblio > Presence
+  existaient deja et ont ete reutilises au lieu d'etre recopies.
+
+Preuves livrees dans cette passe:
+
+- `benchmark/suites/validation_agent/fixtures/validation_agent_presence_cases.json`:
+  24 cas semantiques proposes et 6 frontieres runtime, statut humain `pending`;
+- `benchmark/suites/validation_agent/adapter.py`: selection de corpus et
+  reutilisation des contrats runtime;
+- `benchmark/suites/validation_agent/scorer.py`: faux Presence, Presence
+  manquee, non-reponse bureaucratique, hard guards et sortie content-free;
+- `benchmark/suites/validation_agent/campaign.py`: artefacts sans dialogue,
+  justification de fixture, sortie provider brute, erreur brute ou raison libre;
+- `app/tests/unit/golden/test_lot3_validation_agent_presence_corpus.py`:
+  sensibilite semantique, contexte avec/sans, final locks, fail-open et
+  mutations anti-fuite;
+- `benchmark/README.md` et `benchmark/run_benchmark.py`: commande dry-run
+  explicite `--validation-agent-corpus presence`.
+
+Seuils proposes avant benchmark, encore soumis a validation humaine:
+
+- zero faux Presence de gravite haute ou critique;
+- zero Presence issue d'un hard guard ou d'un fail-open;
+- zero violation de priorite des final locks;
+- 100 % de schema valide;
+- rappel Presence requis >= 80 % et stabilite de repetition >= 80 %;
+- non-reponse bureaucratique <= 10 %.
+
+Commandes executees hermetiquement dans cette passe:
+
+- baseline Python: `2701/2701`;
+- baseline frontend Node: `135/135`;
+- baseline Chromium: `15/15`;
+- reproduction rouge ciblee: echec attendu, corpus Presence absent;
+- tests benchmark Presence + historique: `14/14`;
+- suites voisines Validation, Presence, final locks, Lot 9 et observabilite:
+  `96/96`;
+- dry-run du runner Presence sous `--network none`, sans secret ni provider:
+  artefacts temporaires ecrits uniquement sous `/tmp`; dry-run du corpus
+  historique rejoue avec la meme frontiere;
+- decouverte Python finale: `2709/2709`, soit exactement huit nouveaux tests
+  decouvrables; frontend Node final: `135/135`; smoke Chromium final: `15/15`,
+  sans installation, pull ni reseau.
+
+Mutations controlees rejetees:
+
+- question transformee en Presence;
+- Presence requise remplacee par `simple`, `clarify` ou `suspend`;
+- hard guard Web transforme en Presence;
+- priorite Agenda/Biblio/Presence inversee;
+- fail-open transforme en Presence;
+- dialogue, raison libre ou sortie provider brute reinjectes dans l'artefact
+  content-free.
+
+Limites restantes avant fermeture:
+
+- Tof doit accepter, corriger ou rejeter les 24 etiquettes semantiques et les
+  seuils proposes;
+- aucun run primaire/fallback, cout, latence ou repetition provider n'a encore
+  ete execute;
+- la baseline du modele courant n'est donc pas documentee et le Lot 3 reste
+  ouvert;
+- la suite agregative historique non decouverte `test_model_benchmark` importe
+  encore `memory_identity_periodic_apply`, deja absent au commit baseline; ce
+  defaut preexistant, distinct du benchmark Validation `14/14`, n'est pas
+  corrige dans cette passe;
+- aucun runtime, prompt, modele, setting, read-model ou frontend produit n'a
+  change; aucune livraison live n'est requise ni autorisee.
 
 ## Condition de fermeture
 

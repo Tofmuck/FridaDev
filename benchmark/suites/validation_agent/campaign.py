@@ -17,13 +17,17 @@ def run_validation_agent_campaign(
     client: OpenRouterClient | None,
     generation_params: dict[str, Any] | None = None,
     comparison_path: Path | None = None,
+    fixture_path: Path | None = None,
 ) -> dict[str, str]:
     campaign = build_validation_agent_campaign(
         config=config,
         client=client,
         generation_params=generation_params,
         comparison_path=comparison_path,
+        fixture_path=fixture_path,
     )
+    if campaign.get("content_free_decision_artifact"):
+        assert_presence_campaign_content_free(campaign)
     config.output_dir.mkdir(parents=True, exist_ok=True)
     json_path = config.output_dir / f"{config.campaign_id}.json"
     markdown_path = config.output_dir / f"{config.campaign_id}.md"
@@ -38,11 +42,16 @@ def build_validation_agent_campaign(
     client: OpenRouterClient | None,
     generation_params: dict[str, Any] | None = None,
     comparison_path: Path | None = None,
+    fixture_path: Path | None = None,
 ) -> dict[str, Any]:
     prompt_path = config.repo_root / adapter.PROMPT_PATH
-    fixture_path = config.repo_root / adapter.FIXTURE_PATH
+    fixture_path = fixture_path or (config.repo_root / adapter.FIXTURE_PATH)
+    if not fixture_path.is_absolute():
+        fixture_path = config.repo_root / fixture_path
     prompt_text = prompt_path.read_text(encoding="utf-8").strip()
-    cases = adapter.load_fixtures(fixture_path)
+    fixture_document = adapter.load_fixture_document(fixture_path)
+    cases = fixture_document["cases"]
+    presence_corpus = fixture_document.get("schema_version") == "validation_presence_corpus_v1"
     generation_settings = generation_params or adapter.generation_params()
     results: list[dict[str, Any]] = []
 
@@ -72,29 +81,45 @@ def build_validation_agent_campaign(
                 provider = client.chat_completion(payload, caller="validation_agent", timeout_s=config.timeout_s)
                 score = scorer.score_output(case, provider.get("raw_text") or "", provider.get("error"))
 
-            calls.append(
-                {
-                    "case_id": case["id"],
-                    "case_tags": list(case.get("tags") or []),
-                    "case_origin": str(case.get("origin") or ""),
-                    "case_source_reference": str(case.get("source_reference") or ""),
-                    "case_design_note": str(case.get("design_note") or ""),
-                    "expected": dict(case.get("expected") or {}),
-                    "provider": _compact_provider(provider),
-                    "request_signature": request_signature,
-                    "score": score,
-                }
-            )
+            call = {
+                "case_id": case["id"],
+                "case_tags": list(case.get("tags") or []),
+                "expected": dict(case.get("expected") or {}),
+                "requested_model": model,
+                "observed_model": str(provider.get("model") or ""),
+                "observed_provider": str(provider.get("provider") or ""),
+                "provider_source": "dry_run" if config.dry_run else "primary",
+                "provider": _compact_provider(provider),
+                "request_signature": request_signature,
+                "score": score,
+            }
+            if presence_corpus:
+                call.update(
+                    {
+                        "semantic_family": str(case.get("semantic_family") or ""),
+                        "false_presence_severity": str(case.get("false_presence_severity") or ""),
+                        "synthetic_provenance_tags": list(case.get("synthetic_provenance_tags") or []),
+                    }
+                )
+            else:
+                call.update(
+                    {
+                        "case_origin": str(case.get("origin") or ""),
+                        "case_source_reference": str(case.get("source_reference") or ""),
+                        "case_design_note": str(case.get("design_note") or ""),
+                    }
+                )
+            calls.append(call)
         summary = scorer.summarize_model_results([call["score"] for call in calls])
         summary.update(_provider_summary(calls))
         summary["provisional_verdict"] = scorer.provisional_verdict(summary)
         results.append({"model": model, "summary": summary, "calls": calls})
 
-    return {
+    campaign = {
         "campaign_id": config.campaign_id,
         "created_at_utc": utc_timestamp(),
         "suite": "validation_agent",
-        "caller": "validation_agent_primary",
+        "caller": "validation_agent",
         "dry_run": config.dry_run,
         "models": config.models,
         "generation_params": generation_settings,
@@ -104,18 +129,38 @@ def build_validation_agent_campaign(
         "fixture_path": str(fixture_path.relative_to(config.repo_root)),
         "fixture_sha256": sha256_file(fixture_path),
         "case_count": len(cases),
-        "cases": _public_cases(cases),
+        "cases": _public_cases(cases, content_free=presence_corpus),
         "secrets_written": False,
         "production_runtime_changed": False,
         "fallback_benchmarked": False,
         "human_decision_required": True,
-        "retention": "compact JSON only: raw model text removed after scoring; hashes, sizes, metrics and parsed decisions retained",
+        "retention": "compact JSON only: raw model text and free-form model reasons removed after scoring; hashes, sizes and bounded decisions retained",
         "comparison_baseline": _comparison_baseline(
             comparison_path,
             repo_root=config.repo_root,
         ),
         "results": results,
     }
+    if presence_corpus:
+        boundary_cases = list(fixture_document.get("runtime_boundary_cases") or [])
+        campaign.update(
+            {
+                "corpus_schema_version": fixture_document["schema_version"],
+                "human_validation_status": fixture_document["human_validation_status"],
+                "proposed_safety_thresholds": dict(
+                    fixture_document.get("proposed_safety_thresholds") or {}
+                ),
+                "runtime_boundary_case_count": len(boundary_cases),
+                "runtime_boundary_cases": _public_boundary_cases(boundary_cases),
+                "content_free_decision_artifact": True,
+                "raw_fixture_content_included": False,
+                "raw_model_output_included": False,
+                "free_form_model_reason_included": False,
+            }
+        )
+    else:
+        campaign["content_free_decision_artifact"] = False
+    return campaign
 
 
 def render_markdown_report(campaign: dict[str, Any]) -> str:
@@ -137,7 +182,7 @@ def render_markdown_report(campaign: dict[str, Any]) -> str:
         "## Ce que cette campagne mesure",
         "",
         "Elle compare le caller OpenRouter primaire `validation_agent` sur le vrai prompt de production.",
-        "Elle teste le micro-arbitrage de posture finale: `answer|clarify|suspend` et `simple|meta`.",
+        "Elle teste le micro-arbitrage de posture finale: `answer|clarify|suspend` et `simple|meta|presence`.",
         "",
         "## Ce que cette campagne ne prouve pas",
         "",
@@ -148,7 +193,7 @@ def render_markdown_report(campaign: dict[str, Any]) -> str:
         "",
         "## Synthese technique",
         "",
-        "| Modele | JSON | Schema | Pass | Score | Unsafe answer | Clarifie trop | Suspend trop | Meta inutile | Hard guard | Latence moy. | Cout estime | Completion tok. moy. | Finish | Verdict provisoire |",
+        "| Modele | JSON | Schema | Pass | Score | Faux Presence | Presence manquee | Non-reponse bureaucratique | Unsafe answer | Hard guard | Latence moy. | Cout estime | Completion tok. moy. | Finish | Verdict provisoire |",
         "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |",
     ]
     for result in campaign.get("results", []):
@@ -162,10 +207,10 @@ def render_markdown_report(campaign: dict[str, Any]) -> str:
                     _count(summary, "schema_valid", "cases"),
                     _count(summary, "passes", "cases"),
                     f"{float(summary.get('avg_score') or 0.0):.2f}",
+                    str(summary.get("false_presence")),
+                    str(summary.get("missed_presence")),
+                    str(summary.get("bureaucratic_non_answer")),
                     str(summary.get("unsafe_answers")),
-                    str(summary.get("over_clarify")),
-                    str(summary.get("over_suspend")),
-                    str(summary.get("meta_overuse")),
                     str(summary.get("hard_guard_violations")),
                     f"{float(summary.get('avg_latency_ms') or 0.0):.0f} ms",
                     _format_cost(summary.get("cost_estimate_usd")),
@@ -182,14 +227,26 @@ def render_markdown_report(campaign: dict[str, Any]) -> str:
     lines.extend(["", "## Cas testes", ""])
     for case in campaign.get("cases", []):
         expected = case.get("expected") or {}
+        lines.extend([f"### {case['id']}", ""])
+        if campaign.get("content_free_decision_artifact"):
+            lines.extend(
+                [
+                    f"- Famille: `{case.get('semantic_family')}`",
+                    f"- Gravite faux positif: `{case.get('false_presence_severity')}`",
+                    f"- Tags synthetiques: `{', '.join(case.get('synthetic_provenance_tags') or [])}`",
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    f"- Provenance: `{case.get('origin')}` - `{case.get('source_reference')}`",
+                    f"- Tags: `{', '.join(case.get('tags') or [])}`",
+                    f"- Note: {case.get('design_note')}",
+                ]
+            )
         lines.extend(
             [
-                f"### {case['id']}",
-                "",
-                f"- Provenance: `{case.get('origin')}` - `{case.get('source_reference')}`",
-                f"- Tags: `{', '.join(case.get('tags') or [])}`",
                 f"- Attendu: `{expected.get('final_judgment_posture')}/{expected.get('final_output_regime')}`",
-                f"- Note: {case.get('design_note')}",
                 "",
             ]
         )
@@ -229,9 +286,12 @@ def _dry_provider(case: dict[str, Any]) -> dict[str, Any]:
 def _compact_provider(provider: dict[str, Any]) -> dict[str, Any]:
     compact = dict(provider)
     raw_text = str(compact.pop("raw_text", "") or "")
+    error_present = bool(compact.pop("error", None))
     compact["raw_text_retained"] = False
     compact["raw_text_chars"] = len(raw_text)
     compact["raw_text_sha256"] = sha256_text(raw_text) if raw_text else ""
+    compact["error_present"] = error_present
+    compact["error_code"] = "provider_error" if error_present else None
     return compact
 
 
@@ -285,7 +345,23 @@ def _comparison_baseline(path: Path | None, *, repo_root: Path) -> dict[str, Any
     }
 
 
-def _public_cases(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _public_cases(
+    cases: list[dict[str, Any]],
+    *,
+    content_free: bool,
+) -> list[dict[str, Any]]:
+    if content_free:
+        return [
+            {
+                "id": case["id"],
+                "semantic_family": str(case.get("semantic_family") or ""),
+                "false_presence_severity": str(case.get("false_presence_severity") or ""),
+                "synthetic_provenance_tags": list(case.get("synthetic_provenance_tags") or []),
+                "tags": list(case.get("tags") or []),
+                "expected": dict(case.get("expected") or {}),
+            }
+            for case in cases
+        ]
     return [
         {
             "id": case["id"],
@@ -297,6 +373,50 @@ def _public_cases(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
         }
         for case in cases
     ]
+
+
+def _public_boundary_cases(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": case["id"],
+            "semantic_family": str(case.get("semantic_family") or ""),
+            "boundary_kind": str(case.get("boundary_kind") or ""),
+            "false_presence_severity": str(case.get("false_presence_severity") or ""),
+            "synthetic_provenance_tags": list(case.get("synthetic_provenance_tags") or []),
+            "final_lock_candidates": list(case.get("final_lock_candidates") or []),
+            "expected_final_source": str(case.get("expected_final_source") or ""),
+            "expected_presence_retained": bool(case.get("expected_presence_retained")),
+            "reason_code": str(case.get("reason_code") or ""),
+        }
+        for case in cases
+    ]
+
+
+_PRESENCE_ARTIFACT_FORBIDDEN_KEYS = {
+    "arbiter_reason",
+    "case_design_note",
+    "case_source_reference",
+    "content",
+    "current_user_message",
+    "design_note",
+    "dialogue",
+    "error",
+    "human_justification",
+    "raw_text",
+}
+
+
+def assert_presence_campaign_content_free(value: Any) -> None:
+    if isinstance(value, dict):
+        forbidden = _PRESENCE_ARTIFACT_FORBIDDEN_KEYS.intersection(value)
+        if forbidden:
+            raise ValueError(f"presence campaign contains forbidden keys: {sorted(forbidden)}")
+        for child in value.values():
+            assert_presence_campaign_content_free(child)
+        return
+    if isinstance(value, list):
+        for child in value:
+            assert_presence_campaign_content_free(child)
 
 
 def _overall_reading_lines(campaign: dict[str, Any]) -> list[str]:

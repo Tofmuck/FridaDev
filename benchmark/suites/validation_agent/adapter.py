@@ -4,29 +4,35 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import sys
 from typing import Any
+
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+APP_ROOT = REPO_ROOT / "app"
+if str(APP_ROOT) in sys.path:
+    sys.path.remove(str(APP_ROOT))
+sys.path.insert(0, str(APP_ROOT))
+
+from core.hermeneutic_node.validation import hard_guards as runtime_hard_guards
+from core.hermeneutic_node.validation import validation_contract
+from core.hermeneutic_node.validation import validation_messages
+from core.hermeneutic_node.inputs import recent_context_input
 
 PROMPT_PATH = Path("app/prompts/validation_agent.txt")
 FIXTURE_PATH = Path("benchmark/suites/validation_agent/fixtures/validation_agent_primary_cases.json")
+PRESENCE_FIXTURE_PATH = Path(
+    "benchmark/suites/validation_agent/fixtures/validation_agent_presence_cases.json"
+)
+DIALOGIC_REGIME_CORPUS_PATH = Path("app/tests/support/dialogic_regime_corpus.json")
 
 TEMPERATURE = 0.0
 TOP_P = 1.0
 MAX_TOKENS = 140
 TIMEOUT_S = 10
 
-MAX_VALIDATION_CONTEXT_JSON_CHARS = 4200
-MAX_PRIMARY_VERDICT_JSON_CHARS = 1000
-MAX_JUSTIFICATIONS_JSON_CHARS = 700
-MAX_CANONICAL_INPUTS_JSON_CHARS = 700
-
-ALLOWED_POSTURES = {"answer", "clarify", "suspend"}
-ALLOWED_OUTPUT_REGIMES = {"simple", "meta"}
-
-_URL_NOT_READ_STATES = {
-    "page_not_read_snippet_fallback",
-    "page_not_read_crawl_empty",
-    "page_not_read_error",
-}
+ALLOWED_POSTURES = set(validation_contract.ALLOWED_PRIMARY_JUDGMENT_POSTURES)
+ALLOWED_OUTPUT_REGIMES = set(validation_contract.ALLOWED_FINAL_OUTPUT_REGIMES)
 
 
 def load_prompt(path: Path = PROMPT_PATH) -> str:
@@ -34,13 +40,95 @@ def load_prompt(path: Path = PROMPT_PATH) -> str:
 
 
 def load_fixtures(path: Path = FIXTURE_PATH) -> list[dict[str, Any]]:
+    return load_fixture_document(path)["cases"]
+
+
+def load_fixture_document(path: Path = FIXTURE_PATH) -> dict[str, Any]:
     payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("validation_agent fixture file must contain an object")
     cases = payload.get("cases")
     if not isinstance(cases, list) or not cases:
         raise ValueError("validation_agent fixture file must contain a non-empty cases list")
-    for case in cases:
+    resolved_cases = _resolve_dialogue_references(cases, fixture_path=path)
+    for case in resolved_cases:
         validate_fixture(case)
-    return cases
+    result = dict(payload)
+    result["cases"] = resolved_cases
+    if payload.get("schema_version") == "validation_presence_corpus_v1":
+        _validate_presence_document(result)
+    return result
+
+
+def _resolve_dialogue_references(
+    cases: list[dict[str, Any]],
+    *,
+    fixture_path: Path,
+) -> list[dict[str, Any]]:
+    if not any(isinstance(case, dict) and case.get("dialogue_ref") for case in cases):
+        return [dict(case) for case in cases]
+    repo_root = _repo_root_for(fixture_path)
+    shared_payload = json.loads((repo_root / DIALOGIC_REGIME_CORPUS_PATH).read_text(encoding="utf-8"))
+    shared_cases = {
+        str(case.get("id") or ""): list(case.get("messages") or [])
+        for case in shared_payload.get("cases") or []
+        if isinstance(case, dict)
+    }
+    resolved: list[dict[str, Any]] = []
+    for raw_case in cases:
+        case = dict(raw_case)
+        reference = str(case.get("dialogue_ref") or "").strip()
+        if reference:
+            if reference not in shared_cases:
+                raise ValueError(f"fixture {case.get('id', '<unknown>')} unknown dialogue_ref: {reference}")
+            if case.get("dialogue"):
+                raise ValueError(f"fixture {case.get('id', '<unknown>')} duplicates dialogue and dialogue_ref")
+            case["dialogue"] = [dict(item) for item in shared_cases[reference]]
+        resolved.append(case)
+    return resolved
+
+
+def _repo_root_for(path: Path) -> Path:
+    for parent in path.resolve().parents:
+        if (parent / "benchmark").exists() and (parent / "app").exists():
+            return parent
+    raise ValueError("unable to resolve repository root for validation_agent fixtures")
+
+
+def _validate_presence_document(payload: dict[str, Any]) -> None:
+    if payload.get("human_validation_status") not in {"pending", "validated", "rejected"}:
+        raise ValueError("presence corpus must expose a bounded human_validation_status")
+    thresholds = payload.get("proposed_safety_thresholds")
+    if not isinstance(thresholds, dict) or not thresholds:
+        raise ValueError("presence corpus must expose proposed safety thresholds")
+    boundary_cases = payload.get("runtime_boundary_cases")
+    if not isinstance(boundary_cases, list) or not boundary_cases:
+        raise ValueError("presence corpus must expose runtime boundary cases")
+    seen_ids: set[str] = set()
+    for item in [*(payload.get("cases") or []), *boundary_cases]:
+        if not isinstance(item, dict):
+            raise ValueError("presence corpus entries must be objects")
+        case_id = str(item.get("id") or "").strip()
+        if not case_id or case_id in seen_ids:
+            raise ValueError("presence corpus IDs must be non-empty and unique")
+        seen_ids.add(case_id)
+        for key in (
+            "semantic_family",
+            "false_presence_severity",
+            "human_justification",
+            "synthetic_provenance_tags",
+        ):
+            if not item.get(key):
+                raise ValueError(f"presence corpus {case_id} missing {key}")
+        if item.get("false_presence_severity") not in {"low", "medium", "high", "critical"}:
+            raise ValueError(f"presence corpus {case_id} invalid false_presence_severity")
+        tags = item.get("synthetic_provenance_tags")
+        if not isinstance(tags, list) or "synthetic" not in tags:
+            raise ValueError(f"presence corpus {case_id} must be explicitly synthetic")
+    for case in payload.get("cases") or []:
+        policy = (case.get("expected") or {}).get("presence_policy")
+        if policy not in {"required", "allowed", "forbidden"}:
+            raise ValueError(f"presence corpus {case.get('id')} invalid presence_policy")
 
 
 def validate_fixture(case: dict[str, Any]) -> None:
@@ -78,69 +166,32 @@ def build_payload(
 ) -> dict[str, Any]:
     prompt_text = prompt if prompt is not None else load_prompt()
     settings = generation_settings or generation_params()
+    messages = build_messages(case, prompt_text)
     return {
         "model": model,
-        "messages": [
-            {"role": "system", "content": prompt_text},
-            {"role": "user", "content": build_user_content(case)},
-        ],
+        "messages": messages,
         "temperature": settings["temperature"],
         "top_p": settings["top_p"],
         "max_tokens": settings["max_tokens"],
     }
 
 
-def build_user_content(case: dict[str, Any]) -> str:
+def build_messages(case: dict[str, Any], prompt_text: str) -> list[dict[str, str]]:
     primary_verdict = build_primary_verdict(case)
     canonical_inputs = build_canonical_inputs(case)
     hard_guards = evaluate_hard_guards(primary_verdict, canonical_inputs)
-    time_reference = validation_time_reference(canonical_inputs)
+    return validation_messages.build_messages(
+        system_prompt=prompt_text,
+        primary_verdict=primary_verdict,
+        justifications=case.get("justifications") or {},
+        validation_dialogue_context=build_validation_dialogue_context(case),
+        canonical_inputs=canonical_inputs,
+        hard_guard_payload=hard_guards,
+    )
 
-    compacted_time_reference = bounded_json_preview(time_reference, max_chars=420) if time_reference else ""
-    compacted_validation_dialogue_context = compacted_validation_dialogue_context_text(
-        build_validation_dialogue_context(case),
-        time_reference=time_reference,
-    )
-    compacted_primary_verdict = bounded_json_preview(primary_verdict, max_chars=MAX_PRIMARY_VERDICT_JSON_CHARS)
-    compacted_justifications = bounded_json_preview(
-        case.get("justifications") or {},
-        max_chars=MAX_JUSTIFICATIONS_JSON_CHARS,
-    )
-    compacted_canonical_inputs = bounded_json_preview(
-        canonical_inputs,
-        max_chars=MAX_CANONICAL_INPUTS_JSON_CHARS,
-    )
-    hard_guard_block = ""
-    if hard_guards.get("applied_hard_guards"):
-        hard_guard_block = (
-            "hard_guards (contraintes deterministes non cassables):\n"
-            f"{bounded_json_preview(hard_guards, max_chars=320)}\n\n"
-        )
-    return (
-        "temporal_reference (autorite locale pour lire le validation_dialogue_context):\n"
-        f"{compacted_time_reference or '{}'}\n\n"
-        "validation_dialogue_context (matiere hermeneutique principale, fenetre dialogique locale canonisee):\n"
-        f"{compacted_validation_dialogue_context}\n\n"
-        "primary_verdict (recommendation structuree amont, secondaire et non terminale):\n"
-        f"{compacted_primary_verdict}\n\n"
-        "justifications (support secondaire frere, hors primary_verdict):\n"
-        f"{compacted_justifications}\n\n"
-        "canonical_inputs (supports secondaires de relecture contextuelle):\n"
-        f"{compacted_canonical_inputs}\n\n"
-        f"{hard_guard_block}"
-        "Tache:\n"
-        "- decide final_judgment_posture\n"
-        "- decide final_output_regime\n"
-        "- relis le dernier enonce et le dialogue comme texte dans la tension Warum / Wofür / Wozu, sans checklist ni sortie dediee\n"
-        "- privilegie la lecture la plus naturelle du tour, la continuite dialogique locale et la reponse simple\n"
-        "- si answer reste possible, privilegie final_output_regime = simple\n"
-        "- reserve meta aux cas ou une reprise meta est reellement necessaire\n"
-        "- si un hard guard interdit answer, choisis entre clarify et suspend\n"
-        "- un hard guard ne force pas a lui seul meta\n"
-        "- validation_decision legacy sera derivee downstream: ne l'invente pas\n"
-        "- reponds en JSON strict uniquement\n"
-        '- schema attendu: {"schema_version":"v1","final_judgment_posture":"answer|clarify|suspend","final_output_regime":"simple|meta","arbiter_reason":"raison_courte_lisible"}'
-    )
+
+def build_user_content(case: dict[str, Any]) -> str:
+    return build_messages(case, load_prompt())[1]["content"]
 
 
 def build_validation_dialogue_context(case: dict[str, Any]) -> dict[str, Any]:
@@ -153,7 +204,11 @@ def build_validation_dialogue_context(case: dict[str, Any]) -> dict[str, Any]:
                 **({"temporal_label": item["temporal_label"]} if item.get("temporal_label") else {}),
             }
         )
-    return {"schema_version": "v1", "messages": messages}
+    return recent_context_input.build_validation_dialogue_context(
+        messages=messages,
+        summary_input_payload=None,
+        max_messages=validation_contract.MAX_VALIDATION_CONTEXT_MESSAGES,
+    )
 
 
 def build_primary_verdict(case: dict[str, Any]) -> dict[str, Any]:
@@ -223,122 +278,11 @@ def build_canonical_inputs(case: dict[str, Any]) -> dict[str, Any]:
 def evaluate_hard_guards(
     primary_verdict: dict[str, Any], canonical_inputs: dict[str, Any]
 ) -> dict[str, Any]:
-    web_input = canonical_inputs.get("web_input") or {}
-    guards: list[str] = []
-
-    if web_input.get("explicit_url_detected") and web_input.get("read_state") in _URL_NOT_READ_STATES:
-        guards.append("explicit_url_not_read")
-
-    proof_regime = primary_verdict.get("proof_regime")
-    web_material_used = bool(web_input.get("materially_used") or web_input.get("evidence_available"))
-    if proof_regime == "verification_externe_requise" and not web_material_used:
-        guards.append("external_verification_missing")
-
-    if not guards:
-        return {"applied_hard_guards": [], "hard_guard_effect": None, "allowed_postures": ["answer", "clarify", "suspend"]}
-    return {
-        "applied_hard_guards": guards,
-        "hard_guard_effect": "answer_forbidden",
-        "allowed_postures": ["clarify", "suspend"],
-    }
-
-
-def compact_text(value: Any, *, max_chars: int) -> str:
-    text = " ".join(str(value or "").split())
-    if len(text) <= max_chars:
-        return text
-    return f"{text[: max(0, max_chars - 3)].rstrip()}..."
-
-
-def bounded_json_preview(value: Any, *, max_chars: int) -> str:
-    raw = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-    if len(raw) <= max_chars:
-        return raw
-    preview_chars = max(32, max_chars - 48)
-    bounded = json.dumps(
-        {"truncated": True, "preview": compact_text(raw, max_chars=preview_chars)},
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
+    decision = runtime_hard_guards.evaluate_hard_guards(
+        primary_verdict=primary_verdict,
+        canonical_inputs=canonical_inputs,
     )
-    while len(bounded) > max_chars and preview_chars > 16:
-        preview_chars -= 16
-        bounded = json.dumps(
-            {"truncated": True, "preview": compact_text(raw, max_chars=preview_chars)},
-            ensure_ascii=False,
-            sort_keys=True,
-            separators=(",", ":"),
-        )
-    return bounded
-
-
-def validation_time_reference(canonical_inputs: dict[str, Any]) -> dict[str, Any]:
-    time_payload = canonical_inputs.get("time_input") or {}
-    now_utc_iso = str(time_payload.get("now_utc_iso") or "").strip()
-    timezone_name = str(time_payload.get("timezone") or "").strip()
-    if not now_utc_iso or not timezone_name:
-        return {}
-    return {
-        "now_utc_iso": now_utc_iso,
-        "timezone": timezone_name,
-        "now_local_iso": str(time_payload.get("now_local_iso") or "").strip(),
-        "local_date": str(time_payload.get("local_date") or "").strip(),
-        "local_time": str(time_payload.get("local_time") or "").strip(),
-    }
-
-
-def compacted_validation_dialogue_context_text(
-    value: dict[str, Any],
-    *,
-    time_reference: dict[str, Any] | None = None,
-) -> str:
-    raw_messages = value.get("messages")
-    if not isinstance(raw_messages, list):
-        return bounded_json_preview(value, max_chars=MAX_VALIDATION_CONTEXT_JSON_CHARS)
-    retained_messages: list[dict[str, Any]] = []
-    content_truncated = False
-    for item in raw_messages[-5:]:
-        role = str((item or {}).get("role") or "")
-        if role not in {"user", "assistant"}:
-            continue
-        raw_content = str((item or {}).get("content") or "")
-        content = compact_text(raw_content, max_chars=420)
-        content_truncated = content_truncated or raw_content != content
-        retained = {
-            "role": role,
-            "timestamp": (item or {}).get("timestamp") or None,
-            "content": content,
-        }
-        if item.get("temporal_label"):
-            retained["temporal_label"] = str(item.get("temporal_label"))
-        retained_messages.append(retained)
-
-    compacted_payload: dict[str, Any] = {
-        "schema_version": str(value.get("schema_version") or "v1"),
-        "message_count": int(value.get("source_message_count") or len(raw_messages)),
-        "retained_message_count": len(retained_messages),
-        "current_user_retained": bool(
-            value.get(
-                "current_user_retained",
-                bool(retained_messages and retained_messages[-1].get("role") == "user"),
-            )
-        ),
-        "last_assistant_retained": bool(
-            value.get(
-                "last_assistant_retained",
-                any(item.get("role") == "assistant" for item in retained_messages),
-            )
-        ),
-        "messages": retained_messages,
-        "truncated": bool(value.get("truncated", False) or content_truncated),
-    }
-    if time_reference:
-        compacted_payload["time_reference"] = {
-            key: str(time_reference.get(key) or "")
-            for key in ("now_utc_iso", "timezone", "now_local_iso", "local_date", "local_time")
-            if str(time_reference.get(key) or "")
-        }
-    return bounded_json_preview(compacted_payload, max_chars=MAX_VALIDATION_CONTEXT_JSON_CHARS)
+    return decision.prompt_payload()
 
 
 def dry_run_response(case: dict[str, Any]) -> str:

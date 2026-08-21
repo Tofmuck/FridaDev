@@ -26,8 +26,9 @@ the fallback.
 
 The sixth implemented suite is `validation_agent`, which compares only the
 primary OpenRouter validation caller. It checks the final hermeneutic posture
-contract (`answer|clarify|suspend`, `simple|meta`) without touching the
-deterministic `primary_node` or the production runtime settings.
+contract (`answer|clarify|suspend`, `simple|meta|presence`) without touching
+the deterministic `primary_node` or the production runtime settings. Its Lot 3
+Presence corpus is a separate, human-gated fixture set.
 
 The seventh implemented suite is `web_search`, which compares the local
 FridaDev web pipeline (SearXNG + Crawl4AI) with OpenRouter server tools
@@ -375,8 +376,9 @@ runtime settings lot.
 ## Validation agent primary benchmark
 
 The validation suite compares only the primary `validation_agent` model. It
-uses the production prompt `app/prompts/validation_agent.txt` and compact
-fixtures derived mostly from existing validation/primary-node tests.
+uses the production prompt `app/prompts/validation_agent.txt`, the production
+message builder, output enums and hard guards, plus compact fixtures derived
+mostly from existing validation/primary-node tests.
 
 Default validation agent models:
 
@@ -397,6 +399,24 @@ Dry run:
 ```bash
 python3 benchmark/run_benchmark.py validation_agent --dry-run
 ```
+
+The Lot 3 Presence corpus is selected explicitly and remains blocked from a
+live provider run until its semantic labels and proposed safety thresholds have
+been accepted by Tof:
+
+```bash
+python3 benchmark/run_benchmark.py \
+  --suite validation_agent \
+  --validation-agent-corpus presence \
+  --dry-run \
+  --campaign-id lot3-presence-dry-run \
+  --output-dir /tmp/fridadev-lot3-presence
+```
+
+This corpus reuses the shared synthetic dialogic fixture when an exact case
+already exists. Its decision artifacts retain only bounded IDs, semantic
+families, expected enums, severities, counts, hashes and metrics: no dialogue,
+fixture justification, provider output or free-form model reason.
 
 Example live run:
 
