@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -29,7 +30,7 @@ DIALOGIC_REGIME_CORPUS_PATH = Path("app/tests/support/dialogic_regime_corpus.jso
 TEMPERATURE = 0.0
 TOP_P = 1.0
 MAX_TOKENS = 140
-TIMEOUT_S = 10
+TIMEOUT_S = 15
 
 ALLOWED_POSTURES = set(validation_contract.ALLOWED_PRIMARY_JUDGMENT_POSTURES)
 ALLOWED_OUTPUT_REGIMES = set(validation_contract.ALLOWED_FINAL_OUTPUT_REGIMES)
@@ -98,6 +99,15 @@ def _repo_root_for(path: Path) -> Path:
 def _validate_presence_document(payload: dict[str, Any]) -> None:
     if payload.get("human_validation_status") not in {"pending", "validated", "rejected"}:
         raise ValueError("presence corpus must expose a bounded human_validation_status")
+    if payload.get("human_validation_status") == "validated":
+        if not str(payload.get("human_validation_date") or "").strip():
+            raise ValueError("validated presence corpus must expose human_validation_date")
+        if payload.get("human_validation_basis") != "operator_accepted_fixture_without_changes":
+            raise ValueError("validated presence corpus must expose the bounded validation basis")
+        observed_fingerprint = str(payload.get("validated_contract_sha256") or "").strip()
+        expected_fingerprint = presence_contract_sha256(payload)
+        if observed_fingerprint != expected_fingerprint:
+            raise ValueError("validated presence corpus fingerprint mismatch")
     thresholds = payload.get("proposed_safety_thresholds")
     if not isinstance(thresholds, dict) or not thresholds:
         raise ValueError("presence corpus must expose proposed safety thresholds")
@@ -296,13 +306,35 @@ def dry_run_response(case: dict[str, Any]) -> str:
     return json.dumps(payload, ensure_ascii=False, sort_keys=True)
 
 
-def generation_params(*, max_tokens: int | None = None) -> dict[str, Any]:
+def presence_contract_sha256(payload: dict[str, Any]) -> str:
+    contract = {
+        "cases": payload.get("cases") or [],
+        "runtime_boundary_cases": payload.get("runtime_boundary_cases") or [],
+        "proposed_safety_thresholds": payload.get("proposed_safety_thresholds") or {},
+    }
+    encoded = json.dumps(
+        contract,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def generation_params(
+    *,
+    max_tokens: int | None = None,
+    timeout_s: int | None = None,
+) -> dict[str, Any]:
     resolved_max_tokens = MAX_TOKENS if max_tokens is None else int(max_tokens)
+    resolved_timeout_s = TIMEOUT_S if timeout_s is None else int(timeout_s)
     if resolved_max_tokens <= 0:
         raise ValueError("validation_agent max_tokens must be positive")
+    if resolved_timeout_s <= 0:
+        raise ValueError("validation_agent timeout_s must be positive")
     return {
         "temperature": TEMPERATURE,
         "top_p": TOP_P,
         "max_tokens": resolved_max_tokens,
-        "timeout_s": TIMEOUT_S,
+        "timeout_s": resolved_timeout_s,
     }

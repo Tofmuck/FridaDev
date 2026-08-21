@@ -8,7 +8,7 @@ from typing import Any
 
 from benchmark.core.campaign import CampaignConfig, sha256_file, sha256_text, utc_timestamp, write_json
 from benchmark.core.openrouter import OpenRouterClient
-from benchmark.suites.validation_agent import adapter, scorer
+from benchmark.suites.validation_agent import adapter, evaluation, scorer
 
 
 def run_validation_agent_campaign(
@@ -18,6 +18,8 @@ def run_validation_agent_campaign(
     generation_params: dict[str, Any] | None = None,
     comparison_path: Path | None = None,
     fixture_path: Path | None = None,
+    model_roles: dict[str, str] | None = None,
+    repetitions: int = 1,
 ) -> dict[str, str]:
     campaign = build_validation_agent_campaign(
         config=config,
@@ -25,6 +27,8 @@ def run_validation_agent_campaign(
         generation_params=generation_params,
         comparison_path=comparison_path,
         fixture_path=fixture_path,
+        model_roles=model_roles,
+        repetitions=repetitions,
     )
     if campaign.get("content_free_decision_artifact"):
         assert_presence_campaign_content_free(campaign)
@@ -43,6 +47,8 @@ def build_validation_agent_campaign(
     generation_params: dict[str, Any] | None = None,
     comparison_path: Path | None = None,
     fixture_path: Path | None = None,
+    model_roles: dict[str, str] | None = None,
+    repetitions: int = 1,
 ) -> dict[str, Any]:
     prompt_path = config.repo_root / adapter.PROMPT_PATH
     fixture_path = fixture_path or (config.repo_root / adapter.FIXTURE_PATH)
@@ -52,68 +58,119 @@ def build_validation_agent_campaign(
     fixture_document = adapter.load_fixture_document(fixture_path)
     cases = fixture_document["cases"]
     presence_corpus = fixture_document.get("schema_version") == "validation_presence_corpus_v1"
-    generation_settings = generation_params or adapter.generation_params()
+    if repetitions < 1 or repetitions > 3:
+        raise ValueError("validation_agent repetitions must be between 1 and 3")
+    resolved_model_roles = {
+        model: str((model_roles or {}).get(model) or "unspecified")
+        for model in config.models
+    }
+    if any(role not in {"primary", "fallback", "unspecified"} for role in resolved_model_roles.values()):
+        raise ValueError("validation_agent model roles must be primary, fallback or unspecified")
+    if presence_corpus and len(cases) * len(config.models) * repetitions > 144:
+        raise ValueError("validation_agent Presence campaign exceeds the 144-call safety cap")
+    if presence_corpus and not config.dry_run:
+        if fixture_document.get("human_validation_status") != "validated":
+            raise ValueError("live Presence benchmark requires a human-validated corpus")
+        if sorted(resolved_model_roles.values()) != ["fallback", "primary"]:
+            raise ValueError("live Presence benchmark requires one primary and one fallback model")
+    generation_settings = generation_params or adapter.generation_params(
+        timeout_s=config.timeout_s,
+    )
+    if presence_corpus and int(generation_settings.get("timeout_s") or 0) != config.timeout_s:
+        raise ValueError("Presence campaign timeout metadata must match the provider timeout")
     results: list[dict[str, Any]] = []
 
     for model in config.models:
         calls: list[dict[str, Any]] = []
         for case in cases:
-            payload = adapter.build_payload(
-                case,
-                model,
-                prompt_text,
-                generation_settings=generation_settings,
-            )
-            request_signature = {
-                "messages_sha256": sha256_text(json.dumps(payload["messages"], ensure_ascii=False, sort_keys=True)),
-                "generation_params": {
-                    "temperature": payload.get("temperature"),
-                    "top_p": payload.get("top_p"),
-                    "max_tokens": payload.get("max_tokens"),
-                },
-            }
-            if config.dry_run:
-                provider = _dry_provider(case)
-                score = scorer.score_output(case, provider.get("raw_text") or "")
-            else:
-                if client is None:
-                    raise RuntimeError("client is required outside dry-run mode")
-                provider = client.chat_completion(payload, caller="validation_agent", timeout_s=config.timeout_s)
-                score = scorer.score_output(case, provider.get("raw_text") or "", provider.get("error"))
+            for repetition_index in range(1, repetitions + 1):
+                payload = adapter.build_payload(
+                    case,
+                    model,
+                    prompt_text,
+                    generation_settings=generation_settings,
+                )
+                request_signature = {
+                    "messages_sha256": sha256_text(
+                        json.dumps(payload["messages"], ensure_ascii=False, sort_keys=True)
+                    ),
+                    "generation_params": {
+                        "temperature": payload.get("temperature"),
+                        "top_p": payload.get("top_p"),
+                        "max_tokens": payload.get("max_tokens"),
+                    },
+                }
+                if config.dry_run:
+                    provider = _dry_provider(case)
+                    score = scorer.score_output(case, provider.get("raw_text") or "")
+                else:
+                    if client is None:
+                        raise RuntimeError("client is required outside dry-run mode")
+                    provider = client.chat_completion(
+                        payload,
+                        caller="validation_agent",
+                        timeout_s=config.timeout_s,
+                    )
+                    score = scorer.score_output(
+                        case,
+                        provider.get("raw_text") or "",
+                        provider.get("error"),
+                    )
 
-            call = {
-                "case_id": case["id"],
-                "case_tags": list(case.get("tags") or []),
-                "expected": dict(case.get("expected") or {}),
-                "requested_model": model,
-                "observed_model": str(provider.get("model") or ""),
-                "observed_provider": str(provider.get("provider") or ""),
-                "provider_source": "dry_run" if config.dry_run else "primary",
-                "provider": _compact_provider(provider),
-                "request_signature": request_signature,
-                "score": score,
-            }
-            if presence_corpus:
-                call.update(
-                    {
-                        "semantic_family": str(case.get("semantic_family") or ""),
-                        "false_presence_severity": str(case.get("false_presence_severity") or ""),
-                        "synthetic_provenance_tags": list(case.get("synthetic_provenance_tags") or []),
-                    }
-                )
-            else:
-                call.update(
-                    {
-                        "case_origin": str(case.get("origin") or ""),
-                        "case_source_reference": str(case.get("source_reference") or ""),
-                        "case_design_note": str(case.get("design_note") or ""),
-                    }
-                )
-            calls.append(call)
+                model_role = resolved_model_roles[model]
+                call = {
+                    "case_id": case["id"],
+                    "case_tags": list(case.get("tags") or []),
+                    "expected": dict(case.get("expected") or {}),
+                    "repetition_index": repetition_index,
+                    "requested_model": model,
+                    "model_role": model_role,
+                    "observed_model": str(provider.get("model") or ""),
+                    "observed_provider": str(provider.get("provider") or ""),
+                    "provider_source": "dry_run" if config.dry_run else model_role,
+                    "provider": _compact_provider(provider),
+                    "request_signature": request_signature,
+                    "score": score,
+                }
+                if presence_corpus:
+                    call.update(
+                        {
+                            "semantic_family": str(case.get("semantic_family") or ""),
+                            "false_presence_severity": str(case.get("false_presence_severity") or ""),
+                            "synthetic_provenance_tags": list(
+                                case.get("synthetic_provenance_tags") or []
+                            ),
+                        }
+                    )
+                else:
+                    call.update(
+                        {
+                            "case_origin": str(case.get("origin") or ""),
+                            "case_source_reference": str(case.get("source_reference") or ""),
+                            "case_design_note": str(case.get("design_note") or ""),
+                        }
+                    )
+                calls.append(call)
         summary = scorer.summarize_model_results([call["score"] for call in calls])
         summary.update(_provider_summary(calls))
+        if presence_corpus:
+            summary.update(
+                evaluation.summarize_presence_repetitions(
+                    cases=cases,
+                    calls=calls,
+                    thresholds=dict(fixture_document.get("proposed_safety_thresholds") or {}),
+                    repetitions=repetitions,
+                )
+            )
         summary["provisional_verdict"] = scorer.provisional_verdict(summary)
-        results.append({"model": model, "summary": summary, "calls": calls})
+        results.append(
+            {
+                "model": model,
+                "model_role": resolved_model_roles[model],
+                "summary": summary,
+                "calls": calls,
+            }
+        )
 
     campaign = {
         "campaign_id": config.campaign_id,
@@ -122,6 +179,9 @@ def build_validation_agent_campaign(
         "caller": "validation_agent",
         "dry_run": config.dry_run,
         "models": config.models,
+        "model_roles": resolved_model_roles,
+        "repetitions": repetitions,
+        "planned_call_count": len(cases) * len(config.models) * repetitions,
         "generation_params": generation_settings,
         "timeout_s": config.timeout_s,
         "prompt_path": str(prompt_path.relative_to(config.repo_root)),
@@ -132,7 +192,7 @@ def build_validation_agent_campaign(
         "cases": _public_cases(cases, content_free=presence_corpus),
         "secrets_written": False,
         "production_runtime_changed": False,
-        "fallback_benchmarked": False,
+        "fallback_benchmarked": "fallback" in resolved_model_roles.values(),
         "human_decision_required": True,
         "retention": "compact JSON only: raw model text and free-form model reasons removed after scoring; hashes, sizes and bounded decisions retained",
         "comparison_baseline": _comparison_baseline(
@@ -147,6 +207,8 @@ def build_validation_agent_campaign(
             {
                 "corpus_schema_version": fixture_document["schema_version"],
                 "human_validation_status": fixture_document["human_validation_status"],
+                "human_validation_date": fixture_document.get("human_validation_date"),
+                "validated_contract_sha256": fixture_document.get("validated_contract_sha256"),
                 "proposed_safety_thresholds": dict(
                     fixture_document.get("proposed_safety_thresholds") or {}
                 ),
@@ -156,7 +218,21 @@ def build_validation_agent_campaign(
                 "raw_fixture_content_included": False,
                 "raw_model_output_included": False,
                 "free_form_model_reason_included": False,
+                "provider_route_observability_complete": bool(
+                    not config.dry_run
+                    and all(
+                        call.get("observed_model") and call.get("observed_provider")
+                        for result in results
+                        for call in result.get("calls") or []
+                    )
+                ),
             }
+        )
+        campaign["benchmark_decision_ready"] = bool(
+            not config.dry_run
+            and repetitions == 3
+            and campaign["provider_route_observability_complete"]
+            and all((result.get("summary") or {}).get("safety_thresholds_met") for result in results)
         )
     else:
         campaign["content_free_decision_artifact"] = False
@@ -165,8 +241,13 @@ def build_validation_agent_campaign(
 
 def render_markdown_report(campaign: dict[str, Any]) -> str:
     params = campaign.get("generation_params") or {}
+    benchmark_scope = (
+        "primaire et fallback"
+        if campaign.get("fallback_benchmarked")
+        else "primaire"
+    )
     lines = [
-        f"# Benchmark validation_agent primaire - {campaign['campaign_id']}",
+        f"# Benchmark validation_agent {benchmark_scope} - {campaign['campaign_id']}",
         "",
         f"- Created UTC: `{campaign['created_at_utc']}`",
         f"- Dry run: `{campaign['dry_run']}`",
@@ -176,25 +257,30 @@ def render_markdown_report(campaign: dict[str, Any]) -> str:
         f"- top_p: `{params.get('top_p')}`",
         f"- max_tokens: `{params.get('max_tokens')}`",
         f"- timeout_s: `{campaign.get('timeout_s')}`",
+        f"- Repetitions par cas: `{campaign.get('repetitions', 1)}`",
+        f"- Appels planifies: `{campaign.get('planned_call_count')}`",
+        f"- Roles: `{json.dumps(campaign.get('model_roles') or {}, sort_keys=True)}`",
+        f"- Routes provider observees: `{campaign.get('provider_route_observability_complete')}`",
+        f"- Decision de benchmark prete: `{campaign.get('benchmark_decision_ready')}`",
         "- Production runtime changed: `False`",
         "- Retention: raw model text is not retained; parsed decisions, hashes, sizes and metrics are kept.",
         "",
         "## Ce que cette campagne mesure",
         "",
-        "Elle compare le caller OpenRouter primaire `validation_agent` sur le vrai prompt de production.",
+        f"Elle compare les roles {benchmark_scope} du caller OpenRouter `validation_agent` sur le vrai prompt de production.",
         "Elle teste le micro-arbitrage de posture finale: `answer|clarify|suspend` et `simple|meta|presence`.",
         "",
         "## Ce que cette campagne ne prouve pas",
         "",
         "- Elle ne choisit pas automatiquement le modele de production.",
         "- Elle ne teste pas le style de la reponse finale.",
-        "- Elle ne benchmarke pas le fallback.",
+        "- Elle ne modifie ni le modele, ni le prompt, ni les reglages de production.",
         "- Elle ne remplace pas une lecture humaine de Tof sur les cas limites.",
         "",
         "## Synthese technique",
         "",
-        "| Modele | JSON | Schema | Pass | Score | Faux Presence | Presence manquee | Non-reponse bureaucratique | Unsafe answer | Hard guard | Latence moy. | Cout estime | Completion tok. moy. | Finish | Verdict provisoire |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |",
+        "| Modele | Role | JSON | Schema | Pass | Faux Presence | Presence manquee | Non-reponse bureaucratique | Unsafe answer | Stabilite | Rappel Presence | Seuils | Provider observe | Latence moy. | Cout estime |",
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | ---: | ---: |",
     ]
     for result in campaign.get("results", []):
         summary = result.get("summary") or {}
@@ -203,20 +289,20 @@ def render_markdown_report(campaign: dict[str, Any]) -> str:
             + " | ".join(
                 [
                     f"`{result.get('model')}`",
+                    f"`{result.get('model_role')}`",
                     _count(summary, "json_valid", "cases"),
                     _count(summary, "schema_valid", "cases"),
                     _count(summary, "passes", "cases"),
-                    f"{float(summary.get('avg_score') or 0.0):.2f}",
                     str(summary.get("false_presence")),
                     str(summary.get("missed_presence")),
                     str(summary.get("bureaucratic_non_answer")),
                     str(summary.get("unsafe_answers")),
-                    str(summary.get("hard_guard_violations")),
+                    _format_rate(summary.get("repetition_stability_rate")),
+                    _format_rate(summary.get("required_presence_rate")),
+                    _format_threshold_status(summary),
+                    ", ".join(summary.get("observed_providers") or []) or "n/a",
                     f"{float(summary.get('avg_latency_ms') or 0.0):.0f} ms",
                     _format_cost(summary.get("cost_estimate_usd")),
-                    f"{float(summary.get('avg_completion_tokens') or 0.0):.1f}",
-                    ", ".join(summary.get("finish_reasons") or []) or "n/a",
-                    str(summary.get("provisional_verdict") or ""),
                 ]
             )
             + " |"
@@ -280,6 +366,9 @@ def _dry_provider(case: dict[str, Any]) -> dict[str, Any]:
         "usage": {"completion_tokens": 0},
         "cost_estimate_usd": None,
         "cost_estimate_source": "dry_run",
+        "generation_id": "",
+        "model": "",
+        "provider": "",
     }
 
 
@@ -314,11 +403,27 @@ def _provider_summary(calls: list[dict[str, Any]]) -> dict[str, Any]:
             if (call.get("provider") or {}).get("finish_reason")
         }
     )
+    observed_models = sorted(
+        {str(call.get("observed_model")) for call in calls if call.get("observed_model")}
+    )
+    observed_providers = sorted(
+        {str(call.get("observed_provider")) for call in calls if call.get("observed_provider")}
+    )
     return {
         "avg_latency_ms": round(sum(elapsed) / max(1, count), 2),
         "cost_estimate_usd": round(sum(costs), 8) if costs else None,
         "avg_completion_tokens": round(sum(completion_tokens) / max(1, count), 2),
         "finish_reasons": finish_reasons,
+        "observed_models": observed_models,
+        "observed_providers": observed_providers,
+        "observed_model_present_rate": round(
+            sum(1 for call in calls if call.get("observed_model")) / max(1, count),
+            4,
+        ),
+        "observed_provider_present_rate": round(
+            sum(1 for call in calls if call.get("observed_provider")) / max(1, count),
+            4,
+        ),
     }
 
 
@@ -438,7 +543,7 @@ def _overall_reading_lines(campaign: dict[str, Any]) -> list[str]:
     lines.append(
         "Le meilleur signal quantitatif revient ici a "
         f"`{top.get('model')}`: "
-        f"{(top.get('summary') or {}).get('passes')}/{campaign.get('case_count')} pass, "
+        f"{(top.get('summary') or {}).get('passes')}/{(top.get('summary') or {}).get('cases')} pass, "
         f"score moyen {(top.get('summary') or {}).get('avg_score')}. "
         "La decision reste humaine: il faut surtout lire les erreurs de posture et les meta inutiles."
     )
@@ -518,6 +623,20 @@ def _model_reading_lines(result: dict[str, Any]) -> list[str]:
         f"- Verdict provisoire: {summary.get('provisional_verdict')}",
         f"- Profil: {_qualitative_profile(summary)}",
     ]
+    if "repetition_stability_rate" in summary:
+        lines.extend(
+            [
+                f"- Stabilite: {_format_rate(summary.get('repetition_stability_rate'))}",
+                f"- Rappel Presence requis: {_format_rate(summary.get('required_presence_rate'))}",
+                f"- Seuils de securite: {'OK' if summary.get('safety_thresholds_met') else 'ECHEC'}",
+            ]
+        )
+        threshold_failures = list(summary.get("safety_threshold_failures") or [])
+        unstable_case_ids = list(summary.get("unstable_case_ids") or [])
+        if threshold_failures:
+            lines.append(f"- Seuils rates: `{', '.join(threshold_failures)}`")
+        if unstable_case_ids:
+            lines.append(f"- Cas instables: `{', '.join(unstable_case_ids)}`")
     interesting = _interesting_examples(result.get("calls") or [])
     if not interesting:
         lines.append("- Aucun ecart majeur releve par le scorer.")
@@ -592,6 +711,31 @@ def _provisional_recommendation(campaign: dict[str, Any]) -> str:
     results = campaign.get("results") or []
     if not results:
         return "Aucun resultat exploitable."
+    if campaign.get("content_free_decision_artifact") and not campaign.get(
+        "benchmark_decision_ready"
+    ):
+        if campaign.get("dry_run"):
+            return (
+                "Campagne dry-run: aucune route provider n'a ete observee et aucune "
+                "decision de benchmark n'est possible. Aucun changement de production "
+                "n'est propose par cette campagne."
+            )
+        failures = [
+            str(result.get("model"))
+            for result in results
+            if not (result.get("summary") or {}).get("safety_thresholds_met")
+        ]
+        if failures:
+            return (
+                "Decision de benchmark non prete: au moins un seuil de securite "
+                f"echoue pour `{', '.join(failures)}`. Aucun changement de production "
+                "n'est propose par cette campagne."
+            )
+        return (
+            "Decision de benchmark non prete: repetitions ou routes provider "
+            "incompletes. Aucun changement de production n'est propose par cette "
+            "campagne."
+        )
     ranked = sorted(
         results,
         key=lambda result: (
@@ -630,3 +774,15 @@ def _format_cost(value: Any) -> str:
     if isinstance(value, (int, float)):
         return f"${float(value):.6f}"
     return "n/a"
+
+
+def _format_rate(value: Any) -> str:
+    if isinstance(value, (int, float)):
+        return f"{100.0 * float(value):.1f}%"
+    return "n/a"
+
+
+def _format_threshold_status(summary: dict[str, Any]) -> str:
+    if "safety_thresholds_met" not in summary:
+        return "n/a"
+    return "OK" if summary.get("safety_thresholds_met") else "ECHEC"

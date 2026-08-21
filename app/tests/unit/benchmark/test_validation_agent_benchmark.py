@@ -136,6 +136,7 @@ class ValidationAgentBenchmarkSuiteTests(unittest.TestCase):
             self.assertFalse(provider["raw_text_retained"])
             self.assertTrue(provider["raw_text_sha256"])
             self.assertIn("Lecture hermeneutique par modele", markdown)
+            self.assertNotIn("| ECHEC |", markdown)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,9 @@
 {
   "schema_version": "validation_presence_corpus_v1",
-  "human_validation_status": "pending",
+  "human_validation_status": "validated",
+  "human_validation_date": "2026-08-21",
+  "human_validation_basis": "operator_accepted_fixture_without_changes",
+  "validated_contract_sha256": "646cc504d057021d870b16628b07c5ace83c711cbe36c489c1f0ec62049d2ed1",
   "description": "Corpus synthetique propose pour relire Presence avant tout benchmark provider reel.",
   "proposed_safety_thresholds": {
     "critical_or_high_false_presence_max": 0,

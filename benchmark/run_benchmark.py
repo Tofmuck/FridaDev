@@ -100,12 +100,15 @@ def main() -> int:
         choices=("primary", "presence"),
         default="primary",
     )
+    parser.add_argument("--validation-agent-primary-model", default=None)
+    parser.add_argument("--validation-agent-fallback-model", default=None)
+    parser.add_argument("--validation-agent-repetitions", type=int, default=1)
     parser.add_argument("--web-search-arms", nargs="*", default=None)
     parser.add_argument("--web-search-max-results", type=int, default=web_search_adapter.DEFAULT_MAX_RESULTS)
     parser.add_argument("--web-search-max-total-results", type=int, default=web_search_adapter.DEFAULT_MAX_TOTAL_RESULTS)
     parser.add_argument("--web-search-context-size", default=web_search_adapter.DEFAULT_SEARCH_CONTEXT_SIZE)
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--timeout-s", type=int, default=90)
+    parser.add_argument("--timeout-s", type=int, default=None)
     parser.add_argument("--base-url", default=None)
     args = parser.parse_args()
 
@@ -132,7 +135,23 @@ def main() -> int:
         default_models = DEFAULT_WEB_SEARCH_MODELS
     else:
         default_models = DEFAULT_ARBITER_MODELS
-    if args.models is None:
+    validation_model_roles: dict[str, str] = {}
+    explicit_validation_roles = bool(
+        args.validation_agent_primary_model or args.validation_agent_fallback_model
+    )
+    if suite == "validation_agent" and explicit_validation_roles:
+        if not args.validation_agent_primary_model or not args.validation_agent_fallback_model:
+            raise SystemExit("both validation-agent primary and fallback models are required")
+        if args.models is not None:
+            raise SystemExit("use validation-agent role options instead of --models for a role-aware run")
+        models = ensure_unique_models(
+            [args.validation_agent_primary_model, args.validation_agent_fallback_model]
+        )
+        validation_model_roles = {
+            args.validation_agent_primary_model: "primary",
+            args.validation_agent_fallback_model: "fallback",
+        }
+    elif args.models is None:
         models = list(default_models)
     else:
         models = ensure_unique_models(args.models)
@@ -141,6 +160,13 @@ def main() -> int:
     if suite == "arbiter" and "openai/gpt-5.4-nano" in models:
         raise SystemExit("openai/gpt-5.4-nano is intentionally excluded from the first arbiter campaign")
     output_dir = args.output_dir or f"benchmark/results/{suite}"
+    timeout_s = (
+        int(args.timeout_s)
+        if args.timeout_s is not None
+        else validation_agent_adapter.TIMEOUT_S
+        if suite == "validation_agent"
+        else 90
+    )
 
     config = CampaignConfig(
         campaign_id=campaign_id,
@@ -149,7 +175,7 @@ def main() -> int:
         output_dir=(repo_root / output_dir).resolve(),
         models=models,
         dry_run=bool(args.dry_run),
-        timeout_s=int(args.timeout_s),
+        timeout_s=timeout_s,
     )
 
     web_search_arms_for_client: list[str] | None = None
@@ -235,9 +261,12 @@ def main() -> int:
             client=client,
             generation_params=validation_agent_adapter.generation_params(
                 max_tokens=args.validation_agent_max_tokens,
+                timeout_s=config.timeout_s,
             ),
             comparison_path=(Path(args.validation_agent_compare_with) if args.validation_agent_compare_with else None),
             fixture_path=repo_root / validation_fixture_path,
+            model_roles=validation_model_roles,
+            repetitions=args.validation_agent_repetitions,
         )
         print(f"wrote {result['json_path']}")
         print(f"wrote {result['markdown_path']}")

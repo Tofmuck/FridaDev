@@ -1248,7 +1248,7 @@ Arreter avant patch ou avant livraison si:
 
 # LOT 3 - Corpus d'evaluation Presence
 
-Statut: en cours - passe 1 corpus/scorer livree, validation humaine et benchmark provider attendus
+Statut: en cours - passes 1 et 2 livrees; baseline primaire/fallback documentee, seuil fallback non atteint
 Nature: tests/benchmark/docs-only
 Dependance: Lots Identity independants termines ou explicitement pauses
 Livraison live: interdite
@@ -1385,13 +1385,13 @@ Mutations controlees rejetees:
 - dialogue, raison libre ou sortie provider brute reinjectes dans l'artefact
   content-free.
 
-Limites restantes avant fermeture:
+Limites restantes apres la passe 1:
 
-- Tof doit accepter, corriger ou rejeter les 24 etiquettes semantiques et les
+- Tof devait accepter, corriger ou rejeter les 24 etiquettes semantiques et les
   seuils proposes;
-- aucun run primaire/fallback, cout, latence ou repetition provider n'a encore
-  ete execute;
-- la baseline du modele courant n'est donc pas documentee et le Lot 3 reste
+- aucun run primaire/fallback, cout, latence ou repetition provider n'avait
+  encore ete execute;
+- la baseline du modele courant n'etait donc pas documentee et le Lot 3 restait
   ouvert;
 - la suite agregative historique non decouverte `test_model_benchmark` importe
   encore `memory_identity_periodic_apply`, deja absent au commit baseline; ce
@@ -1400,12 +1400,114 @@ Limites restantes avant fermeture:
 - aucun runtime, prompt, modele, setting, read-model ou frontend produit n'a
   change; aucune livraison live n'est requise ni autorisee.
 
+## Passe 2 - validation humaine et baseline primaire/fallback (2026-08-21)
+
+Decision de methode:
+
+- Tof a accepte sans modification les 24 etiquettes semantiques et les seuils
+  proposes; le corpus porte le statut `validated`, la date, une base de
+  validation bornee et l'empreinte semantique
+  `646cc504d057021d870b16628b07c5ace83c711cbe36c489c1f0ec62049d2ed1`;
+- toute modification des cas, frontieres runtime ou seuils invalide cette
+  empreinte et interdit un nouveau run live tant qu'une validation humaine
+  n'est pas recreee;
+- la campagne compare exactement les roles runtime primaire
+  `google/gemini-3.1-flash-lite` et fallback `openai/gpt-5.4-nano`, avec trois
+  repetitions des 24 cas, soit 144 appels bornes, `temperature=0`, `top_p=1`,
+  `max_tokens=140` et `timeout_s=15`;
+- aucune regex ni heuristique lexicale n'a ete ajoutee: les verdicts restent
+  produits par le modele et notes contre le contrat semantique valide;
+- aucun endpoint chat, tour operateur, DB, secret persiste, setting runtime ou
+  service produit n'a ete sollicite ou modifie; seule la cle runtime deja
+  resolue dans le conteneur a servi au transport benchmark et n'a jamais ete
+  affichee ou ecrite dans un artefact.
+
+Instrumentation et observabilite benchmark:
+
+- `benchmark/core/openrouter.py` conserve pour chaque appel les metadonnees
+  bornees `generation_id`, modele observe et provider observe, sans payload ni
+  sortie brute;
+- le runner exige un role primaire et un role fallback explicites, refuse un
+  corpus non valide, plus de trois repetitions ou plus de 144 appels;
+- l'artefact distingue modele demande, role, modele/provider observes,
+  repetition, latence, cout, statut schema, posture/regime et reason codes
+  bornes; il rejette dialogue, justification humaine, sortie provider, raison
+  libre, erreur brute et secret;
+- la chaine d'observation est complete sur les 144 appels: le primaire a ete
+  servi par `Google` ou `Google AI Studio`, le fallback par `OpenAI`;
+- aucun read-model ou frontend produit n'est concerne: cette observabilite
+  appartient exclusivement au workspace benchmark et reste synchronisee dans
+  les tests et le rapport de la meme passe.
+
+Resultats content-free:
+
+- primaire: 72/72 schemas valides, 54/72 correspondances exactes, zero
+  Presence manquee, rappel Presence 100 %, stabilite 100 %, zero faux Presence
+  haute/critique et zero Presence issue d'un hard guard/fail-open; tous les
+  seuils predeclares sont satisfaits;
+- le primaire conserve toutefois trois faux Presence de gravite moyenne sur
+  `P3-021` et six reponses trop permissives sur `P3-018`/`P3-022`; ces ecarts
+  restent visibles meme s'ils ne violent pas les seuils acceptes;
+- fallback: 72/72 schemas valides, 53/72 correspondances exactes, zero faux
+  Presence, stabilite 91,67 %, mais 15 Presence manquees, soit les cinq cas
+  Presence requis rates a chacune des trois repetitions; rappel Presence 0 %
+  pour un minimum predeclare de 80 %;
+- le fallback echoue donc le seuil `required_presence_rate`; les autres seuils
+  sont satisfaits, mais `benchmark_decision_ready=false` et le Lot 3 reste
+  ouvert;
+- latence moyenne: 832,78 ms primaire et 1 151,05 ms fallback; cout estime:
+  0,044796 USD et 0,03003101 USD, soit 0,07482701 USD au total;
+- preuves durables:
+  `benchmark/results/validation_agent/2026-08-21-lot3-presence-current-runtime.json`
+  et `.md`, sans contenu de dialogue ou sortie provider brute.
+
+Sensibilite et mutations controlees rejetees:
+
+- alteration d'une etiquette, d'une frontiere ou d'un seuil apres validation;
+- campagne live sur corpus `pending` ou sans roles primaire/fallback exacts;
+- quatrieme repetition, depassement de 144 appels ou timeout rapporte different
+  du timeout transport;
+- disparition ou falsification du modele/provider observe;
+- rapport affirmant a tort que le fallback n'a pas ete benchmarke;
+- dialogue, justification, raison libre, sortie brute ou erreur brute ajoutee
+  a l'artefact content-free.
+
+Commandes et preuves de la passe 2:
+
+- baseline avant patch: Python `2709/2709`, JavaScript `135/135`, Chromium
+  `15/15`, zero echec, erreur, skip ou expected failure;
+- reproduction rouge: validation humaine encore `pending`, instrumentation de
+  roles/repetitions/route provider absente et rapport affirmant a tort ne pas
+  benchmarker le fallback;
+- tests benchmark Validation Presence et historique: 18 tests OK;
+- suites voisines Validation, Presence, final locks et Lot 9: 75 tests OK;
+- dry-run role-aware hermetique: 144 appels synthetiques, trois repetitions,
+  corpus valide, aucun reseau ni secret;
+- campagne provider: 144 completions exactement, puis regeneration du seul
+  Markdown apres correction du rapport, sans nouvel appel provider;
+- le controle recursif content-free et la recherche des contenus synthetiques
+  de fixture dans les deux artefacts sont verts;
+- decouverte Python finale: `2713/2713`, zero echec, erreur, skip ou expected
+  failure, soit exactement quatre nouveaux tests depuis la baseline `2709`;
+- frontend Node: `135/135`; smoke Chromium de reference: `15/15`; suite
+  navigateur complete: `19/19`, sans reseau, installation ou pull.
+
+Limite bloquante restante:
+
+- le fallback runtime ne remplit pas la fonction Presence attendue. Le seuil
+  ne sera ni abaisse ni requalifie silencieusement. La fermeture exige une
+  decision distincte de Tof: accepter explicitement cette degradation bornee
+  du fallback, ou autoriser un micro-lot separe de correction puis rejouer la
+  meme campagne. Aucun de ces deux choix n'est infere dans cette passe.
+
 ## Condition de fermeture
 
-- [ ] Aucun changement runtime ou modele.
-- [ ] Corpus Presence valide humainement.
-- [ ] Baseline du modele courant documentee.
-- [ ] Seuils de securite explicites avant toute optimisation.
+- [x] Aucun changement runtime ou modele.
+- [x] Corpus Presence valide humainement.
+- [x] Baseline du modele courant documentee.
+- [x] Seuils de securite explicites avant toute optimisation.
+- [ ] Echec du seuil fallback resolu par correction prouvee ou accepte
+  explicitement par Tof.
 
 # LOT 4 - Ablation Stimmung et decision d'architecture
 

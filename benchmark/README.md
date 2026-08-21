@@ -24,11 +24,13 @@ Stimmung agent on short French diagnostic scenes. It checks strict JSON/schema
 validity and gives a qualitative reading of local affect without benchmarking
 the fallback.
 
-The sixth implemented suite is `validation_agent`, which compares only the
-primary OpenRouter validation caller. It checks the final hermeneutic posture
-contract (`answer|clarify|suspend`, `simple|meta|presence`) without touching
-the deterministic `primary_node` or the production runtime settings. Its Lot 3
-Presence corpus is a separate, human-gated fixture set.
+The sixth implemented suite is `validation_agent`. Its historical campaign
+compares candidate primary models; its Lot 3 Presence campaign compares the
+current primary and fallback roles explicitly. It checks the final
+hermeneutic posture contract (`answer|clarify|suspend`,
+`simple|meta|presence`) without touching the deterministic `primary_node` or
+the production runtime settings. The Presence corpus is a separate,
+human-gated fixture set.
 
 The seventh implemented suite is `web_search`, which compares the local
 FridaDev web pipeline (SearXNG + Crawl4AI) with OpenRouter server tools
@@ -373,12 +375,14 @@ The report is a decision aid, not an automatic production verdict. It must not
 be used to change `stimmung_agent_model` without a separate decision and
 runtime settings lot.
 
-## Validation agent primary benchmark
+## Validation agent benchmark
 
-The validation suite compares only the primary `validation_agent` model. It
-uses the production prompt `app/prompts/validation_agent.txt`, the production
-message builder, output enums and hard guards, plus compact fixtures derived
-mostly from existing validation/primary-node tests.
+The validation suite uses the production prompt
+`app/prompts/validation_agent.txt`, the production message builder, output
+enums and hard guards, plus compact fixtures derived mostly from existing
+validation/primary-node tests. Historical campaigns compare primary
+candidates. The human-validated Presence campaign requires exactly one
+primary role and one fallback role.
 
 Default validation agent models:
 
@@ -392,7 +396,7 @@ Fixed validation agent parameters:
 - `temperature=0.0`
 - `top_p=1.0`
 - `max_tokens=140`
-- `timeout_s=10`
+- `timeout_s=15`
 
 Dry run:
 
@@ -400,9 +404,9 @@ Dry run:
 python3 benchmark/run_benchmark.py validation_agent --dry-run
 ```
 
-The Lot 3 Presence corpus is selected explicitly and remains blocked from a
-live provider run until its semantic labels and proposed safety thresholds have
-been accepted by Tof:
+The Lot 3 Presence corpus is selected explicitly. A live provider run is
+blocked unless its semantic labels and safety thresholds have been accepted by
+Tof and protected by the validated corpus fingerprint:
 
 ```bash
 python3 benchmark/run_benchmark.py \
@@ -418,13 +422,38 @@ already exists. Its decision artifacts retain only bounded IDs, semantic
 families, expected enums, severities, counts, hashes and metrics: no dialogue,
 fixture justification, provider output or free-form model reason.
 
+The role-aware campaign is capped at three repetitions and 144 model calls:
+
+```bash
+OPENROUTER_API_KEY=... python3 benchmark/run_benchmark.py \
+  --suite validation_agent \
+  --validation-agent-corpus presence \
+  --validation-agent-primary-model google/gemini-3.1-flash-lite \
+  --validation-agent-fallback-model openai/gpt-5.4-nano \
+  --validation-agent-repetitions 3 \
+  --timeout-s 15 \
+  --campaign-id 2026-08-21-lot3-presence-current-runtime \
+  --output-dir benchmark/results/validation_agent
+```
+
+The retained 2026-08-21 campaign is content-free and records the model and
+provider actually observed for every call:
+
+- `benchmark/results/validation_agent/2026-08-21-lot3-presence-current-runtime.md`
+- `benchmark/results/validation_agent/2026-08-21-lot3-presence-current-runtime.json`
+
+The current primary satisfies all predeclared Presence thresholds. The current
+fallback fails the required-Presence recall threshold (`0%`, minimum `80%`).
+The benchmark decision is therefore not ready and Lot 3 remains open. This
+result does not authorize a prompt, model or runtime-settings change.
+
 Example live run:
 
 ```bash
 OPENROUTER_API_KEY=... python3 benchmark/run_benchmark.py \
   --suite validation_agent \
   --campaign-id <date>-validation-agent-primary-benchmark \
-  --timeout-s 10 \
+  --timeout-s 15 \
   --output-dir benchmark/results/validation_agent
 ```
 
@@ -445,7 +474,7 @@ OPENROUTER_API_KEY=... python3 benchmark/run_benchmark.py \
   --campaign-id <date>-validation-agent-primary-maxN \
   --validation-agent-max-tokens 140 \
   --validation-agent-compare-with <baseline-json> \
-  --timeout-s 10 \
+  --timeout-s 15 \
   --output-dir benchmark/results/validation_agent
 ```
 

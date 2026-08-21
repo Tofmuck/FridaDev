@@ -9,6 +9,7 @@ import sys
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 
 def _repo_root() -> Path:
@@ -26,6 +27,7 @@ for import_root in (REPO_ROOT, APP_DIR):
 
 from agenda.chat_runtime import AgendaChatResult
 from agenda.response_rendering import AgendaFinalResponseLock
+from benchmark.core import openrouter
 from benchmark.core.campaign import CampaignConfig
 from benchmark.suites.validation_agent import adapter
 from benchmark.suites.validation_agent import campaign
@@ -59,9 +61,17 @@ class ValidationAgentPresenceCorpusTests(unittest.TestCase):
     def _case(self, case_id: str) -> dict:
         return next(case for case in self.cases if case["id"] == case_id)
 
-    def test_presence_corpus_is_reviewable_complete_and_still_pending_human_validation(self) -> None:
+    def test_presence_corpus_records_the_operator_validation_without_semantic_changes(self) -> None:
         self.assertEqual(self.document["schema_version"], "validation_presence_corpus_v1")
-        self.assertEqual(self.document["human_validation_status"], "pending")
+        self.assertEqual(self.document["human_validation_status"], "validated")
+        self.assertEqual(self.document["human_validation_date"], "2026-08-21")
+        self.assertEqual(
+            self.document["human_validation_basis"],
+            "operator_accepted_fixture_without_changes",
+        )
+        expected_fingerprint = "646cc504d057021d870b16628b07c5ace83c711cbe36c489c1f0ec62049d2ed1"
+        self.assertEqual(self.document["validated_contract_sha256"], expected_fingerprint)
+        self.assertEqual(adapter.presence_contract_sha256(self.document), expected_fingerprint)
         self.assertEqual(len(self.cases), 24)
         self.assertEqual(len(self.document["runtime_boundary_cases"]), 6)
 
@@ -282,7 +292,7 @@ class ValidationAgentPresenceCorpusTests(unittest.TestCase):
             markdown = Path(result["markdown_path"]).read_text(encoding="utf-8")
 
         self.assertEqual(artifact["corpus_schema_version"], "validation_presence_corpus_v1")
-        self.assertEqual(artifact["human_validation_status"], "pending")
+        self.assertEqual(artifact["human_validation_status"], "validated")
         self.assertTrue(artifact["content_free_decision_artifact"])
         self.assertEqual(artifact["case_count"], 24)
         self.assertEqual(artifact["runtime_boundary_case_count"], 6)
@@ -336,6 +346,155 @@ class ValidationAgentPresenceCorpusTests(unittest.TestCase):
             self.assertEqual(completed.returncode, 0, completed.stderr)
             self.assertTrue((output_dir / "lot3-presence-entrypoint-dry-run.json").is_file())
             self.assertTrue((output_dir / "lot3-presence-entrypoint-dry-run.md").is_file())
+
+    def test_campaign_records_runtime_timeout_model_roles_and_three_repetitions(self) -> None:
+        with TemporaryDirectory() as tmp:
+            config = CampaignConfig(
+                campaign_id="lot3-presence-repetition-dry-run",
+                suite="validation_agent",
+                repo_root=REPO_ROOT,
+                output_dir=Path(tmp) / "results",
+                models=["synthetic/primary", "synthetic/fallback"],
+                dry_run=True,
+                timeout_s=15,
+            )
+            try:
+                result = campaign.build_validation_agent_campaign(
+                    config=config,
+                    client=None,
+                    fixture_path=self.fixture_path,
+                    model_roles={
+                        "synthetic/primary": "primary",
+                        "synthetic/fallback": "fallback",
+                    },
+                    repetitions=3,
+                )
+            except TypeError as exc:
+                self.fail(f"campaign repetition contract missing: {exc}")
+
+        self.assertEqual(result["generation_params"]["timeout_s"], 15)
+        self.assertEqual(result["timeout_s"], 15)
+        self.assertEqual(result["repetitions"], 3)
+        self.assertEqual(
+            result["model_roles"],
+            {"synthetic/primary": "primary", "synthetic/fallback": "fallback"},
+        )
+        for model_result in result["results"]:
+            calls = model_result["calls"]
+            self.assertEqual(len(calls), 72)
+            self.assertEqual({call["repetition_index"] for call in calls}, {1, 2, 3})
+            self.assertEqual(
+                {call["model_role"] for call in calls},
+                {result["model_roles"][model_result["model"]]},
+            )
+            summary = model_result["summary"]
+            self.assertEqual(summary["semantic_cases"], 24)
+            self.assertEqual(summary["repetition_stability_rate"], 1.0)
+            self.assertEqual(summary["required_presence_rate"], 1.0)
+            self.assertTrue(summary["safety_thresholds_met"])
+        markdown = campaign.render_markdown_report(result)
+        self.assertIn("primaire et fallback", markdown)
+        self.assertIn("Stabilite", markdown)
+        self.assertIn("dry-run", markdown)
+        self.assertNotIn("au moins un seuil de securite echoue", markdown)
+        self.assertNotIn("Elle ne benchmarke pas le fallback", markdown)
+
+    def test_openrouter_client_retains_bounded_observed_route_metadata(self) -> None:
+        class SyntheticResponse:
+            status_code = 200
+            content = b"synthetic"
+
+            @staticmethod
+            def json() -> dict:
+                return {
+                    "id": "generation-synthetic-001",
+                    "model": "observed/model",
+                    "provider": "observed-provider",
+                    "choices": [
+                        {
+                            "message": {"content": "{}"},
+                            "finish_reason": "stop",
+                            "native_finish_reason": "stop",
+                        }
+                    ],
+                    "usage": {"prompt_tokens": 1, "completion_tokens": 1},
+                }
+
+        client = openrouter.OpenRouterClient(
+            openrouter.OpenRouterConfig(
+                base_url="https://synthetic.invalid/api/v1",
+                api_key="synthetic-key",
+            )
+        )
+        with patch.object(openrouter.requests, "post", return_value=SyntheticResponse()):
+            observed = client.chat_completion(
+                {"model": "requested/model", "messages": []},
+                caller="validation_agent",
+                timeout_s=15,
+            )
+
+        self.assertEqual(observed.get("generation_id"), "generation-synthetic-001")
+        self.assertEqual(observed.get("model"), "observed/model")
+        self.assertEqual(observed.get("provider"), "observed-provider")
+
+    def test_validated_presence_corpus_rejects_a_semantic_mutation(self) -> None:
+        mutated = json.loads(json.dumps(self.document))
+        for case in mutated["cases"]:
+            case.pop("dialogue_ref", None)
+        mutated["cases"][0]["expected"]["final_output_regime"] = "simple"
+
+        with TemporaryDirectory() as tmp:
+            fixture_path = Path(tmp) / "mutated-presence.json"
+            fixture_path.write_text(json.dumps(mutated), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "fingerprint mismatch"):
+                adapter.load_fixture_document(fixture_path)
+
+    def test_live_presence_campaign_rejects_unvalidated_or_unbounded_runs(self) -> None:
+        pending = json.loads(json.dumps(self.document))
+        pending["human_validation_status"] = "pending"
+        for case in pending["cases"]:
+            case.pop("dialogue_ref", None)
+
+        with TemporaryDirectory() as tmp:
+            fixture_path = Path(tmp) / "pending-presence.json"
+            fixture_path.write_text(json.dumps(pending), encoding="utf-8")
+            config = CampaignConfig(
+                campaign_id="lot3-presence-unvalidated-live",
+                suite="validation_agent",
+                repo_root=REPO_ROOT,
+                output_dir=Path(tmp) / "results",
+                models=["synthetic/primary", "synthetic/fallback"],
+                dry_run=False,
+                timeout_s=15,
+            )
+            with self.assertRaisesRegex(ValueError, "human-validated corpus"):
+                campaign.build_validation_agent_campaign(
+                    config=config,
+                    client=None,
+                    fixture_path=fixture_path,
+                    model_roles={
+                        "synthetic/primary": "primary",
+                        "synthetic/fallback": "fallback",
+                    },
+                    repetitions=1,
+                )
+
+            oversized_config = CampaignConfig(
+                campaign_id="lot3-presence-over-call-cap",
+                suite="validation_agent",
+                repo_root=REPO_ROOT,
+                output_dir=Path(tmp) / "results",
+                models=["synthetic/one", "synthetic/two", "synthetic/three"],
+                dry_run=True,
+                timeout_s=15,
+            )
+            with self.assertRaisesRegex(ValueError, "144-call safety cap"):
+                campaign.build_validation_agent_campaign(
+                    config=oversized_config,
+                    client=None,
+                    fixture_path=self.fixture_path,
+                    repetitions=3,
+                )
 
 
 if __name__ == "__main__":

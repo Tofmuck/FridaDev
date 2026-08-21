@@ -60,6 +60,9 @@ class OpenRouterClient:
                     "usage": _usage(data),
                     "cost_estimate_usd": None,
                     "cost_estimate_source": "provider_error",
+                    "generation_id": _bounded_field(data.get("id")),
+                    "model": _bounded_field(data.get("model")),
+                    "provider": _bounded_field(data.get("provider")),
                 }
             raw_text = _extract_text(data)
             usage = _usage(data)
@@ -75,6 +78,9 @@ class OpenRouterClient:
                 "usage": usage,
                 "cost_estimate_usd": cost,
                 "cost_estimate_source": source,
+                "generation_id": _bounded_field(data.get("id")),
+                "model": _bounded_field(data.get("model")),
+                "provider": _bounded_field(data.get("provider")),
             }
         except Exception as exc:
             elapsed_ms = (time.perf_counter() - start) * 1000
@@ -89,6 +95,9 @@ class OpenRouterClient:
                 "usage": {},
                 "cost_estimate_usd": None,
                 "cost_estimate_source": "exception",
+                "generation_id": "",
+                "model": "",
+                "provider": "",
             }
 
     def _headers(self, *, caller: str) -> dict[str, str]:
@@ -185,6 +194,10 @@ def _compact_error(data: Any) -> str:
         if isinstance(error, str):
             return error[:500]
     return ""
+
+
+def _bounded_field(value: Any, *, max_chars: int = 200) -> str:
+    return str(value or "").strip()[:max_chars]
 
 
 def _float_or_none(value: Any) -> float | None:
