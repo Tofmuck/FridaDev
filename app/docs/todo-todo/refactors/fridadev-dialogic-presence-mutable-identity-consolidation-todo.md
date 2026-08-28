@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 2 fermes; Lot 3 en cours; Lots 4 a 8 et Z non commences
+Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, inventaire ferme et goldens non commences; Lots 5 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -1637,7 +1637,7 @@ Portee architecturale de cette acceptation:
 
 # LOT 4 - Audit causal et consolidation de Stimmung
 
-Statut: cadre valide, preuves non commencees
+Statut: inventaire ferme, goldens non commences
 Nature: audit causal multi-tours tests/benchmark/docs-only, sans cutover
 Dependance: Lot 3 ferme
 
@@ -1700,6 +1700,39 @@ surinterprete entre:
 Chaque finding doit finir `valide`, `invalide` ou `partiel`, avec le chemin de
 preuve exact. Une lecture de code, une sortie terminal ou un test synthetique
 qui contourne le coordinateur ne suffit pas a fermer le finding.
+
+## Inventaire A a Z ferme le 2026-08-28
+
+Le caller est execute une fois par tour accepte et son signal est attache au
+dernier message utilisateur. Ce signal traverse la persistance JSONB des
+messages et leur rehydratation chronologique; l'agregateur retient au maximum
+quatre signaux valides. Un affect stable ne change pas le regime primaire,
+tandis qu'une transition ou une volatilite peut le rendre plus prudent.
+
+Le compactage borne de `canonical_inputs` peut ne transmettre a Validation
+qu'une structure Stimmung partielle, ou l'evincer entierement. Le modele
+principal ne recoit pas le signal ni l'agregat: il recoit seulement la posture,
+le regime et les directives derives. L'observabilite actuelle prouve
+l'execution des stages, mais ni la reception effective par Validation ni
+l'effet causal final. Aucun golden transversal complet ne couvre encore ce
+chemin.
+
+Preuve executee pendant l'inventaire: `43` tests cibles, `43` reussites, `0`
+echec et `0` erreur. Aucun test navigateur, provider reel ou DB operateur n'a
+ete utilise; aucune decouverte complete n'a ete executee pendant l'inventaire.
+
+Classement des findings apres inventaire:
+
+- F1: `valide au niveau agregateur/regime primaire`; aucune difference sur le
+  texte final n'est encore prouvee.
+- F2: `valide comme description du raccord actuel`; son caractere
+  architecturalement incorrect reste a decider depuis les goldens.
+- F3: `valide`; une perte structurelle est possible avant Validation.
+- F4: `partiel`; l'absence du signal detaille dans le payload principal est
+  prouvee, mais son caractere dommageable reste a mesurer.
+- F5: `valide`; l'observabilite conserve un trou de preuve causale.
+- F6: `valide`; le benchmark historique est insuffisant pour la maturation
+  multi-tours et le fallback.
 
 ## Passe 4.0 - Goldens causaux hermetiques
 
@@ -1889,7 +1922,7 @@ preuve lorsqu'un test existant couvre deja exactement l'invariant.
 
 - [x] Decision humaine `keep` tracee et suppression explicitement exclue.
 - [x] Finalite dialogique et ablation diagnostique clarifiees.
-- [ ] Inventaire A a Z du pipeline, des contrats et des preuves existantes.
+- [x] Inventaire A a Z du pipeline, des contrats et des preuves existantes.
 - [ ] Goldens causaux multi-tours et mutations controlees livres.
 - [ ] Reception effective par Validation et posture finale prouvees.
 - [ ] Matrice observabilite backend/read-model/frontend prouvee.
