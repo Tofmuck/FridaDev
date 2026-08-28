@@ -1635,73 +1635,269 @@ Portee architecturale de cette acceptation:
 - [x] Echec du seuil fallback resolu par correction prouvee ou accepte
   explicitement par Tof.
 
-# LOT 4 - Ablation Stimmung et decision d'architecture
+# LOT 4 - Audit causal et consolidation de Stimmung
 
-Statut: non commence
-Nature: benchmark puis decision, sans cutover implicite
+Statut: cadre valide, preuves non commencees
+Nature: audit causal multi-tours tests/benchmark/docs-only, sans cutover
 Dependance: Lot 3 ferme
 
-## Objectif
+## Decision architecturale deja prise
 
-Determiner si Stimmung ameliore effectivement la decision hermeneutique finale
-et justifie un appel modele a chaque tour.
+Decision explicite de Tof du 28 aout 2026: Stimmung est une composante
+constitutive de FridaDev et doit etre conservee. Le Lot 4 ne decide donc plus
+si Stimmung existe. Il mesure comment elle agit reellement afin de la rendre
+plus effective, plus robuste et plus inspectable sans en perdre la finalite.
 
-## Comparaison obligatoire
+Une comparaison avec et sans signal Stimmung reste obligatoire comme ablation
+diagnostique. Elle n'est jamais une variante produit, une proposition de
+retrait ou une autorisation de cutover.
 
-Rejouer le meme corpus:
+## Finalite a preserver
 
-- pipeline courant avec Stimmung;
-- validation sans signal Stimmung;
-- variante deterministe sans appel modele seulement si elle existe deja;
-- primaire et fallback distingues.
+Stimmung rend perceptible le mouvement affectif du dialogue dans la duree. Son
+role n'est pas:
 
-Mesurer:
+- de profiler Tof ou Frida;
+- de fabriquer une Identity ou un diagnostic durable;
+- de deduire la verite d'une proposition depuis son intensite affective;
+- de forcer l'adoption d'une position;
+- de remplacer l'interpretation dialogique par une classification emotionnelle
+  locale au tour.
 
-- precision Presence;
-- faux silences;
-- psychologisation ou surcodage affectif;
-- `clarify/suspend` injustifies;
-- latence et cout;
-- impact reel de `stimmung_caution` sur le verdict final.
+Elle doit pouvoir influer sur la maniere de comprendre et de formuler une
+reponse, tout en restant une source locale, faillible, contestable et sans
+souverainete finale.
 
-## Decision de sortie obligatoire
+## Question exacte du Lot 4
 
-Choisir et documenter exactement une option:
+Prouver, sur des dialogues synthetiques multi-tours, a quels endroits le signal
+Stimmung est effectivement produit, stabilise, transmis, utilise, perdu ou
+surinterprete entre:
 
-1. `keep`: gain semantique net et reproductible;
-2. `remove`: gain absent ou insuffisant face au cout/latence;
-3. `inconclusive`: aucun changement runtime, nouveau corpus borne necessaire.
+1. le caller par tour;
+2. la persistance et la rehydratation du signal;
+3. l'agregation multi-tours;
+4. le regime epistemique primaire;
+5. Validation;
+6. la posture finale transmise au modele principal;
+7. l'observabilite backend, les read-models et les deux surfaces frontend.
 
-Interdits:
+## Hypotheses a valider ou invalider, jamais a supposer
 
-- remplacer Stimmung par des regex emotionnelles;
-- garder le caller par intuition sans preuve;
-- le retirer sur le seul critere de cout;
-- fusionner silencieusement ses donnees avec Identity.
+- F1: un affect stable peut etre classe et stabilise sans modifier le regime
+  primaire, alors qu'une transition affective le modifie.
+- F2: `stimmung_caution` peut rabattre un mouvement affectif sur une baisse de
+  certitude epistemique au lieu d'agir d'abord sur l'enonciation.
+- F3: le compactage borne de `canonical_inputs` peut faire disparaitre
+  `stimmung_input` avant Validation selon la taille et l'ordre des sources.
+- F4: le modele principal peut ne recevoir qu'une posture finale appauvrie,
+  sans la structure Stimmung qui permettrait une formulation plus juste.
+- F5: l'observabilite actuelle peut prouver l'execution des stages sans prouver
+  que Stimmung a cause une difference dans le verdict ou la reponse finale.
+- F6: le benchmark historique par tour peut etre insuffisant pour juger une
+  structure qui mature sur plusieurs tours et se stabilise avec hysteresis.
 
-## Si decision `remove`
+Chaque finding doit finir `valide`, `invalide` ou `partiel`, avec le chemin de
+preuve exact. Une lecture de code, une sortie terminal ou un test synthetique
+qui contourne le coordinateur ne suffit pas a fermer le finding.
 
-Ouvrir un micro-lot 4R separe avec GO explicite:
+## Passe 4.0 - Goldens causaux hermetiques
 
-- retirer le caller et le stockage metier de nouveaux signaux s'ils ne servent
-  plus;
-- ne pas effacer retroactivement les metadonnees historiques;
-- rendre le stage `not_applicable/retired`, pas `missing/error`;
-- mettre a jour `/hermeneutic-admin`, `/log`, `/admin`, settings et docs;
-- prouver l'identite du comportement hors differences acceptees par le corpus;
-- mesurer la latence gagnee.
+Construire une fixture transversale partagee qui traverse le vrai pipeline
+Stimmung avec providers, stockage, horloge et persistance fakes. Elle ne doit
+pas recopier les algorithmes du produit dans le test.
 
-## Si decision `keep`
+La fixture doit permettre de comparer, sur exactement le meme dialogue:
 
-Le caller entre dans le Lot 5 structured output et conserve sa frontiere:
-signal local, pas identite, pas diagnostic durable, pas souverainete finale.
+- pipeline courant complet;
+- meme execution avec signal Stimmung neutralise uniquement au raccord teste;
+- signal produit mais absent du regime primaire;
+- signal produit mais absent du payload reel de Validation;
+- signal present jusqu'a la posture finale;
+- primaire et fallback distingues;
+- succes, resultat vide, timeout, transport et schema invalide.
+
+Ces ablations sont des sondes de causalite internes aux tests. Elles ne creent
+aucun mode runtime et ne doivent laisser aucun branchement produit dormant.
+
+## Corpus dialogique multi-tours obligatoire
+
+Le corpus est content-free, synthetique, versionne et relu humainement. Chaque
+cas comporte assez de tours pour exercer la fenetre de contexte du caller et la
+stabilisation sur quatre signaux. Il couvre au minimum:
+
+- emergence progressive d'un affect;
+- affect stable sur plusieurs tours;
+- bascule nette puis stabilisation;
+- retour progressif vers un etat neutre;
+- alternance qui doit rester volatile;
+- formulation intense sans changement epistemique;
+- ironie, citation ou affect rapporte qui ne doit pas etre attribue au
+  dialogue courant;
+- correction explicite apres une mauvaise lecture affective;
+- question, demande, risque et action materielle qui ne doivent pas etre
+  masques;
+- opportunite Presence et contre-cas Presence;
+- echec primaire avec fallback;
+- echec complet en fail-open sans faux signal sain.
+
+Un snapshot d'un seul tour ne constitue jamais une preuve de Stimmung. Les
+goldens doivent montrer l'emergence, la maturite, le deplacement, la persistance
+et la decroissance du signal.
+
+## Invariants a figer
+
+- schema borne du signal par tour et reason codes;
+- ordre chronologique, fenetre, ponderation et hysteresis reelles;
+- absence de duplication apres reconstruction ou retry;
+- provenance primaire/fallback conservee;
+- difference causale, ou absence honnete de difference, pour le regime
+  primaire, Validation et la posture finale;
+- absence de psychologisation, de profilage identitaire et de contenu brut dans
+  les artefacts;
+- absence de souverainete de l'affect sur la verite ou l'adoption;
+- identite JSON/streaming lorsque le contrat l'exige;
+- fail-open sans faux succes, faux signal ou disparition silencieuse du statut;
+- aucune regression Presence, Identity mutable, contexte dialogique, final
+  locks ou persistance.
+
+## Observabilite obligatoire et simultanee
+
+Pour chaque preuve causale, etablir la matrice:
+
+`stage runtime -> event -> reader -> read-model -> renderer -> test navigateur`
+
+Elle doit distinguer sans contenu brut:
+
+- source primaire ou fallback;
+- statut et reason code;
+- signal present, absent, vide ou invalide;
+- profondeur de fenetre et etat de stabilite;
+- raccord primaire tente ou non;
+- inclusion effective dans le materiel transmis a Validation;
+- influence detectee ou non sur le regime primaire et la posture finale;
+- fail-open et limite connue.
+
+Une surface ne doit pas deduire un etat causal depuis un libelle libre. Toute
+future modification backend du Lot 4 doit mettre a jour dans le meme micro-lot
+read-model, frontend et preuves navigateur. Aucun contenu de dialogue, signal
+brut, prompt, payload provider, exception brute, URL ou secret n'entre dans les
+evenements, snapshots ou artefacts content-free.
+
+## Metriques de decision corrective
+
+Mesurer par cas, puis par famille:
+
+- exactitude et stabilite du signal;
+- surcodage affectif et affect manque;
+- psychologisation;
+- faux `clarify`, faux `suspend` et faux silence;
+- impact sur Presence et ses contre-cas;
+- changement du niveau epistemique;
+- changement de posture ou de formulation finale;
+- signal produit mais non consomme;
+- signal consomme sans effet observable;
+- latence et cout du primaire et du fallback.
+
+Les couts et latences informent une optimisation; ils ne peuvent jamais, seuls,
+justifier la suppression de Stimmung.
+
+## Sensibilite obligatoire
+
+Les preuves doivent rejeter au minimum les mutations controlees suivantes:
+
+- signal retire ou duplique;
+- ordre des signaux inverse;
+- fenetre reduite a un seul tour;
+- hysteresis ignoree;
+- affect stable transforme en volatil ou inversement;
+- `stimmung_caution` force sans condition;
+- signal absent du payload Validation presente comme recu;
+- signal present mais efface par compactage;
+- source fallback presentee comme primaire;
+- echec transforme en signal neutre sain;
+- contenu brut ajoute a l'observabilite;
+- frontend annoncant une influence que le backend ne prouve pas.
+
+Un test qui reste vert sous la mutation qu'il pretend interdire n'est pas une
+preuve acceptable.
+
+## Campagne provider eventuelle
+
+Les goldens hermetiques et le diagnostic de transport precedent toute campagne
+provider. Une campagne primaire/fallback eventuelle exige un GO explicite
+separe, utilise seulement le corpus synthetique valide, conserve un artefact
+JSONL date et content-free et n'appelle jamais une DB ou une donnee operateur.
+Elle mesure la qualite semantique sans modifier modele, prompt, niveau de
+raisonnement, timeout ou setting.
+
+## Sorties autorisees du Lot 4
+
+Le Lot 4 se ferme avec une seule decision corrective:
+
+1. `keep_current`: les effets attendus sont prouves et aucun defaut justifie un
+   changement runtime;
+2. `strengthen`: un ou plusieurs gaps sont prouves et classes dans des
+   micro-lots correctifs separes;
+3. `inconclusive`: le corpus est insuffisant; Stimmung reste strictement
+   inchangee et l'extension necessaire du corpus est bornee.
+
+La sortie `strengthen` peut proposer, sans les commencer:
+
+- livraison garantie d'un bloc Stimmung borne a Validation;
+- separation entre prudence epistemique et ajustement d'enonciation;
+- correction de stabilisation, hysteresis ou decroissance;
+- restitution d'une posture finale moins appauvrie;
+- observabilite causale backend/read-model/frontend;
+- changement de prompt ou de modele seulement si le benchmark prouve que la
+  defaillance se situe dans le caller plutot que dans son raccord.
+
+Chaque correction runtime, prompt, modele ou setting constitue un micro-lot
+distinct avec GO explicite, baseline, preuves rouges, tests, contre-audit,
+documentation, commit, push et livraison ciblee. Aucun de ces micro-lots n'est
+commence par l'audit.
+
+## Interdits absolus
+
+- supprimer, retirer, desactiver ou contourner Stimmung comme direction
+  produit;
+- transformer l'ablation diagnostique en variante runtime;
+- remplacer le caller par des regex emotionnelles;
+- conclure depuis des tests mono-tour;
+- fusionner Stimmung avec Identity ou le contexte dialogique temporaire;
+- deduire un etat interieur durable depuis un affect local;
+- modifier code runtime, prompt, modele, provider, niveau de raisonnement,
+  timeout ou setting pendant la passe 4.0;
+- provoquer un tour utilisateur, utiliser une DB operateur ou exposer du
+  contenu brut;
+- commencer le Lot 5 avant la fermeture documentaire du Lot 4.
+
+## Fichiers de preuve cibles
+
+Privilegier une fixture commune et un golden transversal, par exemple:
+
+- `app/tests/support/stimmung_dialogic_pipeline.py`;
+- `app/tests/unit/golden/test_lot4_stimmung_causal_goldens.py`;
+- les contrats existants Stimmung, noeud hermeneutique, Validation,
+  observabilite et read-model;
+- la seule presente section du Lot 4 pour les resultats et limites.
+
+Les noms exacts sont confirmes apres inventaire. Ne pas creer une seconde
+preuve lorsqu'un test existant couvre deja exactement l'invariant.
 
 ## Condition de fermeture
 
-- [ ] Decision humaine tracee.
-- [ ] Aucun caller ajoute.
-- [ ] Toute modification runtime eventuelle est un lot 4R distinct avec
-  observabilite backend/frontend simultanee.
+- [x] Decision humaine `keep` tracee et suppression explicitement exclue.
+- [x] Finalite dialogique et ablation diagnostique clarifiees.
+- [ ] Inventaire A a Z du pipeline, des contrats et des preuves existantes.
+- [ ] Goldens causaux multi-tours et mutations controlees livres.
+- [ ] Reception effective par Validation et posture finale prouvees.
+- [ ] Matrice observabilite backend/read-model/frontend prouvee.
+- [ ] Primaire et fallback distingues sans requalification d'echec.
+- [ ] Findings F1 a F6 valides, invalides ou nuances par preuves.
+- [ ] Decision `keep_current`, `strengthen` ou `inconclusive` documentee.
+- [ ] Aucun caller, mode ou capacite produit ajoute.
+- [ ] Aucun micro-lot correctif ou Lot 5 commence implicitement.
 
 # LOT 5 - Structured outputs des callers conserves
 
@@ -1712,8 +1908,8 @@ Dependance: decision Lot 4
 ## Objectif
 
 Remplacer le JSON demande en texte libre par un schema provider strict pour
-Validation et, si conserve, Stimmung, tout en gardant la validation metier
-locale souveraine.
+Validation et Stimmung, tout en gardant la validation metier locale
+souveraine.
 
 ## Travail obligatoire
 
@@ -1977,7 +2173,7 @@ Chercher activement:
 - historique legacy presente comme runtime courant;
 - faux `presence`, Presence stateful ou Presence derivee d'un fail-open;
 - hard guard affaibli;
-- Stimmung conserve sans preuve ou retire sans corpus;
+- effet causal de Stimmung non prouve ou limites identifiees non tracees;
 - structured output non exige chez le provider effectif;
 - prompt duplique ou contrat concurrent;
 - timeouts encore cumulables sans borne;
@@ -1998,7 +2194,7 @@ Dans le meme lot de cloture:
 - [ ] `app/docs/states/specs/mutable-identity-judge-contract.md`;
 - [ ] `app/docs/states/specs/identity-read-model-contract.md`;
 - [ ] `app/docs/states/specs/hermeneutic-node-validation-agent-contract.md`;
-- [ ] contrat Stimmung si le caller est conserve, ou note de retrait si retire;
+- [ ] contrat Stimmung conserve, avec effets prouves et limites explicites;
 - [ ] `app/docs/states/audits/fridadev-model-call-catalog-2026-05-17.md` ou
   son successeur vivant;
 - [ ] contrats d'observabilite et surfaces admin concernees;
@@ -2028,8 +2224,9 @@ Quand toutes les cases obligatoires sont reellement fermees:
 - deplacer ce fichier vers
   `app/docs/todo-done/refactors/fridadev-dialogic-presence-mutable-identity-consolidation-todo.md`;
 - remplacer dans `app/docs/README.md` le lien actif par le lien archive;
-- laisser visibles les decisions `keep`, `remove`, `inconclusive` et
-  `keep_current` sans forcer artificiellement un changement;
+- laisser visible la decision architecturale `keep` et la decision corrective
+  `keep_current`, `strengthen` ou `inconclusive` sans forcer artificiellement
+  un changement;
 - conserver les limites et risques residuels;
 - commit, push, worktree propre et divergence `0/0`.
 
@@ -2040,7 +2237,8 @@ Le chantier est termine lorsque:
 - Identity progresse apres une fenetre terminale;
 - l'extracteur legacy n'est plus un caller actif;
 - Presence est evaluee sur son contrat reel;
-- Stimmung a une decision fondee sur une ablation;
+- Stimmung a un audit causal fonde sur une ablation diagnostique multi-tours
+  et une decision corrective explicite;
 - les callers conserves utilisent un transport structure et observable;
 - les prompts/inputs et la latence sont consolides sans perte semantique;
 - les modeles ont une decision explicite, meme si elle consiste a conserver

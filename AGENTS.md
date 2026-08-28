@@ -98,6 +98,30 @@ Decision produit explicite de Tof du 23 juillet 2026:
 Cette doctrine ne leve aucune confirmation humaine exigee pour une mutation
 externe et n'autorise pas a deviner une instruction materielle ambigue.
 
+## Invariant Stimmung non negociable
+
+Decision architecturale explicite de Tof du 28 aout 2026:
+
+- Stimmung est une composante constitutive de FridaDev et doit etre conservee.
+  Aucun audit, benchmark, test d'ablation ou refactor ne peut proposer ni
+  autoriser sa suppression, son retrait ou son contournement comme direction
+  produit.
+- Une comparaison avec et sans signal Stimmung est un instrument diagnostique
+  servant uniquement a mesurer son effet causal, identifier un raccord
+  inefficace et guider un renforcement. Elle n'autorise jamais un cutover sans
+  Stimmung.
+- Stimmung traite le mouvement affectif du dialogue. Elle ne profile ni Tof ni
+  Frida, ne devient pas Identity et ne dispose d'aucune souverainete sur le vrai
+  ou sur l'adoption d'une position.
+- Ne jamais remplacer Stimmung par des regex emotionnelles ou une taxonomie
+  deterministe reductrice. Si son modele, son prompt, sa stabilisation
+  multi-tours, son raccord hermeneutique ou son observabilite sont insuffisants,
+  prouver le defaut puis ouvrir un micro-lot correctif separe avec approbation
+  explicite.
+- Toute correction doit preserver sa finalite dialogique et synchroniser dans
+  le meme lot l'observabilite backend, les read-models et les surfaces frontend
+  qui rendent son effet inspectable.
+
 ## Demarrage et contexte
 
 Avant un travail non trivial:
