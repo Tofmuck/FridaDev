@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, goldens techniques du coeur livres, corpus semantique du caller non execute, observabilite causale complete non prouvee et decision corrective non prise; Lots 5 a 8 et Z non commences
+Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, prochain micro-lot obligatoire 4C.1, goldens techniques du coeur livres, corpus semantique du caller non execute, observabilite causale complete non prouvee et decision corrective non prise; Lots 5 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -1637,8 +1637,9 @@ Portee architecturale de cette acceptation:
 
 # LOT 4 - Audit causal et consolidation de Stimmung
 
-Statut: goldens techniques du coeur livres; corpus semantique du caller non execute; observabilite causale complete non prouvee; decision corrective non prise
-Nature: audit causal multi-tours tests/benchmark/docs-only, sans cutover
+Statut: goldens techniques du coeur livres; prochain micro-lot obligatoire 4C.1; corpus semantique du caller non execute; observabilite causale complete non prouvee; decision corrective non prise
+Nature: audit causal multi-tours, correctifs bornes, benchmark sous GO separe
+et observabilite synchrone, sans extension fonctionnelle
 Dependance: Lot 3 ferme
 
 ## Decision architecturale deja prise
@@ -1852,6 +1853,411 @@ fake de lignes et ne prouve aucune DB/JSONB reelle. Aucun code runtime, prompt,
 modele, provider, setting, timeout, niveau de raisonnement, read-model ou
 frontend n'a ete modifie; aucun correctif F2, F3, F4 ou F5 n'a ete commence.
 
+## Decoupage d'execution autoritatif du reste du Lot 4
+
+Decision de Tof du 28 aout 2026: les findings prouves ne restent pas de simples
+limites documentaires. Ils sont traites par des micro-lots distincts, dans
+l'ordre ci-dessous. Chaque micro-lot garde une granularite suffisante pour etre
+execute de bout en bout par un agent en niveau de raisonnement `high` ou
+`extra high`, sans lui laisser le soin d'inventer l'architecture ou de fusionner
+plusieurs decisions produit.
+
+Ordre obligatoire:
+
+`4C.1 -> 4S.0 -> validation humaine du corpus -> 4S.1 -> 4C.2 conditionnel -> 4C.3 -> 4C.4 conditionnel -> 4O.Z -> Lot 5`
+
+Regles communes:
+
+- un micro-lot, une baseline, un diff coherent, un commit et un push;
+- toute modification runtime est livree separement sur FridaDev seul, avec
+  provenance checkout/image, health, restart et OOM verifies;
+- l'observabilite backend, reader, read-model, frontend existant et preuve
+  navigateur evolue dans le meme micro-lot que la verite runtime concernee;
+- `4O.Z` contre-audite cette synchronisation; il ne sert jamais a reparer
+  tardivement une observabilite oubliee;
+- `4C.2` et `4C.4` peuvent etre fermes `non requis`, uniquement par les preuves
+  indiquees ci-dessous; les autres micro-lots sont obligatoires;
+- aucun micro-lot ne supprime, desactive ou contourne Stimmung, n'ajoute de
+  caller, de stage ou de capacite produit, ni ne commence le Lot 5;
+- aucune regex affective, aucun profil identitaire et aucune inference durable
+  sur une personne ne sont autorises;
+- toute campagne provider demande un GO separe et n'utilise que le corpus
+  synthetique valide.
+
+### Micro-lot 4C.1 - Garantie structurelle Stimmung vers Validation
+
+Statut: prochain micro-lot obligatoire, non commence
+Effort recommande: `extra high`
+Nature: correctif runtime borne, observabilite synchrone et preuves
+Prerequis: goldens techniques du coeur livres; F3 valide
+
+Objectif exact: supprimer la perte partielle ou totale de `stimmung_input`
+causee par le prefixe arbitraire de `700` caracteres applique a la
+serialisation lexicographique de `canonical_inputs`. Validation doit recevoir
+soit une projection Stimmung complete et bornee, soit une absence explicite
+avec un reason code borne. Une structure partielle ou une eviction silencieuse
+selon le nom d'une autre source devient interdite.
+
+Architecture imposee:
+
+- conserver la borne globale du materiel transmis a Validation;
+- remplacer le prefixe aveugle par une projection champ par champ, versionnee
+  et bornee, avec un budget reserve explicite pour les sources contractuelles;
+- ne jamais tronquer au milieu d'une structure JSON ou d'un champ Stimmung;
+- rendre le resultat invariant a l'ordre lexical des autres cles;
+- ne changer ni le modele, ni le provider, ni le niveau de raisonnement, ni le
+  timeout, ni la semantique de verdict de Validation;
+- ne pas anticiper les structured outputs du Lot 5;
+- preserver hard guards, Presence, final locks, contexte dialogique, Identity,
+  JSON/streaming et persistance.
+
+Observabilite a livrer dans le meme micro-lot:
+
+- evenement runtime content-free distinguant `full` et `absent`; `partial`
+  devient un etat invalide rejete par les preuves;
+- reason code d'absence borne, version de projection, taille projetee, budget
+  utilise et familles de sources omises, sans contenu brut;
+- source primaire/fallback et statut Validation conserves;
+- chaine complete `event -> reader -> read-model -> renderer existant -> test
+  navigateur`, sans nouvel ecran et sans deduction depuis un libelle libre;
+- aucune tonalite brute, dialogue, prompt, payload provider, exception, URL ou
+  secret dans les evenements ou fixtures frontend.
+
+Preuves rouges obligatoires avant correctif:
+
+- Stimmung partielle pres de la borne;
+- Stimmung absente au-dela de la borne;
+- permutation `aaa_padding`/`zzz_padding` changeant la reception;
+- structure JSON coupee au milieu d'un champ;
+- frontend annoncant une reception complete alors que le backend ne la prouve
+  pas.
+
+Preuves vertes et sensibilite obligatoires:
+
+- meme signal complet sous plusieurs ordres et volumes de sources voisines;
+- absence explicite uniquement pour une raison contractuelle reproduite;
+- reconstruction repetee sans duplication;
+- mutation supprimant, dupliquant ou deplacant le bloc Stimmung rejetee;
+- mutation restaurant le prefixe lexicographique rejetee;
+- mutation transformant `absent` ou `partial` en `full` rejetee a chaque couche;
+- suites Validation, Stimmung, chat, Presence, final locks, JSON/streaming,
+  persistance, observabilite, frontend et decouverte complete vertes;
+- aucun nouveau skip ni expected failure.
+
+Condition de fermeture:
+
+- [ ] La reproduction rouge du compactage courant est conservee.
+- [ ] `stimmung_input` est transmis complet ou absent explicitement, jamais
+  partiel.
+- [ ] La transmission ne depend plus de l'ordre lexical des autres sources.
+- [ ] La borne globale et tous les invariants voisins sont preserves.
+- [ ] Backend, reader, read-model, frontend et navigateur exposent la meme
+  verite content-free.
+- [ ] Diff, tests, contre-audit, documentation, commit, push et livraison
+  ciblee sont prouves.
+
+Message de commit recommande: `fix: preserve Stimmung input for Validation`.
+
+### Micro-lot 4S.0 - Corpus semantique multi-tours et scorer hermetique
+
+Statut: non commence; vient apres 4C.1
+Effort recommande: `extra high`
+Nature: tests, fixtures et documentation seulement
+Prerequis: 4C.1 ferme
+
+Objectif exact: construire et faire valider humainement le corpus qui mesure la
+qualite semantique du caller Stimmung sur plusieurs tours, sans appeler de
+provider. Ce lot fixe les cas, les attentes et les seuils avant toute campagne,
+afin d'interdire leur adaptation opportuniste apres lecture des resultats.
+
+Corpus minimum: `12` a `16` dialogues synthetiques de `4` a `6` tours, couvrant
+au moins emergence, stabilite, bascule, retour au neutre, alternance, intensite
+sans changement epistemique, ironie, citation, affect rapporte, correction
+explicite, question, demande, risque, action materielle, opportunite Presence et
+contre-cas Presence. Un meme dialogue peut couvrir plusieurs familles, mais la
+matrice doit prouver que chaque famille possede au moins un cas positif et un
+contre-cas lorsque cela a un sens.
+
+Schema obligatoire de chaque cas:
+
+- identifiant stable, version et famille;
+- tours synthetiques complets et ordre autoritatif;
+- tonalites dominantes autorisees et interdites;
+- presence, absence ou vide autorise du signal;
+- trajectoire permise de stabilite, shift, volatilite et decroissance;
+- attributions et psychologisations explicitement interdites;
+- effet epistemique interdit lorsqu'aucune raison epistemique independante
+  n'existe;
+- relation attendue avec question, demande, risque, action et Presence;
+- justification humaine courte de l'attente, sans recopier le prompt.
+
+Scorer et sensibilite:
+
+- evaluer des proprietes et ensembles bornes, jamais une chaine exacte;
+- distinguer faux positif, faux negatif, surcodage, instabilite,
+  psychologisation et confusion epistemique;
+- fixer par famille les seuils d'acceptation primaire et fallback;
+- rejeter les mutations: tour retire ou inverse, ironie attribuee, affect
+  rapporte internalise, intensite transformee en incertitude, correction
+  ignoree, Presence masquee et fail-open presente comme signal sain;
+- ne pas recopier le caller, ses poids ou son prompt dans le scorer;
+- n'inclure aucun contenu operateur, secret ou donnees live.
+
+Condition de fermeture:
+
+- [ ] Le corpus versionne couvre toutes les familles imposees.
+- [ ] Les attentes et seuils sont fixes avant toute execution provider.
+- [ ] Les validateurs rejettent au moins une mutation controlee par famille.
+- [ ] Les tests hermetiques et la decouverte complete sont verts.
+- [ ] Tof a relu et valide le corpus avant 4S.1.
+- [ ] Documentation, commit et push sont prouves; runtime inchange.
+
+Message de commit recommande: `test: define Lot 4 Stimmung semantic corpus`.
+
+### Micro-lot 4S.1 - Campagne provider primaire et fallback
+
+Statut: non commence; GO separe obligatoire
+Effort recommande: `extra high`
+Nature: benchmark borne, artefacts content-free et documentation
+Prerequis: 4S.0 ferme et corpus valide humainement
+
+Objectif exact: executer le caller courant sur le corpus 4S.0 avec son primaire
+et son fallback reels, puis mesurer separement leur qualite, leur latence, leur
+cout et leurs erreurs. La campagne qualifie le caller; elle ne modifie aucun
+runtime et n'appelle ni Validation ni le modele principal.
+
+Protocole obligatoire:
+
+- relire depuis les settings courants les modeles, provider, timeout et niveau
+  de raisonnement; ne rien modifier pendant la campagne;
+- executer primaire et fallback separement, sans presenter le fallback comme
+  primaire ni un fail-open comme reussite neutre;
+- ne jamais appeler une DB ou une donnee operateur;
+- borner et compter les appels avant lancement;
+- conserver un JSONL date, versionne et content-free avec identifiant de cas,
+  hash du corpus, modele, source, statut, reason code, scores, latence et cout;
+- ne conserver ni dialogue brut, ni prompt complet, ni reponse brute, ni
+  secret dans l'artefact durable ou le retour utilisateur;
+- ne pas abaisser les seuils fixes en 4S.0 apres lecture des resultats;
+- distinguer erreurs transport, timeout, schema, refus et resultat semantique
+  insuffisant.
+
+Sortie obligatoire:
+
+- `keep_current` si primaire et fallback franchissent leurs seuils;
+- `strengthen` avec activation de 4C.2 si au moins un defaut semantique du
+  caller est reproduit et localise;
+- `inconclusive` si l'infrastructure de campagne ou le corpus ne permet pas de
+  conclure, sans modifier le caller.
+
+Condition de fermeture:
+
+- [ ] GO provider distinct trace.
+- [ ] Primaire et fallback mesures separement sur le corpus fige.
+- [ ] Artefact JSONL content-free, seuils, couts, latences et echecs archives.
+- [ ] Aucun modele, prompt, provider, setting ou runtime modifie.
+- [ ] Decision sur 4C.2 documentee, commit et push prouves.
+
+Message de commit recommande: `benchmark: evaluate Stimmung semantic corpus`.
+
+### Micro-lot 4C.2 - Renforcement semantique conditionnel du caller
+
+Statut: conditionnel, non commence
+Effort recommande: `extra high`
+Nature: correctif caller borne, observabilite synchrone et preuves
+Prerequis: decision `strengthen` de 4S.1 localisant un defaut du caller
+
+Ce micro-lot ne doit pas commencer si 4S.1 donne `keep_current`. Dans ce cas il
+est ferme `non requis` avec le chemin de preuve. S'il est active, son objectif
+est de corriger uniquement les familles semantiques echouees, une variable a la
+fois.
+
+Ordre de decision impose:
+
+1. verifier schema local, contrat et prompt courant;
+2. proposer le plus petit renforcement du contrat ou du prompt;
+3. ne considerer un changement de modele qu'apres echec mesure du renforcement
+   a modele constant, dans une decision distincte et explicitement approuvee;
+4. ne jamais changer simultanement prompt, modele et niveau de raisonnement;
+5. reexecuter tout le corpus primaire/fallback, pas seulement les cas corriges.
+
+Invariants:
+
+- aucune regex affective, aucun nouveau caller ou stage;
+- aucune Identity, psychologisation ou diagnostic durable;
+- fail-open, cadence, schema borne et absence de souverainete epistemique
+  preserves;
+- settings, events, read-models, surfaces frontend existantes et tests
+  navigateur synchronises si prompt, modele ou provenance change;
+- aucune campagne live sur des donnees operateur.
+
+Condition de fermeture:
+
+- [ ] Activation justifiee par des cas rouges 4S.1 precis.
+- [ ] Une seule variable architecturale change par passe.
+- [ ] Tous les seuils primaire/fallback du corpus fige sont franchis ou les
+  limites restantes sont explicitement acceptees.
+- [ ] Aucun cas auparavant valide ne regresse.
+- [ ] Observabilite, tests, documentation, commit, push et livraison ciblee
+  sont prouves.
+
+Message de commit recommande si active: `fix: strengthen Stimmung semantic extraction`.
+
+### Micro-lot 4C.3 - Separation affect et certitude epistemique
+
+Statut: obligatoire, non commence
+Effort recommande: `extra high`
+Nature: decision semantique, correctif runtime borne et observabilite synchrone
+Prerequis: 4S.1 ferme; 4C.2 ferme ou classe non requis
+
+Objectif exact: corriger F2 sans diminuer l'effet dialogique de Stimmung. Un
+mouvement affectif peut ajuster l'enonciation, le rythme, la delicatesse ou la
+prudence de formulation. A lui seul, il ne peut pas transformer une proposition
+`certaine` en `probable` s'il n'existe aucune raison epistemique independante:
+ambiguite, manque de source, sous-determination, contradiction ou hard guard.
+
+La regle semantique exacte doit etre relue et approuvee par Tof avant patch.
+L'implementation est ensuite choisie depuis le code et les preuves, sans la
+predeterminer artificiellement. Les deux options recevables sont:
+
+- conditionner `stimmung_caution` a un signal epistemique independant deja
+  present;
+- retirer son effet direct sur la certitude et le convertir en directive
+  bornee d'enonciation dans le raccord existant.
+
+Sont interdits: nouveau modele, nouveau stage, regex, score psychologique,
+modification de Stimmung elle-meme ou changement des priorites Presence/final
+locks.
+
+Preuves obligatoires:
+
+- meme contenu epistemique avec Stimmung absente, stable et en transition;
+- transition sans raison epistemique: certitude preservee, enonciation adaptee;
+- transition avec ambiguite independante: prudence epistemique permise;
+- hard guards, question, demande, risque, action materielle et Presence non
+  masques;
+- Validation et modele principal recoivent une posture coherente;
+- mutation retablissant la degradation automatique de certitude rejetee;
+- mutation supprimant tout effet enonciatif de Stimmung rejetee.
+
+Observabilite simultanee:
+
+- exposer separement effet epistemique et effet d'enonciation, leur source et
+  leur reason code;
+- propager ces champs sans contenu brut jusqu'aux deux surfaces existantes;
+- le frontend ne doit jamais deduire l'un depuis l'autre;
+- ajouter les preuves navigateur et garder primaire/fallback/fail-open honnetes.
+
+Condition de fermeture:
+
+- [ ] Regle semantique approuvee avant patch.
+- [ ] Affect seul incapable de degrader la certitude.
+- [ ] Effet dialogique d'enonciation preserve et prouve.
+- [ ] Invariants voisins, observabilite et mutations controles.
+- [ ] Tests, documentation, commit, push et livraison ciblee prouves.
+
+Message de commit recommande: `fix: separate Stimmung from epistemic certainty`.
+
+### Micro-lot 4C.4 - Restitution finale conditionnelle de l'effet dialogique
+
+Statut: conditionnel, non commence
+Effort recommande: `extra high`
+Nature: diagnostic causal puis correctif minimal si dommage prouve
+Prerequis: 4C.3 ferme
+
+Objectif exact: trancher F4. L'absence de structure Stimmung brute dans le
+payload principal n'est pas un bug en elle-meme. Ce micro-lot ne modifie le
+runtime que si une comparaison controlee prouve que la posture derivee perd un
+effet dialogique attendu dans la formulation finale.
+
+Diagnostic obligatoire:
+
+- comparer les memes inputs avec la posture courante et une restitution
+  diagnostique bornee;
+- utiliser d'abord des providers fakes pour le raccord, puis demander un GO
+  separe si une campagne avec le modele principal est necessaire;
+- mesurer delicatesse, adequation de formulation, psychologisation, influence
+  indue sur la verite et regression Presence;
+- classer F4 `valide`, `invalide` ou `partiel` avant toute correction.
+
+Si F4 est invalide, fermer 4C.4 `non requis` sans runtime. Si F4 est valide,
+le correctif doit reutiliser le pipeline Validation/posture existant et fournir
+au modele principal une directive derivee, compacte et bornee. Il ne transmet
+jamais les tonalites brutes, n'ajoute ni stage ni modele, ne profile aucune
+personne et ne contourne pas `main_payload_manifest_v1`.
+
+Preuves obligatoires si correction:
+
+- benefice semantique reproduit sur les cas qui ont valide F4;
+- absence de changement sur les contre-cas;
+- aucune influence sur verite, hard guards, Presence ou final locks;
+- capsule terminale unique, manifest coherent, parite JSON/streaming,
+  persistance et provenance preservees;
+- observabilite causale backend/read-model/frontend et navigateur synchronisee;
+- mutation supprimant l'effet utile et mutation injectant le signal brut toutes
+  deux rejetees.
+
+Condition de fermeture:
+
+- [ ] F4 classe par une comparaison causale explicite.
+- [ ] `non requis` documente, ou correctif minimal prouve sans signal brut.
+- [ ] Aucun nouveau stage, modele, caller ou capacite produit.
+- [ ] Tests, observabilite, documentation, commit, push et livraison ciblee
+  prouves si le runtime change.
+
+Message de commit recommande si active: `fix: preserve Stimmung in final dialogic posture`.
+
+### Micro-lot 4O.Z - Contre-audit causal et fermeture du Lot 4
+
+Statut: non commence; dernier micro-lot du Lot 4
+Effort recommande: `extra high`
+Nature: audit transversal, tests et documentation; aucun correctif opportuniste
+Prerequis: 4C.1, 4S.0, 4S.1 et 4C.3 fermes; 4C.2 et 4C.4 fermes ou non requis
+
+Objectif exact: verifier que les corrections et decisions precedentes forment
+un pipeline coherent, observable et documente, puis fermer le Lot 4 avant tout
+debut du Lot 5. Ce micro-lot n'est pas une passe de rattrapage: tout gap runtime
+ou frontend decouvert ouvre un correctif borne distinct avant sa reprise.
+
+Contre-audit obligatoire:
+
+- matrice complete `caller -> persistance -> agregation -> regime primaire ->
+  Validation -> posture principale`;
+- pour chaque transition: contrat, event, reader, read-model, renderer et test
+  navigateur autoritatifs;
+- absence de perte silencieuse, etat causal invente, double signal, contenu
+  brut, psychologisation ou degradation epistemique par affect seul;
+- primaire, fallback, fail-open, JSON/streaming, Presence, final locks,
+  persistance, capsule et manifest coherents;
+- aucun ancien chemin, branche diagnostique runtime, test affaibli, fixture
+  auto-referentielle, TODO contradictoire ou Lot 5 commence;
+- suites ciblees, voisines, frontend, navigateur et decouverte complete;
+- diff check, temporaires, provenance Git et runtime.
+
+Decision documentaire finale:
+
+- la decision globale devient necessairement `strengthen`, car F3 exige 4C.1;
+- documenter precisement ce qui a ete renforce et pourquoi;
+- documenter separement `keep_current`, `strengthen`, `non requis` ou
+  `inconclusive` pour le caller, F2 et F4;
+- mettre a jour les contrats vivants et les sections README rendues fausses par
+  les changements effectivement livres, sans anticiper les Lots 5 a 8;
+- laisser chaque limite restante assignee a un lot nomme, jamais a une dette
+  vague.
+
+Condition de fermeture:
+
+- [ ] Tous les micro-lots obligatoires sont fermes et les conditionnels classes.
+- [ ] Corpus et campagne primaire/fallback ont une decision explicite.
+- [ ] F2 est corrige et F4 tranche.
+- [ ] Matrice causale backend/read-model/frontend et navigateur complete.
+- [ ] Suites finales et sensibilite restent vertes sans skip nouveau.
+- [ ] Roadmap, contrats et README concernes sont coherents.
+- [ ] Commit, push, worktree propre, divergence `0/0` et runtime prouve.
+- [ ] Lot 5 reste non commence jusqu'a cette fermeture.
+
+Message de commit recommande: `docs: close Lot 4 Stimmung causal consolidation`.
+
 ## Passe 4.0 - Goldens causaux hermetiques
 
 Construire une fixture transversale partagee qui traverse le vrai pipeline
@@ -1984,7 +2390,8 @@ raisonnement, timeout ou setting.
 
 ## Sorties autorisees du Lot 4
 
-Le Lot 4 se ferme avec une seule decision corrective:
+Avant les goldens, le Lot 4 pouvait se fermer avec une seule des trois
+decisions suivantes:
 
 1. `keep_current`: les effets attendus sont prouves et aucun defaut justifie un
    changement runtime;
@@ -1993,15 +2400,24 @@ Le Lot 4 se ferme avec une seule decision corrective:
 3. `inconclusive`: le corpus est insuffisant; Stimmung reste strictement
    inchangee et l'extension necessaire du corpus est bornee.
 
-La sortie `strengthen` peut proposer, sans les commencer:
+Depuis la validation de F3, `keep_current` n'est plus une sortie globale
+coherente: la perte structurelle avant Validation impose `strengthen` au moins
+par 4C.1. Les trois qualifications restent utilisables separement pour le
+caller et pour les findings conditionnels, sans annuler la correction
+obligatoire de F3.
 
-- livraison garantie d'un bloc Stimmung borne a Validation;
-- separation entre prudence epistemique et ajustement d'enonciation;
-- correction de stabilisation, hysteresis ou decroissance;
-- restitution d'une posture finale moins appauvrie;
-- observabilite causale backend/read-model/frontend;
-- changement de prompt ou de modele seulement si le benchmark prouve que la
-  defaillance se situe dans le caller plutot que dans son raccord.
+Les pistes initialement prevues sous `strengthen` sont desormais assignees aux
+micro-lots autoritatifs ci-dessus:
+
+- livraison garantie d'un bloc Stimmung borne a Validation -> `4C.1`;
+- corpus et benchmark de stabilisation, hysteresis ou decroissance -> `4S.0`
+  et `4S.1`;
+- correction semantique du caller, prompt ou modele si elle est prouvee ->
+  `4C.2`;
+- separation entre prudence epistemique et ajustement d'enonciation -> `4C.3`;
+- restitution d'une posture finale moins appauvrie si F4 est valide -> `4C.4`;
+- contre-audit de l'observabilite causale backend/read-model/frontend ->
+  `4O.Z`, apres livraison synchrone dans chaque correctif.
 
 Chaque correction runtime, prompt, modele ou setting constitue un micro-lot
 distinct avec GO explicite, baseline, preuves rouges, tests, contre-audit,
@@ -2042,6 +2458,17 @@ preuve lorsqu'un test existant couvre deja exactement l'invariant.
 - [x] Finalite dialogique et ablation diagnostique clarifiees.
 - [x] Inventaire A a Z du pipeline, des contrats et des preuves existantes.
 - [x] Goldens causaux techniques du coeur et mutations controlees livres.
+- [ ] 4C.1 ferme: livraison Stimmung vers Validation complete ou absence
+  explicite, avec observabilite synchrone.
+- [ ] 4S.0 ferme: corpus et seuils semantiques valides humainement.
+- [ ] 4S.1 ferme: campagne primaire/fallback executee sous GO separe et
+  decision caller tracee.
+- [ ] 4C.2 ferme `corrige` ou `non requis` depuis les preuves 4S.1.
+- [ ] 4C.3 ferme: affect et certitude epistemique separes sans perdre l'effet
+  dialogique.
+- [ ] 4C.4 ferme `corrige`, `non requis` ou `inconclusive` depuis une preuve
+  causale de F4.
+- [ ] 4O.Z ferme: contre-audit causal, contrats et README concernes coherents.
 - [ ] Corpus semantique multi-tours du caller valide: ironie, affect rapporte,
   correction, intensite sans changement epistemique, question, demande, risque,
   action materielle et contre-cas Presence.
@@ -2049,7 +2476,8 @@ preuve lorsqu'un test existant couvre deja exactement l'invariant.
 - [ ] Matrice observabilite backend/read-model/frontend prouvee.
 - [x] Primaire et fallback distingues sans requalification d'echec.
 - [x] Findings F1 a F6 valides, invalides ou nuances par preuves.
-- [ ] Decision `keep_current`, `strengthen` ou `inconclusive` documentee.
+- [ ] Decision globale `strengthen` documentee; decisions du caller, de F2 et
+  de F4 classees separement depuis leurs preuves.
 - [x] Aucun caller, mode ou capacite produit ajoute.
 - [x] Aucun micro-lot correctif ou Lot 5 commence implicitement.
 
