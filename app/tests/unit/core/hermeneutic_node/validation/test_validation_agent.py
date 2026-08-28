@@ -29,7 +29,12 @@ if importlib.util.find_spec("psycopg") is None:
 
 from core.hermeneutic_node.inputs import recent_context_input as canonical_recent_context_input
 from core.hermeneutic_node.inputs import time_input as canonical_time_input
-from core.hermeneutic_node.validation import hard_guards, validation_agent
+from core.hermeneutic_node.validation import (
+    hard_guards,
+    validation_agent,
+    validation_contract,
+    validation_messages,
+)
 
 
 def _primary_verdict(
@@ -1744,6 +1749,18 @@ class ValidationAgentTests(unittest.TestCase):
             [item["model"] for item in prompt_events],
             [validation_agent.PRIMARY_MODEL, validation_agent.FALLBACK_MODEL],
         )
+        self.assertEqual(
+            [item["payload"]["canonical_projection_version"] for item in prompt_events],
+            ["validation_canonical_inputs_v1", "validation_canonical_inputs_v1"],
+        )
+        self.assertEqual(
+            [item["payload"]["stimmung_delivery_status"] for item in prompt_events],
+            ["absent", "absent"],
+        )
+        self.assertEqual(
+            [item["payload"]["stimmung_delivery_reason_code"] for item in prompt_events],
+            ["signal_not_present", "signal_not_present"],
+        )
         events_json = json.dumps(prompt_events, ensure_ascii=False, sort_keys=True)
         self.assertNotIn("primary timeout", events_json)
         self.assertNotIn("not json", events_json)
@@ -1856,6 +1873,93 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertIn("justifications (support secondaire frere, hors primary_verdict):", user_message)
         self.assertIn("canonical_inputs (supports secondaires de relecture contextuelle):", user_message)
         self.assertLess(user_message.index("validation_dialogue_context"), user_message.index("primary_verdict"))
+
+    def test_canonical_projection_is_whole_bounded_repeatable_and_rejects_partial_metadata(self) -> None:
+        stimmung = {
+            "schema_version": "v1",
+            "present": True,
+            "dominant_tone": "apaisement",
+            "active_tones": [{"tone": "apaisement", "strength": 7}],
+            "stability": "stable",
+            "shift_state": "steady",
+            "turns_considered": 4,
+        }
+        canonical_inputs = {
+            "recent_context_input": {"messages": ["x" * 8000]},
+            "stimmung_input": stimmung,
+            "user_turn_input": {"schema_version": "v1", "geste_dialogique_dominant": "exposition"},
+        }
+
+        material, metadata = validation_messages.project_validation_canonical_inputs(canonical_inputs)
+        rebuilt_material, rebuilt_metadata = validation_messages.project_validation_canonical_inputs(
+            dict(reversed(list(canonical_inputs.items())))
+        )
+        projection = json.loads(material)
+
+        self.assertEqual(material, rebuilt_material)
+        self.assertEqual(metadata, rebuilt_metadata)
+        self.assertLessEqual(len(material), validation_messages.MAX_CANONICAL_INPUTS_JSON_CHARS)
+        self.assertEqual(projection["families"]["stimmung_input"], stimmung)
+        self.assertEqual(projection["stimmung_delivery"], {"status": "full", "reason_code": "included"})
+        self.assertNotIn("recent_context_input", projection["families"])
+        self.assertIn("recent_context_input", projection["omitted_families"])
+        self.assertNotIn("preview", projection)
+        self.assertNotIn("truncated", projection)
+
+        maximal_stimmung = {
+            **stimmung,
+            "dominant_tone": "decouragement",
+            "active_tones": [
+                {"tone": "decouragement", "strength": 10},
+                {"tone": "enthousiasme", "strength": 10},
+                {"tone": "neutralite", "strength": 10},
+            ],
+            "stability": "volatile",
+            "shift_state": "candidate_shift",
+        }
+        crowded_inputs = {
+            family: {"synthetic_chars": "x" * 8000}
+            for family in validation_messages.CANONICAL_FAMILY_ORDER
+            if family != "stimmung_input"
+        }
+        crowded_inputs["stimmung_input"] = maximal_stimmung
+        maximal_material, _maximal_metadata = validation_messages.project_validation_canonical_inputs(
+            crowded_inputs
+        )
+        maximal_projection = json.loads(maximal_material)
+        self.assertEqual(maximal_projection["families"]["stimmung_input"], maximal_stimmung)
+        self.assertLessEqual(
+            len(maximal_material),
+            validation_messages.MAX_CANONICAL_INPUTS_JSON_CHARS,
+        )
+
+        missing_material, missing_metadata = validation_messages.project_validation_canonical_inputs({})
+        missing = json.loads(missing_material)
+        self.assertEqual(
+            missing["stimmung_delivery"],
+            {"status": "absent", "reason_code": "signal_not_present"},
+        )
+        self.assertEqual(missing_metadata["stimmung_delivery_status"], "absent")
+
+        invalid_material, _invalid_metadata = validation_messages.project_validation_canonical_inputs(
+            {"stimmung_input": {key: value for key, value in stimmung.items() if key != "shift_state"}}
+        )
+        invalid = json.loads(invalid_material)
+        self.assertEqual(
+            invalid["stimmung_delivery"],
+            {"status": "absent", "reason_code": "invalid_signal"},
+        )
+        self.assertNotIn("stimmung_input", invalid["families"])
+
+        partial_mutant = dict(metadata, stimmung_delivery_status="partial")
+        with self.assertRaisesRegex(ValueError, "invalid_stimmung_delivery_status"):
+            validation_contract.validate_canonical_projection_metadata(partial_mutant)
+        counter_mutant = dict(
+            metadata,
+            canonical_projection_chars=validation_messages.MAX_CANONICAL_INPUTS_JSON_CHARS + 1,
+        )
+        with self.assertRaisesRegex(ValueError, "invalid_canonical_projection_budget"):
+            validation_contract.validate_canonical_projection_metadata(counter_mutant)
 
 
 if __name__ == "__main__":

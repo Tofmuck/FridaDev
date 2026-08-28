@@ -42,6 +42,9 @@
   const SAFE_STAGE_TEXT_KEYS = new Set([
     "actor",
     "canonical_basis",
+    "canonical_projection_included_families",
+    "canonical_projection_omitted_families",
+    "canonical_projection_version",
     "classification",
     "discursive_regime",
     "error_class",
@@ -366,12 +369,56 @@
     selectElement.disabled = false;
   };
 
+  const validationStimmungDelivery = (stage, payload) => {
+    const status = toText(payload?.stimmung_delivery_status);
+    const reasonCode = toText(payload?.stimmung_delivery_reason_code);
+    const chars = Number(payload?.canonical_projection_chars);
+    const budgetChars = Number(payload?.canonical_projection_budget_chars);
+    const includedFamilies = Array.isArray(payload?.canonical_projection_included_families) ? payload.canonical_projection_included_families.map(toText).filter(Boolean) : [];
+    const omittedFamilies = Array.isArray(payload?.canonical_projection_omitted_families) ? payload.canonical_projection_omitted_families.map(toText).filter(Boolean) : [];
+    const allowedFamilies = new Set(["time_input", "memory_retrieved", "memory_arbitration", "summary_input",
+      "identity_input", "recent_context_input", "recent_window_input",
+      "user_turn_input", "user_turn_signals", "stimmung_input", "web_input"]);
+    const projectedFamilies = [...includedFamilies, ...omittedFamilies];
+    const familyListsValid = projectedFamilies.every((family) => allowedFamilies.has(family)) && new Set(projectedFamilies).size === projectedFamilies.length;
+    const reasonValid = status === "full"
+      ? reasonCode === "included" && includedFamilies.includes("stimmung_input") && !omittedFamilies.includes("stimmung_input")
+      : ["signal_not_present", "invalid_signal", "contract_budget_exceeded"].includes(reasonCode)
+        && !includedFamilies.includes("stimmung_input") && (reasonCode === "signal_not_present" || omittedFamilies.includes("stimmung_input"));
+    const authoritative = stage === "validation_prompt_prepared" && toText(payload?.canonical_projection_version) === "validation_canonical_inputs_v1"
+      && ["full", "absent"].includes(status)
+      && Number.isInteger(chars) && Number.isInteger(budgetChars)
+      && chars >= 0 && budgetChars === 700 && chars <= budgetChars
+      && familyListsValid && reasonValid
+      && payload?.raw_content_included === false;
+    if (!authoritative) {
+      return { status: "unknown", reasonCode: reasonCode || "unproved_projection", chars: 0, budgetChars: 700, omittedFamilies: [] };
+    }
+    return { status, reasonCode, chars, budgetChars, omittedFamilies };
+  };
+
   const renderStagePayload = (target, stage, payload) => {
     if (!target) return;
     target.innerHTML = "";
     const safePayload = payload && typeof payload === "object" && !Array.isArray(payload)
       ? sanitizeStagePayload(payload)
       : {};
+
+    if (stage === "validation_prompt_prepared") {
+      const delivery = validationStimmungDelivery(stage, safePayload);
+      const deliverySummary = document.createElement("p");
+      deliverySummary.className = "admin-status";
+      deliverySummary.dataset.state = delivery.status === "full" ? "ok" : "degraded";
+      deliverySummary.textContent = (
+        `Stimmung vers Validation: ${delivery.status}`
+        + ` · raison=${delivery.reasonCode}`
+        + ` · projection=${delivery.chars}/${delivery.budgetChars}`
+        + ` · omises=${delivery.omittedFamilies.join(",") || "aucune"}`
+        + ` · source=${toText(safePayload.attempt_decision_source) || "unknown"}`
+        + ` · validation=${toText(safePayload.validation_status) || "unknown"}`
+      );
+      target.appendChild(deliverySummary);
+    }
 
     if (stage === "hermeneutic_node_insertion" && safePayload.inputs && typeof safePayload.inputs === "object") {
       const summaryGrid = document.createElement("div");

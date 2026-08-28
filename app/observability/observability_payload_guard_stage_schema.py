@@ -23,6 +23,7 @@ _GENERAL_TEXT_KEYS = set(
     crawl_filter_requested crawl_fallback_status crawl_policy_kind crawl_policy_reason
     crawl_primary_status crawl_status day_part_class decision_source dedup_reason_code
     calendar_ambiguity content_hash draft_title_hash
+    canonical_projection_version stimmung_delivery_status stimmung_delivery_reason_code
     apply_reason_code apply_status dominant_tone error_class error_code epistemic_regime execution_status fallback_source
     final_judgment_posture final_output_regime final_status guarded_original_status
     failure_class recovery_action processing_state window_fingerprint next_window_progress
@@ -213,6 +214,8 @@ _GENERAL_SAFE_TEXT_LIST_KEYS = {
     "input_keys",
     "issue_classes",
     "canonical_time_window_keys",
+    "canonical_projection_included_families",
+    "canonical_projection_omitted_families",
     "draft_field_names",
     "openrouter_fallback_reason_codes",
     "pipeline_directives_final",

@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, prochain micro-lot obligatoire 4C.1, goldens techniques du coeur livres, corpus semantique du caller non execute, observabilite causale complete non prouvee et decision corrective non prise; Lots 5 a 8 et Z non commences
+Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ferme et prochain micro-lot obligatoire 4S.0; goldens techniques du coeur livres, corpus semantique du caller non execute, observabilite causale complete non prouvee et decision corrective non prise; Lots 5 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -1637,7 +1637,7 @@ Portee architecturale de cette acceptation:
 
 # LOT 4 - Audit causal et consolidation de Stimmung
 
-Statut: goldens techniques du coeur livres; prochain micro-lot obligatoire 4C.1; corpus semantique du caller non execute; observabilite causale complete non prouvee; decision corrective non prise
+Statut: goldens techniques du coeur livres; 4C.1 ferme et prochain micro-lot obligatoire 4S.0; corpus semantique du caller non execute; observabilite causale complete non prouvee; decision corrective non prise
 Nature: audit causal multi-tours, correctifs bornes, benchmark sous GO separe
 et observabilite synchrone, sans extension fonctionnelle
 Dependance: Lot 3 ferme
@@ -1886,7 +1886,7 @@ Regles communes:
 
 ### Micro-lot 4C.1 - Garantie structurelle Stimmung vers Validation
 
-Statut: prochain micro-lot obligatoire, non commence
+Statut: ferme le 2026-08-28; prochain micro-lot obligatoire 4S.0
 Effort recommande: `extra high`
 Nature: correctif runtime borne, observabilite synchrone et preuves
 Prerequis: goldens techniques du coeur livres; F3 valide
@@ -1944,16 +1944,57 @@ Preuves vertes et sensibilite obligatoires:
   persistance, observabilite, frontend et decouverte complete vertes;
 - aucun nouveau skip ni expected failure.
 
+Fermeture realisee:
+
+- F3 a ete reproduit avant patch par `5` echecs/erreurs Python cibles et `2`
+  echecs Chromium attendus: Stimmung partielle, evincee, dependante de
+  `aaa_padding`/`zzz_padding`, JSON coupe et faux `full` frontend;
+- `validation_canonical_projection.py` remplace le prefixe lexical par
+  `validation_canonical_inputs_v1`: onze familles fermees, ordre contractuel
+  fixe, blocs JSON entiers et budget global inchange de `700` caracteres. Une
+  Stimmung valide reserve son bloc avant les autres familles; sa forme
+  structurelle maximale de test occupe `627/700`, meme quand toutes les autres
+  familles sont omises;
+- les statuts autorises sont `full|absent`. `full` exige `included`; les raisons
+  d'absence fermees sont `signal_not_present`, `invalid_signal` et
+  `contract_budget_exceeded`. `partial`, incoherences, doublons, compteurs
+  invalides ou famille inconnue sont rejetes;
+- le meme materiel borne remis au provider fake produit les metadonnees de
+  `validation_prompt_prepared`; le garde, la checklist, le reader et
+  `turn_pipeline_read_model`, puis `/log` et `/hermeneutic-admin`, propagent
+  version, statut, raison, caracteres, budget et familles omises sans contenu.
+  Une preuve absente ou invalide devient `unknown`, jamais `full`;
+- fichiers runtime: `validation_agent.py`, `validation_contract.py`,
+  `validation_messages.py`, le nouveau projecteur, le schema de garde, la
+  projection admin, la checklist et le read-model. Frontend: `log/log.js` et
+  `hermeneutic_admin/render.js`. Preuves: tests Validation, golden Lot 4,
+  read-model/logs et Chromium; contrats vivants Validation, logs et dashboard;
+- mutations rejetees par les validateurs appliques aux sorties produit et aux
+  mutants: suppression, duplication ou deplacement de Stimmung, retour au
+  prefixe lexical, inversion de priorite, `partial`, absent presente comme
+  `full`, compteurs/budget falsifies, frontend auto-affirmatif et contenu brut;
+- commandes hermetiques reellement executees: baseline Python `2726/2726`,
+  JavaScript `135/135`, Chromium `19/19`; apres patch, constructeur/golden/
+  read-model `77/77`, coeur Stimmung/Validation/regime `82/82`, chat/
+  persistance/locks `43/43`, observabilite `110/110`, goldens voisins `43/43`,
+  JavaScript `135/135`, Chromium `19/19`, puis decouverte Python `2728/2728`.
+  Zero echec, erreur, skip ou expected failure dans les preuves finales; deux
+  tests Python nets ont ete ajoutes;
+- aucun modele, provider, prompt, timeout, verdict, regime, Presence, lock,
+  persistance, format JSON/streaming ou payload principal n'a change. Le corpus
+  semantique, l'effet causal final, F2/F4/F5 et la matrice complete 4O.Z restent
+  ouverts; aucune campagne provider ni DB operateur n'a ete utilisee.
+
 Condition de fermeture:
 
-- [ ] La reproduction rouge du compactage courant est conservee.
-- [ ] `stimmung_input` est transmis complet ou absent explicitement, jamais
+- [x] La reproduction rouge du compactage courant est conservee.
+- [x] `stimmung_input` est transmis complet ou absent explicitement, jamais
   partiel.
-- [ ] La transmission ne depend plus de l'ordre lexical des autres sources.
-- [ ] La borne globale et tous les invariants voisins sont preserves.
-- [ ] Backend, reader, read-model, frontend et navigateur exposent la meme
+- [x] La transmission ne depend plus de l'ordre lexical des autres sources.
+- [x] La borne globale et tous les invariants voisins sont preserves.
+- [x] Backend, reader, read-model, frontend et navigateur exposent la meme
   verite content-free.
-- [ ] Diff, tests, contre-audit, documentation, commit, push et livraison
+- [x] Diff, tests, contre-audit, documentation, commit, push et livraison
   ciblee sont prouves.
 
 Message de commit recommande: `fix: preserve Stimmung input for Validation`.

@@ -80,6 +80,7 @@ def _runtime_model_settings() -> dict[str, Any]:
 
 
 _build_messages = validation_messages.build_messages
+_build_messages_with_projection = validation_messages.build_messages_with_projection
 
 
 def _request_reason_code(exc: Exception, requests_module: Any) -> str:
@@ -110,7 +111,7 @@ def _call_model(
     allowed_postures: Sequence[str],
     requests_module: Any,
 ) -> tuple[dict[str, str], dict[str, Any]]:
-    messages = _build_messages(
+    messages, canonical_projection = _build_messages_with_projection(
         system_prompt=system_prompt,
         primary_verdict=primary_verdict,
         justifications=justifications,
@@ -124,6 +125,7 @@ def _call_model(
         messages=messages,
         validation_dialogue_context=validation_dialogue_context,
         canonical_inputs=canonical_inputs,
+        canonical_projection=canonical_projection,
         hard_guard_payload=hard_guard_payload,
         temperature=temperature,
         top_p=top_p,

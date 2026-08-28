@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Sequence
 
+from core.hermeneutic_node.validation import validation_contract
 from observability import agentic_status
 
 
@@ -659,6 +660,32 @@ def _secondary_provider_item(
                 'llm_call_count': len(caller_events),
             },
         )
+    if provider_caller == 'validation_agent' and prepared_events:
+        prepared_payload = _event_payload(prepared_events[-1])
+        projection_claimed = any(
+            key in prepared_payload
+            for key in (
+                'canonical_projection_version',
+                'stimmung_delivery_status',
+                'stimmung_delivery_reason_code',
+            )
+        )
+        if projection_claimed:
+            try:
+                validation_contract.validate_canonical_projection_metadata(prepared_payload)
+            except ValueError:
+                return _checklist_item(
+                    key,
+                    'secondary_providers',
+                    'degraded',
+                    'invalid_canonical_projection_metadata',
+                    stage=prepared_stage,
+                    evidence={
+                        'prepared_count': len(prepared_events),
+                        'result_count': len(result_events),
+                        'llm_call_count': len(caller_events),
+                    },
+                )
     events = prepared_events + result_events + caller_events
     statuses = {_event_status(event) for event in events}
     if any(status in {agentic_status.STATUS_ERROR, agentic_status.STATUS_FAILED} for status in statuses):

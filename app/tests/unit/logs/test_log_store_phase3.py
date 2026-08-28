@@ -19,7 +19,7 @@ APP_DIR = _resolve_app_dir()
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from observability import admin_log_projection, log_store
+from observability import admin_log_projection, log_store, observability_payload_guard
 
 
 class _NoopLogger:
@@ -75,7 +75,20 @@ class LogStorePhase3Tests(unittest.TestCase):
             ),
             self._event(
                 'validation_prompt_prepared',
-                payload={'provider_caller': 'validation_agent', 'secondary_provider_payload': True},
+                payload={
+                    'provider_caller': 'validation_agent',
+                    'secondary_provider_payload': True,
+                    'attempt_decision_source': 'primary',
+                    'validation_status': 'prepared',
+                    'canonical_projection_version': 'validation_canonical_inputs_v1',
+                    'canonical_projection_chars': 412,
+                    'canonical_projection_budget_chars': 700,
+                    'canonical_projection_included_families': ['stimmung_input'],
+                    'canonical_projection_omitted_families': ['recent_context_input'],
+                    'stimmung_delivery_status': 'full',
+                    'stimmung_delivery_reason_code': 'included',
+                    'raw_content_included': False,
+                },
             ),
             self._event('validation_agent', payload={'provider_caller': 'validation_agent'}),
             self._event(
@@ -488,6 +501,27 @@ class LogStorePhase3Tests(unittest.TestCase):
         self.assertTrue(item['providers']['main']['present'])
         self.assertEqual(item['providers']['main']['provider_caller'], 'llm')
         self.assertTrue(item['providers']['secondary']['stimmung']['prepared_present'])
+        self.assertEqual(
+            item['providers']['secondary']['validation']['canonical_projection'],
+            {
+                'source_kind': 'validation_prompt_prepared',
+                'authoritative': True,
+                'projection_version': 'validation_canonical_inputs_v1',
+                'stimmung_delivery_status': 'full',
+                'stimmung_delivery_reason_code': 'included',
+                'chars': 412,
+                'budget_chars': 700,
+                'omitted_families': ['recent_context_input'],
+            },
+        )
+        self.assertEqual(
+            item['providers']['secondary']['validation']['attempt_decision_source'],
+            'primary',
+        )
+        self.assertEqual(
+            item['providers']['secondary']['validation']['validation_status'],
+            'prepared',
+        )
         self.assertEqual(item['rag']['source_kind'], 'memory_chain_snapshot')
         self.assertEqual(item['rag']['retrieved'], 4)
         self.assertEqual(item['rag']['basket'], 3)
@@ -517,6 +551,70 @@ class LogStorePhase3Tests(unittest.TestCase):
             self.assertNotIn(forbidden_value, serialized)
         for forbidden_key in ('payload', 'prompt', 'messages', 'content', 'query', 'context_block', 'memory'):
             self.assertNotIn(forbidden_key, self._collect_keys(item))
+
+    def test_validation_projection_rejects_partial_or_unproved_full_in_read_models(self) -> None:
+        partial_events = self._complete_turn_events(web_search_enabled=False)
+        prepared = next(
+            event for event in partial_events if event['stage'] == 'validation_prompt_prepared'
+        )
+        prepared['payload']['stimmung_delivery_status'] = 'partial'
+
+        partial = log_store.build_turn_pipeline_item(partial_events)
+        partial_projection = partial['providers']['secondary']['validation']['canonical_projection']
+        self.assertFalse(partial_projection['authoritative'])
+        self.assertEqual(partial_projection['stimmung_delivery_status'], 'unknown')
+        self.assertEqual(
+            partial_projection['stimmung_delivery_reason_code'],
+            'invalid_canonical_projection_metadata',
+        )
+        checklist = log_store.build_turn_observability_checklist(partial_events)
+        checklist_item = self._find_item(checklist, 'validation_agent')
+        self.assertEqual(checklist_item['status'], 'degraded')
+        self.assertEqual(checklist_item['reason_code'], 'invalid_canonical_projection_metadata')
+
+        unproved_events = self._complete_turn_events(web_search_enabled=False)
+        unproved = next(
+            event for event in unproved_events if event['stage'] == 'validation_prompt_prepared'
+        )
+        del unproved['payload']['canonical_projection_version']
+
+        unproved_item = log_store.build_turn_pipeline_item(unproved_events)
+        unproved_projection = unproved_item['providers']['secondary']['validation']['canonical_projection']
+        self.assertFalse(unproved_projection['authoritative'])
+        self.assertEqual(unproved_projection['stimmung_delivery_status'], 'unknown')
+        self.assertNotEqual(unproved_projection['stimmung_delivery_status'], 'full')
+
+    def test_admin_projection_keeps_only_content_free_validation_delivery_truth(self) -> None:
+        payload = next(
+            event['payload']
+            for event in self._complete_turn_events(web_search_enabled=False)
+            if event['stage'] == 'validation_prompt_prepared'
+        )
+        payload['canonical_inputs'] = {'stimmung_input': {'dominant_tone': 'RAW_TONE'}}
+
+        product_payload = {key: value for key, value in payload.items() if key != 'canonical_inputs'}
+        self.assertTrue(observability_payload_guard.guard_payload(product_payload).accepted)
+        raw_mutant = dict(product_payload, raw_content_included=True)
+        self.assertFalse(observability_payload_guard.guard_payload(raw_mutant).accepted)
+        free_text_mutant = dict(
+            product_payload,
+            canonical_projection_omitted_families=['RAW FREE FORM FAMILY'],
+        )
+        self.assertFalse(observability_payload_guard.guard_payload(free_text_mutant).accepted)
+
+        projected, _redaction = admin_log_projection.project_payload(payload)
+
+        self.assertEqual(projected['canonical_projection_version'], 'validation_canonical_inputs_v1')
+        self.assertEqual(projected['stimmung_delivery_status'], 'full')
+        self.assertEqual(projected['stimmung_delivery_reason_code'], 'included')
+        self.assertEqual(projected['canonical_projection_chars'], 412)
+        self.assertEqual(projected['canonical_projection_budget_chars'], 700)
+        self.assertEqual(
+            projected['canonical_projection_omitted_families'],
+            ['recent_context_input'],
+        )
+        self.assertNotIn('canonical_inputs', projected)
+        self.assertNotIn('RAW_TONE', json.dumps(projected, sort_keys=True))
 
     def test_build_turn_pipeline_item_degraded_and_legacy_without_memory_snapshot(self) -> None:
         events = self._complete_turn_events(web_search_enabled=False)

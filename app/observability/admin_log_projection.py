@@ -109,6 +109,8 @@ _SAFE_TEXT_LIST_KEYS = {
     'advisory_recommendations_followed',
     'advisory_recommendations_overridden',
     'applied_hard_guards',
+    'canonical_projection_included_families',
+    'canonical_projection_omitted_families',
     'degraded_fields',
     'pipeline_directives_final',
     'logical_roles',

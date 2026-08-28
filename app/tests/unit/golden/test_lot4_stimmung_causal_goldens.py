@@ -7,7 +7,7 @@ import unittest
 from core.hermeneutic_node.doctrine import epistemic_regime
 from core.hermeneutic_node.inputs import stimmung_input as canonical_stimmung_input
 from core.hermeneutic_node.runtime import primary_node
-from core.hermeneutic_node.validation import hard_guards
+from core.hermeneutic_node.validation import hard_guards, validation_agent, validation_messages
 from tests.support.server_test_bootstrap import load_server_module_for_tests
 from tests.support.stimmung_dialogic_pipeline import (
     MAIN_MODEL,
@@ -148,8 +148,34 @@ def _assert_caller_provenance(events: list[dict[str, object]]) -> None:
         raise AssertionError("Stimmung caller provenance contract changed")
 
 
+def _validation_projection(capture: dict[str, object]) -> dict[str, object]:
+    block = str(capture.get("user_content") or "").split(
+        "canonical_inputs (supports secondaires de relecture contextuelle):\n",
+        1,
+    )[1].split("\n\nTache:\n", 1)[0].split("\n\nhard_guards", 1)[0]
+    return json.loads(block)
+
+
+def _assert_full_projected_stimmung(
+    projection: dict[str, object],
+    expected_stimmung: dict[str, object],
+) -> None:
+    validated = validation_messages.validate_validation_canonical_projection(projection)
+    if validated["stimmung_delivery"] != {"status": "full", "reason_code": "included"}:
+        raise AssertionError("valid Stimmung was not delivered in full")
+    if validated["families"].get("stimmung_input") != expected_stimmung:
+        raise AssertionError("delivered Stimmung differs from the canonical aggregate")
+
+
 def _assert_validation_reception_claim(capture: dict[str, object], claimed_received: bool) -> None:
-    actually_received = '"stimmung_input"' in str(capture.get("user_content") or "")
+    projection = _validation_projection(capture)
+    delivery = projection.get("stimmung_delivery") or {}
+    families = projection.get("families") or {}
+    actually_received = (
+        delivery.get("status") == "full"
+        and delivery.get("reason_code") == "included"
+        and isinstance(families.get("stimmung_input"), dict)
+    )
     if claimed_received is not actually_received:
         raise AssertionError("Validation reception claim contradicts captured provider material")
 
@@ -224,6 +250,17 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
         self.assertEqual(persisted_signal_history(json_result), signals)
         self.assertEqual(persisted_signal_history(stream_result), signals)
         self.assertEqual(json_result["node_calls"][-1]["stimmung_input"], stream_result["node_calls"][-1]["stimmung_input"])
+        json_projection = _validation_projection(
+            {"user_content": json_result["validation_messages"][-1][1]["content"]}
+        )
+        stream_projection = _validation_projection(
+            {"user_content": stream_result["validation_messages"][-1][1]["content"]}
+        )
+        self.assertEqual(json_projection, stream_projection)
+        _assert_full_projected_stimmung(
+            json_projection,
+            json_result["node_calls"][-1]["stimmung_input"],
+        )
         self.assertTrue(
             all(response["terminal"]["event"] == "done" for response in stream_result["responses"])
         )
@@ -442,7 +479,7 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
         self.assertTrue(guarded.answer_forbidden)
         self.assertEqual(guarded.allowed_postures, ("clarify", "suspend"))
 
-    def test_validation_capture_freezes_complete_partial_absent_and_lexical_compaction(self) -> None:
+    def test_validation_capture_preserves_complete_stimmung_independent_of_neighbor_volume_and_names(self) -> None:
         stimmung = {
             "schema_version": "v1",
             "present": True,
@@ -453,30 +490,67 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
             "turns_considered": 4,
         }
 
-        def canonical_block(capture):
-            return capture["user_content"].split(
-                "canonical_inputs (supports secondaires de relecture contextuelle):\n",
-                1,
-            )[1].split("\n\nTache:\n", 1)[0].split("\n\nhard_guards", 1)[0]
-
-        small = canonical_block(capture_validation_request({"stimmung_input": stimmung}))
-        partial = canonical_block(
+        small = _validation_projection(capture_validation_request({"stimmung_input": stimmung}))
+        near_bound = _validation_projection(
             capture_validation_request({"aaa_padding": "x" * 520, "stimmung_input": stimmung})
         )
-        absent = canonical_block(
+        beyond_bound = _validation_projection(
             capture_validation_request({"aaa_padding": "x" * 800, "stimmung_input": stimmung})
         )
-        lexical_retained = canonical_block(
+        renamed_neighbor = _validation_projection(
             capture_validation_request({"zzz_padding": "x" * 800, "stimmung_input": stimmung})
         )
 
-        self.assertIn('"stimmung_input"', small)
-        self.assertIn('"shift_state"', small)
-        self.assertIn("stimmung_input", partial)
-        self.assertNotIn("shift_state", partial)
-        self.assertNotIn("stimmung_input", absent)
-        self.assertIn("stimmung_input", lexical_retained)
-        self.assertIn("shift_state", lexical_retained)
+        for projection in (small, near_bound, beyond_bound, renamed_neighbor):
+            _assert_full_projected_stimmung(projection, stimmung)
+            self.assertEqual(projection["projection_version"], "validation_canonical_inputs_v1")
+            self.assertEqual(
+                projection["stimmung_delivery"],
+                {"status": "full", "reason_code": "included"},
+            )
+            self.assertEqual(projection["families"]["stimmung_input"], stimmung)
+            self.assertLessEqual(
+                len(json.dumps(projection, ensure_ascii=False, sort_keys=True, separators=(",", ":"))),
+                validation_agent.MAX_CANONICAL_INPUTS_JSON_CHARS,
+            )
+            self.assertNotIn("preview", projection)
+            self.assertNotIn("truncated", projection)
+        self.assertEqual(near_bound, beyond_bound)
+        self.assertEqual(beyond_bound, renamed_neighbor)
+
+        suppressed_mutant = copy.deepcopy(beyond_bound)
+        del suppressed_mutant["families"]["stimmung_input"]
+        with self.assertRaises((AssertionError, ValueError)):
+            _assert_full_projected_stimmung(suppressed_mutant, stimmung)
+
+        duplicated_mutant = copy.deepcopy(beyond_bound)
+        duplicated_mutant["omitted_families"].append("stimmung_input")
+        with self.assertRaises((AssertionError, ValueError)):
+            _assert_full_projected_stimmung(duplicated_mutant, stimmung)
+
+        displaced_mutant = copy.deepcopy(beyond_bound)
+        displaced_mutant["stimmung_input"] = displaced_mutant["families"].pop("stimmung_input")
+        with self.assertRaises((AssertionError, ValueError)):
+            _assert_full_projected_stimmung(displaced_mutant, stimmung)
+
+        lexical_prefix_mutant = {"truncated": True, "preview": json.dumps(beyond_bound)[:500]}
+        with self.assertRaises((AssertionError, ValueError)):
+            _assert_full_projected_stimmung(lexical_prefix_mutant, stimmung)
+
+        inverted_priority_mutant = copy.deepcopy(beyond_bound)
+        inverted_priority_mutant["families"] = {"time_input": {"schema_version": "v1"}}
+        inverted_priority_mutant["omitted_families"] = ["stimmung_input"]
+        inverted_priority_mutant["stimmung_delivery"] = {
+            "status": "absent",
+            "reason_code": "contract_budget_exceeded",
+        }
+        with self.assertRaises((AssertionError, ValueError)):
+            _assert_full_projected_stimmung(inverted_priority_mutant, stimmung)
+
+        partial_mutant = copy.deepcopy(beyond_bound)
+        partial_mutant["stimmung_delivery"]["status"] = "partial"
+        with self.assertRaises((AssertionError, ValueError)):
+            _assert_full_projected_stimmung(partial_mutant, stimmung)
 
         transverse = exercise_stimmung_dialogue(
             self.server,
@@ -487,9 +561,19 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
             for event in transverse["events"]
             if event.get("stage") == "validation_prompt_prepared"
         ][-1]
-        self.assertIn("stimmung_input", prepared["payload_json"]["canonical_inputs"]["input_keys"])
-        actual_provider_material = json.dumps(transverse["validation_messages"][-1], sort_keys=True)
-        self.assertNotIn("stimmung_input", actual_provider_material)
+        prepared_payload = prepared["payload_json"]
+        self.assertEqual(prepared_payload["canonical_projection_version"], "validation_canonical_inputs_v1")
+        self.assertEqual(prepared_payload["stimmung_delivery_status"], "full")
+        self.assertEqual(prepared_payload["stimmung_delivery_reason_code"], "included")
+        self.assertLessEqual(
+            prepared_payload["canonical_projection_chars"],
+            prepared_payload["canonical_projection_budget_chars"],
+        )
+        actual_projection = _validation_projection(
+            {"user_content": transverse["validation_messages"][-1][1]["content"]}
+        )
+        self.assertEqual(actual_projection["stimmung_delivery"]["status"], "full")
+        self.assertIn("stimmung_input", actual_projection["families"])
 
     def test_main_model_receives_only_derived_judgment_and_can_lose_the_causal_difference(self) -> None:
         stable = exercise_stimmung_dialogue(
@@ -700,12 +784,12 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
                 transition_regime,
             )
 
-        absent_capture = capture_validation_request(
+        retained_capture = capture_validation_request(
             {"aaa_padding": "x" * 800, "stimmung_input": stimmung}
         )
-        _assert_validation_reception_claim(absent_capture, False)
+        _assert_validation_reception_claim(retained_capture, True)
         with self.assertRaises(AssertionError):
-            _assert_validation_reception_claim(absent_capture, True)
+            _assert_validation_reception_claim(retained_capture, False)
 
         result = exercise_stimmung_dialogue(
             self.server,

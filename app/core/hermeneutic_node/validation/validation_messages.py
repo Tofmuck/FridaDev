@@ -8,6 +8,7 @@ from core.hermeneutic_node.inputs import recent_context_input as canonical_recen
 from core.hermeneutic_node.inputs import time_input as canonical_time_input
 from observability import chat_turn_logger
 from . import validation_contract
+from . import validation_canonical_projection
 
 
 SCHEMA_VERSION = validation_contract.SCHEMA_VERSION
@@ -16,8 +17,16 @@ MAX_VALIDATION_CONTEXT_MESSAGE_CHARS = 420
 MAX_VALIDATION_CONTEXT_JSON_CHARS = 4200
 MAX_PRIMARY_VERDICT_JSON_CHARS = 1000
 MAX_JUSTIFICATIONS_JSON_CHARS = 700
-MAX_CANONICAL_INPUTS_JSON_CHARS = 700
+MAX_CANONICAL_INPUTS_JSON_CHARS = validation_contract.MAX_CANONICAL_INPUTS_JSON_CHARS
 MAX_RESPONSE_TOKENS = 140
+CANONICAL_PROJECTION_VERSION = validation_contract.CANONICAL_PROJECTION_VERSION
+CANONICAL_FAMILY_ORDER = validation_contract.CANONICAL_FAMILY_ORDER
+project_validation_canonical_inputs = (
+    validation_canonical_projection.project_validation_canonical_inputs
+)
+validate_validation_canonical_projection = (
+    validation_canonical_projection.validate_validation_canonical_projection
+)
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
@@ -205,12 +214,20 @@ def _emit_validation_prompt_prepared(
     messages: Sequence[Mapping[str, str]],
     validation_dialogue_context: Mapping[str, Any],
     canonical_inputs: Mapping[str, Any],
+    canonical_projection: Mapping[str, Any],
     hard_guard_payload: Mapping[str, Any],
     temperature: float,
     top_p: float,
     max_tokens: int,
 ) -> None:
-    canonical_input_keys = sorted(_text(key) for key in canonical_inputs.keys() if _text(key))
+    projection = validation_contract.validate_canonical_projection_metadata(
+        canonical_projection
+    )
+    canonical_input_keys = [
+        _text(key)
+        for key in _sequence(projection.get("canonical_projection_included_families"))
+        if _text(key)
+    ]
     payload = {
         "schema_version": SCHEMA_VERSION,
         "payload_kind": "secondary_validation_agent_provider",
@@ -229,11 +246,27 @@ def _emit_validation_prompt_prepared(
             validation_dialogue_context
         ),
         "canonical_inputs": {
-            "present": bool(canonical_inputs),
+            "present": bool(canonical_input_keys),
             "input_keys": canonical_input_keys,
             "input_keys_count": len(canonical_input_keys),
-            "json_chars": len(_compact_json(canonical_inputs)) if canonical_inputs else 0,
+            "json_chars": _int_or_zero(projection.get("canonical_projection_chars")),
         },
+        "canonical_projection_version": _text(projection.get("canonical_projection_version")),
+        "canonical_projection_chars": _int_or_zero(projection.get("canonical_projection_chars")),
+        "canonical_projection_budget_chars": _int_or_zero(
+            projection.get("canonical_projection_budget_chars")
+        ),
+        "canonical_projection_included_families": canonical_input_keys,
+        "canonical_projection_omitted_families": [
+            _text(key)
+            for key in _sequence(projection.get("canonical_projection_omitted_families"))
+            if _text(key)
+        ],
+        "stimmung_delivery_status": _text(projection.get("stimmung_delivery_status")),
+        "stimmung_delivery_reason_code": _text(
+            projection.get("stimmung_delivery_reason_code")
+        ),
+        "raw_content_included": False,
         "memory_retrieved": _summarize_memory_retrieved(canonical_inputs),
         "memory_arbitration": _summarize_memory_arbitration(canonical_inputs),
         "hard_guard": {
@@ -363,6 +396,26 @@ def build_messages(
     canonical_inputs: Mapping[str, Any],
     hard_guard_payload: Mapping[str, Any] | None,
 ) -> list[dict[str, str]]:
+    messages, _projection = build_messages_with_projection(
+        system_prompt=system_prompt,
+        primary_verdict=primary_verdict,
+        justifications=justifications,
+        validation_dialogue_context=validation_dialogue_context,
+        canonical_inputs=canonical_inputs,
+        hard_guard_payload=hard_guard_payload,
+    )
+    return messages
+
+
+def build_messages_with_projection(
+    *,
+    system_prompt: str,
+    primary_verdict: Mapping[str, Any],
+    justifications: Mapping[str, Any],
+    validation_dialogue_context: Mapping[str, Any],
+    canonical_inputs: Mapping[str, Any],
+    hard_guard_payload: Mapping[str, Any] | None,
+) -> tuple[list[dict[str, str]], dict[str, Any]]:
     time_reference = validation_time_reference(canonical_inputs)
     compacted_time_reference = _bounded_json_preview(time_reference, max_chars=420) if time_reference else ""
     validation_dialogue_context_preview = compacted_validation_dialogue_context(
@@ -371,7 +424,9 @@ def build_messages(
     )
     compacted_primary_verdict = _bounded_json_preview(primary_verdict, max_chars=MAX_PRIMARY_VERDICT_JSON_CHARS)
     compacted_justifications = _bounded_json_preview(justifications, max_chars=MAX_JUSTIFICATIONS_JSON_CHARS)
-    compacted_canonical_inputs = _bounded_json_preview(canonical_inputs, max_chars=MAX_CANONICAL_INPUTS_JSON_CHARS)
+    compacted_canonical_inputs, canonical_projection = project_validation_canonical_inputs(
+        canonical_inputs,
+    )
     compacted_hard_guard_payload = _bounded_json_preview(
         _mapping(hard_guard_payload),
         max_chars=320,
@@ -382,7 +437,7 @@ def build_messages(
             "hard_guards (contraintes deterministes non cassables):\n"
             f"{compacted_hard_guard_payload}\n\n"
         )
-    return [
+    messages = [
         {"role": "system", "content": str(system_prompt or "")},
         {
             "role": "user",
@@ -425,3 +480,4 @@ def build_messages(
             ),
         },
     ]
+    return messages, canonical_projection

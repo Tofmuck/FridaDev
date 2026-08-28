@@ -209,6 +209,8 @@ et ne possede aucune autorite Identity ou canonique.
   - content-free proof of the secondary provider payload prepared by `validation_agent`
   - must be distinguishable from the main LLM payload and from `stimmung_prompt_prepared`
   - allowed fields: `payload_kind`, `provider_caller=validation_agent`, secondary/main booleans, model, message counts, input-family presence flags, compact source-kind counts, char counts, sampling/timeouts when present
+  - `validation_canonical_inputs_v1` also exposes the exact content-free transport truth: projection version, used chars, fixed budget, closed included/omitted family lists, `stimmung_delivery_status=full|absent`, bounded reason code, Validation attempt source and prepared status
+  - `partial`, inconsistent counters, unknown family names, a raw-content flag set to true, or an unversioned `full` claim are invalid rather than normal display states
   - forbidden: raw prompt, raw messages, raw validation dialogue, raw canonical inputs, raw memory traces/summaries, raw identity content
 
 - `validation_agent`
@@ -310,6 +312,7 @@ Minimum checklist groups:
   - `validation_prompt_prepared` / `validation_agent`
   - `web_reformulation_prompt_prepared`
   - if a secondary provider is expected or called, the matching `*_prompt_prepared` proof is mandatory; a result event or `llm_call.provider_caller` alone is `degraded` with `reason_code=missing_secondary_provider_prepared`
+  - when a Validation projection claim is present, its structural metadata is validated from `validation_prompt_prepared`; an invalid status such as `partial` degrades the Validation checklist item with the bounded validation error code
 - web:
   - `web_search` is `not_applicable` when web was not requested;
   - when web was requested, `ok`, `skipped` with `reason_code`, or `error` with compact cause must be represented without raw query/result content;
@@ -351,6 +354,10 @@ Minimum item groups:
 - provider lanes:
   - main provider is only `llm_call.provider_caller=llm`;
   - secondary providers stay separated: `stimmung_agent`, `validation_agent`, `web_reformulation`;
+  - the Validation lane projects `canonical_projection` only from a valid
+    `validation_prompt_prepared`: authority marker, version, `full|absent`, reason
+    code, chars/budget and omitted families; missing or invalid proof becomes
+    `authoritative=false` and `stimmung_delivery_status=unknown`, never `full`;
   - legacy or missing provider callers are counted as `unknown`, never merged with the main lane;
 - RAG: `retrieved -> basket -> kept -> injected`, sourced from `memory_chain_snapshot` when available;
 - Identity: block presence, chars, short hash and selected-id count only;

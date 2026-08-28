@@ -13,6 +13,28 @@ FALLBACK_MODEL = "openai/gpt-5.4-nano"
 ALLOWED_PRIMARY_JUDGMENT_POSTURES = ("answer", "clarify", "suspend")
 ALLOWED_FINAL_OUTPUT_REGIMES = ("meta", "simple", "presence")
 MAX_VALIDATION_CONTEXT_MESSAGES = canonical_recent_context_input.VALIDATION_DIALOGUE_CONTEXT_MAX_MESSAGES
+MAX_CANONICAL_INPUTS_JSON_CHARS = 700
+CANONICAL_PROJECTION_VERSION = "validation_canonical_inputs_v1"
+CANONICAL_FAMILY_ORDER = (
+    "time_input",
+    "memory_retrieved",
+    "memory_arbitration",
+    "summary_input",
+    "identity_input",
+    "recent_context_input",
+    "recent_window_input",
+    "user_turn_input",
+    "user_turn_signals",
+    "stimmung_input",
+    "web_input",
+)
+STIMMUNG_DELIVERY_STATUSES = ("full", "absent")
+STIMMUNG_DELIVERY_REASON_CODES = (
+    "included",
+    "signal_not_present",
+    "invalid_signal",
+    "contract_budget_exceeded",
+)
 
 _ALLOWED_PRIMARY_VERDICT_KEYS = {
     "schema_version",
@@ -92,6 +114,73 @@ def _stable_unique(values: Sequence[str]) -> list[str]:
         seen.add(normalized)
         ordered.append(normalized)
     return ordered
+
+
+def validate_canonical_projection_metadata(value: Any) -> dict[str, Any]:
+    payload = _mapping(value)
+    if _text(payload.get("canonical_projection_version")) != CANONICAL_PROJECTION_VERSION:
+        raise ValueError("invalid_canonical_projection_version")
+
+    chars = payload.get("canonical_projection_chars")
+    budget_chars = payload.get("canonical_projection_budget_chars")
+    if (
+        isinstance(chars, bool)
+        or not isinstance(chars, int)
+        or isinstance(budget_chars, bool)
+        or not isinstance(budget_chars, int)
+        or chars < 0
+        or budget_chars != MAX_CANONICAL_INPUTS_JSON_CHARS
+        or chars > budget_chars
+    ):
+        raise ValueError("invalid_canonical_projection_budget")
+
+    included = payload.get("canonical_projection_included_families")
+    omitted = payload.get("canonical_projection_omitted_families")
+    if not isinstance(included, list) or not isinstance(omitted, list):
+        raise ValueError("invalid_canonical_projection_families")
+    if any(
+        not isinstance(item, str) or item not in CANONICAL_FAMILY_ORDER
+        for item in [*included, *omitted]
+    ):
+        raise ValueError("invalid_canonical_projection_families")
+    if len(set(included)) != len(included) or len(set(omitted)) != len(omitted):
+        raise ValueError("invalid_canonical_projection_families")
+    if set(included) & set(omitted):
+        raise ValueError("invalid_canonical_projection_families")
+    if omitted != sorted(omitted, key=CANONICAL_FAMILY_ORDER.index):
+        raise ValueError("invalid_canonical_projection_family_order")
+
+    status = _text(payload.get("stimmung_delivery_status"))
+    reason_code = _text(payload.get("stimmung_delivery_reason_code"))
+    if status not in STIMMUNG_DELIVERY_STATUSES:
+        raise ValueError("invalid_stimmung_delivery_status")
+    if reason_code not in STIMMUNG_DELIVERY_REASON_CODES:
+        raise ValueError("invalid_stimmung_delivery_reason_code")
+    if status == "full":
+        if reason_code != "included" or "stimmung_input" not in included or "stimmung_input" in omitted:
+            raise ValueError("inconsistent_stimmung_delivery")
+    elif (
+        reason_code == "included"
+        or "stimmung_input" in included
+        or (
+            reason_code in {"invalid_signal", "contract_budget_exceeded"}
+            and "stimmung_input" not in omitted
+        )
+    ):
+        raise ValueError("inconsistent_stimmung_delivery")
+    if payload.get("raw_content_included") is not False:
+        raise ValueError("invalid_canonical_projection_raw_content")
+
+    return {
+        "canonical_projection_version": CANONICAL_PROJECTION_VERSION,
+        "canonical_projection_chars": chars,
+        "canonical_projection_budget_chars": budget_chars,
+        "canonical_projection_included_families": list(included),
+        "canonical_projection_omitted_families": list(omitted),
+        "stimmung_delivery_status": status,
+        "stimmung_delivery_reason_code": reason_code,
+        "raw_content_included": False,
+    }
 
 
 def _compact_text(value: Any, *, max_chars: int) -> str:

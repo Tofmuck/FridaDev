@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Sequence
 
+from core.hermeneutic_node.validation import validation_contract
 from observability import agentic_status
 from observability.turn_observability_checklist import build_turn_observability_checklist
 from observability.turn_pipeline_biblio_summary import build_biblio_summary
@@ -207,6 +208,35 @@ def _secondary_provider_status(status_values: set[str], *, event_present: bool) 
     return agentic_status.STATUS_OK
 
 
+def _validation_canonical_projection_summary(
+    event: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    payload = _payload(event or {})
+    try:
+        projection = validation_contract.validate_canonical_projection_metadata(payload)
+    except ValueError:
+        return {
+            'source_kind': 'validation_prompt_prepared' if event else 'missing',
+            'authoritative': False,
+            'projection_version': _text(payload.get('canonical_projection_version')),
+            'stimmung_delivery_status': 'unknown',
+            'stimmung_delivery_reason_code': 'invalid_canonical_projection_metadata',
+            'chars': 0,
+            'budget_chars': validation_contract.MAX_CANONICAL_INPUTS_JSON_CHARS,
+            'omitted_families': [],
+        }
+    return {
+        'source_kind': 'validation_prompt_prepared',
+        'authoritative': True,
+        'projection_version': projection['canonical_projection_version'],
+        'stimmung_delivery_status': projection['stimmung_delivery_status'],
+        'stimmung_delivery_reason_code': projection['stimmung_delivery_reason_code'],
+        'chars': projection['canonical_projection_chars'],
+        'budget_chars': projection['canonical_projection_budget_chars'],
+        'omitted_families': projection['canonical_projection_omitted_families'],
+    }
+
+
 def _providers_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     llm_events = _events_for_stage(events, 'llm_call')
     main_events = [
@@ -251,6 +281,15 @@ def _providers_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
                 'latest_ts': _event_ts(latest or {}),
             }
         )
+        if key == 'validation':
+            prepared_payload = _payload(prepared_events[-1] if prepared_events else {})
+            summary['canonical_projection'] = _validation_canonical_projection_summary(
+                prepared_events[-1] if prepared_events else None
+            )
+            summary['attempt_decision_source'] = _text(
+                prepared_payload.get('attempt_decision_source')
+            )
+            summary['validation_status'] = _text(prepared_payload.get('validation_status'))
         secondary[key] = summary
 
     return {

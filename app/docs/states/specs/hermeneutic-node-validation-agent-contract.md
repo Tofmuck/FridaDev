@@ -172,6 +172,27 @@ Regles minimales:
 - `validation_dialogue_context` ne vaut pas side input faible
 - les entrees canoniques pertinentes restent disponibles pour relire le verdict dans son cadre
 
+Transport borne courant des entrees canoniques:
+
+- `validation_canonical_inputs_v1` remplace le prefixe textuel arbitraire de la
+  serialisation globale par une enveloppe JSON structurelle bornee a `700`
+  caracteres;
+- les familles connues suivent l'ordre stable de construction runtime
+  `time_input`, `memory_retrieved`, `memory_arbitration`, `summary_input`,
+  `identity_input`, `recent_context_input`, `recent_window_input`,
+  `user_turn_input`, `user_turn_signals`, `stimmung_input`, `web_input`;
+- cet ordre est un ordre de transport, pas une nouvelle hierarchie de verite;
+- lorsqu'un `stimmung_input` valide est present, son bloc complet est reserve
+  avant les autres familles; chaque autre bloc tient entierement ou rejoint
+  `omitted_families`;
+- le statut Stimmung transporte vaut uniquement `full` avec
+  `reason_code=included`, ou `absent` avec `signal_not_present`,
+  `invalid_signal` ou `contract_budget_exceeded`; `partial` est invalide;
+- une reconstruction repetee est deterministe, ignore les cles hors contrat et
+  ne depend pas de leur ordre lexical;
+- le cas synthetique maximal de la structure Stimmung courante occupe `627/700`
+  caracteres avec les dix autres familles explicitement omises.
+
 ## 6. Decision Retenue Pour Le Contexte Dialogique Recent Elargi
 
 La decision normative retenue est:
@@ -325,6 +346,11 @@ Regle forte:
   `secondary_provider_payload=true`, presence/counts/longueurs/source kinds de `memory_retrieved`
   et `memory_arbitration`, metriques de messages provider, et aucun contenu brut de prompt,
   message, trace, summary ou conversation
+- depuis le micro-lot 4C.1 du 2026-08-28, ce meme stage observe le materiel
+  effectivement prepare avec `canonical_projection_version`, taille et budget,
+  familles incluses/omises, `stimmung_delivery_status=full|absent` et un reason
+  code ferme; les metadonnees sont validees avant emission et ne recopient ni
+  la projection, ni un ton, ni un contenu de source
 
 Preuves de fermeture lot 6:
 
