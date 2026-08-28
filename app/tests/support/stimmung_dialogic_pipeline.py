@@ -4,11 +4,11 @@ import copy
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import json
-from types import SimpleNamespace
 from typing import Any, Mapping, Sequence
 
 from admin import runtime_settings
 from core import chat_stream_control
+from core import conversations_store
 from core import workspace_folder_notes_prompt_lane
 from core.chat_document_prompt_reads import ActiveDocumentsPromptRead
 from core.hermeneutic_node.runtime import primary_node
@@ -105,6 +105,270 @@ class _FakeResponse:
 
 def _serialized_messages(messages: Sequence[Mapping[str, Any]]) -> str:
     return json.dumps(list(messages), ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+
+
+class _SilentStoreLogger:
+    def info(self, *_args: Any, **_kwargs: Any) -> None:
+        return None
+
+    def warning(self, *_args: Any, **_kwargs: Any) -> None:
+        return None
+
+
+class _CatalogWriteCursor:
+    def __init__(self, store: "_StimmungConversationStore") -> None:
+        self._store = store
+        self._returned: dict[str, Any] | None = None
+
+    def __enter__(self) -> "_CatalogWriteCursor":
+        return self
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
+        return False
+
+    def execute(self, _sql: str, params: Sequence[Any]) -> None:
+        self._store.catalog_row = {
+            "id": params[0],
+            "title": params[1],
+            "created_at": params[2],
+            "updated_at": params[3],
+            "message_count": params[4],
+            "last_message_preview": params[5],
+            "workspace_folder_id": params[6],
+            "deleted_at": None,
+        }
+        self._returned = {"id": params[0]}
+
+    def fetchone(self) -> dict[str, Any] | None:
+        return copy.deepcopy(self._returned)
+
+
+class _MessageWriteCursor:
+    def __init__(self, store: "_StimmungConversationStore") -> None:
+        self._store = store
+
+    def __enter__(self) -> "_MessageWriteCursor":
+        return self
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
+        return False
+
+    def execute(self, _sql: str, _params: Sequence[Any]) -> None:
+        self._store.message_rows = []
+
+    def executemany(self, _sql: str, rows: Sequence[Sequence[Any]]) -> None:
+        self._store.message_rows = [tuple(row) for row in rows]
+
+
+class _AtomicWriteConnection:
+    def __init__(self, store: "_StimmungConversationStore") -> None:
+        self._store = store
+        self._cursor_index = 0
+
+    def __enter__(self) -> "_AtomicWriteConnection":
+        return self
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
+        return False
+
+    def cursor(self, **_kwargs: Any) -> _CatalogWriteCursor | _MessageWriteCursor:
+        self._cursor_index += 1
+        if self._cursor_index == 1:
+            return _CatalogWriteCursor(self._store)
+        return _MessageWriteCursor(self._store)
+
+    def commit(self) -> None:
+        return None
+
+
+class _CatalogReadCursor:
+    def __init__(self, store: "_StimmungConversationStore") -> None:
+        self._store = store
+
+    def __enter__(self) -> "_CatalogReadCursor":
+        return self
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
+        return False
+
+    def execute(self, *_args: Any, **_kwargs: Any) -> None:
+        return None
+
+    def fetchone(self) -> dict[str, Any] | None:
+        return copy.deepcopy(self._store.catalog_row)
+
+
+class _MessageReadCursor:
+    def __init__(self, store: "_StimmungConversationStore") -> None:
+        self._store = store
+
+    def __enter__(self) -> "_MessageReadCursor":
+        return self
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
+        return False
+
+    def execute(self, *_args: Any, **_kwargs: Any) -> None:
+        return None
+
+    def fetchall(self) -> list[dict[str, Any]]:
+        loaded: list[dict[str, Any]] = []
+        for row in self._store.message_rows:
+            json_meta = row[7]
+            meta = copy.deepcopy(json_meta.obj) if json_meta is not None else None
+            loaded.append(
+                {
+                    "role": row[2],
+                    "content": row[3],
+                    "timestamp": row[4],
+                    "summarized_by": row[5],
+                    "embedded": row[6],
+                    "meta": meta,
+                }
+            )
+        return loaded
+
+
+class _ReadConnection:
+    def __init__(self, cursor: _CatalogReadCursor | _MessageReadCursor) -> None:
+        self._cursor = cursor
+
+    def __enter__(self) -> "_ReadConnection":
+        return self
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
+        return False
+
+    def cursor(self, **_kwargs: Any) -> _CatalogReadCursor | _MessageReadCursor:
+        return self._cursor
+
+
+class _StimmungConversationStore:
+    """Exercise the product store functions over bounded in-memory row results."""
+
+    def __init__(self) -> None:
+        self.catalog_row: dict[str, Any] | None = None
+        self.message_rows: list[tuple[Any, ...]] = []
+        self.logger = _SilentStoreLogger()
+
+    @staticmethod
+    def _ts_to_iso(raw: Any) -> str:
+        return conversations_store.ts_to_iso(
+            raw,
+            now_iso_func=lambda: "2026-08-28T09:00:00Z",
+        )
+
+    @classmethod
+    def _normalize_messages(cls, messages: Any) -> list[dict[str, Any]]:
+        return conversations_store.normalize_messages_for_storage(
+            messages,
+            ts_to_iso_func=cls._ts_to_iso,
+            coerce_bool_func=conversations_store.coerce_bool,
+        )
+
+    @classmethod
+    def _metadata(cls, conversation: dict[str, Any]) -> dict[str, Any]:
+        return conversations_store.conversation_metadata(
+            conversation,
+            safe_title_func=conversations_store.safe_title,
+            ts_to_iso_func=cls._ts_to_iso,
+            now_iso_func=lambda: "2026-08-28T09:00:00Z",
+            default_title=conversations_store.DEFAULT_TITLE,
+            infer_title_from_messages_func=lambda messages: conversations_store.infer_title_from_messages(
+                messages,
+                collapse_ws_func=conversations_store.collapse_ws,
+                safe_title_func=conversations_store.safe_title,
+            ),
+            last_message_preview_func=lambda messages: conversations_store.last_message_preview(
+                messages,
+                collapse_ws_func=conversations_store.collapse_ws,
+                preview_max_chars=conversations_store.PREVIEW_MAX_CHARS,
+            ),
+        )
+
+    def save(self, conversation: Mapping[str, Any], *, updated_at: str | None) -> Any:
+        mutable = conversation if isinstance(conversation, dict) else dict(conversation)
+
+        def atomic_save(saved: dict[str, Any], preserve_deleted: bool) -> tuple[bool, bool, str | None]:
+            return conversations_store.save_conversation_catalog_and_messages_atomic(
+                saved,
+                preserve_deleted=preserve_deleted,
+                conversation_metadata_func=self._metadata,
+                normalize_conversation_id_func=conversations_store.normalize_conversation_id,
+                normalize_messages_for_storage_func=self._normalize_messages,
+                db_conn_func=lambda: _AtomicWriteConnection(self),
+                parse_iso_to_dt_func=conversations_store.parse_iso_to_dt,
+                logger=self.logger,
+            )
+
+        return conversations_store.save_conversation(
+            mutable,
+            updated_at=updated_at,
+            preserve_deleted=False,
+            now_iso_func=lambda: "2026-08-28T09:00:00Z",
+            normalize_messages_for_storage_func=self._normalize_messages,
+            logger=self.logger,
+            admin_log_event_func=lambda *_args, **_kwargs: None,
+            upsert_conversation_catalog_func=lambda *_args, **_kwargs: None,
+            upsert_conversation_messages_func=lambda *_args, **_kwargs: False,
+            atomic_save_func=atomic_save,
+        )
+
+    def load(self, conversation_id: str, system_prompt: str) -> dict[str, Any]:
+        def get_summary(conv_id: str) -> dict[str, Any] | None:
+            return conversations_store.get_conversation_summary(
+                conv_id,
+                include_deleted=True,
+                normalize_conversation_id_func=conversations_store.normalize_conversation_id,
+                db_conn_func=lambda: _ReadConnection(_CatalogReadCursor(self)),
+                serialize_catalog_row_func=lambda row: conversations_store.serialize_catalog_row(
+                    row,
+                    safe_title_func=conversations_store.safe_title,
+                    ts_to_iso_func=self._ts_to_iso,
+                    default_title=conversations_store.DEFAULT_TITLE,
+                ),
+                logger=self.logger,
+            )
+
+        def load_messages(conv_id: str) -> list[dict[str, Any]] | None:
+            return conversations_store.load_messages_from_db(
+                conv_id,
+                normalize_conversation_id_func=conversations_store.normalize_conversation_id,
+                db_conn_func=lambda: _ReadConnection(_MessageReadCursor(self)),
+                ts_to_iso_func=self._ts_to_iso,
+                logger=self.logger,
+            )
+
+        def build(summary: dict[str, Any], messages: list[dict[str, Any]], prompt: str) -> dict[str, Any]:
+            return conversations_store.build_conversation_from_catalog(
+                summary,
+                messages,
+                prompt,
+                default_title=conversations_store.DEFAULT_TITLE,
+                now_iso_func=lambda: "2026-08-28T09:00:00Z",
+                normalize_conversation_func=lambda data, conv_id, system: conversations_store.normalize_conversation(
+                    data,
+                    conv_id,
+                    system,
+                    now_iso_func=lambda: "2026-08-28T09:00:00Z",
+                    safe_title_func=conversations_store.safe_title,
+                    find_system_message_func=conversations_store.find_system_message,
+                ),
+            )
+
+        loaded = conversations_store.load_conversation(
+            conversation_id,
+            system_prompt,
+            normalize_conversation_id_func=conversations_store.normalize_conversation_id,
+            get_conversation_summary_func=get_summary,
+            load_messages_from_db_func=load_messages,
+            build_conversation_from_catalog_func=build,
+            logger=self.logger,
+            admin_log_event_func=lambda *_args, **_kwargs: None,
+        )
+        if loaded is None:
+            raise AssertionError("synthetic Stimmung store failed to reload the conversation")
+        return loaded
 
 
 def capture_validation_request(canonical_inputs: Mapping[str, Any]) -> dict[str, Any]:
@@ -228,18 +492,32 @@ def exercise_stimmung_dialogue(
     stream: bool = False,
     corrupt_signal_after_turns: Sequence[int] = (),
 ) -> dict[str, Any]:
-    """Traverse the real chat coordinator with bounded provider and JSON-store fakes."""
+    """Traverse chat and the real store functions over bounded provider/row fakes."""
 
     if not outcomes:
         raise ValueError("at least one synthetic turn is required")
 
-    conversation_id = "conv-lot4-stimmung-dialogue"
+    conversation_id = "44444444-4444-4444-8444-444444444444"
     initial_conversation = {
         "id": conversation_id,
         "created_at": "2026-08-28T09:00:00Z",
-        "messages": [{"role": "system", "content": "LOT4_SYNTHETIC_SYSTEM"}],
+        "messages": [
+            {
+                "role": "system",
+                "content": "LOT4_SYNTHETIC_SYSTEM",
+                "timestamp": "2026-08-28T09:00:00Z",
+            }
+        ],
     }
-    durable_json = json.dumps(initial_conversation, ensure_ascii=True, sort_keys=True)
+    store = _StimmungConversationStore()
+    seeded = store.save(initial_conversation, updated_at="2026-08-28T09:00:00Z")
+    if not seeded.ok:
+        raise AssertionError("synthetic Stimmung store seed failed")
+    durable_json = json.dumps(
+        store.load(conversation_id, "LOT4_SYNTHETIC_SYSTEM"),
+        ensure_ascii=True,
+        sort_keys=True,
+    )
     durable_snapshots: list[dict[str, Any]] = []
     reload_snapshots: list[dict[str, Any]] = []
     reload_instances: list[dict[str, Any]] = []
@@ -256,12 +534,13 @@ def exercise_stimmung_dialogue(
     real_stimmung_caller = server_module.chat_service.stimmung_agent.build_affective_turn_signal
     real_prompt_builder = server_module.conv_store.build_prompt_messages
 
-    def save_durable(conversation: Mapping[str, Any], **kwargs: Any) -> SimpleNamespace:
+    def save_durable(conversation: Mapping[str, Any], **kwargs: Any) -> Any:
         nonlocal durable_json
-        durable_json = json.dumps(conversation, ensure_ascii=True, sort_keys=True)
-        snapshot = json.loads(durable_json)
+        result = store.save(conversation, updated_at=kwargs.get("updated_at"))
+        snapshot = store.load(conversation_id, "LOT4_SYNTHETIC_SYSTEM")
+        durable_json = json.dumps(snapshot, ensure_ascii=True, sort_keys=True)
         durable_snapshots.append(snapshot)
-        return SimpleNamespace(ok=True, updated_at=kwargs.get("updated_at"), reason="")
+        return result
 
     request_error_class = server_module.requests.exceptions.RequestException
 
@@ -332,7 +611,7 @@ def exercise_stimmung_dialogue(
     real_node = server_module.chat_service._run_hermeneutic_node_insertion_point
 
     def load_durable(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
-        conversation = json.loads(durable_json)
+        conversation = store.load(conversation_id, "LOT4_SYNTHETIC_SYSTEM")
         # Keep references alive so object identity cannot be recycled across reloads.
         reload_instances.append(conversation)
         reload_object_ids.append(id(conversation))
@@ -467,7 +746,7 @@ def exercise_stimmung_dialogue(
                 raise AssertionError(f"synthetic chat turn failed: {response.status_code}")
 
             if index + 1 in corrupt_after:
-                stored = json.loads(durable_json)
+                stored = store.load(conversation_id, "LOT4_SYNTHETIC_SYSTEM")
                 user_messages = [
                     item
                     for item in stored.get("messages", [])
@@ -482,7 +761,14 @@ def exercise_stimmung_dialogue(
                     "dominant_tone": "lot4_invalid",
                     "confidence": 2.0,
                 }
-                durable_json = json.dumps(stored, ensure_ascii=True, sort_keys=True)
+                corruption_saved = store.save(stored, updated_at=stored.get("updated_at"))
+                if not corruption_saved.ok:
+                    raise AssertionError("synthetic Stimmung corruption save failed")
+                durable_json = json.dumps(
+                    store.load(conversation_id, "LOT4_SYNTHETIC_SYSTEM"),
+                    ensure_ascii=True,
+                    sort_keys=True,
+                )
 
         repeated_reload_a = load_durable()
         repeated_reload_b = load_durable()
@@ -508,5 +794,6 @@ def exercise_stimmung_dialogue(
         "reload_snapshots": reload_snapshots,
         "repeated_reloads": [repeated_reload_a, repeated_reload_b],
         "responses": responses,
+        "stored_message_row_count": len(store.message_rows),
         "validation_messages": validation_messages,
     }

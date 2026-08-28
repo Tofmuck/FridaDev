@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, goldens causaux du coeur livres et decision corrective non prise; Lots 5 a 8 et Z non commences
+Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, goldens techniques du coeur livres, corpus semantique du caller non execute, observabilite causale complete non prouvee et decision corrective non prise; Lots 5 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -1637,7 +1637,7 @@ Portee architecturale de cette acceptation:
 
 # LOT 4 - Audit causal et consolidation de Stimmung
 
-Statut: goldens causaux du coeur livres, decision corrective non prise
+Statut: goldens techniques du coeur livres; corpus semantique du caller non execute; observabilite causale complete non prouvee; decision corrective non prise
 Nature: audit causal multi-tours tests/benchmark/docs-only, sans cutover
 Dependance: Lot 3 ferme
 
@@ -1734,15 +1734,20 @@ Classement des findings apres inventaire:
 - F6: `valide`; le benchmark historique est insuffisant pour la maturation
   multi-tours et le fallback.
 
-## Goldens causaux du coeur livres le 2026-08-28
+## Goldens causaux techniques du coeur livres le 2026-08-28
 
 La fixture partagee
 `app/tests/support/stimmung_dialogic_pipeline.py` appelle le vrai
 `chat_service.chat_response` par la route existante. Elle conserve le caller,
 l'agregateur, le regime primaire, Validation et la construction du payload
-principal reels; seuls providers, horloge, stockage et persistance sont fakes.
-Chaque sauvegarde traverse un snapshot JSON puis chaque tour recharge un nouvel
-objet conversationnel. Le golden
+principal reels; providers, horloge et stockage restent fakes. Le fake de
+stockage en memoire appelle maintenant les vraies fonctions
+`conversations_store.save_conversation`, sauvegarde atomique, normalisation,
+adaptation JSON des metadonnees en lignes, relecture des messages et
+`load_conversation`. Son curseur ne fait que conserver puis restituer les
+resultats de lignes dans l'ordre. Chaque tour recharge un nouvel objet et un
+snapshot JSON sert seulement a verifier le round-trip de la fixture. Aucune DB
+PostgreSQL operateur ni JSONB reelle n'est traversee. Le golden
 `app/tests/unit/golden/test_lot4_stimmung_causal_goldens.py` ajoute exactement
 `10` tests Python.
 
@@ -1752,9 +1757,11 @@ signal invalide intermediaire et final, fallback reussi, double echec fail-open,
 reconstruction repetee et parite JSON/streaming. Les proprietes observees sont
 figees sans recopier poids, seuils ou hysteresis:
 
-- G1: un signal est attache une fois au message utilisateur, sauvegarde puis
-  retrouve identique et dans le meme ordre; les rechargements repetes ne
-  dupliquent rien et JSON/streaming persistent la meme histoire;
+- G1: un signal est attache une fois au message utilisateur; la sauvegarde fake
+  traverse les fonctions produit de normalisation, serialisation des lignes et
+  relecture, puis le retrouve identique et dans le meme ordre dans de nouveaux
+  objets; les rechargements repetes ne dupliquent rien et JSON/streaming
+  produisent la meme histoire, sans prouver une DB ou une JSONB reelle;
 - G2: quatre signaux valides au maximum sont agreges de l'ancien vers le
   recent; stabilite, transition volatile, `candidate_shift`, alternance et
   retour au neutre sont observes depuis le vrai agregateur; un signal invalide
@@ -1776,12 +1783,16 @@ figees sans recopier poids, seuils ou hysteresis:
   distincts; le double echec ne devient ni neutralite saine, ni Presence, ni
   sauvegarde supplementaire.
 
-Mutations controlees effectivement rejetees: signal retire, signal ou message
-duplique, ordre inverse, cinquieme signal conserve, stable requalifie volatile,
-transition ignoree, prudence forcee sur stable, Stimmung absente de Validation
-presentee comme recue, signal brut injecte au modele principal, fallback
-presente comme primaire, fail-open presente comme succes neutre, sauvegarde ou
-reconstruction dupliquee.
+Mutations controlees effectivement rejetees par les memes validateurs
+semantiques appliques aux sorties produit et aux mutants: signal retire, signal
+ou message duplique, ordre inverse, cinquieme signal conserve, stable requalifie
+volatile, transition ignoree, prudence forcee sur stable, Stimmung absente de
+Validation presentee comme recue, signal brut injecte au modele principal,
+fallback presente comme primaire, fail-open presente comme succes neutre,
+sauvegarde ou reconstruction dupliquee. Les validateurs locaux portent sur
+l'historique persistant, l'agregat quatre tours, le triplet
+absent/stable/transition, la provenance caller, la reception Validation et le
+payload principal derive uniquement; aucun framework de mutation n'est ajoute.
 
 Commandes et resultats, toutes sans reseau ni provider et avec checkout
 read-only pour Python:
@@ -1800,6 +1811,20 @@ read-only pour Python:
   et zero expected failure, soit exactement `10` nouveaux tests Python;
 - JavaScript final -> `135/135`; Chromium final -> `19/19`.
 
+Passe corrective de qualification des preuves, executee le 2026-08-28 dans le
+meme runner hermetique Python:
+
+- avant patch: decouverte complete `2726/2726` et golden Lot 4 `10/10`;
+- sensibilite rouge: le validateur incomplet a laisse passer successivement le
+  cinquieme signal puis une reconstruction dupliquee, soit une failure attendue
+  a chaque etape avant ajout de la propriete semantique manquante;
+- apres patch: golden Lot 4 `10/10`; persistance voisine `38/38`; caller,
+  agregateur, regime et Validation `74/74`; chat JSON/streaming, Presence et
+  final locks `57/57`; observabilite voisine `52/52`; goldens Lot 9 `20/20`;
+- decouverte finale `2726/2726`, zero echec, erreur, skip ou expected failure;
+  aucun test Python ajoute, aucun JavaScript ni Chromium relance car aucun
+  fichier ou support frontend n'a ete modifie.
+
 Classement des findings apres goldens:
 
 - F1: `valide`; inertie du stable et prudence de transition sont prouvees au
@@ -1816,14 +1841,16 @@ Classement des findings apres goldens:
   historique reste mono-tour et ne qualifie ni maturation semantique ni
   fallback.
 
-Limites maintenues ouvertes: aucune campagne provider n'a ete lancee; ironie,
-affect rapporte, correction semantique et psychologisation relevent encore de
-la qualite du caller, pas des goldens de raccord. Le runtime ne projette pas la
-reception effective par Validation ni l'influence causale; les read-models et
-frontends ne rendent pas stabilite, shift ou causalite autoritative. Aucun code
-runtime, prompt, modele, provider, setting, timeout, niveau de raisonnement,
-read-model ou frontend n'a ete modifie; aucun correctif F2, F3, F4 ou F5 n'a
-ete commence.
+Limites maintenues ouvertes: aucune campagne provider n'a ete lancee et le
+corpus semantique multi-tours du caller n'a pas ete execute. Ironie, affect
+rapporte, correction, intensite sans changement epistemique, question, demande,
+risque, action materielle et contre-cas Presence restent donc non prouves. Le
+runtime ne projette pas la reception effective par Validation ni l'influence
+causale; les read-models et frontends ne rendent pas stabilite, shift ou
+causalite autoritative. Le renforcement de persistance reste hermetique sur un
+fake de lignes et ne prouve aucune DB/JSONB reelle. Aucun code runtime, prompt,
+modele, provider, setting, timeout, niveau de raisonnement, read-model ou
+frontend n'a ete modifie; aucun correctif F2, F3, F4 ou F5 n'a ete commence.
 
 ## Passe 4.0 - Goldens causaux hermetiques
 
@@ -2014,7 +2041,10 @@ preuve lorsqu'un test existant couvre deja exactement l'invariant.
 - [x] Decision humaine `keep` tracee et suppression explicitement exclue.
 - [x] Finalite dialogique et ablation diagnostique clarifiees.
 - [x] Inventaire A a Z du pipeline, des contrats et des preuves existantes.
-- [x] Goldens causaux multi-tours et mutations controlees livres.
+- [x] Goldens causaux techniques du coeur et mutations controlees livres.
+- [ ] Corpus semantique multi-tours du caller valide: ironie, affect rapporte,
+  correction, intensite sans changement epistemique, question, demande, risque,
+  action materielle et contre-cas Presence.
 - [x] Reception effective par Validation et posture finale prouvees.
 - [ ] Matrice observabilite backend/read-model/frontend prouvee.
 - [x] Primaire et fallback distingues sans requalification d'echec.

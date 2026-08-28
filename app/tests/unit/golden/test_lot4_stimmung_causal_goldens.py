@@ -72,12 +72,100 @@ def _strong_regime_inputs() -> dict[str, object]:
     }
 
 
+def _assert_persistent_signal_history(
+    candidate: dict[str, object],
+    expected_signals: list[dict[str, object]],
+) -> None:
+    messages = candidate.get("messages")
+    if not isinstance(messages, list):
+        raise AssertionError("persistent conversation must contain a message list")
+    expected_roles = ["system"] + [role for _signal in expected_signals for role in ("user", "assistant")]
+    if [message.get("role") for message in messages if isinstance(message, dict)] != expected_roles:
+        raise AssertionError("persistent conversation order or cardinality changed")
+    users = [message for message in messages if isinstance(message, dict) and message.get("role") == "user"]
+    if len(users) != len(expected_signals):
+        raise AssertionError("persistent user-message cardinality changed")
+    observed = [message.get("meta", {}).get("affective_turn_signal") for message in users]
+    if observed != expected_signals:
+        raise AssertionError("persistent Stimmung history changed content or order")
+
+
+def _assert_four_turn_aggregate(candidate: dict[str, object]) -> None:
+    if candidate.get("schema_version") != "v1" or candidate.get("present") is not True:
+        raise AssertionError("four-turn Stimmung aggregate must be present and canonical")
+    if candidate.get("turns_considered") != 4:
+        raise AssertionError("Stimmung aggregate must retain exactly the four recent valid turns")
+
+
+def _assert_stable_aggregate(candidate: dict[str, object]) -> None:
+    _assert_four_turn_aggregate(candidate)
+    if candidate.get("stability") != "stable" or candidate.get("shift_state") != "steady":
+        raise AssertionError("homogeneous four-turn affect must remain stable and steady")
+
+
+def _assert_transition_aggregate(candidate: dict[str, object]) -> None:
+    _assert_four_turn_aggregate(candidate)
+    if candidate.get("stability") != "volatile":
+        raise AssertionError("the observed post-stability transition must remain volatile")
+
+
+def _assert_absent_stable_transition_regimes(
+    absent: dict[str, object],
+    stable: dict[str, object],
+    transition: dict[str, object],
+) -> None:
+    expected_inert = {
+        "epistemic_regime": "certain",
+        "proof_regime": "suffisant_en_l_etat",
+        "uncertainty_posture": "discrete",
+    }
+    expected_cautious = {
+        "epistemic_regime": "probable",
+        "proof_regime": "source_explicite_requise",
+        "uncertainty_posture": "prudente",
+    }
+    if absent != expected_inert or stable != expected_inert or transition != expected_cautious:
+        raise AssertionError("absent/stable/transition regime contract changed")
+
+
+def _assert_caller_provenance(events: list[dict[str, object]]) -> None:
+    observed = [
+        (
+            event.get("status"),
+            event.get("payload_json", {}).get("decision_source"),
+            event.get("payload_json", {}).get("model"),
+            event.get("payload_json", {}).get("present"),
+        )
+        for event in events
+    ]
+    expected = [
+        ("ok", "primary", STIMMUNG_PRIMARY_MODEL, True),
+        ("ok", "fallback", STIMMUNG_FALLBACK_MODEL, True),
+        ("error", "fail_open", STIMMUNG_FALLBACK_MODEL, False),
+        ("ok", "primary", STIMMUNG_PRIMARY_MODEL, True),
+    ]
+    if observed != expected:
+        raise AssertionError("Stimmung caller provenance contract changed")
+
+
+def _assert_validation_reception_claim(capture: dict[str, object], claimed_received: bool) -> None:
+    actually_received = '"stimmung_input"' in str(capture.get("user_content") or "")
+    if claimed_received is not actually_received:
+        raise AssertionError("Validation reception claim contradicts captured provider material")
+
+
+def _assert_main_payload_is_derived_only(messages: list[dict[str, object]]) -> None:
+    serialized = json.dumps(messages, sort_keys=True)
+    if "stimmung_input" in serialized or "active_tones" in serialized:
+        raise AssertionError("main payload leaked raw or aggregated Stimmung material")
+
+
 class Lot4StimmungCausalGoldenTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.server = load_server_module_for_tests()
 
-    def test_real_coordinator_persists_reloads_and_aggregates_four_primary_signals(self) -> None:
+    def test_real_coordinator_store_functions_round_trip_and_aggregate_four_primary_signals(self) -> None:
         signal = affective_signal("apaisement", 7)
         result = exercise_stimmung_dialogue(
             self.server,
@@ -106,8 +194,9 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
             [signal] * 4,
         )
         self.assertEqual(len(result["durable_snapshots"]), 4)
+        self.assertEqual(result["stored_message_row_count"], 9)
 
-    def test_json_and_stream_persist_the_same_signal_history_without_duplication(self) -> None:
+    def test_json_and_stream_share_the_same_store_fake_signal_history_without_duplication(self) -> None:
         signals = [
             affective_signal("curiosite", 5),
             affective_signal("curiosite", 6),
@@ -497,28 +586,20 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
             outcomes=[primary_signal(signal) for signal in signals],
         )
 
-        def assert_history(candidate):
-            users = [message for message in candidate["messages"] if message.get("role") == "user"]
-            self.assertEqual(len(users), len(signals))
-            self.assertEqual(
-                [message.get("meta", {}).get("affective_turn_signal") for message in users],
-                signals,
-            )
-
-        assert_history(result["durable"])
+        _assert_persistent_signal_history(result["durable"], signals)
         removed = copy.deepcopy(result["durable"])
         [message for message in removed["messages"] if message.get("role") == "user"][1]["meta"].pop(
             "affective_turn_signal"
         )
         with self.assertRaises(AssertionError):
-            assert_history(removed)
+            _assert_persistent_signal_history(removed, signals)
 
         duplicated = copy.deepcopy(result["durable"])
         duplicated["messages"].append(
             copy.deepcopy([message for message in duplicated["messages"] if message.get("role") == "user"][2])
         )
         with self.assertRaises(AssertionError):
-            assert_history(duplicated)
+            _assert_persistent_signal_history(duplicated, signals)
 
         reversed_history = copy.deepcopy(result["durable"])
         reversed_users = [message for message in reversed_history["messages"] if message.get("role") == "user"]
@@ -526,10 +607,10 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
         for message, signal in zip(reversed_users, reversed_signals):
             message["meta"]["affective_turn_signal"] = signal
         with self.assertRaises(AssertionError):
-            assert_history(reversed_history)
+            _assert_persistent_signal_history(reversed_history, signals)
 
         expected_aggregate = result["node_calls"][-1]["stimmung_input"]
-        self.assertEqual(expected_aggregate["turns_considered"], 4)
+        _assert_four_turn_aggregate(expected_aggregate)
         self.assertEqual(
             canonical_stimmung_input.extract_recent_affective_turn_signals(
                 messages=result["durable"]["messages"]
@@ -538,16 +619,17 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
         )
         fifth_retained = dict(expected_aggregate, turns_considered=5)
         with self.assertRaises(AssertionError):
-            self.assertEqual(fifth_retained, expected_aggregate)
+            _assert_four_turn_aggregate(fifth_retained)
 
         stable_result = exercise_stimmung_dialogue(
             self.server,
             outcomes=[primary_signal(affective_signal("apaisement", 7)) for _ in range(4)],
         )
         stable_aggregate = stable_result["node_calls"][-1]["stimmung_input"]
+        _assert_stable_aggregate(stable_aggregate)
         stable_as_volatile = dict(stable_aggregate, stability="volatile")
         with self.assertRaises(AssertionError):
-            self.assertEqual(stable_as_volatile, stable_aggregate)
+            _assert_stable_aggregate(stable_as_volatile)
 
         transition_result = exercise_stimmung_dialogue(
             self.server,
@@ -557,14 +639,15 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
             ],
         )
         transition_aggregate = transition_result["node_calls"][-1]["stimmung_input"]
+        _assert_transition_aggregate(transition_aggregate)
         transition_ignored = dict(transition_aggregate, stability="stable", shift_state="steady")
         with self.assertRaises(AssertionError):
-            self.assertEqual(transition_ignored, transition_aggregate)
+            _assert_transition_aggregate(transition_ignored)
 
         duplicated_reload = copy.deepcopy(result["repeated_reloads"][0])
         duplicated_reload["messages"].append(copy.deepcopy(duplicated_reload["messages"][-1]))
         with self.assertRaises(AssertionError):
-            self.assertEqual(duplicated_reload, result["repeated_reloads"][1])
+            _assert_persistent_signal_history(duplicated_reload, signals)
 
     def test_downstream_assertions_reject_controlled_provenance_and_payload_mutations(self) -> None:
         stimmung = {
@@ -576,26 +659,53 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
             "shift_state": "steady",
             "turns_considered": 4,
         }
+        absent_stimmung = {
+            **stimmung,
+            "present": False,
+            "dominant_tone": None,
+            "active_tones": [],
+            "stability": "",
+            "shift_state": "",
+            "turns_considered": 0,
+        }
+        transition_stimmung = {
+            **stimmung,
+            "dominant_tone": "colere",
+            "active_tones": [{"tone": "colere", "strength": 9}],
+            "stability": "volatile",
+            "shift_state": "candidate_shift",
+        }
+        absent_regime = epistemic_regime.build_epistemic_regime(
+            **_strong_regime_inputs(),
+            stimmung_input=absent_stimmung,
+        )
         stable_regime = epistemic_regime.build_epistemic_regime(
             **_strong_regime_inputs(),
             stimmung_input=stimmung,
         )
-        self.assertEqual(stable_regime["uncertainty_posture"], "discrete")
+        transition_regime = epistemic_regime.build_epistemic_regime(
+            **_strong_regime_inputs(),
+            stimmung_input=transition_stimmung,
+        )
+        _assert_absent_stable_transition_regimes(absent_regime, stable_regime, transition_regime)
         stable_caution_mutant = {
             "epistemic_regime": "probable",
             "proof_regime": "source_explicite_requise",
             "uncertainty_posture": "prudente",
         }
         with self.assertRaises(AssertionError):
-            self.assertEqual(stable_caution_mutant, stable_regime)
+            _assert_absent_stable_transition_regimes(
+                absent_regime,
+                stable_caution_mutant,
+                transition_regime,
+            )
 
         absent_capture = capture_validation_request(
             {"aaa_padding": "x" * 800, "stimmung_input": stimmung}
         )
-        actually_received = '"stimmung_input"' in absent_capture["user_content"]
-        self.assertFalse(actually_received)
+        _assert_validation_reception_claim(absent_capture, False)
         with self.assertRaises(AssertionError):
-            self.assertEqual(True, actually_received)
+            _assert_validation_reception_claim(absent_capture, True)
 
         result = exercise_stimmung_dialogue(
             self.server,
@@ -608,37 +718,23 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
         )
         main_payload = copy.deepcopy(result["main_messages"][-1])
 
-        def assert_main_is_derived_only(messages):
-            serialized = json.dumps(messages, sort_keys=True)
-            self.assertNotIn("stimmung_input", serialized)
-            self.assertNotIn("active_tones", serialized)
-
-        assert_main_is_derived_only(main_payload)
+        _assert_main_payload_is_derived_only(main_payload)
         main_payload.append({"role": "system", "content": json.dumps({"stimmung_input": stimmung})})
         with self.assertRaises(AssertionError):
-            assert_main_is_derived_only(main_payload)
+            _assert_main_payload_is_derived_only(main_payload)
 
-        fallback_event = copy.deepcopy(result["caller_events"][1])
-        self.assertEqual(fallback_event["payload_json"]["decision_source"], "fallback")
-        fallback_event["payload_json"]["decision_source"] = "primary"
+        _assert_caller_provenance(result["caller_events"])
+        fallback_mutant = copy.deepcopy(result["caller_events"])
+        fallback_mutant[1]["payload_json"]["decision_source"] = "primary"
         with self.assertRaises(AssertionError):
-            self.assertEqual(fallback_event["payload_json"]["decision_source"], "fallback")
+            _assert_caller_provenance(fallback_mutant)
 
-        fail_open_event = copy.deepcopy(result["caller_events"][2])
-        self.assertEqual(fail_open_event["status"], "error")
-        self.assertEqual(fail_open_event["payload_json"]["decision_source"], "fail_open")
-        fail_open_event["status"] = "ok"
-        fail_open_event["payload_json"]["decision_source"] = "primary"
-        fail_open_event["payload_json"]["present"] = True
+        fail_open_mutant = copy.deepcopy(result["caller_events"])
+        fail_open_mutant[2]["status"] = "ok"
+        fail_open_mutant[2]["payload_json"]["decision_source"] = "primary"
+        fail_open_mutant[2]["payload_json"]["present"] = True
         with self.assertRaises(AssertionError):
-            self.assertEqual(
-                (
-                    fail_open_event["status"],
-                    fail_open_event["payload_json"]["decision_source"],
-                    fail_open_event["payload_json"]["present"],
-                ),
-                ("error", "fail_open", False),
-            )
+            _assert_caller_provenance(fail_open_mutant)
 
 
 if __name__ == "__main__":
