@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, inventaire ferme et goldens non commences; Lots 5 a 8 et Z non commences
+Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, goldens causaux du coeur livres et decision corrective non prise; Lots 5 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -1637,7 +1637,7 @@ Portee architecturale de cette acceptation:
 
 # LOT 4 - Audit causal et consolidation de Stimmung
 
-Statut: inventaire ferme, goldens non commences
+Statut: goldens causaux du coeur livres, decision corrective non prise
 Nature: audit causal multi-tours tests/benchmark/docs-only, sans cutover
 Dependance: Lot 3 ferme
 
@@ -1733,6 +1733,97 @@ Classement des findings apres inventaire:
 - F5: `valide`; l'observabilite conserve un trou de preuve causale.
 - F6: `valide`; le benchmark historique est insuffisant pour la maturation
   multi-tours et le fallback.
+
+## Goldens causaux du coeur livres le 2026-08-28
+
+La fixture partagee
+`app/tests/support/stimmung_dialogic_pipeline.py` appelle le vrai
+`chat_service.chat_response` par la route existante. Elle conserve le caller,
+l'agregateur, le regime primaire, Validation et la construction du payload
+principal reels; seuls providers, horloge, stockage et persistance sont fakes.
+Chaque sauvegarde traverse un snapshot JSON puis chaque tour recharge un nouvel
+objet conversationnel. Le golden
+`app/tests/unit/golden/test_lot4_stimmung_causal_goldens.py` ajoute exactement
+`10` tests Python.
+
+Les dialogues synthetiques couvrent absence de signal, affect homogene jusqu'a
+stabilite, transition apres stabilite, alternance, retour progressif au neutre,
+signal invalide intermediaire et final, fallback reussi, double echec fail-open,
+reconstruction repetee et parite JSON/streaming. Les proprietes observees sont
+figees sans recopier poids, seuils ou hysteresis:
+
+- G1: un signal est attache une fois au message utilisateur, sauvegarde puis
+  retrouve identique et dans le meme ordre; les rechargements repetes ne
+  dupliquent rien et JSON/streaming persistent la meme histoire;
+- G2: quatre signaux valides au maximum sont agreges de l'ancien vers le
+  recent; stabilite, transition volatile, `candidate_shift`, alternance et
+  retour au neutre sont observes depuis le vrai agregateur; un signal invalide
+  est ignore et un dernier signal invalide rend l'agregat honnetement absent;
+- G3: absent et stable donnent le meme regime primaire sur inputs identiques;
+  une transition volatile peut rabattre `certain/discrete` sur
+  `probable/prudente`; Stimmung ne cree ni Presence, ni `clarify`, ni
+  `suspend`, et ne modifie pas les hard guards;
+- G4: le message effectivement capture avant le provider fake Validation
+  contient Stimmung complete sous la borne, partielle pres de la borne et
+  absente au-dela; a taille egale, `aaa_padding` l'evince et `zzz_padding` la
+  conserve, ce qui fige l'effet de l'ordre lexical;
+- G5: le bloc principal contient seulement posture, regime, consignes et
+  directives derives. Une difference existe au primaire entre stable et
+  transition, mais le provider Validation controle peut produire le meme bloc
+  final; cette absence de difference est conservee comme resultat, pas comme
+  preuve d'influence;
+- G6: primaire, fallback et fail-open gardent des modeles, statuts et sources
+  distincts; le double echec ne devient ni neutralite saine, ni Presence, ni
+  sauvegarde supplementaire.
+
+Mutations controlees effectivement rejetees: signal retire, signal ou message
+duplique, ordre inverse, cinquieme signal conserve, stable requalifie volatile,
+transition ignoree, prudence forcee sur stable, Stimmung absente de Validation
+presentee comme recue, signal brut injecte au modele principal, fallback
+presente comme primaire, fail-open presente comme succes neutre, sauvegarde ou
+reconstruction dupliquee.
+
+Commandes et resultats, toutes sans reseau ni provider et avec checkout
+read-only pour Python:
+
+- baseline Phase 2: `python -m unittest discover` dans le runner conteneur
+  autoritatif -> `2716` OK, zero skip et zero expected failure;
+- baseline frontend: `node --test app/tests/unit/frontend_chat/*.js` sous
+  `unshare --net` -> `135/135`; Chromium existant, sans installation ni
+  telechargement -> `19/19`;
+- cycle rouge initial du nouveau golden -> `1` failure attendue, fixture
+  absente;
+- coeur Lot 4, caller, agregateur, regime et Validation -> `84/84`;
+- persistance, chat JSON/streaming, Presence, final locks,
+  observabilite et golden Lot 9 -> `97/97`;
+- decouverte finale read-only -> `2726` OK, zero echec, zero erreur, zero skip
+  et zero expected failure, soit exactement `10` nouveaux tests Python;
+- JavaScript final -> `135/135`; Chromium final -> `19/19`.
+
+Classement des findings apres goldens:
+
+- F1: `valide`; inertie du stable et prudence de transition sont prouvees au
+  vrai agregateur/regime primaire, sans difference de texte provider prouvee;
+- F2: `valide` comme description du raccord courant; son caractere
+  architecturalement incorrect reste une decision corrective ouverte;
+- F3: `valide`; les captures provider figent la perte partielle ou totale avant
+  Validation et sa dependance a l'ordre lexical;
+- F4: `partiel`; l'appauvrissement du bloc principal est prouve, pas son
+  caractere dommageable sur une formulation provider reelle;
+- F5: `valide`; les events prouvent execution et cles canoniques, pas la matiere
+  effectivement recue par Validation ni une influence causale finale;
+- F6: `valide`; les goldens de raccord sont multi-tours, mais le benchmark
+  historique reste mono-tour et ne qualifie ni maturation semantique ni
+  fallback.
+
+Limites maintenues ouvertes: aucune campagne provider n'a ete lancee; ironie,
+affect rapporte, correction semantique et psychologisation relevent encore de
+la qualite du caller, pas des goldens de raccord. Le runtime ne projette pas la
+reception effective par Validation ni l'influence causale; les read-models et
+frontends ne rendent pas stabilite, shift ou causalite autoritative. Aucun code
+runtime, prompt, modele, provider, setting, timeout, niveau de raisonnement,
+read-model ou frontend n'a ete modifie; aucun correctif F2, F3, F4 ou F5 n'a
+ete commence.
 
 ## Passe 4.0 - Goldens causaux hermetiques
 
@@ -1923,14 +2014,14 @@ preuve lorsqu'un test existant couvre deja exactement l'invariant.
 - [x] Decision humaine `keep` tracee et suppression explicitement exclue.
 - [x] Finalite dialogique et ablation diagnostique clarifiees.
 - [x] Inventaire A a Z du pipeline, des contrats et des preuves existantes.
-- [ ] Goldens causaux multi-tours et mutations controlees livres.
-- [ ] Reception effective par Validation et posture finale prouvees.
+- [x] Goldens causaux multi-tours et mutations controlees livres.
+- [x] Reception effective par Validation et posture finale prouvees.
 - [ ] Matrice observabilite backend/read-model/frontend prouvee.
-- [ ] Primaire et fallback distingues sans requalification d'echec.
-- [ ] Findings F1 a F6 valides, invalides ou nuances par preuves.
+- [x] Primaire et fallback distingues sans requalification d'echec.
+- [x] Findings F1 a F6 valides, invalides ou nuances par preuves.
 - [ ] Decision `keep_current`, `strengthen` ou `inconclusive` documentee.
-- [ ] Aucun caller, mode ou capacite produit ajoute.
-- [ ] Aucun micro-lot correctif ou Lot 5 commence implicitement.
+- [x] Aucun caller, mode ou capacite produit ajoute.
+- [x] Aucun micro-lot correctif ou Lot 5 commence implicitement.
 
 # LOT 5 - Structured outputs des callers conserves
 
