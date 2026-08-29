@@ -3008,10 +3008,10 @@ preuve lorsqu'un test existant couvre deja exactement l'invariant.
 - [x] Finalite dialogique et ablation diagnostique clarifiees.
 - [x] Inventaire A a Z du pipeline, des contrats et des preuves existantes.
 - [x] Goldens causaux techniques du coeur et mutations controlees livres.
-- [ ] 4C.1 ferme: livraison Stimmung vers Validation complete ou absence
-  explicite et comparaison semantique provider `pass`; la garantie structurelle
-  et l'observabilite synchrone sont livrees, mais la campagne figee conclut
-  `fail` sur un invariant critique primaire deja manque par v1 et v2.
+- [x] 4C.1 ferme: livraison Stimmung vers Validation complete ou absence
+  explicite, comparaison provider `pass` pour Gemini 3.7 Flash medium
+  (`22/22`), configuration active live et smoke unique `L4C1-VAL-005` vert;
+  garantie structurelle et observabilite synchrone livrees.
 - [ ] 4S.0 ferme: corpus et seuils semantiques valides humainement.
 - [ ] 4S.1 ferme: campagne primaire/fallback executee sous GO separe et
   decision caller tracee.
