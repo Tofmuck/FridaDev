@@ -165,7 +165,9 @@
     maxTokensEffective: 0,
     temperatureSent: false,
     topPSent: false,
-    providerFallbacksAllowed: false,
+    providerRoutingSent: null,
+    providerFallbacksAllowed: null,
+    providerRequireParameters: null,
   });
 
   const normalizeRequest = (request = {}) => {
@@ -176,28 +178,35 @@
     const requestedEffort = toText(request.reasoningEffortRequested);
     const effectiveEffort = toText(request.reasoningEffortEffective);
     const maxTokens = Number(request.maxTokensEffective);
+    const activeRouting = request.providerRoutingSent === true
+      && request.providerFallbacksAllowed === false
+      && request.providerRequireParameters === true;
+    const historicalRouting = request.providerRoutingSent === false
+      && request.providerFallbacksAllowed == null
+      && request.providerRequireParameters == null;
     const active = policyVersion === "validation_request_gemini_3_7_flash_medium_v1"
       && decisionSource === "primary"
       && requestedModel === "google/gemini-3.7-flash"
       && requestedEffort === "medium" && effectiveEffort === "medium"
       && request.reasoningSent === true && request.reasoningExcluded === true
-      && maxTokens === 500 && request.temperatureSent === false && request.topPSent === false;
+      && maxTokens === 500 && request.temperatureSent === false && request.topPSent === false
+      && activeRouting;
     const fallback = policyVersion === "validation_request_gpt_5_4_nano_fallback_v1"
       && decisionSource === "fallback"
       && requestedModel === "openai/gpt-5.4-nano"
       && requestedEffort === "none" && effectiveEffort === "none"
       && request.reasoningSent === false && request.reasoningExcluded === false
-      && maxTokens === 140 && request.temperatureSent === true && request.topPSent === true;
+      && maxTokens === 140 && request.temperatureSent === true && request.topPSent === true
+      && historicalRouting;
     const legacy = policyVersion === "validation_request_gemini_3_1_flash_lite_v1"
       && decisionSource === "primary"
       && requestedModel === "google/gemini-3.1-flash-lite"
       && requestedEffort === "none" && effectiveEffort === "none"
       && request.reasoningSent === false && request.reasoningExcluded === false
-      && maxTokens === 140 && request.temperatureSent === true && request.topPSent === true;
+      && maxTokens === 140 && request.temperatureSent === true && request.topPSent === true
+      && historicalRouting;
     const authoritative = request.authoritative === true
       && transport === "standard"
-      && request.providerFallbacksAllowed === false
-      && request.providerRequireParameters === true
       && (active || fallback || legacy);
     if (!authoritative) return invalidRequest(toText(request.reasonCode));
     return {
@@ -217,7 +226,9 @@
       maxTokensEffective: maxTokens,
       temperatureSent: request.temperatureSent,
       topPSent: request.topPSent,
-      providerFallbacksAllowed: request.providerFallbacksAllowed,
+      providerRoutingSent: request.providerRoutingSent,
+      providerFallbacksAllowed: request.providerFallbacksAllowed ?? null,
+      providerRequireParameters: request.providerRequireParameters ?? null,
     };
   };
 
@@ -240,6 +251,7 @@
       maxTokensEffective: request.validation_max_tokens_effective,
       temperatureSent: request.validation_temperature_sent,
       topPSent: request.validation_top_p_sent,
+      providerRoutingSent: request.validation_provider_routing_sent,
       providerFallbacksAllowed: request.validation_provider_fallbacks_allowed,
       providerRequireParameters: request.validation_provider_require_parameters,
     });
@@ -264,6 +276,7 @@
       maxTokensEffective: request.max_tokens_effective,
       temperatureSent: request.temperature_sent,
       topPSent: request.top_p_sent,
+      providerRoutingSent: request.provider_routing_sent,
       providerFallbacksAllowed: request.provider_fallbacks_allowed,
       providerRequireParameters: request.provider_require_parameters,
     });

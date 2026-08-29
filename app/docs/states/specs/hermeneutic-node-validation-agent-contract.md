@@ -322,8 +322,11 @@ Configuration runtime retenue par decision humaine du 2026-08-29:
 - `temperature` et `top_p` absents de la requete primaire;
 - fallback inchange `openai/gpt-5.4-nano`, sans raisonnement explicite, avec
   `temperature=0.0`, `top_p=1.0` et `max_tokens=140`;
-- timeout `15s` sur les deux tentatives et fallback provider OpenRouter
-  desactive pour conserver une attribution primaire/fallback exacte.
+- timeout `15s` sur les deux tentatives;
+- le routage OpenRouter strict `allow_fallbacks=false` et
+  `require_parameters=true` appartient uniquement au primaire Gemini 3.7;
+  le primaire historique Gemini 3.1 et le fallback GPT-5.4 Nano conservent
+  leur payload anterieur sans bloc `provider` explicite.
 
 ## 10. Minimal Observability
 
@@ -376,7 +379,10 @@ Regle forte:
   `validation_request`: version de politique, modele demande, source
   primaire/fallback, transport standard, effort demande/effectif, presence du
   raisonnement, `exclude`, budget effectif et presence/absence effective de
-  `temperature`/`top_p`. Ce bloc provient de la requete preparee elle-meme;
+  `temperature`/`top_p`. `validation_provider_routing_sent` indique si un bloc
+  de routage a reellement ete transmis; ses deux proprietes ne sont exposees
+  que pour le primaire Gemini 3.7 qui les envoie. Ce bloc provient de la
+  requete preparee elle-meme;
   les appels historiques qui ne le possedent pas restent `unknown`. Le modele
   et le provider observes proviennent de l'evenement provider lorsqu'ils sont
   disponibles; aucune reception n'est presentee comme une preuve causale.

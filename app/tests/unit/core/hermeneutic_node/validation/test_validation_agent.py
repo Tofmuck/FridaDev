@@ -906,6 +906,7 @@ class ValidationAgentTests(unittest.TestCase):
             requests_module=requests_module,
         )
 
+        self.assertIs(validation_contract.validate_agent_result(result), result)
         self.assertEqual(result.model, "google/gemini-3.7-flash")
         payload = requests_module.calls[0]["json"]
         self.assertEqual(payload["model"], "google/gemini-3.7-flash")
@@ -1845,10 +1846,19 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertEqual(fallback_payload["temperature"], 0.0)
         self.assertEqual(fallback_payload["top_p"], 1.0)
         self.assertEqual(fallback_payload["max_tokens"], 140)
+        self.assertNotIn("provider", fallback_payload)
+        fallback_event = [
+            item for item in self.observed_events
+            if item["stage"] == "validation_prompt_prepared"
+        ][-1]
+        fallback_request = fallback_event["payload"]["validation_request"]
         self.assertEqual(
-            fallback_payload["provider"],
-            {"allow_fallbacks": False, "require_parameters": True},
+            fallback_request["validation_request_policy_version"],
+            "validation_request_gpt_5_4_nano_fallback_v1",
         )
+        self.assertFalse(fallback_request["validation_provider_routing_sent"])
+        self.assertNotIn("validation_provider_fallbacks_allowed", fallback_request)
+        self.assertNotIn("validation_provider_require_parameters", fallback_request)
         self.assertEqual(result.validated_output["validation_decision"], "confirm")
 
     def test_build_validated_output_returns_fail_open_after_double_failure(self) -> None:

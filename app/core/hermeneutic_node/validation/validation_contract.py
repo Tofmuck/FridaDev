@@ -96,6 +96,31 @@ _ALLOWED_MODEL_PAYLOAD_KEYS = {
     "final_output_regime",
     "arbiter_reason",
 }
+_VALIDATED_OUTPUT_REQUIRED_KEYS = {
+    "schema_version",
+    "validation_decision",
+    "final_judgment_posture",
+    "final_output_regime",
+    "pipeline_directives_final",
+    "arbiter_followed_upstream",
+    "advisory_recommendations_followed",
+    "advisory_recommendations_overridden",
+    "applied_hard_guards",
+    "arbiter_reason",
+}
+_VALIDATION_DECISIONS = {"confirm", "challenge", "clarify", "suspend"}
+_ADVISORY_TRACE_CODES = {
+    "upstream_recommendation_posture",
+    "upstream_output_regime_proposed",
+}
+_FAIL_OPEN_REASON_CODES = {
+    "http_error",
+    "invalid_json",
+    "prompt_missing",
+    "timeout",
+    "upstream_error",
+    "validation_error",
+}
 
 
 @dataclass(frozen=True)
@@ -572,6 +597,97 @@ def validate_model_verdict(
         "final_output_regime": final_output_regime,
         "arbiter_reason": arbiter_reason,
     }
+
+
+def _validate_bounded_code_list(
+    value: Any,
+    *,
+    allowed: set[str] | None = None,
+    max_items: int = 12,
+) -> list[str]:
+    if not isinstance(value, list) or len(value) > max_items:
+        raise ValidationPayloadError("validation_error")
+    if any(
+        not isinstance(item, str)
+        or not item
+        or len(item) > 80
+        or (allowed is not None and item not in allowed)
+        for item in value
+    ):
+        raise ValidationPayloadError("validation_error")
+    if len(set(value)) != len(value):
+        raise ValidationPayloadError("validation_error")
+    return list(value)
+
+
+def validate_validated_output_payload(value: Any, *, fail_open: bool) -> dict[str, Any]:
+    payload = _mapping(value)
+    allowed_keys = _VALIDATED_OUTPUT_REQUIRED_KEYS | {"hard_guard_effect"}
+    if not _VALIDATED_OUTPUT_REQUIRED_KEYS.issubset(payload) or not set(payload).issubset(allowed_keys):
+        raise ValidationPayloadError("validation_error")
+    if _text(payload.get("schema_version")) != SCHEMA_VERSION:
+        raise ValidationPayloadError("validation_error")
+    posture = _text(payload.get("final_judgment_posture"))
+    regime = _text(payload.get("final_output_regime"))
+    if posture not in ALLOWED_PRIMARY_JUDGMENT_POSTURES or regime not in ALLOWED_FINAL_OUTPUT_REGIMES:
+        raise ValidationPayloadError("validation_error")
+    if regime == "presence" and posture != "answer":
+        raise ValidationPayloadError("validation_error")
+    if _text(payload.get("validation_decision")) not in _VALIDATION_DECISIONS:
+        raise ValidationPayloadError("validation_error")
+    directives = _validate_bounded_code_list(payload.get("pipeline_directives_final"), max_items=3)
+    expected_directives = [f"posture_{posture}", f"regime_{regime}"]
+    if fail_open:
+        expected_directives.append("fallback_validation")
+    if directives != expected_directives:
+        raise ValidationPayloadError("validation_error")
+    followed = _validate_bounded_code_list(
+        payload.get("advisory_recommendations_followed"), allowed=_ADVISORY_TRACE_CODES,
+    )
+    overridden = _validate_bounded_code_list(
+        payload.get("advisory_recommendations_overridden"), allowed=_ADVISORY_TRACE_CODES,
+    )
+    if set(followed) & set(overridden):
+        raise ValidationPayloadError("validation_error")
+    followed_upstream = payload.get("arbiter_followed_upstream")
+    if type(followed_upstream) is not bool or followed_upstream != (bool(followed) and not overridden):
+        raise ValidationPayloadError("validation_error")
+    _validate_bounded_code_list(payload.get("applied_hard_guards"))
+    reason = _text(payload.get("arbiter_reason"))
+    if not reason or len(reason) > 160:
+        raise ValidationPayloadError("validation_error")
+    hard_guard_effect = _text(payload.get("hard_guard_effect"))
+    if hard_guard_effect and hard_guard_effect not in {
+        hard_guards.HARD_GUARD_EFFECT_ANSWER_FORBIDDEN,
+        hard_guards.HARD_GUARD_EFFECT_CAVEAT_REQUIRED,
+    }:
+        raise ValidationPayloadError("validation_error")
+    if hard_guard_effect == hard_guards.HARD_GUARD_EFFECT_ANSWER_FORBIDDEN and posture == "answer":
+        raise ValidationPayloadError("validation_error")
+    return dict(payload)
+
+
+def validate_agent_result(value: Any) -> ValidationAgentResult:
+    if not isinstance(value, ValidationAgentResult):
+        raise ValidationPayloadError("validation_error")
+    if value.status == "ok":
+        if value.decision_source not in {"primary", "fallback"} or value.reason_code is not None:
+            raise ValidationPayloadError("validation_error")
+        validate_validated_output_payload(value.validated_output, fail_open=False)
+    elif value.status == "error":
+        if value.decision_source != "fail_open" or value.reason_code not in _FAIL_OPEN_REASON_CODES:
+            raise ValidationPayloadError("validation_error")
+        if value.provider_metadata:
+            raise ValidationPayloadError("validation_error")
+        if value.validated_output:
+            validate_validated_output_payload(value.validated_output, fail_open=True)
+    else:
+        raise ValidationPayloadError("validation_error")
+    if not isinstance(value.model, str) or not value.model.strip() or len(value.model) > 160:
+        raise ValidationPayloadError("validation_error")
+    if not isinstance(value.provider_metadata, dict):
+        raise ValidationPayloadError("validation_error")
+    return value
 
 
 def normalize_arbiter_verdict(

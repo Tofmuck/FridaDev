@@ -244,8 +244,9 @@ def _validation_request_summary(
         'max_tokens_effective': validated['validation_max_tokens_effective'],
         'temperature_sent': validated['validation_temperature_sent'],
         'top_p_sent': validated['validation_top_p_sent'],
-        'provider_fallbacks_allowed': validated['validation_provider_fallbacks_allowed'],
-        'provider_require_parameters': validated['validation_provider_require_parameters'],
+        'provider_routing_sent': validated['validation_provider_routing_sent'],
+        'provider_fallbacks_allowed': validated.get('validation_provider_fallbacks_allowed'),
+        'provider_require_parameters': validated.get('validation_provider_require_parameters'),
     }
 
 

@@ -28,6 +28,7 @@ if importlib.util.find_spec("psycopg") is None:
     sys.modules.setdefault("psycopg.rows", psycopg_rows_module)
 
 from core.hermeneutic_node.validation import (
+    hard_guards,
     validation_agent,
     validation_contract,
     validation_messages,
@@ -114,6 +115,17 @@ class ValidationAgentBoundaryTests(unittest.TestCase):
             reasoning_effort="medium",
             llm_module=llm_module,
         )
+        legacy = validation_transport.prepare_validation_request(
+            model=validation_transport.LEGACY_PRIMARY_MODEL,
+            decision_source="primary",
+            messages=messages,
+            timeout_s=15,
+            temperature=0.0,
+            top_p=1.0,
+            max_tokens=140,
+            reasoning_effort="medium",
+            llm_module=llm_module,
+        )
 
         self.assertEqual(
             primary.payload["reasoning"],
@@ -131,26 +143,58 @@ class ValidationAgentBoundaryTests(unittest.TestCase):
         self.assertTrue(primary.observability["validation_reasoning_excluded"])
         self.assertFalse(primary.observability["validation_temperature_sent"])
         self.assertFalse(primary.observability["validation_top_p_sent"])
+        self.assertTrue(primary.observability["validation_provider_routing_sent"])
 
         self.assertNotIn("reasoning", fallback.payload)
         self.assertEqual(fallback.payload["temperature"], 0.0)
         self.assertEqual(fallback.payload["top_p"], 1.0)
         self.assertEqual(fallback.payload["max_tokens"], 140)
-        self.assertEqual(
-            fallback.payload["provider"],
-            {"allow_fallbacks": False, "require_parameters": True},
-        )
+        self.assertNotIn("provider", fallback.payload)
         self.assertFalse(fallback.observability["validation_reasoning_sent"])
         self.assertTrue(fallback.observability["validation_temperature_sent"])
         self.assertTrue(fallback.observability["validation_top_p_sent"])
+        self.assertFalse(fallback.observability["validation_provider_routing_sent"])
+        self.assertNotIn("validation_provider_fallbacks_allowed", fallback.observability)
+        self.assertNotIn("validation_provider_require_parameters", fallback.observability)
+
+        self.assertNotIn("provider", legacy.payload)
+        self.assertFalse(legacy.observability["validation_provider_routing_sent"])
+        self.assertNotIn("validation_provider_fallbacks_allowed", legacy.observability)
+        self.assertNotIn("validation_provider_require_parameters", legacy.observability)
 
         for mutant in (
             dict(primary.observability, validation_reasoning_effort_effective="high"),
             dict(primary.observability, validation_temperature_sent=True),
             dict(fallback.observability, validation_reasoning_sent=True),
+            dict(primary.observability, validation_provider_routing_sent=False),
+            dict(fallback.observability, validation_provider_fallbacks_allowed=False),
         ):
             with self.assertRaises(ValueError):
                 validation_transport.validate_request_observability(mutant)
+        self.assertEqual(
+            validation_transport.configured_primary_request_policy_version(
+                primary_model=validation_transport.PRIMARY_MODEL,
+                fallback_model=validation_transport.FALLBACK_MODEL,
+                timeout_s=15,
+                temperature=0.0,
+                top_p=1.0,
+                max_tokens=500,
+                reasoning_effort="medium",
+            ),
+            validation_transport.PRIMARY_REQUEST_POLICY_VERSION,
+        )
+        self.assertEqual(
+            validation_transport.configured_primary_request_policy_version(
+                primary_model=validation_transport.PRIMARY_MODEL,
+                fallback_model=validation_transport.FALLBACK_MODEL,
+                timeout_s=15,
+                temperature=0.1,
+                top_p=1.0,
+                max_tokens=500,
+                reasoning_effort="medium",
+            ),
+            "unknown",
+        )
         with self.assertRaisesRegex(ValueError, "invalid_validation_request_timeout"):
             validation_transport.prepare_validation_request(
                 model=validation_transport.PRIMARY_MODEL,
@@ -193,6 +237,75 @@ class ValidationAgentBoundaryTests(unittest.TestCase):
         mutant["final_judgment_posture"] = "clarify"
         with self.assertRaises(validation_contract.ValidationPayloadError):
             validation_contract.validate_model_verdict(mutant)
+
+    def test_normalized_agent_result_has_its_own_contract_boundary(self) -> None:
+        normalized_output = validation_contract.build_validated_output_payload(
+            primary_verdict={
+                "upstream_advisory": {
+                    "recommended_judgment_posture": "answer",
+                    "proposed_output_regime": "simple",
+                }
+            },
+            final_judgment_posture="answer",
+            final_output_regime="simple",
+            arbiter_reason="synthetic bounded reason",
+            fail_open=False,
+            applied_hard_guards=(),
+        )
+        result = validation_contract.ValidationAgentResult(
+            validated_output=normalized_output,
+            status="ok",
+            model=validation_transport.PRIMARY_MODEL,
+            decision_source="primary",
+            provider_metadata={"provider_model": validation_transport.PRIMARY_MODEL},
+        )
+
+        self.assertIs(validation_contract.validate_agent_result(result), result)
+        with self.assertRaises(validation_contract.ValidationPayloadError):
+            validation_contract.validate_model_verdict(result.validated_output)
+        caveated_result = validation_contract.ValidationAgentResult(
+            validated_output=validation_contract.build_validated_output_payload(
+                primary_verdict={},
+                final_judgment_posture="answer",
+                final_output_regime="simple",
+                arbiter_reason="synthetic bounded caveat",
+                fail_open=False,
+                applied_hard_guards=("web_caveat_required",),
+                hard_guard_effect=hard_guards.HARD_GUARD_EFFECT_CAVEAT_REQUIRED,
+            ),
+            status="ok",
+            model=validation_transport.PRIMARY_MODEL,
+            decision_source="primary",
+        )
+        self.assertIs(validation_contract.validate_agent_result(caveated_result), caveated_result)
+        forbidden_answer = dict(caveated_result.validated_output)
+        forbidden_answer["hard_guard_effect"] = (
+            hard_guards.HARD_GUARD_EFFECT_ANSWER_FORBIDDEN
+        )
+        with self.assertRaises(validation_contract.ValidationPayloadError):
+            validation_contract.validate_agent_result(
+                validation_contract.ValidationAgentResult(
+                    validated_output=forbidden_answer,
+                    status="ok",
+                    model=validation_transport.PRIMARY_MODEL,
+                    decision_source="primary",
+                )
+            )
+        raw_verdict = {
+            "schema_version": "v1",
+            "final_judgment_posture": "answer",
+            "final_output_regime": "simple",
+            "arbiter_reason": "synthetic bounded reason",
+        }
+        with self.assertRaises(validation_contract.ValidationPayloadError):
+            validation_contract.validate_agent_result(
+                validation_contract.ValidationAgentResult(
+                    validated_output=raw_verdict,
+                    status="ok",
+                    model=validation_transport.PRIMARY_MODEL,
+                    decision_source="primary",
+                )
+            )
 
     def test_message_builder_is_repeatable_bounded_and_does_not_mutate_inputs(self) -> None:
         primary_verdict = {"schema_version": "v1", "judgment_posture": "answer"}

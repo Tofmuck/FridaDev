@@ -22,6 +22,7 @@ test('validation request projection renders the effective Gemini medium request 
     validation_max_tokens_effective: 500,
     validation_temperature_sent: false,
     validation_top_p_sent: false,
+    validation_provider_routing_sent: true,
     validation_provider_fallbacks_allowed: false,
     validation_provider_require_parameters: true,
     validation_requested_model: 'google/gemini-3.7-flash',
@@ -36,6 +37,7 @@ test('validation request projection renders the effective Gemini medium request 
   assert.equal(request.maxTokensEffective, 500);
   assert.equal(request.temperatureSent, false);
   assert.equal(request.topPSent, false);
+  assert.equal(request.providerRoutingSent, true);
 });
 
 test('validation request projection never reinterprets historical or incoherent metadata as Gemini medium', () => {
@@ -64,4 +66,23 @@ test('validation request projection never reinterprets historical or incoherent 
   });
   assert.equal(mutant.authoritative, false);
   assert.equal(mutant.status, 'unknown');
+
+  const legacy = projection.requestFromEventPayload('validation_prompt_prepared', {
+    validation_request_policy_version: 'validation_request_gemini_3_1_flash_lite_v1',
+    validation_transport: 'standard',
+    validation_attempt_decision_source: 'primary',
+    validation_reasoning_effort_requested: 'none',
+    validation_reasoning_effort_effective: 'none',
+    validation_reasoning_sent: false,
+    validation_reasoning_excluded: false,
+    validation_max_tokens_effective: 140,
+    validation_temperature_sent: true,
+    validation_top_p_sent: true,
+    validation_provider_routing_sent: false,
+    validation_requested_model: 'google/gemini-3.1-flash-lite',
+  });
+  assert.equal(legacy.authoritative, true);
+  assert.equal(legacy.policyVersion, 'validation_request_gemini_3_1_flash_lite_v1');
+  assert.equal(legacy.providerRoutingSent, false);
+  assert.equal(legacy.providerFallbacksAllowed, null);
 });

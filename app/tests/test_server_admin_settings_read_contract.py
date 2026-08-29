@@ -633,6 +633,9 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
                 payload={
                     'primary_model': {'value': 'google/gemini-3.7-flash', 'is_secret': False, 'origin': 'db'},
                     'fallback_model': {'value': 'openai/gpt-5.4-nano', 'is_secret': False, 'origin': 'db'},
+                    'timeout_s': {'value': 15, 'is_secret': False, 'origin': 'db'},
+                    'temperature': {'value': 0.0, 'is_secret': False, 'origin': 'db'},
+                    'top_p': {'value': 1.0, 'is_secret': False, 'origin': 'db'},
                     'max_tokens': {'value': 500, 'is_secret': False, 'origin': 'db'},
                     'reasoning_effort': {'value': 'medium', 'is_secret': False, 'origin': 'db'},
                 },
@@ -666,6 +669,43 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         self.assertIn('final_judgment_posture', data['readonly_info']['validated_output_contract']['value'])
         self.assertIn('final_output_regime', data['readonly_info']['validated_output_contract']['value'])
         self.assertIn('arbiter_reason', data['readonly_info']['validated_output_contract']['value'])
+
+    def test_get_admin_settings_validation_agent_model_projects_legacy_policy_from_live_values(self) -> None:
+        original_get_section = self.server.runtime_settings.get_runtime_section_for_api
+
+        def fake_get_runtime_section_for_api(section: str):
+            self.assertEqual(section, 'validation_agent_model')
+            return runtime_settings.RuntimeSectionView(
+                section=section,
+                payload={
+                    'primary_model': {'value': 'google/gemini-3.1-flash-lite', 'is_secret': False, 'origin': 'db'},
+                    'fallback_model': {'value': 'openai/gpt-5.4-nano', 'is_secret': False, 'origin': 'db'},
+                    'timeout_s': {'value': 15, 'is_secret': False, 'origin': 'db'},
+                    'temperature': {'value': 0.0, 'is_secret': False, 'origin': 'db'},
+                    'top_p': {'value': 1.0, 'is_secret': False, 'origin': 'db'},
+                    'max_tokens': {'value': 140, 'is_secret': False, 'origin': 'db'},
+                    'reasoning_effort': {'value': 'medium', 'is_secret': False, 'origin': 'db'},
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+        self.server.runtime_settings.get_runtime_section_for_api = fake_get_runtime_section_for_api
+        try:
+            response = self.client.get('/api/admin/settings/validation-agent-model')
+        finally:
+            self.server.runtime_settings.get_runtime_section_for_api = original_get_section
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertEqual(
+            data['readonly_info']['request_policy']['value'],
+            'validation_request_gemini_3_1_flash_lite_v1',
+        )
+        self.assertEqual(
+            data['readonly_info']['request_policy']['source'],
+            'runtime_settings_projection',
+        )
 
     def test_get_admin_settings_hermeneutic_agent_models_report_seed_default_origin_without_db(self) -> None:
         original_get_section = self.server.runtime_settings.get_runtime_section_for_api

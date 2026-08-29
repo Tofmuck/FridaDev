@@ -89,7 +89,7 @@ _GENERAL_SCALAR_KEYS = set(
     web_pdf_read_pages
     agent_json_validated ambiguous arbiter_followed_upstream available buffer_target_pairs caldav_access catalog_saved confirmation_required
     validation_reasoning_sent validation_reasoning_excluded validation_max_tokens_effective
-    validation_temperature_sent validation_top_p_sent validation_provider_fallbacks_allowed validation_provider_require_parameters
+    validation_temperature_sent validation_top_p_sent validation_provider_routing_sent validation_provider_fallbacks_allowed validation_provider_require_parameters
     confidence content_free conversation_saved current_embedding_blocked current_embedding_calls
     current_embedding_reused dimensions draft_description_present draft_present draft_private embedding_calls_total fallback family_calendar
     has_in_progress_turn legacy_writer_disabled messages_saved mutable_len nextcloud_access now_iso_present

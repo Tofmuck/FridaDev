@@ -215,7 +215,8 @@ et ne possede aucune autorite Identity ou canonique.
     prepared provider request: policy version, requested model, primary/fallback
     source, standard transport, requested/effective effort, reasoning sent,
     `exclude`, effective output budget, effective presence of sampling keys,
-    and provider fallback/parameter enforcement. Historical events without
+    whether a provider-routing block was sent, and fallback/parameter
+    enforcement only when that block was actually present. Historical events without
     this block remain `unknown`; model/provider observed come only from the
     matching provider event when available
   - `partial`, inconsistent counters, unknown family names, a raw-content flag set to true, or an unversioned `full` claim are invalid rather than normal display states

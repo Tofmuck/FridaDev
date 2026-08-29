@@ -282,6 +282,9 @@ Convention explicite:
 - le validateur accepte aussi le tuple historique coherent
   `google/gemini-3.1-flash-lite` / `140` comme voie de rollback bornee; il ne
   le presente jamais comme la configuration active Gemini medium;
+- le read-model admin `request_policy` est projete depuis le tuple runtime
+  effectivement lu: politique Gemini 3.7 ou legacy seulement si tout le tuple
+  est coherent, sinon `unknown`; il n'est jamais deduit du default du depot;
 - elle ne donne pas au `validation_agent` un pouvoir de persistence direct sur l'identite.
 
 ### `biblio_librarian_agent`

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import sys
 import unittest
@@ -724,6 +725,7 @@ class LogStorePhase3Tests(unittest.TestCase):
                 'validation_max_tokens_effective': 500,
                 'validation_temperature_sent': False,
                 'validation_top_p_sent': False,
+                'validation_provider_routing_sent': True,
                 'validation_provider_fallbacks_allowed': False,
                 'validation_provider_require_parameters': True,
             }
@@ -754,6 +756,7 @@ class LogStorePhase3Tests(unittest.TestCase):
         self.assertFalse(request['temperature_sent'])
         self.assertFalse(request['top_p_sent'])
         self.assertFalse(request['provider_fallbacks_allowed'])
+        self.assertTrue(request['provider_routing_sent'])
         self.assertTrue(request['authoritative'])
 
         self.assertTrue(observability_payload_guard.guard_payload(prepared['payload']).accepted)
@@ -768,6 +771,30 @@ class LogStorePhase3Tests(unittest.TestCase):
         self.assertEqual(projected_request['validation_max_tokens_effective'], 500)
         self.assertFalse(projected_request['validation_temperature_sent'])
         self.assertFalse(projected_request['validation_top_p_sent'])
+
+        fallback_prepared = copy.deepcopy(prepared)
+        fallback_prepared['model'] = 'openai/gpt-5.4-nano'
+        fallback_prepared['payload']['attempt_decision_source'] = 'fallback'
+        fallback_prepared['payload']['validation_request'] = {
+            'validation_request_policy_version': 'validation_request_gpt_5_4_nano_fallback_v1',
+            'validation_transport': 'standard',
+            'validation_requested_model': 'openai/gpt-5.4-nano',
+            'validation_attempt_decision_source': 'fallback',
+            'validation_reasoning_effort_requested': 'none',
+            'validation_reasoning_effort_effective': 'none',
+            'validation_reasoning_sent': False,
+            'validation_reasoning_excluded': False,
+            'validation_max_tokens_effective': 140,
+            'validation_temperature_sent': True,
+            'validation_top_p_sent': True,
+            'validation_provider_routing_sent': False,
+        }
+        fallback_item = log_store.build_turn_pipeline_item([fallback_prepared])
+        fallback_request = fallback_item['providers']['secondary']['validation']['request']
+        self.assertTrue(fallback_request['authoritative'])
+        self.assertFalse(fallback_request['provider_routing_sent'])
+        self.assertIsNone(fallback_request['provider_fallbacks_allowed'])
+        self.assertIsNone(fallback_request['provider_require_parameters'])
 
         historical_item = log_store.build_turn_pipeline_item(
             self._complete_turn_events(web_search_enabled=False)

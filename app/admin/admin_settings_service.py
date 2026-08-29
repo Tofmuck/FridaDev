@@ -3,6 +3,30 @@ from __future__ import annotations
 from typing import Any, Dict, Mapping, Tuple
 
 from agenda import runtime_config as agenda_runtime_config
+from core.hermeneutic_node.validation import validation_transport
+
+
+def _readonly_info(section: str, view: Any, *, runtime_settings_module: Any) -> dict[str, Any]:
+    readonly_info = {
+        key: dict(value)
+        for key, value in runtime_settings_module.get_section_readonly_info(section).items()
+    }
+    if section != 'validation_agent_model':
+        return readonly_info
+    payload = view.payload
+    request_policy = dict(readonly_info.get('request_policy') or {})
+    request_policy['value'] = validation_transport.configured_primary_request_policy_version(
+        primary_model=(payload.get('primary_model') or {}).get('value'),
+        fallback_model=(payload.get('fallback_model') or {}).get('value'),
+        timeout_s=(payload.get('timeout_s') or {}).get('value'),
+        temperature=(payload.get('temperature') or {}).get('value'),
+        top_p=(payload.get('top_p') or {}).get('value'),
+        max_tokens=(payload.get('max_tokens') or {}).get('value'),
+        reasoning_effort=(payload.get('reasoning_effort') or {}).get('value'),
+    )
+    request_policy['source'] = 'runtime_settings_projection'
+    readonly_info['request_policy'] = request_policy
+    return readonly_info
 
 
 def section_response(section: str, *, runtime_settings_module: Any) -> Dict[str, Any]:
@@ -11,7 +35,7 @@ def section_response(section: str, *, runtime_settings_module: Any) -> Dict[str,
     response = {
         'section': section,
         'payload': view.payload,
-        'readonly_info': runtime_settings_module.get_section_readonly_info(section),
+        'readonly_info': _readonly_info(section, view, runtime_settings_module=runtime_settings_module),
         'secret_sources': secret_sources,
         'source': view.source,
         'source_reason': view.source_reason,
@@ -162,7 +186,7 @@ def patch_section_response(
         'ok': True,
         'section': view.section,
         'payload': view.payload,
-        'readonly_info': runtime_settings_module.get_section_readonly_info(section),
+        'readonly_info': _readonly_info(section, view, runtime_settings_module=runtime_settings_module),
         'secret_sources': secret_sources,
         'source': view.source,
         'source_reason': view.source_reason,
