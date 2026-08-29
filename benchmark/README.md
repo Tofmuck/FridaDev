@@ -375,6 +375,25 @@ The report is a decision aid, not an automatic production verdict. It must not
 be used to change `stimmung_agent_model` without a separate decision and
 runtime settings lot.
 
+### Lot 4S.0 dialogic semantic corpus
+
+The historical fixtures and scorer above remain mono-turn diagnostic evidence.
+They are not reused as proof of multi-turn semantic maturation. The versioned
+candidate corpus
+`benchmark/suites/stimmung/fixtures/stimmung_dialogic_semantic_v1.json` and its
+dedicated `dialogic_semantics.py` contract cover 14 synthetic French dialogues,
+each made of four complete user/assistant pairs. Expectations are bounded
+properties of the per-turn signal and aggregated Stimmung, never exact model
+text.
+
+The 4S.0 validator freezes family thresholds, positive/counter coverage and a
+closed mutation matrix before any provider result. It also records the strict
+boundary between caller properties that can be scored and downstream
+question/request/risk/action/Presence effects that cannot be inferred from the
+caller output alone. No campaign runner or provider transport is attached to
+this corpus. A live primary/fallback evaluation belongs only to 4S.1 after Tof
+has reviewed and explicitly accepted the versioned dialogues.
+
 ## Validation agent benchmark
 
 The validation suite uses the production prompt

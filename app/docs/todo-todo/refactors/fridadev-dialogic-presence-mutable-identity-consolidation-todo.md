@@ -2510,7 +2510,7 @@ Message de commit recommande: `fix: preserve Stimmung input for Validation`.
 
 ### Micro-lot 4S.0 - Corpus semantique multi-tours et scorer hermetique
 
-Statut: non commence; vient apres 4C.1
+Statut: techniquement livre; en attente de validation humaine par Tof; 4S.1 non commence
 Effort recommande: `extra high`
 Nature: tests, fixtures et documentation seulement
 Prerequis: 4C.1 ferme
@@ -2553,14 +2553,116 @@ Scorer et sensibilite:
 - ne pas recopier le caller, ses poids ou son prompt dans le scorer;
 - n'inclure aucun contenu operateur, secret ou donnees live.
 
+Passe technique du 29 aout 2026:
+
+- inventaire confirme: les `24` cas diagnostiques et les `10` cas finaux
+  historiques evaluent principalement un tour courant; leur scorer valide le
+  schema et des tonalites attendues, mais pas une trajectoire dialogique;
+- les goldens causaux Lot 4 traversent le vrai coordinateur, la sauvegarde fake,
+  la reconstruction JSON, l'agregateur, le regime et Validation. Ils prouvent
+  les raccords techniques, pas la justesse semantique du caller;
+- F1 `valide`: corpus historiques principalement mono-tour; F2 `valide`: le
+  scorer historique ne qualifie ni stabilite, bascule, volatilite, correction
+  ni decroissance; F3 `valide`: les goldens techniques ne sont pas un examen
+  semantique; F4 `valide`: certaines intentions historiques sont reutilisables,
+  mais leur concatenation ne ferait pas un dialogue autoritatif; F5 `valide`:
+  l'effet epistemique et le respect de Presence restent non observables depuis
+  la seule sortie structuree du caller;
+- architecture livree: corpus `stimmung_dialogic_corpus_v1`, seuils
+  `stimmung_dialogic_thresholds_v1`, validateur ferme et scorer dedie sans
+  transport provider. Un tour est une paire user/assistant complete; les `14`
+  dialogues ont chacun `4` tours, soit `56` paires et `28` etapes evaluees;
+  empreinte corpus SHA-256
+  `2e2262cba98469f804c3038cc692b62678b6a49ca384e1e5d53716388f9dc75e`;
+- matrice candidate:
+
+  | Identifiant | Familles principales | Trajectoires evaluees |
+  | --- | --- | --- |
+  | `L4S0-ST-001` | emergence, stabilite, question | emerging -> stable |
+  | `L4S0-ST-002` | bascule, correction | stable -> shifted |
+  | `L4S0-ST-003` | retour neutre | stable -> decay |
+  | `L4S0-ST-004` | alternance | stable -> alternating/volatile |
+  | `L4S0-ST-005` | intensite sans effet epistemique | intensite faible -> forte |
+  | `L4S0-ST-006` | ironie | literal -> ironic/shift |
+  | `L4S0-ST-007` | citation | direct -> quoted/shift |
+  | `L4S0-ST-008` | affect rapporte | direct -> reported/shift |
+  | `L4S0-ST-009` | demande, contre-Presence | constat -> demande |
+  | `L4S0-ST-010` | risque, contre-Presence | abstrait -> risque |
+  | `L4S0-ST-011` | action materielle, contre-Presence | preparation -> action |
+  | `L4S0-ST-012` | opportunite et contre-Presence | eligible -> question |
+  | `L4S0-ST-013` | question, demande | narration -> sollicitation |
+  | `L4S0-ST-014` | risque, action, Presence | eligible -> risque/action |
+
+- chaque famille possede une preuve positive et un contre-cas structurel. Les
+  attentes autorisent plusieurs tonalites raisonnables, bornent les forces et
+  separent le signal par tour de l'agregat (`stability`, `shift_state`,
+  decroissance); aucune phrase de sortie exacte n'est figee;
+- seuils geles avant resultat provider: taux de passage par famille `1.0` pour
+  le primaire et `1.0` pour le fallback. Le corpus est petit et les ensembles
+  acceptables sont deja pluriels; un seuil plus bas masquerait un cas entier.
+  Toute erreur transport/schema ou tout resultat manquant donnera
+  `inconclusive`; un seuil semantique manque donnera `fail`; tous les seuils
+  atteints donneront `pass`;
+- tolerance zero, pour les deux sources: psychologisation, affect cite ou
+  rapporte internalise, confusion affect/certitude, masquage de question,
+  demande, risque, action ou relation Presence. Le validateur du corpus verrouille
+  ces contrats; seuls signal, tonalites, force et trajectoire agregee sont
+  directement scorables dans la sortie du caller;
+- mutations rejetees: tour retire, inverse ou duplique; ironie literalisee;
+  citation ou affect rapporte internalise; intensite transformee en effet
+  epistemique; correction ignoree; stable requalifie volatile; bascule effacee;
+  alternance requalifiee stable; retour neutre sans decroissance; question,
+  demande, risque ou action masques; Presence forcee ou opportunite supprimee;
+  fail-open presente comme signal sain; couverture sans cas positif; sortie
+  exacte ou champ libre ajoutes; tonalite hors ensemble dans le signal ou
+  l'agregat; tonalite dupliquee; compte multi-tours sous-declare; sources
+  primaire/fallback melangees; dialogue manque; seuil v1 abaisse sans
+  versionnement;
+- fichiers de preuve:
+  `benchmark/suites/stimmung/dialogic_semantics.py`,
+  `benchmark/suites/stimmung/fixtures/stimmung_dialogic_semantic_v1.json`,
+  `app/tests/unit/golden/test_lot4s0_stimmung_dialogic_semantics.py` et
+  `benchmark/README.md`;
+- tests avant patch: Python `2759/2759`, JavaScript `137/137`, Chromium
+  `19/19`; ciblage Stimmung historique `33/33`. Tests apres patch: nouveau
+  contrat `9/9`, ciblage Stimmung/benchmark/goldens `42/42`, Python
+  `2768/2768`, JavaScript `137/137`, Chromium `19/19`; aucun skip, todo ou
+  expected failure;
+- commandes hermetiques: conteneur local avec `--pull=never --network none
+  --read-only`, depot entier monte en lecture seule, `/tmp` en tmpfs et
+  `PYTHONDONTWRITEBYTECODE=1`. Chromium a reutilise la revision Playwright deja
+  installee en cache read-only, sans installation ni telechargement. L'image
+  Jammy locale a reproduit un SIGSEGV au lancement de Chromium sans echec
+  d'assertion; la meme revision navigateur sous l'image Noble locale a passe
+  les `19/19` sans modifier le depot;
+- adaptations de runner: une premiere decouverte finale a conserve `2759`
+  parce que `unit/benchmark` n'est pas decouvert; la preuve 4S.0 a donc ete
+  placee sous `unit/golden`, sans modifier son contenu, puis la decouverte
+  autoritative a obtenu `2768`. Deux tentatives non autoritatives d'agreger
+  toutes les suites benchmark ont rencontre avant execution 4S.0 un import
+  historique `identity_periodic` absent; le ciblage benchmark Stimmung reel
+  est vert `16/16` et la decouverte autoritative complete est verte;
+- contre-audit independant: les premieres versions laissaient passer une
+  source melangee, un dialogue manque, un seuil abaisse, un surcodage, une
+  tonalite dupliquee, une fausse decroissance et un compte multi-tours
+  sous-declare. Chaque reproduction est devenue rouge sous le validateur ou le
+  scorer partage; relecture finale sans finding bloquant;
+- aucun provider, benchmark semantique live, secret, DB, donnee operateur,
+  tour utilisateur, modification runtime, rebuild, restart ou deploiement;
+- limite ouverte: Tof doit relire les dialogues synthetiques et valider
+  humainement leurs attentes. Cette passe ne mesure aucune qualite modele et ne
+  commence ni 4S.1 ni 4C.2. Si 4S.1 reproduit ensuite un defaut semantique, le
+  micro-lot correctif conditionnel 4C.2 devra synchroniser runtime, evenement,
+  reader, read-model, surfaces frontend existantes et preuve navigateur.
+
 Condition de fermeture:
 
-- [ ] Le corpus versionne couvre toutes les familles imposees.
-- [ ] Les attentes et seuils sont fixes avant toute execution provider.
-- [ ] Les validateurs rejettent au moins une mutation controlee par famille.
-- [ ] Les tests hermetiques et la decouverte complete sont verts.
+- [x] Le corpus versionne couvre toutes les familles imposees.
+- [x] Les attentes et seuils sont fixes avant toute execution provider.
+- [x] Les validateurs rejettent au moins une mutation controlee par famille.
+- [x] Les tests hermetiques et la decouverte complete sont verts.
 - [ ] Tof a relu et valide le corpus avant 4S.1.
-- [ ] Documentation, commit et push sont prouves; runtime inchange.
+- [x] Documentation, commit et push sont prouves; runtime inchange.
 
 Message de commit recommande: `test: define Lot 4 Stimmung semantic corpus`.
 

@@ -30,7 +30,7 @@ def score_response(case: dict[str, Any], raw_text: str | None, provider_error: s
     except Exception as exc:
         return _empty_score(json_valid=False, schema_valid=False, provider_error=f"json_error:{exc}")
 
-    schema_errors = _schema_errors(data)
+    schema_errors = validate_signal_payload(data)
     schema_valid = not schema_errors
     if not schema_valid:
         return {
@@ -153,7 +153,7 @@ def summarize_model(model: str, calls: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def _schema_errors(data: dict[str, Any]) -> list[str]:
+def validate_signal_payload(data: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     if set(data.keys()) != EXPECTED_KEYS:
         errors.append("invalid_keys")
@@ -176,7 +176,9 @@ def _schema_errors(data: dict[str, Any]) -> list[str]:
         tone = item.get("tone")
         if tone not in ALLOWED_TONES:
             errors.append(f"tone_{index}:invalid_tone")
-        elif tone not in seen:
+        elif tone in seen:
+            errors.append(f"tone_{index}:duplicate_tone")
+        else:
             seen.add(str(tone))
             tone_names.append(str(tone))
         strength = item.get("strength")
@@ -204,6 +206,10 @@ def _schema_errors(data: dict[str, Any]) -> list[str]:
         if tones or dominant is not None:
             errors.append("invalid_absent_signal")
     return errors
+
+
+# Compatibility for callers internal to the historical mono-turn suite.
+_schema_errors = validate_signal_payload
 
 
 def _load_json_object(raw_text: str) -> dict[str, Any]:
