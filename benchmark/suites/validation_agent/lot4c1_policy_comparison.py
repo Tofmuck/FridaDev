@@ -1200,6 +1200,20 @@ def validate_model_comparison_record(record: Mapping[str, Any]) -> dict[str, Any
             raise ValueError("invalid_model_comparison_artifact_status")
         if payload.get("reason_code") not in _MODEL_COMPARISON_REASON_CODES:
             raise ValueError("invalid_model_comparison_artifact_reason")
+        fixed_failure_reasons = {
+            "empty_output": "empty_output",
+            "timeout": "timeout",
+            "refusal": "provider_refusal",
+            "transport_error": "transport_error",
+            "invalid_json": "invalid_json",
+            "invalid_schema": "invalid_schema",
+        }
+        if payload.get("status") in fixed_failure_reasons and (
+            payload.get("reason_code") != fixed_failure_reasons[payload["status"]]
+            or payload.get("semantic_codes") != []
+            or payload.get("scorer_pass") is not False
+        ):
+            raise ValueError("invalid_model_comparison_artifact_failure_classification")
         if payload.get("observed_model") not in {
             "",
             configuration["model"],
@@ -1465,6 +1479,16 @@ def _model_call_record(
         status, reason_code = "metrics_inconclusive", "reasoning_usage_missing"
     elif status == "ok" and (not _is_finite_number(cost) or float(cost) <= 0):
         status, reason_code = "metrics_inconclusive", "cost_missing"
+    if status in {
+        "empty_output",
+        "timeout",
+        "refusal",
+        "transport_error",
+        "invalid_json",
+        "invalid_schema",
+    }:
+        reason_code = "provider_refusal" if status == "refusal" else status
+        score = dict(score, semantic_codes=[])
     scorer_pass = status == "ok" and bool(score.get("pass"))
     return {
         "record_type": "provider_call",
@@ -1635,7 +1659,8 @@ def summarize_model_comparison_configuration(
     ):
         reasons.append("provider_result_invalid")
     semantic_passes = sum(bool(record.get("scorer_pass")) for record in calls)
-    if len(calls) == 22 and semantic_passes != 22:
+    all_calls_semantically_comparable = len(valid) == 22
+    if all_calls_semantically_comparable and semantic_passes != 22:
         reasons.append("semantic_invariant_failure")
     case_passes = {
         case_id: sum(
@@ -1650,7 +1675,7 @@ def summarize_model_comparison_configuration(
         ("L4C1-VAL-003", "presence_case_003_failed"),
         ("L4C1-VAL-011", "countercase_011_failed"),
     ):
-        if len(calls) == 22 and case_passes[case_id] != 2:
+        if all_calls_semantically_comparable and case_passes[case_id] != 2:
             reasons.append(reason)
     if reasons:
         status = (
@@ -1781,6 +1806,94 @@ def model_comparison_recommendation(
     }
 
 
+def _model_campaign_summary_record(
+    *,
+    calls: Sequence[Mapping[str, Any]],
+    summaries: Sequence[Mapping[str, Any]],
+    protocol: Mapping[str, Any],
+    records_sha256: str,
+) -> dict[str, Any]:
+    decision = model_comparison_recommendation(summaries)
+    witness = protocol["historical_control"]
+    return validate_model_comparison_record(
+        {
+            "record_type": "campaign_summary",
+            "protocol_version": MODEL_COMPARISON_PROTOCOL_VERSION,
+            "corpus_id": MODEL_COMPARISON_CORPUS_ID,
+            "corpus_sha256": protocol["corpus_sha256"],
+            "freeze_commit": protocol["freeze_commit"],
+            "recommendation": decision["recommendation"],
+            "eligible_configurations": decision["eligible_configurations"],
+            "configuration_statuses": {
+                summary["configuration_id"]: summary["status"] for summary in summaries
+            },
+            "provider_calls": len(calls),
+            "valid_calls": sum(record["status"] == "ok" for record in calls),
+            "prompt_tokens": _complete_metric_sum(calls, "prompt_tokens"),
+            "completion_tokens": _complete_metric_sum(calls, "completion_tokens"),
+            "reasoning_tokens": _complete_metric_sum(calls, "reasoning_tokens"),
+            "total_tokens": _complete_metric_sum(calls, "total_tokens"),
+            "cost_usd": (
+                round(float(_complete_metric_sum(calls, "cost_usd")), 8)
+                if _complete_metric_sum(calls, "cost_usd") is not None
+                else None
+            ),
+            "historical_control_status": witness["status"],
+            "historical_control_model": witness["model"],
+            "historical_control_provider_calls": witness["provider_calls"],
+            "historical_control_semantic_passes": witness["semantic_passes"],
+            "protocol_sha256": _sha256_text(_compact_json(protocol)),
+            "records_sha256": records_sha256,
+            "runtime_cutover_authorized": False,
+            "raw_content_included": False,
+        }
+    )
+
+
+def reclassify_model_comparison_records(
+    records: Sequence[Mapping[str, Any]],
+    *,
+    freeze_commit: str,
+) -> list[dict[str, Any]]:
+    corpus = load_policy_corpus()
+    protocol = model_comparison_protocol_document(corpus, freeze_commit=freeze_commit)
+    normalized_calls: list[dict[str, Any]] = []
+    for source in records:
+        if source.get("record_type") != "provider_call":
+            continue
+        record = dict(source)
+        status = str(record.get("status") or "")
+        if status in {
+            "empty_output",
+            "timeout",
+            "refusal",
+            "transport_error",
+            "invalid_json",
+            "invalid_schema",
+        }:
+            record["reason_code"] = "provider_refusal" if status == "refusal" else status
+            record["semantic_codes"] = []
+            record["scorer_pass"] = False
+        normalized_calls.append(validate_model_comparison_record(record))
+    if len(normalized_calls) != MODEL_COMPARISON_PLANNED_CALLS:
+        raise ValueError("unexpected_provider_call_count")
+    summaries = [
+        summarize_model_comparison_configuration(normalized_calls, configuration_id)
+        for configuration_id in MODEL_COMPARISON_CONFIGURATION_IDS
+    ]
+    rebuilt: list[dict[str, Any]] = [*normalized_calls, *summaries]
+    records_hash = _sha256_text("".join(_compact_json(record) + "\n" for record in rebuilt))
+    rebuilt.append(
+        _model_campaign_summary_record(
+            calls=normalized_calls,
+            summaries=summaries,
+            protocol=protocol,
+            records_sha256=records_hash,
+        )
+    )
+    return rebuilt
+
+
 def run_model_comparison_campaign(
     *,
     output_path: Path,
@@ -1789,7 +1902,6 @@ def run_model_comparison_campaign(
 ) -> dict[str, Any]:
     corpus = load_policy_corpus()
     protocol = model_comparison_protocol_document(corpus, freeze_commit=freeze_commit)
-    protocol_hash = _sha256_text(_compact_json(protocol))
     prompt = (REPO_ROOT / "app/prompts/validation_agent.txt").read_text(
         encoding="utf-8"
     ).strip()
@@ -1856,40 +1968,15 @@ def run_model_comparison_campaign(
     records_hash = _sha256_text(
         "".join(_compact_json(record) + "\n" for record in records)
     )
-    witness = protocol["historical_control"]
     calls = [record for record in records if record["record_type"] == "provider_call"]
-    campaign_summary = {
-        "record_type": "campaign_summary",
-        "protocol_version": MODEL_COMPARISON_PROTOCOL_VERSION,
-        "corpus_id": MODEL_COMPARISON_CORPUS_ID,
-        "corpus_sha256": protocol["corpus_sha256"],
-        "freeze_commit": freeze_commit,
-        "recommendation": decision["recommendation"],
-        "eligible_configurations": decision["eligible_configurations"],
-        "configuration_statuses": {
-            summary["configuration_id"]: summary["status"] for summary in summaries
-        },
-        "provider_calls": len(calls),
-        "valid_calls": sum(record["status"] == "ok" for record in calls),
-        "prompt_tokens": _complete_metric_sum(calls, "prompt_tokens"),
-        "completion_tokens": _complete_metric_sum(calls, "completion_tokens"),
-        "reasoning_tokens": _complete_metric_sum(calls, "reasoning_tokens"),
-        "total_tokens": _complete_metric_sum(calls, "total_tokens"),
-        "cost_usd": (
-            round(float(_complete_metric_sum(calls, "cost_usd")), 8)
-            if _complete_metric_sum(calls, "cost_usd") is not None
-            else None
-        ),
-        "historical_control_status": witness["status"],
-        "historical_control_model": witness["model"],
-        "historical_control_provider_calls": witness["provider_calls"],
-        "historical_control_semantic_passes": witness["semantic_passes"],
-        "protocol_sha256": protocol_hash,
-        "records_sha256": records_hash,
-        "runtime_cutover_authorized": False,
-        "raw_content_included": False,
-    }
-    records.append(validate_model_comparison_record(campaign_summary))
+    records.append(
+        _model_campaign_summary_record(
+            calls=calls,
+            summaries=summaries,
+            protocol=protocol,
+            records_sha256=records_hash,
+        )
+    )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
         "".join(_compact_json(record) + "\n" for record in records),

@@ -2342,6 +2342,70 @@ Comparaison des futurs modeles principaux — protocole gele avant campagne:
   deploiement n'est modifie. 4C.1 reste ouvert quelle que soit la
   recommandation de campagne; un cutover exige une decision humaine separee.
 
+Campagne des futurs modeles principaux — decision `inconclusive`:
+
+- commit de gel pousse avant le premier appel:
+  `4e02a6da94d338e50dc62f8fd8c321e7643dc4c5`; corpus, prompt, projection,
+  scorer, configurations, ordre, plafond de sortie, timeout, cout et regle de
+  selection n'ont pas change apres lecture des resultats;
+- `88/88` appels executes sur le transport standard, sans Batch, Flex,
+  Priority ni fallback automatique. Les modeles observes correspondent aux
+  slugs demandes et les providers observes sont `Google` et `OpenAI`; le tier
+  observe vaut `default` partout. Le cout total est `0,21959182 USD`, sous le
+  plafond `0,28 USD`; `607436` tokens totaux, dont `36568` tokens de
+  raisonnement, sont observes;
+- artefact durable content-free
+  `benchmark/results/validation_agent/2026-08-29-lot4c1-validation-primary-models.jsonl`:
+  `93` lignes (`88` appels, `4` syntheses de configuration, `1` synthese
+  globale), empreinte SHA-256
+  `e20209c45f9e6b4c17ea6bc808acd7dfe406c543543674fd298b5dbe9a93a635`;
+- Gemini 3.7 Flash `medium` est la seule configuration eligible: `22/22`,
+  005 clarifie aux deux repetitions, 003 produit Presence deux fois et 011
+  reste `answer/simple`. Latence mediane `2586,496 ms`, p95 `3364,655 ms`,
+  maximum `3899,876 ms`; `54775` tokens dont `2944` de raisonnement; cout
+  `0,05334825 USD`;
+- Gemini 3.7 Flash `high` est `inconclusive`: `11` sorties sont des JSON
+  invalides et seulement `11` appels restent semantiquement comparables. Les
+  onze invalides atteignent tous `496` tokens de completion sur le plafond
+  `500`, avec `449..481` tokens de raisonnement; cette correlation suggere une
+  saturation du plafond mais ne prouve pas sa cause, le finish reason n'etant
+  pas conserve. Latence mediane `4519,312 ms`, p95 `6613,374 ms`, maximum
+  `8664,489 ms`; cout `0,07453575 USD`;
+- GPT-5.6 Luna Pro `medium` et `high` sont non eligibles, chacun a `18/22`.
+  Tous deux reussissent 003, 005, 011, hard guards, Stimmung et Web, mais
+  sur-clarifient les cas 001 et 004 aux deux repetitions. Medium: mediane
+  `4120,685 ms`, p95 `7057,121 ms`, maximum `7153,750 ms`, `7991` tokens de
+  raisonnement, cout `0,04044174 USD`. High: mediane `6618,724 ms`, p95
+  `12806,068 ms`, maximum `12843,362 ms`, `16706` tokens de raisonnement,
+  cout `0,05126608 USD`;
+- le premier artefact classait deux JSON invalides de 003 avec le code
+  semantique `missed_presence`, heritage du scorer appele sans verdict. Sans
+  changer scorer, corpus, seuil ni resultat, le garde a ete renforce pour
+  separer tout `invalid_json` des erreurs semantiques; les quatre syntheses et
+  l'empreinte ont ete recalculees depuis les `88` lignes content-free, sans
+  nouvel appel;
+- recommandation gelee: `inconclusive`. Gemini `medium` satisfait seule les
+  invariants, mais Gemini `high` n'est pas comparable; la regle interdissait
+  donc de transformer cette eligibilite locale en recommandation globale. Les
+  Luna Pro ne peuvent pas etre proposes a cause de leurs quatre ecarts
+  semantiques. Aucun cutover automatique n'est autorise;
+- prerequis d'un eventuel cutover separe: decision humaine, branchement runtime
+  propre au modele retenu, retrait des sampling params incompatibles,
+  raisonnement explicite et plafond de sortie prouves, observabilite de la
+  configuration effective, suites completes puis livraison ciblee. Cette
+  campagne ne modifie aucun de ces elements et ne ferme pas 4C.1;
+- preuves post-campagne: validateur/artefact/reclassification `12/12`;
+  benchmark/goldens/Validation/Presence/hard guards/Web/Stimmung/regime
+  `109/109`; chat, observabilite, read-model, final locks et goldens voisins
+  `90/90`; decouverte Python complete read-only `2754/2754`, soit exactement
+  `12` tests nouveaux face a `2742`, zero echec, erreur, skip ou expected
+  failure. Une premiere commande de decouverte montee sur `app/` seulement a
+  echoue avant preuve sur cinq imports d'autorite benchmark; l'invocation
+  autoritative corrigee monte le depot entier en lecture seule. JavaScript
+  `135/135` et Chromium `19/19` ont ete verifies en baseline; ils ne sont pas
+  rejoues apres resultats car aucun runtime, contrat frontend ou fichier
+  frontend n'a change.
+
 Condition de la passe provider de fermeture:
 
 - [x] Maximum v2 corrige et sensibilite aux vocabulaires autoritatifs livree.

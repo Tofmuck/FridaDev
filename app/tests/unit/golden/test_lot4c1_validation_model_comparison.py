@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -273,6 +274,23 @@ class Lot4C1ValidationModelComparisonTests(unittest.TestCase):
         self.assertEqual(rejected_presence["status"], "non_eligible")
         self.assertIn("presence_case_003_failed", rejected_presence["reason_codes"])
 
+        invalid = copy.deepcopy(records)
+        target = invalid[0]
+        target.update(
+            status="invalid_json",
+            reason_code="invalid_json",
+            final_judgment_posture=None,
+            final_output_regime=None,
+            scorer_pass=False,
+            semantic_codes=[],
+        )
+        inconclusive = policy.summarize_model_comparison_configuration(
+            invalid,
+            "gemini_3_7_flash_medium",
+        )
+        self.assertEqual(inconclusive["status"], "inconclusive")
+        self.assertEqual(inconclusive["reason_codes"], ["provider_result_invalid"])
+
     def test_recommendation_never_converts_evaluation_into_runtime_cutover(self) -> None:
         summaries = [
             policy.summarize_model_comparison_configuration(
@@ -383,6 +401,82 @@ class Lot4C1ValidationModelComparisonTests(unittest.TestCase):
         self.assertNotIn("synthetic-system", serialized)
         self.assertNotIn("synthetic-user", serialized)
         self.assertNotIn("arbiter_reason", serialized)
+
+    def test_reclassification_separates_invalid_json_without_new_provider_output(self) -> None:
+        records = [
+            record
+            for config_id in policy.MODEL_COMPARISON_CONFIGURATION_IDS
+            for record in policy.synthetic_passing_model_comparison_records(config_id)
+        ]
+        target = records[0]
+        target.update(
+            status="invalid_json",
+            reason_code="missed_presence",
+            final_judgment_posture=None,
+            final_output_regime=None,
+            scorer_pass=False,
+            semantic_codes=["missed_presence"],
+        )
+
+        rebuilt = policy.reclassify_model_comparison_records(
+            records,
+            freeze_commit="f" * 40,
+        )
+
+        self.assertEqual(len(rebuilt), 93)
+        normalized = next(
+            record
+            for record in rebuilt
+            if record["record_type"] == "provider_call"
+            and record["sequence_index"] == target["sequence_index"]
+            and record["configuration_id"] == target["configuration_id"]
+        )
+        self.assertEqual(normalized["reason_code"], "invalid_json")
+        self.assertEqual(normalized["semantic_codes"], [])
+        summary = next(
+            record
+            for record in rebuilt
+            if record["record_type"] == "configuration_summary"
+            and record["configuration_id"] == target["configuration_id"]
+        )
+        self.assertEqual(summary["status"], "inconclusive")
+        self.assertEqual(summary["reason_codes"], ["provider_result_invalid"])
+
+    def test_durable_model_comparison_artifact_is_content_free_and_inconclusive(self) -> None:
+        path = (
+            REPO_ROOT
+            / "benchmark/results/validation_agent/2026-08-29-lot4c1-validation-primary-models.jsonl"
+        )
+        records = [
+            json.loads(line)
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+
+        self.assertEqual(
+            hashlib.sha256(path.read_bytes()).hexdigest(),
+            "e20209c45f9e6b4c17ea6bc808acd7dfe406c543543674fd298b5dbe9a93a635",
+        )
+        self.assertEqual(len(records), 93)
+        self.assertTrue(all(policy.validate_model_comparison_record(record) for record in records))
+        calls = [record for record in records if record["record_type"] == "provider_call"]
+        self.assertEqual(len(calls), 88)
+        self.assertEqual(sum(record["status"] == "invalid_json" for record in calls), 11)
+        self.assertTrue(
+            all(
+                record["reason_code"] == "invalid_json"
+                and record["semantic_codes"] == []
+                for record in calls
+                if record["status"] == "invalid_json"
+            )
+        )
+        summary = records[-1]
+        self.assertEqual(summary["recommendation"], "inconclusive")
+        self.assertEqual(summary["eligible_configurations"], ["gemini_3_7_flash_medium"])
+        self.assertEqual(summary["provider_calls"], 88)
+        self.assertEqual(summary["valid_calls"], 77)
+        self.assertEqual(summary["cost_usd"], 0.21959182)
+        self.assertFalse(summary["runtime_cutover_authorized"])
 
 
 if __name__ == "__main__":

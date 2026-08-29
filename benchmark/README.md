@@ -534,6 +534,17 @@ route metadata, usage, latency, cost and fingerprints, but no dialogue,
 prompt, provider output or reasoning text. A recommendation is evaluation
 evidence only and cannot authorize a runtime cutover.
 
+Retained evidence:
+
+- `benchmark/results/validation_agent/2026-08-29-lot4c1-validation-primary-models.jsonl`
+  (`88` calls plus five summaries; SHA-256
+  `e20209c45f9e6b4c17ea6bc808acd7dfe406c543543674fd298b5dbe9a93a635`).
+
+The frozen campaign is `inconclusive`: Gemini 3.7 Flash `medium` is eligible
+at `22/22`, both Luna Pro efforts are non-eligible at `18/22`, and Gemini 3.7
+Flash `high` produced eleven invalid JSON results at the fixed output cap. No
+runtime cutover is authorized by this result.
+
 On 2026-08-21, Tof explicitly accepted the current fallback degradation. The
 fallback remains a conservative continuity path, not a semantically equivalent
 Presence implementation: it may miss a legitimate Presence response when the
