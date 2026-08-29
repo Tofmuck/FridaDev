@@ -749,10 +749,13 @@ def campaign_decision(records: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     expected_groups = CASE_COUNT * len(MODEL_ROLES)
     if len(groups) != expected_groups:
         return {"decision": "inconclusive", "reason_code": "missing_case_model_group"}
-    if any(record.get("classification") == "fail" for record in comparisons):
+    def classification(record: Mapping[str, Any]) -> str:
+        return str(record.get("classification") or record.get("status") or "")
+
+    if any(classification(record) == "fail" for record in comparisons):
         return {"decision": "fail", "reason_code": "semantic_regression_or_critical_failure"}
     if any(
-        not any(record.get("classification") != "provider_invalid_pair" for record in group)
+        not any(classification(record) != "provider_invalid_pair" for record in group)
         for group in groups.values()
     ):
         return {"decision": "inconclusive", "reason_code": "insufficient_valid_paired_results"}

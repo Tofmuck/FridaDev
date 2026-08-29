@@ -190,13 +190,13 @@ class Lot4C1ValidationComparisonTests(unittest.TestCase):
                         "record_type": "pair_comparison",
                         "case_id": case["id"],
                         "source": source,
-                        "classification": "pass",
+                        "status": "pass",
                     }
                 )
         self.assertEqual(comparison.campaign_decision(records)["decision"], "pass")
-        records[0]["classification"] = "fail"
+        records[0]["status"] = "fail"
         self.assertEqual(comparison.campaign_decision(records)["decision"], "fail")
-        records[0]["classification"] = "provider_invalid_pair"
+        records[0]["status"] = "provider_invalid_pair"
         self.assertEqual(comparison.campaign_decision(records)["decision"], "inconclusive")
 
     def test_artifact_contract_rejects_raw_provider_or_dialogue_content(self) -> None:

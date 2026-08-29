@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 rouvert pour comparaison provider Validation v1/v2 figee avant resultats; 4S.0 non commence; goldens techniques du coeur livres, corpus semantique du caller non execute, observabilite causale complete non prouvee et decision corrective non prise; Lots 5 a 8 et Z non commences
+Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ouvert apres decision provider `fail` sans regression relative v2 mais avec invariant critique primaire non satisfait; 4S.0 non commence; goldens techniques du coeur livres, corpus semantique du caller non execute, observabilite causale complete non prouvee et decision corrective non prise; Lots 5 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -1637,7 +1637,7 @@ Portee architecturale de cette acceptation:
 
 # LOT 4 - Audit causal et consolidation de Stimmung
 
-Statut: goldens techniques du coeur livres; 4C.1 rouvert pour comparaison provider Validation v1/v2 figee avant resultats; 4S.0 non commence; corpus semantique du caller non execute; observabilite causale complete non prouvee; decision corrective non prise
+Statut: goldens techniques du coeur livres; 4C.1 ouvert apres decision provider `fail` sans regression relative v2 mais avec invariant critique primaire non satisfait; 4S.0 non commence; corpus semantique du caller non execute; observabilite causale complete non prouvee; decision corrective non prise
 Nature: audit causal multi-tours, correctifs bornes, benchmark sous GO separe
 et observabilite synchrone, sans extension fonctionnelle
 Dependance: Lot 3 ferme
@@ -1886,7 +1886,7 @@ Regles communes:
 
 ### Micro-lot 4C.1 - Garantie structurelle Stimmung vers Validation
 
-Statut: ferme le 2026-08-28, referme apres passe corrective du 2026-08-29, puis rouvert le 2026-08-29 jusqu'a la decision de la comparaison provider Validation v1/v2; 4S.0 reste non commence
+Statut: ferme le 2026-08-28, referme apres passe corrective du 2026-08-29, puis rouvert le 2026-08-29; comparaison provider Validation v1/v2 `fail`, donc 4C.1 reste ouvert et 4S.0 non commence
 Effort recommande: `extra high`
 Nature: correctif runtime borne, observabilite synchrone et preuves
 Prerequis: goldens techniques du coeur livres; F3 valide
@@ -2118,13 +2118,56 @@ Phase 1 figee avant resultats provider — comparaison Validation v1/v2:
 - 4C.1 reste ouvert jusqu'a l'artefact JSONL content-free, la decision
   primaire/fallback, les suites completes et le second commit pousse.
 
+Phase 2 — campagne provider executee sur le protocole fige:
+
+- commit de gel pousse avant tout resultat:
+  `a60114e1717d9cff88c44b3dfc8fa1a2545bb006`; v1 reste le commit historique
+  exact `ba246653fc4a68dfac340a34921cc48bee820bc8`;
+- `80/80` appels executes, tous transport `ok`, sans timeout, refus, JSON
+  invalide ni schema invalide. Cout total observe `0,03997686 USD`, sous le
+  plafond prudent `0,10 USD`; `175067` tokens totaux observes;
+- artefact durable content-free:
+  `benchmark/results/validation_agent/2026-08-29-lot4c1-validation-v1-v2.jsonl`,
+  `121` lignes (`80` appels, `40` comparaisons paires, `1` synthese), empreinte
+  SHA-256 `db216a6bb4ad6ccceff2eff0d3fb559a061f5f68b953443dda3bd9afe11ae0a4`;
+- primaire: `18/20` resultats semantiques valides en v1 et `18/20` en v2.
+  `L4C1-VAL-005` produit `answer/simple` aux deux repetitions et dans les deux
+  projections, alors que l'attente critique figee autorise uniquement
+  `clarify/simple|meta`;
+- fallback: `18/20` resultats semantiques valides en v1 et `18/20` en v2. Les
+  deux ecarts sont uniquement la degradation Presence historique acceptee sur
+  `L4C1-VAL-003`, identique entre v1 et v2 et jamais requalifiee en succes;
+- comparaison causale: `40/40` paires v1/v2 ont la meme paire posture/regime;
+  aucune regression relative v2, aucun nouveau faux Presence et aucune
+  violation de hard guard ne sont observes. Cette egalite ne suffit toutefois
+  pas a satisfaire la regle `pass`, qui exige aussi tous les invariants
+  critiques v2;
+- contre-audit du harness: la premiere synthese avait lu par erreur le champ
+  absent `classification` au lieu du champ durable `status` et annoncait
+  `pass` malgre deux comparaisons `fail`. Le seuil et les resultats n'ont pas
+  ete modifies: le lecteur a ete corrige, verrouille par test, puis la synthese
+  recalculee depuis les `120` lignes content-free existantes sans nouvel appel;
+- preuves finales hermetiques sans provider: suites Validation, Stimmung,
+  goldens, chat, Presence, hard guards, locks, persistance et observabilite
+  `206/206`; JavaScript `135/135`; Chromium `19/19`; decouverte Python finale
+  `2736/2736`, soit exactement `7` tests nouveaux face a `2729`. La premiere
+  decouverte encore a `2729` a revele que le dossier `unit/benchmark` n'etait
+  pas autoritairement decouvert; le seul fichier nouveau a ete deplace dans
+  `unit/golden`, sans changer son contenu. Zero echec, erreur, skip, todo ou
+  expected failure dans les passages finaux;
+- decision figee finale: `fail`, reason code
+  `semantic_regression_or_critical_failure`, ici pour invariant critique
+  primaire non satisfait et non pour regression relative v2. Conformement au
+  mandat, aucun runtime, prompt, modele, provider ni scorer semantique n'est
+  corrige dans cette passe; 4C.1 reste ouvert et 4S.0 reste non commence.
+
 Condition de la passe provider de fermeture:
 
 - [x] Maximum v2 corrige et sensibilite aux vocabulaires autoritatifs livree.
 - [x] Corpus, scorer, nombre d'appels, cout maximal et regle de decision figes avant resultats.
-- [ ] Comparaison primaire/fallback v1/v2 executee et artefact JSONL content-free archive.
+- [x] Comparaison primaire/fallback v1/v2 executee et artefact JSONL content-free archive.
 - [ ] Decision semantique `pass` sans regression v2; sinon 4C.1 reste ouvert.
-- [ ] Suites completes, second commit, push, Git propre et runtime inchange prouves.
+- [x] Suites completes, artefact contre-audite et runtime inchange prouves.
 
 Condition de fermeture:
 
@@ -2640,8 +2683,10 @@ preuve lorsqu'un test existant couvre deja exactement l'invariant.
 - [x] Finalite dialogique et ablation diagnostique clarifiees.
 - [x] Inventaire A a Z du pipeline, des contrats et des preuves existantes.
 - [x] Goldens causaux techniques du coeur et mutations controlees livres.
-- [x] 4C.1 ferme: livraison Stimmung vers Validation complete ou absence
-  explicite, avec observabilite synchrone.
+- [ ] 4C.1 ferme: livraison Stimmung vers Validation complete ou absence
+  explicite et comparaison semantique provider `pass`; la garantie structurelle
+  et l'observabilite synchrone sont livrees, mais la campagne figee conclut
+  `fail` sur un invariant critique primaire deja manque par v1 et v2.
 - [ ] 4S.0 ferme: corpus et seuils semantiques valides humainement.
 - [ ] 4S.1 ferme: campagne primaire/fallback executee sous GO separe et
   decision caller tracee.
