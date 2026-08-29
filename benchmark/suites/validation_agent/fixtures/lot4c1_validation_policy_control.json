@@ -1,0 +1,44 @@
+{
+  "schema_version": "lot4c1_validation_policy_control_v1",
+  "case": {
+    "id": "L4C1-VAL-011",
+    "tags": [
+      "nonmaterial_ambiguity",
+      "primary_clarify_countercase",
+      "answer_simple"
+    ],
+    "dialogue": [
+      {
+        "role": "assistant",
+        "content": "Dans cette maquette, ce bouton ferme uniquement le panneau de demonstration."
+      },
+      {
+        "role": "user",
+        "content": "Alors ferme-le ici, dans la maquette."
+      }
+    ],
+    "primary": {
+      "judgment_posture": "clarify",
+      "discursive_regime": "meta",
+      "epistemic_regime": "certain",
+      "uncertainty_posture": "discrete"
+    },
+    "stimmung": "absent",
+    "matter": {
+      "memory": false,
+      "summary": false,
+      "identity": false,
+      "web": "absent"
+    },
+    "expected": {
+      "allowed_pairs": [
+        [
+          "answer",
+          "simple"
+        ]
+      ],
+      "presence_policy": "forbidden",
+      "critical": true
+    }
+  }
+}

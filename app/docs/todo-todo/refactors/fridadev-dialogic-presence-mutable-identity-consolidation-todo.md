@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ouvert apres decision provider `fail` sans regression relative v2 mais avec invariant critique primaire non satisfait; preuve et provenance de campagne assainies, correction semantique non executee; 4S.0 non commence; goldens techniques du coeur livres, corpus semantique du caller non execute, observabilite causale complete non prouvee; Lots 5 a 8 et Z non commences
+Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ouvert apres decision provider `fail` sans regression relative v2 mais avec invariant critique primaire non satisfait; preuve et provenance assainies, candidate semantique unique et protocole de comparaison geles, campagne non executee; 4S.0 non commence; goldens techniques du coeur livres, corpus semantique du caller non execute, observabilite causale complete non prouvee; Lots 5 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -1637,7 +1637,7 @@ Portee architecturale de cette acceptation:
 
 # LOT 4 - Audit causal et consolidation de Stimmung
 
-Statut: goldens techniques du coeur livres; 4C.1 ouvert apres decision provider `fail` sans regression relative v2 mais avec invariant critique primaire non satisfait; preuve et provenance de campagne assainies, correction semantique non executee; 4S.0 non commence; corpus semantique du caller non execute; observabilite causale complete non prouvee
+Statut: goldens techniques du coeur livres; 4C.1 ouvert apres decision provider `fail` sans regression relative v2 mais avec invariant critique primaire non satisfait; preuve et provenance assainies, candidate semantique unique et protocole de comparaison geles, campagne non executee; 4S.0 non commence; corpus semantique du caller non execute; observabilite causale complete non prouvee
 Nature: audit causal multi-tours, correctifs bornes, benchmark sous GO separe
 et observabilite synchrone, sans extension fonctionnelle
 Dependance: Lot 3 ferme
@@ -1886,7 +1886,7 @@ Regles communes:
 
 ### Micro-lot 4C.1 - Garantie structurelle Stimmung vers Validation
 
-Statut: ferme le 2026-08-28, referme apres passe corrective du 2026-08-29, puis rouvert le 2026-08-29; comparaison provider Validation v1/v2 `fail`, donc 4C.1 reste ouvert et 4S.0 non commence
+Statut: ferme le 2026-08-28, referme apres passe corrective du 2026-08-29, puis rouvert le 2026-08-29; comparaison provider Validation v1/v2 `fail`; preuve et provenance assainies, candidate semantique et protocole geles avant campagne; 4C.1 reste ouvert et 4S.0 non commence
 Effort recommande: `extra high`
 Nature: correctif runtime borne, observabilite synchrone et preuves
 Prerequis: goldens techniques du coeur livres; F3 valide
@@ -2191,9 +2191,55 @@ Passe A du 2026-08-29 — assainissement de la preuve et de la provenance:
 - cycle TDD: `7` tests cibles ont d'abord produit `4` echecs attendus, puis
   `7/7`; suites benchmark/goldens/Validation/Stimmung/observabilite voisines:
   `137/137`. Aucun reseau, provider, secret, DB operateur, rebuild ou restart;
-  runtime inchange. Cette passe ne ferme pas 4C.1: la comparaison de la
+  runtime inchange. Commit autonome pousse:
+  `f45c58dc58cdd8eb1bdb3c0a52a3c679de16e5c2`. Cette passe ne ferme pas 4C.1: la comparaison de la
   politique courante contre une unique candidate doit encore etre gelee,
   executee et jugee `pass` avant toute correction runtime.
+
+Passe B gelee avant campagne provider le 2026-08-29:
+
+- reproduction causale hermetique de 005: recommandation amont `clarify`,
+  signaux `ambiguity_present=false` et `underdetermination_present=false`,
+  geste `exposition`, projection `validation_canonical_inputs_v2` complete de
+  `1022` caracteres et aucun hard guard. La politique courante place la
+  preference generale pour la reponse simple avant l'examen des lectures
+  incompatibles a consequences materielles differentes;
+- hypothese corrective unique: remplacer seulement les trois lignes de cette
+  sequence par un examen prioritaire de l'absence d'interpretation coherente ou
+  de plusieurs lectures encore coherentes menant a des actions materiellement
+  differentes, puis appliquer la preference pour la reponse simple dans les
+  autres cas. La recommandation primaire, les signaux lexicaux et Stimmung
+  restent secondaires et non souverains; aucun hard guard ni regex n'est cree;
+- fragment courant `validation_decision_policy_v1`, empreinte
+  `c783ba346a7256699dae22a2b83133b72cfa5926fd630025dd9cb94892eafd2a`;
+  candidate `validation_decision_policy_v2`, empreinte
+  `68591a18cadf7ce61b7d39f87916c834cb068d26bbc82dbd88793aec9e9d62f9`.
+  Les tests prouvent sur les onze cas que seuls les octets de ce fragment
+  changent: system prompt, canonical inputs v2 et message utilisateur hors
+  politique conservent leurs empreintes;
+- les dix cas precedents sont reutilises. Un seul controle est ajoute,
+  `L4C1-VAL-011`: recommandation amont `clarify`, formulation synthetique
+  resolue par le contexte sans action materielle divergente, attente
+  `answer/simple`. Il interdit de rendre le primaire ou un simple indice
+  lexical souverain;
+- protocole `lot4c1_validation_policy_comparison_v1`, corpus combine
+  `lot4c1-validation-policy-v1`, empreinte
+  `bb0416662dd0cd9a42436c7f185c86e44ec877090326a6c0cf4ec4846c1184d4`:
+  politiques courante/candidate, primaire/fallback separes, deux repetitions
+  et ordre alterne, soit `88` appels prevus sous le plafond `96` et un cout
+  maximal prudent de `0,10 USD`. Modele, provider, temperature `0.0`,
+  `top_p=1.0`, plafond `140`, timeout `15 s` et raisonnement explicite absent
+  restent identiques;
+- decision figee: `pass` seulement si les deux repetitions primaires valides
+  de 005 deviennent conformes, 011 reste `answer`, aucun cas valide ne
+  regresse, Presence/hard guards/prudence Stimmung-Web restent conformes, la
+  faiblesse Presence fallback n'est pas aggravee et toutes les paires sont
+  valides. Un seul echec vaut `fail`; une paire provider manquante ou invalide
+  vaut `inconclusive`; aucun seuil n'est mutable apres les resultats;
+- cycle TDD du protocole: import absent en rouge, puis `5/5` preuves vertes sur
+  corpus, unicite du fragment, egalite hors fragment, scorer, decision et garde
+  d'artefact. Aucun appel provider n'a encore ete effectue et aucun fichier
+  runtime n'a ete modifie par cette passe de gel.
 
 Condition de la passe provider de fermeture:
 
