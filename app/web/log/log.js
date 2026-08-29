@@ -3,6 +3,10 @@
   if (!adminApi) {
     throw new Error("admin_api.js must be loaded before log/log.js");
   }
+  const validationProjection = window.FridaValidationProjection;
+  if (!validationProjection) {
+    throw new Error("validation_projection.js must be loaded before log/log.js");
+  }
 
   const elements = {
     statusBanner: document.getElementById("logStatusBanner"),
@@ -717,55 +721,6 @@
     appendChip(parent, `${label}=${value}`, statusTone(status));
   };
 
-  const validationStimmungDelivery = (provider) => {
-    const projection = provider?.canonical_projection;
-    const status = toText(projection?.stimmung_delivery_status);
-    const reasonCode = toText(projection?.stimmung_delivery_reason_code);
-    const chars = Number(projection?.chars);
-    const budgetChars = Number(projection?.budget_chars);
-    const allowedFamilies = new Set([
-      "time_input",
-      "memory_retrieved",
-      "memory_arbitration",
-      "summary_input",
-      "identity_input",
-      "recent_context_input",
-      "recent_window_input",
-      "user_turn_input",
-      "user_turn_signals",
-      "stimmung_input",
-      "web_input",
-    ]);
-    const omittedFamilies = Array.isArray(projection?.omitted_families)
-      ? projection.omitted_families.map(toText).filter(Boolean)
-      : [];
-    const reasonValid = status === "full"
-      ? reasonCode === "included" && !omittedFamilies.includes("stimmung_input")
-      : ["signal_not_present", "invalid_signal", "contract_budget_exceeded"].includes(reasonCode);
-    const authoritative = projection?.authoritative === true
-      && toText(projection?.source_kind) === "validation_prompt_prepared"
-      && toText(projection?.projection_version) === "validation_canonical_inputs_v1"
-      && ["full", "absent"].includes(status)
-      && Number.isInteger(chars)
-      && Number.isInteger(budgetChars)
-      && chars >= 0
-      && budgetChars === 700
-      && chars <= budgetChars
-      && reasonValid
-      && omittedFamilies.every((family) => allowedFamilies.has(family));
-    if (!authoritative) {
-      return {
-        authoritative: false,
-        status: "unknown",
-        reasonCode: reasonCode || "unproved_projection",
-        chars: 0,
-        budgetChars: 700,
-        omittedFamilies: [],
-      };
-    }
-    return { authoritative: true, status, reasonCode, chars, budgetChars, omittedFamilies };
-  };
-
   const renderTurnRows = (items) => {
     elements.turns.innerHTML = "";
     if (!items.length) {
@@ -840,7 +795,7 @@
         const provider = secondary[key] || {};
         appendTurnText(providersMeta, key, toText(provider.status) || "n/a", provider.status);
       }
-      const validationDelivery = validationStimmungDelivery(secondary.validation || {});
+      const validationDelivery = validationProjection.fromReadModel(secondary.validation || {});
       appendTurnText(
         providersMeta,
         "validation_source",
@@ -870,6 +825,15 @@
           "omises",
           validationDelivery.omittedFamilies.join(",") || "aucune",
         );
+        appendTurnText(providersMeta, "projection_contract", validationDelivery.contractStatus);
+        appendTurnText(providersMeta, "sans_donnee", validationDelivery.noDataFamilies.join(",") || "aucune");
+        appendTurnText(providersMeta, "redondantes", validationDelivery.redundantFamilies.join(",") || "aucune");
+        appendTurnText(providersMeta, "facultatives", validationDelivery.optionalFamilies.join(",") || "aucune");
+        appendTurnText(providersMeta, "invalides", validationDelivery.invalidFamilies.join(",") || "aucune");
+        appendTurnText(providersMeta, "budget_insuffisant", validationDelivery.budgetExceededFamilies.join(",") || "aucune");
+        if (validationDelivery.contractStatus === "historical_v1") {
+          appendTurnText(providersMeta, "historique_non_qualifie", validationDelivery.unspecifiedFamilies.join(",") || "aucune");
+        }
       }
       providersCell.appendChild(providersMeta);
       row.appendChild(providersCell);

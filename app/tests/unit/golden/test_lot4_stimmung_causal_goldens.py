@@ -503,7 +503,7 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
 
         for projection in (small, near_bound, beyond_bound, renamed_neighbor):
             _assert_full_projected_stimmung(projection, stimmung)
-            self.assertEqual(projection["projection_version"], "validation_canonical_inputs_v1")
+            self.assertEqual(projection["projection_version"], "validation_canonical_inputs_v2")
             self.assertEqual(
                 projection["stimmung_delivery"],
                 {"status": "full", "reason_code": "included"},
@@ -524,7 +524,7 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
             _assert_full_projected_stimmung(suppressed_mutant, stimmung)
 
         duplicated_mutant = copy.deepcopy(beyond_bound)
-        duplicated_mutant["omitted_families"].append("stimmung_input")
+        duplicated_mutant["family_dispositions"]["stimmung_input"] = "no_data"
         with self.assertRaises((AssertionError, ValueError)):
             _assert_full_projected_stimmung(duplicated_mutant, stimmung)
 
@@ -539,7 +539,14 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
 
         inverted_priority_mutant = copy.deepcopy(beyond_bound)
         inverted_priority_mutant["families"] = {"time_input": {"schema_version": "v1"}}
-        inverted_priority_mutant["omitted_families"] = ["stimmung_input"]
+        inverted_priority_mutant["family_dispositions"] = {
+            family: "no_data"
+            for family in validation_messages.CANONICAL_FAMILY_ORDER
+        }
+        inverted_priority_mutant["family_dispositions"]["time_input"] = "included"
+        inverted_priority_mutant["family_dispositions"]["stimmung_input"] = (
+            "contract_budget_exceeded"
+        )
         inverted_priority_mutant["stimmung_delivery"] = {
             "status": "absent",
             "reason_code": "contract_budget_exceeded",
@@ -562,7 +569,7 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
             if event.get("stage") == "validation_prompt_prepared"
         ][-1]
         prepared_payload = prepared["payload_json"]
-        self.assertEqual(prepared_payload["canonical_projection_version"], "validation_canonical_inputs_v1")
+        self.assertEqual(prepared_payload["canonical_projection_version"], "validation_canonical_inputs_v2")
         self.assertEqual(prepared_payload["stimmung_delivery_status"], "full")
         self.assertEqual(prepared_payload["stimmung_delivery_reason_code"], "included")
         self.assertLessEqual(
@@ -574,6 +581,23 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
         )
         self.assertEqual(actual_projection["stimmung_delivery"]["status"], "full")
         self.assertIn("stimmung_input", actual_projection["families"])
+        self.assertIn("user_turn_input", actual_projection["families"])
+        self.assertEqual(
+            actual_projection["family_dispositions"]["time_input"],
+            "redundant_elsewhere",
+        )
+        self.assertEqual(
+            actual_projection["family_dispositions"]["recent_context_input"],
+            "redundant_elsewhere",
+        )
+        self.assertEqual(
+            actual_projection["family_dispositions"]["recent_window_input"],
+            "redundant_elsewhere",
+        )
+        self.assertNotEqual(
+            list(actual_projection["families"]),
+            ["stimmung_input", "user_turn_signals"],
+        )
 
     def test_main_model_receives_only_derived_judgment_and_can_lose_the_causal_difference(self) -> None:
         stable = exercise_stimmung_dialogue(

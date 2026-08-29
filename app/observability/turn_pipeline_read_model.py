@@ -214,26 +214,55 @@ def _validation_canonical_projection_summary(
     payload = _payload(event or {})
     try:
         projection = validation_contract.validate_canonical_projection_metadata(payload)
-    except ValueError:
+    except ValueError as exc:
+        validation_error = str(exc.args[0]) if exc.args else 'invalid_canonical_projection_metadata'
+        contract_status = (
+            'unknown_version'
+            if validation_error == 'unknown_canonical_projection_version'
+            else 'incomplete_or_incoherent'
+        )
+        reason_code = (
+            validation_error
+            if contract_status == 'unknown_version'
+            else 'invalid_canonical_projection_metadata'
+        )
         return {
             'source_kind': 'validation_prompt_prepared' if event else 'missing',
             'authoritative': False,
+            'contract_status': contract_status,
             'projection_version': _text(payload.get('canonical_projection_version')),
             'stimmung_delivery_status': 'unknown',
-            'stimmung_delivery_reason_code': 'invalid_canonical_projection_metadata',
+            'stimmung_delivery_reason_code': reason_code or 'invalid_canonical_projection_metadata',
             'chars': 0,
-            'budget_chars': validation_contract.MAX_CANONICAL_INPUTS_JSON_CHARS,
+            'budget_chars': 0,
+            'included_families': [],
             'omitted_families': [],
+            'no_data_families': [],
+            'redundant_families': [],
+            'optional_families': [],
+            'invalid_families': [],
+            'budget_exceeded_families': [],
+            'unspecified_families': [],
         }
     return {
         'source_kind': 'validation_prompt_prepared',
         'authoritative': True,
+        'contract_status': projection['canonical_projection_contract_status'],
         'projection_version': projection['canonical_projection_version'],
         'stimmung_delivery_status': projection['stimmung_delivery_status'],
         'stimmung_delivery_reason_code': projection['stimmung_delivery_reason_code'],
         'chars': projection['canonical_projection_chars'],
         'budget_chars': projection['canonical_projection_budget_chars'],
+        'included_families': projection['canonical_projection_included_families'],
         'omitted_families': projection['canonical_projection_omitted_families'],
+        'no_data_families': projection['canonical_projection_no_data_families'],
+        'redundant_families': projection['canonical_projection_redundant_families'],
+        'optional_families': projection['canonical_projection_optional_families'],
+        'invalid_families': projection['canonical_projection_invalid_families'],
+        'budget_exceeded_families': projection[
+            'canonical_projection_budget_exceeded_families'
+        ],
+        'unspecified_families': projection['canonical_projection_unspecified_families'],
     }
 
 

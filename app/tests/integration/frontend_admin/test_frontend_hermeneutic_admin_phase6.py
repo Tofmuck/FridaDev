@@ -27,6 +27,7 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
         self.assertIn('href="admin.css"', source)
         self.assertIn('script src="admin_api.js"', source)
         self.assertIn('script src="admin_ui_common.js"', source)
+        self.assertIn('script src="validation_projection.js"', source)
         self.assertIn('script src="hermeneutic_admin/api.js"', source)
         self.assertIn('script src="hermeneutic_admin/render.js"', source)
         self.assertIn('script src="hermeneutic_admin/render_identity_read_model.js"', source)
@@ -88,6 +89,7 @@ class FrontendHermeneuticAdminPhase6Tests(unittest.TestCase):
             [
                 "admin_api.js",
                 "admin_ui_common.js",
+                "validation_projection.js",
                 "hermeneutic_admin/api.js",
                 "hermeneutic_admin/render.js",
                 "hermeneutic_admin/render_identity_read_model.js",

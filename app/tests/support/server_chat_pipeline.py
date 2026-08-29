@@ -525,6 +525,7 @@ def patch_server_chat_pipeline(
         'build_identity_input',
         lambda: {
             'schema_version': 'v2',
+            'status': 'missing',
             'frida': {
                 'static': {'content': '', 'source': None},
                 'mutable': {

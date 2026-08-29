@@ -672,7 +672,9 @@ def _secondary_provider_item(
         )
         if projection_claimed:
             try:
-                validation_contract.validate_canonical_projection_metadata(prepared_payload)
+                projection = validation_contract.validate_canonical_projection_metadata(
+                    prepared_payload
+                )
             except ValueError:
                 return _checklist_item(
                     key,
@@ -684,6 +686,38 @@ def _secondary_provider_item(
                         'prepared_count': len(prepared_events),
                         'result_count': len(result_events),
                         'llm_call_count': len(caller_events),
+                    },
+                )
+            if projection['canonical_projection_budget_exceeded_families']:
+                return _checklist_item(
+                    key,
+                    'secondary_providers',
+                    'degraded',
+                    'canonical_projection_budget_insufficient',
+                    stage=prepared_stage,
+                    evidence={
+                        'prepared_count': len(prepared_events),
+                        'result_count': len(result_events),
+                        'llm_call_count': len(caller_events),
+                        'budget_exceeded_families_count': len(
+                            projection['canonical_projection_budget_exceeded_families']
+                        ),
+                    },
+                )
+            if projection['canonical_projection_invalid_families']:
+                return _checklist_item(
+                    key,
+                    'secondary_providers',
+                    'degraded',
+                    'invalid_canonical_projection_family',
+                    stage=prepared_stage,
+                    evidence={
+                        'prepared_count': len(prepared_events),
+                        'result_count': len(result_events),
+                        'llm_call_count': len(caller_events),
+                        'invalid_families_count': len(
+                            projection['canonical_projection_invalid_families']
+                        ),
                     },
                 )
     events = prepared_events + result_events + caller_events

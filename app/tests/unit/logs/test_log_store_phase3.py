@@ -506,12 +506,20 @@ class LogStorePhase3Tests(unittest.TestCase):
             {
                 'source_kind': 'validation_prompt_prepared',
                 'authoritative': True,
+                'contract_status': 'historical_v1',
                 'projection_version': 'validation_canonical_inputs_v1',
                 'stimmung_delivery_status': 'full',
                 'stimmung_delivery_reason_code': 'included',
                 'chars': 412,
                 'budget_chars': 700,
+                'included_families': ['stimmung_input'],
                 'omitted_families': ['recent_context_input'],
+                'no_data_families': [],
+                'redundant_families': [],
+                'optional_families': [],
+                'invalid_families': [],
+                'budget_exceeded_families': [],
+                'unspecified_families': ['recent_context_input'],
             },
         )
         self.assertEqual(
@@ -583,6 +591,121 @@ class LogStorePhase3Tests(unittest.TestCase):
         self.assertFalse(unproved_projection['authoritative'])
         self.assertEqual(unproved_projection['stimmung_delivery_status'], 'unknown')
         self.assertNotEqual(unproved_projection['stimmung_delivery_status'], 'full')
+
+    def test_validation_projection_read_model_distinguishes_current_v2_historical_v1_and_unknown(self) -> None:
+        current_events = self._complete_turn_events(web_search_enabled=False)
+        current = next(
+            event for event in current_events if event['stage'] == 'validation_prompt_prepared'
+        )
+        current['payload'].update(
+            {
+                'canonical_projection_version': 'validation_canonical_inputs_v2',
+                'canonical_projection_contract_status': 'current_v2',
+                'canonical_projection_chars': 1840,
+                'canonical_projection_budget_chars': 3840,
+                'canonical_projection_included_families': [
+                    'memory_retrieved',
+                    'memory_arbitration',
+                    'user_turn_input',
+                    'user_turn_signals',
+                    'stimmung_input',
+                ],
+                'canonical_projection_omitted_families': [
+                    'time_input',
+                    'summary_input',
+                    'identity_input',
+                    'recent_context_input',
+                    'recent_window_input',
+                    'web_input',
+                ],
+                'canonical_projection_no_data_families': [
+                    'summary_input',
+                    'identity_input',
+                ],
+                'canonical_projection_redundant_families': [
+                    'time_input',
+                    'recent_context_input',
+                    'recent_window_input',
+                ],
+                'canonical_projection_optional_families': ['web_input'],
+                'canonical_projection_invalid_families': [],
+                'canonical_projection_budget_exceeded_families': [],
+            }
+        )
+
+        current_item = log_store.build_turn_pipeline_item(current_events)
+        projection = current_item['providers']['secondary']['validation'][
+            'canonical_projection'
+        ]
+        self.assertTrue(projection['authoritative'])
+        self.assertEqual(projection['contract_status'], 'current_v2')
+        self.assertEqual(projection['budget_chars'], 3840)
+        self.assertEqual(
+            projection['redundant_families'],
+            ['time_input', 'recent_context_input', 'recent_window_input'],
+        )
+        self.assertEqual(projection['optional_families'], ['web_input'])
+        self.assertEqual(
+            projection['no_data_families'],
+            ['summary_input', 'identity_input'],
+        )
+        self.assertEqual(projection['invalid_families'], [])
+        self.assertEqual(projection['budget_exceeded_families'], [])
+
+        historical_item = log_store.build_turn_pipeline_item(
+            self._complete_turn_events(web_search_enabled=False)
+        )
+        historical = historical_item['providers']['secondary']['validation'][
+            'canonical_projection'
+        ]
+        self.assertTrue(historical['authoritative'])
+        self.assertEqual(historical['contract_status'], 'historical_v1')
+        self.assertEqual(historical['unspecified_families'], ['recent_context_input'])
+        self.assertEqual(historical['budget_chars'], 700)
+
+        unknown_events = self._complete_turn_events(web_search_enabled=False)
+        unknown = next(
+            event for event in unknown_events if event['stage'] == 'validation_prompt_prepared'
+        )
+        unknown['payload']['canonical_projection_version'] = 'validation_canonical_inputs_v999'
+        unknown_item = log_store.build_turn_pipeline_item(unknown_events)
+        unknown_projection = unknown_item['providers']['secondary']['validation'][
+            'canonical_projection'
+        ]
+        self.assertFalse(unknown_projection['authoritative'])
+        self.assertEqual(unknown_projection['contract_status'], 'unknown_version')
+        self.assertEqual(
+            unknown_projection['stimmung_delivery_reason_code'],
+            'unknown_canonical_projection_version',
+        )
+
+        budget_events = self._complete_turn_events(web_search_enabled=False)
+        budget = next(
+            event for event in budget_events if event['stage'] == 'validation_prompt_prepared'
+        )
+        budget['payload'].update(current['payload'])
+        budget['payload']['canonical_projection_included_families'] = [
+            'memory_retrieved',
+            'memory_arbitration',
+            'user_turn_signals',
+            'stimmung_input',
+        ]
+        budget['payload']['canonical_projection_omitted_families'] = [
+            'time_input',
+            'summary_input',
+            'identity_input',
+            'recent_context_input',
+            'recent_window_input',
+            'user_turn_input',
+            'web_input',
+        ]
+        budget['payload']['canonical_projection_budget_exceeded_families'] = [
+            'user_turn_input'
+        ]
+        budget_checklist = log_store.build_turn_observability_checklist(budget_events)
+        budget_item = self._find_item(budget_checklist, 'validation_agent')
+        self.assertEqual(budget_item['status'], 'degraded')
+        self.assertEqual(budget_item['reason_code'], 'canonical_projection_budget_insufficient')
 
     def test_admin_projection_keeps_only_content_free_validation_delivery_truth(self) -> None:
         payload = next(

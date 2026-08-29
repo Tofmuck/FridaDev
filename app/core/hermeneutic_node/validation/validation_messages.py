@@ -252,6 +252,9 @@ def _emit_validation_prompt_prepared(
             "json_chars": _int_or_zero(projection.get("canonical_projection_chars")),
         },
         "canonical_projection_version": _text(projection.get("canonical_projection_version")),
+        "canonical_projection_contract_status": _text(
+            projection.get("canonical_projection_contract_status")
+        ),
         "canonical_projection_chars": _int_or_zero(projection.get("canonical_projection_chars")),
         "canonical_projection_budget_chars": _int_or_zero(
             projection.get("canonical_projection_budget_chars")
@@ -260,6 +263,33 @@ def _emit_validation_prompt_prepared(
         "canonical_projection_omitted_families": [
             _text(key)
             for key in _sequence(projection.get("canonical_projection_omitted_families"))
+            if _text(key)
+        ],
+        "canonical_projection_no_data_families": [
+            _text(key)
+            for key in _sequence(projection.get("canonical_projection_no_data_families"))
+            if _text(key)
+        ],
+        "canonical_projection_redundant_families": [
+            _text(key)
+            for key in _sequence(projection.get("canonical_projection_redundant_families"))
+            if _text(key)
+        ],
+        "canonical_projection_optional_families": [
+            _text(key)
+            for key in _sequence(projection.get("canonical_projection_optional_families"))
+            if _text(key)
+        ],
+        "canonical_projection_invalid_families": [
+            _text(key)
+            for key in _sequence(projection.get("canonical_projection_invalid_families"))
+            if _text(key)
+        ],
+        "canonical_projection_budget_exceeded_families": [
+            _text(key)
+            for key in _sequence(
+                projection.get("canonical_projection_budget_exceeded_families")
+            )
             if _text(key)
         ],
         "stimmung_delivery_status": _text(projection.get("stimmung_delivery_status")),

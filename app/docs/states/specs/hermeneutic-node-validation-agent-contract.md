@@ -174,24 +174,35 @@ Regles minimales:
 
 Transport borne courant des entrees canoniques:
 
-- `validation_canonical_inputs_v1` remplace le prefixe textuel arbitraire de la
-  serialisation globale par une enveloppe JSON structurelle bornee a `700`
-  caracteres;
+- `validation_canonical_inputs_v2` est l'unique version emise par le runtime
+  courant. Elle remplace le transport v1 a `700` caracteres, conserve dans les
+  readers uniquement comme contrat historique, par une enveloppe JSON
+  structurelle bornee a `3840` caracteres;
 - les familles connues suivent l'ordre stable de construction runtime
   `time_input`, `memory_retrieved`, `memory_arbitration`, `summary_input`,
   `identity_input`, `recent_context_input`, `recent_window_input`,
   `user_turn_input`, `user_turn_signals`, `stimmung_input`, `web_input`;
 - cet ordre est un ordre de transport, pas une nouvelle hierarchie de verite;
-- lorsqu'un `stimmung_input` valide est present, son bloc complet est reserve
-  avant les autres familles; chaque autre bloc tient entierement ou rejoint
-  `omitted_families`;
+- `time_input`, `recent_context_input` et `recent_window_input` ne sont pas
+  recopies: leur matiere est deja transmise par `temporal_reference` et
+  `validation_dialogue_context`;
+- memory retrieval/arbitration, summary, Identity et Web sont projetes en
+  statuts, raisons, compteurs et indicateurs bornes necessaires a l'arbitrage;
+  aucun contenu, trace, URL, dialogue ou resultat Web n'est recopie;
+- `user_turn_input`, `user_turn_signals` et un `stimmung_input` valide restent
+  des structures completes et bornees;
+- chaque famille recoit exactement une disposition fermee: `included`,
+  `no_data`, `redundant_elsewhere`, `optional_not_requested`, `invalid_input`
+  ou `contract_budget_exceeded`;
 - le statut Stimmung transporte vaut uniquement `full` avec
   `reason_code=included`, ou `absent` avec `signal_not_present`,
   `invalid_signal` ou `contract_budget_exceeded`; `partial` est invalide;
 - une reconstruction repetee est deterministe, ignore les cles hors contrat et
   ne depend pas de leur ordre lexical;
-- le cas synthetique maximal de la structure Stimmung courante occupe `627/700`
-  caracteres avec les dix autres familles explicitement omises.
+- la somme structurelle maximale des projections compactes v2 mesure `3704`
+  caracteres. La borne `3840` conserve donc une marge fermee de `136`
+  caracteres; le coordinateur synthetique multi-tours courant mesure
+  `1220/3840` sans famille invalide ni insuffisance de budget.
 
 ## 6. Decision Retenue Pour Le Contexte Dialogique Recent Elargi
 
@@ -346,11 +357,13 @@ Regle forte:
   `secondary_provider_payload=true`, presence/counts/longueurs/source kinds de `memory_retrieved`
   et `memory_arbitration`, metriques de messages provider, et aucun contenu brut de prompt,
   message, trace, summary ou conversation
-- depuis le micro-lot 4C.1 du 2026-08-28, ce meme stage observe le materiel
+- depuis le micro-lot 4C.1, puis sa passe corrective du 2026-08-29, ce meme stage observe le materiel
   effectivement prepare avec `canonical_projection_version`, taille et budget,
-  familles incluses/omises, `stimmung_delivery_status=full|absent` et un reason
-  code ferme; les metadonnees sont validees avant emission et ne recopient ni
-  la projection, ni un ton, ni un contenu de source
+  statut de contrat historique/courant, familles incluses, sans donnee,
+  redondantes, facultatives, invalides ou hors budget,
+  `stimmung_delivery_status=full|absent` et un reason code ferme; les
+  metadonnees sont validees avant emission et ne recopient ni la projection,
+  ni un ton, ni un contenu de source
 
 Preuves de fermeture lot 6:
 

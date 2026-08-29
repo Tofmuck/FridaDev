@@ -209,7 +209,8 @@ et ne possede aucune autorite Identity ou canonique.
   - content-free proof of the secondary provider payload prepared by `validation_agent`
   - must be distinguishable from the main LLM payload and from `stimmung_prompt_prepared`
   - allowed fields: `payload_kind`, `provider_caller=validation_agent`, secondary/main booleans, model, message counts, input-family presence flags, compact source-kind counts, char counts, sampling/timeouts when present
-  - `validation_canonical_inputs_v1` also exposes the exact content-free transport truth: projection version, used chars, fixed budget, closed included/omitted family lists, `stimmung_delivery_status=full|absent`, bounded reason code, Validation attempt source and prepared status
+  - runtime `validation_canonical_inputs_v2` exposes the exact content-free transport truth: projection version and `current_v2` contract status, used chars, fixed budget, and a complete closed partition of included, no-data, redundant, optional, invalid, and budget-exceeded families; historical `validation_canonical_inputs_v1` remains readable as `historical_v1` without reclassifying its omissions
+  - both versions expose `stimmung_delivery_status=full|absent`, bounded reason code, Validation attempt source and prepared status; an unknown version or an incoherent v2 partition is non-authoritative
   - `partial`, inconsistent counters, unknown family names, a raw-content flag set to true, or an unversioned `full` claim are invalid rather than normal display states
   - forbidden: raw prompt, raw messages, raw validation dialogue, raw canonical inputs, raw memory traces/summaries, raw identity content
 
@@ -355,8 +356,9 @@ Minimum item groups:
   - main provider is only `llm_call.provider_caller=llm`;
   - secondary providers stay separated: `stimmung_agent`, `validation_agent`, `web_reformulation`;
   - the Validation lane projects `canonical_projection` only from a valid
-    `validation_prompt_prepared`: authority marker, version, `full|absent`, reason
-    code, chars/budget and omitted families; missing or invalid proof becomes
+    `validation_prompt_prepared`: authority marker, version/contract status,
+    `full|absent`, reason code, chars/budget and classified family dispositions;
+    missing, unknown-version or incoherent proof becomes
     `authoritative=false` and `stimmung_delivery_status=unknown`, never `full`;
   - legacy or missing provider callers are counted as `unknown`, never merged with the main lane;
 - RAG: `retrieved -> basket -> kept -> injected`, sourced from `memory_chain_snapshot` when available;

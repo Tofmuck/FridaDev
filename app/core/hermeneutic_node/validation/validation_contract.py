@@ -13,8 +13,10 @@ FALLBACK_MODEL = "openai/gpt-5.4-nano"
 ALLOWED_PRIMARY_JUDGMENT_POSTURES = ("answer", "clarify", "suspend")
 ALLOWED_FINAL_OUTPUT_REGIMES = ("meta", "simple", "presence")
 MAX_VALIDATION_CONTEXT_MESSAGES = canonical_recent_context_input.VALIDATION_DIALOGUE_CONTEXT_MAX_MESSAGES
-MAX_CANONICAL_INPUTS_JSON_CHARS = 700
-CANONICAL_PROJECTION_VERSION = "validation_canonical_inputs_v1"
+LEGACY_MAX_CANONICAL_INPUTS_JSON_CHARS = 700
+LEGACY_CANONICAL_PROJECTION_VERSION = "validation_canonical_inputs_v1"
+MAX_CANONICAL_INPUTS_JSON_CHARS = 3840
+CANONICAL_PROJECTION_VERSION = "validation_canonical_inputs_v2"
 CANONICAL_FAMILY_ORDER = (
     "time_input",
     "memory_retrieved",
@@ -34,6 +36,26 @@ STIMMUNG_DELIVERY_REASON_CODES = (
     "signal_not_present",
     "invalid_signal",
     "contract_budget_exceeded",
+)
+CANONICAL_FAMILY_DISPOSITIONS = (
+    "included",
+    "no_data",
+    "redundant_elsewhere",
+    "optional_not_requested",
+    "invalid_input",
+    "contract_budget_exceeded",
+)
+CANONICAL_PROJECTION_CONTRACT_STATUSES = (
+    "historical_v1",
+    "current_v2",
+)
+_V2_METADATA_FAMILY_LISTS = (
+    ("canonical_projection_included_families", "included"),
+    ("canonical_projection_no_data_families", "no_data"),
+    ("canonical_projection_redundant_families", "redundant_elsewhere"),
+    ("canonical_projection_optional_families", "optional_not_requested"),
+    ("canonical_projection_invalid_families", "invalid_input"),
+    ("canonical_projection_budget_exceeded_families", "contract_budget_exceeded"),
 )
 
 _ALLOWED_PRIMARY_VERDICT_KEYS = {
@@ -118,8 +140,15 @@ def _stable_unique(values: Sequence[str]) -> list[str]:
 
 def validate_canonical_projection_metadata(value: Any) -> dict[str, Any]:
     payload = _mapping(value)
-    if _text(payload.get("canonical_projection_version")) != CANONICAL_PROJECTION_VERSION:
-        raise ValueError("invalid_canonical_projection_version")
+    version = _text(payload.get("canonical_projection_version"))
+    if version == LEGACY_CANONICAL_PROJECTION_VERSION:
+        expected_budget = LEGACY_MAX_CANONICAL_INPUTS_JSON_CHARS
+        contract_status = "historical_v1"
+    elif version == CANONICAL_PROJECTION_VERSION:
+        expected_budget = MAX_CANONICAL_INPUTS_JSON_CHARS
+        contract_status = "current_v2"
+    else:
+        raise ValueError("unknown_canonical_projection_version")
 
     chars = payload.get("canonical_projection_chars")
     budget_chars = payload.get("canonical_projection_budget_chars")
@@ -129,7 +158,7 @@ def validate_canonical_projection_metadata(value: Any) -> dict[str, Any]:
         or isinstance(budget_chars, bool)
         or not isinstance(budget_chars, int)
         or chars < 0
-        or budget_chars != MAX_CANONICAL_INPUTS_JSON_CHARS
+        or budget_chars != expected_budget
         or chars > budget_chars
     ):
         raise ValueError("invalid_canonical_projection_budget")
@@ -147,8 +176,47 @@ def validate_canonical_projection_metadata(value: Any) -> dict[str, Any]:
         raise ValueError("invalid_canonical_projection_families")
     if set(included) & set(omitted):
         raise ValueError("invalid_canonical_projection_families")
+    if included != sorted(included, key=CANONICAL_FAMILY_ORDER.index):
+        raise ValueError("invalid_canonical_projection_family_order")
     if omitted != sorted(omitted, key=CANONICAL_FAMILY_ORDER.index):
         raise ValueError("invalid_canonical_projection_family_order")
+
+    family_lists: dict[str, list[str]] = {}
+    if version == CANONICAL_PROJECTION_VERSION:
+        if _text(payload.get("canonical_projection_contract_status")) != contract_status:
+            raise ValueError("invalid_canonical_projection_contract_status")
+        disposition_by_family: dict[str, str] = {}
+        for key, disposition in _V2_METADATA_FAMILY_LISTS:
+            values = payload.get(key)
+            if not isinstance(values, list):
+                raise ValueError("invalid_canonical_projection_families")
+            if any(
+                not isinstance(item, str) or item not in CANONICAL_FAMILY_ORDER
+                for item in values
+            ):
+                raise ValueError("invalid_canonical_projection_families")
+            if len(set(values)) != len(values):
+                raise ValueError("invalid_canonical_projection_families")
+            if values != sorted(values, key=CANONICAL_FAMILY_ORDER.index):
+                raise ValueError("invalid_canonical_projection_family_order")
+            for family in values:
+                if family in disposition_by_family:
+                    raise ValueError("invalid_canonical_projection_families")
+                disposition_by_family[family] = disposition
+            family_lists[key] = list(values)
+        if set(disposition_by_family) != set(CANONICAL_FAMILY_ORDER):
+            raise ValueError("incomplete_canonical_projection_families")
+        if family_lists["canonical_projection_included_families"] != list(included):
+            raise ValueError("inconsistent_canonical_projection_families")
+        derived_omitted = [
+            family
+            for family in CANONICAL_FAMILY_ORDER
+            if disposition_by_family[family] != "included"
+        ]
+        if derived_omitted != list(omitted):
+            raise ValueError("inconsistent_canonical_projection_families")
+    else:
+        family_lists = {key: [] for key, _disposition in _V2_METADATA_FAMILY_LISTS}
 
     status = _text(payload.get("stimmung_delivery_status"))
     reason_code = _text(payload.get("stimmung_delivery_reason_code"))
@@ -168,15 +236,43 @@ def validate_canonical_projection_metadata(value: Any) -> dict[str, Any]:
         )
     ):
         raise ValueError("inconsistent_stimmung_delivery")
+    if version == CANONICAL_PROJECTION_VERSION and status == "absent":
+        if reason_code == "signal_not_present":
+            expected_list = "canonical_projection_no_data_families"
+        elif reason_code == "invalid_signal":
+            expected_list = "canonical_projection_invalid_families"
+        else:
+            expected_list = "canonical_projection_budget_exceeded_families"
+        if "stimmung_input" not in family_lists[expected_list]:
+            raise ValueError("inconsistent_stimmung_delivery")
     if payload.get("raw_content_included") is not False:
         raise ValueError("invalid_canonical_projection_raw_content")
 
     return {
-        "canonical_projection_version": CANONICAL_PROJECTION_VERSION,
+        "canonical_projection_version": version,
+        "canonical_projection_contract_status": contract_status,
         "canonical_projection_chars": chars,
         "canonical_projection_budget_chars": budget_chars,
         "canonical_projection_included_families": list(included),
         "canonical_projection_omitted_families": list(omitted),
+        "canonical_projection_no_data_families": family_lists[
+            "canonical_projection_no_data_families"
+        ],
+        "canonical_projection_redundant_families": family_lists[
+            "canonical_projection_redundant_families"
+        ],
+        "canonical_projection_optional_families": family_lists[
+            "canonical_projection_optional_families"
+        ],
+        "canonical_projection_invalid_families": family_lists[
+            "canonical_projection_invalid_families"
+        ],
+        "canonical_projection_budget_exceeded_families": family_lists[
+            "canonical_projection_budget_exceeded_families"
+        ],
+        "canonical_projection_unspecified_families": (
+            list(omitted) if version == LEGACY_CANONICAL_PROJECTION_VERSION else []
+        ),
         "stimmung_delivery_status": status,
         "stimmung_delivery_reason_code": reason_code,
         "raw_content_included": False,

@@ -39,6 +39,7 @@ def validate_ui_script_order(assets: UiAssetContents) -> Dict[str, Any]:
     hermeneutic_admin_script_order = [
         "admin_api.js",
         "admin_ui_common.js",
+        "validation_projection.js",
         "hermeneutic_admin/api.js",
         "hermeneutic_admin/render.js",
         "hermeneutic_admin/render_identity_read_model.js",
@@ -57,6 +58,7 @@ def validate_ui_script_order(assets: UiAssetContents) -> Dict[str, Any]:
     identity_script_order = [
         "admin_api.js",
         "admin_ui_common.js",
+        "validation_projection.js",
         "hermeneutic_admin/api.js",
         "hermeneutic_admin/render.js",
         "hermeneutic_admin/render_identity_read_model.js",

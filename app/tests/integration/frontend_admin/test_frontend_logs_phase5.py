@@ -68,6 +68,7 @@ class FrontendLogsPhase5Tests(unittest.TestCase):
         self.assertIn('href="/hermeneutic-admin"', source)
         self.assertNotIn('href="/hermeneutic-admin" target="_blank"', source)
         self.assertIn('script src="admin_api.js"', source)
+        self.assertIn('script src="validation_projection.js"', source)
         self.assertIn('script src="log/log.js"', source)
         self.assertIn('id="logFiltersForm"', source)
         self.assertIn('<select id="logConversationId"', source)

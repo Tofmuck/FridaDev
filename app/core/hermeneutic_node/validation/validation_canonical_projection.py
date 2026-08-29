@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping
 
 from core.hermeneutic_node.inputs import stimmung_input as canonical_stimmung_input
 from . import validation_contract
+from . import validation_canonical_family_projection
 
 
 MAX_CANONICAL_INPUTS_JSON_CHARS = validation_contract.MAX_CANONICAL_INPUTS_JSON_CHARS
@@ -14,6 +15,7 @@ _STIMMUNG_DELIVERY_STATUSES = set(validation_contract.STIMMUNG_DELIVERY_STATUSES
 _STIMMUNG_DELIVERY_REASONS = set(validation_contract.STIMMUNG_DELIVERY_REASON_CODES)
 _STIMMUNG_STABILITIES = {"emerging", "stable", "volatile"}
 _STIMMUNG_SHIFT_STATES = {"steady", "candidate_shift", "shifted"}
+_FAMILY_DISPOSITIONS = set(validation_contract.CANONICAL_FAMILY_DISPOSITIONS)
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
@@ -21,7 +23,7 @@ def _mapping(value: Any) -> Mapping[str, Any]:
 
 
 def _compact_json(value: Any) -> str:
-    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
 
 def _normalized_stimmung_projection(value: Any) -> tuple[dict[str, Any] | None, str]:
@@ -109,7 +111,7 @@ def _normalized_stimmung_projection(value: Any) -> tuple[dict[str, Any] | None, 
 def _envelope(
     *,
     families: Mapping[str, Any],
-    omitted_families: Sequence[str],
+    family_dispositions: Mapping[str, str],
     stimmung_status: str,
     stimmung_reason_code: str,
 ) -> dict[str, Any]:
@@ -123,8 +125,8 @@ def _envelope(
             "status": stimmung_status,
             "reason_code": stimmung_reason_code,
         },
+        "family_dispositions": dict(family_dispositions),
         "families": dict(families),
-        "omitted_families": list(omitted_families),
     }
 
 
@@ -133,8 +135,8 @@ def validate_validation_canonical_projection(value: Any) -> dict[str, Any]:
     if set(payload.keys()) != {
         "projection_version",
         "stimmung_delivery",
+        "family_dispositions",
         "families",
-        "omitted_families",
     }:
         raise ValueError("invalid_canonical_projection_structure")
     if payload.get("projection_version") != CANONICAL_PROJECTION_VERSION:
@@ -151,25 +153,26 @@ def validate_validation_canonical_projection(value: Any) -> dict[str, Any]:
         raise ValueError("invalid_stimmung_delivery_reason_code")
 
     families_payload = payload.get("families")
-    omitted_payload = payload.get("omitted_families")
-    if not isinstance(families_payload, Mapping) or not isinstance(omitted_payload, list):
+    dispositions_payload = payload.get("family_dispositions")
+    if not isinstance(families_payload, Mapping) or not isinstance(dispositions_payload, Mapping):
         raise ValueError("invalid_canonical_projection_families")
     families = dict(families_payload)
+    dispositions = dict(dispositions_payload)
     if any(family not in CANONICAL_FAMILY_ORDER for family in families):
         raise ValueError("invalid_canonical_projection_families")
-    if any(
-        not isinstance(item, str) or item not in CANONICAL_FAMILY_ORDER
-        for item in omitted_payload
-    ):
+    if set(dispositions) != set(CANONICAL_FAMILY_ORDER):
         raise ValueError("invalid_canonical_projection_families")
-    if len(set(omitted_payload)) != len(omitted_payload):
+    if any(disposition not in _FAMILY_DISPOSITIONS for disposition in dispositions.values()):
         raise ValueError("invalid_canonical_projection_families")
-    if list(omitted_payload) != sorted(omitted_payload, key=CANONICAL_FAMILY_ORDER.index):
-        raise ValueError("invalid_canonical_projection_family_order")
-    if set(families) & set(omitted_payload):
-        raise ValueError("invalid_canonical_projection_families")
-    if any(not isinstance(family_payload, Mapping) for family_payload in families.values()):
-        raise ValueError("invalid_canonical_projection_families")
+    for family in CANONICAL_FAMILY_ORDER:
+        included = dispositions[family] == "included"
+        if included != (family in families):
+            raise ValueError("inconsistent_canonical_projection_family")
+        if family in families and family != "stimmung_input":
+            families[family] = validation_canonical_family_projection.validate_projected_family(
+                family,
+                families[family],
+            )
 
     if status == "full":
         stimmung, stimmung_reason = _normalized_stimmung_projection(
@@ -177,20 +180,25 @@ def validate_validation_canonical_projection(value: Any) -> dict[str, Any]:
         )
         if reason_code != "included" or stimmung_reason != "included" or stimmung is None:
             raise ValueError("inconsistent_stimmung_delivery")
+        if dispositions.get("stimmung_input") != "included":
+            raise ValueError("inconsistent_stimmung_delivery")
         families["stimmung_input"] = stimmung
-    elif (
-        reason_code == "included"
-        or "stimmung_input" in families
-        or (
-            reason_code in {"invalid_signal", "contract_budget_exceeded"}
-            and "stimmung_input" not in omitted_payload
-        )
-    ):
-        raise ValueError("inconsistent_stimmung_delivery")
+    else:
+        expected_disposition = {
+            "signal_not_present": "no_data",
+            "invalid_signal": "invalid_input",
+            "contract_budget_exceeded": "contract_budget_exceeded",
+        }.get(str(reason_code))
+        if (
+            reason_code == "included"
+            or "stimmung_input" in families
+            or dispositions.get("stimmung_input") != expected_disposition
+        ):
+            raise ValueError("inconsistent_stimmung_delivery")
 
     return _envelope(
         families=families,
-        omitted_families=omitted_payload,
+        family_dispositions={family: dispositions[family] for family in CANONICAL_FAMILY_ORDER},
         stimmung_status=status,
         stimmung_reason_code=reason_code,
     )
@@ -199,71 +207,101 @@ def validate_validation_canonical_projection(value: Any) -> dict[str, Any]:
 def project_validation_canonical_inputs(
     canonical_inputs: Mapping[str, Any],
 ) -> tuple[str, dict[str, Any]]:
-    """Project whole canonical families into Validation's fixed 700-char budget."""
+    """Build Validation's compact, whole-family v2 projection."""
 
     source = _mapping(canonical_inputs)
-    present_families = [
-        family
-        for family in CANONICAL_FAMILY_ORDER
-        if bool(_mapping(source.get(family)))
-    ]
     selected: dict[str, Any] = {}
-    omitted = list(present_families)
+    dispositions: dict[str, str] = {}
     stimmung, stimmung_reason = _normalized_stimmung_projection(source.get("stimmung_input"))
     stimmung_status = "full" if stimmung is not None else "absent"
 
     if stimmung is not None:
         selected["stimmung_input"] = stimmung
-        omitted = [family for family in omitted if family != "stimmung_input"]
-        required = _envelope(
-            families=selected,
-            omitted_families=omitted,
-            stimmung_status="full",
-            stimmung_reason_code="included",
-        )
-        if len(_compact_json(required)) > MAX_CANONICAL_INPUTS_JSON_CHARS:
-            selected.clear()
-            if "stimmung_input" not in omitted:
-                omitted.append("stimmung_input")
-                omitted.sort(key=CANONICAL_FAMILY_ORDER.index)
-            stimmung_status = "absent"
-            stimmung_reason = "contract_budget_exceeded"
+        dispositions["stimmung_input"] = "included"
+    elif stimmung_reason == "invalid_signal":
+        dispositions["stimmung_input"] = "invalid_input"
+    else:
+        dispositions["stimmung_input"] = "no_data"
 
     for family in CANONICAL_FAMILY_ORDER:
-        if family == "stimmung_input" or family not in omitted:
+        if family == "stimmung_input":
             continue
-        family_payload = _mapping(source.get(family))
-        if not family_payload:
-            continue
-        candidate_selected = {**selected, family: dict(family_payload)}
-        candidate_omitted = [item for item in omitted if item != family]
-        candidate = _envelope(
-            families=candidate_selected,
-            omitted_families=candidate_omitted,
-            stimmung_status=stimmung_status,
-            stimmung_reason_code=stimmung_reason,
+        projected, disposition = validation_canonical_family_projection.project_family(
+            family,
+            source.get(family),
         )
-        if len(_compact_json(candidate)) <= MAX_CANONICAL_INPUTS_JSON_CHARS:
-            selected = candidate_selected
-            omitted = candidate_omitted
+        dispositions[family] = disposition
+        if projected is not None:
+            selected[family] = projected
+
+    selected = {
+        family: selected[family]
+        for family in CANONICAL_FAMILY_ORDER
+        if family in selected
+    }
+    dispositions = {
+        family: dispositions[family]
+        for family in CANONICAL_FAMILY_ORDER
+    }
 
     projection = validate_validation_canonical_projection(
         _envelope(
             families=selected,
-            omitted_families=omitted,
+            family_dispositions=dispositions,
             stimmung_status=stimmung_status,
             stimmung_reason_code=stimmung_reason,
         )
     )
     material = _compact_json(projection)
     if len(material) > MAX_CANONICAL_INPUTS_JSON_CHARS:
-        raise ValueError("canonical_projection_budget_exceeded")
+        dispositions = {
+            family: (
+                "contract_budget_exceeded"
+                if disposition == "included"
+                else disposition
+            )
+            for family, disposition in dispositions.items()
+        }
+        if stimmung_status == "full":
+            stimmung_status = "absent"
+            stimmung_reason = "contract_budget_exceeded"
+        projection = validate_validation_canonical_projection(
+            _envelope(
+                families={},
+                family_dispositions=dispositions,
+                stimmung_status=stimmung_status,
+                stimmung_reason_code=stimmung_reason,
+            )
+        )
+        material = _compact_json(projection)
+        if len(material) > MAX_CANONICAL_INPUTS_JSON_CHARS:
+            raise ValueError("canonical_projection_budget_exceeded")
+    included = [
+        family for family in CANONICAL_FAMILY_ORDER
+        if projection["family_dispositions"][family] == "included"
+    ]
+    omitted = [family for family in CANONICAL_FAMILY_ORDER if family not in included]
+    disposition_lists = {
+        disposition: [
+            family for family in CANONICAL_FAMILY_ORDER
+            if projection["family_dispositions"][family] == disposition
+        ]
+        for disposition in validation_contract.CANONICAL_FAMILY_DISPOSITIONS
+    }
     metadata = {
         "canonical_projection_version": CANONICAL_PROJECTION_VERSION,
+        "canonical_projection_contract_status": "current_v2",
         "canonical_projection_chars": len(material),
         "canonical_projection_budget_chars": MAX_CANONICAL_INPUTS_JSON_CHARS,
-        "canonical_projection_included_families": list(selected.keys()),
+        "canonical_projection_included_families": included,
         "canonical_projection_omitted_families": list(omitted),
+        "canonical_projection_no_data_families": disposition_lists["no_data"],
+        "canonical_projection_redundant_families": disposition_lists["redundant_elsewhere"],
+        "canonical_projection_optional_families": disposition_lists["optional_not_requested"],
+        "canonical_projection_invalid_families": disposition_lists["invalid_input"],
+        "canonical_projection_budget_exceeded_families": disposition_lists[
+            "contract_budget_exceeded"
+        ],
         "stimmung_delivery_status": stimmung_status,
         "stimmung_delivery_reason_code": stimmung_reason,
         "raw_content_included": False,

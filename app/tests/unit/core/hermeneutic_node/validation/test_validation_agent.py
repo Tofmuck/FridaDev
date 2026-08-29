@@ -29,6 +29,8 @@ if importlib.util.find_spec("psycopg") is None:
 
 from core.hermeneutic_node.inputs import recent_context_input as canonical_recent_context_input
 from core.hermeneutic_node.inputs import time_input as canonical_time_input
+from core.hermeneutic_node.inputs import user_turn_input as canonical_user_turn_input
+from core.hermeneutic_node.inputs import web_input as canonical_web_input
 from core.hermeneutic_node.validation import (
     hard_guards,
     validation_agent,
@@ -79,6 +81,96 @@ def _primary_verdict(
             "state_used": False,
             "degraded_fields": [],
         },
+    }
+
+
+def _maximal_validation_canonical_projection_v2() -> dict[str, object]:
+    code = "x" * 64
+    families = {
+        "memory_retrieved": {
+            "schema_version": "v1", "status": code, "reason_code": code,
+            "error_code": code, "retrieved_count": 999999,
+            "parent_summary_count": 999999,
+        },
+        "memory_arbitration": {
+            "schema_version": "v1", "status": code, "reason_code": code,
+            "raw_candidates_count": 999999, "kept_count": 999999,
+            "rejected_count": 999999, "injected_count": 999999,
+        },
+        "summary_input": {
+            "schema_version": "v1", "status": code, "reason_code": code,
+            "error_code": code, "summary_present": True,
+            "start_ts": code, "end_ts": code,
+        },
+        "identity_input": {
+            "schema_version": "v2", "status": code, "reason_code": code,
+            "error_code": code,
+            "frida": {"static_present": True, "mutable_present": True},
+            "user": {"static_present": True, "mutable_present": True},
+        },
+        "user_turn_input": {
+            "schema_version": "v1",
+            "geste_dialogique_dominant": "adresse_relationnelle",
+            "regime_probatoire": {
+                "principe": "maximal_possible",
+                "types_de_preuve_attendus": [
+                    "factuelle", "scientifique", "argumentative",
+                    "hermeneutique", "dialogique",
+                ],
+                "provenances": ["dialogue_trace", "dialogue_resume", "web"],
+                "regime_de_vigilance": "renforce",
+                "composition_probatoire": "appuyee",
+            },
+            "qualification_temporelle": {
+                "portee_temporelle": "prospective",
+                "ancrage_temporel": "historique_externe",
+            },
+        },
+        "user_turn_signals": {
+            "present": True, "ambiguity_present": True,
+            "underdetermination_present": True,
+            "active_signal_families": [
+                "referent", "visee", "critere", "portee",
+                "ancrage_de_source", "coherence",
+            ],
+            "active_signal_families_count": 6,
+        },
+        "stimmung_input": {
+            "schema_version": "v1", "present": True,
+            "dominant_tone": "decouragement",
+            "active_tones": [
+                {"tone": "decouragement", "strength": 10},
+                {"tone": "enthousiasme", "strength": 10},
+                {"tone": "neutralite", "strength": 10},
+            ],
+            "stability": "volatile", "shift_state": "candidate_shift",
+            "turns_considered": 4,
+        },
+        "web_input": {
+            "schema_version": "v1", "enabled": True, "status": code,
+            "activation_mode": "manual", "reason_code": code,
+            "results_count": 999999, "read_state": code,
+            "fallback_used": True, "web_confidence_level": code,
+            "web_evidence_status": code, "web_evidence_can_answer": True,
+            "web_evidence_requires_caveat": True,
+            "web_evidence_can_suggest_reformulation": True,
+            "web_evidence_external_fallback_used": True,
+            "openrouter_fallback_used": True,
+        },
+    }
+    dispositions = {
+        family: (
+            "redundant_elsewhere"
+            if family in {"time_input", "recent_context_input", "recent_window_input"}
+            else "included"
+        )
+        for family in validation_messages.CANONICAL_FAMILY_ORDER
+    }
+    return {
+        "projection_version": "validation_canonical_inputs_v2",
+        "stimmung_delivery": {"status": "full", "reason_code": "included"},
+        "family_dispositions": dispositions,
+        "families": families,
     }
 
 
@@ -1751,7 +1843,7 @@ class ValidationAgentTests(unittest.TestCase):
         )
         self.assertEqual(
             [item["payload"]["canonical_projection_version"] for item in prompt_events],
-            ["validation_canonical_inputs_v1", "validation_canonical_inputs_v1"],
+            ["validation_canonical_inputs_v2", "validation_canonical_inputs_v2"],
         )
         self.assertEqual(
             [item["payload"]["stimmung_delivery_status"] for item in prompt_events],
@@ -1885,9 +1977,14 @@ class ValidationAgentTests(unittest.TestCase):
             "turns_considered": 4,
         }
         canonical_inputs = {
-            "recent_context_input": {"messages": ["x" * 8000]},
+            "recent_context_input": {
+                "schema_version": "v1",
+                "messages": [{"role": "user", "content": "x" * 8000}],
+            },
             "stimmung_input": stimmung,
-            "user_turn_input": {"schema_version": "v1", "geste_dialogique_dominant": "exposition"},
+            "user_turn_input": canonical_user_turn_input.build_user_turn_input(
+                user_message="synthetic statement",
+            ),
         }
 
         material, metadata = validation_messages.project_validation_canonical_inputs(canonical_inputs)
@@ -1902,7 +1999,10 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertEqual(projection["families"]["stimmung_input"], stimmung)
         self.assertEqual(projection["stimmung_delivery"], {"status": "full", "reason_code": "included"})
         self.assertNotIn("recent_context_input", projection["families"])
-        self.assertIn("recent_context_input", projection["omitted_families"])
+        self.assertEqual(
+            projection["family_dispositions"]["recent_context_input"],
+            "redundant_elsewhere",
+        )
         self.assertNotIn("preview", projection)
         self.assertNotIn("truncated", projection)
 
@@ -1960,6 +2060,253 @@ class ValidationAgentTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "invalid_canonical_projection_budget"):
             validation_contract.validate_canonical_projection_metadata(counter_mutant)
+
+    def test_canonical_projection_v2_keeps_required_matter_and_classifies_every_family(self) -> None:
+        canonical_inputs = {
+            "time_input": canonical_time_input.build_time_input(
+                now_utc_iso="2026-08-28T09:00:00Z",
+                timezone_name="UTC",
+            ),
+            "memory_retrieved": {
+                "schema_version": "v1",
+                "status": "ok",
+                "reason_code": None,
+                "error_code": None,
+                "error_class": None,
+                "retrieval_query": "SYNTHETIC_QUERY_NOT_PROJECTED",
+                "top_k_requested": 5,
+                "retrieved_count": 1,
+                "traces": [{"content": "SYNTHETIC_MEMORY_NOT_PROJECTED"}],
+            },
+            "memory_arbitration": {
+                "schema_version": "v1",
+                "status": "available",
+                "reason_code": None,
+                "raw_candidates_count": 1,
+                "basket_candidates_count": 1,
+                "basket_limit": 8,
+                "basket_candidates": [{"content": "SYNTHETIC_BASKET_NOT_PROJECTED"}],
+                "decisions_count": 1,
+                "kept_count": 1,
+                "rejected_count": 0,
+                "injected_candidate_ids": ["synthetic-candidate"],
+                "decisions": [{"reason": "SYNTHETIC_REASON_NOT_PROJECTED"}],
+            },
+            "summary_input": {
+                "schema_version": "v1",
+                "status": "missing",
+                "summary": None,
+            },
+            "identity_input": {
+                "schema_version": "v2",
+                "status": "available",
+                "frida": {
+                    "static": {"content": "SYNTHETIC_IDENTITY_NOT_PROJECTED", "source": "resource"},
+                    "mutable": {
+                        "content": "SYNTHETIC_MUTABLE_NOT_PROJECTED",
+                        "source_trace_id": None,
+                        "updated_by": "identity_periodic_agent",
+                        "update_reason": "periodic_agent",
+                        "updated_ts": "2026-08-28T08:00:00Z",
+                    },
+                },
+                "user": {
+                    "static": {"content": "", "source": None},
+                    "mutable": {
+                        "content": "",
+                        "source_trace_id": None,
+                        "updated_by": None,
+                        "update_reason": None,
+                        "updated_ts": None,
+                    },
+                },
+            },
+            "recent_context_input": {
+                "schema_version": "v1",
+                "messages": [{"role": "user", "content": "SYNTHETIC_DIALOGUE_NOT_PROJECTED"}],
+            },
+            "recent_window_input": {
+                "schema_version": "v1",
+                "max_recent_turns": 5,
+                "turn_count": 1,
+                "has_in_progress_turn": True,
+                "turns": [{"messages": [{"content": "SYNTHETIC_WINDOW_NOT_PROJECTED"}]}],
+            },
+            "user_turn_input": {
+                "schema_version": "v1",
+                "geste_dialogique_dominant": "interrogation",
+                "regime_probatoire": {
+                    "principe": "maximal_possible",
+                    "types_de_preuve_attendus": ["factuelle"],
+                    "provenances": ["web"],
+                    "regime_de_vigilance": "renforce",
+                    "composition_probatoire": "appuyee",
+                },
+                "qualification_temporelle": {
+                    "portee_temporelle": "actuelle",
+                    "ancrage_temporel": "now",
+                },
+            },
+            "user_turn_signals": {
+                "present": True,
+                "ambiguity_present": False,
+                "underdetermination_present": True,
+                "active_signal_families": ["visee"],
+                "active_signal_families_count": 1,
+            },
+            "stimmung_input": {
+                "schema_version": "v1",
+                "present": True,
+                "dominant_tone": "curiosite",
+                "active_tones": [{"tone": "curiosite", "strength": 6}],
+                "stability": "stable",
+                "shift_state": "steady",
+                "turns_considered": 4,
+            },
+            "web_input": canonical_web_input.build_web_input(
+                enabled=False,
+                status="skipped",
+                activation_mode="not_requested",
+                reason_code="not_applicable",
+            ),
+        }
+
+        material, metadata = validation_messages.project_validation_canonical_inputs(
+            canonical_inputs
+        )
+        rebuilt, rebuilt_metadata = validation_messages.project_validation_canonical_inputs(
+            dict(reversed(list(canonical_inputs.items())))
+        )
+        projection = json.loads(material)
+
+        self.assertEqual(material, rebuilt)
+        self.assertEqual(metadata, rebuilt_metadata)
+        self.assertEqual(
+            projection["projection_version"],
+            "validation_canonical_inputs_v2",
+        )
+        self.assertEqual(validation_messages.MAX_CANONICAL_INPUTS_JSON_CHARS, 3840)
+        self.assertLessEqual(len(material), 3840)
+        self.assertEqual(
+            projection["family_dispositions"],
+            {
+                "time_input": "redundant_elsewhere",
+                "memory_retrieved": "included",
+                "memory_arbitration": "included",
+                "summary_input": "no_data",
+                "identity_input": "included",
+                "recent_context_input": "redundant_elsewhere",
+                "recent_window_input": "redundant_elsewhere",
+                "user_turn_input": "included",
+                "user_turn_signals": "included",
+                "stimmung_input": "included",
+                "web_input": "optional_not_requested",
+            },
+        )
+        self.assertEqual(
+            list(projection["families"]),
+            [
+                "memory_retrieved",
+                "memory_arbitration",
+                "identity_input",
+                "user_turn_input",
+                "user_turn_signals",
+                "stimmung_input",
+            ],
+        )
+        serialized = json.dumps(projection, sort_keys=True)
+        for raw_sentinel in (
+            "SYNTHETIC_QUERY_NOT_PROJECTED",
+            "SYNTHETIC_MEMORY_NOT_PROJECTED",
+            "SYNTHETIC_BASKET_NOT_PROJECTED",
+            "SYNTHETIC_REASON_NOT_PROJECTED",
+            "SYNTHETIC_IDENTITY_NOT_PROJECTED",
+            "SYNTHETIC_MUTABLE_NOT_PROJECTED",
+            "SYNTHETIC_DIALOGUE_NOT_PROJECTED",
+            "SYNTHETIC_WINDOW_NOT_PROJECTED",
+        ):
+            self.assertNotIn(raw_sentinel, serialized)
+        self.assertEqual(
+            metadata["canonical_projection_redundant_families"],
+            ["time_input", "recent_context_input", "recent_window_input"],
+        )
+        self.assertEqual(
+            metadata["canonical_projection_optional_families"],
+            ["web_input"],
+        )
+        self.assertEqual(
+            metadata["canonical_projection_no_data_families"],
+            ["summary_input"],
+        )
+
+        raw_family_mutant = json.loads(material)
+        raw_family_mutant["families"]["memory_retrieved"] = canonical_inputs[
+            "memory_retrieved"
+        ]
+        with self.assertRaisesRegex(ValueError, "invalid_canonical_projection_family"):
+            validation_messages.validate_validation_canonical_projection(
+                raw_family_mutant
+            )
+
+        boolean_family_mutant = json.loads(material)
+        boolean_family_mutant["families"]["user_turn_input"] = {"present": True}
+        with self.assertRaisesRegex(ValueError, "invalid_canonical_projection_family"):
+            validation_messages.validate_validation_canonical_projection(
+                boolean_family_mutant
+            )
+
+        missing_required_mutant = json.loads(material)
+        missing_required_mutant["families"].pop("user_turn_input")
+        with self.assertRaisesRegex(ValueError, "inconsistent_canonical_projection_family"):
+            validation_messages.validate_validation_canonical_projection(
+                missing_required_mutant
+            )
+
+        maximal_projection = validation_messages.validate_validation_canonical_projection(
+            _maximal_validation_canonical_projection_v2()
+        )
+        maximal_chars = len(
+            json.dumps(maximal_projection, ensure_ascii=False, separators=(",", ":"))
+        )
+        self.assertEqual(maximal_chars, 3704)
+        self.assertEqual(validation_messages.MAX_CANONICAL_INPUTS_JSON_CHARS, 3840)
+        self.assertEqual(
+            validation_messages.MAX_CANONICAL_INPUTS_JSON_CHARS - maximal_chars,
+            136,
+        )
+
+    def test_projection_metadata_keeps_historical_v1_distinct_from_current_v2(self) -> None:
+        historical = validation_contract.validate_canonical_projection_metadata(
+            {
+                "canonical_projection_version": "validation_canonical_inputs_v1",
+                "canonical_projection_chars": 412,
+                "canonical_projection_budget_chars": 700,
+                "canonical_projection_included_families": ["stimmung_input"],
+                "canonical_projection_omitted_families": ["recent_context_input"],
+                "stimmung_delivery_status": "full",
+                "stimmung_delivery_reason_code": "included",
+                "raw_content_included": False,
+            }
+        )
+        self.assertEqual(historical["canonical_projection_contract_status"], "historical_v1")
+        self.assertEqual(
+            historical["canonical_projection_unspecified_families"],
+            ["recent_context_input"],
+        )
+
+        with self.assertRaisesRegex(ValueError, "unknown_canonical_projection_version"):
+            validation_contract.validate_canonical_projection_metadata(
+                {
+                    "canonical_projection_version": "validation_canonical_inputs_v999",
+                    "canonical_projection_chars": 0,
+                    "canonical_projection_budget_chars": 1,
+                    "canonical_projection_included_families": [],
+                    "canonical_projection_omitted_families": [],
+                    "stimmung_delivery_status": "absent",
+                    "stimmung_delivery_reason_code": "signal_not_present",
+                    "raw_content_included": False,
+                }
+            )
 
 
 if __name__ == "__main__":

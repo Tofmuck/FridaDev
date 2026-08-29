@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ferme et prochain micro-lot obligatoire 4S.0; goldens techniques du coeur livres, corpus semantique du caller non execute, observabilite causale complete non prouvee et decision corrective non prise; Lots 5 a 8 et Z non commences
+Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 referme apres passe corrective du 2026-08-29 et prochain micro-lot obligatoire 4S.0; goldens techniques du coeur livres, corpus semantique du caller non execute, observabilite causale complete non prouvee et decision corrective non prise; Lots 5 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -1637,7 +1637,7 @@ Portee architecturale de cette acceptation:
 
 # LOT 4 - Audit causal et consolidation de Stimmung
 
-Statut: goldens techniques du coeur livres; 4C.1 ferme et prochain micro-lot obligatoire 4S.0; corpus semantique du caller non execute; observabilite causale complete non prouvee; decision corrective non prise
+Statut: goldens techniques du coeur livres; 4C.1 referme apres passe corrective du 2026-08-29 et prochain micro-lot obligatoire 4S.0; corpus semantique du caller non execute; observabilite causale complete non prouvee; decision corrective non prise
 Nature: audit causal multi-tours, correctifs bornes, benchmark sous GO separe
 et observabilite synchrone, sans extension fonctionnelle
 Dependance: Lot 3 ferme
@@ -1886,7 +1886,7 @@ Regles communes:
 
 ### Micro-lot 4C.1 - Garantie structurelle Stimmung vers Validation
 
-Statut: ferme le 2026-08-28; prochain micro-lot obligatoire 4S.0
+Statut: ferme le 2026-08-28, puis referme apres passe corrective du 2026-08-29; prochain micro-lot obligatoire 4S.0
 Effort recommande: `extra high`
 Nature: correctif runtime borne, observabilite synchrone et preuves
 Prerequis: goldens techniques du coeur livres; F3 valide
@@ -1984,6 +1984,94 @@ Fermeture realisee:
   persistance, format JSON/streaming ou payload principal n'a change. Le corpus
   semantique, l'effet causal final, F2/F4/F5 et la matrice complete 4O.Z restent
   ouverts; aucune campagne provider ni DB operateur n'a ete utilisee.
+
+Passe corrective du 2026-08-29 — suffisance de la matiere Validation:
+
+- contre-audit reproduit sur le HEAD `ba246653fc4a68dfac340a34921cc48bee820bc8`:
+  la projection v1 etait structurellement sure mais trop petite. Sur le vrai
+  coordinateur synthetique, elle mesurait `658/700`, le message utilisateur
+  Validation `5598` caracteres et son estimation `2694` tokens; seules
+  `stimmung_input` et `user_turn_signals` etaient incluses. Notamment,
+  `user_turn_input`, necessaire a la relecture du geste, de la preuve et du
+  temps, etait evince uniquement par le budget;
+- les tailles ci-dessous sont les longueurs JSON compactes des blocs projetes.
+  `0` signifie qu'aucun bloc n'est serialise pour la disposition normale
+  indiquee; les sources riches brutes memory, summary, Identity et Web ne sont
+  pas bornees et ne sont donc jamais recopiees telles quelles:
+
+| Famille | Min | Normale | Max contractuel | Deja transmise ailleurs | Projection compacte necessaire | Omission autorisee |
+| --- | ---: | ---: | ---: | --- | --- | --- |
+| `time_input` | 0 | 0 | 0 | `temporal_reference` | non | `redundant_elsewhere`; `no_data`; invalide degrade |
+| `memory_retrieved` | 0 | 0 | 315 | non, seulement interpretee en amont | oui: statut, raisons et compteurs | `no_data`; invalide degrade; budget exceptionnel |
+| `memory_arbitration` | 0 | 0 | 278 | non, seulement interpretee en amont | oui: statut, raisons et compteurs | `no_data`; invalide degrade; budget exceptionnel |
+| `summary_input` | 0 | 0 | 437 | non comme source distincte | oui: statut, presence et bornes temporelles | `no_data`; invalide degrade; budget exceptionnel |
+| `identity_input` | 0 | 0 | 369 | non comme source distincte | oui: statut et presence statique/mutable par sujet | `no_data`; invalide degrade; budget exceptionnel |
+| `recent_context_input` | 0 | 0 | 0 | `validation_dialogue_context` | non | `redundant_elsewhere`; `no_data`; invalide degrade |
+| `recent_window_input` | 0 | 0 | 0 | `validation_dialogue_context` plus large | non | `redundant_elsewhere`; `no_data`; invalide degrade |
+| `user_turn_input` | 0 | 323 | 456 | non | oui, structure semantique complete | jamais sur entree runtime valide; invalide degrade |
+| `user_turn_signals` | 0 | 138 | 205 | non | oui, structure complete | jamais sur entree runtime valide; invalide degrade |
+| `stimmung_input` | 0 | 184 | 276 | non | oui, structure complete | signal absent/invalide; budget exceptionnel, jamais partiel |
+| `web_input` | 0 | 0 | 713 | non comme source distincte | oui si active: statut, confiance, preuve et fallback | `optional_not_requested`; `no_data`; invalide degrade; budget exceptionnel |
+
+- option retenue: projections compactes par famille puis plus petite borne
+  superieure au maximum mesure. `validation_canonical_inputs_v2` conserve les
+  trois structures semantiques deja bornees (`user_turn_input`, signaux du tour
+  et Stimmung), projette les sources riches en metadonnees fermees, et marque
+  time/contexte/fenetre comme redondants avec leurs blocs autoritatifs. L'ordre
+  des onze familles reste fixe et toutes recoivent exactement une disposition
+  parmi `included`, `no_data`, `redundant_elsewhere`,
+  `optional_not_requested`, `invalid_input` et
+  `contract_budget_exceeded`;
+- maximum structurel synthetique: `3704` caracteres; borne retenue: `3840`,
+  soit `136` caracteres de marge (`3,7 %`) et moins de `4096`. Le cas
+  coordinateur mesure apres correction `1220/3840`; le message Validation
+  mesure `6160` caracteres et `2881` tokens estimes, soit `+562` caracteres et
+  `+187` tokens. Dix mille reconstructions locales prennent `1087,67 ms`
+  (`0,1088 ms` en moyenne), restent identiques et sans duplication;
+- runtime courant: v2 uniquement. Les evenements historiques v1 restent lus
+  comme `historical_v1` avec budget `700`; v2 vaut `current_v2`; une version
+  inconnue ou des metadonnees incoherentes ne sont jamais presentees comme
+  saines. `validation_prompt_prepared`, garde, projection admin, checklist,
+  read-model, `/log` et `/hermeneutic-admin` propagent version, borne, taille et
+  familles `included|no_data|redundant|optional|invalid|budget_exceeded` sans
+  contenu brut. Les deux renderers reutilisent le meme validateur frontend
+  `validation_projection.js`; les trois pages qui chargent le renderer partage
+  (`/log`, `/hermeneutic-admin` et `/identity`) declarent cette dependance;
+- reproductions rouges correctives: trois preuves cibles donnaient `2` echecs
+  et `1` erreur avant le patch v2, en montrant l'eviction de la matiere requise,
+  l'insuffisance de la preuve structurelle v1 et l'absence de distinction
+  v1/v2/version inconnue dans le read-model. Le cas navigateur verrouille aussi
+  les omissions correctement affichees, la preuve incoherente refusee et le
+  contrat historique;
+- sensibilite: les validateurs produit rejettent le retour a `700`, une borne
+  sans maximum contractuel, une famille brute non bornee, l'omission de
+  `user_turn_input`, son remplacement par un booleen, une famille redondante
+  recopiee, un ordre variable, Stimmung partielle ou faussement `full`, les
+  compteurs falsifies, v2 presentee comme v1, v1 reinterpretee en v2, version
+  inconnue saine et contenu brut dans l'observabilite;
+- fichiers runtime: `validation_canonical_family_projection.py`, projecteur,
+  contrat, constructeur de messages, garde, projection admin, checklist et
+  read-model. Frontend: module partage de validation, ordre/validation des
+  assets, trois pages chargeuses et deux renderers consommateurs. Tests:
+  constructeur/contrat, golden Lot 4, logs/read-model, contrats frontend et
+  Chromium. Documentation: contrats vivants Validation et logs, plus la
+  presente passe corrective;
+- commandes hermetiques reellement executees: baseline Python `2728/2728`,
+  JavaScript `135/135` et Chromium `19/19`; cycle rouge correctif `3` preuves,
+  soit `2` echecs et `1` erreur attendus; coeur Stimmung/Validation/regime
+  `84/84`; chat, persistance, JSON/streaming et locks `54/54`; observabilite,
+  reader et read-model `83/83`; goldens Lots 0/3/4/9 et locks voisins `49/49`;
+  controles frontend et validation cibles `97/97` puis assets UI `34/34`;
+  JavaScript final `135/135`, Chromium final `19/19`, decouverte Python finale
+  `2729/2729`. Le total augmente d'un test Python net; aucun skip ni expected
+  failure final. Le premier contre-audit complet a justement refuse un
+  renderer trop long et un identifiant d'exception brute; le premier Chromium
+  complet a revele la dependance partagee manquante sur `/identity`; ces trois
+  ecarts de patch ont ete corriges avant les passages finaux verts;
+- limites: aucun provider reel ne prouve encore l'equivalence semantique des
+  verdicts; cette campagne appartient au GO separe 4S.0/4S.1. F2, F4, F5,
+  prompts, modeles, providers, verdicts, regime, posture principale, Presence,
+  locks, persistance et JSON/streaming restent inchanges.
 
 Condition de fermeture:
 
@@ -2499,7 +2587,7 @@ preuve lorsqu'un test existant couvre deja exactement l'invariant.
 - [x] Finalite dialogique et ablation diagnostique clarifiees.
 - [x] Inventaire A a Z du pipeline, des contrats et des preuves existantes.
 - [x] Goldens causaux techniques du coeur et mutations controlees livres.
-- [ ] 4C.1 ferme: livraison Stimmung vers Validation complete ou absence
+- [x] 4C.1 ferme: livraison Stimmung vers Validation complete ou absence
   explicite, avec observabilite synchrone.
 - [ ] 4S.0 ferme: corpus et seuils semantiques valides humainement.
 - [ ] 4S.1 ferme: campagne primaire/fallback executee sous GO separe et

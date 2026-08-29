@@ -992,12 +992,20 @@ function logsMockScript({ metricsMode = 'nominal' } = {}) {
                     canonical_projection: {
                       source_kind: "validation_prompt_prepared",
                       authoritative: true,
-                      projection_version: "validation_canonical_inputs_v1",
+                      contract_status: "current_v2",
+                      projection_version: "validation_canonical_inputs_v2",
                       stimmung_delivery_status: "full",
                       stimmung_delivery_reason_code: "included",
-                      chars: 412,
-                      budget_chars: 700,
-                      omitted_families: ["recent_context_input"],
+                      chars: 1220,
+                      budget_chars: 3840,
+                      included_families: ["user_turn_input", "user_turn_signals", "stimmung_input"],
+                      omitted_families: ["time_input", "memory_retrieved", "memory_arbitration", "summary_input", "identity_input", "recent_context_input", "recent_window_input", "web_input"],
+                      no_data_families: ["memory_retrieved", "memory_arbitration", "summary_input", "identity_input"],
+                      redundant_families: ["time_input", "recent_context_input", "recent_window_input"],
+                      optional_families: ["web_input"],
+                      invalid_families: [],
+                      budget_exceeded_families: [],
+                      unspecified_families: [],
                     },
                   },
                   web_reformulation: { status: "not_applicable" },
@@ -1146,7 +1154,9 @@ test('logs page applies filters from query string and exports scoped markdown in
     const turnRows = page.locator('#logTurns tbody tr');
     await assertTextContains(turnRows.nth(0), 'stimmung→validation=full');
     await assertTextContains(turnRows.nth(0), 'validation_source=primary');
-    await assertTextContains(turnRows.nth(0), 'projection=412/700');
+    await assertTextContains(turnRows.nth(0), 'projection=1220/3840');
+    await assertTextContains(turnRows.nth(0), 'projection_contract=current_v2');
+    await assertTextContains(turnRows.nth(0), 'redondantes=time_input,recent_context_input,recent_window_input');
     const unprovedRowText = String(await turnRows.nth(1).textContent() || '');
     assert.equal(unprovedRowText.includes('stimmung→validation=full'), false);
     assert.equal(unprovedRowText.includes('stimmung→validation=unknown'), true);
@@ -2041,6 +2051,7 @@ function hermeneuticAdminMockScript({
               ? [
                   { turn_id: "turn-1", events_count: 1 },
                   { turn_id: "turn-2", events_count: 1 },
+                  { turn_id: "turn-3", events_count: 1 },
                 ]
               : [],
           }), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -2054,16 +2065,23 @@ function hermeneuticAdminMockScript({
                 provider_caller: "validation_agent",
                 attempt_decision_source: "fallback",
                 validation_status: "prepared",
-                canonical_projection_version: "validation_canonical_inputs_v1",
+                canonical_projection_contract_status: "current_v2",
+                canonical_projection_version: "validation_canonical_inputs_v2",
                 stimmung_delivery_status: "full",
                 stimmung_delivery_reason_code: "included",
                 canonical_projection_chars: 412,
-                canonical_projection_budget_chars: 700,
+                canonical_projection_budget_chars: 3840,
                 canonical_projection_included_families: [],
                 canonical_projection_omitted_families: ["stimmung_input"],
+                canonical_projection_no_data_families: [],
+                canonical_projection_redundant_families: [],
+                canonical_projection_optional_families: [],
+                canonical_projection_invalid_families: [],
+                canonical_projection_budget_exceeded_families: [],
                 raw_content_included: false,
               }
-            : {
+            : turnId === "turn-3"
+            ? {
                 reason_code: "ok",
                 provider_caller: "validation_agent",
                 attempt_decision_source: "primary",
@@ -2075,6 +2093,26 @@ function hermeneuticAdminMockScript({
                 canonical_projection_budget_chars: 700,
                 canonical_projection_included_families: ["stimmung_input"],
                 canonical_projection_omitted_families: ["recent_context_input"],
+                raw_content_included: false,
+              }
+            : {
+                reason_code: "ok",
+                provider_caller: "validation_agent",
+                attempt_decision_source: "primary",
+                validation_status: "prepared",
+                canonical_projection_contract_status: "current_v2",
+                canonical_projection_version: "validation_canonical_inputs_v2",
+                stimmung_delivery_status: "full",
+                stimmung_delivery_reason_code: "included",
+                canonical_projection_chars: 1220,
+                canonical_projection_budget_chars: 3840,
+                canonical_projection_included_families: ["user_turn_input", "user_turn_signals", "stimmung_input"],
+                canonical_projection_omitted_families: ["time_input", "memory_retrieved", "memory_arbitration", "summary_input", "identity_input", "recent_context_input", "recent_window_input", "web_input"],
+                canonical_projection_no_data_families: ["memory_retrieved", "memory_arbitration", "summary_input", "identity_input"],
+                canonical_projection_redundant_families: ["time_input", "recent_context_input", "recent_window_input"],
+                canonical_projection_optional_families: ["web_input"],
+                canonical_projection_invalid_families: [],
+                canonical_projection_budget_exceeded_families: [],
                 raw_content_included: false,
                 prompt: "RAW_PROMPT_SHOULD_NOT_RENDER",
                 messages: ["RAW_MESSAGE_SHOULD_NOT_RENDER"],
@@ -2259,6 +2297,15 @@ test('hermeneutic admin keeps turn selection targeted and stage payloads content
       'unproved delivery must render as unknown',
     );
 
+    await page.selectOption('#hermeneuticTurnId', 'turn-3');
+    await page.waitForFunction(() =>
+      document.querySelector('#hermeneuticAdminTurnMeta')?.textContent.includes('turn-3'));
+    const historicalProjectionText = String(
+      await page.locator('#hermeneuticTurnStages').textContent() || '',
+    );
+    assert.equal(historicalProjectionText.includes('Stimmung vers Validation: full'), true);
+    assert.equal(historicalProjectionText.includes('contrat=historical_v1'), true);
+
     const afterCounts = await page.evaluate(() => {
       const calls = window.__fridaBrowserState.calls;
       const count = (path) => calls.filter((call) => call.method === 'GET' && call.path === path).length;
@@ -2277,7 +2324,7 @@ test('hermeneutic admin keeps turn selection targeted and stage payloads content
     assert.equal(afterCounts.governance, initialCounts.governance);
     assert.equal(afterCounts.candidates, initialCounts.candidates);
     assert.equal(afterCounts.corrections, initialCounts.corrections);
-    assert.equal(afterCounts.turnLogs, initialCounts.turnLogs + 1);
+    assert.equal(afterCounts.turnLogs, initialCounts.turnLogs + 2);
 
     assert.ok(await page.locator('#hermeneuticIdentityStaticEditors textarea[name="content"]').count() >= 2);
     assert.ok(await page.locator('#hermeneuticIdentityMutableEditors textarea[name="content"]').count() >= 2);

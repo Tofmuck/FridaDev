@@ -63,6 +63,7 @@ class FrontendIdentitySurfacePhase6Tests(unittest.TestCase):
             [
                 "admin_api.js",
                 "admin_ui_common.js",
+                "validation_projection.js",
                 "hermeneutic_admin/api.js",
                 "hermeneutic_admin/render.js",
                 "hermeneutic_admin/render_identity_read_model.js",
