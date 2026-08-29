@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ouvert apres decision provider `fail` sans regression relative v2 mais avec invariant critique primaire non satisfait; 4S.0 non commence; goldens techniques du coeur livres, corpus semantique du caller non execute, observabilite causale complete non prouvee et decision corrective non prise; Lots 5 a 8 et Z non commences
+Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ferme apres cutover Validation Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 non commence; goldens techniques du coeur livres, corpus semantique du caller non execute et observabilite causale complete non prouvee; Lots 5 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -1637,7 +1637,7 @@ Portee architecturale de cette acceptation:
 
 # LOT 4 - Audit causal et consolidation de Stimmung
 
-Statut: goldens techniques du coeur livres; 4C.1 ouvert apres decision provider `fail` sans regression relative v2 mais avec invariant critique primaire non satisfait; 4S.0 non commence; corpus semantique du caller non execute; observabilite causale complete non prouvee; decision corrective non prise
+Statut: goldens techniques du coeur livres; 4C.1 ferme apres cutover Validation Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 non commence; corpus semantique du caller non execute; observabilite causale complete non prouvee
 Nature: audit causal multi-tours, correctifs bornes, benchmark sous GO separe
 et observabilite synchrone, sans extension fonctionnelle
 Dependance: Lot 3 ferme
@@ -1886,7 +1886,7 @@ Regles communes:
 
 ### Micro-lot 4C.1 - Garantie structurelle Stimmung vers Validation
 
-Statut: ferme le 2026-08-28, referme apres passe corrective du 2026-08-29, puis rouvert le 2026-08-29; comparaison provider Validation v1/v2 `fail`, puis comparaison politique courante/candidate `fail`; evaluation de quatre configurations de futurs modeles principaux gelee avant appels, sans cutover autorise; 4C.1 reste ouvert et 4S.0 non commence
+Statut: ferme le 2026-08-28, referme apres passe corrective du 2026-08-29, rouvert pour la preuve semantique, puis ferme le 2026-08-29 apres cutover Validation vers Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 non commence
 Effort recommande: `extra high`
 Nature: correctif runtime borne, observabilite synchrone et preuves
 Prerequis: goldens techniques du coeur livres; F3 valide
@@ -2439,13 +2439,60 @@ preuve live non acquise et rollback applique:
   ouvert et 4S.0 reste non commence. Une nouvelle autorisation explicite sera
   necessaire pour retenter un smoke provider et activer le setting cible.
 
+Passe corrective finale et activation live du 2026-08-29:
+
+- findings revalides: F1 valide, le bloc OpenRouter strict etait applique a
+  tort au primaire historique et au fallback; F2 valide, le smoke confondait
+  le verdict provider brut avec le resultat final normalise; F3 valide, le
+  readback admin affichait la politique Gemini 3.7 depuis une constante alors
+  que le modele live etait encore Gemini 3.1;
+- commit correctif pousse
+  `6499b21a064ec9f738b67ed99f8b8dfb0588f849`: routage strict reserve au
+  primaire Gemini 3.7, aucun bloc `provider` ajoute au legacy ou au fallback,
+  contrat distinct `ValidationAgentResult`, politique admin derivee du tuple
+  runtime coherent et bit content-free `validation_provider_routing_sent`
+  propage jusqu'aux deux renderers existants;
+- sensibilites rejetees: routage retire du nouveau primaire, routage ajoute au
+  legacy/fallback, metadonnees de routage fabriquees, sampling primaire
+  reintroduit, verdict brut confondu avec le resultat normalise, hard guard
+  `caveat_required` refuse, `answer` admis sous `answer_forbidden`, setting
+  legacy affiche comme Gemini 3.7 et evenement incomplet presente comme
+  autoritatif;
+- preuves hermetiques finales: ciblage transport/agent/settings/logs
+  `101/101`, Python complet `2759/2759` contre `2757/2757`, soit exactement
+  deux nouveaux tests, JavaScript `137/137`, Chromium `19/19`; zero echec,
+  erreur, skip, todo ou expected failure. La revue independante a identifie
+  puis fait corriger la couverture `caveat_required` avant livraison;
+- livraison ciblee sans pull: image
+  `sha256:fcfb4253fbbbd965de0efec19d32d08d432be6f18adb0c1e90d3869315256f99`,
+  `StartedAt=2026-08-29T15:03:27.901122622Z`, HTTP `200`, healthy, restart
+  `0`, OOM false; les empreintes des six fichiers executes correspondent au
+  checkout et tous les conteneurs voisins conservent ID et `StartedAt`;
+- setting applique uniquement par l'API applicative puis relu conforme:
+  primaire `google/gemini-3.7-flash`, effort `medium`, plafond `500`, fallback
+  `openai/gpt-5.4-nano`, timeout `15 s` et politique
+  `validation_request_gemini_3_7_flash_medium_v1`;
+- unique smoke provider effectif sur `L4C1-VAL-005`: exactement un appel et
+  une tentative, source primaire, modele demande et observe
+  `google/gemini-3.7-flash`, provider observe `Google`, effort `medium`,
+  `exclude=true`, plafond `500`, sampling absent, routage strict present,
+  resultat final valide selon `ValidationAgentResult`, scorer gele vert,
+  evenement accepte par la garde et read-model autoritatif. Aucun second
+  appel, retry, fallback, conversation, tour utilisateur ou contenu brut n'a
+  ete produit ou conserve;
+- Gemini high et Luna ne sont pas poursuivis. Aucun prompt, projection v2,
+  hard guard, Presence, Stimmung, fallback, service voisin, 4S.0 ou lot
+  ulterieur n'est modifie. 4C.1 est ferme; 4S.0 reste non commence.
+
 Condition de la passe provider de fermeture:
 
 - [x] Maximum v2 corrige et sensibilite aux vocabulaires autoritatifs livree.
 - [x] Corpus, scorer, nombre d'appels, cout maximal et regle de decision figes avant resultats.
 - [x] Comparaison primaire/fallback v1/v2 executee et artefact JSONL content-free archive.
-- [ ] Decision semantique `pass` sans regression v2; sinon 4C.1 reste ouvert.
-- [x] Suites completes, artefact contre-audite et runtime inchange prouves.
+- [x] Decision semantique finale `pass` sur la configuration live retenue,
+  sans regression v2 et avec l'invariant critique 005 satisfait.
+- [x] Suites completes, artefact contre-audite et runtime de campagne alors
+  inchange prouves.
 
 Condition de fermeture:
 
