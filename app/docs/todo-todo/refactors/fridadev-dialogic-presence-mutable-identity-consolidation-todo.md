@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ouvert apres decision provider `fail` sans regression relative v2 mais avec invariant critique primaire non satisfait; 4S.0 non commence; goldens techniques du coeur livres, corpus semantique du caller non execute, observabilite causale complete non prouvee et decision corrective non prise; Lots 5 a 8 et Z non commences
+Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ouvert apres decision provider `fail` sans regression relative v2 mais avec invariant critique primaire non satisfait; preuve et provenance de campagne assainies, correction semantique non executee; 4S.0 non commence; goldens techniques du coeur livres, corpus semantique du caller non execute, observabilite causale complete non prouvee; Lots 5 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -1637,7 +1637,7 @@ Portee architecturale de cette acceptation:
 
 # LOT 4 - Audit causal et consolidation de Stimmung
 
-Statut: goldens techniques du coeur livres; 4C.1 ouvert apres decision provider `fail` sans regression relative v2 mais avec invariant critique primaire non satisfait; 4S.0 non commence; corpus semantique du caller non execute; observabilite causale complete non prouvee; decision corrective non prise
+Statut: goldens techniques du coeur livres; 4C.1 ouvert apres decision provider `fail` sans regression relative v2 mais avec invariant critique primaire non satisfait; preuve et provenance de campagne assainies, correction semantique non executee; 4S.0 non commence; corpus semantique du caller non execute; observabilite causale complete non prouvee
 Nature: audit causal multi-tours, correctifs bornes, benchmark sous GO separe
 et observabilite synchrone, sans extension fonctionnelle
 Dependance: Lot 3 ferme
@@ -2160,6 +2160,40 @@ Phase 2 — campagne provider executee sur le protocole fige:
   primaire non satisfait et non pour regression relative v2. Conformement au
   mandat, aucun runtime, prompt, modele, provider ni scorer semantique n'est
   corrige dans cette passe; 4C.1 reste ouvert et 4S.0 reste non commence.
+
+Passe A du 2026-08-29 — assainissement de la preuve et de la provenance:
+
+- F1 est valide comme defaut critique partage: sur `L4C1-VAL-005`, le primaire
+  amont recommande `clarify`, la projection v2 est complete, mais les deux
+  repetitions du primaire Validation restent `answer/simple` en v1 comme en
+  v2. Il ne s'agit donc pas d'une regression relative de v2;
+- F2 est valide: les signaux projetes valent
+  `ambiguity_present=false`, `underdetermination_present=false`, le geste
+  dominant est `exposition` et aucun hard guard deterministe ne s'applique.
+  Aucun hard guard, regex ou pouvoir mecanique du primaire n'est ajoute;
+- F3 est valide puis ferme pour l'artefact 4C.1: le validateur acceptait une
+  phrase synthetique dans `reason_code` ou `observed_provider`. Il verrouille
+  maintenant schemas par type de record, types, tailles, plages numeriques,
+  empreintes SHA-256 et vocabulaires fermes pour versions, cas, projections,
+  roles, modeles, providers, statuts, raisons et divergences;
+- F4 est valide puis ferme sans changement fonctionnel: le benchmark lit
+  desormais l'autorite publique `web_input.ACTIVATION_MODES`; l'export prive
+  ajoute au runtime pour le benchmark est retire. L'empreinte checkout du
+  projecteur familial retrouve exactement celle du conteneur et de la version
+  pre-campagne: `cb887bdeb4671f299eff4372b896d0615e998a90b06e01f67337475597b282a5`;
+- les `120` lignes content-free existantes ont ete rescories sans appel
+  provider puis la synthese a ete recalculee. Les deux paires primaires 005
+  valent `shared_critical_invariant_failure`; une vraie degradation propre a
+  v2 vaut `v2_semantic_regression`; une paire provider invalide reste separee
+  et la faiblesse Presence fallback conserve son statut accepte mais
+  `scorer_pass=false`. L'artefact conserve `121` lignes et porte l'empreinte
+  `3fb9da32fa8a584eb2cbe8696970d299a8f28efc86d559f4103ac2c04c04a02d`;
+- cycle TDD: `7` tests cibles ont d'abord produit `4` echecs attendus, puis
+  `7/7`; suites benchmark/goldens/Validation/Stimmung/observabilite voisines:
+  `137/137`. Aucun reseau, provider, secret, DB operateur, rebuild ou restart;
+  runtime inchange. Cette passe ne ferme pas 4C.1: la comparaison de la
+  politique courante contre une unique candidate doit encore etre gelee,
+  executee et jugee `pass` avant toute correction runtime.
 
 Condition de la passe provider de fermeture:
 

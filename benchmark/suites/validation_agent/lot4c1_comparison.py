@@ -10,8 +10,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 from typing import Any, Mapping, Sequence
@@ -68,6 +70,51 @@ MAX_ESTIMATED_COST_USD = 0.10
 EXPECTED_ACCEPTED_V2_MAX_CHARS = 3741
 EXPECTED_RUNTIME_EMITTABLE_V2_MAX_CHARS = 3546
 CANONICAL_MARKER = "canonical_inputs (supports secondaires de relecture contextuelle):\n"
+CORPUS_ID = "lot4c1-validation-projection-v1"
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
+_OBSERVED_PROVIDERS = {"", "Google", "Google AI Studio", "OpenAI"}
+_PROVIDER_STATUSES = {
+    "ok",
+    "empty_output",
+    "timeout",
+    "refusal",
+    "transport_error",
+    "invalid_json",
+    "invalid_schema",
+}
+_PROVIDER_REASON_CODES = {
+    "accepted",
+    "pair_not_allowed",
+    "hard_guard_violation",
+    "false_presence",
+    "missed_presence",
+    "empty_output",
+    "timeout",
+    "provider_refusal",
+    "transport_error",
+    "invalid_json",
+    "invalid_schema",
+}
+_PAIR_STATUSES = {
+    "pass",
+    "v2_semantic_regression",
+    "shared_critical_invariant_failure",
+    "accepted_preexisting_fallback_gap",
+    "provider_invalid_pair",
+}
+_SUMMARY_REASON_CODES = {
+    "pass": {"no_v2_semantic_regression"},
+    "fail": {"v2_semantic_regression", "shared_critical_invariant_failure"},
+    "inconclusive": {"missing_case_model_group", "insufficient_valid_paired_results"},
+}
+_DIVERGENCE_CODES = {
+    "allowed_semantic_pair_divergence",
+    "v2_semantic_regression",
+    "v2_corrects_v1_blindness",
+    "preexisting_fallback_presence_gap",
+    "shared_critical_invariant_failure",
+}
 ARTIFACT_RECORD_KEYS = {
     "record_type",
     "protocol_version",
@@ -107,29 +154,187 @@ def _sha256_text(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
+def _is_number(value: Any) -> bool:
+    return (
+        not isinstance(value, bool)
+        and isinstance(value, (int, float))
+        and math.isfinite(value)
+    )
+
+
+def _validate_sha256(value: Any, *, allow_empty: bool) -> None:
+    if value == "" and allow_empty:
+        return
+    if not isinstance(value, str) or _SHA256_RE.fullmatch(value) is None:
+        raise ValueError("invalid_lot4c1_artifact_fingerprint")
+
+
+def _validate_generation(value: Any) -> None:
+    expected = {
+        "temperature": TEMPERATURE,
+        "top_p": TOP_P,
+        "max_tokens": MAX_TOKENS,
+        "timeout_s": TIMEOUT_S,
+        "reasoning_effort": REASONING_EFFORT,
+    }
+    if value != expected:
+        raise ValueError("invalid_lot4c1_artifact_generation")
+
+
+def _validate_metrics(payload: Mapping[str, Any], *, record_type: str) -> None:
+    latency = payload.get("latency_ms")
+    if latency is not None and (
+        not _is_number(latency) or not 0 <= float(latency) <= TIMEOUT_S * 1000
+    ):
+        raise ValueError("invalid_lot4c1_artifact_latency")
+    token_limits = {
+        "prompt_tokens": PLANNED_PROVIDER_CALLS * 10_000,
+        "completion_tokens": PLANNED_PROVIDER_CALLS * MAX_TOKENS,
+        "total_tokens": PLANNED_PROVIDER_CALLS * (10_000 + MAX_TOKENS),
+    }
+    for key, upper in token_limits.items():
+        value = payload.get(key)
+        if value is not None and (
+            isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= upper
+        ):
+            raise ValueError(f"invalid_lot4c1_artifact_{key}")
+    cost = payload.get("cost_usd")
+    if cost is not None and (
+        not _is_number(cost) or not 0 <= float(cost) <= MAX_ESTIMATED_COST_USD
+    ):
+        raise ValueError("invalid_lot4c1_artifact_cost")
+    if record_type == "pair_comparison" and any(
+        payload.get(key) is not None
+        for key in (
+            "latency_ms",
+            "prompt_tokens",
+            "completion_tokens",
+            "total_tokens",
+            "cost_usd",
+        )
+    ):
+        raise ValueError("invalid_lot4c1_artifact_pair_metrics")
+    if record_type == "campaign_summary" and latency is not None:
+        raise ValueError("invalid_lot4c1_artifact_summary_latency")
+
+
 def validate_content_free_record(record: Mapping[str, Any]) -> dict[str, Any]:
     payload = dict(record)
     if set(payload) != ARTIFACT_RECORD_KEYS:
         raise ValueError("invalid_lot4c1_artifact_fields")
-    forbidden_fragments = {
-        "dialogue",
-        "raw_text",
-        "prompt_complete",
-        "canonical_inputs",
-        "provider_payload",
-        "exception",
-        "url",
-        "secret",
-        "memory_content",
-        "identity_content",
-    }
-    serialized_keys = " ".join(payload).lower()
-    if any(fragment in serialized_keys for fragment in forbidden_fragments):
-        raise ValueError("lot4c1_artifact_raw_content_forbidden")
-    for key in ("system_sha256", "noncanonical_user_sha256", "canonical_sha256"):
-        value = str(payload.get(key) or "")
-        if value and (len(value) != 64 or any(char not in "0123456789abcdef" for char in value)):
-            raise ValueError("invalid_lot4c1_artifact_fingerprint")
+    record_type = payload.get("record_type")
+    if record_type not in {"provider_call", "pair_comparison", "campaign_summary"}:
+        raise ValueError("invalid_lot4c1_artifact_record_type")
+    if payload.get("protocol_version") != PROTOCOL_VERSION:
+        raise ValueError("invalid_lot4c1_artifact_protocol_version")
+    if payload.get("corpus_id") != CORPUS_ID:
+        raise ValueError("invalid_lot4c1_artifact_corpus_id")
+    _validate_sha256(payload.get("corpus_sha256"), allow_empty=False)
+    if not isinstance(payload.get("source_commit"), str) or _COMMIT_RE.fullmatch(
+        payload["source_commit"]
+    ) is None:
+        raise ValueError("invalid_lot4c1_artifact_source_commit")
+    _validate_generation(payload.get("generation"))
+    if not isinstance(payload.get("scorer_pass"), bool):
+        raise ValueError("invalid_lot4c1_artifact_scorer_pass")
+    divergences = payload.get("divergence_codes")
+    if (
+        not isinstance(divergences, list)
+        or len(divergences) != len(set(divergences))
+        or any(code not in _DIVERGENCE_CODES for code in divergences)
+    ):
+        raise ValueError("invalid_lot4c1_artifact_divergence_codes")
+    posture = payload.get("final_judgment_posture")
+    regime = payload.get("final_output_regime")
+    if posture is not None and posture not in validation_contract.ALLOWED_PRIMARY_JUDGMENT_POSTURES:
+        raise ValueError("invalid_lot4c1_artifact_posture")
+    if regime is not None and regime not in validation_contract.ALLOWED_FINAL_OUTPUT_REGIMES:
+        raise ValueError("invalid_lot4c1_artifact_regime")
+    _validate_metrics(payload, record_type=str(record_type))
+
+    source = payload.get("source")
+    model = payload.get("model")
+    observed_model = payload.get("observed_model")
+    observed_provider = payload.get("observed_provider")
+    if observed_provider not in _OBSERVED_PROVIDERS:
+        raise ValueError("invalid_lot4c1_artifact_observed_provider")
+
+    if record_type in {"provider_call", "pair_comparison"}:
+        valid_case_ids = {
+            f"L4C1-VAL-{index:03d}" for index in range(1, CASE_COUNT + 1)
+        }
+        if payload.get("case_id") not in valid_case_ids:
+            raise ValueError("invalid_lot4c1_artifact_case_id")
+        if source not in {"primary", "fallback"} or MODEL_ROLES.get(model) != source:
+            raise ValueError("invalid_lot4c1_artifact_model_source")
+        repetition = payload.get("repetition")
+        if (
+            isinstance(repetition, bool)
+            or not isinstance(repetition, int)
+            or not 1 <= repetition <= REPETITIONS
+        ):
+            raise ValueError("invalid_lot4c1_artifact_repetition")
+
+    if record_type == "provider_call":
+        projection = payload.get("projection")
+        if projection not in {"v1", "v2"}:
+            raise ValueError("invalid_lot4c1_artifact_projection")
+        if projection == "v1" and payload.get("source_commit") != HISTORICAL_COMMIT:
+            raise ValueError("invalid_lot4c1_artifact_source_commit")
+        if observed_model not in {"", model}:
+            raise ValueError("invalid_lot4c1_artifact_observed_model")
+        if source == "primary" and observed_provider not in {"", "Google", "Google AI Studio"}:
+            raise ValueError("invalid_lot4c1_artifact_observed_provider")
+        if source == "fallback" and observed_provider not in {"", "OpenAI"}:
+            raise ValueError("invalid_lot4c1_artifact_observed_provider")
+        if payload.get("status") not in _PROVIDER_STATUSES:
+            raise ValueError("invalid_lot4c1_artifact_status")
+        if payload.get("reason_code") not in _PROVIDER_REASON_CODES:
+            raise ValueError("invalid_lot4c1_artifact_reason_code")
+        if payload.get("status") == "ok" and (posture is None or regime is None):
+            raise ValueError("invalid_lot4c1_artifact_verdict")
+        if payload.get("status") != "ok" and (posture is not None or regime is not None):
+            raise ValueError("invalid_lot4c1_artifact_verdict")
+        for key in ("system_sha256", "noncanonical_user_sha256", "canonical_sha256"):
+            _validate_sha256(payload.get(key), allow_empty=False)
+    elif record_type == "pair_comparison":
+        if payload.get("projection") != "v1_vs_v2":
+            raise ValueError("invalid_lot4c1_artifact_projection")
+        if observed_model != "" or observed_provider != "":
+            raise ValueError("invalid_lot4c1_artifact_observed_provider")
+        status = payload.get("status")
+        if status not in _PAIR_STATUSES:
+            raise ValueError("invalid_lot4c1_artifact_status")
+        if payload.get("reason_code") != status:
+            raise ValueError("invalid_lot4c1_artifact_reason_code")
+        if posture is not None or regime is not None:
+            raise ValueError("invalid_lot4c1_artifact_verdict")
+        if payload.get("scorer_pass") is not (status == "pass"):
+            raise ValueError("invalid_lot4c1_artifact_scorer_pass")
+        _validate_sha256(payload.get("system_sha256"), allow_empty=False)
+        _validate_sha256(payload.get("noncanonical_user_sha256"), allow_empty=False)
+        _validate_sha256(payload.get("canonical_sha256"), allow_empty=True)
+    else:
+        if (
+            payload.get("case_id") != "campaign"
+            or payload.get("projection") != "v1_vs_v2"
+            or source != "combined"
+            or model != "primary_and_fallback"
+            or observed_model != ""
+            or observed_provider != ""
+            or payload.get("repetition") != 0
+        ):
+            raise ValueError("invalid_lot4c1_artifact_summary_structure")
+        status = payload.get("status")
+        reason_code = payload.get("reason_code")
+        if status not in _SUMMARY_REASON_CODES or reason_code not in _SUMMARY_REASON_CODES[status]:
+            raise ValueError("invalid_lot4c1_artifact_reason_code")
+        if payload.get("scorer_pass") is not (status == "pass"):
+            raise ValueError("invalid_lot4c1_artifact_scorer_pass")
+        if posture is not None or regime is not None:
+            raise ValueError("invalid_lot4c1_artifact_verdict")
+        for key in ("system_sha256", "noncanonical_user_sha256", "canonical_sha256"):
+            _validate_sha256(payload.get(key), allow_empty=True)
     return payload
 
 
@@ -243,7 +448,7 @@ def _maximal_v2_projection(*, runtime_emittable: bool) -> dict[str, Any]:
             "schema_version": "v1",
             "enabled": True,
             "status": code,
-            "activation_mode": _longest(family_projection._WEB_ACTIVATION_MODES),
+            "activation_mode": _longest(web_input.ACTIVATION_MODES),
             "reason_code": code,
             "results_count": 999999,
             "read_state": code,
@@ -724,8 +929,8 @@ def compare_pair(
     if v1_pair != v2_pair:
         codes.append("allowed_semantic_pair_divergence")
     if v1_score.get("pass") and not v2_score.get("pass"):
-        codes.append("v2_regression")
-        return {"classification": "fail", "divergence_codes": codes}
+        codes.append("v2_semantic_regression")
+        return {"classification": "v2_semantic_regression", "divergence_codes": codes}
     if not v1_score.get("pass") and v2_score.get("pass"):
         codes.append("v2_corrects_v1_blindness")
         return {"classification": "pass", "divergence_codes": codes}
@@ -738,7 +943,10 @@ def compare_pair(
             "classification": "accepted_preexisting_fallback_gap",
             "divergence_codes": ["preexisting_fallback_presence_gap"],
         }
-    return {"classification": "fail", "divergence_codes": ["v2_critical_invariant_failed"]}
+    return {
+        "classification": "shared_critical_invariant_failure",
+        "divergence_codes": ["shared_critical_invariant_failure"],
+    }
 
 
 def campaign_decision(records: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
@@ -752,14 +960,140 @@ def campaign_decision(records: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     def classification(record: Mapping[str, Any]) -> str:
         return str(record.get("classification") or record.get("status") or "")
 
-    if any(classification(record) == "fail" for record in comparisons):
-        return {"decision": "fail", "reason_code": "semantic_regression_or_critical_failure"}
+    if any(classification(record) == "v2_semantic_regression" for record in comparisons):
+        return {"decision": "fail", "reason_code": "v2_semantic_regression"}
+    if any(
+        classification(record) == "shared_critical_invariant_failure"
+        for record in comparisons
+    ):
+        return {"decision": "fail", "reason_code": "shared_critical_invariant_failure"}
     if any(
         not any(classification(record) != "provider_invalid_pair" for record in group)
         for group in groups.values()
     ):
         return {"decision": "inconclusive", "reason_code": "insufficient_valid_paired_results"}
     return {"decision": "pass", "reason_code": "no_v2_semantic_regression"}
+
+
+def reclassify_existing_artifact(records: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """Rebuild pair and summary classifications from durable content-free calls."""
+
+    source_records = [dict(record) for record in records]
+    provider_records = [
+        record for record in source_records if record.get("record_type") == "provider_call"
+    ]
+    pair_templates = {
+        (str(record.get("case_id")), str(record.get("source")), int(record.get("repetition") or 0)): record
+        for record in source_records
+        if record.get("record_type") == "pair_comparison"
+    }
+    summary_templates = [
+        record for record in source_records if record.get("record_type") == "campaign_summary"
+    ]
+    if (
+        len(provider_records) != PLANNED_PROVIDER_CALLS
+        or len(pair_templates) != PLANNED_PROVIDER_CALLS // PROJECTION_COUNT
+        or len(summary_templates) != 1
+    ):
+        raise ValueError("invalid_lot4c1_artifact_record_counts")
+    for record in provider_records:
+        validate_content_free_record(record)
+
+    case_by_id = {str(case["id"]): case for case in load_corpus()["cases"]}
+    calls: dict[tuple[str, str, int], dict[str, Mapping[str, Any]]] = {}
+    for record in provider_records:
+        key = (
+            str(record["case_id"]),
+            str(record["source"]),
+            int(record["repetition"]),
+        )
+        projection = str(record["projection"])
+        if projection in calls.setdefault(key, {}):
+            raise ValueError("duplicate_lot4c1_artifact_provider_call")
+        case = case_by_id[str(record["case_id"])]
+        expected = dict(case.get("expected") or {})
+        posture = record["final_judgment_posture"]
+        regime = record["final_output_regime"]
+        semantic_codes: list[str] = []
+        if record["status"] == "ok":
+            allowed_pairs = {tuple(pair) for pair in expected.get("allowed_pairs") or []}
+            if (posture, regime) not in allowed_pairs:
+                semantic_codes.append("pair_not_allowed")
+            guard = build_current_messages(case, "synthetic-system")["hard_guard"]
+            if guard.get("hard_guard_effect") == "answer_forbidden" and posture == "answer":
+                semantic_codes.append("hard_guard_violation")
+            presence_policy = str(expected.get("presence_policy") or "allowed")
+            if regime == "presence" and presence_policy == "forbidden":
+                semantic_codes.append("false_presence")
+            if presence_policy == "required" and regime != "presence":
+                semantic_codes.append("missed_presence")
+        calls[key][projection] = {
+            "status": record["status"],
+            "reason_code": record["reason_code"],
+            "final_judgment_posture": posture,
+            "final_output_regime": regime,
+            "pass": record["status"] == "ok" and not semantic_codes,
+            "semantic_codes": semantic_codes,
+        }
+
+    rebuilt_pairs: dict[tuple[str, str, int], dict[str, Any]] = {}
+    for key, scores in calls.items():
+        if set(scores) != {"v1", "v2"} or key not in pair_templates:
+            raise ValueError("invalid_lot4c1_artifact_pair")
+        case_id, source, _repetition = key
+        comparison = compare_pair(
+            case=case_by_id[case_id],
+            source=source,
+            v1_score=scores["v1"],
+            v2_score=scores["v2"],
+        )
+        status = str(comparison["classification"])
+        rebuilt = dict(pair_templates[key])
+        rebuilt.update(
+            {
+                "status": status,
+                "reason_code": status,
+                "scorer_pass": status == "pass",
+                "divergence_codes": list(comparison["divergence_codes"]),
+            }
+        )
+        rebuilt_pairs[key] = validate_content_free_record(rebuilt)
+
+    decision = campaign_decision(list(rebuilt_pairs.values()))
+    summary = dict(summary_templates[0])
+    summary.update(
+        {
+            "status": decision["decision"],
+            "reason_code": decision["reason_code"],
+            "scorer_pass": decision["decision"] == "pass",
+            "divergence_codes": sorted(
+                {
+                    code
+                    for record in rebuilt_pairs.values()
+                    for code in record["divergence_codes"]
+                }
+            ),
+        }
+    )
+    summary = validate_content_free_record(summary)
+
+    rebuilt_records: list[dict[str, Any]] = []
+    for record in source_records:
+        record_type = record.get("record_type")
+        if record_type == "provider_call":
+            rebuilt_records.append(validate_content_free_record(record))
+        elif record_type == "pair_comparison":
+            key = (
+                str(record["case_id"]),
+                str(record["source"]),
+                int(record["repetition"]),
+            )
+            rebuilt_records.append(rebuilt_pairs[key])
+        elif record_type == "campaign_summary":
+            rebuilt_records.append(summary)
+        else:
+            raise ValueError("invalid_lot4c1_artifact_record_type")
+    return rebuilt_records
 
 
 def _provider_status(provider: Mapping[str, Any]) -> tuple[str, str]:
@@ -896,7 +1230,7 @@ def run_live_campaign(
                         "reason_code": comparison["classification"],
                         "final_judgment_posture": None,
                         "final_output_regime": None,
-                        "scorer_pass": comparison["classification"] in {"pass", "accepted_preexisting_fallback_gap"},
+                        "scorer_pass": comparison["classification"] == "pass",
                         "divergence_codes": comparison["divergence_codes"],
                         "latency_ms": None,
                         "prompt_tokens": None,

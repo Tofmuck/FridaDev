@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -19,7 +20,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from benchmark.suites.validation_agent import lot4c1_comparison as comparison
 from core.hermeneutic_node.inputs import stimmung_input
-from core.hermeneutic_node.validation import validation_canonical_family_projection
+from core.hermeneutic_node.inputs import web_input
 from core.hermeneutic_node.validation import validation_contract
 
 
@@ -46,9 +47,17 @@ class Lot4C1ValidationComparisonTests(unittest.TestCase):
         self.assertEqual(
             accepted["families"]["web_input"]["activation_mode"],
             max(
-                validation_canonical_family_projection._WEB_ACTIVATION_MODES,
+                web_input.ACTIVATION_MODES,
                 key=lambda item: (len(item), item),
             ),
+        )
+        runtime_path = (
+            REPO_ROOT
+            / "app/core/hermeneutic_node/validation/validation_canonical_family_projection.py"
+        )
+        self.assertEqual(
+            hashlib.sha256(runtime_path.read_bytes()).hexdigest(),
+            "cb887bdeb4671f299eff4372b896d0615e998a90b06e01f67337475597b282a5",
         )
 
     def test_protocol_freezes_corpus_models_calls_cost_and_decision_before_live_results(self) -> None:
@@ -133,7 +142,7 @@ class Lot4C1ValidationComparisonTests(unittest.TestCase):
         self.assertEqual(v1_messages[0], v2_messages[0])
         self.assertNotEqual(v1_messages[1], v2_messages[1])
 
-    def test_shared_scorer_rejects_false_presence_hard_guard_and_v2_regression(self) -> None:
+    def test_shared_scorer_rejects_false_presence_hard_guard_and_classifies_failures(self) -> None:
         corpus = comparison.load_corpus()
         request_case = corpus["cases"][1]
         request_built = comparison.build_current_messages(request_case, "system")
@@ -178,8 +187,23 @@ class Lot4C1ValidationComparisonTests(unittest.TestCase):
             v1_score=v1_pass,
             v2_score=v2_fail,
         )
-        self.assertEqual(pair["classification"], "fail")
-        self.assertIn("v2_regression", pair["divergence_codes"])
+        self.assertEqual(pair["classification"], "v2_semantic_regression")
+        self.assertIn("v2_semantic_regression", pair["divergence_codes"])
+
+        shared_failure = comparison.compare_pair(
+            case=request_case,
+            source="primary",
+            v1_score=v2_fail,
+            v2_score=v2_fail,
+        )
+        self.assertEqual(
+            shared_failure["classification"],
+            "shared_critical_invariant_failure",
+        )
+        self.assertEqual(
+            shared_failure["divergence_codes"],
+            ["shared_critical_invariant_failure"],
+        )
 
     def test_campaign_decision_is_fail_pass_or_inconclusive_without_moving_thresholds(self) -> None:
         records = []
@@ -194,21 +218,30 @@ class Lot4C1ValidationComparisonTests(unittest.TestCase):
                     }
                 )
         self.assertEqual(comparison.campaign_decision(records)["decision"], "pass")
-        records[0]["status"] = "fail"
-        self.assertEqual(comparison.campaign_decision(records)["decision"], "fail")
+        records[0]["status"] = "v2_semantic_regression"
+        self.assertEqual(
+            comparison.campaign_decision(records),
+            {"decision": "fail", "reason_code": "v2_semantic_regression"},
+        )
+        records[0]["status"] = "shared_critical_invariant_failure"
+        self.assertEqual(
+            comparison.campaign_decision(records),
+            {"decision": "fail", "reason_code": "shared_critical_invariant_failure"},
+        )
         records[0]["status"] = "provider_invalid_pair"
         self.assertEqual(comparison.campaign_decision(records)["decision"], "inconclusive")
 
     def test_artifact_contract_rejects_raw_provider_or_dialogue_content(self) -> None:
-        record = {key: None for key in comparison.ARTIFACT_RECORD_KEYS}
-        record.update(
-            {
-                "record_type": "provider_call",
-                "system_sha256": "a" * 64,
-                "noncanonical_user_sha256": "b" * 64,
-                "canonical_sha256": "c" * 64,
-            }
+        artifact_path = (
+            REPO_ROOT
+            / "benchmark/results/validation_agent/2026-08-29-lot4c1-validation-v1-v2.jsonl"
         )
+        records = [
+            json.loads(line)
+            for line in artifact_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        record = next(item for item in records if item["record_type"] == "provider_call")
         self.assertEqual(
             comparison.validate_content_free_record(record)["record_type"],
             "provider_call",
@@ -219,6 +252,42 @@ class Lot4C1ValidationComparisonTests(unittest.TestCase):
         dialogue_mutant = dict(record, dialogue="synthetic-dialogue")
         with self.assertRaisesRegex(ValueError, "artifact_fields"):
             comparison.validate_content_free_record(dialogue_mutant)
+        reason_mutant = dict(record, reason_code="synthetic conversation-like sentence")
+        with self.assertRaisesRegex(ValueError, "reason_code"):
+            comparison.validate_content_free_record(reason_mutant)
+        provider_mutant = dict(record, observed_provider="synthetic free-form provider narrative")
+        with self.assertRaisesRegex(ValueError, "observed_provider"):
+            comparison.validate_content_free_record(provider_mutant)
+
+        recalculated = comparison.reclassify_existing_artifact(records)
+        self.assertEqual(len(recalculated), len(records))
+        shared = [
+            item
+            for item in recalculated
+            if item["record_type"] == "pair_comparison"
+            and item["case_id"] == "L4C1-VAL-005"
+            and item["source"] == "primary"
+        ]
+        self.assertEqual(len(shared), 2)
+        self.assertTrue(
+            all(
+                item["status"] == "shared_critical_invariant_failure"
+                and item["scorer_pass"] is False
+                for item in shared
+            )
+        )
+        accepted_gap = [
+            item
+            for item in recalculated
+            if item["record_type"] == "pair_comparison"
+            and item["status"] == "accepted_preexisting_fallback_gap"
+        ]
+        self.assertTrue(accepted_gap)
+        self.assertTrue(all(item["scorer_pass"] is False for item in accepted_gap))
+        summary = next(item for item in recalculated if item["record_type"] == "campaign_summary")
+        self.assertEqual(summary["status"], "fail")
+        self.assertEqual(summary["reason_code"], "shared_critical_invariant_failure")
+        self.assertTrue(all(comparison.validate_content_free_record(item) for item in recalculated))
 
 
 if __name__ == "__main__":
