@@ -2342,7 +2342,8 @@ Comparaison des futurs modeles principaux — protocole gele avant campagne:
   deploiement n'est modifie. 4C.1 reste ouvert quelle que soit la
   recommandation de campagne; un cutover exige une decision humaine separee.
 
-Campagne des futurs modeles principaux — decision `inconclusive`:
+Campagne des futurs modeles principaux — recommandation corrigee
+`recommend_gemini_3_7_flash_medium`:
 
 - commit de gel pousse avant le premier appel:
   `4e02a6da94d338e50dc62f8fd8c321e7643dc4c5`; corpus, prompt, projection,
@@ -2358,7 +2359,7 @@ Campagne des futurs modeles principaux — decision `inconclusive`:
   `benchmark/results/validation_agent/2026-08-29-lot4c1-validation-primary-models.jsonl`:
   `93` lignes (`88` appels, `4` syntheses de configuration, `1` synthese
   globale), empreinte SHA-256
-  `e20209c45f9e6b4c17ea6bc808acd7dfe406c543543674fd298b5dbe9a93a635`;
+  `b0f6f05d00b12bc0ae72404f493d72df72a5c600dc724381d7563c0759c136b1`;
 - Gemini 3.7 Flash `medium` est la seule configuration eligible: `22/22`,
   005 clarifie aux deux repetitions, 003 produit Presence deux fois et 011
   reste `answer/simple`. Latence mediane `2586,496 ms`, p95 `3364,655 ms`,
@@ -2384,11 +2385,12 @@ Campagne des futurs modeles principaux — decision `inconclusive`:
   separer tout `invalid_json` des erreurs semantiques; les quatre syntheses et
   l'empreinte ont ete recalculees depuis les `88` lignes content-free, sans
   nouvel appel;
-- recommandation gelee: `inconclusive`. Gemini `medium` satisfait seule les
-  invariants, mais Gemini `high` n'est pas comparable; la regle interdissait
-  donc de transformer cette eligibilite locale en recommandation globale. Les
-  Luna Pro ne peuvent pas etre proposes a cause de leurs quatre ecarts
-  semantiques. Aucun cutover automatique n'est autorise;
+- recommandation recalculee sans appel provider:
+  `recommend_gemini_3_7_flash_medium`. L'etat `inconclusive` de Gemini `high`
+  ne contamine plus l'unique configuration independante eligible; les Luna Pro
+  restent non eligibles. L'artefact conserve
+  `runtime_cutover_authorized=false`: seule une decision humaine separee peut
+  autoriser le cutover;
 - prerequis d'un eventuel cutover separe: decision humaine, branchement runtime
   propre au modele retenu, retrait des sampling params incompatibles,
   raisonnement explicite et plafond de sortie prouves, observabilite de la
@@ -2405,6 +2407,37 @@ Campagne des futurs modeles principaux — decision `inconclusive`:
   `135/135` et Chromium `19/19` ont ete verifies en baseline; ils ne sont pas
   rejoues apres resultats car aucun runtime, contrat frontend ou fichier
   frontend n'a change.
+
+Passe de cutover decidee par Tof le 2026-08-29 — implementation livree,
+preuve live non acquise et rollback applique:
+
+- commit runtime pousse `aacb25f757932655a777d6cfbcfd2330e900c937`:
+  primaire `google/gemini-3.7-flash`, raisonnement `medium` avec
+  `exclude=true`, plafond `500`, sampling absent et routage standard sans
+  fallback provider; le fallback `openai/gpt-5.4-nano` conserve sampling
+  `0.0/1.0`, plafond propre `140` et timeout `15 s`;
+- l'evenement prepare, la garde, la checklist, le read-model et les deux
+  renderers existants projettent la politique effective content-free; les
+  evenements historiques restent `unknown`. La provenance modele/provider
+  observee vient du vrai proxy `_RequestsChatLogProxy` du chemin `/api/chat`;
+- preuves avant livraison: ciblage final `234/234`, proxy/read-model
+  `57/57`, Python complet `2757/2757` contre `2754/2754` avant patch,
+  JavaScript `137/137` contre `135/135`, Chromium `19/19`; aucun skip ni
+  expected failure;
+- livraison ciblee sans pull: image
+  `sha256:7bc8b5d0d475c46d42793830f830def10e90583e3d8d864d796e670186b4d94d`,
+  `StartedAt=2026-08-29T14:08:56.011388208Z`, HTTP `200`, healthy, restart
+  `0`, OOM false; aucun conteneur voisin n'a ete recree;
+- le setting live a d'abord ete applique par l'API applicative et relu conforme.
+  L'unique appel provider synthetique a traverse le vrai agent et retourne un
+  resultat, mais le harness a ensuite applique le validateur de verdict
+  provider au bloc final deja normalise et a perdu la preuve avant sa synthese
+  content-free. Aucun second appel n'a ete lance;
+- stop-rule respectee: les anciennes valeurs ont ete restaurees par la meme
+  API et relues conformes (`google/gemini-3.1-flash-lite`, plafond `140`,
+  fallback inchange). La preuve live est donc `inconclusive`, 4C.1 reste
+  ouvert et 4S.0 reste non commence. Une nouvelle autorisation explicite sera
+  necessaire pour retenter un smoke provider et activer le setting cible.
 
 Condition de la passe provider de fermeture:
 
