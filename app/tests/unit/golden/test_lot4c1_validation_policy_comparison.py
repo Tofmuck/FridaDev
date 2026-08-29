@@ -166,6 +166,36 @@ class Lot4C1ValidationPolicyComparisonTests(unittest.TestCase):
                 dict(record, policy="candidate", policy_version=policy.CURRENT_POLICY_VERSION)
             )
 
+    def test_durable_campaign_artifact_is_content_free_and_records_the_frozen_failure(self) -> None:
+        artifact_path = (
+            REPO_ROOT
+            / "benchmark/results/validation_agent/2026-08-29-lot4c1-validation-policy-current-candidate.jsonl"
+        )
+        records = [
+            json.loads(line)
+            for line in artifact_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        self.assertEqual(len(records), 133)
+        self.assertTrue(all(policy.validate_content_free_record(record) for record in records))
+        summary = next(record for record in records if record["record_type"] == "campaign_summary")
+        self.assertEqual(summary["status"], "fail")
+        self.assertEqual(summary["reason_code"], "shared_critical_invariant_failure")
+        critical_pairs = [
+            record
+            for record in records
+            if record["record_type"] == "pair_comparison"
+            and record["case_id"] == "L4C1-VAL-005"
+            and record["source"] == "primary"
+        ]
+        self.assertEqual(len(critical_pairs), 2)
+        self.assertTrue(
+            all(
+                record["status"] == "shared_critical_invariant_failure"
+                for record in critical_pairs
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

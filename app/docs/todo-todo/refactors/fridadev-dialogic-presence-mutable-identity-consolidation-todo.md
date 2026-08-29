@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ouvert apres decision provider `fail` sans regression relative v2 mais avec invariant critique primaire non satisfait; preuve et provenance assainies, candidate semantique unique et protocole de comparaison geles, campagne non executee; 4S.0 non commence; goldens techniques du coeur livres, corpus semantique du caller non execute, observabilite causale complete non prouvee; Lots 5 a 8 et Z non commences
+Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ouvert apres decision provider `fail` sans regression relative v2 mais avec invariant critique primaire non satisfait; 4S.0 non commence; goldens techniques du coeur livres, corpus semantique du caller non execute, observabilite causale complete non prouvee et decision corrective non prise; Lots 5 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -1637,7 +1637,7 @@ Portee architecturale de cette acceptation:
 
 # LOT 4 - Audit causal et consolidation de Stimmung
 
-Statut: goldens techniques du coeur livres; 4C.1 ouvert apres decision provider `fail` sans regression relative v2 mais avec invariant critique primaire non satisfait; preuve et provenance assainies, candidate semantique unique et protocole de comparaison geles, campagne non executee; 4S.0 non commence; corpus semantique du caller non execute; observabilite causale complete non prouvee
+Statut: goldens techniques du coeur livres; 4C.1 ouvert apres decision provider `fail` sans regression relative v2 mais avec invariant critique primaire non satisfait; 4S.0 non commence; corpus semantique du caller non execute; observabilite causale complete non prouvee; decision corrective non prise
 Nature: audit causal multi-tours, correctifs bornes, benchmark sous GO separe
 et observabilite synchrone, sans extension fonctionnelle
 Dependance: Lot 3 ferme
@@ -1886,7 +1886,7 @@ Regles communes:
 
 ### Micro-lot 4C.1 - Garantie structurelle Stimmung vers Validation
 
-Statut: ferme le 2026-08-28, referme apres passe corrective du 2026-08-29, puis rouvert le 2026-08-29; comparaison provider Validation v1/v2 `fail`; preuve et provenance assainies, candidate semantique et protocole geles avant campagne; 4C.1 reste ouvert et 4S.0 non commence
+Statut: ferme le 2026-08-28, referme apres passe corrective du 2026-08-29, puis rouvert le 2026-08-29; comparaison provider Validation v1/v2 `fail`, puis comparaison politique courante/candidate `fail`; la candidate ne corrige pas 005, aucun runtime n'est livre; 4C.1 reste ouvert et 4S.0 non commence
 Effort recommande: `extra high`
 Nature: correctif runtime borne, observabilite synchrone et preuves
 Prerequis: goldens techniques du coeur livres; F3 valide
@@ -2240,6 +2240,48 @@ Passe B gelee avant campagne provider le 2026-08-29:
   corpus, unicite du fragment, egalite hors fragment, scorer, decision et garde
   d'artefact. Aucun appel provider n'a encore ete effectue et aucun fichier
   runtime n'a ete modifie par cette passe de gel.
+
+Campagne provider de la passe B — decision `fail`:
+
+- commit de gel pousse avant le premier appel:
+  `daba97bbd9f6a3fda37a956d0b855bcd0647c415`; aucun corpus, attente, scorer,
+  fragment, modele ou parametre n'a ete modifie apres lecture des resultats;
+- `88/88` appels executes et valides au niveau transport et schema: aucun
+  timeout, refus, JSON invalide ni schema invalide. Cout total observe
+  `0,04507676 USD`, sous le plafond `0,10 USD`; `201283` tokens totaux;
+- artefact durable content-free
+  `benchmark/results/validation_agent/2026-08-29-lot4c1-validation-policy-current-candidate.jsonl`:
+  `133` lignes (`88` appels, `44` paires, `1` synthese), empreinte
+  `97d9d208cb70882df32e714f708e0cde092450dc5156c35e9889ba2205fe10ab`;
+- primaire: politique courante `20/22` et candidate `20/22` resultats
+  semantiques valides. Sur 005, les deux politiques produisent encore
+  `answer/simple` aux deux repetitions. La candidate ne satisfait donc aucune
+  des deux repetitions critiques exigees;
+- fallback: politique courante `20/22` et candidate `20/22`. Les deux ecarts
+  restent uniquement la faiblesse Presence historique de 003, identique et
+  visible comme `accepted_preexisting_fallback_gap`, jamais comme succes du
+  scorer. Sur 005, les deux politiques choisissent une clarification conforme;
+- contre-cas 011: primaire et fallback conservent `answer/simple` pour les deux
+  politiques et les deux repetitions. La candidate n'a pas rendu la
+  recommandation amont `clarify` souveraine;
+- `44/44` paires courante/candidate ont la meme posture et le meme regime:
+  `40` paires `pass`, `2` ecarts Presence fallback acceptes et `2` paires
+  primaires 005 `shared_critical_invariant_failure`. Decision finale gelee:
+  `fail`, sans regression nouvelle mais sans correction de l'invariant;
+- stop-rule appliquee: aucun changement de `validation_messages.py`, prompt
+  courant, politique observable runtime, modele, provider, raisonnement,
+  hard guard, regex, Stimmung, Presence ou frontend; aucun rebuild, restart ou
+  deploiement. 4C.1 reste ouvert et 4S.0 reste non commence. Une decision
+  separee sera necessaire pour comparer une autre hypothese, un modele ou un
+  niveau de raisonnement; cette mission ne l'anticipe pas;
+- preuves finales sans reseau ni provider: benchmark/goldens/Validation/
+  Stimmung/observabilite `158/158`; chat, JSON/streaming, Presence, Web, hard
+  guards, final locks, persistance et goldens Lots 0/3/4/9 `275/275`;
+  decouverte Python complete `2742/2742`, soit exactement `6` tests nouveaux
+  face a `2736`, zero echec, erreur, skip ou expected failure. JavaScript
+  `135/135` et Chromium `19/19` ont ete verifies en baseline; ils ne sont pas
+  rejoues apres campagne car aucun runtime, contrat d'observabilite ou fichier
+  frontend n'a change.
 
 Condition de la passe provider de fermeture:
 
