@@ -35,6 +35,7 @@ _SIGNAL_FAMILIES = (
     "ancrage_de_source",
     "coherence",
 )
+_WEB_ACTIVATION_MODES = {"manual", "auto", "not_requested"}
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
@@ -338,7 +339,7 @@ def _project_web(value: Any) -> tuple[dict[str, Any] | None, str]:
     try:
         enabled = _bool(payload.get("enabled"))
         activation_mode = str(payload.get("activation_mode") or "")
-        if activation_mode not in {"manual", "auto", "not_requested"}:
+        if activation_mode not in _WEB_ACTIVATION_MODES:
             raise ValueError("invalid_canonical_projection_family")
         used_content_kinds = payload.get("used_content_kinds") or []
         if not isinstance(used_content_kinds, list) or len(used_content_kinds) > 4:

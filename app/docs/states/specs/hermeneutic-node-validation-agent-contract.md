@@ -199,9 +199,11 @@ Transport borne courant des entrees canoniques:
   `invalid_signal` ou `contract_budget_exceeded`; `partial` est invalide;
 - une reconstruction repetee est deterministe, ignore les cles hors contrat et
   ne depend pas de leur ordre lexical;
-- la somme structurelle maximale des projections compactes v2 mesure `3704`
-  caracteres. La borne `3840` conserve donc une marge fermee de `136`
-  caracteres; le coordinateur synthetique multi-tours courant mesure
+- le maximum accepte par le validateur structurel v2 mesure `3741` caracteres,
+  derive des limites et vocabulaires autoritatifs; la borne `3840` conserve
+  donc une marge fermee de `99` caracteres (`2,6 %`). Le maximum emittable par
+  les dispositions et builders runtime mesure `3546` caracteres, soit une
+  marge de `294` caracteres (`7,7 %`); le coordinateur synthetique multi-tours courant mesure
   `1220/3840` sans famille invalide ni insuffisance de budget.
 
 ## 6. Decision Retenue Pour Le Contexte Dialogique Recent Elargi

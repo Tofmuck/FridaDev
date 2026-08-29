@@ -18,6 +18,9 @@ def _resolve_app_dir() -> Path:
 APP_DIR = _resolve_app_dir()
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
+REPO_ROOT = APP_DIR.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 if importlib.util.find_spec("psycopg") is None:
     psycopg_module = types.ModuleType("psycopg")
@@ -37,6 +40,7 @@ from core.hermeneutic_node.validation import (
     validation_contract,
     validation_messages,
 )
+from benchmark.suites.validation_agent import lot4c1_comparison
 
 
 def _primary_verdict(
@@ -84,7 +88,7 @@ def _primary_verdict(
     }
 
 
-def _maximal_validation_canonical_projection_v2() -> dict[str, object]:
+def _accepted_3712_counterexample_to_old_maximum_claim() -> dict[str, object]:
     code = "x" * 64
     families = {
         "memory_retrieved": {
@@ -141,14 +145,14 @@ def _maximal_validation_canonical_projection_v2() -> dict[str, object]:
             "active_tones": [
                 {"tone": "decouragement", "strength": 10},
                 {"tone": "enthousiasme", "strength": 10},
-                {"tone": "neutralite", "strength": 10},
+                {"tone": "frustration", "strength": 10},
             ],
             "stability": "volatile", "shift_state": "candidate_shift",
             "turns_considered": 4,
         },
         "web_input": {
             "schema_version": "v1", "enabled": True, "status": code,
-            "activation_mode": "manual", "reason_code": code,
+            "activation_mode": "not_requested", "reason_code": code,
             "results_count": 999999, "read_state": code,
             "fallback_used": True, "web_confidence_level": code,
             "web_evidence_status": code, "web_evidence_can_answer": True,
@@ -2262,18 +2266,18 @@ class ValidationAgentTests(unittest.TestCase):
                 missing_required_mutant
             )
 
-        maximal_projection = validation_messages.validate_validation_canonical_projection(
-            _maximal_validation_canonical_projection_v2()
+        counterexample_projection = validation_messages.validate_validation_canonical_projection(
+            _accepted_3712_counterexample_to_old_maximum_claim()
         )
-        maximal_chars = len(
-            json.dumps(maximal_projection, ensure_ascii=False, separators=(",", ":"))
+        counterexample_chars = len(
+            json.dumps(counterexample_projection, ensure_ascii=False, separators=(",", ":"))
         )
-        self.assertEqual(maximal_chars, 3704)
+        self.assertEqual(counterexample_chars, 3712)
+        maxima = lot4c1_comparison.measured_v2_maxima()
+        self.assertEqual(maxima["accepted_contract_chars"], 3741)
+        self.assertEqual(maxima["runtime_emittable_chars"], 3546)
         self.assertEqual(validation_messages.MAX_CANONICAL_INPUTS_JSON_CHARS, 3840)
-        self.assertEqual(
-            validation_messages.MAX_CANONICAL_INPUTS_JSON_CHARS - maximal_chars,
-            136,
-        )
+        self.assertEqual(maxima["accepted_margin_chars"], 99)
 
     def test_projection_metadata_keeps_historical_v1_distinct_from_current_v2(self) -> None:
         historical = validation_contract.validate_canonical_projection_metadata(

@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 referme apres passe corrective du 2026-08-29 et prochain micro-lot obligatoire 4S.0; goldens techniques du coeur livres, corpus semantique du caller non execute, observabilite causale complete non prouvee et decision corrective non prise; Lots 5 a 8 et Z non commences
+Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 rouvert pour comparaison provider Validation v1/v2 figee avant resultats; 4S.0 non commence; goldens techniques du coeur livres, corpus semantique du caller non execute, observabilite causale complete non prouvee et decision corrective non prise; Lots 5 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -1637,7 +1637,7 @@ Portee architecturale de cette acceptation:
 
 # LOT 4 - Audit causal et consolidation de Stimmung
 
-Statut: goldens techniques du coeur livres; 4C.1 referme apres passe corrective du 2026-08-29 et prochain micro-lot obligatoire 4S.0; corpus semantique du caller non execute; observabilite causale complete non prouvee; decision corrective non prise
+Statut: goldens techniques du coeur livres; 4C.1 rouvert pour comparaison provider Validation v1/v2 figee avant resultats; 4S.0 non commence; corpus semantique du caller non execute; observabilite causale complete non prouvee; decision corrective non prise
 Nature: audit causal multi-tours, correctifs bornes, benchmark sous GO separe
 et observabilite synchrone, sans extension fonctionnelle
 Dependance: Lot 3 ferme
@@ -1886,7 +1886,7 @@ Regles communes:
 
 ### Micro-lot 4C.1 - Garantie structurelle Stimmung vers Validation
 
-Statut: ferme le 2026-08-28, puis referme apres passe corrective du 2026-08-29; prochain micro-lot obligatoire 4S.0
+Statut: ferme le 2026-08-28, referme apres passe corrective du 2026-08-29, puis rouvert le 2026-08-29 jusqu'a la decision de la comparaison provider Validation v1/v2; 4S.0 reste non commence
 Effort recommande: `extra high`
 Nature: correctif runtime borne, observabilite synchrone et preuves
 Prerequis: goldens techniques du coeur livres; F3 valide
@@ -2022,8 +2022,12 @@ Passe corrective du 2026-08-29 — suffisance de la matiere Validation:
   parmi `included`, `no_data`, `redundant_elsewhere`,
   `optional_not_requested`, `invalid_input` et
   `contract_budget_exceeded`;
-- maximum structurel synthetique: `3704` caracteres; borne retenue: `3840`,
-  soit `136` caracteres de marge (`3,7 %`) et moins de `4096`. Le cas
+- contre-audit du maximum: la fixture historique choisie a la main ne prouvait
+  pas `3704`. Le maximum accepte par le validateur v2, derive des limites et
+  vocabulaires produit, mesure `3741/3840`, soit `99` caracteres de marge
+  (`2,6 %`). Le maximum emittable par les dispositions et builders runtime
+  mesure `3546/3840`, soit `294` caracteres de marge (`7,7 %`). Un
+  contre-exemple accepte de `3712` conserve la regression initiale. Le cas
   coordinateur mesure apres correction `1220/3840`; le message Validation
   mesure `6160` caracteres et `2881` tokens estimes, soit `+562` caracteres et
   `+187` tokens. Dix mille reconstructions locales prennent `1087,67 ms`
@@ -2069,9 +2073,58 @@ Passe corrective du 2026-08-29 — suffisance de la matiere Validation:
   complet a revele la dependance partagee manquante sur `/identity`; ces trois
   ecarts de patch ont ete corriges avant les passages finaux verts;
 - limites: aucun provider reel ne prouve encore l'equivalence semantique des
-  verdicts; cette campagne appartient au GO separe 4S.0/4S.1. F2, F4, F5,
+  verdicts. Cette comparaison appartient a la presente fermeture 4C.1:
+  `4S.0` et `4S.1` qualifient exclusivement le caller Stimmung et n'appellent
+  ni Validation ni le modele principal. F2, F4, F5,
   prompts, modeles, providers, verdicts, regime, posture principale, Presence,
   locks, persistance et JSON/streaming restent inchanges.
+
+Phase 1 figee avant resultats provider — comparaison Validation v1/v2:
+
+- reference v1 exacte: commit
+  `ba246653fc4a68dfac340a34921cc48bee820bc8`, projecteur
+  `validation_canonical_inputs_v1`, budget `700`; le harness l'execute depuis
+  une archive Git temporaire dont l'empreinte du projecteur est verrouillee,
+  sans branche ni copie approximative de l'algorithme;
+- reference v2: commit contenant le present protocole, projecteur
+  `validation_canonical_inputs_v2`, budget `3840`. Le constructeur courant
+  prepare le message complet, puis le harness remplace uniquement le bloc
+  canonique par le resultat exact v1; les empreintes du prompt systeme et de
+  toute la matiere utilisateur hors bloc canonique doivent rester identiques;
+- corpus versionne
+  `benchmark/suites/validation_agent/fixtures/lot4c1_validation_projection_cases.json`:
+  `10` cas synthetiques couvrant interrogation, demande, Presence et
+  contre-cas, ambiguite actionnelle, incertitude et hard guards, temps,
+  Stimmung stable et transition, Web avec reserve, metadonnees memory/summary/
+  Identity et familles optionnelles absentes;
+- protocole/scorer fige dans
+  `benchmark/suites/validation_agent/lot4c1_comparison.py`: primaire
+  `google/gemini-3.1-flash-lite`, fallback `openai/gpt-5.4-nano`, temperature
+  `0.0`, `top_p=1.0`, `max_tokens=140`, timeout `15 s`, aucun raisonnement
+  explicite, `2` repetitions, `2` projections, soit `80` appels sur un plafond
+  absolu de `96`; cout maximal prudent `0,10 USD`, deux fois superieur a
+  l'extrapolation des maxima observes dans la campagne Validation du
+  2026-08-21;
+- decision figee: `pass` seulement sans nouvel interdit, faux Presence,
+  violation de hard guard ni regression v2 face a v1 pour le meme modele et la
+  meme repetition; `fail` sur toute regression semantique; `inconclusive` si
+  un cas/modele ne conserve aucune repetition paire valide. La degradation
+  Presence historique du fallback n'est toleree que si v1 et v2 echouent de
+  facon identique; aucun seuil ne peut etre deplace apres les reponses;
+- preuve hermetique avant campagne: `10/10` cas reconstruits depuis le commit
+  historique exact; fourchette v1 `593..680` caracteres, v2 `1022..2373`, et
+  seule la matiere canonique differe. Les tests de maximum, corpus, constructeur,
+  scorer, decision et artefact content-free comptent `8/8` succes avant appel provider;
+- 4C.1 reste ouvert jusqu'a l'artefact JSONL content-free, la decision
+  primaire/fallback, les suites completes et le second commit pousse.
+
+Condition de la passe provider de fermeture:
+
+- [x] Maximum v2 corrige et sensibilite aux vocabulaires autoritatifs livree.
+- [x] Corpus, scorer, nombre d'appels, cout maximal et regle de decision figes avant resultats.
+- [ ] Comparaison primaire/fallback v1/v2 executee et artefact JSONL content-free archive.
+- [ ] Decision semantique `pass` sans regression v2; sinon 4C.1 reste ouvert.
+- [ ] Suites completes, second commit, push, Git propre et runtime inchange prouves.
 
 Condition de fermeture:
 

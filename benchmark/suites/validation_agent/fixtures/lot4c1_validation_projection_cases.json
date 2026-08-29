@@ -1,0 +1,127 @@
+{
+  "schema_version": "lot4c1_validation_projection_corpus_v1",
+  "corpus_id": "lot4c1-validation-projection-v1",
+  "description": "Corpus synthetique borne comparant uniquement la projection canonical_inputs v1/v2 remise a Validation.",
+  "cases": [
+    {
+      "id": "L4C1-VAL-001",
+      "tags": ["interrogation", "answer_simple", "optional_absent"],
+      "dialogue": [
+        {"role": "assistant", "content": "Le plan synthetique comporte deux etapes."},
+        {"role": "user", "content": "Quelle est la prochaine etape du plan synthetique ?"}
+      ],
+      "primary": {"judgment_posture": "answer", "discursive_regime": "simple"},
+      "stimmung": "absent",
+      "matter": {"memory": false, "summary": false, "identity": false, "web": "absent"},
+      "expected": {"allowed_pairs": [["answer", "simple"]], "presence_policy": "forbidden", "critical": true}
+    },
+    {
+      "id": "L4C1-VAL-002",
+      "tags": ["explicit_request", "presence_countercase", "answer_simple"],
+      "dialogue": [
+        {"role": "assistant", "content": "Le format synthetique est pret."},
+        {"role": "user", "content": "Donne la reponse synthetique en une phrase."}
+      ],
+      "primary": {"judgment_posture": "answer", "discursive_regime": "simple"},
+      "stimmung": "stable",
+      "matter": {"memory": false, "summary": false, "identity": false, "web": "absent"},
+      "expected": {"allowed_pairs": [["answer", "simple"]], "presence_policy": "forbidden", "critical": true}
+    },
+    {
+      "id": "L4C1-VAL-003",
+      "tags": ["presence_opportunity", "dialogic_reception"],
+      "dialogue": [
+        {"role": "assistant", "content": "Je reste avec ce point synthetique."},
+        {"role": "user", "content": "Je depose simplement ce point ici, sans demande de developpement."}
+      ],
+      "primary": {"judgment_posture": "answer", "discursive_regime": "presence"},
+      "stimmung": "stable",
+      "matter": {"memory": false, "summary": false, "identity": false, "web": "absent"},
+      "expected": {"allowed_pairs": [["answer", "presence"]], "presence_policy": "required", "critical": true, "fallback_preexisting_gap": "missed_presence"}
+    },
+    {
+      "id": "L4C1-VAL-004",
+      "tags": ["presence_countercase", "question", "answer_simple"],
+      "dialogue": [
+        {"role": "assistant", "content": "Le choix synthetique reste ouvert."},
+        {"role": "user", "content": "Peux-tu expliquer pourquoi le second choix est preferable ?"}
+      ],
+      "primary": {"judgment_posture": "answer", "discursive_regime": "simple"},
+      "stimmung": "transition",
+      "matter": {"memory": false, "summary": false, "identity": false, "web": "absent"},
+      "expected": {"allowed_pairs": [["answer", "simple"]], "presence_policy": "forbidden", "critical": true}
+    },
+    {
+      "id": "L4C1-VAL-005",
+      "tags": ["actionable_ambiguity", "clarify"],
+      "dialogue": [
+        {"role": "assistant", "content": "Deux cibles synthetiques sont disponibles."},
+        {"role": "user", "content": "Applique-le maintenant."}
+      ],
+      "primary": {"judgment_posture": "clarify", "discursive_regime": "meta", "epistemic_regime": "incertain", "uncertainty_posture": "prudente"},
+      "stimmung": "absent",
+      "matter": {"memory": false, "summary": false, "identity": false, "web": "absent"},
+      "expected": {"allowed_pairs": [["clarify", "simple"], ["clarify", "meta"]], "presence_policy": "forbidden", "critical": true}
+    },
+    {
+      "id": "L4C1-VAL-006",
+      "tags": ["epistemic_uncertainty", "hard_guard", "suspend"],
+      "dialogue": [
+        {"role": "assistant", "content": "La preuve externe synthetique n'est pas disponible."},
+        {"role": "user", "content": "Confirme que l'annonce synthetique est vraie aujourd'hui."}
+      ],
+      "primary": {"judgment_posture": "suspend", "discursive_regime": "simple", "epistemic_regime": "incertain", "proof_regime": "verification_externe_requise", "uncertainty_posture": "prudente"},
+      "stimmung": "transition",
+      "matter": {"memory": false, "summary": false, "identity": false, "web": "missing_external"},
+      "expected": {"allowed_pairs": [["suspend", "simple"], ["suspend", "meta"]], "presence_policy": "forbidden", "critical": true, "required_hard_guard": "external_verification_missing"}
+    },
+    {
+      "id": "L4C1-VAL-007",
+      "tags": ["temporal_qualification", "answer_simple"],
+      "dialogue": [
+        {"role": "assistant", "content": "Le jalon synthetique est date."},
+        {"role": "user", "content": "Le jalon de demain vient-il avant celui de la semaine prochaine ?"}
+      ],
+      "primary": {"judgment_posture": "answer", "discursive_regime": "simple", "time_reference_mode": "now"},
+      "stimmung": "absent",
+      "matter": {"memory": false, "summary": false, "identity": false, "web": "absent"},
+      "expected": {"allowed_pairs": [["answer", "simple"]], "presence_policy": "forbidden", "critical": true}
+    },
+    {
+      "id": "L4C1-VAL-008",
+      "tags": ["stable_stimmung", "memory_summary_identity", "answer_simple"],
+      "dialogue": [
+        {"role": "assistant", "content": "Le repere synthetique reste stable."},
+        {"role": "user", "content": "Reprends calmement le repere deja etabli."}
+      ],
+      "primary": {"judgment_posture": "answer", "discursive_regime": "simple", "epistemic_regime": "certain", "uncertainty_posture": "discrete"},
+      "stimmung": "stable",
+      "matter": {"memory": true, "summary": true, "identity": true, "web": "absent"},
+      "expected": {"allowed_pairs": [["answer", "simple"]], "presence_policy": "forbidden", "critical": true}
+    },
+    {
+      "id": "L4C1-VAL-009",
+      "tags": ["stimmung_transition", "independent_epistemic_reason", "caveat"],
+      "dialogue": [
+        {"role": "assistant", "content": "La source synthetique est partielle mais exploitable."},
+        {"role": "user", "content": "Donne la conclusion bornee en signalant la limite de preuve."}
+      ],
+      "primary": {"judgment_posture": "answer", "discursive_regime": "simple", "epistemic_regime": "probable", "proof_regime": "verification_externe_requise", "uncertainty_posture": "prudente"},
+      "stimmung": "transition",
+      "matter": {"memory": false, "summary": false, "identity": false, "web": "active_caveat"},
+      "expected": {"allowed_pairs": [["answer", "simple"], ["answer", "meta"]], "presence_policy": "forbidden", "critical": true, "required_hard_guard": "explicit_url_not_read"}
+    },
+    {
+      "id": "L4C1-VAL-010",
+      "tags": ["web_active", "hard_guard", "presence_countercase"],
+      "dialogue": [
+        {"role": "assistant", "content": "La lecture synthetique exige une reserve explicite."},
+        {"role": "user", "content": "Reponds avec la reserve necessaire sur cette source synthetique."}
+      ],
+      "primary": {"judgment_posture": "answer", "discursive_regime": "simple", "proof_regime": "verification_externe_requise", "uncertainty_posture": "prudente"},
+      "stimmung": "stable",
+      "matter": {"memory": true, "summary": true, "identity": true, "web": "active_caveat"},
+      "expected": {"allowed_pairs": [["answer", "simple"], ["answer", "meta"]], "presence_policy": "forbidden", "critical": true, "required_hard_guard": "explicit_url_not_read"}
+    }
+  ]
+}
