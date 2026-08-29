@@ -63,6 +63,7 @@ class OpenRouterClient:
                     "generation_id": _bounded_field(data.get("id")),
                     "model": _bounded_field(data.get("model")),
                     "provider": _bounded_field(data.get("provider")),
+                    "service_tier": _bounded_field(data.get("service_tier")),
                 }
             raw_text = _extract_text(data)
             usage = _usage(data)
@@ -81,6 +82,7 @@ class OpenRouterClient:
                 "generation_id": _bounded_field(data.get("id")),
                 "model": _bounded_field(data.get("model")),
                 "provider": _bounded_field(data.get("provider")),
+                "service_tier": _bounded_field(data.get("service_tier")),
             }
         except Exception as exc:
             elapsed_ms = (time.perf_counter() - start) * 1000
@@ -98,6 +100,7 @@ class OpenRouterClient:
                 "generation_id": "",
                 "model": "",
                 "provider": "",
+                "service_tier": "",
             }
 
     def _headers(self, *, caller: str) -> dict[str, str]:

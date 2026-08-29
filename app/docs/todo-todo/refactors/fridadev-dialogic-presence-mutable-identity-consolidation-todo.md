@@ -1886,7 +1886,7 @@ Regles communes:
 
 ### Micro-lot 4C.1 - Garantie structurelle Stimmung vers Validation
 
-Statut: ferme le 2026-08-28, referme apres passe corrective du 2026-08-29, puis rouvert le 2026-08-29; comparaison provider Validation v1/v2 `fail`, puis comparaison politique courante/candidate `fail`; la candidate ne corrige pas 005, aucun runtime n'est livre; 4C.1 reste ouvert et 4S.0 non commence
+Statut: ferme le 2026-08-28, referme apres passe corrective du 2026-08-29, puis rouvert le 2026-08-29; comparaison provider Validation v1/v2 `fail`, puis comparaison politique courante/candidate `fail`; evaluation de quatre configurations de futurs modeles principaux gelee avant appels, sans cutover autorise; 4C.1 reste ouvert et 4S.0 non commence
 Effort recommande: `extra high`
 Nature: correctif runtime borne, observabilite synchrone et preuves
 Prerequis: goldens techniques du coeur livres; F3 valide
@@ -2282,6 +2282,65 @@ Campagne provider de la passe B — decision `fail`:
   `135/135` et Chromium `19/19` ont ete verifies en baseline; ils ne sont pas
   rejoues apres campagne car aucun runtime, contrat d'observabilite ou fichier
   frontend n'a change.
+
+Comparaison des futurs modeles principaux — protocole gele avant campagne:
+
+- F1 valide: les `22` appels du temoin historique
+  `google/gemini-3.1-flash-lite` sont reutilisables sans nouvel appel. Les onze
+  triplets d'empreintes prompt/matiere hors politique/projection canonique,
+  le corpus `bb0416662dd0cd9a42436c7f185c86e44ec877090326a6c0cf4ec4846c1184d4`
+  et le scorer
+  `4b71ed96943129ff54590bc46da3d7d5b94c86ec0f66f278a16cb4a969007b77`
+  correspondent au gel; le temoin reste `20/22`, avec seulement 005 en echec
+  aux deux repetitions;
+- F2 valide: `openai/gpt-5.4-nano` reste le fallback runtime et son ecart
+  Presence historique demeure visible, mais il n'est ni rappele ni evalue
+  comme candidat principal. F3 valide: la candidate de politique precedente
+  a produit exactement les memes paires posture/regime sur `44/44`
+  comparaisons; aucun prompt n'est change dans cette campagne;
+- F4 valide au 2026-08-29T12:29:48Z depuis les metadonnees OpenRouter et les
+  documentations Google/OpenAI: les slugs standard sont
+  `google/gemini-3.7-flash` et `openai/gpt-5.6-luna-pro`; tous deux acceptent
+  `medium|high`, le slug Luna porte deja le mode Pro, et l'effort reste
+  independant. Le payload utilise `reasoning={effort, exclude:true}`, omet
+  `temperature`, `top_p` et `response_format`, fixe `allow_fallbacks=false` et
+  `require_parameters=true`, et n'emploie ni Batch, ni Flex, ni Priority;
+- protocole `lot4c1_validation_model_comparison_v1`, metadonnees publiques
+  content-free d'empreinte
+  `29e0276c72232859dbbb958728cde85eef7a3a6c088b6f712718190ff23e8515`:
+  Gemini 3.7 Flash `medium|high` et GPT-5.6 Luna Pro `medium|high`, onze cas
+  inchanges, deux repetitions et ordre tourne par cas/repetition, soit `88`
+  appels sous le plafond absolu `96`, sans fallback automatique;
+- `max_tokens=500` est gele pour les quatre configurations: les preuves Lot 3
+  montrent une sortie Validation complete avec Luna `medium/500`; a effort
+  `high`, la part indicative de raisonnement laisse encore environ `100`
+  tokens de sortie, contre `79` tokens de completion au maximum dans le temoin
+  actuel. Le timeout interactif reste `15 s`;
+- le cout maximal prudent est gele a `0,28 USD`: maximum historique de `2637`
+  tokens d'entree, marge de tokenisation de `10 %` soit `2901`, plafond de
+  `500` tokens de sortie, prix observes par slug, estimation brute
+  `0,23016180 USD`, puis marge de `20 %`. Toute absence de cout, latence ou
+  compteur de raisonnement reste `inconclusive`, jamais zero fabrique;
+- eligibilite figee: `22/22`, deux succes sur 005, deux Presence sur 003, deux
+  `answer/simple` sur 011, aucun hard guard viole, aucune prudence Stimmung/Web
+  perdue, aucun transport invalide ou appel au-dela de `15 s`. A qualite
+  egale, l'effort le plus faible est prefere; cout, mediane/p95 et tokens ne
+  departagent qu'une fois la conformite acquise. La recommandation ne vaut
+  jamais autorisation de cutover;
+- harness reutilise: extension du comparateur de politique existant, builders
+  de cas, constructeur de messages, projection v2 et scorer partages; aucun
+  troisieme scorer, validateur semantique ou corpus n'est cree. Le validateur
+  content-free rejette texte de raisonnement, route incoherente, metrique
+  absente presentee comme zero, `:batch`, tier non standard et `21/22`
+  presente comme eligible;
+- cycle TDD avant appels: `10` preuves ont d'abord produit `9` erreurs sur les
+  frontieres absentes, puis une mutation d'effort non supporte est restee
+  rouge; apres implementation, `10/10` sont vertes. Goldens 4C.1, benchmark
+  Validation et Presence voisins: `35/35`. Le commit de gel doit etre pousse
+  et son hash injecte dans chaque ligne durable avant le premier appel;
+- aucun modele, fallback, prompt, transport runtime, setting, frontend ou
+  deploiement n'est modifie. 4C.1 reste ouvert quelle que soit la
+  recommandation de campagne; un cutover exige une decision humaine separee.
 
 Condition de la passe provider de fermeture:
 

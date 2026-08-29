@@ -507,6 +507,33 @@ high-severity false Presence in the one-repetition screening while costing
 roughly ten times Luna on this corpus. No model, prompt, runtime setting or
 service was changed.
 
+### Lot 4C.1 Validation primary-model comparison
+
+The bounded model comparison reuses the frozen Lot 4C.1 policy corpus,
+production message builders, v2 canonical projection and semantic scorer. It
+does not modify the runtime model or prompt. Four standard, non-Batch
+configurations are compared: Gemini 3.7 Flash and GPT-5.6 Luna Pro, each at
+`medium` and `high` reasoning effort. Sampling parameters are intentionally
+omitted for these candidates; reasoning text is excluded and never retained.
+
+The protocol fixes eleven cases, two repetitions, `max_tokens=500`, a `15 s`
+timeout, 88 calls, a 96-call absolute cap and a prudent `0.28 USD` cost cap.
+Provider fallback is disabled and parameter support is required. Run only
+after the protocol commit has been pushed:
+
+```bash
+OPENROUTER_API_KEY=... python3 -m \
+  benchmark.suites.validation_agent.lot4c1_policy_comparison \
+  --model-comparison \
+  --freeze-commit <pushed-protocol-commit> \
+  --output benchmark/results/validation_agent/<date>-lot4c1-validation-primary-models.jsonl
+```
+
+The JSONL is content-free: it retains structured verdicts, bounded statuses,
+route metadata, usage, latency, cost and fingerprints, but no dialogue,
+prompt, provider output or reasoning text. A recommendation is evaluation
+evidence only and cannot authorize a runtime cutover.
+
 On 2026-08-21, Tof explicitly accepted the current fallback degradation. The
 fallback remains a conservative continuity path, not a semantically equivalent
 Presence implementation: it may miss a legitimate Presence response when the
