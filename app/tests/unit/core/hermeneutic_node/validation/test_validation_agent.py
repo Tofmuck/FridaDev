@@ -388,10 +388,11 @@ class ValidationAgentTests(unittest.TestCase):
             payload={
                 "primary_model": {"value": validation_agent.PRIMARY_MODEL},
                 "fallback_model": {"value": validation_agent.FALLBACK_MODEL},
-                "timeout_s": {"value": 10},
+                "timeout_s": {"value": 15},
                 "temperature": {"value": 0.0},
                 "top_p": {"value": 1.0},
                 "max_tokens": {"value": validation_agent.MAX_RESPONSE_TOKENS},
+                "reasoning_effort": {"value": "medium"},
             }
         )
 
@@ -580,6 +581,17 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertEqual(
             requests_module.calls[0]["json"]["model"],
             validation_agent.PRIMARY_MODEL,
+        )
+        self.assertEqual(
+            requests_module.calls[0]["json"]["reasoning"],
+            {"effort": "medium", "exclude": True},
+        )
+        self.assertEqual(requests_module.calls[0]["json"]["max_tokens"], 500)
+        self.assertNotIn("temperature", requests_module.calls[0]["json"])
+        self.assertNotIn("top_p", requests_module.calls[0]["json"])
+        self.assertEqual(
+            requests_module.calls[0]["json"]["provider"],
+            {"allow_fallbacks": False, "require_parameters": True},
         )
         self.assertEqual(requests_module.calls[0]["json"]["metadata"]["frida_caller"], "validation_agent")
         self.assertEqual(requests_module.calls[0]["json"]["metadata"]["frida_slot"], "validation_agent_model")
@@ -862,15 +874,16 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertNotIn('"messages"', event_json)
         self.assertNotIn("SYSTEM PROMPT", event_json)
 
-    def test_build_validated_output_uses_runtime_settings_models_and_sampling(self) -> None:
+    def test_build_validated_output_uses_runtime_settings_primary_reasoning_policy(self) -> None:
         validation_agent.runtime_settings.get_validation_agent_model_settings = lambda: types.SimpleNamespace(
             payload={
-                "primary_model": {"value": "openai/custom-validation-primary"},
-                "fallback_model": {"value": "openai/custom-validation-fallback"},
-                "timeout_s": {"value": 14},
-                "temperature": {"value": 0.2},
-                "top_p": {"value": 0.88},
-                "max_tokens": {"value": 64},
+                "primary_model": {"value": "google/gemini-3.7-flash"},
+                "fallback_model": {"value": "openai/gpt-5.4-nano"},
+                "timeout_s": {"value": 15},
+                "temperature": {"value": 0.0},
+                "top_p": {"value": 1.0},
+                "max_tokens": {"value": 500},
+                "reasoning_effort": {"value": "medium"},
             }
         )
         requests_module = _FakeRequests(
@@ -893,14 +906,30 @@ class ValidationAgentTests(unittest.TestCase):
             requests_module=requests_module,
         )
 
-        self.assertEqual(result.model, "openai/custom-validation-primary")
-        self.assertEqual(requests_module.calls[0]["json"]["model"], "openai/custom-validation-primary")
-        self.assertEqual(requests_module.calls[0]["json"]["temperature"], 0.2)
-        self.assertEqual(requests_module.calls[0]["json"]["top_p"], 0.88)
-        self.assertEqual(requests_module.calls[0]["json"]["max_tokens"], 64)
+        self.assertEqual(result.model, "google/gemini-3.7-flash")
+        payload = requests_module.calls[0]["json"]
+        self.assertEqual(payload["model"], "google/gemini-3.7-flash")
+        self.assertEqual(payload["reasoning"], {"effort": "medium", "exclude": True})
+        self.assertEqual(payload["max_tokens"], 500)
+        self.assertNotIn("temperature", payload)
+        self.assertNotIn("top_p", payload)
         self.assertEqual(requests_module.calls[0]["json"]["metadata"]["frida_caller"], "validation_agent")
         self.assertEqual(requests_module.calls[0]["json"]["metadata"]["frida_slot"], "validation_agent_model")
-        self.assertEqual(requests_module.calls[0]["timeout"], 14)
+        self.assertEqual(requests_module.calls[0]["timeout"], 15)
+        event = next(
+            item for item in self.observed_events
+            if item["stage"] == "validation_prompt_prepared"
+        )
+        request = event["payload"]["validation_request"]
+        self.assertEqual(request["validation_request_policy_version"], "validation_request_gemini_3_7_flash_medium_v1")
+        self.assertEqual(request["validation_reasoning_effort_requested"], "medium")
+        self.assertEqual(request["validation_reasoning_effort_effective"], "medium")
+        self.assertTrue(request["validation_reasoning_sent"])
+        self.assertTrue(request["validation_reasoning_excluded"])
+        self.assertEqual(request["validation_max_tokens_effective"], 500)
+        self.assertFalse(request["validation_temperature_sent"])
+        self.assertFalse(request["validation_top_p_sent"])
+        self.assertEqual(request["validation_transport"], "standard")
 
     def test_fail_open_without_hard_guard_does_not_project_suspend(self) -> None:
         requests_module = _FakeRequests([
@@ -953,12 +982,13 @@ class ValidationAgentTests(unittest.TestCase):
     def test_build_validated_output_clamps_runtime_settings_max_tokens_to_contractual_cap(self) -> None:
         validation_agent.runtime_settings.get_validation_agent_model_settings = lambda: types.SimpleNamespace(
             payload={
-                "primary_model": {"value": "openai/custom-validation-primary"},
-                "fallback_model": {"value": "openai/custom-validation-fallback"},
-                "timeout_s": {"value": 14},
-                "temperature": {"value": 0.2},
-                "top_p": {"value": 0.88},
+                "primary_model": {"value": validation_agent.PRIMARY_MODEL},
+                "fallback_model": {"value": validation_agent.FALLBACK_MODEL},
+                "timeout_s": {"value": 15},
+                "temperature": {"value": 0.0},
+                "top_p": {"value": 1.0},
                 "max_tokens": {"value": 2000},
+                "reasoning_effort": {"value": "medium"},
             }
         )
         requests_module = _FakeRequests(
@@ -1809,6 +1839,15 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertEqual(
             [call["json"]["model"] for call in requests_module.calls],
             [validation_agent.PRIMARY_MODEL, validation_agent.FALLBACK_MODEL],
+        )
+        fallback_payload = requests_module.calls[1]["json"]
+        self.assertNotIn("reasoning", fallback_payload)
+        self.assertEqual(fallback_payload["temperature"], 0.0)
+        self.assertEqual(fallback_payload["top_p"], 1.0)
+        self.assertEqual(fallback_payload["max_tokens"], 140)
+        self.assertEqual(
+            fallback_payload["provider"],
+            {"allow_fallbacks": False, "require_parameters": True},
         )
         self.assertEqual(result.validated_output["validation_decision"], "confirm")
 

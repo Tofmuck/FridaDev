@@ -642,9 +642,21 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
             },
             'benchmark_decision': {
                 'label': 'VALIDATION_AGENT_BENCHMARK_DECISION',
-                'value': 'benchmark/results/validation_agent/2026-05-19-validation-agent-decision.md',
+                'value': 'benchmark/results/validation_agent/2026-08-29-lot4c1-validation-primary-models.jsonl',
                 'is_editable': False,
                 'source': 'benchmark_artifact',
+            },
+            'request_policy': {
+                'label': 'VALIDATION_AGENT_REQUEST_POLICY',
+                'value': 'validation_request_gemini_3_7_flash_medium_v1',
+                'is_editable': False,
+                'source': 'runtime_contract',
+            },
+            'fallback_max_tokens': {
+                'label': 'VALIDATION_AGENT_FALLBACK_MAX_TOKENS',
+                'value': 140,
+                'is_editable': False,
+                'source': 'runtime_contract',
             },
             'validation_context_messages_cap': {
                 'label': 'VALIDATION_CONTEXT_MESSAGES_CAP',

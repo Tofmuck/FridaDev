@@ -262,18 +262,26 @@ Convention explicite:
 
 | Champ | Type | Secret | Source actuelle |
 | --- | --- | --- | --- |
-| `primary_model` | `text` | non | defaut runtime `google/gemini-3.1-flash-lite` |
+| `primary_model` | `text` | non | defaut runtime `google/gemini-3.7-flash` |
 | `fallback_model` | `text` | non | defaut runtime `openai/gpt-5.4-nano` |
 | `timeout_s` | `int` | non | defaut runtime `15` |
 | `temperature` | `float` | non | defaut runtime `0.0` |
 | `top_p` | `float` | non | defaut runtime `1.0` |
-| `max_tokens` | `int` | non | defaut runtime `140` |
+| `max_tokens` | `int` | non | budget primaire runtime `500` |
+| `reasoning_effort` | `text` | non | effort primaire runtime `medium` |
 
 Convention explicite:
 
 - cette section pilote le `validation_agent` du pipeline hermeneutique;
 - `timeout_s` est fixe a `15` secondes par defaut pour eviter les faux timeouts Gemini observes sur le chemin `validation_agent`;
-- `max_tokens` reste borne par le contrat de validation serveur, releve a `140` apres relance benchmark du 2026-05-19;
+- `max_tokens=500` et `reasoning_effort=medium` configurent le primaire
+  `google/gemini-3.7-flash`; sa requete omet `temperature` et `top_p`;
+- `temperature=0.0` et `top_p=1.0` restent les valeurs du fallback
+  `openai/gpt-5.4-nano`, dont le budget propre reste borne a `140` et qui ne
+  recoit aucun champ de raisonnement;
+- le validateur accepte aussi le tuple historique coherent
+  `google/gemini-3.1-flash-lite` / `140` comme voie de rollback bornee; il ne
+  le presente jamais comme la configuration active Gemini medium;
 - elle ne donne pas au `validation_agent` un pouvoir de persistence direct sur l'identite.
 
 ### `biblio_librarian_agent`

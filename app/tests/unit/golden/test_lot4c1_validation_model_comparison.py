@@ -318,6 +318,29 @@ class Lot4C1ValidationModelComparisonTests(unittest.TestCase):
             policy.model_comparison_recommendation(one_short)["eligible_configurations"],
         )
 
+        independent = copy.deepcopy(one_short)
+        independent[0] = policy.summarize_model_comparison_configuration(
+            policy.synthetic_passing_model_comparison_records(
+                "gemini_3_7_flash_medium"
+            ),
+            "gemini_3_7_flash_medium",
+        )
+        independent[1]["status"] = "inconclusive"
+        independent[1]["reason_codes"] = ["provider_result_invalid"]
+        for index in (2, 3):
+            independent[index]["status"] = "non_eligible"
+            independent[index]["reason_codes"] = ["semantic_failure"]
+        independent_decision = policy.model_comparison_recommendation(independent)
+        self.assertEqual(
+            independent_decision["recommendation"],
+            "recommend_gemini_3_7_flash_medium",
+        )
+        self.assertEqual(
+            independent_decision["eligible_configurations"],
+            ["gemini_3_7_flash_medium"],
+        )
+        self.assertFalse(independent_decision["runtime_cutover_authorized"])
+
     def test_openrouter_client_reports_service_tier_without_reasoning_text(self) -> None:
         client = openrouter.OpenRouterClient(
             openrouter.OpenRouterConfig(
@@ -442,7 +465,7 @@ class Lot4C1ValidationModelComparisonTests(unittest.TestCase):
         self.assertEqual(summary["status"], "inconclusive")
         self.assertEqual(summary["reason_codes"], ["provider_result_invalid"])
 
-    def test_durable_model_comparison_artifact_is_content_free_and_inconclusive(self) -> None:
+    def test_durable_model_comparison_artifact_recommends_the_unique_eligible_candidate(self) -> None:
         path = (
             REPO_ROOT
             / "benchmark/results/validation_agent/2026-08-29-lot4c1-validation-primary-models.jsonl"
@@ -455,7 +478,7 @@ class Lot4C1ValidationModelComparisonTests(unittest.TestCase):
 
         self.assertEqual(
             hashlib.sha256(path.read_bytes()).hexdigest(),
-            "e20209c45f9e6b4c17ea6bc808acd7dfe406c543543674fd298b5dbe9a93a635",
+            "b0f6f05d00b12bc0ae72404f493d72df72a5c600dc724381d7563c0759c136b1",
         )
         self.assertEqual(len(records), 93)
         self.assertTrue(all(policy.validate_model_comparison_record(record) for record in records))
@@ -471,7 +494,10 @@ class Lot4C1ValidationModelComparisonTests(unittest.TestCase):
             )
         )
         summary = records[-1]
-        self.assertEqual(summary["recommendation"], "inconclusive")
+        self.assertEqual(
+            summary["recommendation"],
+            "recommend_gemini_3_7_flash_medium",
+        )
         self.assertEqual(summary["eligible_configurations"], ["gemini_3_7_flash_medium"])
         self.assertEqual(summary["provider_calls"], 88)
         self.assertEqual(summary["valid_calls"], 77)

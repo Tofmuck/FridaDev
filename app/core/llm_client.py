@@ -325,6 +325,10 @@ def extract_openrouter_provider_metadata(
     if provider_model:
         metadata['provider_model'] = provider_model
 
+    provider = str(data.get('provider') or '').strip()
+    if provider:
+        metadata['provider'] = provider
+
     usage = _mapping(data.get('usage'))
     token_fields = (
         ('prompt_tokens', 'provider_prompt_tokens'),

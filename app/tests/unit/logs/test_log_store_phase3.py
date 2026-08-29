@@ -707,6 +707,82 @@ class LogStorePhase3Tests(unittest.TestCase):
         self.assertEqual(budget_item['status'], 'degraded')
         self.assertEqual(budget_item['reason_code'], 'canonical_projection_budget_insufficient')
 
+    def test_validation_request_policy_is_projected_from_effective_prepared_payload(self) -> None:
+        current_events = self._complete_turn_events(web_search_enabled=False)
+        prepared = next(
+            event for event in current_events if event['stage'] == 'validation_prompt_prepared'
+        )
+        prepared['payload']['validation_request'] = {
+                'validation_request_policy_version': 'validation_request_gemini_3_7_flash_medium_v1',
+                'validation_transport': 'standard',
+                'validation_requested_model': 'google/gemini-3.7-flash',
+                'validation_attempt_decision_source': 'primary',
+                'validation_reasoning_effort_requested': 'medium',
+                'validation_reasoning_effort_effective': 'medium',
+                'validation_reasoning_sent': True,
+                'validation_reasoning_excluded': True,
+                'validation_max_tokens_effective': 500,
+                'validation_temperature_sent': False,
+                'validation_top_p_sent': False,
+                'validation_provider_fallbacks_allowed': False,
+                'validation_provider_require_parameters': True,
+            }
+        prepared['model'] = 'google/gemini-3.7-flash'
+        current_events.append(
+            self._event(
+                'llm_call',
+                payload={
+                    'provider_caller': 'validation_agent',
+                    'model': 'google/gemini-3.7-flash',
+                    'provider_model': 'google/gemini-3.7-flash',
+                    'provider': 'Google AI Studio',
+                },
+            )
+        )
+
+        item = log_store.build_turn_pipeline_item(current_events)
+        request = item['providers']['secondary']['validation']['request']
+        self.assertEqual(request['policy_version'], 'validation_request_gemini_3_7_flash_medium_v1')
+        self.assertEqual(request['requested_model'], 'google/gemini-3.7-flash')
+        self.assertEqual(request['observed_model'], 'google/gemini-3.7-flash')
+        self.assertEqual(request['observed_provider'], 'Google AI Studio')
+        self.assertEqual(request['reasoning_effort_requested'], 'medium')
+        self.assertEqual(request['reasoning_effort_effective'], 'medium')
+        self.assertTrue(request['reasoning_sent'])
+        self.assertTrue(request['reasoning_excluded'])
+        self.assertEqual(request['max_tokens_effective'], 500)
+        self.assertFalse(request['temperature_sent'])
+        self.assertFalse(request['top_p_sent'])
+        self.assertFalse(request['provider_fallbacks_allowed'])
+        self.assertTrue(request['authoritative'])
+
+        self.assertTrue(observability_payload_guard.guard_payload(prepared['payload']).accepted)
+        projected, _redaction = admin_log_projection.project_payload(prepared['payload'])
+        projected_request = projected['validation_request']
+        self.assertEqual(
+            projected_request['validation_request_policy_version'],
+            'validation_request_gemini_3_7_flash_medium_v1',
+        )
+        self.assertEqual(projected_request['validation_requested_model'], 'google/gemini-3.7-flash')
+        self.assertEqual(projected_request['validation_reasoning_effort_effective'], 'medium')
+        self.assertEqual(projected_request['validation_max_tokens_effective'], 500)
+        self.assertFalse(projected_request['validation_temperature_sent'])
+        self.assertFalse(projected_request['validation_top_p_sent'])
+
+        historical_item = log_store.build_turn_pipeline_item(
+            self._complete_turn_events(web_search_enabled=False)
+        )
+        historical_request = historical_item['providers']['secondary']['validation']['request']
+        self.assertFalse(historical_request['authoritative'])
+        self.assertEqual(historical_request['status'], 'unknown')
+
+        raw_mutant = dict(prepared['payload'])
+        raw_mutant['validation_request'] = dict(
+            prepared['payload']['validation_request'],
+            validation_reasoning_effort_effective='synthetic raw sentence',
+        )
+        self.assertFalse(observability_payload_guard.guard_payload(raw_mutant).accepted)
+
     def test_admin_projection_keeps_only_content_free_validation_delivery_truth(self) -> None:
         payload = next(
             event['payload']

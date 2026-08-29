@@ -19,8 +19,8 @@ from tests.support.server_chat_pipeline import patch_server_chat_pipeline
 
 STIMMUNG_PRIMARY_MODEL = "lot4/stimmung-primary"
 STIMMUNG_FALLBACK_MODEL = "lot4/stimmung-fallback"
-VALIDATION_PRIMARY_MODEL = "lot4/validation-primary"
-VALIDATION_FALLBACK_MODEL = "lot4/validation-fallback"
+VALIDATION_PRIMARY_MODEL = "google/gemini-3.7-flash"
+VALIDATION_FALLBACK_MODEL = "openai/gpt-5.4-nano"
 MAIN_MODEL = "lot4/main"
 
 
@@ -447,10 +447,11 @@ def capture_validation_request(canonical_inputs: Mapping[str, Any]) -> dict[str,
             {
                 "primary_model": VALIDATION_PRIMARY_MODEL,
                 "fallback_model": VALIDATION_FALLBACK_MODEL,
-                "timeout_s": 2,
+                "timeout_s": 15,
                 "temperature": 0.0,
                 "top_p": 1.0,
-                "max_tokens": 120,
+                "max_tokens": 500,
+                "reasoning_effort": "medium",
             },
         )
         validation_agent.llm_client.or_chat_completions_url = lambda: "https://lot4.invalid/chat"
@@ -678,10 +679,11 @@ def exercise_stimmung_dialogue(
                 {
                     "primary_model": VALIDATION_PRIMARY_MODEL,
                     "fallback_model": VALIDATION_FALLBACK_MODEL,
-                    "timeout_s": 2,
+                    "timeout_s": 15,
                     "temperature": 0.0,
                     "top_p": 1.0,
-                    "max_tokens": 120,
+                    "max_tokens": 500,
+                    "reasoning_effort": "medium",
                 },
             ),
         )

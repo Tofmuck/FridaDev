@@ -179,12 +179,13 @@ SECTION_SPECS: dict[str, SectionSpec] = {
     'validation_agent_model': SectionSpec(
         name='validation_agent_model',
         fields=(
-            FieldSpec('primary_model', 'text', seed_from_env=False, seed_default='google/gemini-3.1-flash-lite'),
+            FieldSpec('primary_model', 'text', seed_from_env=False, seed_default='google/gemini-3.7-flash'),
             FieldSpec('fallback_model', 'text', seed_from_env=False, seed_default='openai/gpt-5.4-nano'),
             FieldSpec('timeout_s', 'int', seed_from_env=False, seed_default=15),
             FieldSpec('temperature', 'float', seed_from_env=False, seed_default=0.0),
             FieldSpec('top_p', 'float', seed_from_env=False, seed_default=1.0),
-            FieldSpec('max_tokens', 'int', seed_from_env=False, seed_default=140),
+            FieldSpec('max_tokens', 'int', seed_from_env=False, seed_default=500),
+            FieldSpec('reasoning_effort', 'text', seed_from_env=False, seed_default='medium'),
         ),
     ),
     'biblio_librarian_agent': SectionSpec(

@@ -211,6 +211,13 @@ et ne possede aucune autorite Identity ou canonique.
   - allowed fields: `payload_kind`, `provider_caller=validation_agent`, secondary/main booleans, model, message counts, input-family presence flags, compact source-kind counts, char counts, sampling/timeouts when present
   - runtime `validation_canonical_inputs_v2` exposes the exact content-free transport truth: projection version and `current_v2` contract status, used chars, fixed budget, and a complete closed partition of included, no-data, redundant, optional, invalid, and budget-exceeded families; historical `validation_canonical_inputs_v1` remains readable as `historical_v1` without reclassifying its omissions
   - both versions expose `stimmung_delivery_status=full|absent`, bounded reason code, Validation attempt source and prepared status; an unknown version or an incoherent v2 partition is non-authoritative
+  - `validation_request` is a closed content-free block built from the exact
+    prepared provider request: policy version, requested model, primary/fallback
+    source, standard transport, requested/effective effort, reasoning sent,
+    `exclude`, effective output budget, effective presence of sampling keys,
+    and provider fallback/parameter enforcement. Historical events without
+    this block remain `unknown`; model/provider observed come only from the
+    matching provider event when available
   - `partial`, inconsistent counters, unknown family names, a raw-content flag set to true, or an unversioned `full` claim are invalid rather than normal display states
   - forbidden: raw prompt, raw messages, raw validation dialogue, raw canonical inputs, raw memory traces/summaries, raw identity content
 
@@ -314,6 +321,9 @@ Minimum checklist groups:
   - `web_reformulation_prompt_prepared`
   - if a secondary provider is expected or called, the matching `*_prompt_prepared` proof is mandatory; a result event or `llm_call.provider_caller` alone is `degraded` with `reason_code=missing_secondary_provider_prepared`
   - when a Validation projection claim is present, its structural metadata is validated from `validation_prompt_prepared`; an invalid status such as `partial` degrades the Validation checklist item with the bounded validation error code
+  - when a Validation request-policy claim is present, the same prepared
+    event must satisfy the closed request policy; an incoherent effort, model,
+    budget, sampling or routing claim degrades the item
 - web:
   - `web_search` is `not_applicable` when web was not requested;
   - when web was requested, `ok`, `skipped` with `reason_code`, or `error` with compact cause must be represented without raw query/result content;
@@ -327,7 +337,7 @@ Allowed output fields:
 
 Forbidden output fields:
 - raw event payload copies;
-- prompt, messages, content, identity text, memory traces/summaries, web query/result snippets, canonical inputs, DSN, tokens, exception messages or stack traces.
+- prompt, messages, content, identity text, memory traces/summaries, web query/result snippets, canonical inputs, DSN, credential tokens, exception messages or stack traces.
 
 ### `chat_turn_pipeline_read_model`
 
@@ -360,6 +370,10 @@ Minimum item groups:
     `full|absent`, reason code, chars/budget and classified family dispositions;
     missing, unknown-version or incoherent proof becomes
     `authoritative=false` and `stimmung_delivery_status=unknown`, never `full`;
+  - the same lane projects `request` only from a coherent
+    `validation_prompt_prepared.validation_request`; it joins observed
+    model/provider from the actual `llm_call` lane and never infers current
+    Gemini settings for historical events;
   - legacy or missing provider callers are counted as `unknown`, never merged with the main lane;
 - RAG: `retrieved -> basket -> kept -> injected`, sourced from `memory_chain_snapshot` when available;
 - Identity: block presence, chars, short hash and selected-id count only;

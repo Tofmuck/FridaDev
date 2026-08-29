@@ -1764,17 +1764,16 @@ def model_comparison_recommendation(
     if set(by_id) != set(MODEL_COMPARISON_CONFIGURATION_IDS):
         recommendation = "inconclusive"
         eligible: list[str] = []
-    elif any(summary.get("status") == "inconclusive" for summary in summaries):
-        recommendation = "inconclusive"
-        eligible = sorted(
-            config_id for config_id, summary in by_id.items() if summary.get("status") == "eligible"
-        )
     else:
         eligible = sorted(
             config_id for config_id, summary in by_id.items() if summary.get("status") == "eligible"
         )
         if not eligible:
-            recommendation = "no_eligible_candidate"
+            recommendation = (
+                "inconclusive"
+                if any(summary.get("status") == "inconclusive" for summary in summaries)
+                else "no_eligible_candidate"
+            )
         else:
             contenders = list(eligible)
             for medium, high in (

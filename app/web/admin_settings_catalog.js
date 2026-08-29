@@ -426,7 +426,7 @@
     {
       key: "temperature",
       label: "Temperature",
-      hint: "Echantillonnage propre a l'agent de validation.",
+      hint: "Echantillonnage du fallback uniquement; absent du primaire Gemini.",
       inputType: "number",
       step: "0.1",
       min: "0",
@@ -436,7 +436,7 @@
     {
       key: "top_p",
       label: "Top p",
-      hint: "Coupe nucleus propre a l'agent de validation.",
+      hint: "Coupe nucleus du fallback uniquement; absente du primaire Gemini.",
       inputType: "number",
       step: "0.05",
       min: "0.01",
@@ -446,16 +446,24 @@
     {
       key: "max_tokens",
       label: "Max tokens",
-      hint: "Budget de sortie envoye au modele de validation, borne contractuelle max 80.",
+      hint: "Budget primaire Gemini medium; fallback conserve a 140.",
       inputType: "number",
       step: "1",
       min: "1",
-      max: "80",
+      max: "500",
+      autocomplete: "off",
+    },
+    {
+      key: "reasoning_effort",
+      label: "Raisonnement primaire",
+      hint: "Effort effectif du primaire Gemini; le fallback n'en recoit aucun.",
+      inputType: "text",
       autocomplete: "off",
     },
   ];
   const validationAgentModelCheckFieldMap = {
     shared_transport_runtime: "primary_model",
+    request_policy: "primary_model",
   };
   const embeddingFieldSpecs = [
     {

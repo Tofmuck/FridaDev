@@ -26,6 +26,8 @@ _GENERAL_TEXT_KEYS = set(
     canonical_projection_version canonical_projection_contract_status stimmung_delivery_status stimmung_delivery_reason_code
     apply_reason_code apply_status dominant_tone error_class error_code epistemic_regime execution_status fallback_source
     final_judgment_posture final_output_regime final_status guarded_original_status
+    validation_request_policy_version validation_transport validation_requested_model
+    validation_attempt_decision_source validation_reasoning_effort_requested validation_reasoning_effort_effective
     failure_class recovery_action processing_state window_fingerprint next_window_progress
     geste_dialogique_dominant hard_guard_effect injection_class
     fallback_reason finish_reason
@@ -86,6 +88,8 @@ _GENERAL_SCALAR_KEYS = set(
     hint_count identity_write mutable_authority max_items
     web_pdf_read_pages
     agent_json_validated ambiguous arbiter_followed_upstream available buffer_target_pairs caldav_access catalog_saved confirmation_required
+    validation_reasoning_sent validation_reasoning_excluded validation_max_tokens_effective
+    validation_temperature_sent validation_top_p_sent validation_provider_fallbacks_allowed validation_provider_require_parameters
     confidence content_free conversation_saved current_embedding_blocked current_embedding_calls
     current_embedding_reused dimensions draft_description_present draft_present draft_private embedding_calls_total fallback family_calendar
     has_in_progress_turn legacy_writer_disabled messages_saved mutable_len nextcloud_access now_iso_present
@@ -186,6 +190,7 @@ _GENERAL_CONTAINER_KEYS = {
     "validation_dialogue_context",
     "request",
     "validation",
+    "validation_request",
     "final_response",
     "draft_summary",
     "documents",
@@ -282,7 +287,7 @@ def _is_safe_general_text_value(key: str, value: Any) -> bool:
         return text == ""
     if not text:
         return True
-    if lower == "provider_title":
+    if lower in {"provider", "provider_title"}:
         return _is_safe_title_text(text)
     if lower == "filename":
         return len(text) <= 500 and not any(ord(char) < 32 for char in text)
@@ -298,7 +303,11 @@ def _is_safe_general_text_value(key: str, value: Any) -> bool:
         return _is_safe_timestamp_text(text)
     if lower.endswith("_class") or lower.endswith("_language"):
         return _is_safe_class_text(text)
-    return _is_safe_code_text(value, allow_empty=True, allow_model=lower in {"model", "provider_model"})
+    return _is_safe_code_text(
+        value,
+        allow_empty=True,
+        allow_model=lower in {"model", "provider_model", "validation_requested_model"},
+    )
 
 
 def _is_safe_general_scalar_key(key: str) -> bool:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Sequence
 
-from core.hermeneutic_node.validation import validation_contract
+from core.hermeneutic_node.validation import validation_contract, validation_transport
 from observability import agentic_status
 
 
@@ -662,6 +662,23 @@ def _secondary_provider_item(
         )
     if provider_caller == 'validation_agent' and prepared_events:
         prepared_payload = _event_payload(prepared_events[-1])
+        request_payload = prepared_payload.get('validation_request')
+        if isinstance(request_payload, Mapping) and request_payload.get('validation_request_policy_version'):
+            try:
+                validation_transport.validate_request_observability(request_payload)
+            except ValueError as exc:
+                return _checklist_item(
+                    key,
+                    'secondary_providers',
+                    'degraded',
+                    str(exc.args[0]) if exc.args else 'invalid_validation_request_observability',
+                    stage=prepared_stage,
+                    evidence={
+                        'prepared_count': len(prepared_events),
+                        'result_count': len(result_events),
+                        'llm_call_count': len(caller_events),
+                    },
+                )
         projection_claimed = any(
             key in prepared_payload
             for key in (

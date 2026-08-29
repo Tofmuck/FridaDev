@@ -148,6 +148,10 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
         )
 
         validation_bundle = runtime_settings.build_env_seed_bundle('validation_agent_model')
+        self.assertEqual(validation_bundle.payload['primary_model']['value'], 'google/gemini-3.7-flash')
+        self.assertEqual(validation_bundle.payload['fallback_model']['value'], 'openai/gpt-5.4-nano')
+        self.assertEqual(validation_bundle.payload['max_tokens']['value'], 500)
+        self.assertEqual(validation_bundle.payload['reasoning_effort']['value'], 'medium')
         self.assertEqual(
             {field_name: field_payload['origin'] for field_name, field_payload in validation_bundle.payload.items()},
             {
@@ -157,6 +161,7 @@ class RuntimeSettingsSeedBundlesAndPlansTests(unittest.TestCase):
                 'temperature': 'seed_default',
                 'top_p': 'seed_default',
                 'max_tokens': 'seed_default',
+                'reasoning_effort': 'seed_default',
             },
         )
 

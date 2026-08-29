@@ -315,9 +315,15 @@ Discipline minimale:
   `presence`
 - les autres seuils chiffres restent portes par les runtime settings et leurs specs dediees
 
-Modele cible de reference en V1:
+Configuration runtime retenue par decision humaine du 2026-08-29:
 
-- `GPT-5.4`
+- primaire `google/gemini-3.7-flash`, transport OpenRouter standard;
+- `reasoning={"effort":"medium","exclude":true}` et `max_tokens=500`;
+- `temperature` et `top_p` absents de la requete primaire;
+- fallback inchange `openai/gpt-5.4-nano`, sans raisonnement explicite, avec
+  `temperature=0.0`, `top_p=1.0` et `max_tokens=140`;
+- timeout `15s` sur les deux tentatives et fallback provider OpenRouter
+  desactive pour conserver une attribution primaire/fallback exacte.
 
 ## 10. Minimal Observability
 
@@ -366,6 +372,14 @@ Regle forte:
   `stimmung_delivery_status=full|absent` et un reason code ferme; les
   metadonnees sont validees avant emission et ne recopient ni la projection,
   ni un ton, ni un contenu de source
+- le cutover Validation du 2026-08-29 ajoute au meme evenement un bloc ferme
+  `validation_request`: version de politique, modele demande, source
+  primaire/fallback, transport standard, effort demande/effectif, presence du
+  raisonnement, `exclude`, budget effectif et presence/absence effective de
+  `temperature`/`top_p`. Ce bloc provient de la requete preparee elle-meme;
+  les appels historiques qui ne le possedent pas restent `unknown`. Le modele
+  et le provider observes proviennent de l'evenement provider lorsqu'ils sont
+  disponibles; aucune reception n'est presentee comme une preuve causale.
 
 Preuves de fermeture lot 6:
 

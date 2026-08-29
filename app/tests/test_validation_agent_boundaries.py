@@ -28,6 +28,7 @@ if importlib.util.find_spec("psycopg") is None:
     sys.modules.setdefault("psycopg.rows", psycopg_rows_module)
 
 from core.hermeneutic_node.validation import (
+    validation_agent,
     validation_contract,
     validation_messages,
     validation_transport,
@@ -84,6 +85,97 @@ class _FakeLlm:
 
 
 class ValidationAgentBoundaryTests(unittest.TestCase):
+    def test_request_policy_builds_exact_primary_and_unchanged_fallback_payloads(self) -> None:
+        llm_module = _FakeLlm()
+        messages = [
+            {"role": "system", "content": "SYSTEM SENTINEL"},
+            {"role": "user", "content": "USER SENTINEL"},
+        ]
+
+        primary = validation_transport.prepare_validation_request(
+            model="google/gemini-3.7-flash",
+            decision_source="primary",
+            messages=messages,
+            timeout_s=15,
+            temperature=0.0,
+            top_p=1.0,
+            max_tokens=500,
+            reasoning_effort="medium",
+            llm_module=llm_module,
+        )
+        fallback = validation_transport.prepare_validation_request(
+            model=validation_agent.FALLBACK_MODEL,
+            decision_source="fallback",
+            messages=messages,
+            timeout_s=15,
+            temperature=0.0,
+            top_p=1.0,
+            max_tokens=500,
+            reasoning_effort="medium",
+            llm_module=llm_module,
+        )
+
+        self.assertEqual(
+            primary.payload["reasoning"],
+            {"effort": "medium", "exclude": True},
+        )
+        self.assertEqual(primary.payload["max_tokens"], 500)
+        self.assertEqual(
+            primary.payload["provider"],
+            {"allow_fallbacks": False, "require_parameters": True},
+        )
+        for forbidden in ("temperature", "top_p", "response_format", "service_tier"):
+            self.assertNotIn(forbidden, primary.payload)
+        self.assertEqual(primary.observability["validation_reasoning_effort_effective"], "medium")
+        self.assertTrue(primary.observability["validation_reasoning_sent"])
+        self.assertTrue(primary.observability["validation_reasoning_excluded"])
+        self.assertFalse(primary.observability["validation_temperature_sent"])
+        self.assertFalse(primary.observability["validation_top_p_sent"])
+
+        self.assertNotIn("reasoning", fallback.payload)
+        self.assertEqual(fallback.payload["temperature"], 0.0)
+        self.assertEqual(fallback.payload["top_p"], 1.0)
+        self.assertEqual(fallback.payload["max_tokens"], 140)
+        self.assertEqual(
+            fallback.payload["provider"],
+            {"allow_fallbacks": False, "require_parameters": True},
+        )
+        self.assertFalse(fallback.observability["validation_reasoning_sent"])
+        self.assertTrue(fallback.observability["validation_temperature_sent"])
+        self.assertTrue(fallback.observability["validation_top_p_sent"])
+
+        for mutant in (
+            dict(primary.observability, validation_reasoning_effort_effective="high"),
+            dict(primary.observability, validation_temperature_sent=True),
+            dict(fallback.observability, validation_reasoning_sent=True),
+        ):
+            with self.assertRaises(ValueError):
+                validation_transport.validate_request_observability(mutant)
+        with self.assertRaisesRegex(ValueError, "invalid_validation_request_timeout"):
+            validation_transport.prepare_validation_request(
+                model=validation_transport.PRIMARY_MODEL,
+                decision_source="primary",
+                messages=messages,
+                timeout_s=14,
+                temperature=0.0,
+                top_p=1.0,
+                max_tokens=500,
+                reasoning_effort="medium",
+                llm_module=llm_module,
+            )
+        with self.assertRaisesRegex(ValueError, "invalid_validation_fallback_sampling_policy"):
+            validation_transport.prepare_validation_request(
+                model=validation_transport.FALLBACK_MODEL,
+                decision_source="fallback",
+                messages=messages,
+                timeout_s=15,
+                temperature=0.2,
+                top_p=1.0,
+                max_tokens=500,
+                reasoning_effort="medium",
+                llm_module=llm_module,
+            )
+
     def test_pure_contract_accepts_valid_verdict_and_rejects_non_answer_presence(self) -> None:
         valid = {
             "schema_version": "v1",
@@ -150,13 +242,19 @@ class ValidationAgentBoundaryTests(unittest.TestCase):
             {"role": "user", "content": "USER SENTINEL"},
         ]
 
-        result = validation_transport.request_provider_response(
-            model="provider/model-sentinel",
+        prepared = validation_transport.prepare_validation_request(
+            model=validation_transport.PRIMARY_MODEL,
+            decision_source="primary",
             messages=messages,
-            timeout_s=9,
+            timeout_s=15,
             temperature=0.0,
             top_p=1.0,
-            max_tokens=77,
+            max_tokens=500,
+            reasoning_effort="medium",
+            llm_module=llm_module,
+        )
+        result = validation_transport.request_provider_response(
+            prepared_request=prepared,
             requests_module=requests_module,
             llm_module=llm_module,
             logger=object(),
@@ -165,18 +263,18 @@ class ValidationAgentBoundaryTests(unittest.TestCase):
         self.assertEqual(result.text, "not-json")
         self.assertEqual(
             result.provider_metadata,
-            {"provider_model": "provider/model-sentinel", "provider_total_tokens": 3},
+            {"provider_model": validation_transport.PRIMARY_MODEL, "provider_total_tokens": 3},
         )
         self.assertEqual(len(requests_module.calls), 1)
         self.assertEqual(requests_module.calls[0]["json"]["messages"], messages)
-        self.assertEqual(requests_module.calls[0]["json"]["max_tokens"], 77)
-        self.assertEqual(requests_module.calls[0]["timeout"], 9)
+        self.assertEqual(requests_module.calls[0]["json"]["max_tokens"], 500)
+        self.assertEqual(requests_module.calls[0]["timeout"], 15)
         self.assertEqual(
             llm_module.provider_logs,
             [
                 (
                     "validation_agent_provider_response",
-                    {"provider_model": "provider/model-sentinel", "provider_total_tokens": 3},
+                    {"provider_model": validation_transport.PRIMARY_MODEL, "provider_total_tokens": 3},
                 )
             ],
         )

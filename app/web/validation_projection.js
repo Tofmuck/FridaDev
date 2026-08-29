@@ -148,5 +148,131 @@
     });
   };
 
-  window.FridaValidationProjection = Object.freeze({ fromEventPayload, fromReadModel });
+  const invalidRequest = (reasonCode = "unproved_validation_request") => ({
+    authoritative: false,
+    status: "unknown",
+    reasonCode,
+    policyVersion: "",
+    transport: "unknown",
+    decisionSource: "unknown",
+    requestedModel: "",
+    observedModel: "",
+    observedProvider: "",
+    reasoningEffortRequested: "unknown",
+    reasoningEffortEffective: "unknown",
+    reasoningSent: false,
+    reasoningExcluded: false,
+    maxTokensEffective: 0,
+    temperatureSent: false,
+    topPSent: false,
+    providerFallbacksAllowed: false,
+  });
+
+  const normalizeRequest = (request = {}) => {
+    const policyVersion = toText(request.policyVersion);
+    const transport = toText(request.transport);
+    const decisionSource = toText(request.decisionSource);
+    const requestedModel = toText(request.requestedModel);
+    const requestedEffort = toText(request.reasoningEffortRequested);
+    const effectiveEffort = toText(request.reasoningEffortEffective);
+    const maxTokens = Number(request.maxTokensEffective);
+    const active = policyVersion === "validation_request_gemini_3_7_flash_medium_v1"
+      && decisionSource === "primary"
+      && requestedModel === "google/gemini-3.7-flash"
+      && requestedEffort === "medium" && effectiveEffort === "medium"
+      && request.reasoningSent === true && request.reasoningExcluded === true
+      && maxTokens === 500 && request.temperatureSent === false && request.topPSent === false;
+    const fallback = policyVersion === "validation_request_gpt_5_4_nano_fallback_v1"
+      && decisionSource === "fallback"
+      && requestedModel === "openai/gpt-5.4-nano"
+      && requestedEffort === "none" && effectiveEffort === "none"
+      && request.reasoningSent === false && request.reasoningExcluded === false
+      && maxTokens === 140 && request.temperatureSent === true && request.topPSent === true;
+    const legacy = policyVersion === "validation_request_gemini_3_1_flash_lite_v1"
+      && decisionSource === "primary"
+      && requestedModel === "google/gemini-3.1-flash-lite"
+      && requestedEffort === "none" && effectiveEffort === "none"
+      && request.reasoningSent === false && request.reasoningExcluded === false
+      && maxTokens === 140 && request.temperatureSent === true && request.topPSent === true;
+    const authoritative = request.authoritative === true
+      && transport === "standard"
+      && request.providerFallbacksAllowed === false
+      && request.providerRequireParameters === true
+      && (active || fallback || legacy);
+    if (!authoritative) return invalidRequest(toText(request.reasonCode));
+    return {
+      authoritative: true,
+      status: toText(request.status) || "prepared",
+      reasonCode: toText(request.reasonCode) || "observed_effective_request",
+      policyVersion,
+      transport,
+      decisionSource,
+      requestedModel,
+      observedModel: toText(request.observedModel),
+      observedProvider: toText(request.observedProvider),
+      reasoningEffortRequested: requestedEffort,
+      reasoningEffortEffective: effectiveEffort,
+      reasoningSent: request.reasoningSent,
+      reasoningExcluded: request.reasoningExcluded,
+      maxTokensEffective: maxTokens,
+      temperatureSent: request.temperatureSent,
+      topPSent: request.topPSent,
+      providerFallbacksAllowed: request.providerFallbacksAllowed,
+    };
+  };
+
+  const requestFromEventPayload = (stage, payload = {}) => {
+    const request = payload.validation_request || payload;
+    return normalizeRequest({
+      authoritative: stage === "validation_prompt_prepared",
+      status: payload.validation_status,
+      reasonCode: "observed_effective_request",
+      policyVersion: request.validation_request_policy_version,
+      transport: request.validation_transport,
+      decisionSource: request.validation_attempt_decision_source || payload.attempt_decision_source,
+      requestedModel: request.validation_requested_model,
+      observedModel: payload.observed_model,
+      observedProvider: payload.observed_provider,
+      reasoningEffortRequested: request.validation_reasoning_effort_requested,
+      reasoningEffortEffective: request.validation_reasoning_effort_effective,
+      reasoningSent: request.validation_reasoning_sent,
+      reasoningExcluded: request.validation_reasoning_excluded,
+      maxTokensEffective: request.validation_max_tokens_effective,
+      temperatureSent: request.validation_temperature_sent,
+      topPSent: request.validation_top_p_sent,
+      providerFallbacksAllowed: request.validation_provider_fallbacks_allowed,
+      providerRequireParameters: request.validation_provider_require_parameters,
+    });
+  };
+
+  const requestFromReadModel = (provider = {}) => {
+    const request = provider.request || {};
+    return normalizeRequest({
+      authoritative: request.authoritative,
+      status: request.status,
+      reasonCode: request.reason_code,
+      policyVersion: request.policy_version,
+      transport: request.transport,
+      decisionSource: request.decision_source,
+      requestedModel: request.requested_model,
+      observedModel: request.observed_model,
+      observedProvider: request.observed_provider,
+      reasoningEffortRequested: request.reasoning_effort_requested,
+      reasoningEffortEffective: request.reasoning_effort_effective,
+      reasoningSent: request.reasoning_sent,
+      reasoningExcluded: request.reasoning_excluded,
+      maxTokensEffective: request.max_tokens_effective,
+      temperatureSent: request.temperature_sent,
+      topPSent: request.top_p_sent,
+      providerFallbacksAllowed: request.provider_fallbacks_allowed,
+      providerRequireParameters: request.provider_require_parameters,
+    });
+  };
+
+  window.FridaValidationProjection = Object.freeze({
+    fromEventPayload,
+    fromReadModel,
+    requestFromEventPayload,
+    requestFromReadModel,
+  });
 })();

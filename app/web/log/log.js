@@ -796,6 +796,7 @@
         appendTurnText(providersMeta, key, toText(provider.status) || "n/a", provider.status);
       }
       const validationDelivery = validationProjection.fromReadModel(secondary.validation || {});
+      const validationRequest = validationProjection.requestFromReadModel(secondary.validation || {});
       appendTurnText(
         providersMeta,
         "validation_source",
@@ -814,6 +815,19 @@
         validationDelivery.reasonCode,
         validationDelivery.status,
       );
+      appendTurnText(providersMeta, "validation_request", validationRequest.status, validationRequest.status);
+      if (validationRequest.authoritative) {
+        appendTurnText(providersMeta, "validation_model", validationRequest.requestedModel);
+        appendTurnText(providersMeta, "validation_observed_model", validationRequest.observedModel || "unknown");
+        appendTurnText(providersMeta, "validation_provider", validationRequest.observedProvider || "unknown");
+        appendTurnText(providersMeta, "validation_reasoning", validationRequest.reasoningEffortEffective);
+        appendTurnText(providersMeta, "validation_max_tokens", validationRequest.maxTokensEffective);
+        appendTurnText(
+          providersMeta,
+          "validation_sampling",
+          `temperature=${validationRequest.temperatureSent ? "sent" : "absent"},top_p=${validationRequest.topPSent ? "sent" : "absent"}`,
+        );
+      }
       if (validationDelivery.authoritative) {
         appendTurnText(
           providersMeta,

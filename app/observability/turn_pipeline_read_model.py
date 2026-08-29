@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Sequence
 
-from core.hermeneutic_node.validation import validation_contract
+from core.hermeneutic_node.validation import validation_contract, validation_transport
 from observability import agentic_status
 from observability.turn_observability_checklist import build_turn_observability_checklist
 from observability.turn_pipeline_biblio_summary import build_biblio_summary
@@ -188,9 +188,64 @@ def _llm_call_summary(event: Mapping[str, Any] | None, *, provider_caller: str) 
         'response_chars': _to_int(payload.get('response_chars')),
         'model': _text(payload.get('model')),
         'provider_title': _text(payload.get('provider_title')),
+        'provider': _text(payload.get('provider')),
         'provider_model': _text(payload.get('provider_model')),
         'reason_code': _reason_code(payload),
         'latest_ts': _event_ts(event or {}),
+    }
+
+
+def _validation_request_summary(
+    prepared_event: Mapping[str, Any] | None,
+    caller_summary: Mapping[str, Any],
+) -> dict[str, Any]:
+    payload = _payload(prepared_event or {})
+    request_payload = _mapping(payload.get('validation_request'))
+    if not request_payload.get('validation_request_policy_version'):
+        return {
+            'authoritative': False,
+            'status': 'unknown',
+            'reason_code': 'historical_request_policy_unobserved',
+            'requested_model': '',
+            'observed_model': _text(caller_summary.get('provider_model')),
+            'observed_provider': _text(caller_summary.get('provider')),
+        }
+    candidate = dict(request_payload)
+    candidate.setdefault('validation_requested_model', _text((prepared_event or {}).get('model')))
+    candidate.setdefault(
+        'validation_attempt_decision_source',
+        _text(payload.get('attempt_decision_source')),
+    )
+    try:
+        validated = validation_transport.validate_request_observability(candidate)
+    except ValueError as exc:
+        return {
+            'authoritative': False,
+            'status': 'unknown',
+            'reason_code': str(exc.args[0]) if exc.args else 'invalid_validation_request_observability',
+            'requested_model': _text(candidate.get('validation_requested_model')),
+            'observed_model': _text(caller_summary.get('provider_model')),
+            'observed_provider': _text(caller_summary.get('provider')),
+        }
+    return {
+        'authoritative': True,
+        'status': 'prepared',
+        'reason_code': 'observed_effective_request',
+        'policy_version': validated['validation_request_policy_version'],
+        'transport': validated['validation_transport'],
+        'decision_source': validated['validation_attempt_decision_source'],
+        'requested_model': validated['validation_requested_model'],
+        'observed_model': _text(caller_summary.get('provider_model')),
+        'observed_provider': _text(caller_summary.get('provider')),
+        'reasoning_effort_requested': validated['validation_reasoning_effort_requested'],
+        'reasoning_effort_effective': validated['validation_reasoning_effort_effective'],
+        'reasoning_sent': validated['validation_reasoning_sent'],
+        'reasoning_excluded': validated['validation_reasoning_excluded'],
+        'max_tokens_effective': validated['validation_max_tokens_effective'],
+        'temperature_sent': validated['validation_temperature_sent'],
+        'top_p_sent': validated['validation_top_p_sent'],
+        'provider_fallbacks_allowed': validated['validation_provider_fallbacks_allowed'],
+        'provider_require_parameters': validated['validation_provider_require_parameters'],
     }
 
 
@@ -319,6 +374,10 @@ def _providers_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
                 prepared_payload.get('attempt_decision_source')
             )
             summary['validation_status'] = _text(prepared_payload.get('validation_status'))
+            summary['request'] = _validation_request_summary(
+                prepared_events[-1] if prepared_events else None,
+                summary,
+            )
         secondary[key] = summary
 
     return {

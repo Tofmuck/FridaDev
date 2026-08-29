@@ -691,7 +691,8 @@ class ServerLogsPhase3Tests(unittest.TestCase):
             def json(self) -> dict[str, object]:
                 return {
                     'id': 'gen-validation',
-                    'model': 'openai/gpt-5.4-mini',
+                    'model': 'google/gemini-3.7-flash',
+                    'provider': 'Google AI Studio',
                     'usage': {
                         'prompt_tokens': 10,
                         'completion_tokens': 2,
@@ -718,7 +719,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
             )
             proxy.post(
                 'https://openrouter.example/chat/completions',
-                json={'model': 'openai/gpt-5.4-mini'},
+                json={'model': 'google/gemini-3.7-flash'},
                 headers={'X-Title': 'FridaDev / Validation Agent'},
                 timeout=30,
                 stream=False,
@@ -733,6 +734,8 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertEqual(payload.get('provider_caller'), 'validation_agent')
         self.assertEqual(payload.get('provider_title'), 'FridaDev / Validation Agent')
         self.assertEqual(payload.get('provider_generation_id'), 'gen-validation')
+        self.assertEqual(payload.get('provider_model'), 'google/gemini-3.7-flash')
+        self.assertEqual(payload.get('provider'), 'Google AI Studio')
         self.assertEqual(payload.get('provider_total_tokens'), 12)
 
     def test_requests_proxy_non_stream_web_reformulation_uses_dedicated_provider_identity(self) -> None:

@@ -411,12 +411,13 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
             result = runtime_settings.validate_runtime_section(
                 'validation_agent_model',
                 {
-                    'primary_model': {'value': 'google/gemini-3.1-flash-lite'},
+                    'primary_model': {'value': 'google/gemini-3.7-flash'},
                     'fallback_model': {'value': 'openai/gpt-5.4-nano'},
-                    'timeout_s': {'value': 9},
+                    'timeout_s': {'value': 15},
                     'temperature': {'value': 0.0},
                     'top_p': {'value': 1.0},
-                    'max_tokens': {'value': 140},
+                    'max_tokens': {'value': 500},
+                    'reasoning_effort': {'value': 'medium'},
                 },
                 fetcher=lambda: {},
             )
@@ -431,6 +432,7 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
         self.assertTrue(checks['temperature']['ok'])
         self.assertTrue(checks['top_p']['ok'])
         self.assertTrue(checks['max_tokens']['ok'])
+        self.assertTrue(checks['reasoning_effort']['ok'])
         self.assertTrue(checks['shared_transport_runtime']['ok'])
         self.assertIn('main_model.api_key', checks['shared_transport_runtime']['detail'])
 
@@ -551,24 +553,26 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
             over_cap_result = runtime_settings.validate_runtime_section(
                 'validation_agent_model',
                 {
-                    'primary_model': {'value': 'google/gemini-3.1-flash-lite'},
+                    'primary_model': {'value': 'google/gemini-3.7-flash'},
                     'fallback_model': {'value': 'openai/gpt-5.4-nano'},
-                    'timeout_s': {'value': 9},
+                    'timeout_s': {'value': 15},
                     'temperature': {'value': 0.0},
                     'top_p': {'value': 1.0},
-                    'max_tokens': {'value': 141},
+                    'max_tokens': {'value': 501},
+                    'reasoning_effort': {'value': 'medium'},
                 },
                 fetcher=lambda: {},
             )
             probe_result = runtime_settings.validate_runtime_section(
                 'validation_agent_model',
                 {
-                    'primary_model': {'value': 'google/gemini-3.1-flash-lite'},
+                    'primary_model': {'value': 'google/gemini-3.7-flash'},
                     'fallback_model': {'value': 'openai/gpt-5.4-nano'},
-                    'timeout_s': {'value': 9},
+                    'timeout_s': {'value': 15},
                     'temperature': {'value': 0.0},
                     'top_p': {'value': 1.0},
                     'max_tokens': {'value': 2000},
+                    'reasoning_effort': {'value': 'medium'},
                 },
                 fetcher=lambda: {},
             )
@@ -578,13 +582,43 @@ class RuntimeSettingsValidationTests(unittest.TestCase):
         self.assertFalse(over_cap_result['valid'])
         over_cap_checks = {check['name']: check for check in over_cap_result['checks']}
         self.assertFalse(over_cap_checks['max_tokens']['ok'])
-        self.assertIn('max_allowed=140', over_cap_checks['max_tokens']['detail'])
+        self.assertIn('max_allowed=500', over_cap_checks['max_tokens']['detail'])
 
         self.assertFalse(probe_result['valid'])
         probe_checks = {check['name']: check for check in probe_result['checks']}
         self.assertFalse(probe_checks['max_tokens']['ok'])
         self.assertIn('max_tokens=2000', probe_checks['max_tokens']['detail'])
-        self.assertIn('max_allowed=140', probe_checks['max_tokens']['detail'])
+        self.assertIn('max_allowed=500', probe_checks['max_tokens']['detail'])
+
+    def test_validate_runtime_section_rejects_incoherent_validation_cutover_policy(self) -> None:
+        original_api_key = config.OR_KEY
+        config.OR_KEY = 'sk-phase5-validation-agent'
+        try:
+            base = {
+                'primary_model': {'value': 'google/gemini-3.7-flash'},
+                'fallback_model': {'value': 'openai/gpt-5.4-nano'},
+                'timeout_s': {'value': 15},
+                'temperature': {'value': 0.0},
+                'top_p': {'value': 1.0},
+                'max_tokens': {'value': 500},
+                'reasoning_effort': {'value': 'medium'},
+            }
+            mutants = (
+                dict(base, primary_model={'value': 'google/gemini-3.1-flash-lite'}),
+                dict(base, fallback_model={'value': 'openai/changed'}),
+                dict(base, reasoning_effort={'value': 'high'}),
+                dict(base, timeout_s={'value': 16}),
+            )
+            results = [
+                runtime_settings.validate_runtime_section(
+                    'validation_agent_model', mutant, fetcher=lambda: {}
+                )
+                for mutant in mutants
+            ]
+        finally:
+            config.OR_KEY = original_api_key
+
+        self.assertTrue(all(not result['valid'] for result in results))
 
     def test_validate_runtime_section_accepts_candidate_embedding_secret_patch_from_db_encrypted(self) -> None:
         original_encrypt = runtime_settings.runtime_secrets.encrypt_runtime_secret_value

@@ -298,10 +298,10 @@ class ServerAdminSettingsPatchContractTests(unittest.TestCase):
     def test_patch_admin_settings_validation_agent_model_rejects_max_tokens_above_cap_before_update(self) -> None:
         data = self._assert_patch_rejected_before_update(
             '/api/admin/settings/validation-agent-model',
-            {'max_tokens': {'value': 141}},
+            {'max_tokens': {'value': 501}},
             'max_tokens',
         )
-        self.assertIn('max_allowed=140', data['error'])
+        self.assertIn('max_allowed=500', data['error'])
 
     def test_patch_admin_settings_stimmung_agent_model_rejects_top_p_out_of_range_before_update(self) -> None:
         data = self._assert_patch_rejected_before_update(

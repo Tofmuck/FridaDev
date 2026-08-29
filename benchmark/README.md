@@ -538,12 +538,14 @@ Retained evidence:
 
 - `benchmark/results/validation_agent/2026-08-29-lot4c1-validation-primary-models.jsonl`
   (`88` calls plus five summaries; SHA-256
-  `e20209c45f9e6b4c17ea6bc808acd7dfe406c543543674fd298b5dbe9a93a635`).
+  `b0f6f05d00b12bc0ae72404f493d72df72a5c600dc724381d7563c0759c136b1`).
 
-The frozen campaign is `inconclusive`: Gemini 3.7 Flash `medium` is eligible
-at `22/22`, both Luna Pro efforts are non-eligible at `18/22`, and Gemini 3.7
-Flash `high` produced eleven invalid JSON results at the fixed output cap. No
-runtime cutover is authorized by this result.
+The frozen campaign recommends `gemini_3_7_flash_medium`, eligible at `22/22`.
+The independent Gemini 3.7 Flash `high` configuration remains inconclusive
+after eleven invalid JSON results at the fixed output cap, while both Luna Pro
+efforts remain non-eligible at `18/22`; neither state cancels the sole eligible
+configuration. The artifact keeps `runtime_cutover_authorized=false`: only a
+separate human decision can authorize a runtime change.
 
 On 2026-08-21, Tof explicitly accepted the current fallback degradation. The
 fallback remains a conservative continuity path, not a semantically equivalent

@@ -18,7 +18,7 @@ MAX_VALIDATION_CONTEXT_JSON_CHARS = 4200
 MAX_PRIMARY_VERDICT_JSON_CHARS = 1000
 MAX_JUSTIFICATIONS_JSON_CHARS = 700
 MAX_CANONICAL_INPUTS_JSON_CHARS = validation_contract.MAX_CANONICAL_INPUTS_JSON_CHARS
-MAX_RESPONSE_TOKENS = 140
+MAX_RESPONSE_TOKENS = 500
 CANONICAL_PROJECTION_VERSION = validation_contract.CANONICAL_PROJECTION_VERSION
 CANONICAL_FAMILY_ORDER = validation_contract.CANONICAL_FAMILY_ORDER
 project_validation_canonical_inputs = (
@@ -216,9 +216,7 @@ def _emit_validation_prompt_prepared(
     canonical_inputs: Mapping[str, Any],
     canonical_projection: Mapping[str, Any],
     hard_guard_payload: Mapping[str, Any],
-    temperature: float,
-    top_p: float,
-    max_tokens: int,
+    request_observability: Mapping[str, Any],
 ) -> None:
     projection = validation_contract.validate_canonical_projection_metadata(
         canonical_projection
@@ -236,11 +234,6 @@ def _emit_validation_prompt_prepared(
         "secondary_provider_payload": True,
         "validation_status": "prepared",
         "attempt_decision_source": str(decision_source or "unknown"),
-        "sampling": {
-            "temperature": float(temperature),
-            "top_p": float(top_p),
-            "max_tokens": _bounded_response_max_tokens(max_tokens),
-        },
         "provider_messages": _provider_message_summary(messages),
         "validation_dialogue_context": _summarize_validation_dialogue_context(
             validation_dialogue_context
@@ -306,6 +299,7 @@ def _emit_validation_prompt_prepared(
             "effect_present": bool(_text(hard_guard_payload.get("hard_guard_effect"))),
         },
     }
+    payload["validation_request"] = dict(request_observability)
     chat_turn_logger.emit(
         "validation_prompt_prepared",
         status="ok",

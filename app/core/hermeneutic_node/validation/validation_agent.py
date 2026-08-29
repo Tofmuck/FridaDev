@@ -17,10 +17,10 @@ from . import validation_transport
 logger = logging.getLogger('frida.validation_agent')
 
 SCHEMA_VERSION = validation_contract.SCHEMA_VERSION
-PRIMARY_MODEL = "google/gemini-3.1-flash-lite"
+PRIMARY_MODEL = validation_transport.PRIMARY_MODEL
 FALLBACK_MODEL = validation_contract.FALLBACK_MODEL
 PROMPT_PATH = "prompts/validation_agent.txt"
-REQUEST_TIMEOUT_S = 15
+REQUEST_TIMEOUT_S = validation_transport.REQUEST_TIMEOUT_S
 MAX_RESPONSE_TOKENS = validation_messages.MAX_RESPONSE_TOKENS
 MAX_VALIDATION_CONTEXT_MESSAGES = validation_messages.MAX_VALIDATION_CONTEXT_MESSAGES
 MAX_VALIDATION_CONTEXT_MESSAGE_CHARS = validation_messages.MAX_VALIDATION_CONTEXT_MESSAGE_CHARS
@@ -76,6 +76,7 @@ def _runtime_model_settings() -> dict[str, Any]:
         "temperature": float(view.payload["temperature"]["value"]),
         "top_p": float(view.payload["top_p"]["value"]),
         "max_tokens": _bounded_response_max_tokens(view.payload["max_tokens"]["value"]),
+        "reasoning_effort": str(view.payload["reasoning_effort"]["value"]),
     }
 
 
@@ -107,6 +108,7 @@ def _call_model(
     temperature: float,
     top_p: float,
     max_tokens: int,
+    reasoning_effort: str,
     hard_guard_payload: Mapping[str, Any],
     allowed_postures: Sequence[str],
     requests_module: Any,
@@ -119,6 +121,17 @@ def _call_model(
         canonical_inputs=canonical_inputs,
         hard_guard_payload=hard_guard_payload,
     )
+    prepared_request = validation_transport.prepare_validation_request(
+        model=model,
+        decision_source=decision_source,
+        messages=messages,
+        timeout_s=timeout_s,
+        temperature=temperature,
+        top_p=top_p,
+        max_tokens=max_tokens,
+        reasoning_effort=reasoning_effort,
+        llm_module=llm_client,
+    )
     _emit_validation_prompt_prepared(
         model=model,
         decision_source=decision_source,
@@ -127,17 +140,10 @@ def _call_model(
         canonical_inputs=canonical_inputs,
         canonical_projection=canonical_projection,
         hard_guard_payload=hard_guard_payload,
-        temperature=temperature,
-        top_p=top_p,
-        max_tokens=max_tokens,
+        request_observability=prepared_request.observability,
     )
     provider_response = validation_transport.request_provider_response(
-        model=model,
-        messages=messages,
-        timeout_s=timeout_s,
-        temperature=temperature,
-        top_p=top_p,
-        max_tokens=_bounded_response_max_tokens(max_tokens),
+        prepared_request=prepared_request,
         requests_module=requests_module,
         llm_module=llm_client,
         logger=logger,
@@ -180,6 +186,7 @@ def _run_model_fallback(
                 temperature=runtime_model_settings["temperature"],
                 top_p=runtime_model_settings["top_p"],
                 max_tokens=runtime_model_settings["max_tokens"],
+                reasoning_effort=runtime_model_settings["reasoning_effort"],
                 hard_guard_payload=hard_guard_decision.prompt_payload(),
                 allowed_postures=hard_guard_decision.allowed_postures,
                 requests_module=requests_module,

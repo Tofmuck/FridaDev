@@ -78,6 +78,11 @@
     "status",
     "technical_name",
     "validation_error",
+    "validation_request_policy_version",
+    "validation_transport",
+    "validation_requested_model",
+    "validation_attempt_decision_source",
+    "validation_reasoning_effort_requested", "validation_reasoning_effort_effective",
   ]);
 
   const toText = (value) => String(value == null ? "" : value).trim();
@@ -388,6 +393,7 @@
 
     if (stage === "validation_prompt_prepared") {
       const delivery = validationProjection.fromEventPayload(stage, safePayload);
+      const request = validationProjection.requestFromEventPayload(stage, safePayload);
       const deliverySummary = document.createElement("p");
       deliverySummary.className = "admin-status";
       deliverySummary.dataset.state = delivery.status === "full" ? "ok" : "degraded";
@@ -404,6 +410,12 @@
         + ` · budget_insuffisant=${delivery.budgetExceededFamilies.join(",") || "aucune"}`
         + ` · source=${toText(safePayload.attempt_decision_source) || "unknown"}`
         + ` · validation=${toText(safePayload.validation_status) || "unknown"}`
+        + ` · requete=${request.status}`
+        + (request.authoritative
+          ? ` · modele=${request.requestedModel} · raisonnement=${request.reasoningEffortEffective}`
+            + ` · max_tokens=${request.maxTokensEffective}`
+            + ` · sampling=${request.temperatureSent || request.topPSent ? "sent" : "absent"}`
+          : "")
       );
       target.appendChild(deliverySummary);
     }

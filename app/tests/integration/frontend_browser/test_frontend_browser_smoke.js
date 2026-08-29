@@ -692,12 +692,13 @@ function sectionPayload(route) {
     return {
       ...common,
       payload: {
-        primary_model: settingField('openai/validation'),
-        fallback_model: settingField('openai/validation-fallback'),
-        timeout_s: settingField(20),
-        temperature: settingField(0.2),
-        top_p: settingField(0.9),
-        max_tokens: settingField(300),
+        primary_model: settingField('google/gemini-3.7-flash'),
+        fallback_model: settingField('openai/gpt-5.4-nano'),
+        timeout_s: settingField(15),
+        temperature: settingField(0),
+        top_p: settingField(1),
+        max_tokens: settingField(500),
+        reasoning_effort: settingField('medium'),
       },
     };
   }
@@ -989,6 +990,26 @@ function logsMockScript({ metricsMode = 'nominal' } = {}) {
                     status: "ok",
                     attempt_decision_source: "primary",
                     validation_status: "prepared",
+                    request: {
+                      authoritative: true,
+                      status: "prepared",
+                      reason_code: "observed_effective_request",
+                      policy_version: "validation_request_gemini_3_7_flash_medium_v1",
+                      transport: "standard",
+                      decision_source: "primary",
+                      requested_model: "google/gemini-3.7-flash",
+                      observed_model: "google/gemini-3.7-flash",
+                      observed_provider: "Google AI Studio",
+                      reasoning_effort_requested: "medium",
+                      reasoning_effort_effective: "medium",
+                      reasoning_sent: true,
+                      reasoning_excluded: true,
+                      max_tokens_effective: 500,
+                      temperature_sent: false,
+                      top_p_sent: false,
+                      provider_fallbacks_allowed: false,
+                      provider_require_parameters: true,
+                    },
                     canonical_projection: {
                       source_kind: "validation_prompt_prepared",
                       authoritative: true,
@@ -1154,6 +1175,10 @@ test('logs page applies filters from query string and exports scoped markdown in
     const turnRows = page.locator('#logTurns tbody tr');
     await assertTextContains(turnRows.nth(0), 'stimmung→validation=full');
     await assertTextContains(turnRows.nth(0), 'validation_source=primary');
+    await assertTextContains(turnRows.nth(0), 'validation_request=prepared');
+    await assertTextContains(turnRows.nth(0), 'validation_model=google/gemini-3.7-flash');
+    await assertTextContains(turnRows.nth(0), 'validation_reasoning=medium');
+    await assertTextContains(turnRows.nth(0), 'validation_sampling=temperature=absent,top_p=absent');
     await assertTextContains(turnRows.nth(0), 'projection=1220/3840');
     await assertTextContains(turnRows.nth(0), 'projection_contract=current_v2');
     await assertTextContains(turnRows.nth(0), 'redondantes=time_input,recent_context_input,recent_window_input');
@@ -2100,6 +2125,21 @@ function hermeneuticAdminMockScript({
                 provider_caller: "validation_agent",
                 attempt_decision_source: "primary",
                 validation_status: "prepared",
+                validation_request: {
+                  validation_request_policy_version: "validation_request_gemini_3_7_flash_medium_v1",
+                  validation_transport: "standard",
+                  validation_requested_model: "google/gemini-3.7-flash",
+                  validation_attempt_decision_source: "primary",
+                  validation_reasoning_effort_requested: "medium",
+                  validation_reasoning_effort_effective: "medium",
+                  validation_reasoning_sent: true,
+                  validation_reasoning_excluded: true,
+                  validation_max_tokens_effective: 500,
+                  validation_temperature_sent: false,
+                  validation_top_p_sent: false,
+                  validation_provider_fallbacks_allowed: false,
+                  validation_provider_require_parameters: true,
+                },
                 canonical_projection_contract_status: "current_v2",
                 canonical_projection_version: "validation_canonical_inputs_v2",
                 stimmung_delivery_status: "full",
@@ -2266,6 +2306,10 @@ test('hermeneutic admin keeps turn selection targeted and stage payloads content
       true,
       'the authoritative prepared projection must render its delivery truth',
     );
+    assert.equal(firstTurnText.includes('requete=prepared'), true);
+    assert.equal(firstTurnText.includes('modele=google/gemini-3.7-flash'), true);
+    assert.equal(firstTurnText.includes('raisonnement=medium'), true);
+    assert.equal(firstTurnText.includes('sampling=absent'), true);
 
     const initialCounts = await page.evaluate(() => {
       const calls = window.__fridaBrowserState.calls;

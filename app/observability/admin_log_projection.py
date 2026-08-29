@@ -87,6 +87,12 @@ _SAFE_TEXT_KEYS = {
     'status',
     'status_schema_version',
     'validation_decision',
+    'validation_request_policy_version',
+    'validation_transport',
+    'validation_requested_model',
+    'validation_attempt_decision_source',
+    'validation_reasoning_effort_requested',
+    'validation_reasoning_effort_effective',
     'verdict',
     'write_mode',
 }
@@ -133,6 +139,7 @@ _SAFE_CONTAINER_KEYS = {
     'node_state_read',
     'node_state_write',
     'providers',
+    'validation_request',
     'rag',
     'redaction',
     'source',
@@ -193,6 +200,7 @@ _BLOCKED_KEY_PARTS = (
     'token',
     'webdav',
 )
+_SAFE_TOKEN_METRIC_KEYS = {'validation_max_tokens_effective'}
 
 _DANGEROUS_VALUE_PARTS = (
     'api-key',
@@ -237,6 +245,8 @@ def _is_qualified_raw_flag(key: str) -> bool:
 
 def _is_blocked_key(key: str) -> bool:
     lower = key.lower()
+    if lower in _SAFE_TOKEN_METRIC_KEYS:
+        return False
     if _is_qualified_raw_flag(lower):
         return False
     if lower in _BLOCKED_EXACT_KEYS:
@@ -289,8 +299,11 @@ def _is_safe_model_value(value: str) -> bool:
 
 def _is_safe_text_value(key: str, value: Any) -> bool:
     text = str(value or '').strip()
-    if str(key or '').strip().lower() == 'model':
+    lower = str(key or '').strip().lower()
+    if lower in {'model', 'validation_requested_model'}:
         return _is_safe_model_value(text)
+    if lower in {'provider', 'provider_title'}:
+        return bool(text) and len(text) <= 120 and not _looks_dangerous_text(text)
     if _looks_dangerous_text(text):
         return False
     return bool(_SAFE_CODE_RE.fullmatch(text))

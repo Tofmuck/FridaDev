@@ -631,9 +631,10 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
             return runtime_settings.RuntimeSectionView(
                 section=section,
                 payload={
-                    'primary_model': {'value': 'google/gemini-3.1-flash-lite', 'is_secret': False, 'origin': 'db'},
+                    'primary_model': {'value': 'google/gemini-3.7-flash', 'is_secret': False, 'origin': 'db'},
                     'fallback_model': {'value': 'openai/gpt-5.4-nano', 'is_secret': False, 'origin': 'db'},
-                    'max_tokens': {'value': 140, 'is_secret': False, 'origin': 'db'},
+                    'max_tokens': {'value': 500, 'is_secret': False, 'origin': 'db'},
+                    'reasoning_effort': {'value': 'medium', 'is_secret': False, 'origin': 'db'},
                 },
                 source='db',
                 source_reason='db_row',
@@ -649,13 +650,19 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         data = response.get_json()
         self.assertTrue(data['ok'])
         self.assertEqual(data['section'], 'validation_agent_model')
-        self.assertEqual(data['payload']['primary_model']['value'], 'google/gemini-3.1-flash-lite')
-        self.assertEqual(data['payload']['max_tokens']['value'], 140)
+        self.assertEqual(data['payload']['primary_model']['value'], 'google/gemini-3.7-flash')
+        self.assertEqual(data['payload']['max_tokens']['value'], 500)
+        self.assertEqual(data['payload']['reasoning_effort']['value'], 'medium')
         self.assertEqual(data['readonly_info']['prompt_path']['value'], 'prompts/validation_agent.txt')
         self.assertEqual(
             data['readonly_info']['benchmark_decision']['value'],
-            'benchmark/results/validation_agent/2026-05-19-validation-agent-decision.md',
+            'benchmark/results/validation_agent/2026-08-29-lot4c1-validation-primary-models.jsonl',
         )
+        self.assertEqual(
+            data['readonly_info']['request_policy']['value'],
+            'validation_request_gemini_3_7_flash_medium_v1',
+        )
+        self.assertEqual(data['readonly_info']['fallback_max_tokens']['value'], 140)
         self.assertIn('final_judgment_posture', data['readonly_info']['validated_output_contract']['value'])
         self.assertIn('final_output_regime', data['readonly_info']['validated_output_contract']['value'])
         self.assertIn('arbiter_reason', data['readonly_info']['validated_output_contract']['value'])
@@ -702,6 +709,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
                 'temperature': 'seed_default',
                 'top_p': 'seed_default',
                 'max_tokens': 'seed_default',
+                'reasoning_effort': 'seed_default',
             },
         )
 

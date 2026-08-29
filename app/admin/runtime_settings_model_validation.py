@@ -207,13 +207,14 @@ def _validate_dual_model_agent(
     temperature = support.runtime_float_value(view, 'temperature')
     top_p = support.runtime_float_value(view, 'top_p')
     max_tokens = support.runtime_int_value(view, 'max_tokens')
+    reasoning_effort = support.runtime_text_value(view, 'reasoning_effort')
     max_tokens_cap = _validation_agent_max_tokens_cap() if section == 'validation_agent_model' else None
     max_tokens_ok = max_tokens is not None and max_tokens > 0
     max_tokens_detail = f'max_tokens={max_tokens!r}'
     if max_tokens_cap is not None:
         max_tokens_ok = max_tokens_ok and max_tokens <= max_tokens_cap
         max_tokens_detail = f'max_tokens={max_tokens!r}; max_allowed={max_tokens_cap}'
-    return [
+    checks = [
         support.validation_check(
             'primary_model',
             bool(primary_model),
@@ -242,6 +243,42 @@ def _validate_dual_model_agent(
         support.validation_check('max_tokens', max_tokens_ok, max_tokens_detail),
         shared_transport_check,
     ]
+    if section == 'validation_agent_model':
+        from core.hermeneutic_node.validation import validation_transport
+
+        active_policy = (
+            primary_model == validation_transport.PRIMARY_MODEL
+            and fallback_model == validation_transport.FALLBACK_MODEL
+            and timeout_s == validation_transport.REQUEST_TIMEOUT_S
+            and temperature == 0.0
+            and top_p == 1.0
+            and max_tokens == validation_transport.PRIMARY_MAX_TOKENS
+            and reasoning_effort == validation_transport.PRIMARY_REASONING_EFFORT
+        )
+        rollback_policy = (
+            primary_model == validation_transport.LEGACY_PRIMARY_MODEL
+            and fallback_model == validation_transport.FALLBACK_MODEL
+            and timeout_s == validation_transport.REQUEST_TIMEOUT_S
+            and temperature == 0.0
+            and top_p == 1.0
+            and max_tokens == validation_transport.LEGACY_MAX_TOKENS
+            and reasoning_effort == validation_transport.PRIMARY_REASONING_EFFORT
+        )
+        checks.extend(
+            (
+                support.validation_check(
+                    'reasoning_effort',
+                    reasoning_effort == validation_transport.PRIMARY_REASONING_EFFORT,
+                    f'reasoning_effort={reasoning_effort or "missing"}; required=medium',
+                ),
+                support.validation_check(
+                    'request_policy',
+                    active_policy or rollback_policy,
+                    'validation request policy must match active cutover or bounded rollback',
+                ),
+            )
+        )
+    return checks
 
 
 def _validate_biblio_agent(

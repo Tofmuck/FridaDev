@@ -727,6 +727,7 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
             {
                 'id': 'gen-123',
                 'model': 'openai/gpt-5.4-mini',
+                'provider': 'OpenAI',
                 'usage': {
                     'prompt_tokens': 111,
                     'completion_tokens': 22,
@@ -741,6 +742,7 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
             {
                 'provider_generation_id': 'gen-123',
                 'provider_model': 'openai/gpt-5.4-mini',
+                'provider': 'OpenAI',
                 'provider_prompt_tokens': 111,
                 'provider_completion_tokens': 22,
                 'provider_total_tokens': 133,
