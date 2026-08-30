@@ -94,9 +94,16 @@ class Lot4C2StimmungGeminiModelComparisonTests(unittest.TestCase):
         self.assertEqual(self.protocol["max_tokens"], 400)
         self.assertEqual(self.protocol["timeout_s"], 10)
         self.assertLessEqual(self.protocol["estimated_max_cost_usd"], 0.30)
-        self.assertEqual(self.protocol["prompt_sha256"], dialogic_campaign._sha256_file(
-            REPO_ROOT / "app/prompts/stimmung_agent.txt"
-        ))
+        self.assertEqual(
+            self.protocol["prompt_sha256"],
+            dialogic_campaign.RUNTIME_PROMPT_BASELINE_SHA256,
+        )
+        self.assertNotEqual(
+            self.protocol["prompt_sha256"],
+            dialogic_campaign._sha256_file(
+                REPO_ROOT / "app/prompts/stimmung_agent.txt"
+            ),
+        )
         self.assertNotEqual(
             self.protocol["prompt_sha256"],
             self.protocol["excluded_strengthening_candidate_sha256"],
@@ -215,14 +222,18 @@ class Lot4C2StimmungGeminiModelComparisonTests(unittest.TestCase):
                 self.protocol,
             )
 
-    def test_historical_control_and_runtime_sources_remain_unchanged(self) -> None:
+    def test_historical_control_stays_frozen_after_runtime_prompt_cutover(self) -> None:
         self.assertEqual(
             dialogic_campaign._sha256_file(dialogic_campaign._historical_artifact_path(REPO_ROOT)),
             "97b5d53548c15b045593bc1f9c897f50f88d1553f05e9a75d0fdf4ceaa23467e",
         )
         self.assertEqual(
             dialogic_campaign._sha256_file(REPO_ROOT / "app/prompts/stimmung_agent.txt"),
-            "6374bf40468ec2c8879eaaba8c81472d117bb241f7490d033d78be14bf837663",
+            "567f0615f14fe9f13a50e6e57ef46dc6fdba2cd6e6156407d6e2f489c2076a7f",
+        )
+        self.assertNotEqual(
+            dialogic_campaign._sha256_file(REPO_ROOT / "app/prompts/stimmung_agent.txt"),
+            dialogic_campaign.RUNTIME_PROMPT_BASELINE_SHA256,
         )
         self.assertEqual(
             dialogic_campaign._sha256_file(REPO_ROOT / "app/core/stimmung_agent.py"),

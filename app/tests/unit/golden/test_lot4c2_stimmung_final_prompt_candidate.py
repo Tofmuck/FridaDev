@@ -157,6 +157,10 @@ class Lot4C2StimmungFinalPromptCandidateTests(unittest.TestCase):
         self.assertEqual(additions, [NEW_RULE])
         self.assertEqual(removals, [])
         self.assertNotIn("L4S0-ST-", CANDIDATE_V2.read_text(encoding="utf-8"))
+        self.assertEqual(
+            CANDIDATE_V2.read_bytes(),
+            (REPO_ROOT / "app/prompts/stimmung_agent.txt").read_bytes(),
+        )
 
     def test_protocol_and_schedule_are_primary_only_bounded_and_frozen(self) -> None:
         summary = dialogic_campaign.validate_final_strengthening_protocol(

@@ -58,7 +58,8 @@ Il sert a:
 
 - decrire la tonalite affective locale du tour
 - contextualiser localement le tour courant sur une fenetre courte
-- laisser coexister plusieurs tonalites
+- retenir par defaut une seule tonalite et n'ajouter une secondaire que si un
+  indice independant la rend necessaire
 - fournir un materiau simple a stabiliser ensuite
 
 Il ne sert pas a:
@@ -67,6 +68,15 @@ Il ne sert pas a:
 - appliquer `thresholds`, `delta` ou `hysteresis`
 - gouverner le noeud
 - produire des directives finales
+- deduire un enthousiasme de la seule volonte de poursuivre, comprendre,
+  examiner ou agir
+- internaliser un affect cite ou rapporte sans appropriation explicite
+- deduire un affect du seul type d'acte dialogique
+
+La force est calibree sur l'indice affectif du tour courant: `1..3` reste
+faible ou neutre, `4..7` explicite et modere, `8..10` exige un affect
+explicitement intense. Une ironie est lue avec la fenetre courte et ne reprend
+pas automatiquement sa polarite litterale.
 
 ### 3.2 `stimmung`
 

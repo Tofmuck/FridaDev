@@ -45,6 +45,9 @@ SONNET_CANDIDATE_ARTIFACT_VERSION = "lot4c2_stimmung_sonnet_5_medium_results_v1"
 PRIMARY_MODEL = "google/gemini-3.1-flash-lite"
 FALLBACK_MODEL = "openai/gpt-5.4-nano"
 MODELS = {"primary": PRIMARY_MODEL, "fallback": FALLBACK_MODEL}
+RUNTIME_PROMPT_BASELINE_SHA256 = (
+    "6374bf40468ec2c8879eaaba8c81472d117bb241f7490d033d78be14bf837663"
+)
 GENERATION_PARAMS = {"temperature": 0.1, "top_p": 1.0, "max_tokens": 220}
 TIMEOUT_S = 10
 REPETITIONS = 2
@@ -564,6 +567,33 @@ def _harness_path(repo_root: Path) -> Path:
     return repo_root / "benchmark/suites/stimmung/dialogic_campaign.py"
 
 
+def _runtime_prompt_baseline_text(repo_root: Path) -> str:
+    strengthened = _strengthening_candidate_path(repo_root).read_text(
+        encoding="utf-8"
+    )
+    strengthened_block = "\n".join(
+        (
+            "- une seule tonalite suffit par defaut; ajoute une tonalite secondaire uniquement si elle est exprimee de facon independante et necessaire pour decrire le mouvement courant",
+            "- n'ajoute jamais une tonalite speculative pour nuancer, completer ou couvrir une incertitude de classement",
+            "- calibre `strength` sur l'indice affectif du tour courant: 1 a 3 pour faible ou neutre, 4 a 7 pour explicite et modere, 8 a 10 seulement pour un affect explicitement intense",
+            "- un affect cite ou rapporte reste celui de sa source; ne l'attribue au dialogue courant que si le locuteur se l'approprie explicitement",
+            "- lis une formulation potentiellement ironique avec le contexte court; si le contexte contredit sa polarite litterale, ne retiens pas cette polarite comme affect courant",
+            "- une question, une demande, un risque ou une instruction ne prouvent aucun affect par leur seule forme",
+            "- en l'absence d'indice affectif suffisant, utilise une `neutralite` faible plutot qu'une tonalite inventee",
+        )
+    )
+    if strengthened.count(strengthened_block) != 1:
+        raise ValueError("runtime_prompt_baseline_source_invalid")
+    baseline = strengthened.replace(
+        strengthened_block,
+        "- plusieurs tonalites sont autorisees",
+        1,
+    ).strip()
+    if _sha256_text(f"{baseline}\n") != RUNTIME_PROMPT_BASELINE_SHA256:
+        raise ValueError("runtime_prompt_baseline_fingerprint_mismatch")
+    return baseline
+
+
 def load_strengthening_candidate(repo_root: Path) -> str:
     candidate = _strengthening_candidate_path(repo_root).read_text(encoding="utf-8").strip()
     if not candidate or len(candidate) > 3200:
@@ -617,7 +647,11 @@ def _load_inputs(
         validate_final_strengthening_corpus(corpus)
     else:
         dialogic_semantics.validate_corpus(corpus)
-    prompt = (prompt_path or _prompt_path(repo_root)).read_text(encoding="utf-8").strip()
+    prompt = (
+        prompt_path.read_text(encoding="utf-8").strip()
+        if prompt_path is not None
+        else _runtime_prompt_baseline_text(repo_root)
+    )
     if not prompt:
         raise ValueError("stimmung_prompt_missing")
     return corpus, prompt
@@ -713,7 +747,7 @@ def build_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str, Any]:
         "corpus_id": corpus["corpus_id"],
         "corpus_schema_version": corpus["schema_version"],
         "corpus_sha256": _sha256_file(_corpus_path(repo_root)),
-        "prompt_sha256": _sha256_file(_prompt_path(repo_root)),
+        "prompt_sha256": RUNTIME_PROMPT_BASELINE_SHA256,
         "harness_sha256": harness_sha256,
         "parameters_sha256": _sha256_text(_compact_json(parameters)),
         "schedule_sha256": _sha256_text(
@@ -780,7 +814,6 @@ def _load_strengthening_manifest(repo_root: Path) -> dict[str, Any]:
     # as soon as its validation contract is corrected.
     expected_files = {
         "candidate_prompt_sha256": _strengthening_candidate_path(repo_root),
-        "runtime_prompt_baseline_sha256": _prompt_path(repo_root),
         "corpus_sha256": _corpus_path(repo_root),
         "scorer_sha256": repo_root / "benchmark/suites/stimmung/dialogic_semantics.py",
         "normalizer_sha256": repo_root / "app/core/stimmung_agent.py",
@@ -788,6 +821,8 @@ def _load_strengthening_manifest(repo_root: Path) -> dict[str, Any]:
         "baseline_artifact_sha256": _historical_artifact_path(repo_root),
     }
     if any(data[key] != _sha256_file(path) for key, path in expected_files.items()):
+        raise ValueError("strengthening_manifest_fingerprint_mismatch")
+    if data["runtime_prompt_baseline_sha256"] != RUNTIME_PROMPT_BASELINE_SHA256:
         raise ValueError("strengthening_manifest_fingerprint_mismatch")
     if data["candidate_prompt_sha256"] == data["runtime_prompt_baseline_sha256"]:
         raise ValueError("strengthening_candidate_not_distinct")
@@ -969,7 +1004,6 @@ def _load_final_strengthening_manifest(repo_root: Path) -> dict[str, Any]:
         "corpus_sha256": _final_strengthening_corpus_path(repo_root),
         "source_candidate_prompt_sha256": _strengthening_candidate_path(repo_root),
         "candidate_prompt_sha256": _final_strengthening_candidate_path(repo_root),
-        "runtime_prompt_baseline_sha256": _prompt_path(repo_root),
         "local_scorer_sha256": repo_root
         / "benchmark/suites/stimmung/causal_rescoring.py",
         "normalizer_sha256": repo_root / "app/core/stimmung_agent.py",
@@ -980,6 +1014,8 @@ def _load_final_strengthening_manifest(repo_root: Path) -> dict[str, Any]:
         ),
     }
     if any(data[key] != _sha256_file(path) for key, path in expected_files.items()):
+        raise ValueError("final_strengthening_manifest_fingerprint_mismatch")
+    if data["runtime_prompt_baseline_sha256"] != RUNTIME_PROMPT_BASELINE_SHA256:
         raise ValueError("final_strengthening_manifest_fingerprint_mismatch")
     if data["candidate_prompt_sha256"] in {
         data["source_candidate_prompt_sha256"],
@@ -1250,7 +1286,7 @@ def build_model_comparison_protocol(
         raise ValueError("estimated_cost_cap_exceeded")
 
     historical_control = _historical_primary_control(repo_root)
-    runtime_prompt_sha256 = _sha256_file(_prompt_path(repo_root))
+    runtime_prompt_sha256 = RUNTIME_PROMPT_BASELINE_SHA256
     if historical_control["prompt_sha256"] != runtime_prompt_sha256:
         raise ValueError("historical_prompt_not_comparable")
     corpus_sha256 = _sha256_file(_corpus_path(repo_root))
@@ -1585,7 +1621,7 @@ def build_sonnet_candidate_protocol(
         "order": ["candidate_primary:1", "candidate_primary:2"],
     }
     historical_control = _historical_primary_control(repo_root)
-    runtime_prompt_sha256 = _sha256_file(_prompt_path(repo_root))
+    runtime_prompt_sha256 = RUNTIME_PROMPT_BASELINE_SHA256
     corpus_sha256 = _sha256_file(_corpus_path(repo_root))
     if historical_control["prompt_sha256"] != runtime_prompt_sha256:
         raise ValueError("historical_prompt_not_comparable")
