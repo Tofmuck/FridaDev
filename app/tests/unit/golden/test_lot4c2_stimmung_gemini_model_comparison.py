@@ -416,6 +416,43 @@ class Lot4C2StimmungGeminiTokenCapRerunTests(unittest.TestCase):
                 self.protocol,
             )
 
+    def test_retained_800_artifact_is_content_free_and_reconstructible(self) -> None:
+        artifact_path = (
+            REPO_ROOT
+            / "benchmark/results/stimmung/2026-08-30-lot4c2-stimmung-gemini-3-7-medium-max800.jsonl"
+        )
+        protocol = dialogic_campaign.build_token_cap_rerun_protocol(
+            REPO_ROOT,
+            freeze_commit="08da24a706d9701d46f0c9e8b63b303a114eeb1a",
+        )
+        records = dialogic_campaign.load_jsonl(artifact_path)
+        validation = dialogic_campaign.validate_token_cap_rerun_artifact(
+            records,
+            REPO_ROOT,
+            protocol,
+        )
+        calls = [item for item in records if item["record_type"] == "call"]
+
+        self.assertEqual(
+            dialogic_campaign._sha256_file(artifact_path),
+            "1b6112ceea8d6065aabd34f579f64ccfe652f514b5187cd0d2c3da542ebf11fd",
+        )
+        self.assertEqual(validation["call_count"], 138)
+        self.assertEqual(validation["dialogue_score_count"], 32)
+        self.assertEqual(validation["final_decision"], "inconclusive")
+        self.assertEqual(sum(item["status"] == "ok" for item in calls), 137)
+        self.assertEqual(sum(item["status"] == "json_error" for item in calls), 1)
+        self.assertEqual(
+            {
+                (item["finish_reason"], item["native_finish_reason"])
+                for item in calls
+                if item["status"] == "json_error"
+            },
+            {("length", "length")},
+        )
+        self.assertTrue(all(item["max_tokens"] == 800 for item in calls))
+        self.assertTrue(all(item["provider_fallbacks"] is False for item in calls))
+
 
 if __name__ == "__main__":
     unittest.main()

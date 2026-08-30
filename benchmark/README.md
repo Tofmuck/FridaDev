@@ -579,6 +579,22 @@ the candidate eligible: all 32 dialogue scores must still reach `1.0` in both
 repetitions with complete provenance and no regression. The protocol remains
 benchmark-only and never authorizes a runtime cutover.
 
+The frozen rerun commit is
+`08da24a706d9701d46f0c9e8b63b303a114eeb1a` (protocol SHA-256
+`0c529b3bb4b63de8f6ecd5bcc8b7ac369e56daa7c1587a7b1e88beb272f3401a`).
+Its 138 uniform 800-token calls are retained in
+`benchmark/results/stimmung/2026-08-30-lot4c2-stimmung-gemini-3-7-medium-max800.jsonl`
+(SHA-256
+`1b6112ceea8d6065aabd34f579f64ccfe652f514b5187cd0d2c3da542ebf11fd`).
+The larger cap resolved 23 of the 24 prior invalid JSON calls. One call still
+ended with the closed `length` reason at 796 completion tokens, including 765
+reasoning tokens, so the frozen decision remains `inconclusive`. The complete
+semantic scores contain 5 passes and 27 failures, including 12 reproducible
+dialogue failures; removing truncation would therefore not make this model
+eligible on the frozen corpus. Observed cost was `0.22071900 USD`, median/p95
+latency `3463.583/6032.503 ms`, with 74,772 prompt, 43,904 completion, 33,865
+reasoning and 118,676 total tokens. No fallback or runtime action followed.
+
 ## Validation agent benchmark
 
 The validation suite uses the production prompt

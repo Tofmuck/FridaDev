@@ -2976,7 +2976,7 @@ Message de commit recommande: `benchmark: evaluate Stimmung semantic corpus`.
 
 ### Micro-lot 4C.2 - Renforcement semantique conditionnel du caller
 
-Statut: ouvert; campagne candidate executee le 2026-08-30, decision `inconclusive`, aucun cutover runtime
+Statut: ouvert; campagne candidate a 800 tokens executee le 2026-08-30, decision `inconclusive`, aucun cutover runtime
 Effort recommande: `extra high`
 Nature: correctif caller borne, observabilite synchrone et preuves
 Prerequis: decision `strengthen` de 4S.1 localisant un defaut du caller
@@ -3201,9 +3201,44 @@ provider:
   disparition des JSON invalides ne suffit jamais a l'eligibilite;
 - cycle rouge puis vert: preuve initialement absente, puis rejet du mauvais
   plafond, d'un effort ou d'une difference hors allowlist, d'un finish reason
-  libre, d'un appel manquant et d'une fausse eligibilite. Aucun provider n'a
-  encore ete appele par cette passe; runtime, prompt, fallback, settings et
-  4C.3 restent inchanges.
+  libre, d'un appel manquant et d'une fausse eligibilite. Aucun provider
+  n'avait encore ete appele a ce stade du gel; runtime, prompt, fallback,
+  settings et 4C.3 restaient inchanges.
+
+Campagne corrective executee depuis le gel pousse
+`08da24a706d9701d46f0c9e8b63b303a114eeb1a`:
+
+- protocole SHA-256
+  `0c529b3bb4b63de8f6ecd5bcc8b7ac369e56daa7c1587a7b1e88beb272f3401a`;
+  `138/138` appels uniformes Gemini 3.7 medium a `max_tokens=800`, aucun
+  retry, fallback, Gemini 3.1 ou autre caller;
+- `137/138` JSON/schema valides. Vingt-trois des vingt-quatre erreurs a 400
+  disparaissent; l'unique erreur restante appartenait deja aux cas coupes et
+  porte `finish_reason=length`, `native_finish_reason=length`, `796` tokens de
+  completion dont `765` de raisonnement. F1 et F2 sont donc valides, F3 est
+  invalide comme garantie absolue, et F5 est ferme par la provenance de fin de
+  generation maintenant bornee;
+- les `32` scores complets contiennent `5` pass et `27` fail, dont `12`
+  dialogues en echec reproductible. Les codes dominants restent force hors
+  attente (`13`), stabilite (`14`), surcodage agrege (`10`) et shift (`7`):
+  F4 est valide, la disparition presque complete des troncatures ne suffit pas
+  a l'eligibilite semantique;
+- decision gelee `inconclusive` en raison de l'unique JSON invalide, jamais
+  transforme en signal ou score sain. Cout `0.22071900 USD`, latence
+  mediane/p95 `3463.583/6032.503 ms`, tokens
+  entree/sortie/raisonnement/total `74772/43904/33865/118676`;
+- artefact content-free
+  `2026-08-30-lot4c2-stimmung-gemini-3-7-medium-max800.jsonl`, SHA-256
+  `1b6112ceea8d6065aabd34f579f64ccfe652f514b5187cd0d2c3da542ebf11fd`,
+  reconstructible depuis le protocole pousse et les `138` lignes;
+- preuves finales: `10/10` goldens de comparaison, suites Stimmung et Lot 4
+  voisines vertes, puis decouverte Python complete `2799/2799`, sans echec,
+  erreur, skip, todo ou expected failure. JavaScript `137/137` et Chromium
+  `19/19` ont ete revalides sur la baseline; ils ne sont pas rejoues apres
+  campagne, aucun contrat runtime/frontend ni asset n'ayant change;
+- aucun fallback, modele runtime, prompt, agregateur, setting, rebuild,
+  restart ou deploiement n'est modifie. 4C.2 reste ouvert pour decision
+  humaine separee et 4C.3 reste non commence.
 
 Message de commit recommande si active: `fix: strengthen Stimmung semantic extraction`.
 
