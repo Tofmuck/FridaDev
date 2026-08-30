@@ -3097,6 +3097,41 @@ Passe B provider executee depuis le gel pousse
   `104/104` tests Stimmung/benchmark/goldens/garde d'observabilite voisins et
   decouverte Python `2789/2789`; aucun nouveau skip, todo ou expected failure.
 
+Passe de comparaison de modele primaire gelee le 2026-08-30, avant tout
+nouveau resultat provider:
+
+- variable unique: le primaire candidat `google/gemini-3.7-flash` standard,
+  effort `medium`, est compare au temoin primaire 4S.1 conserve. Le prompt
+  runtime, le corpus, les `32` attentes, le scorer, le schema, le normaliseur,
+  le vrai agregateur et les seuils `1.0` restent byte-for-byte inchanges; la
+  candidate de prompt precedente est explicitement exclue;
+- raccord natif: `reasoning.effort=medium`, `exclude=true`, sampling omis,
+  `provider.allow_fallbacks=false`, `require_parameters=true`, aucun Batch,
+  Flex ou Priority. Le timeout reste `10 s`; la borne de sortie `400` conserve
+  46% de marge sur le maximum structure Gemini medium de `274` tokens deja
+  observe dans les preuves du depot sans depasser le budget autorise;
+- metadonnees OpenRouter relevees le `2026-08-30T14:52:34Z`: slug standard et
+  providers Google disponibles, contexte et sortie largement superieurs au
+  besoin; prix geles `0.75 USD/M` tokens entree et `3.75 USD/M` tokens sortie,
+  y compris raisonnement interne selon le contrat courant;
+- protocole: `69` tours x `2` repetitions = exactement `138` appels candidat,
+  plafond absolu identique, aucun retry et aucun rappel du primaire historique
+  ni du fallback. Estimation prudente, marge de 10% incluse:
+  `0.29302680 USD`, sous le plafond `0.30 USD`;
+- decision gelee: `eligible_primary` seulement avec `32/32` scores a `1.0`
+  dans les deux repetitions, aucune erreur, provenance complete et aucune
+  regression d'un cas primaire historique valide; sinon `not_eligible` pour
+  un defaut semantique complet ou `inconclusive` pour une preuve incomplete;
+- sensibilite: rejet du prompt candidat precedent, de toute difference hors
+  allowlist de politique modele, du sampling, d'un effort autre que `medium`,
+  d'une route non standard, d'un fallback automatique, d'une provenance
+  incoherente, d'un appel manquant/ajoute, d'un contenu brut et d'une fausse
+  eligibilite. Le dry-run hermetique annonce `138` appels et aucun provider n'a
+  encore ete appele par cette passe;
+- ce gel est benchmark/tests/docs-only: aucun modele runtime, prompt, fallback,
+  setting, agregateur, observabilite produit, frontend, rebuild, restart ou
+  deploiement n'est modifie. 4C.2 reste ouvert et 4C.3 non commence.
+
 Message de commit recommande si active: `fix: strengthen Stimmung semantic extraction`.
 
 ### Micro-lot 4C.3 - Separation affect et certitude epistemique

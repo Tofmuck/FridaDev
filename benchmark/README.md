@@ -507,6 +507,44 @@ marking the total regression count incomplete; incomplete evidence can no
 longer be serialized as a misleading zero. The 276 provider call records were
 not changed by this accounting correction.
 
+### Lot 4C.2 Gemini 3.7 medium primary comparison
+
+The next bounded 4C.2 pass reuses `dialogic_campaign` and the retained 4S.1
+primary calls; it does not call the historical primary or the fallback again.
+The only semantic variable is the candidate primary model policy. The active
+runtime prompt, 16-dialogue corpus, 69-turn schedule, 32 evaluated steps,
+normalizer, product aggregator, scorer and `1.0` thresholds remain frozen.
+
+The candidate uses the standard `google/gemini-3.7-flash` route with
+`reasoning={"effort":"medium","exclude":true}`, strict provider parameter
+support and automatic provider fallback disabled. Sampling parameters are
+omitted. The output cap is 400 tokens and the caller timeout remains 10
+seconds. This 400-token cap retains 46% headroom over the largest 274-token
+Gemini-medium structured response already observed by the repository while
+keeping the 138-call prudent estimate, including a 10% margin, at
+`0.29302680 USD`, below the immutable `0.30 USD` cap. Metadata and prices were
+observed from OpenRouter on `2026-08-30T14:52:34Z`; no secret or response
+content is persisted.
+
+The hermetic dry-run is:
+
+```bash
+PYTHONPATH="$PWD:$PWD/app" python3 -m \
+  benchmark.suites.stimmung.dialogic_campaign \
+  --repo-root "$PWD" \
+  --freeze-commit <pushed-protocol-commit> \
+  --model-comparison \
+  --dry-run
+```
+
+The live form adds `--output` under `benchmark/results/stimmung/`. It is
+strictly capped at 138 calls: 69 turns and two repetitions of the candidate
+primary only, with no retry, Batch, Flex, Priority or automatic fallback. A
+content-free result is `eligible_primary` only when all 32 dialogue scores pass
+in both repetitions, no valid historical primary case regresses, every route
+and metric is authoritative, and no provider/schema error occurs. Regardless
+of the result, the benchmark never authorizes a runtime cutover.
+
 ## Validation agent benchmark
 
 The validation suite uses the production prompt

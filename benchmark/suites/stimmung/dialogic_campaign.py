@@ -11,6 +11,7 @@ from typing import Any, Mapping, Sequence
 
 from benchmark.core.openrouter import OpenRouterClient
 from benchmark.suites.stimmung import dialogic_semantics
+from benchmark.suites.validation_agent import lot4c1_policy_comparison as validation_model_policy
 from core import token_utils
 from core.hermeneutic_node.inputs import recent_context_input, recent_window_input
 from core.hermeneutic_node.inputs.stimmung_input import build_stimmung_input
@@ -26,6 +27,8 @@ PROTOCOL_VERSION = "lot4s1_stimmung_provider_campaign_v1"
 ARTIFACT_VERSION = "lot4s1_stimmung_provider_results_v1"
 STRENGTHENING_PROTOCOL_VERSION = "lot4c2_stimmung_semantic_strengthening_v1"
 STRENGTHENING_ARTIFACT_VERSION = "lot4c2_stimmung_semantic_strengthening_results_v1"
+MODEL_COMPARISON_PROTOCOL_VERSION = "lot4c2_stimmung_gemini_3_7_medium_comparison_v1"
+MODEL_COMPARISON_ARTIFACT_VERSION = "lot4c2_stimmung_gemini_3_7_medium_results_v1"
 PRIMARY_MODEL = "google/gemini-3.1-flash-lite"
 FALLBACK_MODEL = "openai/gpt-5.4-nano"
 MODELS = {"primary": PRIMARY_MODEL, "fallback": FALLBACK_MODEL}
@@ -48,6 +51,27 @@ PHASE_A_HARNESS_SHA256 = "2458512091d7d51c9414bd6256bc969f6d42f19a6545468a5a1a45
 STRENGTHENING_CANDIDATE_FIXTURE = "stimmung_semantic_strengthening_candidate_v1.txt"
 STRENGTHENING_FREEZE_MANIFEST = "stimmung_semantic_strengthening_freeze_v1.json"
 HISTORICAL_ARTIFACT = "2026-08-30-lot4s1-stimmung-primary-fallback.jsonl"
+MODEL_COMPARISON_MODEL = "google/gemini-3.7-flash"
+MODEL_COMPARISON_CONFIGURATION_ID = "gemini_3_7_flash_medium"
+MODEL_COMPARISON_MAX_TOKENS = 400
+MODEL_COMPARISON_TIMEOUT_S = 10
+MODEL_COMPARISON_EXPECTED_CALLS = EXPECTED_TURNS * REPETITIONS
+MODEL_COMPARISON_ABSOLUTE_CALL_CAP = MODEL_COMPARISON_EXPECTED_CALLS
+MODEL_COMPARISON_COST_CAP_USD = 0.30
+MODEL_COMPARISON_COST_MARGIN = 1.10
+MODEL_COMPARISON_PRICING_OBSERVED_AT = "2026-08-30T14:52:34Z"
+MODEL_COMPARISON_PRICING_USD_PER_TOKEN = {
+    "prompt": 0.00000075,
+    "completion": 0.00000375,
+}
+MODEL_COMPARISON_ALLOWED_POLICY_DIFFERENCES = (
+    "max_tokens",
+    "model",
+    "provider.require_parameters",
+    "reasoning",
+    "temperature",
+    "top_p",
+)
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -113,6 +137,17 @@ _STRENGTHENING_FINAL_REASON_CODES = {
     "candidate_semantic_failure",
     "dialogue_results_incomplete",
     "provider_or_schema_inconclusive",
+    "provider_results_or_metrics_incomplete",
+}
+_MODEL_COMPARISON_DECISIONS = {
+    "eligible_primary",
+    "not_eligible",
+    "inconclusive",
+}
+_MODEL_COMPARISON_FINAL_REASON_CODES = {
+    "all_thresholds_met_no_regression",
+    "semantic_threshold_missed",
+    "dialogue_results_incomplete",
     "provider_results_or_metrics_incomplete",
 }
 _CALL_KEYS = {
@@ -207,6 +242,28 @@ _STRENGTHENING_FINAL_KEYS = _FINAL_KEYS | {
     "baseline_artifact_sha256",
     "semantic_regression_count",
     "semantic_regression_count_complete",
+}
+_MODEL_COMPARISON_CALL_KEYS = _CALL_KEYS | {
+    "requested_reasoning_effort",
+    "reasoning_excluded",
+    "reasoning_tokens",
+    "transport",
+    "batch",
+    "provider_fallbacks",
+    "require_parameters",
+    "max_tokens",
+    "timeout_s",
+    "sampling_parameters_present",
+    "observed_service_tier",
+}
+_MODEL_COMPARISON_FINAL_KEYS = _FINAL_KEYS | {
+    "historical_artifact_sha256",
+    "historical_primary_pass_count",
+    "candidate_pass_count",
+    "semantic_regression_count",
+    "reproducible_semantic_failure_count",
+    "runtime_cutover_authorized",
+    "fallback_evaluated",
 }
 
 
@@ -536,6 +593,200 @@ def build_strengthening_protocol(repo_root: Path, *, freeze_commit: str) -> dict
     }
 
 
+def _model_comparison_configuration() -> Mapping[str, Any]:
+    configuration = validation_model_policy.MODEL_COMPARISON_CONFIGURATIONS.get(
+        MODEL_COMPARISON_CONFIGURATION_ID
+    )
+    if not isinstance(configuration, Mapping):
+        raise ValueError("model_comparison_configuration_missing")
+    if (
+        configuration.get("model") != MODEL_COMPARISON_MODEL
+        or configuration.get("reasoning_effort") != "medium"
+        or "medium" not in tuple(configuration.get("supported_efforts") or ())
+    ):
+        raise ValueError("model_comparison_configuration_changed")
+    return configuration
+
+
+def _historical_primary_control(repo_root: Path) -> dict[str, Any]:
+    records = load_historical_provider_artifact(repo_root)
+    calls = [
+        item
+        for item in records
+        if item.get("record_type") == "call" and item.get("source") == "primary"
+    ]
+    scores = [
+        item
+        for item in records
+        if item.get("record_type") == "dialogue_score"
+        and item.get("source") == "primary"
+    ]
+    if len(calls) != MODEL_COMPARISON_EXPECTED_CALLS or len(scores) != 32:
+        raise ValueError("historical_primary_control_incomplete")
+    return {
+        "artifact_sha256": _sha256_file(_historical_artifact_path(repo_root)),
+        "calls_sha256": _sha256_text(_compact_json(calls)),
+        "call_count": len(calls),
+        "dialogue_score_count": len(scores),
+        "pass_count": sum(item.get("classification") == "pass" for item in scores),
+        "fail_count": sum(item.get("classification") == "fail" for item in scores),
+        "inconclusive_count": sum(
+            item.get("classification") == "inconclusive" for item in scores
+        ),
+        "model": PRIMARY_MODEL,
+        "prompt_sha256": calls[0]["prompt_sha256"],
+        "corpus_sha256": calls[0]["corpus_sha256"],
+    }
+
+
+def build_model_comparison_protocol(
+    repo_root: Path,
+    *,
+    freeze_commit: str,
+) -> dict[str, Any]:
+    if _COMMIT_RE.fullmatch(str(freeze_commit)) is None:
+        raise ValueError("invalid_freeze_commit")
+    configuration = _model_comparison_configuration()
+    corpus, _ = _load_inputs(repo_root)
+    base = _base_requests(repo_root)
+    if (
+        len(corpus["dialogues"]),
+        len(base),
+        sum(1 for item in base if item["evaluated"]),
+    ) != (EXPECTED_DIALOGUES, EXPECTED_TURNS, EXPECTED_EVALUATED_STEPS):
+        raise ValueError("frozen_corpus_dimensions_changed")
+    if MODEL_COMPARISON_EXPECTED_CALLS != MODEL_COMPARISON_ABSOLUTE_CALL_CAP:
+        raise ValueError("model_comparison_call_cap_mismatch")
+
+    prompt_token_estimates = [
+        token_utils.estimate_tokens(item["messages"], MODEL_COMPARISON_MODEL)
+        for item in base
+    ]
+    estimated_cost = MODEL_COMPARISON_COST_MARGIN * (
+        REPETITIONS
+        * sum(prompt_token_estimates)
+        * MODEL_COMPARISON_PRICING_USD_PER_TOKEN["prompt"]
+        + MODEL_COMPARISON_EXPECTED_CALLS
+        * MODEL_COMPARISON_MAX_TOKENS
+        * MODEL_COMPARISON_PRICING_USD_PER_TOKEN["completion"]
+    )
+    estimated_cost = round(estimated_cost, 8)
+    if estimated_cost > MODEL_COMPARISON_COST_CAP_USD:
+        raise ValueError("estimated_cost_cap_exceeded")
+
+    historical_control = _historical_primary_control(repo_root)
+    runtime_prompt_sha256 = _sha256_file(_prompt_path(repo_root))
+    if historical_control["prompt_sha256"] != runtime_prompt_sha256:
+        raise ValueError("historical_prompt_not_comparable")
+    corpus_sha256 = _sha256_file(_corpus_path(repo_root))
+    if historical_control["corpus_sha256"] != corpus_sha256:
+        raise ValueError("historical_corpus_not_comparable")
+
+    parameters = {
+        "model": MODEL_COMPARISON_MODEL,
+        "reasoning": {"effort": "medium", "exclude": True},
+        "max_tokens": MODEL_COMPARISON_MAX_TOKENS,
+        "timeout_s": MODEL_COMPARISON_TIMEOUT_S,
+        "sampling_parameters": "omitted",
+        "provider": {"allow_fallbacks": False, "require_parameters": True},
+        "transport": "standard",
+        "repetitions": REPETITIONS,
+        "order": ["candidate_primary:1", "candidate_primary:2"],
+    }
+    return {
+        "protocol_version": MODEL_COMPARISON_PROTOCOL_VERSION,
+        "artifact_version": MODEL_COMPARISON_ARTIFACT_VERSION,
+        "campaign_kind": "stimmung_primary_model_comparison_v1",
+        "freeze_commit": freeze_commit,
+        "corpus_id": corpus["corpus_id"],
+        "corpus_schema_version": corpus["schema_version"],
+        "corpus_sha256": corpus_sha256,
+        "prompt_sha256": runtime_prompt_sha256,
+        "excluded_strengthening_candidate_sha256": _sha256_file(
+            _strengthening_candidate_path(repo_root)
+        ),
+        "scorer_sha256": _sha256_file(
+            repo_root / "benchmark/suites/stimmung/dialogic_semantics.py"
+        ),
+        "normalizer_sha256": _sha256_file(repo_root / "app/core/stimmung_agent.py"),
+        "aggregator_sha256": _sha256_file(
+            repo_root / "app/core/hermeneutic_node/inputs/stimmung_input.py"
+        ),
+        "message_builder_sha256": _sha256_file(repo_root / "app/core/stimmung_agent.py"),
+        "harness_sha256": _sha256_file(_harness_path(repo_root)),
+        "parameters_sha256": _sha256_text(_compact_json(parameters)),
+        "schedule_sha256": _sha256_text(
+            _compact_json(
+                [
+                    {
+                        key: item[key]
+                        for key in (
+                            "dialogue_id",
+                            "turn_id",
+                            "evaluated",
+                            "messages_sha256",
+                            "window_turn_count",
+                        )
+                    }
+                    for item in base
+                ]
+            )
+        ),
+        "model": MODEL_COMPARISON_MODEL,
+        "canonical_slug": configuration["canonical_slug"],
+        "allowed_providers": list(configuration["allowed_providers"]),
+        "reasoning": {"effort": "medium", "exclude": True},
+        "max_tokens": MODEL_COMPARISON_MAX_TOKENS,
+        "timeout_s": MODEL_COMPARISON_TIMEOUT_S,
+        "sampling_parameters": "omitted",
+        "provider_policy": {"allow_fallbacks": False, "require_parameters": True},
+        "transport": "standard",
+        "policy_difference_allowlist": list(
+            MODEL_COMPARISON_ALLOWED_POLICY_DIFFERENCES
+        ),
+        "repetitions": REPETITIONS,
+        "dialogue_count": EXPECTED_DIALOGUES,
+        "turn_count": EXPECTED_TURNS,
+        "evaluated_step_count": EXPECTED_EVALUATED_STEPS,
+        "expected_call_count": MODEL_COMPARISON_EXPECTED_CALLS,
+        "absolute_call_cap": MODEL_COMPARISON_ABSOLUTE_CALL_CAP,
+        "cost_cap_usd": MODEL_COMPARISON_COST_CAP_USD,
+        "estimated_max_cost_usd": estimated_cost,
+        "prompt_token_estimate_sum": REPETITIONS * sum(prompt_token_estimates),
+        "maximum_estimated_prompt_tokens": max(prompt_token_estimates),
+        "pricing_observed_at": MODEL_COMPARISON_PRICING_OBSERVED_AT,
+        "pricing_usd_per_token": dict(MODEL_COMPARISON_PRICING_USD_PER_TOKEN),
+        "historical_control": historical_control,
+        "decision_rules": {
+            "all_dialogues_all_repetitions_pass": "eligible_primary",
+            "semantic_threshold_missed": "not_eligible",
+            "incomplete_invalid_or_route_unknown": "inconclusive",
+            "runtime_cutover_authorized": False,
+        },
+    }
+
+
+def validate_model_comparison_protocol(
+    protocol: Mapping[str, Any],
+    repo_root: Path,
+) -> dict[str, Any]:
+    if protocol.get("protocol_version") != MODEL_COMPARISON_PROTOCOL_VERSION:
+        raise ValueError("model_comparison_protocol_version_invalid")
+    expected = build_model_comparison_protocol(
+        repo_root,
+        freeze_commit=str(protocol.get("freeze_commit") or ""),
+    )
+    if dict(protocol) != expected:
+        raise ValueError("model_comparison_protocol_freeze_mismatch")
+    return {
+        "dialogue_count": expected["dialogue_count"],
+        "turn_count": expected["turn_count"],
+        "evaluated_step_count": expected["evaluated_step_count"],
+        "expected_call_count": expected["expected_call_count"],
+        "estimated_max_cost_usd": expected["estimated_max_cost_usd"],
+    }
+
+
 def validate_protocol(protocol: Mapping[str, Any], repo_root: Path) -> dict[str, Any]:
     if protocol.get("protocol_version") == STRENGTHENING_PROTOCOL_VERSION:
         expected = build_strengthening_protocol(
@@ -599,6 +850,111 @@ def build_request_schedule(repo_root: Path, protocol: Mapping[str, Any]) -> list
     return schedule
 
 
+def validate_model_comparison_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    expected_keys = {"model", "messages", "max_tokens", "reasoning", "provider"}
+    normalized = dict(payload)
+    if set(normalized) != expected_keys:
+        raise ValueError("model_comparison_payload_fields_invalid")
+    if normalized.get("model") != MODEL_COMPARISON_MODEL or ":" in str(
+        normalized.get("model")
+    ).removeprefix("google"):
+        raise ValueError("model_comparison_payload_model_invalid")
+    messages = normalized.get("messages")
+    if (
+        not isinstance(messages, list)
+        or len(messages) != 2
+        or any(
+            not isinstance(message, Mapping)
+            or set(message) != {"role", "content"}
+            or message.get("role") not in {"system", "user"}
+            or not isinstance(message.get("content"), str)
+            or not message["content"]
+            for message in messages
+        )
+    ):
+        raise ValueError("model_comparison_payload_messages_invalid")
+    if normalized.get("max_tokens") != MODEL_COMPARISON_MAX_TOKENS:
+        raise ValueError("model_comparison_payload_max_tokens_invalid")
+    if normalized.get("reasoning") != {"effort": "medium", "exclude": True}:
+        raise ValueError("model_comparison_payload_reasoning_invalid")
+    if normalized.get("provider") != {
+        "allow_fallbacks": False,
+        "require_parameters": True,
+    }:
+        raise ValueError("model_comparison_payload_provider_invalid")
+    return normalized
+
+
+def _difference_paths(left: Any, right: Any, *, prefix: str = "") -> set[str]:
+    if isinstance(left, Mapping) and isinstance(right, Mapping):
+        differences: set[str] = set()
+        for key in sorted(set(left) | set(right)):
+            child = f"{prefix}.{key}" if prefix else str(key)
+            if key not in left or key not in right:
+                differences.add(child)
+            else:
+                differences.update(_difference_paths(left[key], right[key], prefix=child))
+        return differences
+    return set() if left == right else {prefix}
+
+
+def validate_model_policy_difference(
+    historical_payload: Mapping[str, Any],
+    candidate_payload: Mapping[str, Any],
+) -> list[str]:
+    validate_model_comparison_payload(candidate_payload)
+    differences = _difference_paths(historical_payload, candidate_payload)
+    if differences != set(MODEL_COMPARISON_ALLOWED_POLICY_DIFFERENCES):
+        raise ValueError("model_comparison_policy_difference_invalid")
+    return sorted(differences)
+
+
+def _build_model_comparison_payload(messages: Sequence[Mapping[str, str]]) -> dict[str, Any]:
+    payload = validation_model_policy.build_model_comparison_payload(
+        messages,
+        MODEL_COMPARISON_CONFIGURATION_ID,
+    )
+    payload["max_tokens"] = MODEL_COMPARISON_MAX_TOKENS
+    return validate_model_comparison_payload(payload)
+
+
+def build_model_comparison_request_schedule(
+    repo_root: Path,
+    protocol: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    validate_model_comparison_protocol(protocol, repo_root)
+    base = _base_requests(repo_root)
+    historical_protocol = build_protocol(
+        repo_root,
+        freeze_commit=PHASE_A_FREEZE_COMMIT,
+    )
+    historical_primary = [
+        item
+        for item in build_request_schedule(repo_root, historical_protocol)
+        if item["source"] == "primary"
+    ]
+    schedule: list[dict[str, Any]] = []
+    sequence = 0
+    for repetition in range(1, REPETITIONS + 1):
+        for item in base:
+            sequence += 1
+            payload = _build_model_comparison_payload(item["messages"])
+            control = historical_primary[sequence - 1]
+            validate_model_policy_difference(control["payload"], payload)
+            schedule.append(
+                {
+                    **item,
+                    "sequence": sequence,
+                    "source": "primary",
+                    "repetition": repetition,
+                    "payload": payload,
+                }
+            )
+    if len(schedule) != MODEL_COMPARISON_EXPECTED_CALLS:
+        raise ValueError("model_comparison_call_schedule_mismatch")
+    return schedule
+
+
 def _provider_name(value: Any) -> str:
     text = str(value or "").strip().lower()
     if "google" in text:
@@ -628,12 +984,21 @@ def _float_metric(value: Any) -> float | None:
     return round(result, 8) if math.isfinite(result) and result >= 0 else None
 
 
-def _classify_response(response: Mapping[str, Any], requested_model: str) -> dict[str, Any]:
+def _classify_response(
+    response: Mapping[str, Any],
+    requested_model: str,
+    *,
+    allowed_observed_models: set[str] | None = None,
+    allowed_observed_providers: set[str] | None = None,
+) -> dict[str, Any]:
     latency = _float_metric(response.get("elapsed_ms"))
     usage = response.get("usage") if isinstance(response.get("usage"), Mapping) else {}
     observed_model_raw = str(response.get("model") or "").strip()
-    observed_model = observed_model_raw if observed_model_raw == requested_model else "unknown"
-    expected_provider = "google" if requested_model.startswith("google/") else "openai"
+    allowed_models = allowed_observed_models or {requested_model}
+    observed_model = observed_model_raw if observed_model_raw in allowed_models else "unknown"
+    expected_providers = allowed_observed_providers or {
+        "google" if requested_model.startswith("google/") else "openai"
+    }
     observed_provider = _provider_name(response.get("provider"))
     base = {
         "latency_ms": latency,
@@ -668,7 +1033,7 @@ def _classify_response(response: Mapping[str, Any], requested_model: str) -> dic
     except Exception:
         return {**base, "status": "schema_error", "reason_code": "validation_error"}
     base["schema_valid"] = True
-    if observed_model != requested_model or observed_provider != expected_provider:
+    if observed_model == "unknown" or observed_provider not in expected_providers:
         return {**base, "status": "transport_error", "reason_code": "route_mismatch"}
     return {**base, "status": "ok", "reason_code": "ok", "signal": signal}
 
@@ -785,6 +1150,358 @@ def run_campaign(
             progress(int(plan["sequence"]), EXPECTED_CALLS, dict(record))
     finish_dialogue()
     records.extend(_summary_records(records, dialogue_scores, corpus, protocol=protocol))
+    return records
+
+
+def _reasoning_tokens_or_none(response: Mapping[str, Any]) -> int | None:
+    usage = response.get("usage") if isinstance(response.get("usage"), Mapping) else {}
+    details = usage.get("completion_tokens_details")
+    if isinstance(details, Mapping) and "reasoning_tokens" in details:
+        value = details.get("reasoning_tokens")
+    else:
+        value = usage.get("reasoning_tokens")
+    return _int_metric(value)
+
+
+def _model_comparison_call_record(
+    *,
+    plan: Mapping[str, Any],
+    response: Mapping[str, Any],
+    outcome: Mapping[str, Any],
+    aggregate: Mapping[str, Any],
+    protocol: Mapping[str, Any],
+) -> dict[str, Any]:
+    service_tier = str(response.get("service_tier") or "").strip().lower()
+    return {
+        "artifact_version": MODEL_COMPARISON_ARTIFACT_VERSION,
+        "protocol_version": MODEL_COMPARISON_PROTOCOL_VERSION,
+        "record_type": "call",
+        "sequence": plan["sequence"],
+        "dialogue_id": plan["dialogue_id"],
+        "turn_id": plan["turn_id"],
+        "evaluated": plan["evaluated"],
+        "source": "primary",
+        "repetition": plan["repetition"],
+        "requested_model": MODEL_COMPARISON_MODEL,
+        "requested_reasoning_effort": "medium",
+        "reasoning_excluded": True,
+        "reasoning_tokens": _reasoning_tokens_or_none(response),
+        "transport": "standard",
+        "batch": False,
+        "provider_fallbacks": False,
+        "require_parameters": True,
+        "max_tokens": MODEL_COMPARISON_MAX_TOKENS,
+        "timeout_s": MODEL_COMPARISON_TIMEOUT_S,
+        "sampling_parameters_present": any(
+            key in plan["payload"] for key in ("temperature", "top_p")
+        ),
+        "observed_model": outcome["observed_model"],
+        "observed_provider": outcome["observed_provider"],
+        "observed_service_tier": service_tier,
+        "status": outcome["status"],
+        "reason_code": outcome["reason_code"],
+        "json_valid": outcome["json_valid"],
+        "schema_valid": outcome["schema_valid"],
+        "fail_open": outcome["status"] != "ok",
+        "signal": outcome["signal"],
+        "aggregate": dict(aggregate),
+        "latency_ms": outcome["latency_ms"],
+        "prompt_tokens": outcome["prompt_tokens"],
+        "completion_tokens": outcome["completion_tokens"],
+        "total_tokens": outcome["total_tokens"],
+        "cost_usd": outcome["cost_usd"],
+        "messages_sha256": plan["messages_sha256"],
+        "corpus_sha256": protocol["corpus_sha256"],
+        "prompt_sha256": protocol["prompt_sha256"],
+        "harness_sha256": protocol["harness_sha256"],
+        "parameters_sha256": protocol["parameters_sha256"],
+        "freeze_commit": protocol["freeze_commit"],
+    }
+
+
+def _model_comparison_decision(
+    calls: Sequence[Mapping[str, Any]],
+    scores: Sequence[Mapping[str, Any]],
+    *,
+    historical_records: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    expected_groups = {
+        repetition: {
+            str(item.get("dialogue_id") or "")
+            for item in scores
+            if item.get("repetition") == repetition
+        }
+        for repetition in (1, 2)
+    }
+    historical_primary_scores = [
+        item
+        for item in historical_records
+        if item.get("record_type") == "dialogue_score"
+        and item.get("source") == "primary"
+    ]
+    historical_passes = {
+        (int(item["repetition"]), str(item["dialogue_id"]))
+        for item in historical_primary_scores
+        if item.get("classification") == "pass"
+    }
+    semantic_regressions = sum(
+        (int(item.get("repetition") or 0), str(item.get("dialogue_id") or ""))
+        in historical_passes
+        for item in scores
+        if item.get("classification") == "fail"
+    )
+    failed_by_dialogue: dict[str, set[int]] = {}
+    for item in scores:
+        if item.get("classification") == "fail":
+            failed_by_dialogue.setdefault(str(item["dialogue_id"]), set()).add(
+                int(item["repetition"])
+            )
+    reproducible_failures = sum(
+        repetitions == {1, 2} for repetitions in failed_by_dialogue.values()
+    )
+    complete_shape = (
+        len(calls) == MODEL_COMPARISON_EXPECTED_CALLS
+        and len(scores) == 32
+        and all(len(ids) == EXPECTED_DIALOGUES for ids in expected_groups.values())
+    )
+    metrics_complete = complete_shape and all(
+        item.get("status") == "ok"
+        and item.get("latency_ms") is not None
+        and item.get("prompt_tokens") is not None
+        and item.get("completion_tokens") is not None
+        and item.get("reasoning_tokens") is not None
+        and item.get("total_tokens") is not None
+        and item.get("cost_usd") is not None
+        and item.get("observed_model")
+        in {MODEL_COMPARISON_MODEL, _model_comparison_configuration()["canonical_slug"]}
+        and item.get("observed_provider") == "google"
+        and item.get("observed_service_tier") in {"", "default", "standard"}
+        for item in calls
+    )
+    if not complete_shape:
+        decision, reason = "inconclusive", "dialogue_results_incomplete"
+    elif not metrics_complete or any(
+        item.get("classification") == "inconclusive" for item in scores
+    ):
+        decision, reason = "inconclusive", "provider_results_or_metrics_incomplete"
+    elif any(item.get("classification") == "fail" for item in scores):
+        decision, reason = "not_eligible", "semantic_threshold_missed"
+    else:
+        decision, reason = "eligible_primary", "all_thresholds_met_no_regression"
+    return {
+        "decision": decision,
+        "reason_codes": [reason],
+        "next_micro_lot": None,
+        "historical_primary_pass_count": sum(
+            item.get("classification") == "pass" for item in historical_primary_scores
+        ),
+        "candidate_pass_count": sum(
+            item.get("classification") == "pass" for item in scores
+        ),
+        "semantic_regression_count": semantic_regressions,
+        "reproducible_semantic_failure_count": reproducible_failures,
+        "runtime_cutover_authorized": False,
+        "fallback_evaluated": False,
+    }
+
+
+def _model_comparison_summary_records(
+    calls: Sequence[Mapping[str, Any]],
+    dialogue_scores: Sequence[Mapping[str, Any]],
+    corpus: Mapping[str, Any],
+    *,
+    repo_root: Path,
+    protocol: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = list(dialogue_scores)
+    repetition_decisions: list[str] = []
+    for repetition in (1, 2):
+        selected = [
+            item for item in dialogue_scores if item["repetition"] == repetition
+        ]
+        summary = dialogic_semantics.summarize_configuration(
+            source="primary",
+            corpus=corpus,
+            dialogue_scores=selected,
+            provider_results_observed=True,
+        )
+        repetition_decisions.append(summary["decision"])
+        results.append(
+            {
+                "artifact_version": MODEL_COMPARISON_ARTIFACT_VERSION,
+                "protocol_version": MODEL_COMPARISON_PROTOCOL_VERSION,
+                "record_type": "repetition_summary",
+                "source": "primary",
+                "repetition": repetition,
+                "decision": summary["decision"],
+                "reason_codes": summary["reason_codes"],
+                "dialogue_count": summary["dialogue_count"],
+                "family_pass_rates": summary["family_pass_rates"],
+                "semantic_failures": summary["semantic_failures"],
+                "inconclusive_results": summary["inconclusive_results"],
+                "provider_results_observed": True,
+            }
+        )
+    latencies = [float(item["latency_ms"]) for item in calls if item["latency_ms"] is not None]
+    results.append(
+        {
+            "artifact_version": MODEL_COMPARISON_ARTIFACT_VERSION,
+            "protocol_version": MODEL_COMPARISON_PROTOCOL_VERSION,
+            "record_type": "source_summary",
+            "source": "primary",
+            "repetition_decisions": repetition_decisions,
+            "call_count": len(calls),
+            "ok_count": sum(item["status"] == "ok" for item in calls),
+            "semantic_failure_count": sum(
+                item["classification"] == "fail" for item in dialogue_scores
+            ),
+            "inconclusive_dialogue_count": sum(
+                item["classification"] == "inconclusive" for item in dialogue_scores
+            ),
+            "latency_median_ms": round(statistics.median(latencies), 3) if latencies else None,
+            "latency_p95_ms": _percentile(latencies, 0.95),
+            "prompt_tokens": _sum_metric(calls, "prompt_tokens"),
+            "completion_tokens": _sum_metric(calls, "completion_tokens"),
+            "total_tokens": _sum_metric(calls, "total_tokens"),
+            "cost_usd": _sum_cost(calls),
+        }
+    )
+    decision = _model_comparison_decision(
+        calls,
+        dialogue_scores,
+        historical_records=load_historical_provider_artifact(repo_root),
+    )
+    results.append(
+        {
+            "artifact_version": MODEL_COMPARISON_ARTIFACT_VERSION,
+            "protocol_version": MODEL_COMPARISON_PROTOCOL_VERSION,
+            "record_type": "final_summary",
+            **decision,
+            "call_count": len(calls),
+            "dialogue_score_count": len(dialogue_scores),
+            "cost_usd": _sum_cost(calls),
+            "calls_sha256": _sha256_text(_compact_json(list(calls))),
+            "historical_artifact_sha256": protocol["historical_control"][
+                "artifact_sha256"
+            ],
+        }
+    )
+    return results
+
+
+def run_model_comparison_campaign(
+    *,
+    repo_root: Path,
+    protocol: Mapping[str, Any],
+    client: Any,
+    progress: Any | None = None,
+) -> list[dict[str, Any]]:
+    schedule = build_model_comparison_request_schedule(repo_root, protocol)
+    corpus, _ = _load_inputs(repo_root)
+    cases = {item["id"]: item for item in corpus["dialogues"]}
+    records: list[dict[str, Any]] = []
+    dialogue_scores: list[dict[str, Any]] = []
+    history: list[dict[str, Any]] = []
+    observations: list[dict[str, Any]] = []
+    group: tuple[int, str] | None = None
+
+    def finish_dialogue() -> None:
+        if group is None:
+            return
+        repetition, dialogue_id = group
+        score = dialogic_semantics.score_dialogue(cases[dialogue_id], observations)
+        dialogue_scores.append(
+            _dialogue_score_record(
+                score,
+                source="primary",
+                repetition=repetition,
+                protocol=protocol,
+            )
+        )
+
+    allowed_models = {
+        MODEL_COMPARISON_MODEL,
+        str(protocol["canonical_slug"]),
+    }
+    allowed_providers = {
+        _provider_name(item) for item in protocol["allowed_providers"]
+    }
+    for plan in schedule:
+        next_group = (int(plan["repetition"]), str(plan["dialogue_id"]))
+        if group != next_group:
+            finish_dialogue()
+            group = next_group
+            history = []
+            observations = []
+        turn = cases[plan["dialogue_id"]]["turns"][plan["turn_id"] - 1]
+        user_message = {
+            "role": "user",
+            "content": turn["user"],
+            "timestamp": None,
+            "meta": {},
+        }
+        history.append(user_message)
+        response = client.chat_completion(
+            dict(plan["payload"]),
+            caller="stimmung_agent",
+            timeout_s=MODEL_COMPARISON_TIMEOUT_S,
+        )
+        outcome = _classify_response(
+            response,
+            MODEL_COMPARISON_MODEL,
+            allowed_observed_models=allowed_models,
+            allowed_observed_providers=allowed_providers,
+        )
+        service_tier = str(response.get("service_tier") or "").strip().lower()
+        if outcome["status"] == "ok" and service_tier not in {"", "default", "standard"}:
+            outcome = {
+                **outcome,
+                "status": "transport_error",
+                "reason_code": "route_mismatch",
+                "signal": None,
+            }
+        attached_signal = (
+            outcome["signal"] if outcome["status"] == "ok" else _build_fail_open_signal()
+        )
+        user_message["meta"]["affective_turn_signal"] = attached_signal
+        aggregate = build_stimmung_input(messages=history)
+        record = _model_comparison_call_record(
+            plan=plan,
+            response=response,
+            outcome=outcome,
+            aggregate=aggregate,
+            protocol=protocol,
+        )
+        validate_model_comparison_record(record)
+        records.append(record)
+        if plan["evaluated"]:
+            observations.append(
+                {
+                    "turn_id": plan["turn_id"],
+                    "execution_status": outcome["status"],
+                    "source": "primary",
+                    "signal": outcome["signal"],
+                    "aggregate": aggregate,
+                }
+            )
+        history.append(
+            {"role": "assistant", "content": turn["assistant"], "timestamp": None}
+        )
+        observed_cost = _sum_cost(records)
+        if observed_cost is not None and observed_cost > MODEL_COMPARISON_COST_CAP_USD:
+            raise ValueError("provider_cost_cap_exceeded")
+        if callable(progress):
+            progress(int(plan["sequence"]), MODEL_COMPARISON_EXPECTED_CALLS, dict(record))
+    finish_dialogue()
+    records.extend(
+        _model_comparison_summary_records(
+            records,
+            dialogue_scores,
+            corpus,
+            repo_root=repo_root,
+            protocol=protocol,
+        )
+    )
     return records
 
 
@@ -1198,6 +1915,328 @@ def validate_content_free_record(record: Mapping[str, Any]) -> dict[str, Any]:
     return dict(record)
 
 
+def validate_model_comparison_record(record: Mapping[str, Any]) -> dict[str, Any]:
+    if not isinstance(record, Mapping):
+        raise ValueError("record_not_object")
+    record_type = record.get("record_type")
+    keys = {
+        "call": _MODEL_COMPARISON_CALL_KEYS,
+        "dialogue_score": _DIALOGUE_SCORE_KEYS,
+        "repetition_summary": _REPETITION_SUMMARY_KEYS,
+        "source_summary": _SOURCE_SUMMARY_KEYS,
+        "final_summary": _MODEL_COMPARISON_FINAL_KEYS,
+    }.get(record_type)
+    if keys is None or set(record) != keys:
+        raise ValueError("model_comparison_record_schema_invalid")
+    if (
+        record.get("artifact_version"),
+        record.get("protocol_version"),
+    ) != (
+        MODEL_COMPARISON_ARTIFACT_VERSION,
+        MODEL_COMPARISON_PROTOCOL_VERSION,
+    ):
+        raise ValueError("model_comparison_record_version_invalid")
+
+    if record_type == "call":
+        if (
+            record.get("source") != "primary"
+            or record.get("requested_model") != MODEL_COMPARISON_MODEL
+            or record.get("requested_reasoning_effort") != "medium"
+            or record.get("reasoning_excluded") is not True
+            or record.get("transport") != "standard"
+            or record.get("batch") is not False
+            or record.get("provider_fallbacks") is not False
+            or record.get("require_parameters") is not True
+            or record.get("max_tokens") != MODEL_COMPARISON_MAX_TOKENS
+            or record.get("timeout_s") != MODEL_COMPARISON_TIMEOUT_S
+            or record.get("sampling_parameters_present") is not False
+        ):
+            raise ValueError("model_comparison_call_policy_invalid")
+        if (
+            record.get("status") not in _CALL_STATUSES
+            or record.get("reason_code") not in _CALL_REASONS
+            or record.get("observed_provider") not in _PROVIDERS
+            or record.get("observed_service_tier")
+            not in {"", "default", "standard"}
+        ):
+            raise ValueError("model_comparison_call_status_invalid")
+        allowed_models = {
+            MODEL_COMPARISON_MODEL,
+            str(_model_comparison_configuration()["canonical_slug"]),
+            "unknown",
+        }
+        if record.get("observed_model") not in allowed_models:
+            raise ValueError("model_comparison_observed_model_invalid")
+        if (
+            not isinstance(record.get("sequence"), int)
+            or not 1 <= record["sequence"] <= MODEL_COMPARISON_EXPECTED_CALLS
+            or record.get("repetition") not in {1, 2}
+            or not isinstance(record.get("turn_id"), int)
+            or not 1 <= record["turn_id"] <= 6
+            or not isinstance(record.get("evaluated"), bool)
+        ):
+            raise ValueError("model_comparison_call_identity_invalid")
+        if (
+            not isinstance(record.get("dialogue_id"), str)
+            or not 1 <= len(record["dialogue_id"]) <= 64
+        ):
+            raise ValueError("model_comparison_dialogue_id_invalid")
+        if (
+            not isinstance(record.get("latency_ms"), (int, float))
+            or isinstance(record.get("latency_ms"), bool)
+            or not math.isfinite(float(record["latency_ms"]))
+            or float(record["latency_ms"]) < 0
+        ):
+            raise ValueError("model_comparison_latency_invalid")
+        for key in (
+            "prompt_tokens",
+            "completion_tokens",
+            "reasoning_tokens",
+            "total_tokens",
+        ):
+            value = record.get(key)
+            if value is not None and _int_metric(value) != value:
+                raise ValueError("model_comparison_token_metric_invalid")
+        cost = record.get("cost_usd")
+        if cost is not None and _float_metric(cost) != cost:
+            raise ValueError("model_comparison_cost_metric_invalid")
+        _validate_signal(record.get("signal"))
+        _validate_aggregate(record.get("aggregate"))
+        if record["status"] == "ok":
+            if (
+                record.get("json_valid") is not True
+                or record.get("schema_valid") is not True
+                or record.get("signal") is None
+                or record.get("fail_open") is not False
+                or record.get("observed_model") == "unknown"
+                or record.get("observed_provider") != "google"
+            ):
+                raise ValueError("model_comparison_false_semantic_success")
+        elif record.get("signal") is not None or record.get("fail_open") is not True:
+            raise ValueError("model_comparison_failed_call_signal_present")
+        for key in (
+            "messages_sha256",
+            "corpus_sha256",
+            "prompt_sha256",
+            "harness_sha256",
+            "parameters_sha256",
+        ):
+            _validate_sha(record.get(key))
+        if _COMMIT_RE.fullmatch(str(record.get("freeze_commit") or "")) is None:
+            raise ValueError("model_comparison_freeze_commit_invalid")
+    elif record_type == "dialogue_score":
+        if (
+            record.get("source") != "primary"
+            or record.get("repetition") not in {1, 2}
+            or record.get("classification") not in {"pass", "fail", "inconclusive"}
+            or record.get("error_class") not in {"none", "semantic", "schema", "execution"}
+            or not isinstance(record.get("families"), list)
+            or not set(record["families"]).issubset(dialogic_semantics.REQUIRED_FAMILIES)
+            or not isinstance(record.get("evaluated_turns"), int)
+            or not 1 <= record["evaluated_turns"] <= 6
+        ):
+            raise ValueError("model_comparison_dialogue_score_invalid")
+        if not isinstance(record.get("reason_codes"), list) or any(
+            code not in _DIALOGUE_REASON_CODES for code in record["reason_codes"]
+        ):
+            raise ValueError("model_comparison_dialogue_reason_invalid")
+    elif record_type == "repetition_summary":
+        rates = record.get("family_pass_rates")
+        if (
+            record.get("source") != "primary"
+            or record.get("repetition") not in {1, 2}
+            or record.get("decision") not in {"pass", "fail", "inconclusive"}
+            or record.get("dialogue_count") != EXPECTED_DIALOGUES
+            or record.get("provider_results_observed") is not True
+            or not isinstance(rates, Mapping)
+            or set(rates) != set(dialogic_semantics.MEASURED_FAMILIES)
+            or any(
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not 0 <= float(value) <= 1
+                for value in rates.values()
+            )
+            or not isinstance(record.get("semantic_failures"), int)
+            or not 0 <= record["semantic_failures"] <= EXPECTED_DIALOGUES
+            or not isinstance(record.get("inconclusive_results"), int)
+            or not 0 <= record["inconclusive_results"] <= EXPECTED_DIALOGUES
+        ):
+            raise ValueError("model_comparison_repetition_summary_invalid")
+        if not isinstance(record.get("reason_codes"), list) or any(
+            code not in _REPETITION_REASON_CODES for code in record["reason_codes"]
+        ):
+            raise ValueError("model_comparison_repetition_reason_invalid")
+    elif record_type == "source_summary":
+        if (
+            record.get("source") != "primary"
+            or record.get("call_count") != MODEL_COMPARISON_EXPECTED_CALLS
+            or not isinstance(record.get("repetition_decisions"), list)
+            or len(record["repetition_decisions"]) != REPETITIONS
+            or any(
+                value not in {"pass", "fail", "inconclusive"}
+                for value in record["repetition_decisions"]
+            )
+            or not isinstance(record.get("ok_count"), int)
+            or not 0 <= record["ok_count"] <= MODEL_COMPARISON_EXPECTED_CALLS
+            or not isinstance(record.get("semantic_failure_count"), int)
+            or not 0 <= record["semantic_failure_count"] <= 32
+            or not isinstance(record.get("inconclusive_dialogue_count"), int)
+            or not 0 <= record["inconclusive_dialogue_count"] <= 32
+        ):
+            raise ValueError("model_comparison_source_summary_invalid")
+        for key in ("latency_median_ms", "latency_p95_ms", "cost_usd"):
+            value = record.get(key)
+            if value is not None and _float_metric(value) != value:
+                raise ValueError("model_comparison_source_metric_invalid")
+        for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
+            value = record.get(key)
+            if value is not None and _int_metric(value) != value:
+                raise ValueError("model_comparison_source_metric_invalid")
+    else:
+        if (
+            record.get("decision") not in _MODEL_COMPARISON_DECISIONS
+            or record.get("next_micro_lot") is not None
+            or record.get("call_count") != MODEL_COMPARISON_EXPECTED_CALLS
+            or record.get("dialogue_score_count") != 32
+            or record.get("historical_primary_pass_count") not in range(33)
+            or record.get("candidate_pass_count") not in range(33)
+            or record.get("semantic_regression_count") not in range(33)
+            or record.get("reproducible_semantic_failure_count") not in range(17)
+            or record.get("runtime_cutover_authorized") is not False
+            or record.get("fallback_evaluated") is not False
+        ):
+            raise ValueError("model_comparison_final_summary_invalid")
+        if not isinstance(record.get("reason_codes"), list) or any(
+            code not in _MODEL_COMPARISON_FINAL_REASON_CODES
+            for code in record["reason_codes"]
+        ):
+            raise ValueError("model_comparison_final_reason_invalid")
+        cost = record.get("cost_usd")
+        if cost is not None and _float_metric(cost) != cost:
+            raise ValueError("model_comparison_final_cost_invalid")
+        _validate_sha(record.get("calls_sha256"))
+        _validate_sha(record.get("historical_artifact_sha256"))
+        if record["decision"] == "eligible_primary" and (
+            record["candidate_pass_count"] != 32
+            or record["semantic_regression_count"] != 0
+            or record["cost_usd"] is None
+        ):
+            raise ValueError("model_comparison_false_eligibility")
+    return dict(record)
+
+
+def validate_model_comparison_artifact(
+    records: Sequence[Mapping[str, Any]],
+    repo_root: Path,
+    protocol: Mapping[str, Any],
+) -> dict[str, Any]:
+    validate_model_comparison_protocol(protocol, repo_root)
+    for record in records:
+        validate_model_comparison_record(record)
+    calls = [dict(item) for item in records if item.get("record_type") == "call"]
+    if (
+        len(calls) != MODEL_COMPARISON_EXPECTED_CALLS
+        or [item["sequence"] for item in calls]
+        != list(range(1, MODEL_COMPARISON_EXPECTED_CALLS + 1))
+        or list(records[:MODEL_COMPARISON_EXPECTED_CALLS]) != calls
+    ):
+        raise ValueError("model_comparison_call_order_invalid")
+    schedule = build_model_comparison_request_schedule(repo_root, protocol)
+    corpus, _ = _load_inputs(repo_root)
+    cases = {item["id"]: item for item in corpus["dialogues"]}
+    histories: dict[tuple[int, str], list[dict[str, Any]]] = {}
+    observations: dict[tuple[int, str], list[dict[str, Any]]] = {}
+    frozen_call_fields = {
+        "corpus_sha256": protocol["corpus_sha256"],
+        "prompt_sha256": protocol["prompt_sha256"],
+        "harness_sha256": protocol["harness_sha256"],
+        "parameters_sha256": protocol["parameters_sha256"],
+        "freeze_commit": protocol["freeze_commit"],
+    }
+    for call, plan in zip(calls, schedule):
+        if any(
+            call[key] != plan[key]
+            for key in (
+                "sequence",
+                "source",
+                "repetition",
+                "dialogue_id",
+                "turn_id",
+                "evaluated",
+                "messages_sha256",
+            )
+        ):
+            raise ValueError("model_comparison_call_order_invalid")
+        if any(call.get(key) != value for key, value in frozen_call_fields.items()):
+            raise ValueError("model_comparison_call_protocol_fingerprint_mismatch")
+        group = (int(call["repetition"]), str(call["dialogue_id"]))
+        history = histories.setdefault(group, [])
+        turn = cases[call["dialogue_id"]]["turns"][call["turn_id"] - 1]
+        signal = (
+            call["signal"] if call["status"] == "ok" else _build_fail_open_signal()
+        )
+        history.append(
+            {
+                "role": "user",
+                "content": turn["user"],
+                "timestamp": None,
+                "meta": {"affective_turn_signal": signal},
+            }
+        )
+        aggregate = build_stimmung_input(messages=history)
+        if aggregate != call["aggregate"]:
+            raise ValueError("model_comparison_aggregate_reconstruction_mismatch")
+        if call["evaluated"]:
+            observations.setdefault(group, []).append(
+                {
+                    "turn_id": call["turn_id"],
+                    "execution_status": call["status"],
+                    "source": "primary",
+                    "signal": call["signal"],
+                    "aggregate": aggregate,
+                }
+            )
+        history.append(
+            {
+                "role": "assistant",
+                "content": turn["assistant"],
+                "timestamp": None,
+            }
+        )
+    scores: list[dict[str, Any]] = []
+    for repetition in (1, 2):
+        for case in corpus["dialogues"]:
+            group = (repetition, case["id"])
+            score = dialogic_semantics.score_dialogue(
+                case,
+                observations.get(group, []),
+            )
+            scores.append(
+                _dialogue_score_record(
+                    score,
+                    source="primary",
+                    repetition=repetition,
+                    protocol=protocol,
+                )
+            )
+    expected_tail = _model_comparison_summary_records(
+        calls,
+        scores,
+        corpus,
+        repo_root=repo_root,
+        protocol=protocol,
+    )
+    if list(records[MODEL_COMPARISON_EXPECTED_CALLS:]) != expected_tail:
+        raise ValueError("model_comparison_artifact_summary_reconstruction_mismatch")
+    final = expected_tail[-1]
+    return {
+        "call_count": len(calls),
+        "dialogue_score_count": len(scores),
+        "final_decision": final["decision"],
+        "cost_usd": final["cost_usd"],
+    }
+
+
 def validate_artifact(
     records: Sequence[Mapping[str, Any]],
     repo_root: Path,
@@ -1309,27 +2348,59 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--freeze-commit", required=True)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--strengthening", action="store_true")
+    parser.add_argument("--model-comparison", action="store_true")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
-    protocol = (
-        build_strengthening_protocol(args.repo_root, freeze_commit=args.freeze_commit)
-        if args.strengthening
-        else build_protocol(args.repo_root, freeze_commit=args.freeze_commit)
-    )
-    summary = validate_protocol(protocol, args.repo_root)
+    if args.strengthening and args.model_comparison:
+        raise SystemExit("--strengthening and --model-comparison are mutually exclusive")
+    if args.model_comparison:
+        protocol = build_model_comparison_protocol(
+            args.repo_root,
+            freeze_commit=args.freeze_commit,
+        )
+        summary = validate_model_comparison_protocol(protocol, args.repo_root)
+    elif args.strengthening:
+        protocol = build_strengthening_protocol(
+            args.repo_root,
+            freeze_commit=args.freeze_commit,
+        )
+        summary = validate_protocol(protocol, args.repo_root)
+    else:
+        protocol = build_protocol(args.repo_root, freeze_commit=args.freeze_commit)
+        summary = validate_protocol(protocol, args.repo_root)
     if args.dry_run:
         print(_compact_json({"status": "ready", **summary, "protocol_sha256": _sha256_text(_compact_json(protocol))}))
         return 0
     if args.output is None:
         raise SystemExit("--output is required for a live campaign")
-    client = OpenRouterClient.from_env(title="FridaDev/Lot4S1")
+    client = OpenRouterClient.from_env(
+        title=(
+            "FridaDev/Lot4C2-Stimmung-Gemini-Comparison"
+            if args.model_comparison
+            else "FridaDev/Lot4S1"
+        )
+    )
 
     def progress(current: int, total: int, _record: Mapping[str, Any]) -> None:
         if current == 1 or current % 20 == 0 or current == total:
             print(_compact_json({"status": "running", "completed": current, "total": total}), flush=True)
 
-    records = run_campaign(repo_root=args.repo_root, protocol=protocol, client=client, progress=progress)
-    validate_artifact(records, args.repo_root, protocol)
+    if args.model_comparison:
+        records = run_model_comparison_campaign(
+            repo_root=args.repo_root,
+            protocol=protocol,
+            client=client,
+            progress=progress,
+        )
+        validate_model_comparison_artifact(records, args.repo_root, protocol)
+    else:
+        records = run_campaign(
+            repo_root=args.repo_root,
+            protocol=protocol,
+            client=client,
+            progress=progress,
+        )
+        validate_artifact(records, args.repo_root, protocol)
     write_jsonl(args.output, records)
     final = records[-1]
     print(
