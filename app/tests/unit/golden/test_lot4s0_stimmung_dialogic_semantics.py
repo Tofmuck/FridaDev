@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -20,6 +21,7 @@ if str(REPO_ROOT) not in sys.path:
 from benchmark.suites.stimmung import dialogic_semantics
 from benchmark.suites.stimmung import scorer as historical_scorer
 from core import stimmung_agent
+from core.hermeneutic_node.inputs import stimmung_input as runtime_stimmung_input
 
 
 DIRECTLY_MEASURABLE_FAMILIES = {
@@ -42,6 +44,14 @@ CONTRACT_ONLY_FAMILIES = {
     "opportunite_presence",
     "contre_presence",
 }
+REACHABILITY_FIXTURE = (
+    REPO_ROOT
+    / "benchmark"
+    / "suites"
+    / "stimmung"
+    / "fixtures"
+    / "stimmung_dialogic_reachability_witness_v1.json"
+)
 
 
 def _observations_for(case: dict, *, source: str = "primary") -> list[dict]:
@@ -89,6 +99,38 @@ def _observations_for(case: dict, *, source: str = "primary") -> list[dict]:
     return observations
 
 
+def _runtime_observations_for(case: dict, witness: dict, *, source: str = "primary") -> list[dict]:
+    signals = witness["signals"]
+    if len(signals) != len(case["turns"]):
+        raise ValueError("witness_turn_count_mismatch")
+
+    messages: list[dict] = []
+    observations: list[dict] = []
+    for turn, raw_signal in zip(case["turns"], signals):
+        signal = stimmung_agent._validate_affective_turn_signal(raw_signal)
+        if signal != raw_signal:
+            raise ValueError("witness_signal_not_normalized")
+        messages.append(
+            {
+                "role": "user",
+                "content": turn["user"],
+                "meta": {runtime_stimmung_input.SIGNAL_META_KEY: signal},
+            }
+        )
+        messages.append({"role": "assistant", "content": turn["assistant"]})
+        if "expectation" in turn:
+            observations.append(
+                {
+                    "turn_id": turn["turn_id"],
+                    "execution_status": "ok",
+                    "source": source,
+                    "signal": signal,
+                    "aggregate": runtime_stimmung_input.build_stimmung_input(messages=messages),
+                }
+            )
+    return observations
+
+
 class StimmungDialogicCorpusTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -126,6 +168,128 @@ class StimmungDialogicCorpusTests(unittest.TestCase):
                 [turn["turn_id"] for turn in case["turns"]],
                 list(range(1, len(case["turns"]) + 1)),
             )
+
+    def test_all_expectations_are_reachable_through_runtime_aggregation(self) -> None:
+        self.assertTrue(
+            REACHABILITY_FIXTURE.is_file(),
+            "runtime reachability witness fixture missing",
+        )
+        witness_payload = json.loads(REACHABILITY_FIXTURE.read_text(encoding="utf-8"))
+        self.assertEqual(
+            set(witness_payload),
+            {"schema_version", "corpus_schema_version", "provider_input", "dialogues"},
+        )
+        self.assertEqual(
+            witness_payload["schema_version"],
+            "stimmung_dialogic_reachability_witness_v1",
+        )
+        self.assertEqual(witness_payload["corpus_schema_version"], self.corpus["schema_version"])
+        self.assertIs(witness_payload["provider_input"], False)
+        self.assertEqual(
+            len(witness_payload["dialogues"]),
+            len({item["dialogue_id"] for item in witness_payload["dialogues"]}),
+        )
+        for item in witness_payload["dialogues"]:
+            self.assertEqual(set(item), {"dialogue_id", "signals"})
+            self.assertIsInstance(item["signals"], list)
+        witnesses = {item["dialogue_id"]: item for item in witness_payload["dialogues"]}
+        self.assertEqual(set(witnesses), {case["id"] for case in self.corpus["dialogues"]})
+
+        evaluated_steps = 0
+        failures: dict[str, list[str]] = {}
+        for case in self.corpus["dialogues"]:
+            observations = _runtime_observations_for(case, witnesses[case["id"]])
+            evaluated_steps += len(observations)
+            result = dialogic_semantics.score_dialogue(case, observations)
+            if result["classification"] != "pass":
+                failures[case["id"]] = result["reason_codes"]
+        self.assertEqual(failures, {})
+        self.assertEqual(evaluated_steps, 32)
+
+        shifted_case = next(
+            case for case in self.corpus["dialogues"] if case["id"] == "L4S0-ST-002"
+        )
+        runtime_shift = _runtime_observations_for(
+            shifted_case, witnesses["L4S0-ST-002"]
+        )[-1]["aggregate"]
+        expectation_derived_shift = _observations_for(shifted_case)[-1]["aggregate"]
+        self.assertEqual(runtime_shift["shift_state"], "shifted")
+        self.assertNotEqual(runtime_shift, expectation_derived_shift)
+
+    def test_runtime_reachability_rejects_controlled_mutations(self) -> None:
+        witness_payload = json.loads(REACHABILITY_FIXTURE.read_text(encoding="utf-8"))
+        witnesses = {item["dialogue_id"]: item for item in witness_payload["dialogues"]}
+        cases = {case["id"]: case for case in self.corpus["dialogues"]}
+
+        missing_non_evaluated = copy.deepcopy(witnesses["L4S0-ST-002"])
+        missing_non_evaluated["signals"][2] = {
+            "schema_version": "v1",
+            "present": False,
+            "tones": [],
+            "dominant_tone": None,
+            "confidence": 0.0,
+        }
+        missing_result = dialogic_semantics.score_dialogue(
+            cases["L4S0-ST-002"],
+            _runtime_observations_for(cases["L4S0-ST-002"], missing_non_evaluated),
+        )
+        self.assertEqual(missing_result["classification"], "fail")
+        self.assertIn("aggregate_turn_count_mismatch", missing_result["reason_codes"])
+
+        reversed_witness = copy.deepcopy(witnesses["L4S0-ST-002"])
+        reversed_witness["signals"][2], reversed_witness["signals"][3] = (
+            reversed_witness["signals"][3],
+            reversed_witness["signals"][2],
+        )
+        reversed_result = dialogic_semantics.score_dialogue(
+            cases["L4S0-ST-002"],
+            _runtime_observations_for(cases["L4S0-ST-002"], reversed_witness),
+        )
+        self.assertEqual(reversed_result["classification"], "fail")
+
+        duplicated_witness = copy.deepcopy(witnesses["L4S0-ST-002"])
+        duplicated_witness["signals"].insert(2, copy.deepcopy(duplicated_witness["signals"][2]))
+        with self.assertRaisesRegex(ValueError, "witness_turn_count_mismatch"):
+            _runtime_observations_for(cases["L4S0-ST-002"], duplicated_witness)
+
+        premature_neutral_return = copy.deepcopy(cases["L4S0-ST-003"])
+        premature_neutral_return["turns"][2]["expectation"] = premature_neutral_return[
+            "turns"
+        ][5].pop("expectation")
+        premature_result = dialogic_semantics.score_dialogue(
+            premature_neutral_return,
+            _runtime_observations_for(premature_neutral_return, witnesses["L4S0-ST-003"]),
+        )
+        self.assertEqual(premature_result["classification"], "fail")
+
+        literal_irony = copy.deepcopy(witnesses["L4S0-ST-015"])
+        literal_irony["signals"][-1] = {
+            "schema_version": "v1",
+            "present": True,
+            "tones": [{"tone": "enthousiasme", "strength": 8}],
+            "dominant_tone": "enthousiasme",
+            "confidence": 0.8,
+        }
+        irony_result = dialogic_semantics.score_dialogue(
+            cases["L4S0-ST-015"],
+            _runtime_observations_for(cases["L4S0-ST-015"], literal_irony),
+        )
+        self.assertEqual(irony_result["classification"], "fail")
+        self.assertIn("irony_literalized", irony_result["reason_codes"])
+
+        steady_irony = _runtime_observations_for(
+            cases["L4S0-ST-015"], witnesses["L4S0-ST-015"]
+        )[-1]
+        self.assertEqual(steady_irony["aggregate"]["shift_state"], "steady")
+        steady_rejected = copy.deepcopy(cases["L4S0-ST-015"])
+        steady_rejected["turns"][-1]["expectation"]["aggregate"]["allowed_shift_states"].remove(
+            "steady"
+        )
+        steady_result = dialogic_semantics.score_dialogue(
+            steady_rejected,
+            _runtime_observations_for(steady_rejected, witnesses["L4S0-ST-015"]),
+        )
+        self.assertEqual(steady_result["classification"], "fail")
 
     def test_thresholds_are_frozen_for_primary_and_fallback(self) -> None:
         thresholds = self.corpus["thresholds"]
@@ -228,6 +392,18 @@ class StimmungDialogicCorpusTests(unittest.TestCase):
         metadata_case["hint_policy"] = "context_labels_allowed"
         with self.assertRaises(ValueError):
             dialogic_semantics.validate_corpus(metadata)
+
+        false_failure_count = copy.deepcopy(self.corpus)
+        false_failure_case = next(
+            case for case in false_failure_count["dialogues"] if case["id"] == "L4S0-ST-015"
+        )
+        false_failure_case["factual_outcomes"] = {
+            "successful_attempts": 0,
+            "failed_attempts": 3,
+            "sequence": ["failure", "failure", "failure"],
+        }
+        with self.assertRaisesRegex(ValueError, "hardened_dialogue_contract_changed"):
+            dialogic_semantics.validate_corpus(false_failure_count)
 
     def test_duplicate_tones_match_runtime_normalization_boundary(self) -> None:
         signal = {

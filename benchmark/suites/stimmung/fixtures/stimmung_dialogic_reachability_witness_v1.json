@@ -1,0 +1,156 @@
+{
+  "schema_version": "stimmung_dialogic_reachability_witness_v1",
+  "corpus_schema_version": "stimmung_dialogic_corpus_v2",
+  "provider_input": false,
+  "dialogues": [
+    {
+      "dialogue_id": "L4S0-ST-001",
+      "signals": [
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "curiosite", "strength": 3}], "dominant_tone": "curiosite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "curiosite", "strength": 3}], "dominant_tone": "curiosite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "curiosite", "strength": 5}], "dominant_tone": "curiosite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "curiosite", "strength": 5}], "dominant_tone": "curiosite", "confidence": 0.8}
+      ]
+    },
+    {
+      "dialogue_id": "L4S0-ST-002",
+      "signals": [
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "apaisement", "strength": 6}], "dominant_tone": "apaisement", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "apaisement", "strength": 6}], "dominant_tone": "apaisement", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "apaisement", "strength": 6}], "dominant_tone": "apaisement", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "frustration", "strength": 9}], "dominant_tone": "frustration", "confidence": 0.8}
+      ]
+    },
+    {
+      "dialogue_id": "L4S0-ST-003",
+      "signals": [
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "anxiete", "strength": 9}], "dominant_tone": "anxiete", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "anxiete", "strength": 9}], "dominant_tone": "anxiete", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "anxiete", "strength": 7}], "dominant_tone": "anxiete", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "neutralite", "strength": 6}], "dominant_tone": "neutralite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "neutralite", "strength": 5}], "dominant_tone": "neutralite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "neutralite", "strength": 4}], "dominant_tone": "neutralite", "confidence": 0.8}
+      ]
+    },
+    {
+      "dialogue_id": "L4S0-ST-004",
+      "signals": [
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "curiosite", "strength": 6}], "dominant_tone": "curiosite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "curiosite", "strength": 6}], "dominant_tone": "curiosite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "frustration", "strength": 8}], "dominant_tone": "frustration", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "curiosite", "strength": 7}, {"tone": "frustration", "strength": 6}], "dominant_tone": "curiosite", "confidence": 0.8}
+      ]
+    },
+    {
+      "dialogue_id": "L4S0-ST-005",
+      "signals": [
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "frustration", "strength": 3}], "dominant_tone": "frustration", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "frustration", "strength": 4}], "dominant_tone": "frustration", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "frustration", "strength": 8}], "dominant_tone": "frustration", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "frustration", "strength": 9}], "dominant_tone": "frustration", "confidence": 0.8}
+      ]
+    },
+    {
+      "dialogue_id": "L4S0-ST-006",
+      "signals": [
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "enthousiasme", "strength": 6}], "dominant_tone": "enthousiasme", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "enthousiasme", "strength": 6}], "dominant_tone": "enthousiasme", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "frustration", "strength": 7}], "dominant_tone": "frustration", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "frustration", "strength": 7}], "dominant_tone": "frustration", "confidence": 0.8}
+      ]
+    },
+    {
+      "dialogue_id": "L4S0-ST-007",
+      "signals": [
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "decouragement", "strength": 8}], "dominant_tone": "decouragement", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "decouragement", "strength": 8}], "dominant_tone": "decouragement", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "neutralite", "strength": 4}], "dominant_tone": "neutralite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "neutralite", "strength": 4}], "dominant_tone": "neutralite", "confidence": 0.8}
+      ]
+    },
+    {
+      "dialogue_id": "L4S0-ST-008",
+      "signals": [
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "anxiete", "strength": 7}], "dominant_tone": "anxiete", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "anxiete", "strength": 7}], "dominant_tone": "anxiete", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "neutralite", "strength": 4}], "dominant_tone": "neutralite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "neutralite", "strength": 4}], "dominant_tone": "neutralite", "confidence": 0.8}
+      ]
+    },
+    {
+      "dialogue_id": "L4S0-ST-009",
+      "signals": [
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "neutralite", "strength": 3}], "dominant_tone": "neutralite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "neutralite", "strength": 3}], "dominant_tone": "neutralite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "neutralite", "strength": 3}], "dominant_tone": "neutralite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "neutralite", "strength": 3}], "dominant_tone": "neutralite", "confidence": 0.8}
+      ]
+    },
+    {
+      "dialogue_id": "L4S0-ST-010",
+      "signals": [
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "neutralite", "strength": 3}], "dominant_tone": "neutralite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "neutralite", "strength": 3}], "dominant_tone": "neutralite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "anxiete", "strength": 7}], "dominant_tone": "anxiete", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "anxiete", "strength": 7}], "dominant_tone": "anxiete", "confidence": 0.8}
+      ]
+    },
+    {
+      "dialogue_id": "L4S0-ST-011",
+      "signals": [
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "neutralite", "strength": 3}], "dominant_tone": "neutralite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "neutralite", "strength": 3}], "dominant_tone": "neutralite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "neutralite", "strength": 3}], "dominant_tone": "neutralite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "neutralite", "strength": 3}], "dominant_tone": "neutralite", "confidence": 0.8}
+      ]
+    },
+    {
+      "dialogue_id": "L4S0-ST-012",
+      "signals": [
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "neutralite", "strength": 3}], "dominant_tone": "neutralite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "neutralite", "strength": 3}], "dominant_tone": "neutralite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "curiosite", "strength": 5}], "dominant_tone": "curiosite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "curiosite", "strength": 5}], "dominant_tone": "curiosite", "confidence": 0.8}
+      ]
+    },
+    {
+      "dialogue_id": "L4S0-ST-013",
+      "signals": [
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "decouragement", "strength": 5}], "dominant_tone": "decouragement", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "decouragement", "strength": 5}], "dominant_tone": "decouragement", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "curiosite", "strength": 4}], "dominant_tone": "curiosite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "curiosite", "strength": 5}], "dominant_tone": "curiosite", "confidence": 0.8}
+      ]
+    },
+    {
+      "dialogue_id": "L4S0-ST-014",
+      "signals": [
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "apaisement", "strength": 4}], "dominant_tone": "apaisement", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "apaisement", "strength": 4}], "dominant_tone": "apaisement", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "anxiete", "strength": 7}], "dominant_tone": "anxiete", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "anxiete", "strength": 7}], "dominant_tone": "anxiete", "confidence": 0.8}
+      ]
+    },
+    {
+      "dialogue_id": "L4S0-ST-015",
+      "signals": [
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "enthousiasme", "strength": 6}], "dominant_tone": "enthousiasme", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "enthousiasme", "strength": 6}], "dominant_tone": "enthousiasme", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "frustration", "strength": 8}], "dominant_tone": "frustration", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "frustration", "strength": 8}], "dominant_tone": "frustration", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "frustration", "strength": 8}], "dominant_tone": "frustration", "confidence": 0.8}
+      ]
+    },
+    {
+      "dialogue_id": "L4S0-ST-016",
+      "signals": [
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "curiosite", "strength": 4}], "dominant_tone": "curiosite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "curiosite", "strength": 4}], "dominant_tone": "curiosite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "curiosite", "strength": 4}], "dominant_tone": "curiosite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "neutralite", "strength": 3}], "dominant_tone": "neutralite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "curiosite", "strength": 4}], "dominant_tone": "curiosite", "confidence": 0.8},
+        {"schema_version": "v1", "present": true, "tones": [{"tone": "curiosite", "strength": 4}], "dominant_tone": "curiosite", "confidence": 0.8}
+      ]
+    }
+  ]
+}

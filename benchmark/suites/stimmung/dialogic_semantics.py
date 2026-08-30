@@ -140,6 +140,11 @@ _HARDENED_DIALOGUE_CONTRACT = {
         "turn_count": 5,
         "family": "ironie",
         "evaluated_turn_ids": [2, 5],
+        "factual_outcomes": {
+            "successful_attempts": 1,
+            "failed_attempts": 2,
+            "sequence": ["success", "failure", "failure"],
+        },
     },
     "L4S0-ST-016": {
         "turn_count": 6,
@@ -158,6 +163,7 @@ _TOP_KEYS = {
     "mutation_matrix",
 }
 _DIALOGUE_KEYS = {"id", "version", "families", "difficulty", "hint_policy", "human_rationale", "turns"}
+_FACTUAL_OUTCOME_KEYS = {"successful_attempts", "failed_attempts", "sequence"}
 _TURN_KEYS = {"turn_id", "user", "assistant"}
 _EXPECTATION_KEYS = {
     "allowed_signal_states",
@@ -487,7 +493,11 @@ def _validate_thresholds(value: Any) -> None:
 def _validate_dialogue(dialogue: Any, coverage: dict[str, set[str]]) -> None:
     if not isinstance(dialogue, Mapping):
         raise ValueError("dialogue_not_object")
-    _exact_keys(dialogue, _DIALOGUE_KEYS, "dialogue")
+    dialogue_id_candidate = dialogue.get("id")
+    dialogue_keys = _DIALOGUE_KEYS | (
+        {"factual_outcomes"} if dialogue_id_candidate == "L4S0-ST-015" else set()
+    )
+    _exact_keys(dialogue, dialogue_keys, "dialogue")
     dialogue_id = _bounded_string(dialogue.get("id"), 8, 32, "invalid_dialogue_id")
     if not dialogue_id.startswith("L4S0-ST-") or dialogue.get("version") != "v2":
         raise ValueError("invalid_dialogue_identity")
@@ -501,6 +511,8 @@ def _validate_dialogue(dialogue: Any, coverage: dict[str, set[str]]) -> None:
     if dialogue.get("hint_policy") not in _HINT_POLICIES:
         raise ValueError("invalid_hint_policy")
     _bounded_string(dialogue.get("human_rationale"), 12, 320, "invalid_dialogue_rationale")
+    if dialogue_id == "L4S0-ST-015":
+        _validate_factual_outcomes(dialogue.get("factual_outcomes"))
     turns = dialogue.get("turns")
     if not isinstance(turns, list) or not 4 <= len(turns) <= 6:
         raise ValueError("invalid_turn_count")
@@ -534,8 +546,36 @@ def _validate_hardened_dialogues(dialogues: Sequence[Mapping[str, Any]]) -> None
             or dialogue.get("hint_policy") != "implicit_context_required"
             or set(dialogue.get("families") or []) != {contract["family"]}
             or evaluated_turn_ids != contract["evaluated_turn_ids"]
+            or (
+                "factual_outcomes" in contract
+                and dialogue.get("factual_outcomes") != contract["factual_outcomes"]
+            )
         ):
             raise ValueError(f"hardened_dialogue_contract_changed:{dialogue_id}")
+
+
+def _validate_factual_outcomes(value: Any) -> None:
+    if not isinstance(value, Mapping):
+        raise ValueError("invalid_factual_outcomes")
+    _exact_keys(value, _FACTUAL_OUTCOME_KEYS, "factual_outcomes")
+    successful = value.get("successful_attempts")
+    failed = value.get("failed_attempts")
+    sequence = value.get("sequence")
+    if (
+        isinstance(successful, bool)
+        or not isinstance(successful, int)
+        or isinstance(failed, bool)
+        or not isinstance(failed, int)
+        or not 0 <= successful <= 6
+        or not 0 <= failed <= 6
+        or not isinstance(sequence, list)
+        or not sequence
+        or len(sequence) > 6
+        or any(item not in {"success", "failure"} for item in sequence)
+        or sequence.count("success") != successful
+        or sequence.count("failure") != failed
+    ):
+        raise ValueError("invalid_factual_outcomes")
 
 
 def _validate_expectation(value: Any, dialogue_families: set[str], coverage: dict[str, set[str]]) -> None:

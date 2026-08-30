@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ferme apres cutover Validation Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 non commence; goldens techniques du coeur livres, corpus semantique du caller non execute et observabilite causale complete non prouvee; Lots 5 a 8 et Z non commences
+Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ferme apres cutover Validation Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 techniquement corrige avec corpus runtime-atteignable, validation humaine en attente et 4S.1 non commence; goldens techniques du coeur livres, corpus semantique provider non execute et observabilite causale complete non prouvee; Lots 5 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -1637,7 +1637,7 @@ Portee architecturale de cette acceptation:
 
 # LOT 4 - Audit causal et consolidation de Stimmung
 
-Statut: goldens techniques du coeur livres; 4C.1 ferme apres cutover Validation Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 non commence; corpus semantique du caller non execute; observabilite causale complete non prouvee
+Statut: goldens techniques du coeur livres; 4C.1 ferme apres cutover Validation Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 techniquement corrige avec corpus runtime-atteignable et validation humaine en attente; 4S.1 non commence; corpus semantique provider non execute; observabilite causale complete non prouvee
 Nature: audit causal multi-tours, correctifs bornes, benchmark sous GO separe
 et observabilite synchrone, sans extension fonctionnelle
 Dependance: Lot 3 ferme
@@ -2510,7 +2510,7 @@ Message de commit recommande: `fix: preserve Stimmung input for Validation`.
 
 ### Micro-lot 4S.0 - Corpus semantique multi-tours et scorer hermetique
 
-Statut: techniquement corrige; en attente de validation humaine separee; 4S.1 non commence
+Statut: techniquement corrige avec corpus runtime-atteignable; en attente de validation humaine separee; 4S.1 non commence
 Effort recommande: `extra high`
 Nature: tests, fixtures et documentation seulement
 Prerequis: 4C.1 ferme
@@ -2725,6 +2725,72 @@ Passe corrective du 30 aout 2026:
   pour Tof apres ce retour. Cette passe ne coche pas la case humaine et ne
   commence ni 4S.1 ni aucun lot suivant.
 
+Passe finale d'atteignabilite du 30 aout 2026:
+
+- R1 `valide`: `_observations_for()` construit volontairement des objets depuis
+  les attentes pour isoler les branches du scorer, mais cette commodite etait
+  devenue l'unique preuve de satisfiabilite du corpus. La reproduction rouge a
+  echoue sur l'absence du temoin runtime; la preuve autoritative utilise
+  desormais `stimmung_dialogic_reachability_witness_v1`, le normaliseur produit
+  et le vrai `build_stimmung_input`;
+- R2 `valide`: apres deux signaux anxieux, une seule attenuation conserve
+  legitimement `anxiete/stable/steady`. `L4S0-ST-003` compte maintenant six
+  tours; la baisse intermediaire reste anxieuse dans le temoin et la preuve
+  positive est placee au sixieme tour, lorsque neutralite et decroissance sont
+  effectivement observables dans la fenetre runtime;
+- R3 `valide`: `L4S0-ST-015` avait un premier succes puis deux echecs, malgre un
+  bilan textuel de trois echecs. Le recit est corrige et une metadonnee fermee
+  fige `1` succes, `2` echecs et leur ordre, sans inspection lexicale du
+  francais;
+- R4 `valide`: l'audit des `32` etapes confirme que plusieurs transitions sont
+  introduites au tour preparatoire puis peuvent etre `steady` au tour evalue.
+  Les cas concernes acceptent cet etat seulement lorsqu'un temoin runtime le
+  produit; bascule et alternance conservent leurs exigences propres;
+- R5 `valide`: les ensembles bornes acceptent desormais une anxiete attenuee
+  pendant la baisse, la frustration raisonnable de la fatigue et, pour
+  l'ironie apres echecs, frustration, colere ou decouragement. L'enthousiasme
+  litteral reste interdit et tous les seuils restent `1.0`;
+- R6 `valide`: le bandeau general, le statut du Lot 4 et le statut 4S.0 disent
+  maintenant la meme verite: preuve technique livree, validation humaine en
+  attente, 4S.1 non commence;
+- preuve autoritative: le temoin versionne contient un signal synthetique
+  normalise pour chacun des `69` tours des `16` dialogues. Les signaux sont
+  attaches aux metadonnees de vrais messages user/assistant synthetiques; les
+  tours non evalues sont conserves; les `32/32` etapes passent le scorer avec
+  l'agregat produit exclusivement par `build_stimmung_input`. Le temoin est
+  marque `provider_input=false`, n'est jamais une sortie provider revendiquee
+  et n'est pas une entree de la future campagne 4S.1;
+- empreintes SHA-256: corpus v2
+  `5059d5ea4b57409bc08ee95dae39f74b2411268dcf5fe6aee516dd9ffb310ee5`;
+  temoin d'atteignabilite
+  `e52a2089d53db59c2e46129599e2aefec4404d6ab6f9ef0ded56ac3e84d9117d`;
+- sensibilite ajoutee: rejet d'un agregat relu depuis l'attente, d'un signal
+  non evalue retire, de deux signaux inverses, d'un signal duplique, du retour
+  neutre premature de `003`, des trois echecs fictifs de `015`, du rejet de
+  `steady` lorsqu'il est produit et de l'enthousiasme litteral sur l'ironie.
+  Les mutations des deux passes precedentes, le seuil `1.0`, l'absence de faux
+  `pass` sans provider et la frontiere aval `not_measured` restent verrouilles;
+- fichiers de preuve ajoutes ou ajustes:
+  `benchmark/suites/stimmung/fixtures/stimmung_dialogic_reachability_witness_v1.json`,
+  `benchmark/suites/stimmung/fixtures/stimmung_dialogic_semantic_v2.json`,
+  `benchmark/suites/stimmung/dialogic_semantics.py`,
+  `app/tests/unit/golden/test_lot4s0_stimmung_dialogic_semantics.py` et
+  `benchmark/README.md`;
+- tests avant patch: Python `2771/2771`, JavaScript `137/137`, Chromium
+  `19/19`. Reproduction rouge R1: `1` echec attendu, temoin absent. Apres
+  correction: contrat 4S.0 `14/14`; contrat, benchmark, caller, agregateur et
+  golden causal voisins `47/47`; decouverte Python `2773/2773`, JavaScript
+  `137/137`, Chromium `19/19`; aucun echec, erreur, skip, todo ou expected
+  failure;
+- commandes hermetiques: depot entier monte en lecture seule, `--network none`,
+  `/tmp` en tmpfs, `PYTHONDONTWRITEBYTECODE=1`; revision Chromium locale
+  reutilisee en lecture seule sans installation ni telechargement;
+- aucun provider, faux resultat provider, regex, runtime, prompt, modele,
+  agregateur, frontend, observabilite produit, DB, rebuild, restart ou
+  deploiement. La validation humaine reste la seule condition ouverte et sera
+  realisee separement par Codex pour Tof apres ce retour; 4S.1 reste non
+  commence.
+
 Condition de fermeture:
 
 - [x] Le corpus versionne couvre toutes les familles imposees.
@@ -2737,6 +2803,8 @@ Condition de fermeture:
 Message de commit recommande: `test: define Lot 4 Stimmung semantic corpus`.
 Message de commit de la passe corrective:
 `test: correct Lot 4S.0 semantic proof boundaries`.
+Message de commit de la preuve d'atteignabilite:
+`test: make Lot 4S.0 corpus runtime-reachable`.
 
 ### Micro-lot 4S.1 - Campagne provider primaire et fallback
 

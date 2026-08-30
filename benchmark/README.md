@@ -382,11 +382,20 @@ They are not reused as proof of multi-turn semantic maturation. The versioned
 candidate corpus
 `benchmark/suites/stimmung/fixtures/stimmung_dialogic_semantic_v2.json` and its
 dedicated `dialogic_semantics.py` contract cover 16 synthetic French dialogues:
-14 have four complete user/assistant pairs, one has five and one has six. The
+13 have four complete user/assistant pairs, one has five and two have six. The
 two deeper cases exercise implicit irony and context-dependent reported affect
 without giving the expected class in the preceding assistant turns.
 Expectations are bounded properties of the per-turn signal and aggregated
 Stimmung, never exact model text.
+
+The separate test-only witness
+`benchmark/suites/stimmung/fixtures/stimmung_dialogic_reachability_witness_v1.json`
+contains normalized synthetic signals for every complete turn. It is never a
+provider input. Tests attach those signals to synthetic user-message metadata,
+run the production normalizer and `build_stimmung_input`, then check all 32
+evaluated steps against the corpus. Thus the expectation-derived observations
+remain useful for isolated scorer branches but no longer serve as proof that a
+dialogic trajectory is reachable by the runtime aggregator.
 
 The 4S.0 validator freezes `1.0` thresholds only for caller-observable or mixed
 families, positive/counter coverage and a closed mutation matrix before any
