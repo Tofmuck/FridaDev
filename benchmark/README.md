@@ -640,6 +640,17 @@ failure is `not_eligible`; any technical or provenance gap is `inconclusive`.
 Only `eligible_primary` opens the separately verified conditional runtime
 delivery in this same micro-lot.
 
+The frozen campaign completed on 2026-08-30 with 138/138 structurally valid
+Anthropic responses and 138 `stop` finish reasons, at an observed total cost
+of 0.506276 USD. Median/p95 latency was 2,251.889/27,588.288 ms; the maximum
+was 85,110.258 ms. Usage was 204,688 prompt, 9,690 completion, zero reported
+reasoning and 214,378 total tokens. Both repetitions passed only three of the
+16 dialogues, so the final score is 6/32, with 13 reproducible dialogue
+failures and decision `not_eligible`. The artifact is
+`benchmark/results/stimmung/2026-08-30-lot4c2-stimmung-sonnet-5-medium.jsonl`
+(SHA-256 `3f4da100e9c9553d64bdf44b379a02921297f6984e506b359a40891db4f4ad46`).
+No fallback or runtime action followed.
+
 ## Validation agent benchmark
 
 The validation suite uses the production prompt

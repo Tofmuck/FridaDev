@@ -3281,6 +3281,38 @@ provider:
   exactement `138` appels et aucun provider n'a encore ete appele dans cette
   passe. Runtime, frontend et 4C.3 restent inchanges.
 
+Resultat de la campagne candidate Sonnet 5 executee depuis le gel pousse
+`306d08773beeb80eeb888f784a4dfe5ae2442fcc`:
+
+- les `138/138` appels prevus ont ete executes une seule fois, uniquement vers
+  `anthropic/claude-sonnet-5` sur le endpoint Anthropic. Les `138` retours sont
+  JSON, schema et metier valides, avec `finish_reason=stop`; aucun Gemini,
+  GPT-5.4 Nano, fallback, retry, outil ou autre caller n'a ete appele;
+- provenance complete: modele et provider observes conformes, effort `medium`
+  demande, raisonnement exclu, JSON Schema strict, sampling absent. OpenRouter
+  rapporte `0` token de raisonnement; cette metrique observee ne remplace pas
+  la preuve du parametre demande. Le p95 est `27588.288 ms`, mais le maximum
+  atteint `85110.258 ms`, limite de viabilite a conserver visible malgre
+  l'absence de statut timeout;
+- usage total: `204688` tokens prompt, `9690` completion, `0` reasoning et
+  `214378` total. Cout observe `0.506276 USD`, soit `0.00366867 USD` par appel,
+  tres inferieur au plafond `25 USD`;
+- les deux repetitions sont stables mais echouent chacune sur `13/16`
+  dialogues. Seuls trois dialogues passent dans les deux repetitions, soit
+  `6/32` scores. Les taux par famille restent a `0.0` sauf `citation=1.0`;
+  les defauts reproductibles portent notamment sur le surcodage local ou
+  agrege, la force, la decroissance et les trajectoires de stabilite/bascule;
+- decision gelee `not_eligible`: la campagne est techniquement complete mais
+  manque les seuils semantiques `1.0`. L'artefact content-free date contient
+  `174` lignes, empreinte
+  `3f4da100e9c9553d64bdf44b379a02921297f6984e506b359a40891db4f4ad46`;
+- un contre-audit de reconstruction a corrige le validateur de statistiques,
+  qui dependait a tort de l'ordre des cles avant serialisation. Un golden
+  recharge desormais le JSONL trie et reconstruit integralement la decision;
+- la porte de livraison est fermee: aucun prompt, modele live, setting,
+  runtime, frontend, rebuild, restart, deploiement ou smoke n'est modifie.
+  4C.2 reste ouvert et 4C.3 reste non commence.
+
 Message de commit recommande si active: `fix: strengthen Stimmung semantic extraction`.
 
 ### Micro-lot 4C.3 - Separation affect et certitude epistemique

@@ -297,6 +297,28 @@ class Lot4C2StimmungSonnetCandidateTests(unittest.TestCase):
             "inconclusive",
         )
 
+    def test_retained_provider_artifact_round_trips_and_reconstructs_offline(self) -> None:
+        artifact_path = (
+            REPO_ROOT
+            / "benchmark/results/stimmung/2026-08-30-lot4c2-stimmung-sonnet-5-medium.jsonl"
+        )
+        records = dialogic_campaign.load_jsonl(artifact_path)
+        protocol = dialogic_campaign.build_sonnet_candidate_protocol(
+            REPO_ROOT,
+            freeze_commit=dialogic_campaign.SONNET_CANDIDATE_FREEZE_COMMIT,
+        )
+
+        result = dialogic_campaign.validate_sonnet_candidate_artifact(
+            records,
+            REPO_ROOT,
+            protocol,
+        )
+
+        self.assertEqual(result["call_count"], 138)
+        self.assertEqual(result["dialogue_score_count"], 32)
+        self.assertEqual(result["final_decision"], "not_eligible")
+        self.assertEqual(result["cost_usd"], 0.506276)
+
 
 if __name__ == "__main__":
     unittest.main()

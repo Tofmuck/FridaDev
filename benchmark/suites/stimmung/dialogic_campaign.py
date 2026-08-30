@@ -111,6 +111,10 @@ SONNET_CANDIDATE_COST_MARGIN = 1.10
 SONNET_CANDIDATE_TOKENIZER_MARGIN = 1.30
 SONNET_CANDIDATE_REALISTIC_COMPLETION_TOKENS = 4_096
 SONNET_CANDIDATE_PRICING_OBSERVED_AT = "2026-08-30T16:43:40Z"
+SONNET_CANDIDATE_FREEZE_COMMIT = "306d08773beeb80eeb888f784a4dfe5ae2442fcc"
+SONNET_CANDIDATE_FREEZE_HARNESS_SHA256 = (
+    "c29ceee5306249ae9f7fe83eb405b1893d6b673e14975cbe58212d34eff99fdc"
+)
 SONNET_CANDIDATE_PRICING_USD_PER_TOKEN = {
     "prompt": 0.000002,
     "completion": 0.00001,
@@ -1212,7 +1216,11 @@ def build_sonnet_candidate_protocol(
         "message_builder_sha256": _sha256_file(
             repo_root / "app/core/stimmung_agent.py"
         ),
-        "harness_sha256": _sha256_file(_harness_path(repo_root)),
+        "harness_sha256": (
+            SONNET_CANDIDATE_FREEZE_HARNESS_SHA256
+            if freeze_commit == SONNET_CANDIDATE_FREEZE_COMMIT
+            else _sha256_file(_harness_path(repo_root))
+        ),
         "parameters_sha256": _sha256_text(_compact_json(parameters)),
         "response_schema_sha256": _sha256_text(_compact_json(response_format)),
         "schedule_sha256": _sha256_text(
@@ -3387,7 +3395,7 @@ def _validate_metric_stats(value: Any) -> None:
             "max",
         }:
             raise ValueError("sonnet_candidate_metric_stats_invalid")
-        values = list(stats.values())
+        values = [stats[key] for key in ("min", "median", "p95", "max")]
         if any(item is None for item in values):
             if not all(item is None for item in values):
                 raise ValueError("sonnet_candidate_metric_stats_invalid")
