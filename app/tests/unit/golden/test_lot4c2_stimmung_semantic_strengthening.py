@@ -226,6 +226,43 @@ class Lot4C2StimmungSemanticStrengtheningTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "final_reason_invalid"):
             dialogic_campaign.validate_content_free_record(free_reason_mutant)
 
+    def test_provider_artifact_is_content_free_and_reconstructible(self) -> None:
+        artifact_path = (
+            REPO_ROOT
+            / "benchmark/results/stimmung"
+            / "2026-08-30-lot4c2-stimmung-strengthening-candidate.jsonl"
+        )
+        records = dialogic_campaign.load_jsonl(artifact_path)
+        artifact_protocol = dialogic_campaign.build_strengthening_protocol(
+            REPO_ROOT,
+            freeze_commit="d69dc8b21e3df9bf4989a407e257c70a8305255d",
+        )
+        validation = dialogic_campaign.validate_artifact(
+            records,
+            REPO_ROOT,
+            artifact_protocol,
+        )
+
+        self.assertEqual(validation["call_count"], 276)
+        self.assertEqual(validation["dialogue_score_count"], 64)
+        self.assertEqual(validation["final_decision"], "inconclusive")
+        self.assertEqual(
+            records[-1]["reason_codes"],
+            ["provider_results_or_metrics_incomplete"],
+        )
+        self.assertEqual(
+            sum(
+                record.get("status") == "schema_error"
+                for record in records
+                if record.get("record_type") == "call"
+            ),
+            1,
+        )
+        self.assertEqual(
+            dialogic_campaign._sha256_file(artifact_path),
+            "29147002cbaf1741718ea6d616f53944efffb70db41aae7ce0ff0b423c49a6b0",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

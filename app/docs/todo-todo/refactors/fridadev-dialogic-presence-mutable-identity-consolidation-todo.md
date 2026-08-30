@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ferme apres cutover Validation Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 et 4S.1 fermes, decision 4S.1 `strengthen`; 4C.2 actif avec candidate semantique gelee avant campagne provider; observabilite causale complete non prouvee; Lots 5 a 8 et Z non commences
+Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ferme apres cutover Validation Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 et 4S.1 fermes, decision 4S.1 `strengthen`; campagne 4C.2 candidate `inconclusive`, aucun cutover et prochaine decision requise; observabilite causale complete non prouvee; Lots 5 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -1637,7 +1637,7 @@ Portee architecturale de cette acceptation:
 
 # LOT 4 - Audit causal et consolidation de Stimmung
 
-Statut: goldens techniques du coeur livres; 4C.1, 4S.0 et 4S.1 fermes; decision 4S.1 `strengthen`; 4C.2 actif avec candidate semantique gelee avant campagne provider; observabilite causale complete non prouvee
+Statut: goldens techniques du coeur livres; 4C.1, 4S.0 et 4S.1 fermes; decision 4S.1 `strengthen`; campagne 4C.2 candidate `inconclusive`, prompt runtime inchange et prochaine decision requise; observabilite causale complete non prouvee
 Nature: audit causal multi-tours, correctifs bornes, benchmark sous GO separe
 et observabilite synchrone, sans extension fonctionnelle
 Dependance: Lot 3 ferme
@@ -2976,7 +2976,7 @@ Message de commit recommande: `benchmark: evaluate Stimmung semantic corpus`.
 
 ### Micro-lot 4C.2 - Renforcement semantique conditionnel du caller
 
-Statut: actif le 2026-08-30; diagnostic et candidate unique geles, campagne provider non executee
+Statut: ouvert; campagne candidate executee le 2026-08-30, decision `inconclusive`, aucun cutover runtime
 Effort recommande: `extra high`
 Nature: correctif caller borne, observabilite synchrone et preuves
 Prerequis: decision `strengthen` de 4S.1 localisant un defaut du caller
@@ -3062,6 +3062,38 @@ provider:
   `276` appels. Aucun provider, runtime, prompt actif,
   observabilite produit, frontend, DB, rebuild, restart ou deploiement avant
   le commit de gel.
+
+Passe B provider executee depuis le gel pousse
+`d69dc8b21e3df9bf4989a407e257c70a8305255d`:
+
+- `276/276` appels executes une seule fois, sans retry ni fallback automatique;
+  cout observe `0.07247940 USD`, sous le plafond; artefact content-free
+  `2026-08-30-lot4c2-stimmung-strengthening-candidate.jsonl`, SHA-256
+  `29147002cbaf1741718ea6d616f53944efffb70db41aae7ce0ff0b423c49a6b0`;
+- primaire: `138/138` transports et schemas valides, mais `11/16` dialogues en
+  echec a chacune des deux repetitions; cinq dialogues auparavant en echec
+  passent dans chaque repetition, sans regression relative observee;
+- fallback: `137/138` appels valides et une erreur de schema bornee; `12/16`
+  dialogues echouent en repetition 1, puis `11` echouent et un reste
+  `inconclusive` en repetition 2; cinq transitions relatives deviennent
+  `pass`, une transition auparavant valide devient `fail`;
+- les echecs reproductibles restants concernent surtout les trajectoires
+  `shift/stability`, les dominantes et agregats hors attente, avec encore du
+  surcodage, une force hors borne et de l'affect cite/rapporte internalise;
+  aucune des deux sources n'atteint les seuils stricts `1.0`;
+- la regle gelee classe la campagne `inconclusive` a cause de l'unique sortie
+  fallback invalide; les echecs semantiques complets du primaire prouvent en
+  outre que la candidate ne satisfait pas la porte de livraison. Le compteur
+  de regression du resume final reste `0` selon la branche gelee
+  `incomplete_or_invalid`, tandis que la comparaison content-free separee
+  conserve visiblement la regression fallback observee;
+- Phase C interdite: le prompt runtime, les modeles, les parametres, le schema,
+  le normaliseur, l'agregateur, l'observabilite produit et le frontend restent
+  inchanges; aucun rebuild, restart ou deploiement. 4C.2 reste ouvert et 4C.3
+  n'est pas commence;
+- preuves finales: artefact reconstruit sans reseau, `8/8` tests 4C.2,
+  `104/104` tests Stimmung/benchmark/goldens/garde d'observabilite voisins et
+  decouverte Python `2789/2789`; aucun nouveau skip, todo ou expected failure.
 
 Message de commit recommande si active: `fix: strengthen Stimmung semantic extraction`.
 

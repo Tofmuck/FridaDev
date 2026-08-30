@@ -492,6 +492,17 @@ artifact hash. It yields `pass` only when all 64 dialogue scores meet the
 unchanged `1.0` thresholds without regression; semantic failures yield `fail`,
 and incomplete provider or schema evidence yields `inconclusive`.
 
+The frozen candidate campaign ran once from commit
+`d69dc8b21e3df9bf4989a407e257c70a8305255d`. Its content-free artifact is
+`benchmark/results/stimmung/2026-08-30-lot4c2-stimmung-strengthening-candidate.jsonl`
+(SHA-256
+`29147002cbaf1741718ea6d616f53944efffb70db41aae7ce0ff0b423c49a6b0`). All
+276 planned calls were consumed for `0.07247940 USD`. The primary produced 138
+valid calls but failed 11 of 16 dialogues in both repetitions. The fallback
+produced 137 valid calls plus one schema error and also remained below the
+strict semantic threshold. The frozen decision is therefore `inconclusive`;
+the candidate was not copied to the runtime prompt and no deployment followed.
+
 ## Validation agent benchmark
 
 The validation suite uses the production prompt
