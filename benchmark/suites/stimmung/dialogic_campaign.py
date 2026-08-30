@@ -16,6 +16,9 @@ from core import token_utils
 from core.hermeneutic_node.inputs import recent_context_input, recent_window_input
 from core.hermeneutic_node.inputs.stimmung_input import build_stimmung_input
 from core.stimmung_agent import (
+    ALLOWED_TONES as RUNTIME_ALLOWED_TONES,
+    SCHEMA_VERSION as RUNTIME_SIGNAL_SCHEMA_VERSION,
+    _ALLOWED_SIGNAL_KEYS as RUNTIME_SIGNAL_KEYS,
     _build_fail_open_signal,
     _build_messages,
     _safe_json_loads,
@@ -31,6 +34,8 @@ MODEL_COMPARISON_PROTOCOL_VERSION = "lot4c2_stimmung_gemini_3_7_medium_compariso
 MODEL_COMPARISON_ARTIFACT_VERSION = "lot4c2_stimmung_gemini_3_7_medium_results_v1"
 TOKEN_CAP_RERUN_PROTOCOL_VERSION = "lot4c2_stimmung_gemini_3_7_medium_token_cap_rerun_v2"
 TOKEN_CAP_RERUN_ARTIFACT_VERSION = "lot4c2_stimmung_gemini_3_7_medium_token_cap_results_v2"
+SONNET_CANDIDATE_PROTOCOL_VERSION = "lot4c2_stimmung_sonnet_5_medium_candidate_v1"
+SONNET_CANDIDATE_ARTIFACT_VERSION = "lot4c2_stimmung_sonnet_5_medium_results_v1"
 PRIMARY_MODEL = "google/gemini-3.1-flash-lite"
 FALLBACK_MODEL = "openai/gpt-5.4-nano"
 MODELS = {"primary": PRIMARY_MODEL, "fallback": FALLBACK_MODEL}
@@ -73,6 +78,8 @@ MODEL_COMPARISON_ARTIFACT_SHA256 = "5adb54eec321f671fb05e2b350d35120a7ce84a52e7b
 TOKEN_CAP_RERUN_MAX_TOKENS = 800
 TOKEN_CAP_RERUN_COST_CAP_USD = 0.50
 TOKEN_CAP_RERUN_PRICING_OBSERVED_AT = "2026-08-30T15:48:43Z"
+TOKEN_CAP_RERUN_FREEZE_COMMIT = "08da24a706d9701d46f0c9e8b63b303a114eeb1a"
+TOKEN_CAP_RERUN_FREEZE_HARNESS_SHA256 = "8bda75955557edb2acc2b730f795679ae32c67c1fbc51c18a240421941fc92af"
 TOKEN_CAP_RERUN_ALLOWED_POLICY_DIFFERENCES = ("max_tokens",)
 TOKEN_CAP_RERUN_FINISH_REASONS = {
     "stop",
@@ -90,6 +97,35 @@ MODEL_COMPARISON_ALLOWED_POLICY_DIFFERENCES = (
     "temperature",
     "top_p",
 )
+SONNET_CANDIDATE_MODEL = "anthropic/claude-sonnet-5"
+SONNET_CANDIDATE_CANONICAL_SLUG = "anthropic/claude-sonnet-5-20260630"
+SONNET_CANDIDATE_PROVIDER = "Anthropic"
+SONNET_CANDIDATE_REASONING_EFFORT = "medium"
+SONNET_CANDIDATE_MAX_TOKENS = 16_000
+SONNET_CANDIDATE_TIMEOUT_S = 30
+SONNET_RESPONSE_RESERVE_TOKENS = 1_024
+SONNET_CANDIDATE_EXPECTED_CALLS = EXPECTED_TURNS * REPETITIONS
+SONNET_CANDIDATE_ABSOLUTE_CALL_CAP = SONNET_CANDIDATE_EXPECTED_CALLS
+SONNET_CANDIDATE_COST_CAP_USD = 25.0
+SONNET_CANDIDATE_COST_MARGIN = 1.10
+SONNET_CANDIDATE_TOKENIZER_MARGIN = 1.30
+SONNET_CANDIDATE_REALISTIC_COMPLETION_TOKENS = 4_096
+SONNET_CANDIDATE_PRICING_OBSERVED_AT = "2026-08-30T16:43:40Z"
+SONNET_CANDIDATE_PRICING_USD_PER_TOKEN = {
+    "prompt": 0.000002,
+    "completion": 0.00001,
+}
+SONNET_ALLOWED_POLICY_DIFFERENCES = (
+    "max_tokens",
+    "model",
+    "provider.order",
+    "provider.require_parameters",
+    "reasoning",
+    "response_format",
+    "temperature",
+    "top_p",
+)
+SONNET_FINISH_REASONS = TOKEN_CAP_RERUN_FINISH_REASONS
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -103,8 +139,9 @@ _CALL_REASONS = {
     "invalid_json",
     "validation_error",
     "route_mismatch",
+    "generation_incomplete",
 }
-_PROVIDERS = {"google", "openai", "unknown"}
+_PROVIDERS = {"google", "openai", "anthropic", "unknown"}
 _EXPECTED_PROVIDER = {"primary": "google", "fallback": "openai"}
 _DECISIONS = {"keep_current", "strengthen", "inconclusive"}
 _DIALOGUE_REASON_CODES = {
@@ -287,6 +324,24 @@ _MODEL_COMPARISON_FINAL_KEYS = _FINAL_KEYS | {
     "runtime_cutover_authorized",
     "fallback_evaluated",
 }
+_SONNET_CALL_KEYS = _TOKEN_CAP_RERUN_CALL_KEYS | {
+    "requested_provider",
+    "response_format_strict",
+    "response_schema_sha256",
+    "structured_output_required",
+    "tools_present",
+}
+_SONNET_SOURCE_SUMMARY_KEYS = _SOURCE_SUMMARY_KEYS | {
+    "reasoning_tokens",
+    "cost_per_call_usd",
+    "finish_reason_counts",
+    "native_finish_reason_counts",
+    "metric_stats",
+}
+_SONNET_FINAL_KEYS = _MODEL_COMPARISON_FINAL_KEYS | {
+    "valid_call_count",
+    "finish_stop_count",
+}
 
 
 def _compact_json(value: Any) -> str:
@@ -299,6 +354,106 @@ def _sha256_text(value: str) -> str:
 
 def _sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def build_stimmung_response_format() -> dict[str, Any]:
+    tones = list(RUNTIME_ALLOWED_TONES)
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "affective_turn_signal_v1",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": [
+                    "schema_version",
+                    "present",
+                    "tones",
+                    "dominant_tone",
+                    "confidence",
+                ],
+                "properties": {
+                    "schema_version": {
+                        "type": "string",
+                        "enum": [RUNTIME_SIGNAL_SCHEMA_VERSION],
+                    },
+                    "present": {"type": "boolean"},
+                    "tones": {
+                        "type": "array",
+                        "minItems": 0,
+                        "maxItems": len(tones),
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": ["tone", "strength"],
+                            "properties": {
+                                "tone": {"type": "string", "enum": tones},
+                                "strength": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 10,
+                                },
+                            },
+                        },
+                    },
+                    "dominant_tone": {
+                        "anyOf": [
+                            {"type": "string", "enum": tones},
+                            {"type": "null"},
+                        ]
+                    },
+                    "confidence": {
+                        "type": "number",
+                        "minimum": 0.0,
+                        "maximum": 1.0,
+                    },
+                },
+            },
+        },
+    }
+
+
+def derive_stimmung_structural_maximum() -> dict[str, int]:
+    if set(RUNTIME_SIGNAL_KEYS) != {
+        "schema_version",
+        "present",
+        "tones",
+        "dominant_tone",
+        "confidence",
+    }:
+        raise ValueError("stimmung_runtime_signal_contract_changed")
+    longest_tone = max(RUNTIME_ALLOWED_TONES, key=lambda value: (len(value), value))
+    maximum_witness = _validate_affective_turn_signal(
+        {
+            "schema_version": RUNTIME_SIGNAL_SCHEMA_VERSION,
+            "present": True,
+            "tones": [
+                {"tone": tone, "strength": 10}
+                for tone in RUNTIME_ALLOWED_TONES
+            ],
+            "dominant_tone": longest_tone,
+            "confidence": 1.0,
+        }
+    )
+    return {
+        "tone_count": len(RUNTIME_ALLOWED_TONES),
+        "compact_chars": len(
+            json.dumps(
+                maximum_witness,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+        ),
+        "spaced_chars": len(json.dumps(maximum_witness, ensure_ascii=False)),
+        "indent2_chars": len(
+            json.dumps(maximum_witness, ensure_ascii=False, indent=2)
+        ),
+        "response_reserve_tokens": SONNET_RESPONSE_RESERVE_TOKENS,
+        "reasoning_headroom_tokens": (
+            SONNET_CANDIDATE_MAX_TOKENS - SONNET_RESPONSE_RESERVE_TOKENS
+        ),
+    }
 
 
 def _corpus_path(repo_root: Path) -> Path:
@@ -919,7 +1074,11 @@ def build_token_cap_rerun_protocol(
         "artifact_version": TOKEN_CAP_RERUN_ARTIFACT_VERSION,
         "campaign_kind": "stimmung_primary_token_cap_rerun_v2",
         "freeze_commit": freeze_commit,
-        "harness_sha256": _sha256_file(_harness_path(repo_root)),
+        "harness_sha256": (
+            TOKEN_CAP_RERUN_FREEZE_HARNESS_SHA256
+            if freeze_commit == TOKEN_CAP_RERUN_FREEZE_COMMIT
+            else _sha256_file(_harness_path(repo_root))
+        ),
         "parameters_sha256": _sha256_text(_compact_json(parameters)),
         "max_tokens": TOKEN_CAP_RERUN_MAX_TOKENS,
         "baseline_max_tokens": MODEL_COMPARISON_MAX_TOKENS,
@@ -946,6 +1105,205 @@ def validate_token_cap_rerun_protocol(
     )
     if dict(protocol) != expected:
         raise ValueError("token_cap_rerun_protocol_freeze_mismatch")
+    return {
+        "dialogue_count": expected["dialogue_count"],
+        "turn_count": expected["turn_count"],
+        "evaluated_step_count": expected["evaluated_step_count"],
+        "expected_call_count": expected["expected_call_count"],
+        "estimated_max_cost_usd": expected["estimated_max_cost_usd"],
+    }
+
+
+def build_sonnet_candidate_protocol(
+    repo_root: Path,
+    *,
+    freeze_commit: str,
+) -> dict[str, Any]:
+    if _COMMIT_RE.fullmatch(str(freeze_commit)) is None:
+        raise ValueError("invalid_freeze_commit")
+    corpus, _ = _load_inputs(repo_root)
+    base = _base_requests(repo_root)
+    if (
+        len(corpus["dialogues"]),
+        len(base),
+        sum(1 for item in base if item["evaluated"]),
+    ) != (EXPECTED_DIALOGUES, EXPECTED_TURNS, EXPECTED_EVALUATED_STEPS):
+        raise ValueError("frozen_corpus_dimensions_changed")
+    if SONNET_CANDIDATE_EXPECTED_CALLS != SONNET_CANDIDATE_ABSOLUTE_CALL_CAP:
+        raise ValueError("sonnet_candidate_call_cap_mismatch")
+
+    maximum = derive_stimmung_structural_maximum()
+    if maximum["indent2_chars"] >= SONNET_RESPONSE_RESERVE_TOKENS:
+        raise ValueError("sonnet_response_reserve_insufficient")
+    prompt_token_estimates = [
+        token_utils.estimate_tokens(item["messages"], SONNET_CANDIDATE_MODEL)
+        for item in base
+    ]
+    prompt_token_estimate_sum = REPETITIONS * sum(prompt_token_estimates)
+    conservative_prompt_tokens = math.ceil(
+        prompt_token_estimate_sum * SONNET_CANDIDATE_TOKENIZER_MARGIN
+    )
+    theoretical_cost = round(
+        conservative_prompt_tokens
+        * SONNET_CANDIDATE_PRICING_USD_PER_TOKEN["prompt"]
+        + SONNET_CANDIDATE_EXPECTED_CALLS
+        * SONNET_CANDIDATE_MAX_TOKENS
+        * SONNET_CANDIDATE_PRICING_USD_PER_TOKEN["completion"],
+        8,
+    )
+    estimated_max_cost = round(
+        theoretical_cost * SONNET_CANDIDATE_COST_MARGIN,
+        8,
+    )
+    realistic_cost = round(
+        conservative_prompt_tokens
+        * SONNET_CANDIDATE_PRICING_USD_PER_TOKEN["prompt"]
+        + SONNET_CANDIDATE_EXPECTED_CALLS
+        * SONNET_CANDIDATE_REALISTIC_COMPLETION_TOKENS
+        * SONNET_CANDIDATE_PRICING_USD_PER_TOKEN["completion"],
+        8,
+    )
+    if estimated_max_cost > SONNET_CANDIDATE_COST_CAP_USD:
+        raise ValueError("estimated_cost_cap_exceeded")
+
+    response_format = build_stimmung_response_format()
+    parameters = {
+        "model": SONNET_CANDIDATE_MODEL,
+        "reasoning": {
+            "effort": SONNET_CANDIDATE_REASONING_EFFORT,
+            "exclude": True,
+        },
+        "max_tokens": SONNET_CANDIDATE_MAX_TOKENS,
+        "timeout_s": SONNET_CANDIDATE_TIMEOUT_S,
+        "sampling_parameters": "omitted",
+        "response_format": response_format,
+        "provider": {
+            "order": ["Anthropic"],
+            "allow_fallbacks": False,
+            "require_parameters": True,
+        },
+        "transport": "standard",
+        "repetitions": REPETITIONS,
+        "order": ["candidate_primary:1", "candidate_primary:2"],
+    }
+    historical_control = _historical_primary_control(repo_root)
+    runtime_prompt_sha256 = _sha256_file(_prompt_path(repo_root))
+    corpus_sha256 = _sha256_file(_corpus_path(repo_root))
+    if historical_control["prompt_sha256"] != runtime_prompt_sha256:
+        raise ValueError("historical_prompt_not_comparable")
+    if historical_control["corpus_sha256"] != corpus_sha256:
+        raise ValueError("historical_corpus_not_comparable")
+    return {
+        "protocol_version": SONNET_CANDIDATE_PROTOCOL_VERSION,
+        "artifact_version": SONNET_CANDIDATE_ARTIFACT_VERSION,
+        "campaign_kind": "stimmung_sonnet_5_medium_candidate_v1",
+        "freeze_commit": freeze_commit,
+        "corpus_id": corpus["corpus_id"],
+        "corpus_schema_version": corpus["schema_version"],
+        "corpus_sha256": corpus_sha256,
+        "prompt_sha256": runtime_prompt_sha256,
+        "scorer_sha256": _sha256_file(
+            repo_root / "benchmark/suites/stimmung/dialogic_semantics.py"
+        ),
+        "normalizer_sha256": _sha256_file(repo_root / "app/core/stimmung_agent.py"),
+        "aggregator_sha256": _sha256_file(
+            repo_root / "app/core/hermeneutic_node/inputs/stimmung_input.py"
+        ),
+        "message_builder_sha256": _sha256_file(
+            repo_root / "app/core/stimmung_agent.py"
+        ),
+        "harness_sha256": _sha256_file(_harness_path(repo_root)),
+        "parameters_sha256": _sha256_text(_compact_json(parameters)),
+        "response_schema_sha256": _sha256_text(_compact_json(response_format)),
+        "schedule_sha256": _sha256_text(
+            _compact_json(
+                [
+                    {
+                        key: item[key]
+                        for key in (
+                            "dialogue_id",
+                            "turn_id",
+                            "evaluated",
+                            "messages_sha256",
+                            "window_turn_count",
+                        )
+                    }
+                    for item in base
+                ]
+            )
+        ),
+        "model": SONNET_CANDIDATE_MODEL,
+        "canonical_slug": SONNET_CANDIDATE_CANONICAL_SLUG,
+        "allowed_providers": [SONNET_CANDIDATE_PROVIDER],
+        "reasoning": {
+            "effort": SONNET_CANDIDATE_REASONING_EFFORT,
+            "exclude": True,
+        },
+        "max_tokens": SONNET_CANDIDATE_MAX_TOKENS,
+        "response_reserve_tokens": SONNET_RESPONSE_RESERVE_TOKENS,
+        "reasoning_headroom_tokens": maximum["reasoning_headroom_tokens"],
+        "structural_maximum": maximum,
+        "timeout_s": SONNET_CANDIDATE_TIMEOUT_S,
+        "sampling_parameters": "omitted",
+        "response_format": response_format,
+        "provider_policy": {
+            "order": ["Anthropic"],
+            "allow_fallbacks": False,
+            "require_parameters": True,
+        },
+        "transport": "standard",
+        "policy_difference_allowlist": list(SONNET_ALLOWED_POLICY_DIFFERENCES),
+        "repetitions": REPETITIONS,
+        "dialogue_count": EXPECTED_DIALOGUES,
+        "turn_count": EXPECTED_TURNS,
+        "evaluated_step_count": EXPECTED_EVALUATED_STEPS,
+        "expected_call_count": SONNET_CANDIDATE_EXPECTED_CALLS,
+        "absolute_call_cap": SONNET_CANDIDATE_ABSOLUTE_CALL_CAP,
+        "cost_cap_usd": SONNET_CANDIDATE_COST_CAP_USD,
+        "theoretical_max_cost_usd": theoretical_cost,
+        "estimated_max_cost_usd": estimated_max_cost,
+        "realistic_estimated_cost_usd": realistic_cost,
+        "realistic_completion_tokens_per_call": (
+            SONNET_CANDIDATE_REALISTIC_COMPLETION_TOKENS
+        ),
+        "prompt_token_estimate_sum": prompt_token_estimate_sum,
+        "conservative_prompt_token_estimate_sum": conservative_prompt_tokens,
+        "maximum_estimated_prompt_tokens": max(prompt_token_estimates),
+        "pricing_observed_at": SONNET_CANDIDATE_PRICING_OBSERVED_AT,
+        "pricing_usd_per_token": dict(
+            SONNET_CANDIDATE_PRICING_USD_PER_TOKEN
+        ),
+        "model_metadata": {
+            "context_length": 1_000_000,
+            "max_completion_tokens": 128_000,
+            "structured_outputs": True,
+            "reasoning_efforts": ["low", "medium", "high", "xhigh", "max"],
+            "adaptive_thinking": True,
+            "standard_route": True,
+            "batch": False,
+        },
+        "historical_control": historical_control,
+        "decision_rules": {
+            "all_calls_stop_and_all_scores_pass": "eligible_primary",
+            "complete_semantic_threshold_missed": "not_eligible",
+            "incomplete_invalid_or_route_unknown": "inconclusive",
+            "conditional_runtime_cutover": True,
+        },
+    }
+
+
+def validate_sonnet_candidate_protocol(
+    protocol: Mapping[str, Any],
+    repo_root: Path,
+) -> dict[str, Any]:
+    if protocol.get("protocol_version") != SONNET_CANDIDATE_PROTOCOL_VERSION:
+        raise ValueError("sonnet_candidate_protocol_version_invalid")
+    expected = build_sonnet_candidate_protocol(
+        repo_root,
+        freeze_commit=str(protocol.get("freeze_commit") or ""),
+    )
+    if dict(protocol) != expected:
+        raise ValueError("sonnet_candidate_protocol_freeze_mismatch")
     return {
         "dialogue_count": expected["dialogue_count"],
         "turn_count": expected["turn_count"],
@@ -1174,12 +1532,140 @@ def build_token_cap_rerun_request_schedule(
     return schedule
 
 
+def validate_sonnet_candidate_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    expected_keys = {
+        "model",
+        "messages",
+        "max_tokens",
+        "reasoning",
+        "provider",
+        "response_format",
+    }
+    normalized = dict(payload)
+    if set(normalized) != expected_keys:
+        raise ValueError("sonnet_candidate_payload_fields_invalid")
+    if normalized.get("model") != SONNET_CANDIDATE_MODEL or ":" in str(
+        normalized.get("model")
+    ).removeprefix("anthropic"):
+        raise ValueError("sonnet_candidate_payload_model_invalid")
+    messages = normalized.get("messages")
+    if (
+        not isinstance(messages, list)
+        or len(messages) != 2
+        or any(
+            not isinstance(message, Mapping)
+            or set(message) != {"role", "content"}
+            or message.get("role") not in {"system", "user"}
+            or not isinstance(message.get("content"), str)
+            or not message["content"]
+            for message in messages
+        )
+    ):
+        raise ValueError("sonnet_candidate_payload_messages_invalid")
+    if normalized.get("max_tokens") != SONNET_CANDIDATE_MAX_TOKENS:
+        raise ValueError("sonnet_candidate_payload_max_tokens_invalid")
+    if normalized.get("reasoning") != {
+        "effort": SONNET_CANDIDATE_REASONING_EFFORT,
+        "exclude": True,
+    }:
+        raise ValueError("sonnet_candidate_payload_reasoning_invalid")
+    if normalized.get("provider") != {
+        "order": ["Anthropic"],
+        "allow_fallbacks": False,
+        "require_parameters": True,
+    }:
+        raise ValueError("sonnet_candidate_payload_provider_invalid")
+    if normalized.get("response_format") != build_stimmung_response_format():
+        raise ValueError("sonnet_candidate_payload_schema_invalid")
+    return normalized
+
+
+def validate_sonnet_model_policy_difference(
+    historical_payload: Mapping[str, Any],
+    candidate_payload: Mapping[str, Any],
+) -> list[str]:
+    validate_sonnet_candidate_payload(candidate_payload)
+    differences = _difference_paths(historical_payload, candidate_payload)
+    if differences != set(SONNET_ALLOWED_POLICY_DIFFERENCES):
+        raise ValueError("sonnet_candidate_policy_difference_invalid")
+    return sorted(differences)
+
+
+def _build_sonnet_candidate_payload(
+    messages: Sequence[Mapping[str, str]],
+) -> dict[str, Any]:
+    return validate_sonnet_candidate_payload(
+        {
+            "model": SONNET_CANDIDATE_MODEL,
+            "messages": [dict(item) for item in messages],
+            "max_tokens": SONNET_CANDIDATE_MAX_TOKENS,
+            "reasoning": {
+                "effort": SONNET_CANDIDATE_REASONING_EFFORT,
+                "exclude": True,
+            },
+            "provider": {
+                "order": ["Anthropic"],
+                "allow_fallbacks": False,
+                "require_parameters": True,
+            },
+            "response_format": build_stimmung_response_format(),
+        }
+    )
+
+
+def build_sonnet_candidate_request_schedule(
+    repo_root: Path,
+    protocol: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    validate_sonnet_candidate_protocol(protocol, repo_root)
+    base = _base_requests(repo_root)
+    historical_protocol = build_protocol(
+        repo_root,
+        freeze_commit=PHASE_A_FREEZE_COMMIT,
+    )
+    historical_primary = [
+        item
+        for item in build_request_schedule(repo_root, historical_protocol)
+        if item["source"] == "primary"
+    ]
+    schedule: list[dict[str, Any]] = []
+    sequence = 0
+    for repetition in range(1, REPETITIONS + 1):
+        for item in base:
+            sequence += 1
+            payload = _build_sonnet_candidate_payload(item["messages"])
+            control = historical_primary[sequence - 1]
+            validate_sonnet_model_policy_difference(control["payload"], payload)
+            schedule.append(
+                {
+                    **item,
+                    "sequence": sequence,
+                    "source": "primary",
+                    "repetition": repetition,
+                    "payload": payload,
+                }
+            )
+    if (
+        len(schedule) != SONNET_CANDIDATE_EXPECTED_CALLS
+        or {item["source"] for item in schedule} != {"primary"}
+        or any(
+            item["payload"]["model"] != SONNET_CANDIDATE_MODEL
+            or item["payload"]["provider"].get("allow_fallbacks") is not False
+            for item in schedule
+        )
+    ):
+        raise ValueError("sonnet_candidate_call_schedule_invalid")
+    return schedule
+
+
 def _provider_name(value: Any) -> str:
     text = str(value or "").strip().lower()
     if "google" in text:
         return "google"
     if "openai" in text:
         return "openai"
+    if "anthropic" in text:
+        return "anthropic"
     return "unknown"
 
 
@@ -1774,6 +2260,457 @@ def run_token_cap_rerun_campaign(
         client=client,
         progress=progress,
     )
+
+
+def _sonnet_candidate_call_record(
+    *,
+    plan: Mapping[str, Any],
+    response: Mapping[str, Any],
+    outcome: Mapping[str, Any],
+    aggregate: Mapping[str, Any],
+    protocol: Mapping[str, Any],
+) -> dict[str, Any]:
+    service_tier = str(response.get("service_tier") or "").strip().lower()
+    return {
+        "artifact_version": protocol["artifact_version"],
+        "protocol_version": protocol["protocol_version"],
+        "record_type": "call",
+        "sequence": plan["sequence"],
+        "dialogue_id": plan["dialogue_id"],
+        "turn_id": plan["turn_id"],
+        "evaluated": plan["evaluated"],
+        "source": "primary",
+        "repetition": plan["repetition"],
+        "requested_model": SONNET_CANDIDATE_MODEL,
+        "requested_provider": "anthropic",
+        "requested_reasoning_effort": SONNET_CANDIDATE_REASONING_EFFORT,
+        "reasoning_excluded": True,
+        "reasoning_tokens": _reasoning_tokens_or_none(response),
+        "transport": "standard",
+        "batch": False,
+        "provider_fallbacks": False,
+        "require_parameters": True,
+        "max_tokens": SONNET_CANDIDATE_MAX_TOKENS,
+        "timeout_s": SONNET_CANDIDATE_TIMEOUT_S,
+        "sampling_parameters_present": any(
+            key in plan["payload"] for key in ("temperature", "top_p", "top_k")
+        ),
+        "response_format_strict": True,
+        "response_schema_sha256": protocol["response_schema_sha256"],
+        "structured_output_required": True,
+        "tools_present": any(
+            key in plan["payload"] for key in ("tools", "tool_choice")
+        ),
+        "finish_reason": _closed_finish_reason(response.get("finish_reason")),
+        "native_finish_reason": _closed_finish_reason(
+            response.get("native_finish_reason")
+        ),
+        "observed_model": outcome["observed_model"],
+        "observed_provider": outcome["observed_provider"],
+        "observed_service_tier": service_tier,
+        "status": outcome["status"],
+        "reason_code": outcome["reason_code"],
+        "json_valid": outcome["json_valid"],
+        "schema_valid": outcome["schema_valid"],
+        "fail_open": outcome["status"] != "ok",
+        "signal": outcome["signal"],
+        "aggregate": dict(aggregate),
+        "latency_ms": outcome["latency_ms"],
+        "prompt_tokens": outcome["prompt_tokens"],
+        "completion_tokens": outcome["completion_tokens"],
+        "total_tokens": outcome["total_tokens"],
+        "cost_usd": outcome["cost_usd"],
+        "messages_sha256": plan["messages_sha256"],
+        "corpus_sha256": protocol["corpus_sha256"],
+        "prompt_sha256": protocol["prompt_sha256"],
+        "harness_sha256": protocol["harness_sha256"],
+        "parameters_sha256": protocol["parameters_sha256"],
+        "freeze_commit": protocol["freeze_commit"],
+    }
+
+
+def decide_sonnet_candidate(
+    calls: Sequence[Mapping[str, Any]],
+    scores: Sequence[Mapping[str, Any]],
+    *,
+    historical_records: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    grouped_ids = {
+        repetition: [
+            str(item.get("dialogue_id") or "")
+            for item in scores
+            if item.get("repetition") == repetition
+        ]
+        for repetition in (1, 2)
+    }
+    historical_primary_scores = [
+        item
+        for item in historical_records
+        if item.get("record_type") == "dialogue_score"
+        and item.get("source") == "primary"
+    ]
+    historical_passes = {
+        (int(item["repetition"]), str(item["dialogue_id"]))
+        for item in historical_primary_scores
+        if item.get("classification") == "pass"
+    }
+    semantic_regressions = sum(
+        (int(item.get("repetition") or 0), str(item.get("dialogue_id") or ""))
+        in historical_passes
+        for item in scores
+        if item.get("classification") == "fail"
+    )
+    failed_by_dialogue: dict[str, set[int]] = {}
+    for item in scores:
+        if item.get("classification") == "fail":
+            failed_by_dialogue.setdefault(str(item["dialogue_id"]), set()).add(
+                int(item["repetition"])
+            )
+    reproducible_failures = sum(
+        repetitions == {1, 2} for repetitions in failed_by_dialogue.values()
+    )
+    complete_shape = (
+        len(calls) == SONNET_CANDIDATE_EXPECTED_CALLS
+        and len(scores) == 32
+        and all(
+            len(ids) == EXPECTED_DIALOGUES
+            and len(set(ids)) == EXPECTED_DIALOGUES
+            for ids in grouped_ids.values()
+        )
+    )
+    technical_complete = complete_shape and all(
+        item.get("status") == "ok"
+        and item.get("finish_reason") == "stop"
+        and item.get("native_finish_reason") in {"stop", "unknown"}
+        and item.get("latency_ms") is not None
+        and item.get("prompt_tokens") is not None
+        and item.get("completion_tokens") is not None
+        and item.get("reasoning_tokens") is not None
+        and item.get("total_tokens") is not None
+        and item.get("cost_usd") is not None
+        and item.get("observed_model")
+        in {SONNET_CANDIDATE_MODEL, SONNET_CANDIDATE_CANONICAL_SLUG}
+        and item.get("observed_provider") == "anthropic"
+        and item.get("observed_service_tier") in {"", "default", "standard"}
+        for item in calls
+    )
+    if not complete_shape:
+        decision, reason = "inconclusive", "dialogue_results_incomplete"
+    elif not technical_complete or any(
+        item.get("classification") == "inconclusive" for item in scores
+    ):
+        decision, reason = "inconclusive", "provider_results_or_metrics_incomplete"
+    elif any(item.get("classification") == "fail" for item in scores):
+        decision, reason = "not_eligible", "semantic_threshold_missed"
+    else:
+        decision, reason = "eligible_primary", "all_thresholds_met_no_regression"
+    return {
+        "decision": decision,
+        "reason_codes": [reason],
+        "next_micro_lot": None,
+        "historical_primary_pass_count": sum(
+            item.get("classification") == "pass"
+            for item in historical_primary_scores
+        ),
+        "candidate_pass_count": sum(
+            item.get("classification") == "pass" for item in scores
+        ),
+        "semantic_regression_count": semantic_regressions,
+        "reproducible_semantic_failure_count": reproducible_failures,
+        "runtime_cutover_authorized": decision == "eligible_primary",
+        "fallback_evaluated": False,
+        "valid_call_count": sum(item.get("status") == "ok" for item in calls),
+        "finish_stop_count": sum(
+            item.get("finish_reason") == "stop" for item in calls
+        ),
+    }
+
+
+def _metric_distribution(
+    records: Sequence[Mapping[str, Any]],
+    key: str,
+) -> dict[str, float | int | None]:
+    values = [item.get(key) for item in records]
+    if not values or any(value is None for value in values):
+        return {"min": None, "median": None, "p95": None, "max": None}
+    numeric = [float(value) for value in values]
+    def normalized(value: float) -> float | int:
+        return int(value) if float(value).is_integer() else round(float(value), 3)
+
+    return {
+        "min": normalized(min(numeric)),
+        "median": normalized(statistics.median(numeric)),
+        "p95": normalized(float(_percentile(numeric, 0.95))),
+        "max": normalized(max(numeric)),
+    }
+
+
+def _closed_reason_counts(
+    records: Sequence[Mapping[str, Any]],
+    key: str,
+) -> dict[str, int]:
+    return {
+        reason: sum(item.get(key) == reason for item in records)
+        for reason in sorted(SONNET_FINISH_REASONS)
+    }
+
+
+def _sonnet_candidate_summary_records(
+    calls: Sequence[Mapping[str, Any]],
+    dialogue_scores: Sequence[Mapping[str, Any]],
+    corpus: Mapping[str, Any],
+    *,
+    repo_root: Path,
+    protocol: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = list(dialogue_scores)
+    repetition_decisions: list[str] = []
+    for repetition in (1, 2):
+        selected = [
+            item for item in dialogue_scores if item["repetition"] == repetition
+        ]
+        summary = dialogic_semantics.summarize_configuration(
+            source="primary",
+            corpus=corpus,
+            dialogue_scores=selected,
+            provider_results_observed=True,
+        )
+        repetition_decisions.append(summary["decision"])
+        results.append(
+            {
+                "artifact_version": protocol["artifact_version"],
+                "protocol_version": protocol["protocol_version"],
+                "record_type": "repetition_summary",
+                "source": "primary",
+                "repetition": repetition,
+                "decision": summary["decision"],
+                "reason_codes": summary["reason_codes"],
+                "dialogue_count": summary["dialogue_count"],
+                "family_pass_rates": summary["family_pass_rates"],
+                "semantic_failures": summary["semantic_failures"],
+                "inconclusive_results": summary["inconclusive_results"],
+                "provider_results_observed": True,
+            }
+        )
+    latencies = [
+        float(item["latency_ms"])
+        for item in calls
+        if item["latency_ms"] is not None
+    ]
+    total_cost = _sum_cost(calls)
+    results.append(
+        {
+            "artifact_version": protocol["artifact_version"],
+            "protocol_version": protocol["protocol_version"],
+            "record_type": "source_summary",
+            "source": "primary",
+            "repetition_decisions": repetition_decisions,
+            "call_count": len(calls),
+            "ok_count": sum(item["status"] == "ok" for item in calls),
+            "semantic_failure_count": sum(
+                item["classification"] == "fail" for item in dialogue_scores
+            ),
+            "inconclusive_dialogue_count": sum(
+                item["classification"] == "inconclusive"
+                for item in dialogue_scores
+            ),
+            "latency_median_ms": (
+                round(statistics.median(latencies), 3) if latencies else None
+            ),
+            "latency_p95_ms": _percentile(latencies, 0.95),
+            "prompt_tokens": _sum_metric(calls, "prompt_tokens"),
+            "completion_tokens": _sum_metric(calls, "completion_tokens"),
+            "reasoning_tokens": _sum_metric(calls, "reasoning_tokens"),
+            "total_tokens": _sum_metric(calls, "total_tokens"),
+            "cost_usd": total_cost,
+            "cost_per_call_usd": (
+                round(float(total_cost) / len(calls), 8)
+                if total_cost is not None and calls
+                else None
+            ),
+            "finish_reason_counts": _closed_reason_counts(
+                calls, "finish_reason"
+            ),
+            "native_finish_reason_counts": _closed_reason_counts(
+                calls, "native_finish_reason"
+            ),
+            "metric_stats": {
+                key: _metric_distribution(calls, key)
+                for key in (
+                    "latency_ms",
+                    "prompt_tokens",
+                    "completion_tokens",
+                    "reasoning_tokens",
+                    "total_tokens",
+                )
+            },
+        }
+    )
+    decision = decide_sonnet_candidate(
+        calls,
+        dialogue_scores,
+        historical_records=load_historical_provider_artifact(repo_root),
+    )
+    results.append(
+        {
+            "artifact_version": protocol["artifact_version"],
+            "protocol_version": protocol["protocol_version"],
+            "record_type": "final_summary",
+            **decision,
+            "call_count": len(calls),
+            "dialogue_score_count": len(dialogue_scores),
+            "cost_usd": total_cost,
+            "calls_sha256": _sha256_text(_compact_json(list(calls))),
+            "historical_artifact_sha256": protocol["historical_control"][
+                "artifact_sha256"
+            ],
+        }
+    )
+    return results
+
+
+def run_sonnet_candidate_campaign(
+    *,
+    repo_root: Path,
+    protocol: Mapping[str, Any],
+    client: Any,
+    progress: Any | None = None,
+) -> list[dict[str, Any]]:
+    schedule = build_sonnet_candidate_request_schedule(repo_root, protocol)
+    corpus, _ = _load_inputs(repo_root)
+    cases = {item["id"]: item for item in corpus["dialogues"]}
+    records: list[dict[str, Any]] = []
+    dialogue_scores: list[dict[str, Any]] = []
+    history: list[dict[str, Any]] = []
+    observations: list[dict[str, Any]] = []
+    group: tuple[int, str] | None = None
+
+    def finish_dialogue() -> None:
+        if group is None:
+            return
+        repetition, dialogue_id = group
+        score = dialogic_semantics.score_dialogue(
+            cases[dialogue_id], observations
+        )
+        dialogue_scores.append(
+            _dialogue_score_record(
+                score,
+                source="primary",
+                repetition=repetition,
+                protocol=protocol,
+            )
+        )
+
+    for plan in schedule:
+        next_group = (int(plan["repetition"]), str(plan["dialogue_id"]))
+        if group != next_group:
+            finish_dialogue()
+            group = next_group
+            history = []
+            observations = []
+        turn = cases[plan["dialogue_id"]]["turns"][plan["turn_id"] - 1]
+        user_message = {
+            "role": "user",
+            "content": turn["user"],
+            "timestamp": None,
+            "meta": {},
+        }
+        history.append(user_message)
+        response = client.chat_completion(
+            dict(plan["payload"]),
+            caller="stimmung_agent",
+            timeout_s=SONNET_CANDIDATE_TIMEOUT_S,
+        )
+        outcome = _classify_response(
+            response,
+            SONNET_CANDIDATE_MODEL,
+            allowed_observed_models={
+                SONNET_CANDIDATE_MODEL,
+                SONNET_CANDIDATE_CANONICAL_SLUG,
+            },
+            allowed_observed_providers={"anthropic"},
+        )
+        finish_reason = _closed_finish_reason(response.get("finish_reason"))
+        native_finish_reason = _closed_finish_reason(
+            response.get("native_finish_reason")
+        )
+        service_tier = str(response.get("service_tier") or "").strip().lower()
+        if outcome["status"] == "ok" and (
+            finish_reason != "stop"
+            or native_finish_reason not in {"stop", "unknown"}
+        ):
+            outcome = {
+                **outcome,
+                "status": "transport_error",
+                "reason_code": "generation_incomplete",
+                "signal": None,
+            }
+        if outcome["status"] == "ok" and service_tier not in {
+            "",
+            "default",
+            "standard",
+        }:
+            outcome = {
+                **outcome,
+                "status": "transport_error",
+                "reason_code": "route_mismatch",
+                "signal": None,
+            }
+        attached_signal = (
+            outcome["signal"]
+            if outcome["status"] == "ok"
+            else _build_fail_open_signal()
+        )
+        user_message["meta"]["affective_turn_signal"] = attached_signal
+        aggregate = build_stimmung_input(messages=history)
+        record = _sonnet_candidate_call_record(
+            plan=plan,
+            response=response,
+            outcome=outcome,
+            aggregate=aggregate,
+            protocol=protocol,
+        )
+        validate_sonnet_candidate_record(record)
+        records.append(record)
+        if plan["evaluated"]:
+            observations.append(
+                {
+                    "turn_id": plan["turn_id"],
+                    "execution_status": outcome["status"],
+                    "source": "primary",
+                    "signal": outcome["signal"],
+                    "aggregate": aggregate,
+                }
+            )
+        history.append(
+            {
+                "role": "assistant",
+                "content": turn["assistant"],
+                "timestamp": None,
+            }
+        )
+        observed_cost = _sum_cost(records)
+        if observed_cost is not None and observed_cost > float(
+            protocol["cost_cap_usd"]
+        ):
+            raise ValueError("provider_cost_cap_exceeded")
+        if callable(progress):
+            progress(
+                int(plan["sequence"]),
+                SONNET_CANDIDATE_EXPECTED_CALLS,
+                dict(record),
+            )
+    finish_dialogue()
+    records.extend(
+        _sonnet_candidate_summary_records(
+            records,
+            dialogue_scores,
+            corpus,
+            repo_root=repo_root,
+            protocol=protocol,
+        )
+    )
+    return records
 
 
 def _dialogue_score_record(
@@ -2432,6 +3369,252 @@ def validate_token_cap_rerun_record(record: Mapping[str, Any]) -> dict[str, Any]
     return dict(record)
 
 
+def _validate_metric_stats(value: Any) -> None:
+    expected_metrics = {
+        "latency_ms",
+        "prompt_tokens",
+        "completion_tokens",
+        "reasoning_tokens",
+        "total_tokens",
+    }
+    if not isinstance(value, Mapping) or set(value) != expected_metrics:
+        raise ValueError("sonnet_candidate_metric_stats_invalid")
+    for stats in value.values():
+        if not isinstance(stats, Mapping) or set(stats) != {
+            "min",
+            "median",
+            "p95",
+            "max",
+        }:
+            raise ValueError("sonnet_candidate_metric_stats_invalid")
+        values = list(stats.values())
+        if any(item is None for item in values):
+            if not all(item is None for item in values):
+                raise ValueError("sonnet_candidate_metric_stats_invalid")
+            continue
+        if any(
+            isinstance(item, bool)
+            or not isinstance(item, (int, float))
+            or not math.isfinite(float(item))
+            or float(item) < 0
+            for item in values
+        ):
+            raise ValueError("sonnet_candidate_metric_stats_invalid")
+        if not float(values[0]) <= float(values[1]) <= float(values[2]) <= float(
+            values[3]
+        ):
+            raise ValueError("sonnet_candidate_metric_stats_invalid")
+
+
+def validate_sonnet_candidate_record(record: Mapping[str, Any]) -> dict[str, Any]:
+    if not isinstance(record, Mapping):
+        raise ValueError("record_not_object")
+    record_type = record.get("record_type")
+    expected_keys = {
+        "call": _SONNET_CALL_KEYS,
+        "dialogue_score": _DIALOGUE_SCORE_KEYS,
+        "repetition_summary": _REPETITION_SUMMARY_KEYS,
+        "source_summary": _SONNET_SOURCE_SUMMARY_KEYS,
+        "final_summary": _SONNET_FINAL_KEYS,
+    }.get(record_type)
+    if expected_keys is None or set(record) != expected_keys:
+        raise ValueError("sonnet_candidate_record_schema_invalid")
+    if (
+        record.get("artifact_version"),
+        record.get("protocol_version"),
+    ) != (SONNET_CANDIDATE_ARTIFACT_VERSION, SONNET_CANDIDATE_PROTOCOL_VERSION):
+        raise ValueError("sonnet_candidate_record_version_invalid")
+
+    if record_type == "call":
+        if (
+            record.get("source") != "primary"
+            or record.get("requested_model") != SONNET_CANDIDATE_MODEL
+            or record.get("requested_provider") != "anthropic"
+            or record.get("requested_reasoning_effort")
+            != SONNET_CANDIDATE_REASONING_EFFORT
+            or record.get("reasoning_excluded") is not True
+            or record.get("transport") != "standard"
+            or record.get("batch") is not False
+            or record.get("provider_fallbacks") is not False
+            or record.get("require_parameters") is not True
+            or record.get("max_tokens") != SONNET_CANDIDATE_MAX_TOKENS
+            or record.get("timeout_s") != SONNET_CANDIDATE_TIMEOUT_S
+            or record.get("sampling_parameters_present") is not False
+            or record.get("response_format_strict") is not True
+            or record.get("structured_output_required") is not True
+            or record.get("tools_present") is not False
+        ):
+            raise ValueError("sonnet_candidate_call_policy_invalid")
+        if (
+            record.get("status") not in _CALL_STATUSES
+            or record.get("reason_code") not in _CALL_REASONS
+            or record.get("observed_provider") not in _PROVIDERS
+            or record.get("observed_service_tier")
+            not in {"", "default", "standard"}
+            or record.get("finish_reason") not in SONNET_FINISH_REASONS
+            or record.get("native_finish_reason") not in SONNET_FINISH_REASONS
+        ):
+            raise ValueError("sonnet_candidate_call_status_invalid")
+        if record.get("observed_model") not in {
+            SONNET_CANDIDATE_MODEL,
+            SONNET_CANDIDATE_CANONICAL_SLUG,
+            "unknown",
+        }:
+            raise ValueError("sonnet_candidate_observed_model_invalid")
+        if (
+            not isinstance(record.get("sequence"), int)
+            or not 1 <= record["sequence"] <= SONNET_CANDIDATE_EXPECTED_CALLS
+            or record.get("repetition") not in {1, 2}
+            or not isinstance(record.get("turn_id"), int)
+            or not 1 <= record["turn_id"] <= 6
+            or not isinstance(record.get("evaluated"), bool)
+            or not isinstance(record.get("dialogue_id"), str)
+            or not 1 <= len(record["dialogue_id"]) <= 64
+        ):
+            raise ValueError("sonnet_candidate_call_identity_invalid")
+        if (
+            not isinstance(record.get("latency_ms"), (int, float))
+            or isinstance(record.get("latency_ms"), bool)
+            or not math.isfinite(float(record["latency_ms"]))
+            or float(record["latency_ms"]) < 0
+        ):
+            raise ValueError("sonnet_candidate_latency_invalid")
+        for key in (
+            "prompt_tokens",
+            "completion_tokens",
+            "reasoning_tokens",
+            "total_tokens",
+        ):
+            value = record.get(key)
+            if value is not None and _int_metric(value) != value:
+                raise ValueError("sonnet_candidate_token_metric_invalid")
+        cost = record.get("cost_usd")
+        if cost is not None and _float_metric(cost) != cost:
+            raise ValueError("sonnet_candidate_cost_metric_invalid")
+        _validate_signal(record.get("signal"))
+        _validate_aggregate(record.get("aggregate"))
+        if record["status"] == "ok":
+            if (
+                record.get("finish_reason") != "stop"
+                or record.get("native_finish_reason") not in {"stop", "unknown"}
+                or record.get("json_valid") is not True
+                or record.get("schema_valid") is not True
+                or record.get("signal") is None
+                or record.get("fail_open") is not False
+                or record.get("observed_model") == "unknown"
+                or record.get("observed_provider") != "anthropic"
+            ):
+                raise ValueError("sonnet_candidate_false_semantic_success")
+        elif record.get("signal") is not None or record.get("fail_open") is not True:
+            raise ValueError("sonnet_candidate_failed_call_signal_present")
+        for key in (
+            "messages_sha256",
+            "corpus_sha256",
+            "prompt_sha256",
+            "harness_sha256",
+            "parameters_sha256",
+            "response_schema_sha256",
+        ):
+            _validate_sha(record.get(key))
+        if _COMMIT_RE.fullmatch(str(record.get("freeze_commit") or "")) is None:
+            raise ValueError("sonnet_candidate_freeze_commit_invalid")
+    elif record_type in {"dialogue_score", "repetition_summary"}:
+        translated = dict(record)
+        translated["artifact_version"] = MODEL_COMPARISON_ARTIFACT_VERSION
+        translated["protocol_version"] = MODEL_COMPARISON_PROTOCOL_VERSION
+        validate_model_comparison_record(translated)
+    elif record_type == "source_summary":
+        if (
+            record.get("source") != "primary"
+            or record.get("call_count") != SONNET_CANDIDATE_EXPECTED_CALLS
+            or not isinstance(record.get("repetition_decisions"), list)
+            or len(record["repetition_decisions"]) != REPETITIONS
+            or any(
+                value not in {"pass", "fail", "inconclusive"}
+                for value in record["repetition_decisions"]
+            )
+            or not isinstance(record.get("ok_count"), int)
+            or not 0 <= record["ok_count"] <= SONNET_CANDIDATE_EXPECTED_CALLS
+            or not isinstance(record.get("semantic_failure_count"), int)
+            or not 0 <= record["semantic_failure_count"] <= 32
+            or not isinstance(record.get("inconclusive_dialogue_count"), int)
+            or not 0 <= record["inconclusive_dialogue_count"] <= 32
+        ):
+            raise ValueError("sonnet_candidate_source_summary_invalid")
+        for key in (
+            "latency_median_ms",
+            "latency_p95_ms",
+            "cost_usd",
+            "cost_per_call_usd",
+        ):
+            value = record.get(key)
+            if value is not None and _float_metric(value) != value:
+                raise ValueError("sonnet_candidate_source_metric_invalid")
+        for key in (
+            "prompt_tokens",
+            "completion_tokens",
+            "reasoning_tokens",
+            "total_tokens",
+        ):
+            value = record.get(key)
+            if value is not None and _int_metric(value) != value:
+                raise ValueError("sonnet_candidate_source_metric_invalid")
+        for key in ("finish_reason_counts", "native_finish_reason_counts"):
+            counts = record.get(key)
+            if (
+                not isinstance(counts, Mapping)
+                or set(counts) != SONNET_FINISH_REASONS
+                or any(
+                    isinstance(value, bool)
+                    or not isinstance(value, int)
+                    or value < 0
+                    for value in counts.values()
+                )
+                or sum(counts.values()) != SONNET_CANDIDATE_EXPECTED_CALLS
+            ):
+                raise ValueError("sonnet_candidate_finish_counts_invalid")
+        _validate_metric_stats(record.get("metric_stats"))
+    else:
+        if (
+            record.get("decision") not in _MODEL_COMPARISON_DECISIONS
+            or record.get("next_micro_lot") is not None
+            or record.get("call_count") != SONNET_CANDIDATE_EXPECTED_CALLS
+            or record.get("dialogue_score_count") != 32
+            or record.get("historical_primary_pass_count") not in range(33)
+            or record.get("candidate_pass_count") not in range(33)
+            or record.get("semantic_regression_count") not in range(33)
+            or record.get("reproducible_semantic_failure_count") not in range(17)
+            or not isinstance(record.get("runtime_cutover_authorized"), bool)
+            or record.get("fallback_evaluated") is not False
+            or record.get("valid_call_count") not in range(139)
+            or record.get("finish_stop_count") not in range(139)
+        ):
+            raise ValueError("sonnet_candidate_final_summary_invalid")
+        if not isinstance(record.get("reason_codes"), list) or any(
+            code not in _MODEL_COMPARISON_FINAL_REASON_CODES
+            for code in record["reason_codes"]
+        ):
+            raise ValueError("sonnet_candidate_final_reason_invalid")
+        cost = record.get("cost_usd")
+        if cost is not None and _float_metric(cost) != cost:
+            raise ValueError("sonnet_candidate_final_cost_invalid")
+        _validate_sha(record.get("calls_sha256"))
+        _validate_sha(record.get("historical_artifact_sha256"))
+        if record["decision"] == "eligible_primary":
+            if (
+                record["candidate_pass_count"] != 32
+                or record["semantic_regression_count"] != 0
+                or record["valid_call_count"] != SONNET_CANDIDATE_EXPECTED_CALLS
+                or record["finish_stop_count"] != SONNET_CANDIDATE_EXPECTED_CALLS
+                or record["runtime_cutover_authorized"] is not True
+                or record["cost_usd"] is None
+            ):
+                raise ValueError("sonnet_candidate_false_eligibility")
+        elif record["runtime_cutover_authorized"] is not False:
+            raise ValueError("sonnet_candidate_false_cutover_authority")
+    return dict(record)
+
+
 def validate_model_comparison_artifact(
     records: Sequence[Mapping[str, Any]],
     repo_root: Path,
@@ -2568,6 +3751,121 @@ def validate_token_cap_rerun_artifact(
     return validate_model_comparison_artifact(records, repo_root, protocol)
 
 
+def validate_sonnet_candidate_artifact(
+    records: Sequence[Mapping[str, Any]],
+    repo_root: Path,
+    protocol: Mapping[str, Any],
+) -> dict[str, Any]:
+    validate_sonnet_candidate_protocol(protocol, repo_root)
+    for record in records:
+        validate_sonnet_candidate_record(record)
+    calls = [dict(item) for item in records if item.get("record_type") == "call"]
+    if (
+        len(calls) != SONNET_CANDIDATE_EXPECTED_CALLS
+        or [item["sequence"] for item in calls]
+        != list(range(1, SONNET_CANDIDATE_EXPECTED_CALLS + 1))
+        or list(records[:SONNET_CANDIDATE_EXPECTED_CALLS]) != calls
+    ):
+        raise ValueError("sonnet_candidate_call_order_invalid")
+    schedule = build_sonnet_candidate_request_schedule(repo_root, protocol)
+    corpus, _ = _load_inputs(repo_root)
+    cases = {item["id"]: item for item in corpus["dialogues"]}
+    histories: dict[tuple[int, str], list[dict[str, Any]]] = {}
+    observations: dict[tuple[int, str], list[dict[str, Any]]] = {}
+    frozen_call_fields = {
+        "corpus_sha256": protocol["corpus_sha256"],
+        "prompt_sha256": protocol["prompt_sha256"],
+        "harness_sha256": protocol["harness_sha256"],
+        "parameters_sha256": protocol["parameters_sha256"],
+        "response_schema_sha256": protocol["response_schema_sha256"],
+        "freeze_commit": protocol["freeze_commit"],
+    }
+    for call, plan in zip(calls, schedule):
+        if any(
+            call[key] != plan[key]
+            for key in (
+                "sequence",
+                "source",
+                "repetition",
+                "dialogue_id",
+                "turn_id",
+                "evaluated",
+                "messages_sha256",
+            )
+        ):
+            raise ValueError("sonnet_candidate_call_order_invalid")
+        if any(call.get(key) != value for key, value in frozen_call_fields.items()):
+            raise ValueError("sonnet_candidate_call_protocol_fingerprint_mismatch")
+        group = (int(call["repetition"]), str(call["dialogue_id"]))
+        history = histories.setdefault(group, [])
+        turn = cases[call["dialogue_id"]]["turns"][call["turn_id"] - 1]
+        signal = (
+            call["signal"]
+            if call["status"] == "ok"
+            else _build_fail_open_signal()
+        )
+        history.append(
+            {
+                "role": "user",
+                "content": turn["user"],
+                "timestamp": None,
+                "meta": {"affective_turn_signal": signal},
+            }
+        )
+        aggregate = build_stimmung_input(messages=history)
+        if aggregate != call["aggregate"]:
+            raise ValueError("sonnet_candidate_aggregate_reconstruction_mismatch")
+        if call["evaluated"]:
+            observations.setdefault(group, []).append(
+                {
+                    "turn_id": call["turn_id"],
+                    "execution_status": call["status"],
+                    "source": "primary",
+                    "signal": call["signal"],
+                    "aggregate": aggregate,
+                }
+            )
+        history.append(
+            {
+                "role": "assistant",
+                "content": turn["assistant"],
+                "timestamp": None,
+            }
+        )
+    scores: list[dict[str, Any]] = []
+    for repetition in (1, 2):
+        for case in corpus["dialogues"]:
+            group = (repetition, case["id"])
+            score = dialogic_semantics.score_dialogue(
+                case,
+                observations.get(group, []),
+            )
+            scores.append(
+                _dialogue_score_record(
+                    score,
+                    source="primary",
+                    repetition=repetition,
+                    protocol=protocol,
+                )
+            )
+    expected_tail = _sonnet_candidate_summary_records(
+        calls,
+        scores,
+        corpus,
+        repo_root=repo_root,
+        protocol=protocol,
+    )
+    if list(records[SONNET_CANDIDATE_EXPECTED_CALLS:]) != expected_tail:
+        raise ValueError("sonnet_candidate_artifact_summary_reconstruction_mismatch")
+    final = expected_tail[-1]
+    return {
+        "call_count": len(calls),
+        "dialogue_score_count": len(scores),
+        "final_decision": final["decision"],
+        "cost_usd": final["cost_usd"],
+    }
+
+
 def validate_artifact(
     records: Sequence[Mapping[str, Any]],
     repo_root: Path,
@@ -2681,6 +3979,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--strengthening", action="store_true")
     parser.add_argument("--model-comparison", action="store_true")
     parser.add_argument("--token-cap-rerun", action="store_true")
+    parser.add_argument("--sonnet-candidate", action="store_true")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
     selected_modes = sum(
@@ -2689,11 +3988,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.strengthening,
             args.model_comparison,
             args.token_cap_rerun,
+            args.sonnet_candidate,
         )
     )
     if selected_modes > 1:
         raise SystemExit("campaign modes are mutually exclusive")
-    if args.token_cap_rerun:
+    if args.sonnet_candidate:
+        protocol = build_sonnet_candidate_protocol(
+            args.repo_root,
+            freeze_commit=args.freeze_commit,
+        )
+        summary = validate_sonnet_candidate_protocol(protocol, args.repo_root)
+    elif args.token_cap_rerun:
         protocol = build_token_cap_rerun_protocol(
             args.repo_root,
             freeze_commit=args.freeze_commit,
@@ -2721,9 +4027,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise SystemExit("--output is required for a live campaign")
     client = OpenRouterClient.from_env(
         title=(
-            "FridaDev/Lot4C2-Stimmung-Gemini-Comparison"
-            if args.model_comparison or args.token_cap_rerun
-            else "FridaDev/Lot4S1"
+            "FridaDev/Lot4C2-Stimmung-Sonnet-Candidate"
+            if args.sonnet_candidate
+            else (
+                "FridaDev/Lot4C2-Stimmung-Gemini-Comparison"
+                if args.model_comparison or args.token_cap_rerun
+                else "FridaDev/Lot4S1"
+            )
         )
     )
 
@@ -2731,7 +4041,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         if current == 1 or current % 20 == 0 or current == total:
             print(_compact_json({"status": "running", "completed": current, "total": total}), flush=True)
 
-    if args.model_comparison or args.token_cap_rerun:
+    if args.sonnet_candidate:
+        records = run_sonnet_candidate_campaign(
+            repo_root=args.repo_root,
+            protocol=protocol,
+            client=client,
+            progress=progress,
+        )
+        validate_sonnet_candidate_artifact(
+            records,
+            args.repo_root,
+            protocol,
+        )
+    elif args.model_comparison or args.token_cap_rerun:
         records = (
             run_token_cap_rerun_campaign(
                 repo_root=args.repo_root,

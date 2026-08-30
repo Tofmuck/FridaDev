@@ -595,6 +595,51 @@ eligible on the frozen corpus. Observed cost was `0.22071900 USD`, median/p95
 latency `3463.583/6032.503 ms`, with 74,772 prompt, 43,904 completion, 33,865
 reasoning and 118,676 total tokens. No fallback or runtime action followed.
 
+### Lot 4C.2 Claude Sonnet 5 primary candidate
+
+The bounded Sonnet pass reuses `dialogic_campaign`, the unchanged 4S.0 v2
+corpus, its `1.0` scorer, the production prompt, product normalizer and real
+multi-turn aggregator. It schedules exactly 69 turns and two repetitions of
+the candidate primary: 138 calls, with no retry, model fallback, Gemini or
+GPT call.
+
+The frozen native model tuple is the standard
+`anthropic/claude-sonnet-5` route, explicitly ordered to the Anthropic
+endpoint, `reasoning={"effort":"medium","exclude":true}`,
+`max_tokens=16000`, timeout 30 seconds, strict JSON Schema, required parameter
+support and no sampling or tools. Public OpenRouter metadata observed on
+`2026-08-30T16:43:40Z` identifies canonical slug
+`anthropic/claude-sonnet-5-20260630`, a 1M context, a 128k completion limit,
+structured outputs, and prices of 2 USD/M input and 10 USD/M output tokens.
+
+The response schema is derived from the runtime contract and nine-tone
+vocabulary. Its maximal normalized structural witness is 418 compact, 462
+normally spaced and 676 indented characters. The protocol reserves 1,024 of
+the 16,000 output tokens for the final JSON and leaves 14,976 tokens for
+adaptive thinking. After a conservative 30% tokenizer allowance, the hard
+cost estimate is 22.285880 USD; a further 10% campaign margin yields
+24.514468 USD, below the immutable 25 USD cap. The realistic planning estimate
+at 4,096 completion tokens per call is 5.858360 USD.
+
+Hermetic dry-run:
+
+```bash
+PYTHONPATH="$PWD:$PWD/app" python3 -m \
+  benchmark.suites.stimmung.dialogic_campaign \
+  --repo-root "$PWD" \
+  --freeze-commit <pushed-protocol-commit> \
+  --sonnet-candidate \
+  --dry-run
+```
+
+The live form only adds a dated `--output` under
+`benchmark/results/stimmung/`. `eligible_primary` requires 138 complete
+Anthropic calls ending in `stop`, 32/32 dialogue scores at `1.0`, complete
+metrics and provenance, and no historical regression. A complete semantic
+failure is `not_eligible`; any technical or provenance gap is `inconclusive`.
+Only `eligible_primary` opens the separately verified conditional runtime
+delivery in this same micro-lot.
+
 ## Validation agent benchmark
 
 The validation suite uses the production prompt

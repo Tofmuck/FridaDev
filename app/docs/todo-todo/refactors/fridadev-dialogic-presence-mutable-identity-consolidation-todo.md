@@ -3240,6 +3240,47 @@ Campagne corrective executee depuis le gel pousse
   restart ou deploiement n'est modifie. 4C.2 reste ouvert pour decision
   humaine separee et 4C.3 reste non commence.
 
+Passe candidate Claude Sonnet 5 gelee le 2026-08-30 avant tout resultat
+provider:
+
+- les campagnes Gemini 3.7 a 400 puis 800 tokens restent les autorites
+  historiques; aucune variante Gemini, aucun primaire historique et aucun
+  fallback ne sont rappeles. Le constat acquis reste `137/138` JSON valides a
+  800 tokens, une fin `length`, seulement `5/32` scores conformes et `12`
+  dialogues en echec reproductible;
+- variable semantique unique: tuple natif du candidat primaire standard
+  `anthropic/claude-sonnet-5`, endpoint Anthropic explicitement ordonne,
+  effort `medium`, raisonnement exclu, `max_tokens=16000`, timeout `30 s`,
+  JSON Schema strict, sampling et outils absents, fallback et retry interdits.
+  Le prompt runtime, le corpus v2, les attentes, le scorer, les seuils `1.0`,
+  le schema metier, le normaliseur et `build_stimmung_input` restent
+  byte-for-byte inchanges;
+- metadonnees publiques OpenRouter relevees le `2026-08-30T16:43:40Z`: slug
+  canonique `anthropic/claude-sonnet-5-20260630`, contexte `1000000`, sortie
+  maximale `128000`, sorties structurees et effort `medium` disponibles sur
+  le endpoint Anthropic direct; prix geles `2 USD/M` tokens entree et
+  `10 USD/M` tokens sortie;
+- maximum structurel derive du contrat produit et des neuf tonalites:
+  `418` caracteres JSON compacts, `462` espaces normalement et `676` indentes.
+  La reserve finale est `1024` tokens et laisse `14976` tokens au raisonnement
+  adaptatif. Pour `79184` tokens d'entree estimes, majores de `30%`, le maximum
+  theorique est `22.285880 USD`; marge de campagne `10%` incluse,
+  `24.514468 USD`, sous le plafond absolu `25 USD`. L'estimation realiste
+  gelee a `4096` tokens de completion par appel est `5.858360 USD`;
+- protocole: `16` dialogues, `69` tours, `32` etapes, deux repetitions,
+  exactement `138` appels Sonnet, zero Gemini, GPT-5.4 Nano, fallback, retry,
+  Batch, Flex, Priority, outil, DB ou donnee operateur. L'allowlist prouve que
+  seules les proprietes natives du tuple modele different du temoin;
+- decision gelee: `eligible_primary` exige `138/138` appels complets avec
+  `finish_reason=stop`, provenance Anthropic, metriques completes, `32/32`
+  scores a `1.0` et aucune regression historique; un defaut semantique complet
+  vaut `not_eligible`, toute preuve technique incomplete vaut `inconclusive`;
+- cycle TDD: reproduction rouge du raccord absent, puis six preuves vertes du
+  schema derive, du schedule, de la route, du normaliseur produit, du vrai
+  agregateur, du scorer et de la decision stricte. Le dry-run annonce
+  exactement `138` appels et aucun provider n'a encore ete appele dans cette
+  passe. Runtime, frontend et 4C.3 restent inchanges.
+
 Message de commit recommande si active: `fix: strengthen Stimmung semantic extraction`.
 
 ### Micro-lot 4C.3 - Separation affect et certitude epistemique
