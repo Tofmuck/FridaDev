@@ -3168,6 +3168,43 @@ Campagne de comparaison executee une seule fois depuis le gel pousse
   fallback 4S.1 ne sont ni retestees ni acceptees. 4C.2 reste ouvert pour une
   decision humaine ulterieure et 4C.3 n'est pas commence.
 
+Passe corrective de plafond gelee le 2026-08-30, avant tout nouvel appel
+provider:
+
+- hypothese reproduite content-free depuis l'artefact a 400: les `24/24`
+  erreurs `invalid_json` portent `396` tokens de completion, sans timeout ni
+  erreur transport; leurs tokens de raisonnement sont compris entre `326` et
+  `384` (mediane `380.5`), contre une mediane `171` pour les sorties valides.
+  Cette signature est fortement compatible avec une saturation du plafond,
+  mais l'artefact historique ne conservait pas de finish reason et ne suffit
+  donc pas seul a prouver la cause;
+- variable provider-visible unique: `max_tokens` passe de `400` a `800`.
+  Modele `google/gemini-3.7-flash`, effort `medium`, `exclude=true`, timeout
+  `10 s`, sampling omis, prompt runtime, messages, corpus, scorer,
+  normaliseur, agregateur, ordre et deux repetitions restent inchanges;
+- le schedule derive du protocole 400 et contient exactement `69 x 2 = 138`
+  appels du primaire candidat, aucun fallback, retry, appel Gemini 3.1,
+  Validation ou modele voisin. Toute difference de requete hors
+  `max_tokens` est rejetee;
+- l'artefact v2 ajoute seulement les categories content-free bornees
+  `finish_reason` et `native_finish_reason`; les valeurs non reconnues sont
+  `unknown`, jamais du texte libre. L'artefact 400 historique reste lisible et
+  byte-for-byte inchange;
+- prix releves le `2026-08-30T15:48:43Z`: `0.75 USD/M` tokens entree et
+  `3.75 USD/M` tokens sortie, raisonnement interne compris. Le maximum dur
+  reproductible est `0.47338800 USD` pour `79184` tokens entree estimes et
+  `138 x 800` tokens sortie, sous le plafond absolu `0.50 USD`;
+- decision gelee: `eligible_primary` exige `138/138` appels valides et les
+  `32/32` scores a `1.0` dans les deux repetitions, sans regression ni
+  provenance incomplete; un defaut semantique reproductible vaut
+  `not_eligible`, toute erreur ou sortie invalide vaut `inconclusive`. La
+  disparition des JSON invalides ne suffit jamais a l'eligibilite;
+- cycle rouge puis vert: preuve initialement absente, puis rejet du mauvais
+  plafond, d'un effort ou d'une difference hors allowlist, d'un finish reason
+  libre, d'un appel manquant et d'une fausse eligibilite. Aucun provider n'a
+  encore ete appele par cette passe; runtime, prompt, fallback, settings et
+  4C.3 restent inchanges.
+
 Message de commit recommande si active: `fix: strengthen Stimmung semantic extraction`.
 
 ### Micro-lot 4C.3 - Separation affect et certitude epistemique

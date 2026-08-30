@@ -561,6 +561,24 @@ Observed cost was `0.19883025 USD`; median/p95 latency was
 and 112,839 total tokens. No fallback call, runtime cutover, setting change or
 deployment followed.
 
+The bounded token-cap rerun keeps that entire protocol and changes only
+`max_tokens` from 400 to 800. Its dry-run replaces `--model-comparison` with
+`--token-cap-rerun`; it still schedules exactly 138 Gemini-primary calls and
+rejects every fallback or neighbouring model. The retained 400-token artifact
+proves a saturation signature: all 24 invalid JSON calls reported 396
+completion tokens, no timeout or transport failure occurred, and finish
+reasons were not retained by that artifact version. The rerun therefore adds
+closed, content-free `finish_reason` and `native_finish_reason` categories;
+unknown provider values become `unknown`, never free text.
+
+At prices observed on `2026-08-30T15:48:43Z`, the hard maximum estimate is
+`0.47338800 USD` (79,184 estimated prompt tokens plus 138 completions capped at
+800), below the immutable `0.50 USD` campaign cap. Disappearance of the 24
+invalid JSON results would support the truncation hypothesis but cannot make
+the candidate eligible: all 32 dialogue scores must still reach `1.0` in both
+repetitions with complete provenance and no regression. The protocol remains
+benchmark-only and never authorizes a runtime cutover.
+
 ## Validation agent benchmark
 
 The validation suite uses the production prompt

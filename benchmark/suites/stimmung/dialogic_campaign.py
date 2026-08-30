@@ -29,6 +29,8 @@ STRENGTHENING_PROTOCOL_VERSION = "lot4c2_stimmung_semantic_strengthening_v1"
 STRENGTHENING_ARTIFACT_VERSION = "lot4c2_stimmung_semantic_strengthening_results_v1"
 MODEL_COMPARISON_PROTOCOL_VERSION = "lot4c2_stimmung_gemini_3_7_medium_comparison_v1"
 MODEL_COMPARISON_ARTIFACT_VERSION = "lot4c2_stimmung_gemini_3_7_medium_results_v1"
+TOKEN_CAP_RERUN_PROTOCOL_VERSION = "lot4c2_stimmung_gemini_3_7_medium_token_cap_rerun_v2"
+TOKEN_CAP_RERUN_ARTIFACT_VERSION = "lot4c2_stimmung_gemini_3_7_medium_token_cap_results_v2"
 PRIMARY_MODEL = "google/gemini-3.1-flash-lite"
 FALLBACK_MODEL = "openai/gpt-5.4-nano"
 MODELS = {"primary": PRIMARY_MODEL, "fallback": FALLBACK_MODEL}
@@ -63,6 +65,22 @@ MODEL_COMPARISON_PRICING_OBSERVED_AT = "2026-08-30T14:52:34Z"
 MODEL_COMPARISON_PRICING_USD_PER_TOKEN = {
     "prompt": 0.00000075,
     "completion": 0.00000375,
+}
+MODEL_COMPARISON_FREEZE_COMMIT = "1e9bb9f99c8a5bd73af855e3dc6dbedf211aa5b7"
+MODEL_COMPARISON_FREEZE_HARNESS_SHA256 = "fb65297448608e3ba17abbfe69820878f1c1b87b3a93c2d4b03af9b4f76ad837"
+MODEL_COMPARISON_ARTIFACT = "2026-08-30-lot4c2-stimmung-gemini-3-7-medium.jsonl"
+MODEL_COMPARISON_ARTIFACT_SHA256 = "5adb54eec321f671fb05e2b350d35120a7ce84a52e7b936c4e54829002bce8f3"
+TOKEN_CAP_RERUN_MAX_TOKENS = 800
+TOKEN_CAP_RERUN_COST_CAP_USD = 0.50
+TOKEN_CAP_RERUN_PRICING_OBSERVED_AT = "2026-08-30T15:48:43Z"
+TOKEN_CAP_RERUN_ALLOWED_POLICY_DIFFERENCES = ("max_tokens",)
+TOKEN_CAP_RERUN_FINISH_REASONS = {
+    "stop",
+    "length",
+    "content_filter",
+    "tool_calls",
+    "error",
+    "unknown",
 }
 MODEL_COMPARISON_ALLOWED_POLICY_DIFFERENCES = (
     "max_tokens",
@@ -255,6 +273,10 @@ _MODEL_COMPARISON_CALL_KEYS = _CALL_KEYS | {
     "timeout_s",
     "sampling_parameters_present",
     "observed_service_tier",
+}
+_TOKEN_CAP_RERUN_CALL_KEYS = _MODEL_COMPARISON_CALL_KEYS | {
+    "finish_reason",
+    "native_finish_reason",
 }
 _MODEL_COMPARISON_FINAL_KEYS = _FINAL_KEYS | {
     "historical_artifact_sha256",
@@ -713,7 +735,11 @@ def build_model_comparison_protocol(
             repo_root / "app/core/hermeneutic_node/inputs/stimmung_input.py"
         ),
         "message_builder_sha256": _sha256_file(repo_root / "app/core/stimmung_agent.py"),
-        "harness_sha256": _sha256_file(_harness_path(repo_root)),
+        "harness_sha256": (
+            MODEL_COMPARISON_FREEZE_HARNESS_SHA256
+            if freeze_commit == MODEL_COMPARISON_FREEZE_COMMIT
+            else _sha256_file(_harness_path(repo_root))
+        ),
         "parameters_sha256": _sha256_text(_compact_json(parameters)),
         "schedule_sha256": _sha256_text(
             _compact_json(
@@ -778,6 +804,148 @@ def validate_model_comparison_protocol(
     )
     if dict(protocol) != expected:
         raise ValueError("model_comparison_protocol_freeze_mismatch")
+    return {
+        "dialogue_count": expected["dialogue_count"],
+        "turn_count": expected["turn_count"],
+        "evaluated_step_count": expected["evaluated_step_count"],
+        "expected_call_count": expected["expected_call_count"],
+        "estimated_max_cost_usd": expected["estimated_max_cost_usd"],
+    }
+
+
+def _model_comparison_artifact_path(repo_root: Path) -> Path:
+    return repo_root / "benchmark/results/stimmung" / MODEL_COMPARISON_ARTIFACT
+
+
+def _baseline_saturation(repo_root: Path) -> dict[str, Any]:
+    artifact_path = _model_comparison_artifact_path(repo_root)
+    if _sha256_file(artifact_path) != MODEL_COMPARISON_ARTIFACT_SHA256:
+        raise ValueError("token_cap_baseline_artifact_changed")
+    calls = [
+        item
+        for item in load_jsonl(artifact_path)
+        if item.get("record_type") == "call"
+    ]
+    invalid = [item for item in calls if item.get("status") == "json_error"]
+    invalid_reasoning = [int(item["reasoning_tokens"]) for item in invalid]
+    valid_reasoning = [
+        int(item["reasoning_tokens"])
+        for item in calls
+        if item.get("status") == "ok"
+    ]
+    if (
+        len(calls) != MODEL_COMPARISON_EXPECTED_CALLS
+        or len(invalid) != 24
+        or not invalid_reasoning
+        or not valid_reasoning
+    ):
+        raise ValueError("token_cap_baseline_saturation_changed")
+    return {
+        "artifact_sha256": MODEL_COMPARISON_ARTIFACT_SHA256,
+        "call_count": len(calls),
+        "valid_call_count": sum(item.get("status") == "ok" for item in calls),
+        "invalid_json_count": len(invalid),
+        "invalid_completion_tokens": sorted(
+            {int(item["completion_tokens"]) for item in invalid}
+        ),
+        "invalid_reasoning_tokens_min": min(invalid_reasoning),
+        "invalid_reasoning_tokens_median": statistics.median(invalid_reasoning),
+        "invalid_reasoning_tokens_max": max(invalid_reasoning),
+        "valid_reasoning_tokens_median": statistics.median(valid_reasoning),
+        "timeout_count": sum(item.get("status") == "timeout" for item in calls),
+        "transport_error_count": sum(
+            item.get("status") == "transport_error" for item in calls
+        ),
+        "finish_reason_observed": any("finish_reason" in item for item in calls),
+        "native_finish_reason_observed": any(
+            "native_finish_reason" in item for item in calls
+        ),
+    }
+
+
+def build_token_cap_rerun_protocol(
+    repo_root: Path,
+    *,
+    freeze_commit: str,
+) -> dict[str, Any]:
+    if _COMMIT_RE.fullmatch(str(freeze_commit)) is None:
+        raise ValueError("invalid_freeze_commit")
+    control = build_model_comparison_protocol(
+        repo_root,
+        freeze_commit=MODEL_COMPARISON_FREEZE_COMMIT,
+    )
+    prompt_token_estimate_sum = int(control["prompt_token_estimate_sum"])
+    estimated_cost = round(
+        prompt_token_estimate_sum
+        * MODEL_COMPARISON_PRICING_USD_PER_TOKEN["prompt"]
+        + MODEL_COMPARISON_EXPECTED_CALLS
+        * TOKEN_CAP_RERUN_MAX_TOKENS
+        * MODEL_COMPARISON_PRICING_USD_PER_TOKEN["completion"],
+        8,
+    )
+    if estimated_cost > TOKEN_CAP_RERUN_COST_CAP_USD:
+        raise ValueError("estimated_cost_cap_exceeded")
+    parameters = {
+        "model": MODEL_COMPARISON_MODEL,
+        "reasoning": {"effort": "medium", "exclude": True},
+        "max_tokens": TOKEN_CAP_RERUN_MAX_TOKENS,
+        "timeout_s": MODEL_COMPARISON_TIMEOUT_S,
+        "sampling_parameters": "omitted",
+        "provider": {"allow_fallbacks": False, "require_parameters": True},
+        "transport": "standard",
+        "repetitions": REPETITIONS,
+        "order": ["candidate_primary:1", "candidate_primary:2"],
+    }
+    return {
+        **{
+            key: value
+            for key, value in control.items()
+            if key
+            not in {
+                "protocol_version",
+                "artifact_version",
+                "campaign_kind",
+                "freeze_commit",
+                "harness_sha256",
+                "parameters_sha256",
+                "max_tokens",
+                "policy_difference_allowlist",
+                "cost_cap_usd",
+                "estimated_max_cost_usd",
+                "pricing_observed_at",
+            }
+        },
+        "protocol_version": TOKEN_CAP_RERUN_PROTOCOL_VERSION,
+        "artifact_version": TOKEN_CAP_RERUN_ARTIFACT_VERSION,
+        "campaign_kind": "stimmung_primary_token_cap_rerun_v2",
+        "freeze_commit": freeze_commit,
+        "harness_sha256": _sha256_file(_harness_path(repo_root)),
+        "parameters_sha256": _sha256_text(_compact_json(parameters)),
+        "max_tokens": TOKEN_CAP_RERUN_MAX_TOKENS,
+        "baseline_max_tokens": MODEL_COMPARISON_MAX_TOKENS,
+        "policy_difference_allowlist": list(
+            TOKEN_CAP_RERUN_ALLOWED_POLICY_DIFFERENCES
+        ),
+        "finish_reason_allowlist": sorted(TOKEN_CAP_RERUN_FINISH_REASONS),
+        "baseline_saturation": _baseline_saturation(repo_root),
+        "cost_cap_usd": TOKEN_CAP_RERUN_COST_CAP_USD,
+        "estimated_max_cost_usd": estimated_cost,
+        "pricing_observed_at": TOKEN_CAP_RERUN_PRICING_OBSERVED_AT,
+    }
+
+
+def validate_token_cap_rerun_protocol(
+    protocol: Mapping[str, Any],
+    repo_root: Path,
+) -> dict[str, Any]:
+    if protocol.get("protocol_version") != TOKEN_CAP_RERUN_PROTOCOL_VERSION:
+        raise ValueError("token_cap_rerun_protocol_version_invalid")
+    expected = build_token_cap_rerun_protocol(
+        repo_root,
+        freeze_commit=str(protocol.get("freeze_commit") or ""),
+    )
+    if dict(protocol) != expected:
+        raise ValueError("token_cap_rerun_protocol_freeze_mismatch")
     return {
         "dialogue_count": expected["dialogue_count"],
         "turn_count": expected["turn_count"],
@@ -952,6 +1120,57 @@ def build_model_comparison_request_schedule(
             )
     if len(schedule) != MODEL_COMPARISON_EXPECTED_CALLS:
         raise ValueError("model_comparison_call_schedule_mismatch")
+    return schedule
+
+
+def validate_token_cap_rerun_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    normalized = dict(payload)
+    if normalized.get("max_tokens") != TOKEN_CAP_RERUN_MAX_TOKENS:
+        raise ValueError("token_cap_rerun_payload_max_tokens_invalid")
+    control = {**normalized, "max_tokens": MODEL_COMPARISON_MAX_TOKENS}
+    validate_model_comparison_payload(control)
+    return normalized
+
+
+def validate_token_cap_rerun_policy_difference(
+    control_payload: Mapping[str, Any],
+    rerun_payload: Mapping[str, Any],
+) -> list[str]:
+    try:
+        validate_model_comparison_payload(control_payload)
+        validate_token_cap_rerun_payload(rerun_payload)
+    except ValueError as exc:
+        raise ValueError("token_cap_rerun_policy_difference_invalid") from exc
+    differences = _difference_paths(control_payload, rerun_payload)
+    if differences != set(TOKEN_CAP_RERUN_ALLOWED_POLICY_DIFFERENCES):
+        raise ValueError("token_cap_rerun_policy_difference_invalid")
+    return sorted(differences)
+
+
+def build_token_cap_rerun_request_schedule(
+    repo_root: Path,
+    protocol: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    validate_token_cap_rerun_protocol(protocol, repo_root)
+    control_protocol = build_model_comparison_protocol(
+        repo_root,
+        freeze_commit=MODEL_COMPARISON_FREEZE_COMMIT,
+    )
+    control_schedule = build_model_comparison_request_schedule(
+        repo_root,
+        control_protocol,
+    )
+    schedule: list[dict[str, Any]] = []
+    for item in control_schedule:
+        payload = {**item["payload"], "max_tokens": TOKEN_CAP_RERUN_MAX_TOKENS}
+        validate_token_cap_rerun_policy_difference(item["payload"], payload)
+        schedule.append({**item, "payload": payload})
+    if (
+        len(schedule) != MODEL_COMPARISON_EXPECTED_CALLS
+        or {item["source"] for item in schedule} != {"primary"}
+        or any(item["payload"]["model"] != MODEL_COMPARISON_MODEL for item in schedule)
+    ):
+        raise ValueError("token_cap_rerun_call_schedule_invalid")
     return schedule
 
 
@@ -1163,6 +1382,23 @@ def _reasoning_tokens_or_none(response: Mapping[str, Any]) -> int | None:
     return _int_metric(value)
 
 
+def _closed_finish_reason(value: Any) -> str:
+    normalized = str(value or "").strip().lower()
+    aliases = {
+        "stop": "stop",
+        "end_turn": "stop",
+        "length": "length",
+        "max_tokens": "length",
+        "max_tokens_reached": "length",
+        "content_filter": "content_filter",
+        "safety": "content_filter",
+        "tool_calls": "tool_calls",
+        "tool_call": "tool_calls",
+        "error": "error",
+    }
+    return aliases.get(normalized, "unknown")
+
+
 def _model_comparison_call_record(
     *,
     plan: Mapping[str, Any],
@@ -1172,9 +1408,9 @@ def _model_comparison_call_record(
     protocol: Mapping[str, Any],
 ) -> dict[str, Any]:
     service_tier = str(response.get("service_tier") or "").strip().lower()
-    return {
-        "artifact_version": MODEL_COMPARISON_ARTIFACT_VERSION,
-        "protocol_version": MODEL_COMPARISON_PROTOCOL_VERSION,
+    record = {
+        "artifact_version": protocol["artifact_version"],
+        "protocol_version": protocol["protocol_version"],
         "record_type": "call",
         "sequence": plan["sequence"],
         "dialogue_id": plan["dialogue_id"],
@@ -1190,7 +1426,7 @@ def _model_comparison_call_record(
         "batch": False,
         "provider_fallbacks": False,
         "require_parameters": True,
-        "max_tokens": MODEL_COMPARISON_MAX_TOKENS,
+        "max_tokens": protocol["max_tokens"],
         "timeout_s": MODEL_COMPARISON_TIMEOUT_S,
         "sampling_parameters_present": any(
             key in plan["payload"] for key in ("temperature", "top_p")
@@ -1217,6 +1453,14 @@ def _model_comparison_call_record(
         "parameters_sha256": protocol["parameters_sha256"],
         "freeze_commit": protocol["freeze_commit"],
     }
+    if protocol["protocol_version"] == TOKEN_CAP_RERUN_PROTOCOL_VERSION:
+        record["finish_reason"] = _closed_finish_reason(
+            response.get("finish_reason")
+        )
+        record["native_finish_reason"] = _closed_finish_reason(
+            response.get("native_finish_reason")
+        )
+    return record
 
 
 def _model_comparison_decision(
@@ -1328,8 +1572,8 @@ def _model_comparison_summary_records(
         repetition_decisions.append(summary["decision"])
         results.append(
             {
-                "artifact_version": MODEL_COMPARISON_ARTIFACT_VERSION,
-                "protocol_version": MODEL_COMPARISON_PROTOCOL_VERSION,
+                "artifact_version": protocol["artifact_version"],
+                "protocol_version": protocol["protocol_version"],
                 "record_type": "repetition_summary",
                 "source": "primary",
                 "repetition": repetition,
@@ -1345,8 +1589,8 @@ def _model_comparison_summary_records(
     latencies = [float(item["latency_ms"]) for item in calls if item["latency_ms"] is not None]
     results.append(
         {
-            "artifact_version": MODEL_COMPARISON_ARTIFACT_VERSION,
-            "protocol_version": MODEL_COMPARISON_PROTOCOL_VERSION,
+            "artifact_version": protocol["artifact_version"],
+            "protocol_version": protocol["protocol_version"],
             "record_type": "source_summary",
             "source": "primary",
             "repetition_decisions": repetition_decisions,
@@ -1373,8 +1617,8 @@ def _model_comparison_summary_records(
     )
     results.append(
         {
-            "artifact_version": MODEL_COMPARISON_ARTIFACT_VERSION,
-            "protocol_version": MODEL_COMPARISON_PROTOCOL_VERSION,
+            "artifact_version": protocol["artifact_version"],
+            "protocol_version": protocol["protocol_version"],
             "record_type": "final_summary",
             **decision,
             "call_count": len(calls),
@@ -1396,7 +1640,14 @@ def run_model_comparison_campaign(
     client: Any,
     progress: Any | None = None,
 ) -> list[dict[str, Any]]:
-    schedule = build_model_comparison_request_schedule(repo_root, protocol)
+    token_cap_rerun = (
+        protocol.get("protocol_version") == TOKEN_CAP_RERUN_PROTOCOL_VERSION
+    )
+    schedule = (
+        build_token_cap_rerun_request_schedule(repo_root, protocol)
+        if token_cap_rerun
+        else build_model_comparison_request_schedule(repo_root, protocol)
+    )
     corpus, _ = _load_inputs(repo_root)
     cases = {item["id"]: item for item in corpus["dialogues"]}
     records: list[dict[str, Any]] = []
@@ -1472,7 +1723,11 @@ def run_model_comparison_campaign(
             aggregate=aggregate,
             protocol=protocol,
         )
-        validate_model_comparison_record(record)
+        (
+            validate_token_cap_rerun_record(record)
+            if token_cap_rerun
+            else validate_model_comparison_record(record)
+        )
         records.append(record)
         if plan["evaluated"]:
             observations.append(
@@ -1488,7 +1743,7 @@ def run_model_comparison_campaign(
             {"role": "assistant", "content": turn["assistant"], "timestamp": None}
         )
         observed_cost = _sum_cost(records)
-        if observed_cost is not None and observed_cost > MODEL_COMPARISON_COST_CAP_USD:
+        if observed_cost is not None and observed_cost > float(protocol["cost_cap_usd"]):
             raise ValueError("provider_cost_cap_exceeded")
         if callable(progress):
             progress(int(plan["sequence"]), MODEL_COMPARISON_EXPECTED_CALLS, dict(record))
@@ -1503,6 +1758,22 @@ def run_model_comparison_campaign(
         )
     )
     return records
+
+
+def run_token_cap_rerun_campaign(
+    *,
+    repo_root: Path,
+    protocol: Mapping[str, Any],
+    client: Any,
+    progress: Any | None = None,
+) -> list[dict[str, Any]]:
+    validate_token_cap_rerun_protocol(protocol, repo_root)
+    return run_model_comparison_campaign(
+        repo_root=repo_root,
+        protocol=protocol,
+        client=client,
+        progress=progress,
+    )
 
 
 def _dialogue_score_record(
@@ -2125,14 +2396,61 @@ def validate_model_comparison_record(record: Mapping[str, Any]) -> dict[str, Any
     return dict(record)
 
 
+def validate_token_cap_rerun_record(record: Mapping[str, Any]) -> dict[str, Any]:
+    if not isinstance(record, Mapping):
+        raise ValueError("record_not_object")
+    record_type = record.get("record_type")
+    expected_keys = {
+        "call": _TOKEN_CAP_RERUN_CALL_KEYS,
+        "dialogue_score": _DIALOGUE_SCORE_KEYS,
+        "repetition_summary": _REPETITION_SUMMARY_KEYS,
+        "source_summary": _SOURCE_SUMMARY_KEYS,
+        "final_summary": _MODEL_COMPARISON_FINAL_KEYS,
+    }.get(record_type)
+    if expected_keys is None or set(record) != expected_keys:
+        raise ValueError("token_cap_rerun_record_schema_invalid")
+    if (
+        record.get("artifact_version"),
+        record.get("protocol_version"),
+    ) != (TOKEN_CAP_RERUN_ARTIFACT_VERSION, TOKEN_CAP_RERUN_PROTOCOL_VERSION):
+        raise ValueError("token_cap_rerun_record_version_invalid")
+    translated = dict(record)
+    translated["artifact_version"] = MODEL_COMPARISON_ARTIFACT_VERSION
+    translated["protocol_version"] = MODEL_COMPARISON_PROTOCOL_VERSION
+    if record_type == "call":
+        if (
+            record.get("max_tokens") != TOKEN_CAP_RERUN_MAX_TOKENS
+            or record.get("finish_reason") not in TOKEN_CAP_RERUN_FINISH_REASONS
+            or record.get("native_finish_reason")
+            not in TOKEN_CAP_RERUN_FINISH_REASONS
+        ):
+            raise ValueError("token_cap_rerun_call_policy_invalid")
+        translated["max_tokens"] = MODEL_COMPARISON_MAX_TOKENS
+        translated.pop("finish_reason")
+        translated.pop("native_finish_reason")
+    validate_model_comparison_record(translated)
+    return dict(record)
+
+
 def validate_model_comparison_artifact(
     records: Sequence[Mapping[str, Any]],
     repo_root: Path,
     protocol: Mapping[str, Any],
 ) -> dict[str, Any]:
-    validate_model_comparison_protocol(protocol, repo_root)
+    token_cap_rerun = (
+        protocol.get("protocol_version") == TOKEN_CAP_RERUN_PROTOCOL_VERSION
+    )
+    (
+        validate_token_cap_rerun_protocol(protocol, repo_root)
+        if token_cap_rerun
+        else validate_model_comparison_protocol(protocol, repo_root)
+    )
     for record in records:
-        validate_model_comparison_record(record)
+        (
+            validate_token_cap_rerun_record(record)
+            if token_cap_rerun
+            else validate_model_comparison_record(record)
+        )
     calls = [dict(item) for item in records if item.get("record_type") == "call"]
     if (
         len(calls) != MODEL_COMPARISON_EXPECTED_CALLS
@@ -2141,7 +2459,11 @@ def validate_model_comparison_artifact(
         or list(records[:MODEL_COMPARISON_EXPECTED_CALLS]) != calls
     ):
         raise ValueError("model_comparison_call_order_invalid")
-    schedule = build_model_comparison_request_schedule(repo_root, protocol)
+    schedule = (
+        build_token_cap_rerun_request_schedule(repo_root, protocol)
+        if token_cap_rerun
+        else build_model_comparison_request_schedule(repo_root, protocol)
+    )
     corpus, _ = _load_inputs(repo_root)
     cases = {item["id"]: item for item in corpus["dialogues"]}
     histories: dict[tuple[int, str], list[dict[str, Any]]] = {}
@@ -2235,6 +2557,15 @@ def validate_model_comparison_artifact(
         "final_decision": final["decision"],
         "cost_usd": final["cost_usd"],
     }
+
+
+def validate_token_cap_rerun_artifact(
+    records: Sequence[Mapping[str, Any]],
+    repo_root: Path,
+    protocol: Mapping[str, Any],
+) -> dict[str, Any]:
+    validate_token_cap_rerun_protocol(protocol, repo_root)
+    return validate_model_comparison_artifact(records, repo_root, protocol)
 
 
 def validate_artifact(
@@ -2349,11 +2680,26 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--strengthening", action="store_true")
     parser.add_argument("--model-comparison", action="store_true")
+    parser.add_argument("--token-cap-rerun", action="store_true")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
-    if args.strengthening and args.model_comparison:
-        raise SystemExit("--strengthening and --model-comparison are mutually exclusive")
-    if args.model_comparison:
+    selected_modes = sum(
+        bool(value)
+        for value in (
+            args.strengthening,
+            args.model_comparison,
+            args.token_cap_rerun,
+        )
+    )
+    if selected_modes > 1:
+        raise SystemExit("campaign modes are mutually exclusive")
+    if args.token_cap_rerun:
+        protocol = build_token_cap_rerun_protocol(
+            args.repo_root,
+            freeze_commit=args.freeze_commit,
+        )
+        summary = validate_token_cap_rerun_protocol(protocol, args.repo_root)
+    elif args.model_comparison:
         protocol = build_model_comparison_protocol(
             args.repo_root,
             freeze_commit=args.freeze_commit,
@@ -2376,7 +2722,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     client = OpenRouterClient.from_env(
         title=(
             "FridaDev/Lot4C2-Stimmung-Gemini-Comparison"
-            if args.model_comparison
+            if args.model_comparison or args.token_cap_rerun
             else "FridaDev/Lot4S1"
         )
     )
@@ -2385,14 +2731,31 @@ def main(argv: Sequence[str] | None = None) -> int:
         if current == 1 or current % 20 == 0 or current == total:
             print(_compact_json({"status": "running", "completed": current, "total": total}), flush=True)
 
-    if args.model_comparison:
-        records = run_model_comparison_campaign(
-            repo_root=args.repo_root,
-            protocol=protocol,
-            client=client,
-            progress=progress,
+    if args.model_comparison or args.token_cap_rerun:
+        records = (
+            run_token_cap_rerun_campaign(
+                repo_root=args.repo_root,
+                protocol=protocol,
+                client=client,
+                progress=progress,
+            )
+            if args.token_cap_rerun
+            else run_model_comparison_campaign(
+                repo_root=args.repo_root,
+                protocol=protocol,
+                client=client,
+                progress=progress,
+            )
         )
-        validate_model_comparison_artifact(records, args.repo_root, protocol)
+        (
+            validate_token_cap_rerun_artifact(records, args.repo_root, protocol)
+            if args.token_cap_rerun
+            else validate_model_comparison_artifact(
+                records,
+                args.repo_root,
+                protocol,
+            )
+        )
     else:
         records = run_campaign(
             repo_root=args.repo_root,

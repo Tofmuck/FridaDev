@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import statistics
 import sys
 import unittest
 from pathlib import Path
@@ -262,6 +263,158 @@ class Lot4C2StimmungGeminiModelComparisonTests(unittest.TestCase):
         )
         self.assertTrue(all(item["observed_provider"] == "google" for item in calls))
         self.assertTrue(all(item["provider_fallbacks"] is False for item in calls))
+
+
+class Lot4C2StimmungGeminiTokenCapRerunTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.protocol = dialogic_campaign.build_token_cap_rerun_protocol(
+            REPO_ROOT,
+            freeze_commit="3" * 40,
+        )
+        cls.schedule = dialogic_campaign.build_token_cap_rerun_request_schedule(
+            REPO_ROOT,
+            cls.protocol,
+        )
+        cls.control_protocol = dialogic_campaign.build_model_comparison_protocol(
+            REPO_ROOT,
+            freeze_commit="1e9bb9f99c8a5bd73af855e3dc6dbedf211aa5b7",
+        )
+        cls.control_schedule = dialogic_campaign.build_model_comparison_request_schedule(
+            REPO_ROOT,
+            cls.control_protocol,
+        )
+        witness_path = (
+            REPO_ROOT
+            / "benchmark/suites/stimmung/fixtures/stimmung_dialogic_reachability_witness_v1.json"
+        )
+        witness = json.loads(witness_path.read_text(encoding="utf-8"))
+        cls.witness_by_dialogue = {
+            item["dialogue_id"]: item["signals"] for item in witness["dialogues"]
+        }
+
+    def test_400_artifact_proves_saturation_signature_without_finish_reason(self) -> None:
+        artifact_path = (
+            REPO_ROOT
+            / "benchmark/results/stimmung/2026-08-30-lot4c2-stimmung-gemini-3-7-medium.jsonl"
+        )
+        calls = [
+            item
+            for item in dialogic_campaign.load_jsonl(artifact_path)
+            if item["record_type"] == "call"
+        ]
+        invalid = [item for item in calls if item["status"] == "json_error"]
+        valid = [item for item in calls if item["status"] == "ok"]
+
+        self.assertEqual(len(calls), 138)
+        self.assertEqual(len(invalid), 24)
+        self.assertEqual({item["completion_tokens"] for item in invalid}, {396})
+        self.assertEqual(
+            (
+                min(item["reasoning_tokens"] for item in invalid),
+                statistics.median(item["reasoning_tokens"] for item in invalid),
+                max(item["reasoning_tokens"] for item in invalid),
+            ),
+            (326, 380.5, 384),
+        )
+        self.assertEqual(
+            statistics.median(item["reasoning_tokens"] for item in valid),
+            171.0,
+        )
+        self.assertFalse(any(item["status"] in {"timeout", "transport_error"} for item in calls))
+        self.assertFalse(any("finish_reason" in item for item in calls))
+        self.assertFalse(any("native_finish_reason" in item for item in calls))
+
+    def test_protocol_and_schedule_change_only_max_tokens_from_400_to_800(self) -> None:
+        summary = dialogic_campaign.validate_token_cap_rerun_protocol(
+            self.protocol,
+            REPO_ROOT,
+        )
+
+        self.assertEqual(summary["expected_call_count"], 138)
+        self.assertEqual(self.protocol["max_tokens"], 800)
+        self.assertEqual(self.protocol["baseline_max_tokens"], 400)
+        self.assertEqual(self.protocol["cost_cap_usd"], 0.50)
+        self.assertEqual(self.protocol["estimated_max_cost_usd"], 0.473388)
+        self.assertEqual(self.protocol["baseline_saturation"]["invalid_json_count"], 24)
+        self.assertEqual(
+            self.protocol["baseline_saturation"]["invalid_completion_tokens"],
+            [396],
+        )
+        self.assertEqual(self.protocol["baseline_saturation"]["timeout_count"], 0)
+        self.assertEqual(len(self.schedule), 138)
+        self.assertEqual(len(self.control_schedule), 138)
+        for control, rerun in zip(self.control_schedule, self.schedule):
+            self.assertEqual(
+                {key: control[key] for key in ("sequence", "dialogue_id", "turn_id", "evaluated", "repetition")},
+                {key: rerun[key] for key in ("sequence", "dialogue_id", "turn_id", "evaluated", "repetition")},
+            )
+            self.assertEqual(
+                dialogic_campaign.validate_token_cap_rerun_policy_difference(
+                    control["payload"], rerun["payload"]
+                ),
+                ["max_tokens"],
+            )
+            self.assertEqual(rerun["payload"]["max_tokens"], 800)
+            self.assertEqual(rerun["payload"]["model"], "google/gemini-3.7-flash")
+            self.assertEqual(rerun["payload"]["reasoning"], {"effort": "medium", "exclude": True})
+            self.assertEqual(
+                rerun["payload"]["provider"],
+                {"allow_fallbacks": False, "require_parameters": True},
+            )
+
+        forbidden_difference = copy.deepcopy(self.schedule[0]["payload"])
+        forbidden_difference["reasoning"]["effort"] = "high"
+        with self.assertRaisesRegex(ValueError, "token_cap_rerun_policy_difference_invalid"):
+            dialogic_campaign.validate_token_cap_rerun_policy_difference(
+                self.control_schedule[0]["payload"], forbidden_difference
+            )
+
+    def test_fake_rerun_records_closed_finish_reasons_and_rejects_mutations(self) -> None:
+        client = _GeminiWitnessClient(self.witness_by_dialogue, self.schedule)
+        records = dialogic_campaign.run_token_cap_rerun_campaign(
+            repo_root=REPO_ROOT,
+            protocol=self.protocol,
+            client=client,
+        )
+        validation = dialogic_campaign.validate_token_cap_rerun_artifact(
+            records,
+            REPO_ROOT,
+            self.protocol,
+        )
+        calls = [item for item in records if item["record_type"] == "call"]
+
+        self.assertEqual(len(client.calls), 138)
+        self.assertEqual(validation["call_count"], 138)
+        self.assertEqual(validation["dialogue_score_count"], 32)
+        self.assertEqual(validation["final_decision"], "eligible_primary")
+        self.assertEqual({item["finish_reason"] for item in calls}, {"stop"})
+        self.assertEqual({item["native_finish_reason"] for item in calls}, {"stop"})
+        self.assertTrue(all(item["max_tokens"] == 800 for item in calls))
+        self.assertTrue(all(item["provider_fallbacks"] is False for item in calls))
+
+        mutations = {
+            "free_finish_reason": (0, "finish_reason", "synthetic free text"),
+            "wrong_native_finish_reason": (0, "native_finish_reason", "MAX_TOKENS_WITH_DETAIL"),
+            "wrong_cap": (0, "max_tokens", 400),
+        }
+        for name, (index, key, value) in mutations.items():
+            with self.subTest(name=name):
+                mutant = copy.deepcopy(records)
+                mutant[index][key] = value
+                with self.assertRaises(ValueError):
+                    dialogic_campaign.validate_token_cap_rerun_artifact(
+                        mutant,
+                        REPO_ROOT,
+                        self.protocol,
+                    )
+
+        with self.assertRaises(ValueError):
+            dialogic_campaign.validate_token_cap_rerun_artifact(
+                records[1:],
+                REPO_ROOT,
+                self.protocol,
+            )
 
 
 if __name__ == "__main__":
