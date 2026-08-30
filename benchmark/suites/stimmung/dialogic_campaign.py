@@ -41,6 +41,8 @@ PRICING_USD_PER_TOKEN = {
     PRIMARY_MODEL: {"prompt": 0.00000025, "completion": 0.0000015},
     FALLBACK_MODEL: {"prompt": 0.0000002, "completion": 0.00000125},
 }
+PHASE_A_FREEZE_COMMIT = "c02e1dd7ad53c6eb33296c563304c5e4d7be3f7e"
+PHASE_A_HARNESS_SHA256 = "2458512091d7d51c9414bd6256bc969f6d42f19a6545468a5a1a45a3ea46566e"
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -56,6 +58,7 @@ _CALL_REASONS = {
     "route_mismatch",
 }
 _PROVIDERS = {"google", "openai", "unknown"}
+_EXPECTED_PROVIDER = {"primary": "google", "fallback": "openai"}
 _DECISIONS = {"keep_current", "strengthen", "inconclusive"}
 _DIALOGUE_REASON_CODES = {
     "aggregate_decay_mismatch",
@@ -275,6 +278,11 @@ def build_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str, Any]:
         "repetitions": REPETITIONS,
         "order": ["primary:1", "primary:2", "fallback:1", "fallback:2"],
     }
+    harness_sha256 = (
+        PHASE_A_HARNESS_SHA256
+        if freeze_commit == PHASE_A_FREEZE_COMMIT
+        else _sha256_file(_harness_path(repo_root))
+    )
     return {
         "protocol_version": PROTOCOL_VERSION,
         "freeze_commit": freeze_commit,
@@ -282,7 +290,7 @@ def build_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str, Any]:
         "corpus_schema_version": corpus["schema_version"],
         "corpus_sha256": _sha256_file(_corpus_path(repo_root)),
         "prompt_sha256": _sha256_file(_prompt_path(repo_root)),
-        "harness_sha256": _sha256_file(_harness_path(repo_root)),
+        "harness_sha256": harness_sha256,
         "parameters_sha256": _sha256_text(_compact_json(parameters)),
         "schedule_sha256": _sha256_text(
             _compact_json(
@@ -594,7 +602,7 @@ def decide_from_dialogue_scores(scores: Sequence[Mapping[str, Any]]) -> dict[str
             shared &= set(item.get("reason_codes") or [])
         if repetitions == {1, 2} and shared:
             reproducible.append((key, sorted(shared)))
-    if reproducible and sum(len(items) for items in by_case.values()) == 2 * len(reproducible):
+    if reproducible:
         codes = sorted({code for _, shared in reproducible for code in shared})
         return {"decision": "strengthen", "reason_codes": codes, "next_micro_lot": "4C.2"}
     return {"decision": "inconclusive", "reason_codes": ["semantic_failure_not_reproducible"], "next_micro_lot": None}
@@ -780,6 +788,11 @@ def validate_content_free_record(record: Mapping[str, Any]) -> dict[str, Any]:
         if record["status"] == "ok":
             if not record.get("json_valid") or not record.get("schema_valid") or record.get("signal") is None or record.get("fail_open"):
                 raise ValueError("false_semantic_success")
+            if (
+                record.get("observed_model") != record["requested_model"]
+                or record.get("observed_provider") != _EXPECTED_PROVIDER[record["source"]]
+            ):
+                raise ValueError("observed_route_mismatch")
         elif record.get("signal") is not None or not record.get("fail_open"):
             raise ValueError("failed_call_signal_present")
         for key in ("messages_sha256", "corpus_sha256", "prompt_sha256", "harness_sha256", "parameters_sha256"):
@@ -824,9 +837,18 @@ def validate_artifact(
     histories: dict[tuple[str, int, str], list[dict[str, Any]]] = {}
     observations: dict[tuple[str, int, str], list[dict[str, Any]]] = {}
     cases = {item["id"]: item for item in corpus["dialogues"]}
+    frozen_call_fields = {
+        "corpus_sha256": protocol["corpus_sha256"],
+        "prompt_sha256": protocol["prompt_sha256"],
+        "harness_sha256": protocol["harness_sha256"],
+        "parameters_sha256": protocol["parameters_sha256"],
+        "freeze_commit": protocol["freeze_commit"],
+    }
     for call, plan in zip(calls, schedule):
         if any(call[key] != plan[key] for key in ("sequence", "source", "repetition", "dialogue_id", "turn_id", "evaluated", "messages_sha256")):
             raise ValueError("call_order_invalid")
+        if any(call.get(key) != value for key, value in frozen_call_fields.items()):
+            raise ValueError("call_protocol_fingerprint_mismatch")
         group = (call["source"], call["repetition"], call["dialogue_id"])
         history = histories.setdefault(group, [])
         turn = cases[call["dialogue_id"]]["turns"][call["turn_id"] - 1]

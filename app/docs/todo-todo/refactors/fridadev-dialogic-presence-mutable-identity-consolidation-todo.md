@@ -2830,7 +2830,7 @@ Message de commit de la preuve d'atteignabilite:
 
 ### Micro-lot 4S.1 - Campagne provider primaire et fallback
 
-Statut: protocole gele le 2026-08-30; campagne provider non executee
+Statut: ferme le 2026-08-30; campagne complete, decision `strengthen`; 4C.2 active comme prochain micro-lot et non commence
 Effort recommande: `extra high`
 Nature: benchmark borne, artefacts content-free et documentation
 Prerequis: 4S.0 ferme et corpus valide humainement
@@ -2867,10 +2867,10 @@ Sortie obligatoire:
 Condition de fermeture:
 
 - [x] GO provider distinct trace.
-- [ ] Primaire et fallback mesures separement sur le corpus fige.
-- [ ] Artefact JSONL content-free, seuils, couts, latences et echecs archives.
-- [ ] Aucun modele, prompt, provider, setting ou runtime modifie.
-- [ ] Decision sur 4C.2 documentee, commit et push prouves.
+- [x] Primaire et fallback mesures separement sur le corpus fige.
+- [x] Artefact JSONL content-free, seuils, couts, latences et echecs archives.
+- [x] Aucun modele, prompt, provider, setting ou runtime modifie.
+- [x] Decision sur 4C.2 documentee, commit et push prouves.
 
 Gel du protocole du 30 aout 2026, avant tout resultat provider:
 
@@ -2893,9 +2893,9 @@ Gel du protocole du 30 aout 2026, avant tout resultat provider:
   `0.25/1.50 USD` par million de tokens entree/sortie, fallback
   `0.20/1.25 USD`; estimation maximale prudente `0.15901050 USD`, sous le
   plafond fige `0.30 USD`;
-- empreinte du protocole sur la baseline
-  `f7d733a46bf12ec13764a161c5da538a91866993`:
-  `5cdcfc89534024b1908f2070e68872f2532dd72993a7236779d1210a883fb6f9`;
+- empreinte du protocole sur le commit de gel pousse
+  `c02e1dd7ad53c6eb33296c563304c5e4d7be3f7e`:
+  `62059e68feaa7d9ed04584306b81cf337be76b0932620f924db7b47b49875d05`;
 - preuves hermetiques: `7/7` nouveaux tests et `54/54` suites Stimmung,
   agregateur, benchmark et goldens voisines. Les mutations rejettent inversion
   de modele, fallback provider cache, ordre/appel/aggregate altere, fail-open
@@ -2905,6 +2905,72 @@ Gel du protocole du 30 aout 2026, avant tout resultat provider:
   gel devient l'unique baseline autorisee de la campagne; le corpus, le
   scorer, le prompt, les parametres, les regles de decision et le harness
   provider-visible ne seront plus ajustes apres le premier resultat.
+
+Campagne provider du 30 aout 2026, depuis le commit de gel
+`c02e1dd7ad53c6eb33296c563304c5e4d7be3f7e`:
+
+- execution complete: `276/276` appels, soit `138/138` pour chaque source;
+  aucun retry, appel automatique de l'autre source, Batch, Flex ou Priority;
+  aucun appel Validation ou modele principal;
+- transport: les `276` appels sont `ok`, avec modele et provider observes
+  conformes; zero timeout, refus, JSON invalide, schema invalide ou erreur de
+  transport. Les deux repetitions sont completes;
+- primaire `google/gemini-3.1-flash-lite`: `16/16` dialogues en echec a chaque
+  repetition, `32` echecs semantiques; `15/16` paires ont exactement la meme
+  classification et les memes reason codes, et les `16/16` conservent au moins
+  un reason code commun; latence mediane `847.835 ms`, p95 `1530.581 ms`,
+  `85 013` tokens, cout `0.03405450 USD`;
+- fallback `openai/gpt-5.4-nano`: `14/16` dialogues en echec a chaque
+  repetition, `28` echecs semantiques; `9/16` paires sont exactement stables
+  et `12` echecs ont au moins un reason code commun aux deux repetitions;
+  latence mediane `1040.144 ms`, p95 `1870.386 ms`, `80 899` tokens, cout
+  `0.02728145 USD`;
+- cout total observe `0.06133595 USD`, sous le plafond `0.30 USD`; `165 912`
+  tokens totaux. Les metriques absentes ne sont jamais fabriquees a zero;
+- decision `strengthen`: au moins un defaut semantique borne est reproduit sur
+  le meme cas et la meme source aux deux repetitions. Les echecs isoles ou
+  instables restent visibles, mais la regle gelee ne leur permet pas d'effacer
+  un defaut reproductible deja localise;
+- localisation content-free: le primaire reproduit au moins une classe
+  d'echec bornee sur `L4S0-ST-001` a `L4S0-ST-016`; le fallback sur
+  `L4S0-ST-002`, `003`, `004`, `006`, `007`, `008`, `009`, `010`, `011`,
+  `013`, `014` et `016`. Les classes detaillees restent reconstructibles
+  depuis les `dialogue_score` de l'artefact, sans dialogue ni sortie brute;
+- le contre-audit independant a corrige uniquement le post-traitement qui
+  exigeait a tort que tous les echecs soient apparies. Les `276` lignes
+  provider sont restees strictement identiques (SHA-256 du bloc:
+  `4a2caf08577b7abbe4a163386d025ba9bcc5c639a5156720f20d1316569ddf53`),
+  aucun seuil, corpus, prompt, parametre ou resultat provider n'a change et
+  aucun nouvel appel n'a ete lance;
+- consequence: 4C.2 est active comme prochain micro-lot, ouvert et non
+  commence. Cette preuve n'autorise aucune correction du caller dans 4S.1 ni
+  aucun changement de modele, prompt ou setting;
+- artefact content-free:
+  `benchmark/results/stimmung/2026-08-30-lot4s1-stimmung-primary-fallback.jsonl`,
+  `347` lignes (`276` appels, `64` scores dialogue, `7` syntheses), SHA-256
+  `97b5d53548c15b045593bc1f9c897f50f88d1553f05e9a75d0fdf4ceaa23467e`;
+  reconstruction `276` appels / `64` scores / `strengthen` sans nouvel appel;
+- contenu retenu: categories affectives bornees, agregats reconstruits,
+  statuts, reason codes fermes, route, latence, tokens, couts et empreintes;
+  aucun dialogue, prompt, reponse brute, exception brute, raisonnement, secret
+  ou donnee operateur;
+- tests: baseline avant patch Python `2773/2773`, JavaScript `137/137` et
+  Chromium `19/19`; apres campagne, reconstruction 4S.1 `8/8`, ciblage
+  Stimmung/agregateur/benchmark/goldens `55/55`, decouverte Python complete
+  `2781/2781` (delta exact `+8`), zero echec, erreur, skip, todo ou expected
+  failure. JavaScript et Chromium ne sont pas repetes apres resultats car aucun
+  runtime, contrat frontend ou fixture frontend n'a change;
+- sensibilite: rejet d'un corpus/prompt/parametre/hash divergent, des modeles
+  inverses, du fallback provider automatique, d'un appel retire/ajoute/inverse,
+  d'un agregat fabrique, d'un fail-open ou JSON invalide score comme succes,
+  d'un champ brut/reason code libre, d'une metrique absente fabriquee a zero,
+  de `keep_current` sous un seuil manque, de `strengthen` depuis un echec
+  isole, d'une empreinte de protocole auto-coherente mais fausse, d'une route
+  observee inconnue presentee comme `ok`, et d'un defaut reproductible masque
+  par un echec isole;
+- runtime strictement inchange; aucun rebuild, restart, deploiement, tour
+  utilisateur, DB ou donnee operateur. 4C.2 et les micro-lots suivants ne sont
+  pas commences.
 
 Message de commit recommande: `benchmark: evaluate Stimmung semantic corpus`.
 

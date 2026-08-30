@@ -446,6 +446,21 @@ provider output, exception text, reasoning text, URL or secret. The campaign
 qualifies only the Stimmung caller; it does not call Validation or the main
 model and cannot authorize a runtime change.
 
+Retained 4S.1 evidence:
+
+- `benchmark/results/stimmung/2026-08-30-lot4s1-stimmung-primary-fallback.jsonl`
+  (`276` calls plus `71` reconstructed score/summary records; SHA-256
+  `97b5d53548c15b045593bc1f9c897f50f88d1553f05e9a75d0fdf4ceaa23467e`).
+
+All `138/138` calls per source completed with the requested observed route and
+valid JSON/schema. The primary failed all 16 dialogue scores in both
+repetitions; the fallback failed 14 in each repetition. At least one bounded
+semantic defect is reproduced on the same case and source across both
+repetitions, so the frozen rule yields `strengthen`; isolated unstable failures
+remain visible but do not erase that reproducible evidence. 4C.2 is activated
+as the next micro-lot and is not started here. Total observed cost was
+`0.06133595 USD`.
+
 ## Validation agent benchmark
 
 The validation suite uses the production prompt

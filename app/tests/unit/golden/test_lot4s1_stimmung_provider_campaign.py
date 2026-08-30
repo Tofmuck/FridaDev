@@ -212,6 +212,39 @@ class Lot4S1StimmungProviderCampaignTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             dialogic_campaign.validate_content_free_record(zero_metric_mutant)
 
+        corpus, _ = dialogic_campaign._load_inputs(REPO_ROOT)
+        calls = [
+            copy.deepcopy(record)
+            for record in records
+            if record["record_type"] == "call"
+        ]
+        scores = [
+            copy.deepcopy(record)
+            for record in records
+            if record["record_type"] == "dialogue_score"
+        ]
+
+        fingerprint_calls = copy.deepcopy(calls)
+        fingerprint_calls[0]["corpus_sha256"] = "f" * 64
+        fingerprint_mutant = fingerprint_calls + dialogic_campaign._summary_records(
+            fingerprint_calls,
+            scores,
+            corpus,
+        )
+        with self.assertRaisesRegex(ValueError, "call_protocol_fingerprint_mismatch"):
+            dialogic_campaign.validate_artifact(fingerprint_mutant, REPO_ROOT, self.protocol)
+
+        route_calls = copy.deepcopy(calls)
+        route_calls[0]["observed_model"] = "unknown"
+        route_calls[0]["observed_provider"] = "unknown"
+        route_mutant = route_calls + dialogic_campaign._summary_records(
+            route_calls,
+            scores,
+            corpus,
+        )
+        with self.assertRaisesRegex(ValueError, "observed_route_mismatch"):
+            dialogic_campaign.validate_artifact(route_mutant, REPO_ROOT, self.protocol)
+
     def test_decision_requires_complete_repetitions_and_reproducible_failure(self) -> None:
         records = dialogic_campaign.run_campaign(
             repo_root=REPO_ROOT,
@@ -243,6 +276,20 @@ class Lot4S1StimmungProviderCampaignTests(unittest.TestCase):
         decision = dialogic_campaign.decide_from_dialogue_scores(reproducible)
         self.assertEqual(decision["decision"], "strengthen")
         self.assertEqual(decision["next_micro_lot"], "4C.2")
+
+        mixed = copy.deepcopy(reproducible)
+        isolated_target = next(
+            item for item in mixed
+            if item["source"] == "fallback"
+            and item["repetition"] == 1
+            and item["dialogue_id"] != dialogue_id
+        )
+        isolated_target["classification"] = "fail"
+        isolated_target["error_class"] = "semantic"
+        isolated_target["reason_codes"] = ["signal_false_negative"]
+        mixed_decision = dialogic_campaign.decide_from_dialogue_scores(mixed)
+        self.assertEqual(mixed_decision["decision"], "strengthen")
+        self.assertEqual(mixed_decision["next_micro_lot"], "4C.2")
 
         incomplete = scores[:-1]
         self.assertEqual(
@@ -286,6 +333,25 @@ class Lot4S1StimmungProviderCampaignTests(unittest.TestCase):
             path = Path(tmp) / "artifact.jsonl"
             dialogic_campaign.write_jsonl(path, records)
             self.assertEqual(dialogic_campaign.load_jsonl(path), records)
+
+    def test_retained_provider_artifact_reconstructs_without_new_calls(self) -> None:
+        artifact_path = (
+            REPO_ROOT
+            / "benchmark/results/stimmung/2026-08-30-lot4s1-stimmung-primary-fallback.jsonl"
+        )
+        records = dialogic_campaign.load_jsonl(artifact_path)
+        protocol = dialogic_campaign.build_protocol(
+            REPO_ROOT,
+            freeze_commit="c02e1dd7ad53c6eb33296c563304c5e4d7be3f7e",
+        )
+
+        summary = dialogic_campaign.validate_artifact(records, REPO_ROOT, protocol)
+
+        self.assertEqual(summary["call_count"], 276)
+        self.assertEqual(summary["dialogue_score_count"], 64)
+        self.assertEqual(summary["final_decision"], "strengthen")
+        self.assertEqual(records[-1]["next_micro_lot"], "4C.2")
+        self.assertIn("dominant_tone_outside_allowed", records[-1]["reason_codes"])
 
 
 if __name__ == "__main__":
