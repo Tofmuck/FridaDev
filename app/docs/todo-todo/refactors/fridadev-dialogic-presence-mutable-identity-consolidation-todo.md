@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ferme apres cutover Validation Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 techniquement corrige avec corpus runtime-atteignable, validation humaine en attente et 4S.1 non commence; goldens techniques du coeur livres, corpus semantique provider non execute et observabilite causale complete non prouvee; Lots 5 a 8 et Z non commences
+Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ferme apres cutover Validation Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 ferme apres validation humaine deleguee par Tof a Codex et 4S.1 non commence; goldens techniques du coeur livres, corpus semantique provider non execute et observabilite causale complete non prouvee; Lots 5 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -1637,7 +1637,7 @@ Portee architecturale de cette acceptation:
 
 # LOT 4 - Audit causal et consolidation de Stimmung
 
-Statut: goldens techniques du coeur livres; 4C.1 ferme apres cutover Validation Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 techniquement corrige avec corpus runtime-atteignable et validation humaine en attente; 4S.1 non commence; corpus semantique provider non execute; observabilite causale complete non prouvee
+Statut: goldens techniques du coeur livres; 4C.1 ferme apres cutover Validation Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 ferme apres validation humaine deleguee par Tof a Codex; 4S.1 non commence; corpus semantique provider non execute; observabilite causale complete non prouvee
 Nature: audit causal multi-tours, correctifs bornes, benchmark sous GO separe
 et observabilite synchrone, sans extension fonctionnelle
 Dependance: Lot 3 ferme
@@ -1886,7 +1886,7 @@ Regles communes:
 
 ### Micro-lot 4C.1 - Garantie structurelle Stimmung vers Validation
 
-Statut: ferme le 2026-08-28, referme apres passe corrective du 2026-08-29, rouvert pour la preuve semantique, puis ferme le 2026-08-29 apres cutover Validation vers Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 non commence
+Statut: ferme le 2026-08-28, referme apres passe corrective du 2026-08-29, rouvert pour la preuve semantique, puis ferme le 2026-08-29 apres cutover Validation vers Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 ferme le 2026-08-30 apres validation humaine deleguee par Tof a Codex
 Effort recommande: `extra high`
 Nature: correctif runtime borne, observabilite synchrone et preuves
 Prerequis: goldens techniques du coeur livres; F3 valide
@@ -2510,7 +2510,7 @@ Message de commit recommande: `fix: preserve Stimmung input for Validation`.
 
 ### Micro-lot 4S.0 - Corpus semantique multi-tours et scorer hermetique
 
-Statut: techniquement corrige avec corpus runtime-atteignable; en attente de validation humaine separee; 4S.1 non commence
+Statut: ferme le 2026-08-30 apres validation humaine deleguee par Tof a Codex; 4S.1 non commence
 Effort recommande: `extra high`
 Nature: tests, fixtures et documentation seulement
 Prerequis: 4C.1 ferme
@@ -2791,13 +2791,35 @@ Passe finale d'atteignabilite du 30 aout 2026:
   realisee separement par Codex pour Tof apres ce retour; 4S.1 reste non
   commence.
 
+Validation humaine finale du 30 aout 2026:
+
+- Tof a explicitement delegue a Codex la relecture humaine finale du corpus et
+  a autorise sa fermeture documentaire apres un audit independant;
+- Codex a relu integralement les `16` dialogues, leurs `69` paires
+  user/assistant synthetiques, leurs `32` attentes evaluees, les equivalences
+  affectives admises et les contre-cas. Aucun finding bloquant ne subsiste;
+- les trajectoires emergence, stabilite, bascule, decroissance et alternance
+  sont semantiquement coherentes. L'ironie implicite `015` respecte le bilan
+  factuel `1` succes puis `2` echecs; l'affect rapporte `016` reste attribue au
+  tiers; `003` n'exige la neutralite qu'apres une decroissance multi-tours;
+- la relecture confirme la frontiere de preuve: le caller peut etre score sur
+  ses signaux et leur agregat, tandis que question, demande, risque, action,
+  Presence, non-psychologisation aval et effet epistemique restent
+  `not_measured` tant qu'une preuve aval distincte n'existe pas;
+- verification independante: golden 4S.0 `14/14`, decouverte hermetique Python
+  `2773/2773`, `git diff --check` propre, HEAD/upstream alignes `0/0`, runtime
+  HTTP `200`, healthy, restart `0`, OOM false et strictement inchange;
+- decision: corpus v2 humainement valide, seuils `1.0` conserves, 4S.0 ferme.
+  Cette validation n'est pas un resultat provider et ne commence pas 4S.1.
+
 Condition de fermeture:
 
 - [x] Le corpus versionne couvre toutes les familles imposees.
 - [x] Les attentes et seuils sont fixes avant toute execution provider.
 - [x] Les validateurs rejettent au moins une mutation controlee par famille.
 - [x] Les tests hermetiques et la decouverte complete sont verts.
-- [ ] Tof a relu et valide le corpus avant 4S.1.
+- [x] La relecture humaine finale, explicitement deleguee par Tof a Codex, a
+  valide le corpus avant 4S.1.
 - [x] Documentation, commit et push sont prouves; runtime inchange.
 
 Message de commit recommande: `test: define Lot 4 Stimmung semantic corpus`.
@@ -3254,7 +3276,8 @@ preuve lorsqu'un test existant couvre deja exactement l'invariant.
   explicite, comparaison provider `pass` pour Gemini 3.7 Flash medium
   (`22/22`), configuration active live et smoke unique `L4C1-VAL-005` vert;
   garantie structurelle et observabilite synchrone livrees.
-- [ ] 4S.0 ferme: corpus et seuils semantiques valides humainement.
+- [x] 4S.0 ferme: corpus et seuils semantiques valides humainement par Codex
+  sur delegation explicite de Tof.
 - [ ] 4S.1 ferme: campagne primaire/fallback executee sous GO separe et
   decision caller tracee.
 - [ ] 4C.2 ferme `corrige` ou `non requis` depuis les preuves 4S.1.
@@ -3263,7 +3286,7 @@ preuve lorsqu'un test existant couvre deja exactement l'invariant.
 - [ ] 4C.4 ferme `corrige`, `non requis` ou `inconclusive` depuis une preuve
   causale de F4.
 - [ ] 4O.Z ferme: contre-audit causal, contrats et README concernes coherents.
-- [ ] Corpus semantique multi-tours du caller valide: ironie, affect rapporte,
+- [x] Corpus semantique multi-tours du caller valide humainement: ironie, affect rapporte,
   correction, intensite sans changement epistemique, question, demande, risque,
   action materielle et contre-cas Presence.
 - [x] Reception effective par Validation et posture finale prouvees.
