@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ferme apres cutover Validation Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 ferme apres validation humaine deleguee par Tof a Codex et 4S.1 non commence; goldens techniques du coeur livres, corpus semantique provider non execute et observabilite causale complete non prouvee; Lots 5 a 8 et Z non commences
+Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ferme apres cutover Validation Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 et 4S.1 fermes, decision 4S.1 `strengthen`; 4C.2 actif avec candidate semantique gelee avant campagne provider; observabilite causale complete non prouvee; Lots 5 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -1637,7 +1637,7 @@ Portee architecturale de cette acceptation:
 
 # LOT 4 - Audit causal et consolidation de Stimmung
 
-Statut: goldens techniques du coeur livres; 4C.1 ferme apres cutover Validation Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 ferme apres validation humaine deleguee par Tof a Codex; 4S.1 non commence; corpus semantique provider non execute; observabilite causale complete non prouvee
+Statut: goldens techniques du coeur livres; 4C.1, 4S.0 et 4S.1 fermes; decision 4S.1 `strengthen`; 4C.2 actif avec candidate semantique gelee avant campagne provider; observabilite causale complete non prouvee
 Nature: audit causal multi-tours, correctifs bornes, benchmark sous GO separe
 et observabilite synchrone, sans extension fonctionnelle
 Dependance: Lot 3 ferme
@@ -2976,7 +2976,7 @@ Message de commit recommande: `benchmark: evaluate Stimmung semantic corpus`.
 
 ### Micro-lot 4C.2 - Renforcement semantique conditionnel du caller
 
-Statut: conditionnel, non commence
+Statut: actif le 2026-08-30; diagnostic et candidate unique geles, campagne provider non executee
 Effort recommande: `extra high`
 Nature: correctif caller borne, observabilite synchrone et preuves
 Prerequis: decision `strengthen` de 4S.1 localisant un defaut du caller
@@ -3014,6 +3014,54 @@ Condition de fermeture:
 - [ ] Aucun cas auparavant valide ne regresse.
 - [ ] Observabilite, tests, documentation, commit, push et livraison ciblee
   sont prouves.
+
+Passe A de diagnostic et gel, executee le 2026-08-30 avant tout appel
+provider:
+
+- l'artefact 4S.1 autoritatif reste inchange (SHA-256
+  `97b5d53548c15b045593bc1f9c897f50f88d1553f05e9a75d0fdf4ceaa23467e`):
+  `276/276` appels valides, primaire en echec reproductible sur `16/16`
+  dialogues et fallback sur `12/16`; la decision `strengthen` active donc
+  honnetement 4C.2;
+- matrice content-free de localisation:
+
+  | finding | primaire | fallback | frontiere prouvee | classement |
+  | --- | --- | --- | --- | --- |
+  | F1 surcodage | `signal_overcoded` 14 fois, `aggregate_overcoded` 18 fois | 19 et 14 fois | signal local puis propagation multi-tours | valide |
+  | F2 force | `strength_outside_allowed` 14 fois | 4 fois | sortie locale evaluee | valide |
+  | F3 trajectoires | stabilite 10 fois, shift 13 fois, decay 2 fois | stabilite 13 fois, shift 13 fois | agregat reel reconstruit depuis les signaux caller | valide comme consequence, agregateur non incrimine |
+  | F4 attribution | pas de code direct, mais agregats hors attente sur les cas concernes | citation internalisee 2 fois et affect rapporte 4 fois | signal local du fallback; primaire seulement partiel | valide pour le fallback, partiel pour le primaire |
+  | F5 ironie | surcodage/force/trajectoire reproductibles | literalisation une fois seulement | erreur locale plausible, literalisation non stable entre repetitions | partiel |
+  | F6 actes dialogiques | faux negatifs et surcodage sur les cas neutres/actionnels | surcodage reproductible | signal local mesurable; effet aval question/demande/risque/action/Presence non mesure | partiel |
+  | F7 frontiere de cause | le temoin 4S.0 passe les 32 etapes via le vrai agregateur | meme autorite | corpus et agregateur atteignables; les erreurs locales sont caller, certaines erreurs agregees restent derivees | nuancee et localisee |
+
+- variable unique: un prompt candidat benchmark-only de `2457` octets precise
+  la parcimonie des tonalites, la calibration de force, l'attribution des
+  affects cites/rapportes, la lecture contextuelle de l'ironie et l'absence
+  d'affect deduit du seul acte dialogique. Le schema, la taxonomie, le
+  normaliseur, l'agregateur, les modeles et tous les parametres restent
+  inchanges;
+- gel versionne:
+  `stimmung_semantic_strengthening_candidate_v1.txt` (SHA-256
+  `e1ce1bd0490a3f6ef0757a63768d0c32a1c277db4636c2b33ba0cafd793ed0c7`)
+  et `stimmung_semantic_strengthening_freeze_v1.json`; le manifeste verrouille
+  aussi le prompt runtime historique, le corpus, le scorer, le normaliseur,
+  l'agregateur, le harness et l'artefact temoin;
+- protocole: `16` dialogues, `69` tours, `32` etapes evaluees, primaire et
+  fallback separes, deux repetitions, exactement `276` appels et aucun retry
+  ou fallback automatique; modeles, timeout `10 s`, `temperature=0.1`,
+  `top_p=1.0` et `max_tokens=220` inchanges; cout maximal prudent
+  `0.17989163 USD`, sous le plafond `0.30 USD`;
+- decision gelee: `pass` seulement si les `64` scores dialogue (deux sources,
+  deux repetitions) franchissent tous les seuils `1.0` sans regression d'un
+  cas historiquement valide; toute insuffisance semantique vaut `fail`, toute
+  preuve incomplete ou invalide vaut `inconclusive`;
+- preuves Phase A: cycle rouge sur le raccord 4C.2 absent, puis `7/7` tests du
+  gel/candidate, `103/103` tests 4S.0/4S.1/caller/agregateur/goldens et garde
+  d'observabilite voisins, decouverte Python `2788/2788` et dry-run `ready` a
+  `276` appels. Aucun provider, runtime, prompt actif,
+  observabilite produit, frontend, DB, rebuild, restart ou deploiement avant
+  le commit de gel.
 
 Message de commit recommande si active: `fix: strengthen Stimmung semantic extraction`.
 

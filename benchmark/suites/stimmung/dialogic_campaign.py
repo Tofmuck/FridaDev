@@ -24,6 +24,8 @@ from core.stimmung_agent import (
 
 PROTOCOL_VERSION = "lot4s1_stimmung_provider_campaign_v1"
 ARTIFACT_VERSION = "lot4s1_stimmung_provider_results_v1"
+STRENGTHENING_PROTOCOL_VERSION = "lot4c2_stimmung_semantic_strengthening_v1"
+STRENGTHENING_ARTIFACT_VERSION = "lot4c2_stimmung_semantic_strengthening_results_v1"
 PRIMARY_MODEL = "google/gemini-3.1-flash-lite"
 FALLBACK_MODEL = "openai/gpt-5.4-nano"
 MODELS = {"primary": PRIMARY_MODEL, "fallback": FALLBACK_MODEL}
@@ -36,13 +38,16 @@ EXPECTED_EVALUATED_STEPS = 32
 EXPECTED_CALLS = 276
 ABSOLUTE_CALL_CAP = 276
 COST_CAP_USD = 0.30
-PRICING_OBSERVED_AT = "2026-08-30T10:15:12Z"
+PRICING_OBSERVED_AT = "2026-08-30T14:11:55Z"
 PRICING_USD_PER_TOKEN = {
     PRIMARY_MODEL: {"prompt": 0.00000025, "completion": 0.0000015},
     FALLBACK_MODEL: {"prompt": 0.0000002, "completion": 0.00000125},
 }
 PHASE_A_FREEZE_COMMIT = "c02e1dd7ad53c6eb33296c563304c5e4d7be3f7e"
 PHASE_A_HARNESS_SHA256 = "2458512091d7d51c9414bd6256bc969f6d42f19a6545468a5a1a45a3ea46566e"
+STRENGTHENING_CANDIDATE_FIXTURE = "stimmung_semantic_strengthening_candidate_v1.txt"
+STRENGTHENING_FREEZE_MANIFEST = "stimmung_semantic_strengthening_freeze_v1.json"
+HISTORICAL_ARTIFACT = "2026-08-30-lot4s1-stimmung-primary-fallback.jsonl"
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -86,6 +91,29 @@ _DIALOGUE_REASON_CODES = {
     "strength_outside_allowed",
     "trajectory_shift_mismatch",
     "trajectory_stability_mismatch",
+}
+_REPETITION_REASON_CODES = {
+    "all_thresholds_met",
+    "caller_semantic_failure",
+    "dialogue_result_inconclusive",
+    "dialogue_set_incomplete",
+    "family_threshold_missed",
+    "provider_results_not_observed",
+    "source_mismatch",
+}
+_HISTORICAL_FINAL_REASON_CODES = _DIALOGUE_REASON_CODES | {
+    "all_thresholds_met",
+    "dialogue_results_incomplete",
+    "provider_or_schema_inconclusive",
+    "provider_results_or_metrics_incomplete",
+    "semantic_failure_not_reproducible",
+}
+_STRENGTHENING_FINAL_REASON_CODES = {
+    "all_thresholds_met_no_regression",
+    "candidate_semantic_failure",
+    "dialogue_results_incomplete",
+    "provider_or_schema_inconclusive",
+    "provider_results_or_metrics_incomplete",
 }
 _CALL_KEYS = {
     "artifact_version",
@@ -175,6 +203,10 @@ _FINAL_KEYS = {
     "cost_usd",
     "calls_sha256",
 }
+_STRENGTHENING_FINAL_KEYS = _FINAL_KEYS | {
+    "baseline_artifact_sha256",
+    "semantic_regression_count",
+}
 
 
 def _compact_json(value: Any) -> str:
@@ -197,21 +229,56 @@ def _prompt_path(repo_root: Path) -> Path:
     return repo_root / "app/prompts/stimmung_agent.txt"
 
 
+def _strengthening_candidate_path(repo_root: Path) -> Path:
+    return (
+        repo_root
+        / "benchmark/suites/stimmung/fixtures"
+        / STRENGTHENING_CANDIDATE_FIXTURE
+    )
+
+
+def _strengthening_manifest_path(repo_root: Path) -> Path:
+    return (
+        repo_root
+        / "benchmark/suites/stimmung/fixtures"
+        / STRENGTHENING_FREEZE_MANIFEST
+    )
+
+
+def _historical_artifact_path(repo_root: Path) -> Path:
+    return repo_root / "benchmark/results/stimmung" / HISTORICAL_ARTIFACT
+
+
 def _harness_path(repo_root: Path) -> Path:
     return repo_root / "benchmark/suites/stimmung/dialogic_campaign.py"
 
 
-def _load_inputs(repo_root: Path) -> tuple[dict[str, Any], str]:
+def load_strengthening_candidate(repo_root: Path) -> str:
+    candidate = _strengthening_candidate_path(repo_root).read_text(encoding="utf-8").strip()
+    if not candidate or len(candidate) > 3200:
+        raise ValueError("strengthening_candidate_invalid")
+    return candidate
+
+
+def _load_inputs(
+    repo_root: Path,
+    *,
+    prompt_path: Path | None = None,
+) -> tuple[dict[str, Any], str]:
     corpus = dialogic_semantics.load_corpus(repo_root)
     dialogic_semantics.validate_corpus(corpus)
-    prompt = _prompt_path(repo_root).read_text(encoding="utf-8").strip()
+    prompt = (prompt_path or _prompt_path(repo_root)).read_text(encoding="utf-8").strip()
     if not prompt:
         raise ValueError("stimmung_prompt_missing")
     return corpus, prompt
 
 
-def _base_requests(repo_root: Path) -> list[dict[str, Any]]:
-    corpus, prompt = _load_inputs(repo_root)
+def _base_requests(
+    repo_root: Path,
+    *,
+    prompt_path: Path | None = None,
+) -> list[dict[str, Any]]:
+    corpus, prompt = _load_inputs(repo_root, prompt_path=prompt_path)
     requests: list[dict[str, Any]] = []
     for dialogue in corpus["dialogues"]:
         history: list[dict[str, Any]] = []
@@ -285,6 +352,8 @@ def build_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str, Any]:
     )
     return {
         "protocol_version": PROTOCOL_VERSION,
+        "artifact_version": ARTIFACT_VERSION,
+        "campaign_kind": "historical_4s1",
         "freeze_commit": freeze_commit,
         "corpus_id": corpus["corpus_id"],
         "corpus_schema_version": corpus["schema_version"],
@@ -332,8 +401,146 @@ def build_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str, Any]:
     }
 
 
+def _load_strengthening_manifest(repo_root: Path) -> dict[str, Any]:
+    data = json.loads(_strengthening_manifest_path(repo_root).read_text(encoding="utf-8"))
+    required = {
+        "schema_version",
+        "candidate_prompt_sha256",
+        "runtime_prompt_baseline_sha256",
+        "corpus_sha256",
+        "scorer_sha256",
+        "normalizer_sha256",
+        "aggregator_sha256",
+        "campaign_harness_sha256",
+        "baseline_artifact_sha256",
+    }
+    if not isinstance(data, dict) or set(data) != required:
+        raise ValueError("strengthening_manifest_invalid")
+    if data.get("schema_version") != "lot4c2_stimmung_strengthening_freeze_v1":
+        raise ValueError("strengthening_manifest_invalid")
+    for key in required - {"schema_version"}:
+        _validate_sha(data.get(key))
+    expected_files = {
+        "candidate_prompt_sha256": _strengthening_candidate_path(repo_root),
+        "runtime_prompt_baseline_sha256": _prompt_path(repo_root),
+        "corpus_sha256": _corpus_path(repo_root),
+        "scorer_sha256": repo_root / "benchmark/suites/stimmung/dialogic_semantics.py",
+        "normalizer_sha256": repo_root / "app/core/stimmung_agent.py",
+        "aggregator_sha256": repo_root / "app/core/hermeneutic_node/inputs/stimmung_input.py",
+        "campaign_harness_sha256": _harness_path(repo_root),
+        "baseline_artifact_sha256": _historical_artifact_path(repo_root),
+    }
+    if any(data[key] != _sha256_file(path) for key, path in expected_files.items()):
+        raise ValueError("strengthening_manifest_fingerprint_mismatch")
+    if data["candidate_prompt_sha256"] == data["runtime_prompt_baseline_sha256"]:
+        raise ValueError("strengthening_candidate_not_distinct")
+    return data
+
+
+def build_strengthening_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str, Any]:
+    if _COMMIT_RE.fullmatch(str(freeze_commit)) is None:
+        raise ValueError("invalid_freeze_commit")
+    manifest = _load_strengthening_manifest(repo_root)
+    candidate_path = _strengthening_candidate_path(repo_root)
+    corpus, _ = _load_inputs(repo_root, prompt_path=candidate_path)
+    base = _base_requests(repo_root, prompt_path=candidate_path)
+    dialogue_count = len(corpus["dialogues"])
+    turn_count = len(base)
+    evaluated_count = sum(1 for item in base if item["evaluated"])
+    if (dialogue_count, turn_count, evaluated_count) != (
+        EXPECTED_DIALOGUES,
+        EXPECTED_TURNS,
+        EXPECTED_EVALUATED_STEPS,
+    ):
+        raise ValueError("frozen_corpus_dimensions_changed")
+
+    maximum_prompt_tokens = max(
+        token_utils.estimate_tokens(item["messages"], PRIMARY_MODEL) for item in base
+    )
+    conservative_cost = 0.0
+    for source in _SOURCES:
+        prices = PRICING_USD_PER_TOKEN[MODELS[source]]
+        conservative_cost += REPETITIONS * EXPECTED_TURNS * (
+            maximum_prompt_tokens * prices["prompt"]
+            + GENERATION_PARAMS["max_tokens"] * prices["completion"]
+        )
+    conservative_cost = round(conservative_cost * 1.25, 8)
+    if conservative_cost > COST_CAP_USD:
+        raise ValueError("estimated_cost_cap_exceeded")
+
+    parameters = {
+        "models": MODELS,
+        "generation_params": GENERATION_PARAMS,
+        "timeout_s": TIMEOUT_S,
+        "provider": {"allow_fallbacks": False},
+        "repetitions": REPETITIONS,
+        "order": ["primary:1", "primary:2", "fallback:1", "fallback:2"],
+    }
+    return {
+        "protocol_version": STRENGTHENING_PROTOCOL_VERSION,
+        "artifact_version": STRENGTHENING_ARTIFACT_VERSION,
+        "campaign_kind": "semantic_strengthening_candidate_v1",
+        "freeze_commit": freeze_commit,
+        "corpus_id": corpus["corpus_id"],
+        "corpus_schema_version": corpus["schema_version"],
+        "corpus_sha256": manifest["corpus_sha256"],
+        "prompt_sha256": manifest["candidate_prompt_sha256"],
+        "candidate_prompt_sha256": manifest["candidate_prompt_sha256"],
+        "runtime_prompt_baseline_sha256": manifest["runtime_prompt_baseline_sha256"],
+        "scorer_sha256": manifest["scorer_sha256"],
+        "normalizer_sha256": manifest["normalizer_sha256"],
+        "aggregator_sha256": manifest["aggregator_sha256"],
+        "harness_sha256": manifest["campaign_harness_sha256"],
+        "baseline_artifact_sha256": manifest["baseline_artifact_sha256"],
+        "parameters_sha256": _sha256_text(_compact_json(parameters)),
+        "schedule_sha256": _sha256_text(
+            _compact_json(
+                [
+                    {
+                        key: item[key]
+                        for key in (
+                            "dialogue_id",
+                            "turn_id",
+                            "evaluated",
+                            "messages_sha256",
+                            "window_turn_count",
+                        )
+                    }
+                    for item in base
+                ]
+            )
+        ),
+        "models": dict(MODELS),
+        "generation_params": dict(GENERATION_PARAMS),
+        "timeout_s": TIMEOUT_S,
+        "provider_policy": {"allow_fallbacks": False},
+        "repetitions": REPETITIONS,
+        "dialogue_count": dialogue_count,
+        "turn_count": turn_count,
+        "evaluated_step_count": evaluated_count,
+        "expected_call_count": EXPECTED_CALLS,
+        "absolute_call_cap": ABSOLUTE_CALL_CAP,
+        "cost_cap_usd": COST_CAP_USD,
+        "estimated_max_cost_usd": conservative_cost,
+        "maximum_estimated_prompt_tokens": maximum_prompt_tokens,
+        "pricing_observed_at": PRICING_OBSERVED_AT,
+        "pricing_usd_per_token": PRICING_USD_PER_TOKEN,
+        "decision_rules": {
+            "all_sources_all_repetitions_pass": "pass",
+            "any_semantic_failure": "fail",
+            "incomplete_or_invalid": "inconclusive",
+        },
+    }
+
+
 def validate_protocol(protocol: Mapping[str, Any], repo_root: Path) -> dict[str, Any]:
-    expected = build_protocol(repo_root, freeze_commit=str(protocol.get("freeze_commit") or ""))
+    if protocol.get("protocol_version") == STRENGTHENING_PROTOCOL_VERSION:
+        expected = build_strengthening_protocol(
+            repo_root,
+            freeze_commit=str(protocol.get("freeze_commit") or ""),
+        )
+    else:
+        expected = build_protocol(repo_root, freeze_commit=str(protocol.get("freeze_commit") or ""))
     if dict(protocol) != expected:
         raise ValueError("protocol_freeze_mismatch")
     if expected["expected_call_count"] != expected["absolute_call_cap"]:
@@ -347,9 +554,22 @@ def validate_protocol(protocol: Mapping[str, Any], repo_root: Path) -> dict[str,
     }
 
 
+def validate_strengthening_protocol(
+    protocol: Mapping[str, Any],
+    repo_root: Path,
+) -> dict[str, Any]:
+    if protocol.get("protocol_version") != STRENGTHENING_PROTOCOL_VERSION:
+        raise ValueError("strengthening_protocol_version_invalid")
+    return validate_protocol(protocol, repo_root)
+
+
 def build_request_schedule(repo_root: Path, protocol: Mapping[str, Any]) -> list[dict[str, Any]]:
     validate_protocol(protocol, repo_root)
-    base = _base_requests(repo_root)
+    candidate = protocol.get("protocol_version") == STRENGTHENING_PROTOCOL_VERSION
+    base = _base_requests(
+        repo_root,
+        prompt_path=_strengthening_candidate_path(repo_root) if candidate else None,
+    )
     schedule: list[dict[str, Any]] = []
     sequence = 0
     for source in _SOURCES:
@@ -458,8 +678,8 @@ def _call_record(
     protocol: Mapping[str, Any],
 ) -> dict[str, Any]:
     return {
-        "artifact_version": ARTIFACT_VERSION,
-        "protocol_version": PROTOCOL_VERSION,
+        "artifact_version": protocol.get("artifact_version", ARTIFACT_VERSION),
+        "protocol_version": protocol["protocol_version"],
         "record_type": "call",
         "sequence": plan["sequence"],
         "dialogue_id": plan["dialogue_id"],
@@ -499,7 +719,11 @@ def run_campaign(
     progress: Any | None = None,
 ) -> list[dict[str, Any]]:
     schedule = build_request_schedule(repo_root, protocol)
-    corpus, _ = _load_inputs(repo_root)
+    candidate = protocol.get("protocol_version") == STRENGTHENING_PROTOCOL_VERSION
+    corpus, _ = _load_inputs(
+        repo_root,
+        prompt_path=_strengthening_candidate_path(repo_root) if candidate else None,
+    )
     cases = {item["id"]: item for item in corpus["dialogues"]}
     records: list[dict[str, Any]] = []
     dialogue_scores: list[dict[str, Any]] = []
@@ -512,7 +736,14 @@ def run_campaign(
             return
         source, repetition, dialogue_id = group
         score = dialogic_semantics.score_dialogue(cases[dialogue_id], observations)
-        dialogue_scores.append(_dialogue_score_record(score, source=source, repetition=repetition))
+        dialogue_scores.append(
+            _dialogue_score_record(
+                score,
+                source=source,
+                repetition=repetition,
+                protocol=protocol,
+            )
+        )
 
     for plan in schedule:
         next_group = (plan["source"], plan["repetition"], plan["dialogue_id"])
@@ -550,14 +781,20 @@ def run_campaign(
         if callable(progress):
             progress(int(plan["sequence"]), EXPECTED_CALLS, dict(record))
     finish_dialogue()
-    records.extend(_summary_records(records, dialogue_scores, corpus))
+    records.extend(_summary_records(records, dialogue_scores, corpus, protocol=protocol))
     return records
 
 
-def _dialogue_score_record(score: Mapping[str, Any], *, source: str, repetition: int) -> dict[str, Any]:
+def _dialogue_score_record(
+    score: Mapping[str, Any],
+    *,
+    source: str,
+    repetition: int,
+    protocol: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     return {
-        "artifact_version": ARTIFACT_VERSION,
-        "protocol_version": PROTOCOL_VERSION,
+        "artifact_version": (protocol or {}).get("artifact_version", ARTIFACT_VERSION),
+        "protocol_version": (protocol or {}).get("protocol_version", PROTOCOL_VERSION),
         "record_type": "dialogue_score",
         "dialogue_id": score["dialogue_id"],
         "families": list(score["families"]),
@@ -608,11 +845,95 @@ def decide_from_dialogue_scores(scores: Sequence[Mapping[str, Any]]) -> dict[str
     return {"decision": "inconclusive", "reason_codes": ["semantic_failure_not_reproducible"], "next_micro_lot": None}
 
 
+def load_historical_provider_artifact(repo_root: Path) -> list[dict[str, Any]]:
+    records = load_jsonl(_historical_artifact_path(repo_root))
+    protocol = build_protocol(repo_root, freeze_commit=PHASE_A_FREEZE_COMMIT)
+    validate_artifact(records, repo_root, protocol)
+    return records
+
+
+def _historical_pass_keys(records: Sequence[Mapping[str, Any]]) -> set[tuple[str, int, str]]:
+    return {
+        (str(item["source"]), int(item["repetition"]), str(item["dialogue_id"]))
+        for item in records
+        if item.get("record_type") == "dialogue_score" and item.get("classification") == "pass"
+    }
+
+
+def decide_strengthening_from_dialogue_scores(
+    scores: Sequence[Mapping[str, Any]],
+    *,
+    historical_records: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    grouped_ids = {
+        (source, repetition): [
+            str(item.get("dialogue_id") or "")
+            for item in scores
+            if item.get("source") == source and item.get("repetition") == repetition
+        ]
+        for source in _SOURCES
+        for repetition in (1, 2)
+    }
+    if (
+        len(scores) != 64
+        or any(
+            len(ids) != EXPECTED_DIALOGUES or len(set(ids)) != EXPECTED_DIALOGUES
+            for ids in grouped_ids.values()
+        )
+        or any(
+            item.get("classification") not in {"pass", "fail", "inconclusive"}
+            for item in scores
+        )
+    ):
+        return {
+            "decision": "inconclusive",
+            "reason_codes": ["dialogue_results_incomplete"],
+            "next_micro_lot": None,
+            "semantic_regression_count": 0,
+        }
+    if any(item.get("classification") == "inconclusive" for item in scores):
+        return {
+            "decision": "inconclusive",
+            "reason_codes": ["provider_or_schema_inconclusive"],
+            "next_micro_lot": None,
+            "semantic_regression_count": 0,
+        }
+    failed = [item for item in scores if item.get("classification") == "fail"]
+    historical_passes = _historical_pass_keys(historical_records)
+    regressions = sum(
+        (str(item["source"]), int(item["repetition"]), str(item["dialogue_id"]))
+        in historical_passes
+        for item in failed
+    )
+    if failed:
+        return {
+            "decision": "fail",
+            "reason_codes": ["candidate_semantic_failure"],
+            "next_micro_lot": None,
+            "semantic_regression_count": regressions,
+        }
+    return {
+        "decision": "pass",
+        "reason_codes": ["all_thresholds_met_no_regression"],
+        "next_micro_lot": None,
+        "semantic_regression_count": 0,
+    }
+
+
 def _summary_records(
     calls: Sequence[Mapping[str, Any]],
     dialogue_scores: Sequence[Mapping[str, Any]],
     corpus: Mapping[str, Any],
+    *,
+    protocol: Mapping[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
+    protocol_data = protocol or {
+        "artifact_version": ARTIFACT_VERSION,
+        "protocol_version": PROTOCOL_VERSION,
+    }
+    artifact_version = str(protocol_data.get("artifact_version", ARTIFACT_VERSION))
+    protocol_version = str(protocol_data["protocol_version"])
+    strengthening = protocol_version == STRENGTHENING_PROTOCOL_VERSION
     results: list[dict[str, Any]] = list(dialogue_scores)
     repetition_decisions: dict[str, list[str]] = {source: [] for source in _SOURCES}
     for source in _SOURCES:
@@ -630,8 +951,8 @@ def _summary_records(
             repetition_decisions[source].append(summary["decision"])
             results.append(
                 {
-                    "artifact_version": ARTIFACT_VERSION,
-                    "protocol_version": PROTOCOL_VERSION,
+                    "artifact_version": artifact_version,
+                    "protocol_version": protocol_version,
                     "record_type": "repetition_summary",
                     "source": source,
                     "repetition": repetition,
@@ -650,8 +971,8 @@ def _summary_records(
         latencies = [float(item["latency_ms"]) for item in selected_calls if item["latency_ms"] is not None]
         results.append(
             {
-                "artifact_version": ARTIFACT_VERSION,
-                "protocol_version": PROTOCOL_VERSION,
+                "artifact_version": artifact_version,
+                "protocol_version": protocol_version,
                 "record_type": "source_summary",
                 "source": source,
                 "repetition_decisions": repetition_decisions[source],
@@ -669,7 +990,14 @@ def _summary_records(
                 "cost_usd": _sum_cost(selected_calls),
             }
         )
-    decision = decide_from_dialogue_scores(dialogue_scores)
+    decision = (
+        decide_strengthening_from_dialogue_scores(
+            dialogue_scores,
+            historical_records=load_historical_provider_artifact(Path(__file__).resolve().parents[3]),
+        )
+        if strengthening
+        else decide_from_dialogue_scores(dialogue_scores)
+    )
     metrics_complete = all(
         item["status"] == "ok"
         and item["latency_ms"] is not None
@@ -684,19 +1012,21 @@ def _summary_records(
             "decision": "inconclusive",
             "reason_codes": ["provider_results_or_metrics_incomplete"],
             "next_micro_lot": None,
+            **({"semantic_regression_count": 0} if strengthening else {}),
         }
-    results.append(
-        {
-            "artifact_version": ARTIFACT_VERSION,
-            "protocol_version": PROTOCOL_VERSION,
-            "record_type": "final_summary",
-            **decision,
-            "call_count": len(calls),
-            "dialogue_score_count": len(dialogue_scores),
-            "cost_usd": _sum_cost(calls),
-            "calls_sha256": _sha256_text(_compact_json(list(calls))),
-        }
-    )
+    final = {
+        "artifact_version": artifact_version,
+        "protocol_version": protocol_version,
+        "record_type": "final_summary",
+        **decision,
+        "call_count": len(calls),
+        "dialogue_score_count": len(dialogue_scores),
+        "cost_usd": _sum_cost(calls),
+        "calls_sha256": _sha256_text(_compact_json(list(calls))),
+    }
+    if strengthening:
+        final["baseline_artifact_sha256"] = protocol_data["baseline_artifact_sha256"]
+    results.append(final)
     return results
 
 
@@ -756,16 +1086,21 @@ def validate_content_free_record(record: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(record, Mapping):
         raise ValueError("record_not_object")
     record_type = record.get("record_type")
+    strengthening = record.get("protocol_version") == STRENGTHENING_PROTOCOL_VERSION
     keys = {
         "call": _CALL_KEYS,
         "dialogue_score": _DIALOGUE_SCORE_KEYS,
         "repetition_summary": _REPETITION_SUMMARY_KEYS,
         "source_summary": _SOURCE_SUMMARY_KEYS,
-        "final_summary": _FINAL_KEYS,
+        "final_summary": _STRENGTHENING_FINAL_KEYS if strengthening else _FINAL_KEYS,
     }.get(record_type)
     if keys is None or set(record) != keys:
         raise ValueError("record_schema_invalid")
-    if record.get("artifact_version") != ARTIFACT_VERSION or record.get("protocol_version") != PROTOCOL_VERSION:
+    valid_version_pair = (
+        (ARTIFACT_VERSION, PROTOCOL_VERSION),
+        (STRENGTHENING_ARTIFACT_VERSION, STRENGTHENING_PROTOCOL_VERSION),
+    )
+    if (record.get("artifact_version"), record.get("protocol_version")) not in valid_version_pair:
         raise ValueError("record_version_invalid")
     if record_type == "call":
         if record.get("status") not in _CALL_STATUSES or record.get("reason_code") not in _CALL_REASONS:
@@ -809,13 +1144,33 @@ def validate_content_free_record(record: Mapping[str, Any]) -> dict[str, Any]:
     elif record_type == "repetition_summary":
         if record.get("source") not in _SOURCES or record.get("decision") not in {"pass", "fail", "inconclusive"}:
             raise ValueError("repetition_summary_invalid")
+        if not isinstance(record.get("reason_codes"), list) or any(
+            code not in _REPETITION_REASON_CODES for code in record["reason_codes"]
+        ):
+            raise ValueError("repetition_reason_invalid")
     elif record_type == "source_summary":
         if record.get("source") not in _SOURCES or record.get("call_count") != 138:
             raise ValueError("source_summary_invalid")
     else:
-        if record.get("decision") not in _DECISIONS:
+        allowed_decisions = {"pass", "fail", "inconclusive"} if strengthening else _DECISIONS
+        if record.get("decision") not in allowed_decisions:
             raise ValueError("final_decision_invalid")
+        allowed_reasons = (
+            _STRENGTHENING_FINAL_REASON_CODES
+            if strengthening
+            else _HISTORICAL_FINAL_REASON_CODES
+        )
+        if not isinstance(record.get("reason_codes"), list) or any(
+            code not in allowed_reasons for code in record["reason_codes"]
+        ):
+            raise ValueError("final_reason_invalid")
+        if strengthening and record.get("next_micro_lot") is not None:
+            raise ValueError("strengthening_next_micro_lot_invalid")
         _validate_sha(record.get("calls_sha256"))
+        if strengthening:
+            _validate_sha(record.get("baseline_artifact_sha256"))
+            if not isinstance(record.get("semantic_regression_count"), int) or not 0 <= record["semantic_regression_count"] <= 64:
+                raise ValueError("semantic_regression_count_invalid")
     return dict(record)
 
 
@@ -833,7 +1188,11 @@ def validate_artifact(
     if list(records[:EXPECTED_CALLS]) != calls:
         raise ValueError("call_order_invalid")
     schedule = build_request_schedule(repo_root, protocol)
-    corpus, _ = _load_inputs(repo_root)
+    candidate = protocol.get("protocol_version") == STRENGTHENING_PROTOCOL_VERSION
+    corpus, _ = _load_inputs(
+        repo_root,
+        prompt_path=_strengthening_candidate_path(repo_root) if candidate else None,
+    )
     histories: dict[tuple[str, int, str], list[dict[str, Any]]] = {}
     observations: dict[tuple[str, int, str], list[dict[str, Any]]] = {}
     cases = {item["id"]: item for item in corpus["dialogues"]}
@@ -881,8 +1240,15 @@ def validate_artifact(
             for case in corpus["dialogues"]:
                 group = (source, repetition, case["id"])
                 score = dialogic_semantics.score_dialogue(case, observations.get(group, []))
-                scores.append(_dialogue_score_record(score, source=source, repetition=repetition))
-    expected_tail = _summary_records(calls, scores, corpus)
+                scores.append(
+                    _dialogue_score_record(
+                        score,
+                        source=source,
+                        repetition=repetition,
+                        protocol=protocol,
+                    )
+                )
+    expected_tail = _summary_records(calls, scores, corpus, protocol=protocol)
     if list(records[EXPECTED_CALLS:]) != expected_tail:
         raise ValueError("artifact_summary_reconstruction_mismatch")
     final = expected_tail[-1]
@@ -918,9 +1284,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--repo-root", type=Path, required=True)
     parser.add_argument("--freeze-commit", required=True)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--strengthening", action="store_true")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
-    protocol = build_protocol(args.repo_root, freeze_commit=args.freeze_commit)
+    protocol = (
+        build_strengthening_protocol(args.repo_root, freeze_commit=args.freeze_commit)
+        if args.strengthening
+        else build_protocol(args.repo_root, freeze_commit=args.freeze_commit)
+    )
     summary = validate_protocol(protocol, args.repo_root)
     if args.dry_run:
         print(_compact_json({"status": "ready", **summary, "protocol_sha256": _sha256_text(_compact_json(protocol))}))

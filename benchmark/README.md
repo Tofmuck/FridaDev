@@ -461,6 +461,37 @@ remain visible but do not erase that reproducible evidence. 4C.2 is activated
 as the next micro-lot and is not started here. Total observed cost was
 `0.06133595 USD`.
 
+### Lot 4C.2 semantic-strengthening candidate
+
+The bounded 4C.2 comparison extends the existing `dialogic_campaign` rather
+than creating another provider framework. Its benchmark-only prompt candidate
+and closed freeze manifest live beside the Stimmung fixtures. The manifest
+pins the candidate, runtime prompt baseline, corpus, scorer, product
+normalizer, product aggregator, campaign harness and retained 4S.1 artifact by
+SHA-256. The runtime prompt is not changed before the candidate passes.
+
+The candidate changes only the system-prompt bytes visible to the provider.
+Models, source roles, generation parameters, timeout, corpus, schedule,
+normalizer and aggregator remain identical to 4S.1. Its dry-run is:
+
+```bash
+PYTHONPATH="$PWD:$PWD/app" python3 -m \
+  benchmark.suites.stimmung.dialogic_campaign \
+  --repo-root "$PWD" \
+  --freeze-commit <pushed-protocol-commit> \
+  --strengthening \
+  --dry-run
+```
+
+The live form adds `--output` under `benchmark/results/stimmung/` and is
+strictly capped at 276 calls: 69 turns, two sources and two repetitions, with
+no retry or automatic provider fallback. The prudent frozen cost estimate is
+`0.17989163 USD`, below the `0.30 USD` cap. A candidate artifact uses its own
+versioned content-free record pair and references the exact historical 4S.1
+artifact hash. It yields `pass` only when all 64 dialogue scores meet the
+unchanged `1.0` thresholds without regression; semantic failures yield `fail`,
+and incomplete provider or schema evidence yields `inconclusive`.
+
 ## Validation agent benchmark
 
 The validation suite uses the production prompt
