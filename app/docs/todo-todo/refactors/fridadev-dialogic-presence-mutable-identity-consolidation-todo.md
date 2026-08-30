@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ferme apres cutover Validation Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 et 4S.1 fermes, decision 4S.1 `strengthen`; campagne 4C.2 candidate `inconclusive`, aucun cutover et prochaine decision requise; observabilite causale complete non prouvee; Lots 5 a 8 et Z non commences
+Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ferme apres cutover Validation Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 et 4S.1 fermes, decision 4S.1 `strengthen`; 4C.2 ferme apres livraison du prompt renforce v2 qualifie `32/32` sur le primaire; 4C.3 non commence; observabilite causale complete non prouvee; Lots 5 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -1637,7 +1637,7 @@ Portee architecturale de cette acceptation:
 
 # LOT 4 - Audit causal et consolidation de Stimmung
 
-Statut: goldens techniques du coeur livres; 4C.1, 4S.0 et 4S.1 fermes; decision 4S.1 `strengthen`; campagne 4C.2 candidate `inconclusive`, prompt runtime inchange et prochaine decision requise; observabilite causale complete non prouvee
+Statut: goldens techniques du coeur livres; 4C.1, 4S.0, 4S.1 et 4C.2 fermes; prompt Stimmung renforce v2 qualifie `32/32` sur le primaire puis livre; 4C.3 non commence; observabilite causale complete non prouvee
 Nature: audit causal multi-tours, correctifs bornes, benchmark sous GO separe
 et observabilite synchrone, sans extension fonctionnelle
 Dependance: Lot 3 ferme
@@ -2976,7 +2976,7 @@ Message de commit recommande: `benchmark: evaluate Stimmung semantic corpus`.
 
 ### Micro-lot 4C.2 - Renforcement semantique conditionnel du caller
 
-Statut: ouvert; rescoring causal hors ligne livre le 2026-08-30, aucun cutover runtime
+Statut: ferme le 2026-08-30; prompt renforce v2 qualifie et livre, 4C.3 non commence
 Effort recommande: `extra high`
 Nature: correctif caller borne, observabilite synchrone et preuves
 Prerequis: decision `strengthen` de 4S.1 localisant un defaut du caller
@@ -3007,12 +3007,13 @@ Invariants:
 
 Condition de fermeture:
 
-- [ ] Activation justifiee par des cas rouges 4S.1 precis.
-- [ ] Une seule variable architecturale change par passe.
-- [ ] Tous les seuils primaire/fallback du corpus fige sont franchis ou les
-  limites restantes sont explicitement acceptees.
-- [ ] Aucun cas auparavant valide ne regresse.
-- [ ] Observabilite, tests, documentation, commit, push et livraison ciblee
+- [x] Activation justifiee par des cas rouges 4S.1 precis.
+- [x] Une seule variable architecturale change par passe.
+- [x] Tous les seuils de la source couverte par la porte finale sont franchis;
+  le fallback historique, non rappele par cette passe primaire-only, reste
+  explicitement hors de cette preuve et inchange.
+- [x] Aucun cas auparavant valide ne regresse.
+- [x] Observabilite, tests, documentation, commit, push et livraison ciblee
   sont prouves.
 
 Passe A de diagnostic et gel, executee le 2026-08-30 avant tout appel
@@ -3426,6 +3427,37 @@ Ultime passe bornee 4C.2 gelee le 2026-08-30, avant resultat provider:
   `339c82f0160d2cea107592843a6f98a87306bf1ddcfdb1f8d5e1a78b5b3fc920`.
   La decision humaine autorise maintenant la livraison exacte de la candidate;
   4C.2 reste ouvert jusqu'aux preuves runtime finales et 4C.3 non commence.
+
+Livraison conditionnelle executee apres la porte verte:
+
+- les bytes exacts de la candidate v2 ont remplace le prompt runtime dans le
+  commit `f90162412aede7ef02910bc49c6f7b4d38a624a7`; empreinte checkout et
+  conteneur identique
+  `567f0615f14fe9f13a50e6e57ef46dc6fdba2cd6e6156407d6e2f489c2076a7f`;
+- le lecteur benchmark reconstruit desormais explicitement le prompt runtime
+  historique d'empreinte `6374bf40...`; les artefacts et controles anciens ne
+  sont ni reecrits ni reinterpretes avec le prompt livre;
+- le modele primaire reste `google/gemini-3.1-flash-lite`, le fallback
+  `openai/gpt-5.4-nano`, le timeout `10 s`, le plafond `220` et le sampling
+  `temperature=0.1` / `top_p=1.0`. Aucun appel fallback ou provider
+  supplementaire n'a ete execute apres la campagne;
+- preuves finales: `19/19` tests directement affectes, `65/65` goldens
+  4S.0/4S.1/4C.2, `33/33` suites caller/normaliseur/agregateur voisines et
+  decouverte Python hermetique `2824/2824`, sans skip ni expected failure. Les
+  baselines frontend restent JavaScript `137/137` et Chromium `19/19`; aucun
+  fichier ou contrat frontend n'a change, ils n'ont donc pas ete rejoues apres
+  livraison;
+- FridaDev seul a ete rebuild sans pull puis recree avec `--no-deps`: image
+  `sha256:bbab658701a729a6c653b0b9669dfb971a166677065ccc4683030612e30abef4`,
+  `StartedAt=2026-08-30T20:23:31.378268813Z`, HTTP interne `200`, healthy,
+  restart `0`, OOM false. Les identifiants et StartedAt des conteneurs voisins
+  sont inchanges;
+- aucune nouvelle version de prompt n'est inferee dans les evenements: la
+  lecture admin existante expose la source fichier et ses metadonnees
+  content-free, tandis que les evenements historiques restent depourvus de
+  provenance qu'ils ne mesuraient pas. Aucun read-model, renderer ou frontend
+  n'etait rendu faux;
+- 4C.2 est ferme. 4C.3 et tous les micro-lots suivants restent non commences.
 
 Message de commit recommande si active: `fix: strengthen Stimmung semantic extraction`.
 

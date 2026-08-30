@@ -740,6 +740,14 @@ which does not alter the frozen local gate. The content-free artifact is
 The benchmark itself does not authorize runtime delivery; the separately
 given human decision controls the conditional cutover.
 
+That decision was subsequently applied byte-for-byte in runtime commit
+`f90162412aede7ef02910bc49c6f7b4d38a624a7`. The live prompt SHA-256 is the
+frozen candidate SHA-256 above. Historical campaign readers retain the prior
+runtime prompt fingerprint rather than reinterpreting old artifacts through
+the delivered prompt. The primary and fallback models, generation settings,
+normalizer and aggregate builder are unchanged; no fallback or additional
+provider call was used during delivery.
+
 ## Validation agent benchmark
 
 The validation suite uses the production prompt
