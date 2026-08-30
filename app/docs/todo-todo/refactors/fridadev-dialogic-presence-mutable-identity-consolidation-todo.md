@@ -3414,6 +3414,18 @@ Ultime passe bornee 4C.2 gelee le 2026-08-30, avant resultat provider:
   rejettent notamment 8, une autre modification v2->v3, une seconde politique
   de prompt, un fallback, un 139e appel, une porte agregateur et une fausse
   eligibilite. 4C.2 reste ouvert jusqu'au resultat et 4C.3 non commence.
+- campagne primaire executee une seule fois depuis le gel pousse `94bd338c`:
+  `138/138` appels valides, zero fallback/retry, `16/16` local aux deux
+  repetitions, soit `32/32` et decision `eligible_primary`; cout observe
+  `0.04234050 USD`, latence mediane/p95 `830.950/1181.196 ms`, usage
+  `113274/9348/122622` tokens prompt/completion/total. Les vues diagnostiques
+  agregee et combinee restent a `9/32` sans gouverner la porte locale;
+- artefact content-free
+  `benchmark/results/stimmung/2026-08-30-lot4c2-stimmung-final-prompt-candidate-v2.jsonl`,
+  SHA-256
+  `339c82f0160d2cea107592843a6f98a87306bf1ddcfdb1f8d5e1a78b5b3fc920`.
+  La decision humaine autorise maintenant la livraison exacte de la candidate;
+  4C.2 reste ouvert jusqu'aux preuves runtime finales et 4C.3 non commence.
 
 Message de commit recommande si active: `fix: strengthen Stimmung semantic extraction`.
 

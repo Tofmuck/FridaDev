@@ -727,6 +727,19 @@ Only `32/32` `caller_local_semantics` scores, complete technical provenance
 and no historical regression produce `eligible_primary`. Aggregate and
 combined scores remain diagnostic and never govern this caller-local gate.
 
+The frozen campaign ran once from commit
+`94bd338c9de294a63cbe601d201a4ae8ad807bbf`. It completed 138/138 primary
+calls with no fallback or retry: both repetitions pass 16/16 dialogues locally,
+so the caller-local result is 32/32 and `eligible_primary`. All calls are
+technically valid. Observed usage is 113,274 prompt, 9,348 completion and
+122,622 total tokens; total cost is 0.04234050 USD. Median/p95 latency is
+830.950/1,181.196 ms. The diagnostic aggregate and combined views pass 9/32,
+which does not alter the frozen local gate. The content-free artifact is
+`benchmark/results/stimmung/2026-08-30-lot4c2-stimmung-final-prompt-candidate-v2.jsonl`
+(SHA-256 `339c82f0160d2cea107592843a6f98a87306bf1ddcfdb1f8d5e1a78b5b3fc920`).
+The benchmark itself does not authorize runtime delivery; the separately
+given human decision controls the conditional cutover.
+
 ## Validation agent benchmark
 
 The validation suite uses the production prompt

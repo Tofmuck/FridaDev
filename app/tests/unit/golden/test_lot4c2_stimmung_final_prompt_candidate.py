@@ -29,6 +29,7 @@ CORPUS_V3 = REPO_ROOT / "benchmark/suites/stimmung/fixtures/stimmung_dialogic_se
 CANDIDATE_V1 = REPO_ROOT / "benchmark/suites/stimmung/fixtures/stimmung_semantic_strengthening_candidate_v1.txt"
 CANDIDATE_V2 = REPO_ROOT / "benchmark/suites/stimmung/fixtures/stimmung_semantic_strengthening_candidate_v2.txt"
 HISTORICAL_CANDIDATE = REPO_ROOT / "benchmark/results/stimmung/2026-08-30-lot4c2-stimmung-strengthening-candidate.jsonl"
+FINAL_CANDIDATE_ARTIFACT = REPO_ROOT / "benchmark/results/stimmung/2026-08-30-lot4c2-stimmung-final-prompt-candidate-v2.jsonl"
 HISTORICAL_SHA256 = {
     CORPUS_V2: "5059d5ea4b57409bc08ee95dae39f74b2411268dcf5fe6aee516dd9ffb310ee5",
     CANDIDATE_V1: "e1ce1bd0490a3f6ef0757a63768d0c32a1c277db4636c2b33ba0cafd793ed0c7",
@@ -260,6 +261,36 @@ class Lot4C2StimmungFinalPromptCandidateTests(unittest.TestCase):
     def test_historical_inputs_remain_byte_for_byte_unchanged(self) -> None:
         for path, expected in HISTORICAL_SHA256.items():
             self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), expected)
+
+    def test_retained_final_artifact_is_content_free_and_reconstructible(self) -> None:
+        records = dialogic_campaign.load_jsonl(FINAL_CANDIDATE_ARTIFACT)
+        protocol = dialogic_campaign.build_final_strengthening_protocol(
+            REPO_ROOT,
+            freeze_commit="94bd338c9de294a63cbe601d201a4ae8ad807bbf",
+        )
+        result = dialogic_campaign.validate_final_strengthening_artifact(
+            records,
+            REPO_ROOT,
+            protocol,
+        )
+        self.assertEqual(
+            hashlib.sha256(FINAL_CANDIDATE_ARTIFACT.read_bytes()).hexdigest(),
+            "339c82f0160d2cea107592843a6f98a87306bf1ddcfdb1f8d5e1a78b5b3fc920",
+        )
+        self.assertEqual(result["call_count"], 138)
+        self.assertEqual(result["local_score_count"], 32)
+        self.assertEqual(result["final_decision"], "eligible_primary")
+        self.assertEqual(records[-1]["local_pass_count"], 32)
+        self.assertFalse(records[-1]["fallback_evaluated"])
+
+        missing_call = copy.deepcopy(records)
+        del missing_call[68]
+        with self.assertRaises(ValueError):
+            dialogic_campaign.validate_final_strengthening_artifact(
+                missing_call,
+                REPO_ROOT,
+                protocol,
+            )
 
 
 if __name__ == "__main__":
