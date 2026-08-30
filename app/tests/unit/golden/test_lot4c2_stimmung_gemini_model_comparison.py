@@ -228,6 +228,41 @@ class Lot4C2StimmungGeminiModelComparisonTests(unittest.TestCase):
             "314bbd75f20ff02baa1acd38e5d7d5384abd779eb2c1435bb740dc33bfc7771a",
         )
 
+    def test_retained_candidate_artifact_is_content_free_and_reconstructible(self) -> None:
+        artifact_path = (
+            REPO_ROOT
+            / "benchmark/results/stimmung/2026-08-30-lot4c2-stimmung-gemini-3-7-medium.jsonl"
+        )
+        protocol = dialogic_campaign.build_model_comparison_protocol(
+            REPO_ROOT,
+            freeze_commit="1e9bb9f99c8a5bd73af855e3dc6dbedf211aa5b7",
+        )
+        records = dialogic_campaign.load_jsonl(artifact_path)
+        validation = dialogic_campaign.validate_model_comparison_artifact(
+            records,
+            REPO_ROOT,
+            protocol,
+        )
+        calls = [item for item in records if item["record_type"] == "call"]
+
+        self.assertEqual(
+            dialogic_campaign._sha256_file(artifact_path),
+            "5adb54eec321f671fb05e2b350d35120a7ce84a52e7b936c4e54829002bce8f3",
+        )
+        self.assertEqual(validation["call_count"], 138)
+        self.assertEqual(validation["dialogue_score_count"], 32)
+        self.assertEqual(validation["final_decision"], "inconclusive")
+        self.assertEqual(sum(item["status"] == "ok" for item in calls), 114)
+        self.assertEqual(sum(item["status"] == "json_error" for item in calls), 24)
+        self.assertTrue(
+            all(
+                item["requested_model"] == "google/gemini-3.7-flash"
+                for item in calls
+            )
+        )
+        self.assertTrue(all(item["observed_provider"] == "google" for item in calls))
+        self.assertTrue(all(item["provider_fallbacks"] is False for item in calls))
+
 
 if __name__ == "__main__":
     unittest.main()

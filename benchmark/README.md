@@ -545,6 +545,22 @@ in both repetitions, no valid historical primary case regresses, every route
 and metric is authoritative, and no provider/schema error occurs. Regardless
 of the result, the benchmark never authorizes a runtime cutover.
 
+The frozen protocol was pushed as
+`1e9bb9f99c8a5bd73af855e3dc6dbedf211aa5b7` (protocol SHA-256
+`39dc5e908b828bc89d7064496988765a3255e809e09f9bdc069556f814d2bfe2`).
+The one authorized campaign consumed exactly 138 calls and retained
+`benchmark/results/stimmung/2026-08-30-lot4c2-stimmung-gemini-3-7-medium.jsonl`
+(SHA-256
+`5adb54eec321f671fb05e2b350d35120a7ce84a52e7b936c4e54829002bce8f3`).
+All calls reached the requested Google route; 114 produced valid JSON/schema
+and 24 produced bounded `invalid_json` failures. The 32 dialogue scores contain
+5 passes, 18 semantic failures and 9 inconclusive results, so both repetitions
+remain inconclusive and the frozen overall decision is `inconclusive`.
+Observed cost was `0.19883025 USD`; median/p95 latency was
+`3298.835/5301.780 ms`, with 74,772 prompt, 38,067 completion, 29,093 reasoning
+and 112,839 total tokens. No fallback call, runtime cutover, setting change or
+deployment followed.
+
 ## Validation agent benchmark
 
 The validation suite uses the production prompt

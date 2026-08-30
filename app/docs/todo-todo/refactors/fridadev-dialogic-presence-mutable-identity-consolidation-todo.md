@@ -3132,6 +3132,42 @@ nouveau resultat provider:
   setting, agregateur, observabilite produit, frontend, rebuild, restart ou
   deploiement n'est modifie. 4C.2 reste ouvert et 4C.3 non commence.
 
+Campagne de comparaison executee une seule fois depuis le gel pousse
+`1e9bb9f99c8a5bd73af855e3dc6dbedf211aa5b7`:
+
+- protocole SHA-256
+  `39dc5e908b828bc89d7064496988765a3255e809e09f9bdc069556f814d2bfe2`;
+  `138/138` appels Gemini 3.7 medium executes, aucun retry, aucun appel du
+  primaire historique ou du fallback et route Google demandee/observee sur
+  les `138` lignes;
+- `114/138` sorties JSON/schema valides et `24` erreurs `invalid_json`
+  bornees. Les metriques sont toutes presentes, mais ces erreurs rendent neuf
+  scores dialogue inconclusifs; elles ne sont jamais transformees en signal
+  sain ni score semantique;
+- scores: `5/32` pass, `18/32` fail et `9/32` inconclusive; sept dialogues ont
+  un echec semantique reproductible. Les codes dominants restent les
+  trajectoires de stabilite/shift, puis force et agregat hors attente. Le
+  temoin Gemini 3.1 historique avait `0/32` pass; la preuve candidate ne permet
+  pourtant pas de conclure a une eligibilite complete;
+- decision gelee: `inconclusive`, et non `eligible_primary`; cout observe
+  `0.19883025 USD`, latence mediane/p95 `3298.835/5301.780 ms`, tokens
+  entree/sortie/raisonnement/total `74772/38067/29093/112839`;
+- artefact content-free
+  `2026-08-30-lot4c2-stimmung-gemini-3-7-medium.jsonl`, SHA-256
+  `5adb54eec321f671fb05e2b350d35120a7ce84a52e7b936c4e54829002bce8f3`,
+  reconstruit sans nouvel appel depuis les `138` lignes et les empreintes
+  gelees;
+- preuves: `84/84` tests cibles et voisins avant campagne, `6/6` goldens de
+  comparaison avec artefact retenu, puis decouverte Python complete
+  `2795/2795`, sans echec, erreur, skip, todo ou expected failure. JavaScript
+  `137/137` et Chromium `19/19` ont ete revalides sur la baseline; ils ne sont
+  pas rejoues apres resultat car aucun runtime, contrat frontend ou asset ne
+  change;
+- aucune decision de cutover n'est produite par le benchmark. Le primaire
+  live, le prompt runtime et le fallback restent inchanges; les limites du
+  fallback 4S.1 ne sont ni retestees ni acceptees. 4C.2 reste ouvert pour une
+  decision humaine ulterieure et 4C.3 n'est pas commence.
+
 Message de commit recommande si active: `fix: strengthen Stimmung semantic extraction`.
 
 ### Micro-lot 4C.3 - Separation affect et certitude epistemique
