@@ -2510,7 +2510,7 @@ Message de commit recommande: `fix: preserve Stimmung input for Validation`.
 
 ### Micro-lot 4S.0 - Corpus semantique multi-tours et scorer hermetique
 
-Statut: techniquement livre; en attente de validation humaine par Tof; 4S.1 non commence
+Statut: techniquement corrige; en attente de validation humaine separee; 4S.1 non commence
 Effort recommande: `extra high`
 Nature: tests, fixtures et documentation seulement
 Prerequis: 4C.1 ferme
@@ -2568,13 +2568,13 @@ Passe technique du 29 aout 2026:
   mais leur concatenation ne ferait pas un dialogue autoritatif; F5 `valide`:
   l'effet epistemique et le respect de Presence restent non observables depuis
   la seule sortie structuree du caller;
-- architecture livree: corpus `stimmung_dialogic_corpus_v1`, seuils
+- architecture alors livree: corpus `stimmung_dialogic_corpus_v1`, seuils
   `stimmung_dialogic_thresholds_v1`, validateur ferme et scorer dedie sans
   transport provider. Un tour est une paire user/assistant complete; les `14`
-  dialogues ont chacun `4` tours, soit `56` paires et `28` etapes evaluees;
+  dialogues avaient chacun `4` tours, soit `56` paires et `28` etapes evaluees;
   empreinte corpus SHA-256
   `2e2262cba98469f804c3038cc692b62678b6a49ca384e1e5d53716388f9dc75e`;
-- matrice candidate:
+- matrice candidate initiale:
 
   | Identifiant | Familles principales | Trajectoires evaluees |
   | --- | --- | --- |
@@ -2597,17 +2597,9 @@ Passe technique du 29 aout 2026:
   attentes autorisent plusieurs tonalites raisonnables, bornent les forces et
   separent le signal par tour de l'agregat (`stability`, `shift_state`,
   decroissance); aucune phrase de sortie exacte n'est figee;
-- seuils geles avant resultat provider: taux de passage par famille `1.0` pour
-  le primaire et `1.0` pour le fallback. Le corpus est petit et les ensembles
-  acceptables sont deja pluriels; un seuil plus bas masquerait un cas entier.
-  Toute erreur transport/schema ou tout resultat manquant donnera
-  `inconclusive`; un seuil semantique manque donnera `fail`; tous les seuils
-  atteints donneront `pass`;
-- tolerance zero, pour les deux sources: psychologisation, affect cite ou
-  rapporte internalise, confusion affect/certitude, masquage de question,
-  demande, risque, action ou relation Presence. Le validateur du corpus verrouille
-  ces contrats; seuls signal, tonalites, force et trajectoire agregee sont
-  directement scorables dans la sortie du caller;
+- la premiere passe avait applique le seuil `1.0` a toutes les familles et
+  decrit toutes les tolerances zero comme directement scorables. C1 et C2
+  ci-dessous corrigent cette surqualification avant toute campagne provider;
 - mutations rejetees: tour retire, inverse ou duplique; ironie literalisee;
   citation ou affect rapporte internalise; intensite transformee en effet
   epistemique; correction ignoree; stable requalifie volatile; bascule effacee;
@@ -2649,11 +2641,89 @@ Passe technique du 29 aout 2026:
   scorer partage; relecture finale sans finding bloquant;
 - aucun provider, benchmark semantique live, secret, DB, donnee operateur,
   tour utilisateur, modification runtime, rebuild, restart ou deploiement;
-- limite ouverte: Tof doit relire les dialogues synthetiques et valider
-  humainement leurs attentes. Cette passe ne mesure aucune qualite modele et ne
-  commence ni 4S.1 ni 4C.2. Si 4S.1 reproduit ensuite un defaut semantique, le
+- limite ouverte: la validation humaine des dialogues synthetiques et de leurs
+  attentes reste a effectuer separement par Codex pour Tof. Cette passe ne
+  mesure aucune qualite modele et ne commence ni 4S.1 ni 4C.2. Si 4S.1 reproduit
+  ensuite un defaut semantique, le
   micro-lot correctif conditionnel 4C.2 devra synchroniser runtime, evenement,
   reader, read-model, surfaces frontend existantes et preuve navigateur.
+
+Passe corrective du 30 aout 2026:
+
+- C1 `valide`: le resume calculait auparavant des taux jusque `1.0` pour les
+  familles question, demande, risque, action et Presence a partir de la seule
+  sortie Stimmung. La preuve separe maintenant neuf familles directement
+  mesurables, une famille mixte et six familles aval `not_measured`; aucune
+  propriete aval ne contribue a la decision semantique du caller;
+- C2 `valide`: des observations synthetiques pouvaient produire `pass` avec
+  `provider_results_observed=false`. La decision est desormais obligatoirement
+  `inconclusive` avec `provider_results_not_observed`; les tests de la branche
+  `pass` indiquent explicitement une provenance provider vraie sans creer
+  d'artefact ni pretendre qu'un appel a eu lieu;
+- C3 `valide`: les quatorze cas avaient tous quatre tours et les premiers cas
+  ironie/citation/affect rapporte donnaient des indices explicites. Les cas
+  `L4S0-ST-015` (`5` tours) et `L4S0-ST-016` (`6` tours) ajoutent une ironie
+  implicite et une attribution rapportee dependante du contexte, chacun avec
+  preuve positive et contre-cas. Leur difficulte `hard`, politique
+  `implicit_context_required`, profondeur et etapes evaluees sont fermees par
+  le schema; aucune regex ne pretend juger leur francais;
+- version corrective: les changements de schema de dialogue, de frontiere de
+  mesure et de regle de decision sont publies comme
+  `stimmung_dialogic_corpus_v2` / `stimmung_dialogic_thresholds_v2`, jamais
+  reinterpretes comme v1. Le corpus v2 compte `16` dialogues, `67` paires et
+  `32` etapes evaluees; son empreinte SHA-256 est
+  `09a3e52e7ea10db05642e793b3c7fda2ffcc295d4efcc0c1041690922f10f3aa`;
+- matrice ajoutee a la v2:
+
+  | Identifiant | Famille | Profondeur et trajectoire |
+  | --- | --- | --- |
+  | `L4S0-ST-015` | ironie implicite | `5` tours, litteral -> contraste contextuel |
+  | `L4S0-ST-016` | affect rapporte ambigu | `6` tours, direct -> attribution contextuelle |
+
+- C4 `valide`: le scorer mono-tour rejetait depuis la premiere passe une
+  tonalite dupliquee que le validateur runtime accepte puis deduplique. Son
+  contrat historique est restaure; le scorer 4S.0 conserve localement la
+  validation stricte d'une sortie caller deja normalisee. Une preuve traverse
+  le vrai normaliseur runtime en lecture seule puis rejette un duplicat reinjecte
+  apres cette frontiere;
+- frontiere de mesure: `emergence`, `stabilite`, `bascule`, `retour_neutre`,
+  `alternance`, `ironie`, `citation`, `affect_rapporte` et `correction` sont
+  directement mesurees. `intensite_sans_effet_epistemique` est mixte: son
+  intensite est mesuree, son absence d'effet epistemique reste contractuelle.
+  Question, demande, risque, action materielle, opportunite/contre-Presence et
+  non-psychologisation aval sont exclusivement contractuels;
+- seuils v2: taux `1.0` inchanges pour le primaire et le fallback sur les neuf
+  familles directement mesurables et la composante caller de la famille mixte;
+  aucun taux pour les familles aval. Sans resultat provider, la decision et les
+  taux mesures restent `inconclusive`/vides. Tout echec de sortie caller reste
+  bloquant, meme dans un cas portant une famille aval;
+- sensibilite ajoutee: rejet du retour a `pass` sans provider, d'un taux aval,
+  d'une requalification aval comme mesurable, du retrait ou raccourcissement
+  des cas `015/016`, d'une politique d'indice affaiblie, d'un duplicat restant
+  apres normalisation et d'une baisse de seuil. Les mutations de la premiere
+  passe restent actives;
+- reproductions rouges: le ciblage `12` tests sur le HEAD initial a produit
+  `6` echecs et `2` erreurs, couvrant le faux `pass`, les categories/taux aval,
+  les deux dialogues absents et le rejet historique du duplicat;
+- preuves apres correction: contrat 4S.0 `12/12`; contrat 4S.0 plus benchmark
+  historique `19/19`; caller, agregateur, benchmark, golden causal Lot 4 et
+  4S.0 `45/45`; decouverte Python `2771/2771` (delta exact `+3` tests),
+  JavaScript `137/137`, Chromium `19/19`; zero echec, erreur, skip, todo ou
+  expected failure;
+- commandes hermetiques: image locale avec `--pull=never --network none
+  --read-only`, depot entier monte en lecture seule, `/tmp` en tmpfs et
+  `PYTHONDONTWRITEBYTECODE=1`. Chromium reutilise la revision locale en cache
+  read-only sous l'image Noble, sans installation ni telechargement;
+- fichiers autoritatifs corriges:
+  `benchmark/suites/stimmung/dialogic_semantics.py`,
+  `benchmark/suites/stimmung/fixtures/stimmung_dialogic_semantic_v2.json`,
+  `app/tests/unit/golden/test_lot4s0_stimmung_dialogic_semantics.py` et
+  `benchmark/README.md`;
+- aucun provider, transport, artefact de campagne, runtime, prompt, modele,
+  agregateur, observabilite produit, frontend, rebuild, restart ou deploiement;
+- validation humaine toujours ouverte: elle sera realisee separement par Codex
+  pour Tof apres ce retour. Cette passe ne coche pas la case humaine et ne
+  commence ni 4S.1 ni aucun lot suivant.
 
 Condition de fermeture:
 
@@ -2665,6 +2735,8 @@ Condition de fermeture:
 - [x] Documentation, commit et push sont prouves; runtime inchange.
 
 Message de commit recommande: `test: define Lot 4 Stimmung semantic corpus`.
+Message de commit de la passe corrective:
+`test: correct Lot 4S.0 semantic proof boundaries`.
 
 ### Micro-lot 4S.1 - Campagne provider primaire et fallback
 

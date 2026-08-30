@@ -380,19 +380,29 @@ runtime settings lot.
 The historical fixtures and scorer above remain mono-turn diagnostic evidence.
 They are not reused as proof of multi-turn semantic maturation. The versioned
 candidate corpus
-`benchmark/suites/stimmung/fixtures/stimmung_dialogic_semantic_v1.json` and its
-dedicated `dialogic_semantics.py` contract cover 14 synthetic French dialogues,
-each made of four complete user/assistant pairs. Expectations are bounded
-properties of the per-turn signal and aggregated Stimmung, never exact model
-text.
+`benchmark/suites/stimmung/fixtures/stimmung_dialogic_semantic_v2.json` and its
+dedicated `dialogic_semantics.py` contract cover 16 synthetic French dialogues:
+14 have four complete user/assistant pairs, one has five and one has six. The
+two deeper cases exercise implicit irony and context-dependent reported affect
+without giving the expected class in the preceding assistant turns.
+Expectations are bounded properties of the per-turn signal and aggregated
+Stimmung, never exact model text.
 
-The 4S.0 validator freezes family thresholds, positive/counter coverage and a
-closed mutation matrix before any provider result. It also records the strict
-boundary between caller properties that can be scored and downstream
-question/request/risk/action/Presence effects that cannot be inferred from the
-caller output alone. No campaign runner or provider transport is attached to
-this corpus. A live primary/fallback evaluation belongs only to 4S.1 after Tof
-has reviewed and explicitly accepted the versioned dialogues.
+The 4S.0 validator freezes `1.0` thresholds only for caller-observable or mixed
+families, positive/counter coverage and a closed mutation matrix before any
+provider result. It reports downstream question/request/risk/action/Presence
+families and final-text non-psychologization as `not_measured`; they never
+receive a fabricated semantic rate. The intensity family is mixed: affective
+intensity is measured, while absence of downstream epistemic effect remains
+contractual. A configuration without observed provider results is always
+`inconclusive` with `provider_results_not_observed`.
+
+The historical mono-turn schema keeps accepting duplicated tonalities as the
+runtime input validator does before normalization. The dialogic scorer, which
+expects the normalized caller result, rejects any duplicate that survives that
+boundary. No campaign runner or provider transport is attached to this corpus.
+A live primary/fallback evaluation belongs only to 4S.1 after Tof has reviewed
+and explicitly accepted the versioned dialogues.
 
 ## Validation agent benchmark
 

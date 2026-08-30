@@ -176,9 +176,7 @@ def validate_signal_payload(data: dict[str, Any]) -> list[str]:
         tone = item.get("tone")
         if tone not in ALLOWED_TONES:
             errors.append(f"tone_{index}:invalid_tone")
-        elif tone in seen:
-            errors.append(f"tone_{index}:duplicate_tone")
-        else:
+        elif tone not in seen:
             seen.add(str(tone))
             tone_names.append(str(tone))
         strength = item.get("strength")

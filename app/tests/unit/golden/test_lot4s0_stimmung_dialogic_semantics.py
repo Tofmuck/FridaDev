@@ -18,6 +18,30 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from benchmark.suites.stimmung import dialogic_semantics
+from benchmark.suites.stimmung import scorer as historical_scorer
+from core import stimmung_agent
+
+
+DIRECTLY_MEASURABLE_FAMILIES = {
+    "emergence",
+    "stabilite",
+    "bascule",
+    "retour_neutre",
+    "alternance",
+    "ironie",
+    "citation",
+    "affect_rapporte",
+    "correction",
+}
+MIXED_FAMILIES = {"intensite_sans_effet_epistemique"}
+CONTRACT_ONLY_FAMILIES = {
+    "question",
+    "demande",
+    "risque",
+    "action_materielle",
+    "opportunite_presence",
+    "contre_presence",
+}
 
 
 def _observations_for(case: dict, *, source: str = "primary") -> list[dict]:
@@ -73,12 +97,24 @@ class StimmungDialogicCorpusTests(unittest.TestCase):
     def test_corpus_is_closed_versioned_and_multi_turn(self) -> None:
         summary = dialogic_semantics.validate_corpus(self.corpus)
 
-        self.assertEqual(self.corpus["schema_version"], "stimmung_dialogic_corpus_v1")
-        self.assertEqual(summary["dialogue_count"], 14)
+        self.assertEqual(self.corpus["schema_version"], "stimmung_dialogic_corpus_v2")
+        self.assertEqual(summary["dialogue_count"], 16)
         self.assertEqual(summary["turn_definition"], "complete_user_assistant_pair")
         self.assertEqual(len(summary["dialogue_ids"]), len(set(summary["dialogue_ids"])))
         self.assertEqual(set(summary["covered_families"]), set(dialogic_semantics.REQUIRED_FAMILIES))
-        self.assertEqual(set(summary["directly_scorable_families"]), set(dialogic_semantics.REQUIRED_FAMILIES))
+        self.assertEqual(
+            set(summary["directly_measurable_families"]),
+            DIRECTLY_MEASURABLE_FAMILIES,
+        )
+        self.assertEqual(set(summary["mixed_families"]), MIXED_FAMILIES)
+        self.assertEqual(
+            set(summary["contract_only_families"]),
+            CONTRACT_ONLY_FAMILIES,
+        )
+        self.assertEqual(
+            DIRECTLY_MEASURABLE_FAMILIES | MIXED_FAMILIES | CONTRACT_ONLY_FAMILIES,
+            set(dialogic_semantics.REQUIRED_FAMILIES),
+        )
         self.assertEqual(
             set(summary["contract_only_invariants"]),
             set(dialogic_semantics.CONTRACT_ONLY_INVARIANTS),
@@ -94,9 +130,15 @@ class StimmungDialogicCorpusTests(unittest.TestCase):
     def test_thresholds_are_frozen_for_primary_and_fallback(self) -> None:
         thresholds = self.corpus["thresholds"]
 
-        self.assertEqual(thresholds["schema_version"], "stimmung_dialogic_thresholds_v1")
-        self.assertEqual(set(thresholds["primary"]["family_pass_rates"]), set(dialogic_semantics.REQUIRED_FAMILIES))
-        self.assertEqual(set(thresholds["fallback"]["family_pass_rates"]), set(dialogic_semantics.REQUIRED_FAMILIES))
+        self.assertEqual(thresholds["schema_version"], "stimmung_dialogic_thresholds_v2")
+        self.assertEqual(
+            set(thresholds["primary"]["family_pass_rates"]),
+            DIRECTLY_MEASURABLE_FAMILIES | MIXED_FAMILIES,
+        )
+        self.assertEqual(
+            set(thresholds["fallback"]["family_pass_rates"]),
+            DIRECTLY_MEASURABLE_FAMILIES | MIXED_FAMILIES,
+        )
         self.assertEqual(
             set(thresholds["critical_zero_tolerance"]),
             set(dialogic_semantics.CRITICAL_INVARIANTS),
@@ -114,6 +156,103 @@ class StimmungDialogicCorpusTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "coverage_missing:ironie:positive"):
             dialogic_semantics.validate_corpus(mutation)
+
+    def test_downstream_contracts_have_no_fabricated_semantic_rates(self) -> None:
+        scores = [
+            dialogic_semantics.score_dialogue(case, _observations_for(case))
+            for case in self.corpus["dialogues"]
+        ]
+        summary = dialogic_semantics.summarize_configuration(
+            source="primary",
+            corpus=self.corpus,
+            dialogue_scores=scores,
+            provider_results_observed=True,
+        )
+
+        self.assertEqual(set(summary["family_pass_rates"]), DIRECTLY_MEASURABLE_FAMILIES | MIXED_FAMILIES)
+        self.assertEqual(
+            summary["contract_only_families"],
+            {family: "not_measured" for family in sorted(CONTRACT_ONLY_FAMILIES)},
+        )
+        self.assertEqual(
+            summary["mixed_families"],
+            {
+                family: "caller_component_measured_downstream_not_measured"
+                for family in sorted(MIXED_FAMILIES)
+            },
+        )
+        downstream_case = next(case for case in self.corpus["dialogues"] if "question" in case["families"])
+        downstream_score = dialogic_semantics.score_dialogue(
+            downstream_case,
+            _observations_for(downstream_case),
+        )
+        self.assertNotIn("question", downstream_score["directly_measurable_families"])
+        self.assertEqual(downstream_score["contract_only_status"], "not_measured")
+
+    def test_hardened_dialogues_have_required_depth_and_hint_policy(self) -> None:
+        cases = {case["id"]: case for case in self.corpus["dialogues"]}
+        hardened = {
+            "L4S0-ST-015": (5, "ironie"),
+            "L4S0-ST-016": (6, "affect_rapporte"),
+        }
+
+        for dialogue_id, (turn_count, family) in hardened.items():
+            with self.subTest(dialogue_id=dialogue_id):
+                case = cases.get(dialogue_id)
+                self.assertIsNotNone(case)
+                self.assertEqual(len(case["turns"]), turn_count)
+                self.assertEqual(case.get("difficulty"), "hard")
+                self.assertEqual(case.get("hint_policy"), "implicit_context_required")
+                roles = {
+                    item["role"]
+                    for turn in case["turns"]
+                    for item in turn.get("expectation", {}).get("coverage_evidence", [])
+                    if item["family"] == family
+                }
+                self.assertEqual(roles, {"positive", "counter"})
+
+        removed = copy.deepcopy(self.corpus)
+        removed["dialogues"] = [case for case in removed["dialogues"] if case["id"] != "L4S0-ST-015"]
+        with self.assertRaisesRegex(ValueError, "hardened_dialogue_missing"):
+            dialogic_semantics.validate_corpus(removed)
+
+        shortened = copy.deepcopy(self.corpus)
+        shortened_case = next(case for case in shortened["dialogues"] if case["id"] == "L4S0-ST-016")
+        shortened_case["turns"].pop(4)
+        shortened_case["turns"][-1]["turn_id"] = 5
+        with self.assertRaisesRegex(ValueError, "hardened_dialogue_contract_changed"):
+            dialogic_semantics.validate_corpus(shortened)
+
+        metadata = copy.deepcopy(self.corpus)
+        metadata_case = next(case for case in metadata["dialogues"] if case["id"] == "L4S0-ST-015")
+        metadata_case["hint_policy"] = "context_labels_allowed"
+        with self.assertRaises(ValueError):
+            dialogic_semantics.validate_corpus(metadata)
+
+    def test_duplicate_tones_match_runtime_normalization_boundary(self) -> None:
+        signal = {
+            "schema_version": "v1",
+            "present": True,
+            "tones": [
+                {"tone": "neutralite", "strength": 4},
+                {"tone": "neutralite", "strength": 4},
+            ],
+            "dominant_tone": "neutralite",
+            "confidence": 0.8,
+        }
+        self.assertEqual(historical_scorer.validate_signal_payload(signal), [])
+
+        case = self.corpus["dialogues"][0]
+        observations = _observations_for(case)
+        normalized = stimmung_agent._validate_affective_turn_signal(signal)
+        self.assertEqual(normalized["tones"], [{"tone": "neutralite", "strength": 4}])
+        observations[0]["signal"] = normalized
+        self.assertEqual(dialogic_semantics.score_dialogue(case, observations)["classification"], "pass")
+
+        observations[0]["signal"]["tones"].append(copy.deepcopy(observations[0]["signal"]["tones"][0]))
+        result = dialogic_semantics.score_dialogue(case, observations)
+        self.assertEqual(result["classification"], "inconclusive")
+        self.assertIn("signal_schema_invalid", result["reason_codes"])
 
     def test_corpus_validator_rejects_controlled_structural_mutations(self) -> None:
         mutations = {
@@ -278,10 +417,20 @@ class StimmungDialogicCorpusTests(unittest.TestCase):
         for case in self.corpus["dialogues"]:
             scores.append(dialogic_semantics.score_dialogue(case, _observations_for(case)))
 
+        not_observed = dialogic_semantics.summarize_configuration(
+            source="primary",
+            corpus=self.corpus,
+            dialogue_scores=scores,
+        )
+        self.assertEqual(not_observed["decision"], "inconclusive")
+        self.assertEqual(not_observed["reason_codes"], ["provider_results_not_observed"])
+        self.assertEqual(not_observed["family_pass_rates"], {})
+
         primary = dialogic_semantics.summarize_configuration(
             source="primary",
             corpus=self.corpus,
             dialogue_scores=scores,
+            provider_results_observed=True,
         )
         fallback_scores = [
             dialogic_semantics.score_dialogue(case, _observations_for(case, source="fallback"))
@@ -291,11 +440,30 @@ class StimmungDialogicCorpusTests(unittest.TestCase):
             source="fallback",
             corpus=self.corpus,
             dialogue_scores=fallback_scores,
+            provider_results_observed=True,
         )
         self.assertEqual(primary["decision"], "pass")
         self.assertEqual(fallback["decision"], "pass")
         self.assertEqual(primary["reason_codes"], ["all_thresholds_met"])
-        self.assertEqual(primary["threshold_schema_version"], "stimmung_dialogic_thresholds_v1")
+        self.assertEqual(primary["threshold_schema_version"], "stimmung_dialogic_thresholds_v2")
+
+        contract_case_index = next(
+            index
+            for index, score in enumerate(scores)
+            if set(score["families"]).issubset(CONTRACT_ONLY_FAMILIES)
+        )
+        contract_case_failure = copy.deepcopy(scores)
+        contract_case_failure[contract_case_index]["classification"] = "fail"
+        contract_case_failure[contract_case_index]["error_class"] = "semantic"
+        contract_case_failure[contract_case_index]["reason_codes"] = ["signal_false_positive"]
+        contract_result = dialogic_semantics.summarize_configuration(
+            source="primary",
+            corpus=self.corpus,
+            dialogue_scores=contract_case_failure,
+            provider_results_observed=True,
+        )
+        self.assertEqual(contract_result["decision"], "fail")
+        self.assertEqual(contract_result["reason_codes"], ["caller_semantic_failure"])
 
         degraded = copy.deepcopy(scores)
         degraded[0]["classification"] = "inconclusive"
@@ -305,6 +473,7 @@ class StimmungDialogicCorpusTests(unittest.TestCase):
             source="primary",
             corpus=self.corpus,
             dialogue_scores=degraded,
+            provider_results_observed=True,
         )
         self.assertEqual(result["decision"], "inconclusive")
         self.assertEqual(result["reason_codes"], ["dialogue_result_inconclusive"])
@@ -313,6 +482,7 @@ class StimmungDialogicCorpusTests(unittest.TestCase):
             source="fallback",
             corpus=self.corpus,
             dialogue_scores=scores,
+            provider_results_observed=True,
         )
         self.assertEqual(wrong_source["decision"], "inconclusive")
         self.assertEqual(wrong_source["reason_codes"], ["source_mismatch"])
@@ -320,6 +490,7 @@ class StimmungDialogicCorpusTests(unittest.TestCase):
             source="primary",
             corpus=self.corpus,
             dialogue_scores=scores[:-1],
+            provider_results_observed=True,
         )
         self.assertEqual(missing_dialogue["decision"], "inconclusive")
         self.assertEqual(missing_dialogue["reason_codes"], ["dialogue_set_incomplete"])

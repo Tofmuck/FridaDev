@@ -8,9 +8,9 @@ from typing import Any, Mapping, Sequence
 from benchmark.suites.stimmung.scorer import ALLOWED_TONES, validate_signal_payload
 
 
-CORPUS_SCHEMA_VERSION = "stimmung_dialogic_corpus_v1"
-THRESHOLD_SCHEMA_VERSION = "stimmung_dialogic_thresholds_v1"
-DEFAULT_FIXTURE = "stimmung_dialogic_semantic_v1.json"
+CORPUS_SCHEMA_VERSION = "stimmung_dialogic_corpus_v2"
+THRESHOLD_SCHEMA_VERSION = "stimmung_dialogic_thresholds_v2"
+DEFAULT_FIXTURE = "stimmung_dialogic_semantic_v2.json"
 TURN_DEFINITION = "complete_user_assistant_pair"
 AGGREGATE_MAX_SIGNALS = 4
 
@@ -33,7 +33,31 @@ REQUIRED_FAMILIES = (
     "contre_presence",
 )
 REQUIRED_COUNTER_FAMILIES = frozenset(REQUIRED_FAMILIES)
-DIRECTLY_SCORABLE_FAMILIES = frozenset(REQUIRED_FAMILIES)
+DIRECTLY_MEASURABLE_FAMILIES = frozenset(
+    {
+        "emergence",
+        "stabilite",
+        "bascule",
+        "retour_neutre",
+        "alternance",
+        "ironie",
+        "citation",
+        "affect_rapporte",
+        "correction",
+    }
+)
+MIXED_FAMILIES = frozenset({"intensite_sans_effet_epistemique"})
+CONTRACT_ONLY_FAMILIES = frozenset(
+    {
+        "question",
+        "demande",
+        "risque",
+        "action_materielle",
+        "opportunite_presence",
+        "contre_presence",
+    }
+)
+MEASURED_FAMILIES = DIRECTLY_MEASURABLE_FAMILIES | MIXED_FAMILIES
 CRITICAL_INVARIANTS = (
     "no_psychologization",
     "reported_affect_not_internalized",
@@ -84,6 +108,9 @@ REQUIRED_MUTATIONS = frozenset(
         "aggregate_unlisted_tone_overcoded",
         "aggregate_turn_count_underreported",
         "signal_tone_duplicated",
+        "hardened_dialogue_removed",
+        "hardened_depth_reduced",
+        "hint_policy_weakened",
     }
 )
 
@@ -106,6 +133,20 @@ _DOWNSTREAM_FIELDS = ("question", "demande", "risque", "action_materielle")
 _EXECUTION_STATUSES = frozenset(
     {"ok", "transport_error", "timeout", "refusal", "json_error", "schema_error", "fail_open"}
 )
+_DIFFICULTIES = frozenset({"standard", "hard"})
+_HINT_POLICIES = frozenset({"context_labels_allowed", "implicit_context_required"})
+_HARDENED_DIALOGUE_CONTRACT = {
+    "L4S0-ST-015": {
+        "turn_count": 5,
+        "family": "ironie",
+        "evaluated_turn_ids": [2, 5],
+    },
+    "L4S0-ST-016": {
+        "turn_count": 6,
+        "family": "affect_rapporte",
+        "evaluated_turn_ids": [2, 6],
+    },
+}
 
 _TOP_KEYS = {
     "schema_version",
@@ -116,7 +157,7 @@ _TOP_KEYS = {
     "dialogues",
     "mutation_matrix",
 }
-_DIALOGUE_KEYS = {"id", "version", "families", "human_rationale", "turns"}
+_DIALOGUE_KEYS = {"id", "version", "families", "difficulty", "hint_policy", "human_rationale", "turns"}
 _TURN_KEYS = {"turn_id", "user", "assistant"}
 _EXPECTATION_KEYS = {
     "allowed_signal_states",
@@ -191,6 +232,8 @@ def validate_corpus(corpus: Mapping[str, Any]) -> dict[str, Any]:
         if family in REQUIRED_COUNTER_FAMILIES and "counter" not in coverage[family]:
             raise ValueError(f"coverage_missing:{family}:counter")
 
+    _validate_hardened_dialogues(dialogues)
+
     mutation_ids = _validate_mutation_matrix(corpus.get("mutation_matrix"))
     return {
         "dialogue_count": len(dialogues),
@@ -198,7 +241,9 @@ def validate_corpus(corpus: Mapping[str, Any]) -> dict[str, Any]:
         "turn_definition": TURN_DEFINITION,
         "covered_families": sorted(family for family, roles in coverage.items() if "positive" in roles),
         "mutation_ids": sorted(mutation_ids),
-        "directly_scorable_families": sorted(DIRECTLY_SCORABLE_FAMILIES),
+        "directly_measurable_families": sorted(DIRECTLY_MEASURABLE_FAMILIES),
+        "mixed_families": sorted(MIXED_FAMILIES),
+        "contract_only_families": sorted(CONTRACT_ONLY_FAMILIES),
         "contract_only_invariants": sorted(CONTRACT_ONLY_INVARIANTS),
     }
 
@@ -216,7 +261,10 @@ def score_dialogue(case: Mapping[str, Any], observations: Sequence[Mapping[str, 
         "reason_codes": [],
         "evaluated_turns": len(observations),
         "source": "unknown",
-        "directly_scorable_families": sorted(set(families) & DIRECTLY_SCORABLE_FAMILIES),
+        "directly_measurable_families": sorted(set(families) & DIRECTLY_MEASURABLE_FAMILIES),
+        "mixed_families": sorted(set(families) & MIXED_FAMILIES),
+        "contract_only_families": sorted(set(families) & CONTRACT_ONLY_FAMILIES),
+        "contract_only_status": "not_measured",
         "contract_only_invariants": sorted(_contract_only_invariants(case)),
     }
     if observed_ids != expected_ids:
@@ -244,7 +292,7 @@ def score_dialogue(case: Mapping[str, Any], observations: Sequence[Mapping[str, 
         signal = observation.get("signal")
         signal_state = "absent"
         if signal is not None:
-            if not isinstance(signal, dict) or validate_signal_payload(signal):
+            if not isinstance(signal, dict) or _validate_normalized_signal_payload(signal):
                 return _inconclusive(result, "schema", "signal_schema_invalid")
             signal_state = "present" if signal["present"] else "empty"
         allowed_states = set(expectation["allowed_signal_states"])
@@ -321,10 +369,15 @@ def summarize_configuration(
 ) -> dict[str, Any]:
     if source not in {"primary", "fallback"}:
         raise ValueError("invalid_source")
+    if not isinstance(provider_results_observed, bool):
+        raise ValueError("invalid_provider_results_provenance")
     validate_corpus(corpus)
     expected_dialogue_ids = [case["id"] for case in corpus["dialogues"]]
     observed_dialogue_ids = [score.get("dialogue_id") for score in dialogue_scores]
-    if observed_dialogue_ids != expected_dialogue_ids:
+    if not provider_results_observed:
+        decision = "inconclusive"
+        decision_reason = "provider_results_not_observed"
+    elif observed_dialogue_ids != expected_dialogue_ids:
         decision = "inconclusive"
         decision_reason = "dialogue_set_incomplete"
     elif any(score.get("source") != source for score in dialogue_scores):
@@ -333,34 +386,41 @@ def summarize_configuration(
     elif any(score.get("classification") == "inconclusive" for score in dialogue_scores):
         decision = "inconclusive"
         decision_reason = "dialogue_result_inconclusive"
+    elif any(score.get("classification") == "fail" for score in dialogue_scores):
+        decision = "fail"
+        decision_reason = "caller_semantic_failure"
     else:
         thresholds = corpus["thresholds"][source]["family_pass_rates"]
         rates: dict[str, float] = {}
-        for family in REQUIRED_FAMILIES:
+        for family in MEASURED_FAMILIES:
             family_scores = [score for score in dialogue_scores if family in (score.get("families") or [])]
             rates[family] = (
                 sum(1 for score in family_scores if score.get("classification") == "pass") / len(family_scores)
                 if family_scores
                 else 0.0
             )
-        if all(rates[family] >= thresholds[family] for family in REQUIRED_FAMILIES):
+        if all(rates[family] >= thresholds[family] for family in MEASURED_FAMILIES):
             decision = "pass"
             decision_reason = "all_thresholds_met"
         else:
             decision = "fail"
             decision_reason = "family_threshold_missed"
-    rates = {
-        family: round(
-            sum(
-                1
-                for score in dialogue_scores
-                if family in (score.get("families") or []) and score.get("classification") == "pass"
+    rates = (
+        {
+            family: round(
+                sum(
+                    1
+                    for score in dialogue_scores
+                    if family in (score.get("families") or []) and score.get("classification") == "pass"
+                )
+                / max(sum(1 for score in dialogue_scores if family in (score.get("families") or [])), 1),
+                4,
             )
-            / max(sum(1 for score in dialogue_scores if family in (score.get("families") or [])), 1),
-            4,
-        )
-        for family in REQUIRED_FAMILIES
-    }
+            for family in MEASURED_FAMILIES
+        }
+        if provider_results_observed
+        else {}
+    )
     return {
         "source": source,
         "decision": decision,
@@ -368,6 +428,16 @@ def summarize_configuration(
         "threshold_schema_version": THRESHOLD_SCHEMA_VERSION,
         "dialogue_count": len(dialogue_scores),
         "family_pass_rates": rates,
+        "mixed_families": {
+            family: "caller_component_measured_downstream_not_measured"
+            for family in sorted(MIXED_FAMILIES)
+        },
+        "contract_only_families": {
+            family: "not_measured" for family in sorted(CONTRACT_ONLY_FAMILIES)
+        },
+        "contract_only_invariants": {
+            invariant: "not_measured" for invariant in sorted(CONTRACT_ONLY_INVARIANTS)
+        },
         "semantic_failures": sum(1 for score in dialogue_scores if score.get("classification") == "fail"),
         "inconclusive_results": sum(1 for score in dialogue_scores if score.get("classification") == "inconclusive"),
         "provider_results_observed": bool(provider_results_observed),
@@ -399,7 +469,7 @@ def _validate_thresholds(value: Any) -> None:
             raise ValueError(f"invalid_{source}_thresholds")
         _exact_keys(settings, {"family_pass_rates"}, f"{source}_thresholds")
         rates = settings.get("family_pass_rates")
-        if not isinstance(rates, Mapping) or set(rates) != set(REQUIRED_FAMILIES):
+        if not isinstance(rates, Mapping) or set(rates) != set(MEASURED_FAMILIES):
             raise ValueError(f"invalid_{source}_family_thresholds")
         if any(not _valid_rate(rate) for rate in rates.values()):
             raise ValueError(f"invalid_{source}_family_rate")
@@ -407,6 +477,7 @@ def _validate_thresholds(value: Any) -> None:
             raise ValueError("threshold_contract_changed")
     if value.get("decision_rules") != {
         "all_thresholds_met": "pass",
+        "caller_semantic_failure": "fail",
         "semantic_threshold_missed": "fail",
         "transport_or_schema_missing": "inconclusive",
     }:
@@ -418,13 +489,17 @@ def _validate_dialogue(dialogue: Any, coverage: dict[str, set[str]]) -> None:
         raise ValueError("dialogue_not_object")
     _exact_keys(dialogue, _DIALOGUE_KEYS, "dialogue")
     dialogue_id = _bounded_string(dialogue.get("id"), 8, 32, "invalid_dialogue_id")
-    if not dialogue_id.startswith("L4S0-ST-") or dialogue.get("version") != "v1":
+    if not dialogue_id.startswith("L4S0-ST-") or dialogue.get("version") != "v2":
         raise ValueError("invalid_dialogue_identity")
     families = dialogue.get("families")
     if not isinstance(families, list) or not families or len(families) != len(set(families)):
         raise ValueError("invalid_dialogue_families")
     if not set(families).issubset(REQUIRED_FAMILIES):
         raise ValueError("unknown_dialogue_family")
+    if dialogue.get("difficulty") not in _DIFFICULTIES:
+        raise ValueError("invalid_dialogue_difficulty")
+    if dialogue.get("hint_policy") not in _HINT_POLICIES:
+        raise ValueError("invalid_hint_policy")
     _bounded_string(dialogue.get("human_rationale"), 12, 320, "invalid_dialogue_rationale")
     turns = dialogue.get("turns")
     if not isinstance(turns, list) or not 4 <= len(turns) <= 6:
@@ -444,6 +519,23 @@ def _validate_dialogue(dialogue: Any, coverage: dict[str, set[str]]) -> None:
             _validate_expectation(turn["expectation"], set(families), coverage)
     if evaluated < 2:
         raise ValueError("insufficient_evaluated_turns")
+
+
+def _validate_hardened_dialogues(dialogues: Sequence[Mapping[str, Any]]) -> None:
+    by_id = {dialogue.get("id"): dialogue for dialogue in dialogues}
+    for dialogue_id, contract in _HARDENED_DIALOGUE_CONTRACT.items():
+        dialogue = by_id.get(dialogue_id)
+        if dialogue is None:
+            raise ValueError(f"hardened_dialogue_missing:{dialogue_id}")
+        evaluated_turn_ids = [turn["turn_id"] for turn in dialogue["turns"] if "expectation" in turn]
+        if (
+            len(dialogue["turns"]) != contract["turn_count"]
+            or dialogue.get("difficulty") != "hard"
+            or dialogue.get("hint_policy") != "implicit_context_required"
+            or set(dialogue.get("families") or []) != {contract["family"]}
+            or evaluated_turn_ids != contract["evaluated_turn_ids"]
+        ):
+            raise ValueError(f"hardened_dialogue_contract_changed:{dialogue_id}")
 
 
 def _validate_expectation(value: Any, dialogue_families: set[str], coverage: dict[str, set[str]]) -> None:
@@ -610,6 +702,20 @@ def _validate_mutation_matrix(value: Any) -> set[str]:
     if families != set(REQUIRED_FAMILIES):
         raise ValueError("mutation_family_coverage_incomplete")
     return ids
+
+
+def _validate_normalized_signal_payload(value: Mapping[str, Any]) -> list[str]:
+    errors = validate_signal_payload(dict(value))
+    tones = value.get("tones")
+    if isinstance(tones, list):
+        tone_names = [
+            item.get("tone")
+            for item in tones
+            if isinstance(item, Mapping) and item.get("tone") in ALLOWED_TONES
+        ]
+        if len(tone_names) != len(set(tone_names)):
+            errors.append("duplicate_tone_in_normalized_signal")
+    return errors
 
 
 def _aggregate_schema_error(value: Any) -> str | None:
