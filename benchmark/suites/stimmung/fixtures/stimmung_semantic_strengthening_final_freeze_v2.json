@@ -1,0 +1,13 @@
+{
+  "schema_version": "lot4c2_stimmung_final_strengthening_freeze_v2",
+  "source_corpus_sha256": "5059d5ea4b57409bc08ee95dae39f74b2411268dcf5fe6aee516dd9ffb310ee5",
+  "corpus_sha256": "cd5a16f64dcfaef04900166b17cef05343672a1e5484d06a007c0b328aac6a1c",
+  "source_candidate_prompt_sha256": "e1ce1bd0490a3f6ef0757a63768d0c32a1c277db4636c2b33ba0cafd793ed0c7",
+  "candidate_prompt_sha256": "567f0615f14fe9f13a50e6e57ef46dc6fdba2cd6e6156407d6e2f489c2076a7f",
+  "runtime_prompt_baseline_sha256": "6374bf40468ec2c8879eaaba8c81472d117bb241f7490d033d78be14bf837663",
+  "local_scorer_sha256": "4cf0da09cc5bd8b9a8ad4c0d75acb56a6af56e839cf05b2588549adaa89e8d21",
+  "normalizer_sha256": "314bbd75f20ff02baa1acd38e5d7d5384abd779eb2c1435bb740dc33bfc7771a",
+  "aggregator_sha256": "331e9b447a6c28e5cd163fbe4184e6382e6bea83fc702dcae348f6a7aae48e81",
+  "campaign_harness_sha256": "93d848b93c1846c1ab12971208cde6be6c71cf431e168c24034d81d158d6e793",
+  "historical_candidate_artifact_sha256": "637cbc1fac2b03378f451d6fc64f6b0c30b7d9cd183b59b5833e3ee62612c5c5"
+}

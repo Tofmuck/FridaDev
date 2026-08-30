@@ -3385,6 +3385,36 @@ Passe corrective de frontiere de preuve executee le 2026-08-30, sans provider:
   restart ou deploiement. 4C.2 reste ouvert pour le correctif local residuel;
   4C.3 reste non commence.
 
+Ultime passe bornee 4C.2 gelee le 2026-08-30, avant resultat provider:
+
+- decision humaine appliquee sans reecriture historique: le corpus v3 est une
+  copie contractuelle de v2 dont la seule requalification semantique porte la
+  derniere force de `L4S0-ST-003`, elargie de `[2,6]` a `[2,7]`; `7` est
+  accepte et `8` reste rejete. Les identifiants de schema/corpus/dialogues sont
+  versionnes v3. Le corpus v2 et les artefacts historiques conservent leurs
+  empreintes;
+- candidate prompt v2: copie byte-for-byte de la candidate v1 plus une unique
+  regle generale de parcimonie interdisant de deduire l'enthousiasme de la
+  seule volonte de poursuivre, comprendre, examiner ou agir. Aucun exemple du
+  corpus, regex, taxonomie ou second axe de politique n'est ajoute;
+- protocole gele: corpus v3 SHA-256
+  `cd5a16f64dcfaef04900166b17cef05343672a1e5484d06a007c0b328aac6a1c`,
+  candidate v2 SHA-256
+  `567f0615f14fe9f13a50e6e57ef46dc6fdba2cd6e6156407d6e2f489c2076a7f`;
+  Gemini 3.1 Flash Lite primaire seul, parametres runtime courants, zero
+  fallback/retry/modele voisin, repetition 1 de 69 appels puis repetition 2
+  seulement apres `16/16`, plafond absolu `138`, cout prudent sous `0.30 USD`;
+- porte gelee: seul `caller_local_semantics` gouverne la decision; les scores
+  agregateur et pipeline restent diagnostiques. `32/32`, zero erreur,
+  provenance complete et zero regression sont necessaires a
+  `eligible_primary`; un echec de la premiere repetition arrete la campagne a
+  69 appels;
+- preuves avant provider: cycle rouge sur le protocole final absent, puis
+  `8/8` nouvelles preuves et `64/64` goldens 4S.0/4S.1/4C.2. Les mutations
+  rejettent notamment 8, une autre modification v2->v3, une seconde politique
+  de prompt, un fallback, un 139e appel, une porte agregateur et une fausse
+  eligibilite. 4C.2 reste ouvert jusqu'au resultat et 4C.3 non commence.
+
 Message de commit recommande si active: `fix: strengthen Stimmung semantic extraction`.
 
 ### Micro-lot 4C.3 - Separation affect et certitude epistemique

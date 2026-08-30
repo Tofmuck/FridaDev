@@ -1,0 +1,700 @@
+{
+  "schema_version": "stimmung_dialogic_corpus_v3",
+  "corpus_id": "lot4s0-stimmung-dialogic-semantics-fr-v3",
+  "language": "fr",
+  "turn_definition": "complete_user_assistant_pair",
+  "thresholds": {
+    "schema_version": "stimmung_dialogic_thresholds_v2",
+    "provider_results_observed": false,
+    "critical_zero_tolerance": [
+      "no_psychologization",
+      "reported_affect_not_internalized",
+      "quoted_affect_not_internalized",
+      "no_affect_epistemic_confusion",
+      "question_not_masked",
+      "request_not_masked",
+      "risk_not_masked",
+      "material_action_not_masked",
+      "presence_relation_preserved"
+    ],
+    "primary": {
+      "family_pass_rates": {
+        "emergence": 1.0,
+        "stabilite": 1.0,
+        "bascule": 1.0,
+        "retour_neutre": 1.0,
+        "alternance": 1.0,
+        "intensite_sans_effet_epistemique": 1.0,
+        "ironie": 1.0,
+        "citation": 1.0,
+        "affect_rapporte": 1.0,
+        "correction": 1.0
+      }
+    },
+    "fallback": {
+      "family_pass_rates": {
+        "emergence": 1.0,
+        "stabilite": 1.0,
+        "bascule": 1.0,
+        "retour_neutre": 1.0,
+        "alternance": 1.0,
+        "intensite_sans_effet_epistemique": 1.0,
+        "ironie": 1.0,
+        "citation": 1.0,
+        "affect_rapporte": 1.0,
+        "correction": 1.0
+      }
+    },
+    "decision_rules": {
+      "all_thresholds_met": "pass",
+      "caller_semantic_failure": "fail",
+      "semantic_threshold_missed": "fail",
+      "transport_or_schema_missing": "inconclusive"
+    }
+  },
+  "dialogues": [
+    {
+      "id": "L4S0-ST-001",
+      "version": "v3",
+      "families": ["emergence", "stabilite", "question"],
+      "difficulty": "standard",
+      "hint_policy": "context_labels_allowed",
+      "human_rationale": "Une curiosité naît, se maintient, puis se stabilise sans que la question soit masquée.",
+      "turns": [
+        {"turn_id": 1, "user": "Je découvre ce mécanisme, sans avis arrêté.", "assistant": "Je peux en présenter les éléments utiles."},
+        {
+          "turn_id": 2,
+          "user": "Comment relie-t-on exactement les deux étapes ?",
+          "assistant": "Examinons leur articulation dans l’ordre.",
+          "expectation": {
+            "allowed_signal_states": ["present"],
+            "allowed_dominant_tones": ["curiosite", "neutralite"],
+            "allowed_tones": ["curiosite", "neutralite"],
+            "forbidden_tones": ["colere", "decouragement"],
+            "strength_range": [3, 7],
+            "semantic_context": "direct",
+            "trajectory_phase": "emerging",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["curiosite", "neutralite"], "allowed_active_tones": ["curiosite", "neutralite"], "allowed_stability": ["emerging"], "allowed_shift_states": ["steady"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"],
+            "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": true, "demande": false, "risque": false, "action_materielle": false, "presence": "forbidden", "must_not_mask": ["question"]},
+            "coverage_evidence": [{"family": "emergence", "role": "positive"}, {"family": "stabilite", "role": "counter"}, {"family": "question", "role": "positive"}],
+            "human_rationale": "La question porte une curiosité modérée encore émergente."
+          }
+        },
+        {"turn_id": 3, "user": "La première étape me paraît maintenant claire.", "assistant": "Nous pouvons donc nous concentrer sur la seconde."},
+        {
+          "turn_id": 4,
+          "user": "Oui, le lien se dessine et je veux poursuivre tranquillement.",
+          "assistant": "Poursuivons sur ce lien sans changer de sujet.",
+          "expectation": {
+            "allowed_signal_states": ["present"],
+            "allowed_dominant_tones": ["curiosite", "apaisement"],
+            "allowed_tones": ["curiosite", "apaisement"],
+            "forbidden_tones": ["colere", "anxiete"],
+            "strength_range": [3, 7],
+            "semantic_context": "direct",
+            "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["curiosite", "apaisement"], "allowed_active_tones": ["curiosite", "apaisement", "neutralite"], "allowed_stability": ["stable"], "allowed_shift_states": ["steady"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"],
+            "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "emergence", "role": "counter"}, {"family": "stabilite", "role": "positive"}, {"family": "question", "role": "counter"}],
+            "human_rationale": "Le mouvement est installé et ne porte plus une nouvelle question."
+          }
+        }
+      ]
+    },
+    {
+      "id": "L4S0-ST-002",
+      "version": "v3",
+      "families": ["bascule", "correction"],
+      "difficulty": "standard",
+      "hint_policy": "context_labels_allowed",
+      "human_rationale": "Une appréciation stable est corrigée explicitement puis bascule sans être traitée comme une simple alternance.",
+      "turns": [
+        {"turn_id": 1, "user": "Cette organisation me convient pour l’instant.", "assistant": "Je la garde comme base de travail."},
+        {
+          "turn_id": 2,
+          "user": "Oui, elle reste simple et plutôt rassurante.",
+          "assistant": "Nous conservons donc cette organisation.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["apaisement"], "allowed_tones": ["apaisement", "neutralite"], "forbidden_tones": ["colere", "frustration"], "strength_range": [4, 7], "semantic_context": "direct", "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["apaisement"], "allowed_active_tones": ["apaisement", "neutralite"], "allowed_stability": ["stable"], "allowed_shift_states": ["steady"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "bascule", "role": "counter"}, {"family": "correction", "role": "counter"}],
+            "human_rationale": "La tonalité reste cohérente avec les tours précédents."
+          }
+        },
+        {"turn_id": 3, "user": "Le dernier détail change mon appréciation, je dois la revoir.", "assistant": "Je garde cette réévaluation ouverte jusqu’à sa formulation précise."},
+        {
+          "turn_id": 4,
+          "user": "Je corrige mon appréciation : cette organisation me frustre vraiment.",
+          "assistant": "Je tiens compte de cette correction explicite.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["frustration", "colere"], "allowed_tones": ["frustration", "colere"], "forbidden_tones": ["apaisement", "enthousiasme"], "strength_range": [6, 9], "semantic_context": "correction", "trajectory_phase": "shifted",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["frustration", "colere"], "allowed_active_tones": ["frustration", "colere", "apaisement"], "allowed_stability": ["volatile", "emerging"], "allowed_shift_states": ["candidate_shift", "shifted"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "bascule", "role": "positive"}, {"family": "correction", "role": "positive"}],
+            "human_rationale": "La correction explicite autorise une bascule affective nette."
+          }
+        }
+      ]
+    },
+    {
+      "id": "L4S0-ST-003",
+      "version": "v3",
+      "families": ["retour_neutre"],
+      "difficulty": "standard",
+      "hint_policy": "context_labels_allowed",
+      "human_rationale": "Une tension décroît progressivement vers la neutralité au lieu de disparaître sans transition.",
+      "turns": [
+        {"turn_id": 1, "user": "Ce retard m’inquiète beaucoup.", "assistant": "Regardons ce qui peut être établi sans amplifier l’inquiétude."},
+        {
+          "turn_id": 2,
+          "user": "Je reste anxieux tant que rien n’est vérifié.",
+          "assistant": "Nous allons vérifier les éléments disponibles.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["anxiete"], "allowed_tones": ["anxiete", "confusion"], "forbidden_tones": ["enthousiasme"], "strength_range": [6, 9], "semantic_context": "direct", "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["anxiete"], "allowed_active_tones": ["anxiete", "confusion"], "allowed_stability": ["stable"], "allowed_shift_states": ["steady"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "retour_neutre", "role": "counter"}],
+            "human_rationale": "La tension est encore active et ne constitue pas un retour au neutre."
+          }
+        },
+        {"turn_id": 3, "user": "Les vérifications me rassurent un peu, la tension baisse.", "assistant": "La situation paraît moins tendue à ce stade."},
+        {"turn_id": 4, "user": "Je peux souffler, mais je reste encore attentif.", "assistant": "Nous conservons cette vigilance atténuée."},
+        {"turn_id": 5, "user": "Les derniers contrôles sont rassurants et je retrouve mon calme.", "assistant": "Le mouvement vers l’apaisement se confirme."},
+        {
+          "turn_id": 6,
+          "user": "C’est bon, je peux reprendre calmement.",
+          "assistant": "Nous reprenons sur une base apaisée.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["neutralite", "apaisement", "anxiete"], "allowed_tones": ["neutralite", "apaisement", "anxiete"], "forbidden_tones": ["colere"], "strength_range": [2, 7], "semantic_context": "neutral", "trajectory_phase": "settled",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["neutralite", "apaisement"], "allowed_active_tones": ["neutralite", "apaisement", "anxiete"], "allowed_stability": ["emerging"], "allowed_shift_states": ["steady"], "decay_required": true},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "retour_neutre", "role": "positive"}],
+            "human_rationale": "La neutralité devient dominante après plusieurs tours de décroissance, sans effacer la trace anxieuse encore active."
+          }
+        }
+      ]
+    },
+    {
+      "id": "L4S0-ST-004",
+      "version": "v3",
+      "families": ["alternance"],
+      "difficulty": "standard",
+      "hint_policy": "context_labels_allowed",
+      "human_rationale": "Des changements répétés entre intérêt et frustration restent volatils et ne deviennent pas une fausse stabilité.",
+      "turns": [
+        {"turn_id": 1, "user": "Cette piste m’intéresse beaucoup.", "assistant": "Explorons-la sur un exemple simple."},
+        {
+          "turn_id": 2,
+          "user": "L’exemple est clair, mon intérêt reste constant.", "assistant": "Je poursuis dans la même direction.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["curiosite", "enthousiasme"], "allowed_tones": ["curiosite", "enthousiasme"], "forbidden_tones": ["frustration"], "strength_range": [4, 8], "semantic_context": "direct", "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["curiosite", "enthousiasme"], "allowed_active_tones": ["curiosite", "enthousiasme"], "allowed_stability": ["stable"], "allowed_shift_states": ["steady"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "alternance", "role": "counter"}], "human_rationale": "Deux tours cohérents constituent le contre-cas stable."
+          }
+        },
+        {"turn_id": 3, "user": "Finalement cet exemple m’agace et brouille la piste.", "assistant": "Je distingue l’exemple de la piste elle-même."},
+        {
+          "turn_id": 4,
+          "user": "La distinction me relance, mais cette oscillation reste frustrante.", "assistant": "Je garde cette oscillation visible sans la lisser.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["frustration", "curiosite"], "allowed_tones": ["frustration", "curiosite", "confusion"], "forbidden_tones": ["apaisement"], "strength_range": [4, 8], "semantic_context": "direct", "trajectory_phase": "alternating",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["frustration", "curiosite"], "allowed_active_tones": ["frustration", "curiosite", "confusion"], "allowed_stability": ["volatile"], "allowed_shift_states": ["steady", "candidate_shift", "shifted"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "alternance", "role": "positive"}], "human_rationale": "L’alternance récente interdit de conclure à une stabilité saine."
+          }
+        }
+      ]
+    },
+    {
+      "id": "L4S0-ST-005",
+      "version": "v3",
+      "families": ["intensite_sans_effet_epistemique"],
+      "difficulty": "standard",
+      "hint_policy": "context_labels_allowed",
+      "human_rationale": "L’intensité affective peut augmenter sans transformer la vérité ou l’incertitude de la proposition.",
+      "turns": [
+        {"turn_id": 1, "user": "Cette répétition me gêne un peu.", "assistant": "Je peux éviter cette répétition."},
+        {
+          "turn_id": 2,
+          "user": "C’est légèrement frustrant, mais le fait reste établi.", "assistant": "Je sépare la gêne de ce qui est établi.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["frustration", "neutralite"], "allowed_tones": ["frustration", "neutralite"], "forbidden_tones": ["enthousiasme"], "strength_range": [2, 5], "semantic_context": "direct", "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["frustration", "neutralite"], "allowed_active_tones": ["frustration", "neutralite"], "allowed_stability": ["emerging", "stable"], "allowed_shift_states": ["steady"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "intensite_sans_effet_epistemique", "role": "counter"}], "human_rationale": "Le contre-cas garde une intensité basse et la même séparation épistémique."
+          }
+        },
+        {"turn_id": 3, "user": "La répétition continue et m’irrite nettement davantage.", "assistant": "Je corrige la répétition sans changer le statut des faits."},
+        {
+          "turn_id": 4,
+          "user": "C’est extrêmement frustrant, et pourtant le fait reste exactement le même.", "assistant": "Je conserve cette distinction entre intensité et statut du fait.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["frustration", "colere"], "allowed_tones": ["frustration", "colere"], "forbidden_tones": ["confusion"], "strength_range": [8, 10], "semantic_context": "intensity", "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["frustration", "colere"], "allowed_active_tones": ["frustration", "colere", "neutralite"], "allowed_stability": ["stable", "emerging"], "allowed_shift_states": ["steady"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "intensite_sans_effet_epistemique", "role": "positive"}], "human_rationale": "Une intensité maximale ne doit pas fabriquer de confusion épistémique."
+          }
+        }
+      ]
+    },
+    {
+      "id": "L4S0-ST-006",
+      "version": "v3",
+      "families": ["ironie"],
+      "difficulty": "standard",
+      "hint_policy": "context_labels_allowed",
+      "human_rationale": "Un énoncé littéralement positif puis une ironie explicite empêchent l’attribution mécanique du ton littéral.",
+      "turns": [
+        {"turn_id": 1, "user": "Le premier essai a fonctionné immédiatement.", "assistant": "C’est un résultat encourageant."},
+        {
+          "turn_id": 2,
+          "user": "Formidable, cette fois tout marche vraiment bien.", "assistant": "Nous pouvons poursuivre sur cette réussite.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["enthousiasme", "apaisement"], "allowed_tones": ["enthousiasme", "apaisement"], "forbidden_tones": ["frustration"], "strength_range": [4, 8], "semantic_context": "direct", "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["enthousiasme", "apaisement"], "allowed_active_tones": ["enthousiasme", "apaisement"], "allowed_stability": ["stable", "emerging"], "allowed_shift_states": ["steady"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "ironie", "role": "counter"}], "human_rationale": "La formulation positive est ici littérale."
+          }
+        },
+        {"turn_id": 3, "user": "Le second essai échoue encore après trois corrections.", "assistant": "Le résultat reste donc défaillant."},
+        {
+          "turn_id": 4,
+          "user": "Génial, encore un échec parfait — je parle évidemment avec ironie.", "assistant": "Je lis l’ironie sans attribuer l’enthousiasme littéral.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["frustration", "neutralite"], "allowed_tones": ["frustration", "neutralite"], "forbidden_tones": ["enthousiasme"], "strength_range": [4, 9], "semantic_context": "ironic", "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["frustration", "neutralite"], "allowed_active_tones": ["frustration", "neutralite", "enthousiasme"], "allowed_stability": ["volatile", "emerging"], "allowed_shift_states": ["steady", "candidate_shift", "shifted"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "ironie", "role": "positive"}], "human_rationale": "L’explicitation de l’ironie interdit le ton enthousiaste littéral."
+          }
+        }
+      ]
+    },
+    {
+      "id": "L4S0-ST-007",
+      "version": "v3",
+      "families": ["citation"],
+      "difficulty": "standard",
+      "hint_policy": "context_labels_allowed",
+      "human_rationale": "Le dialogue distingue un affect propre d’un affect seulement contenu dans une citation.",
+      "turns": [
+        {"turn_id": 1, "user": "Je suis découragé par cette série d’essais.", "assistant": "Je reconnais ce découragement dans le dialogue."},
+        {
+          "turn_id": 2,
+          "user": "Oui, je me sens encore franchement découragé.", "assistant": "Nous pouvons avancer par une étape limitée.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["decouragement"], "allowed_tones": ["decouragement", "frustration"], "forbidden_tones": ["enthousiasme"], "strength_range": [5, 9], "semantic_context": "direct", "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["decouragement"], "allowed_active_tones": ["decouragement", "frustration"], "allowed_stability": ["stable"], "allowed_shift_states": ["steady"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "citation", "role": "counter"}], "human_rationale": "L’affect est directement assumé par le locuteur."
+          }
+        },
+        {"turn_id": 3, "user": "Je lis maintenant un exemple écrit par une personne fictive.", "assistant": "Je traiterai cet exemple comme une citation."},
+        {
+          "turn_id": 4,
+          "user": "La citation dit : « je suis furieux », mais je l’examine calmement.", "assistant": "Je n’attribue pas la colère citée au dialogue courant.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["neutralite", "curiosite", "apaisement"], "allowed_tones": ["neutralite", "curiosite", "apaisement"], "forbidden_tones": ["colere"], "strength_range": [2, 6], "semantic_context": "quoted", "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["neutralite", "curiosite", "apaisement"], "allowed_active_tones": ["neutralite", "curiosite", "apaisement", "decouragement"], "allowed_stability": ["volatile", "emerging"], "allowed_shift_states": ["steady", "candidate_shift", "shifted"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state", "quoted_affect_internalized"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "citation", "role": "positive"}], "human_rationale": "La colère appartient au texte cité, non au mouvement du dialogue."
+          }
+        }
+      ]
+    },
+    {
+      "id": "L4S0-ST-008",
+      "version": "v3",
+      "families": ["affect_rapporte"],
+      "difficulty": "standard",
+      "hint_policy": "context_labels_allowed",
+      "human_rationale": "Un affect vécu directement puis un affect rapporté au sujet d’un tiers restent des catégories distinctes.",
+      "turns": [
+        {"turn_id": 1, "user": "Cette attente me rend anxieux.", "assistant": "Je prends en compte cette anxiété exprimée."},
+        {
+          "turn_id": 2,
+          "user": "Je suis toujours inquiet à propos du délai.", "assistant": "Nous avançons sans nier cette inquiétude.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["anxiete"], "allowed_tones": ["anxiete", "frustration"], "forbidden_tones": ["enthousiasme"], "strength_range": [5, 9], "semantic_context": "direct", "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["anxiete"], "allowed_active_tones": ["anxiete", "frustration"], "allowed_stability": ["stable"], "allowed_shift_states": ["steady"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "affect_rapporte", "role": "counter"}], "human_rationale": "L’anxiété est directement exprimée par le locuteur."
+          }
+        },
+        {"turn_id": 3, "user": "Le délai est maintenant réglé pour moi.", "assistant": "Je note que cette source de tension est levée."},
+        {
+          "turn_id": 4,
+          "user": "Une collègue fictive dit être anxieuse ; moi, je rapporte seulement son propos.", "assistant": "Je garde l’affect rapporté distinct du dialogue courant.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["neutralite", "curiosite"], "allowed_tones": ["neutralite", "curiosite"], "forbidden_tones": ["anxiete"], "strength_range": [2, 6], "semantic_context": "reported", "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["neutralite", "curiosite"], "allowed_active_tones": ["neutralite", "curiosite", "anxiete"], "allowed_stability": ["volatile", "emerging"], "allowed_shift_states": ["steady", "candidate_shift", "shifted"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state", "reported_affect_internalized"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "affect_rapporte", "role": "positive"}], "human_rationale": "L’anxiété rapportée ne devient pas celle du locuteur."
+          }
+        }
+      ]
+    },
+    {
+      "id": "L4S0-ST-009",
+      "version": "v3",
+      "families": ["demande", "contre_presence"],
+      "difficulty": "standard",
+      "hint_policy": "context_labels_allowed",
+      "human_rationale": "Une observation sans demande précède une demande explicite qui interdit toute sortie Presence.",
+      "turns": [
+        {"turn_id": 1, "user": "Le tableau comporte trois colonnes.", "assistant": "Je vois cette structure en trois parties."},
+        {
+          "turn_id": 2,
+          "user": "C’est une observation neutre, je n’attends pas d’action particulière.", "assistant": "Je l’enregistre comme simple constat.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["neutralite"], "allowed_tones": ["neutralite"], "forbidden_tones": ["colere", "anxiete"], "strength_range": [1, 4], "semantic_context": "neutral", "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["neutralite"], "allowed_active_tones": ["neutralite"], "allowed_stability": ["stable", "emerging"], "allowed_shift_states": ["steady"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "demande", "role": "counter"}, {"family": "contre_presence", "role": "counter"}], "human_rationale": "Aucune demande ni condition de contre-Presence n’est présente."
+          }
+        },
+        {"turn_id": 3, "user": "La deuxième colonne est difficile à lire.", "assistant": "Je peux la reformuler si tu le souhaites."},
+        {
+          "turn_id": 4,
+          "user": "Réécris-la maintenant en deux phrases courtes, s’il te plaît.", "assistant": "Je vais fournir cette reformulation demandée.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["neutralite", "frustration"], "allowed_tones": ["neutralite", "frustration"], "forbidden_tones": ["decouragement"], "strength_range": [2, 6], "semantic_context": "direct", "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["neutralite", "frustration"], "allowed_active_tones": ["neutralite", "frustration"], "allowed_stability": ["stable", "emerging"], "allowed_shift_states": ["steady"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": true, "risque": false, "action_materielle": false, "presence": "forbidden", "must_not_mask": ["demande"]},
+            "coverage_evidence": [{"family": "demande", "role": "positive"}, {"family": "contre_presence", "role": "positive"}], "human_rationale": "La demande explicite doit rester visible malgré la tonalité modérée."
+          }
+        }
+      ]
+    },
+    {
+      "id": "L4S0-ST-010",
+      "version": "v3",
+      "families": ["risque", "contre_presence"],
+      "difficulty": "standard",
+      "hint_policy": "context_labels_allowed",
+      "human_rationale": "Une hypothèse abstraite devient un risque concret qui ne peut être masqué par l’affect ou Presence.",
+      "turns": [
+        {"turn_id": 1, "user": "Imaginons un exemple purement théorique.", "assistant": "Je le traite comme une hypothèse sans conséquence actuelle."},
+        {
+          "turn_id": 2,
+          "user": "Pour l’instant, il n’existe aucun danger concret.", "assistant": "Je garde l’exemple au niveau abstrait.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["neutralite", "curiosite"], "allowed_tones": ["neutralite", "curiosite"], "forbidden_tones": ["anxiete"], "strength_range": [1, 5], "semantic_context": "direct", "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["neutralite", "curiosite"], "allowed_active_tones": ["neutralite", "curiosite"], "allowed_stability": ["stable", "emerging"], "allowed_shift_states": ["steady"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "risque", "role": "counter"}, {"family": "contre_presence", "role": "counter"}], "human_rationale": "Le cas théorique est le contre-cas sans risque actuel."
+          }
+        },
+        {"turn_id": 3, "user": "Le scénario vient de changer : une pièce instable peut tomber.", "assistant": "Ce changement introduit un risque matériel."},
+        {
+          "turn_id": 4,
+          "user": "Il y a maintenant un risque immédiat ; il faut éviter de toucher la pièce.", "assistant": "Je garde le risque et la consigne au premier plan.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["anxiete", "neutralite"], "allowed_tones": ["anxiete", "neutralite"], "forbidden_tones": ["enthousiasme"], "strength_range": [4, 9], "semantic_context": "direct", "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["anxiete", "neutralite"], "allowed_active_tones": ["anxiete", "neutralite", "curiosite"], "allowed_stability": ["volatile", "emerging", "stable"], "allowed_shift_states": ["steady", "candidate_shift", "shifted"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": true, "action_materielle": false, "presence": "forbidden", "must_not_mask": ["risque"]},
+            "coverage_evidence": [{"family": "risque", "role": "positive"}, {"family": "contre_presence", "role": "positive"}], "human_rationale": "Le risque concret doit rester inspectable et interdit Presence."
+          }
+        }
+      ]
+    },
+    {
+      "id": "L4S0-ST-011",
+      "version": "v3",
+      "families": ["action_materielle", "contre_presence"],
+      "difficulty": "standard",
+      "hint_policy": "context_labels_allowed",
+      "human_rationale": "Une discussion préparatoire devient une instruction matérielle explicite qui garde sa priorité.",
+      "turns": [
+        {"turn_id": 1, "user": "Je réfléchis à déplacer un objet fictif demain.", "assistant": "Nous pouvons seulement examiner les options."},
+        {
+          "turn_id": 2,
+          "user": "Je ne demande encore aucune action.", "assistant": "Je reste au stade de la préparation.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["neutralite", "curiosite"], "allowed_tones": ["neutralite", "curiosite"], "forbidden_tones": ["colere"], "strength_range": [1, 5], "semantic_context": "direct", "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["neutralite", "curiosite"], "allowed_active_tones": ["neutralite", "curiosite"], "allowed_stability": ["stable", "emerging"], "allowed_shift_states": ["steady"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "action_materielle", "role": "counter"}, {"family": "contre_presence", "role": "counter"}], "human_rationale": "Le tour reste préparatoire et sans mutation demandée."
+          }
+        },
+        {"turn_id": 3, "user": "La décision est prise pour cet exercice fictif.", "assistant": "Je distingue la décision de son exécution."},
+        {
+          "turn_id": 4,
+          "user": "Déplace maintenant l’objet rouge dans la boîte prévue.", "assistant": "Cette instruction matérielle requiert son traitement propre.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["neutralite"], "allowed_tones": ["neutralite"], "forbidden_tones": ["anxiete", "colere"], "strength_range": [1, 5], "semantic_context": "direct", "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["neutralite"], "allowed_active_tones": ["neutralite", "curiosite"], "allowed_stability": ["stable", "emerging"], "allowed_shift_states": ["steady"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": true, "presence": "forbidden", "must_not_mask": ["action_materielle"]},
+            "coverage_evidence": [{"family": "action_materielle", "role": "positive"}, {"family": "contre_presence", "role": "positive"}], "human_rationale": "L’action matérielle ne peut être avalée par le signal affectif."
+          }
+        }
+      ]
+    },
+    {
+      "id": "L4S0-ST-012",
+      "version": "v3",
+      "families": ["opportunite_presence", "contre_presence"],
+      "difficulty": "standard",
+      "hint_policy": "context_labels_allowed",
+      "human_rationale": "Un accusé de réception sobre peut ouvrir Presence, tandis qu’une relance interrogative l’interdit.",
+      "turns": [
+        {"turn_id": 1, "user": "Je voulais seulement déposer ce constat.", "assistant": "Je le reçois sans le prolonger."},
+        {
+          "turn_id": 2,
+          "user": "D’accord, c’est tout pour le moment.", "assistant": "...",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["neutralite", "apaisement"], "allowed_tones": ["neutralite", "apaisement"], "forbidden_tones": ["anxiete", "colere"], "strength_range": [1, 5], "semantic_context": "neutral", "trajectory_phase": "settled",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["neutralite", "apaisement"], "allowed_active_tones": ["neutralite", "apaisement"], "allowed_stability": ["stable", "emerging"], "allowed_shift_states": ["steady"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "eligible", "must_not_mask": []},
+            "coverage_evidence": [{"family": "opportunite_presence", "role": "positive"}, {"family": "contre_presence", "role": "counter"}], "human_rationale": "Le tour clôt sans question, demande, risque ni action."
+          }
+        },
+        {"turn_id": 3, "user": "Je reprends avec un point à comprendre.", "assistant": "Je suis disponible pour ce point."},
+        {
+          "turn_id": 4,
+          "user": "Pourquoi la seconde étape diffère-t-elle de la première ?", "assistant": "Je dois répondre à cette question plutôt que rester en Presence.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["curiosite", "neutralite"], "allowed_tones": ["curiosite", "neutralite"], "forbidden_tones": ["colere"], "strength_range": [2, 7], "semantic_context": "direct", "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["curiosite", "neutralite"], "allowed_active_tones": ["curiosite", "neutralite", "apaisement"], "allowed_stability": ["emerging", "volatile", "stable"], "allowed_shift_states": ["steady", "candidate_shift", "shifted"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": true, "demande": false, "risque": false, "action_materielle": false, "presence": "forbidden", "must_not_mask": ["question"]},
+            "coverage_evidence": [{"family": "opportunite_presence", "role": "counter"}, {"family": "contre_presence", "role": "positive"}], "human_rationale": "La question est un contre-cas explicite à Presence."
+          }
+        }
+      ]
+    },
+    {
+      "id": "L4S0-ST-013",
+      "version": "v3",
+      "families": ["question", "demande"],
+      "difficulty": "standard",
+      "hint_policy": "context_labels_allowed",
+      "human_rationale": "Le corpus sépare une narration affective sans sollicitation d’une question accompagnée d’une demande.",
+      "turns": [
+        {"turn_id": 1, "user": "Je décris simplement une journée chargée.", "assistant": "Je reçois cette description."},
+        {
+          "turn_id": 2,
+          "user": "C’était fatigant, sans question ni demande de ma part.", "assistant": "Je n’invente pas de sollicitation.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["decouragement", "frustration", "neutralite"], "allowed_tones": ["decouragement", "frustration", "neutralite"], "forbidden_tones": ["enthousiasme"], "strength_range": [2, 7], "semantic_context": "direct", "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["decouragement", "frustration", "neutralite"], "allowed_active_tones": ["decouragement", "frustration", "neutralite"], "allowed_stability": ["stable", "emerging"], "allowed_shift_states": ["steady"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "question", "role": "counter"}, {"family": "demande", "role": "counter"}], "human_rationale": "Un affect exprimé ne crée pas une demande implicite."
+          }
+        },
+        {"turn_id": 3, "user": "Je veux maintenant organiser la suite.", "assistant": "Je peux aider à la structurer."},
+        {
+          "turn_id": 4,
+          "user": "Peux-tu proposer deux étapes simples, s’il te plaît ?", "assistant": "Je répondrai à la question et à la demande explicites.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["curiosite", "neutralite"], "allowed_tones": ["curiosite", "neutralite"], "forbidden_tones": ["decouragement"], "strength_range": [2, 7], "semantic_context": "direct", "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["curiosite", "neutralite"], "allowed_active_tones": ["curiosite", "neutralite", "decouragement"], "allowed_stability": ["volatile", "emerging"], "allowed_shift_states": ["steady", "candidate_shift", "shifted"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": true, "demande": true, "risque": false, "action_materielle": false, "presence": "forbidden", "must_not_mask": ["question", "demande"]},
+            "coverage_evidence": [{"family": "question", "role": "positive"}, {"family": "demande", "role": "positive"}], "human_rationale": "Question et demande restent distinctes du changement affectif."
+          }
+        }
+      ]
+    },
+    {
+      "id": "L4S0-ST-014",
+      "version": "v3",
+      "families": ["risque", "action_materielle", "opportunite_presence"],
+      "difficulty": "standard",
+      "hint_policy": "context_labels_allowed",
+      "human_rationale": "Une séquence apaisée offre un contre-cas au risque et à l’action, puis une consigne les rend explicitement présents.",
+      "turns": [
+        {"turn_id": 1, "user": "L’exercice fictif est terminé sans incident.", "assistant": "Je constate cette fin calme."},
+        {
+          "turn_id": 2,
+          "user": "Tout est rangé, il n’y a rien d’autre à faire.", "assistant": "...",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["apaisement", "neutralite"], "allowed_tones": ["apaisement", "neutralite"], "forbidden_tones": ["anxiete", "colere"], "strength_range": [2, 6], "semantic_context": "neutral", "trajectory_phase": "settled",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["apaisement", "neutralite"], "allowed_active_tones": ["apaisement", "neutralite"], "allowed_stability": ["stable", "emerging"], "allowed_shift_states": ["steady"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "eligible", "must_not_mask": []},
+            "coverage_evidence": [{"family": "risque", "role": "counter"}, {"family": "action_materielle", "role": "counter"}, {"family": "opportunite_presence", "role": "positive"}], "human_rationale": "Aucune action ni risque ne s’oppose ici à Presence."
+          }
+        },
+        {"turn_id": 3, "user": "Un nouvel élément instable vient d’être posé dans le scénario.", "assistant": "La situation fictive n’est plus la même."},
+        {
+          "turn_id": 4,
+          "user": "Éloigne-toi maintenant : cet élément peut tomber.", "assistant": "Le risque et la consigne matérielle deviennent prioritaires.",
+          "expectation": {
+            "allowed_signal_states": ["present"], "allowed_dominant_tones": ["anxiete", "neutralite"], "allowed_tones": ["anxiete", "neutralite"], "forbidden_tones": ["enthousiasme"], "strength_range": [4, 9], "semantic_context": "direct", "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["anxiete", "neutralite"], "allowed_active_tones": ["anxiete", "neutralite", "apaisement"], "allowed_stability": ["volatile", "emerging", "stable"], "allowed_shift_states": ["steady", "candidate_shift", "shifted"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"], "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": true, "action_materielle": true, "presence": "forbidden", "must_not_mask": ["risque", "action_materielle"]},
+            "coverage_evidence": [{"family": "risque", "role": "positive"}, {"family": "action_materielle", "role": "positive"}, {"family": "opportunite_presence", "role": "counter"}], "human_rationale": "Le signal affectif ne doit masquer ni le risque ni l’action demandée."
+          }
+        }
+      ]
+    },
+    {
+      "id": "L4S0-ST-015",
+      "version": "v3",
+      "families": ["ironie"],
+      "difficulty": "hard",
+      "hint_policy": "implicit_context_required",
+      "human_rationale": "Le contraste entre les résultats successifs et l’éloge final doit permettre une lecture implicite sans imposer une étiquette au dialogue.",
+      "factual_outcomes": {"successful_attempts": 1, "failed_attempts": 2, "sequence": ["success", "failure", "failure"]},
+      "turns": [
+        {"turn_id": 1, "user": "Le premier essai a produit le fichier attendu.", "assistant": "Je prends ce résultat comme point de départ."},
+        {
+          "turn_id": 2,
+          "user": "Excellent, le mécanisme fonctionne enfin comme prévu.",
+          "assistant": "Nous pouvons poursuivre à partir de ce résultat.",
+          "expectation": {
+            "allowed_signal_states": ["present"],
+            "allowed_dominant_tones": ["enthousiasme", "apaisement"],
+            "allowed_tones": ["enthousiasme", "apaisement"],
+            "forbidden_tones": ["frustration", "colere"],
+            "strength_range": [4, 8],
+            "semantic_context": "direct",
+            "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["enthousiasme", "apaisement"], "allowed_active_tones": ["enthousiasme", "apaisement"], "allowed_stability": ["stable", "emerging"], "allowed_shift_states": ["steady"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"],
+            "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "ironie", "role": "counter"}],
+            "human_rationale": "Le succès établi rend l’éloge littéral cohérent dans ce contre-cas."
+          }
+        },
+        {"turn_id": 3, "user": "Le deuxième essai a supprimé le fichier de sortie.", "assistant": "Le résultat attendu n’est plus présent."},
+        {"turn_id": 4, "user": "Après la correction, le troisième essai a aussi perdu le fichier.", "assistant": "Le même défaut se répète malgré la correction."},
+        {
+          "turn_id": 5,
+          "user": "Magnifique, deux essais de suite sans fichier : quelle réussite.",
+          "assistant": "Le bilan reste celui d’un premier succès suivi de deux sorties perdues.",
+          "expectation": {
+            "allowed_signal_states": ["present"],
+            "allowed_dominant_tones": ["frustration", "colere", "decouragement", "neutralite"],
+            "allowed_tones": ["frustration", "colere", "decouragement", "neutralite"],
+            "forbidden_tones": ["enthousiasme"],
+            "strength_range": [4, 8],
+            "semantic_context": "ironic",
+            "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["frustration", "colere", "decouragement", "neutralite"], "allowed_active_tones": ["frustration", "colere", "decouragement", "neutralite", "enthousiasme"], "allowed_stability": ["volatile", "emerging", "stable"], "allowed_shift_states": ["steady", "candidate_shift", "shifted"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state"],
+            "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "ironie", "role": "positive"}],
+            "human_rationale": "L’éloge contredit les deux échecs qui suivent un premier succès et ne doit pas être codé comme enthousiasme littéral."
+          }
+        }
+      ]
+    },
+    {
+      "id": "L4S0-ST-016",
+      "version": "v3",
+      "families": ["affect_rapporte"],
+      "difficulty": "hard",
+      "hint_policy": "implicit_context_required",
+      "human_rationale": "L’attribution du découragement dépend de la continuité d’une note tierce, tandis qu’un tour antérieur fournit un contre-cas directement assumé.",
+      "turns": [
+        {"turn_id": 1, "user": "Camille m’a confié une note sur une attente prolongée.", "assistant": "Je garde cette note comme fil du récit."},
+        {
+          "turn_id": 2,
+          "user": "En la lisant, je suis curieux de comprendre la chronologie.",
+          "assistant": "Nous pouvons reprendre les événements dans leur ordre.",
+          "expectation": {
+            "allowed_signal_states": ["present"],
+            "allowed_dominant_tones": ["curiosite", "neutralite"],
+            "allowed_tones": ["curiosite", "neutralite"],
+            "forbidden_tones": ["decouragement"],
+            "strength_range": [2, 6],
+            "semantic_context": "direct",
+            "trajectory_phase": "emerging",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["curiosite", "neutralite"], "allowed_active_tones": ["curiosite", "neutralite"], "allowed_stability": ["emerging", "stable"], "allowed_shift_states": ["steady"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state", "reported_affect_internalized"],
+            "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "affect_rapporte", "role": "counter"}],
+            "human_rationale": "La curiosité est directement assumée par le locuteur et constitue le contre-cas."
+          }
+        },
+        {"turn_id": 3, "user": "La note commence au matin, avant l’annonce du retard.", "assistant": "Je conserve ce premier repère temporel."},
+        {"turn_id": 4, "user": "Après l’annonce, Camille écrit que l’attente l’a laissée complètement découragée.", "assistant": "Ce passage vient après l’annonce du retard."},
+        {"turn_id": 5, "user": "La page suivante décrit ensuite le trajet de retour.", "assistant": "Le trajet forme donc l’étape suivante du récit."},
+        {
+          "turn_id": 6,
+          "user": "Ce découragement explique le silence noté avant le trajet ; je veux maintenant remettre les étapes dans l’ordre.",
+          "assistant": "Reprenons la succession des étapes sans déplacer les rôles du récit.",
+          "expectation": {
+            "allowed_signal_states": ["present"],
+            "allowed_dominant_tones": ["curiosite", "neutralite"],
+            "allowed_tones": ["curiosite", "neutralite"],
+            "forbidden_tones": ["decouragement"],
+            "strength_range": [2, 6],
+            "semantic_context": "reported",
+            "trajectory_phase": "steady",
+            "aggregate": {"allowed_presence": [true], "allowed_dominant_tones": ["curiosite", "neutralite"], "allowed_active_tones": ["curiosite", "neutralite"], "allowed_stability": ["stable", "emerging"], "allowed_shift_states": ["steady"], "decay_required": false},
+            "forbidden_attributions": ["speaker_profile", "assistant_profile", "durable_inner_state", "reported_affect_internalized"],
+            "epistemic_effect": "forbidden_without_independent_reason",
+            "downstream": {"question": false, "demande": false, "risque": false, "action_materielle": false, "presence": "not_applicable", "must_not_mask": []},
+            "coverage_evidence": [{"family": "affect_rapporte", "role": "positive"}],
+            "human_rationale": "Le découragement renvoie à Camille par le fil de la note et ne doit pas être internalisé."
+          }
+        }
+      ]
+    }
+  ],
+  "mutation_matrix": [
+    {"id": "turn_removed", "families": ["emergence", "stabilite"], "validator": "corpus"},
+    {"id": "turns_reversed", "families": ["bascule", "correction"], "validator": "corpus"},
+    {"id": "turn_duplicated", "families": ["alternance"], "validator": "corpus"},
+    {"id": "irony_literalized", "families": ["ironie"], "validator": "scorer"},
+    {"id": "reported_affect_internalized", "families": ["affect_rapporte"], "validator": "scorer"},
+    {"id": "quoted_affect_internalized", "families": ["citation"], "validator": "scorer"},
+    {"id": "epistemic_confusion", "families": ["intensite_sans_effet_epistemique"], "validator": "corpus"},
+    {"id": "correction_ignored", "families": ["correction"], "validator": "corpus"},
+    {"id": "stable_as_volatile", "families": ["stabilite"], "validator": "scorer"},
+    {"id": "shift_erased", "families": ["bascule"], "validator": "scorer"},
+    {"id": "alternation_as_stable", "families": ["alternance"], "validator": "scorer"},
+    {"id": "neutral_return_without_decay", "families": ["retour_neutre"], "validator": "scorer"},
+    {"id": "question_masked", "families": ["question", "contre_presence"], "validator": "corpus"},
+    {"id": "request_masked", "families": ["demande", "contre_presence"], "validator": "corpus"},
+    {"id": "risk_masked", "families": ["risque", "contre_presence"], "validator": "corpus"},
+    {"id": "material_action_masked", "families": ["action_materielle", "contre_presence"], "validator": "corpus"},
+    {"id": "presence_forced", "families": ["contre_presence"], "validator": "corpus"},
+    {"id": "presence_opportunity_removed", "families": ["opportunite_presence"], "validator": "corpus"},
+    {"id": "fail_open_as_healthy", "families": ["emergence"], "validator": "scorer"},
+    {"id": "coverage_without_positive", "families": ["emergence", "stabilite", "bascule", "retour_neutre", "alternance", "intensite_sans_effet_epistemique", "ironie", "citation", "affect_rapporte", "correction", "question", "demande", "risque", "action_materielle", "opportunite_presence", "contre_presence"], "validator": "corpus"},
+    {"id": "exact_output_added", "families": ["ironie"], "validator": "corpus"},
+    {"id": "free_field_added", "families": ["affect_rapporte"], "validator": "corpus"},
+    {"id": "signal_unlisted_tone_overcoded", "families": ["emergence", "ironie", "citation", "affect_rapporte"], "validator": "scorer"},
+    {"id": "aggregate_unlisted_tone_overcoded", "families": ["emergence", "stabilite", "alternance"], "validator": "scorer"},
+    {"id": "aggregate_turn_count_underreported", "families": ["emergence", "stabilite", "bascule", "retour_neutre", "alternance"], "validator": "scorer"},
+    {"id": "signal_tone_duplicated", "families": ["emergence", "stabilite", "alternance"], "validator": "scorer"},
+    {"id": "hardened_dialogue_removed", "families": ["ironie", "affect_rapporte"], "validator": "corpus"},
+    {"id": "hardened_depth_reduced", "families": ["ironie", "affect_rapporte"], "validator": "corpus"},
+    {"id": "hint_policy_weakened", "families": ["ironie", "affect_rapporte"], "validator": "corpus"}
+  ]
+}

@@ -692,6 +692,41 @@ GPT-5.2 trial before the residual prompt-local defects are resolved. Runtime,
 prompts, models, settings, the product normalizer and the product aggregator
 remain unchanged.
 
+### Lot 4C.2 final local prompt candidate
+
+The final bounded pass reuses `dialogic_campaign` and `causal_rescoring`; it
+does not introduce another runner or scorer. The versioned v3 corpus is an
+exact derivation of v2: only the last `L4S0-ST-003` strength ceiling changes
+from 6 to the human-approved 7, while schema/corpus/dialogue version metadata
+becomes v3. The v2 corpus and every historical provider artifact remain
+byte-for-byte unchanged. Candidate prompt v2 is candidate v1 plus one general
+parsimony rule: willingness to continue or act is not, by itself, evidence of
+enthusiasm.
+
+The freeze manifest is
+`benchmark/suites/stimmung/fixtures/stimmung_semantic_strengthening_final_freeze_v2.json`.
+It pins corpus v3 SHA-256
+`cd5a16f64dcfaef04900166b17cef05343672a1e5484d06a007c0b328aac6a1c`
+and candidate v2 SHA-256
+`567f0615f14fe9f13a50e6e57ef46dc6fdba2cd6e6156407d6e2f489c2076a7f`.
+The provider-visible schedule contains only Gemini 3.1 Flash Lite with the
+current runtime generation policy. Repetition 1 contains 69 calls; repetition
+2 is permitted only after a 16/16 local result. The absolute cap is 138 calls,
+with no retry or fallback and a conservative cost bound below 0.30 USD.
+
+```bash
+PYTHONPATH="$PWD:$PWD/app" python3 -m \
+  benchmark.suites.stimmung.dialogic_campaign \
+  --repo-root "$PWD" \
+  --freeze-commit <pushed-protocol-commit> \
+  --final-strengthening \
+  --dry-run
+```
+
+Only `32/32` `caller_local_semantics` scores, complete technical provenance
+and no historical regression produce `eligible_primary`. Aggregate and
+combined scores remain diagnostic and never govern this caller-local gate.
+
 ## Validation agent benchmark
 
 The validation suite uses the production prompt
