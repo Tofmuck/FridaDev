@@ -413,6 +413,39 @@ boundary. No campaign runner or provider transport is attached to this corpus.
 A live primary/fallback evaluation belongs only to 4S.1 after Tof has reviewed
 and explicitly accepted the versioned dialogues.
 
+### Lot 4S.1 dialogic provider campaign
+
+The bounded 4S.1 runner is `benchmark.suites.stimmung.dialogic_campaign`. It
+reuses the production Stimmung prompt/message builder, output normalizer, the
+real `build_stimmung_input`, and the human-validated 4S.0 corpus/scorer. The
+reachability witness remains test-only and is never substituted for a provider
+result.
+
+The frozen protocol runs the current primary and fallback independently over
+all 69 turns of the 16 dialogues, twice: 276 calls exactly, with no retry,
+automatic fallback, Batch, Flex, or Priority transport. It fixes
+`temperature=0.1`, `top_p=1.0`, `max_tokens=220`, a 10-second timeout and
+`provider.allow_fallbacks=false`. The prudent maximum cost estimate is
+`0.15901050 USD`, below the immutable `0.30 USD` cap.
+
+Hermetic protocol check, without provider or secret:
+
+```bash
+PYTHONPATH="$PWD:$PWD/app" python3 -m \
+  benchmark.suites.stimmung.dialogic_campaign \
+  --repo-root "$PWD" \
+  --freeze-commit <pushed-protocol-commit> \
+  --dry-run
+```
+
+The live command uses the same module without `--dry-run` and writes one dated
+JSONL under `benchmark/results/stimmung/`. Its closed records retain only
+bounded signal categories, reconstructed aggregates, scores, route metadata,
+latency, tokens, cost and fingerprints. They never retain dialogue, prompt,
+provider output, exception text, reasoning text, URL or secret. The campaign
+qualifies only the Stimmung caller; it does not call Validation or the main
+model and cannot authorize a runtime change.
+
 ## Validation agent benchmark
 
 The validation suite uses the production prompt

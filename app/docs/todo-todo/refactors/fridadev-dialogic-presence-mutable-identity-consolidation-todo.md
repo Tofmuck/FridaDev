@@ -2830,7 +2830,7 @@ Message de commit de la preuve d'atteignabilite:
 
 ### Micro-lot 4S.1 - Campagne provider primaire et fallback
 
-Statut: non commence; GO separe obligatoire
+Statut: protocole gele le 2026-08-30; campagne provider non executee
 Effort recommande: `extra high`
 Nature: benchmark borne, artefacts content-free et documentation
 Prerequis: 4S.0 ferme et corpus valide humainement
@@ -2866,11 +2866,45 @@ Sortie obligatoire:
 
 Condition de fermeture:
 
-- [ ] GO provider distinct trace.
+- [x] GO provider distinct trace.
 - [ ] Primaire et fallback mesures separement sur le corpus fige.
 - [ ] Artefact JSONL content-free, seuils, couts, latences et echecs archives.
 - [ ] Aucun modele, prompt, provider, setting ou runtime modifie.
 - [ ] Decision sur 4C.2 documentee, commit et push prouves.
+
+Gel du protocole du 30 aout 2026, avant tout resultat provider:
+
+- raccord minimal: `benchmark/suites/stimmung/dialogic_campaign.py` reutilise
+  le transport OpenRouter benchmark, le prompt et le constructeur de messages
+  de production, le normaliseur du caller, `build_stimmung_input` et le
+  corpus/scorer 4S.0; le temoin d'atteignabilite reste tests-only et ne peut
+  remplacer un resultat provider;
+- corpus, attentes et seuils v2 inchanges: `16` dialogues, `69` tours et `32`
+  etapes evaluees; primaire et fallback sont appeles explicitement et
+  separement sur deux repetitions;
+- modeles et parametres relus: primaire
+  `google/gemini-3.1-flash-lite`, fallback `openai/gpt-5.4-nano`, timeout
+  `10 s`, `temperature=0.1`, `top_p=1.0`, `max_tokens=220`; aucun niveau de
+  raisonnement explicite;
+- ordre et plafond fermes: `69 x 2 sources x 2 repetitions = 276` appels,
+  plafond absolu identique, aucun retry, fallback automatique, Batch, Flex ou
+  Priority; chaque requete fixe `provider.allow_fallbacks=false`;
+- prix OpenRouter observes le `2026-08-30T10:15:12Z`: primaire
+  `0.25/1.50 USD` par million de tokens entree/sortie, fallback
+  `0.20/1.25 USD`; estimation maximale prudente `0.15901050 USD`, sous le
+  plafond fige `0.30 USD`;
+- empreinte du protocole sur la baseline
+  `f7d733a46bf12ec13764a161c5da538a91866993`:
+  `5cdcfc89534024b1908f2070e68872f2532dd72993a7236779d1210a883fb6f9`;
+- preuves hermetiques: `7/7` nouveaux tests et `54/54` suites Stimmung,
+  agregateur, benchmark et goldens voisines. Les mutations rejettent inversion
+  de modele, fallback provider cache, ordre/appel/aggregate altere, fail-open
+  maquille, champ brut, reason code libre, metrique absente et decision issue
+  d'un echec non reproductible;
+- aucune sortie provider n'a ete lue pendant cette phase. Le commit pousse de
+  gel devient l'unique baseline autorisee de la campagne; le corpus, le
+  scorer, le prompt, les parametres, les regles de decision et le harness
+  provider-visible ne seront plus ajustes apres le premier resultat.
 
 Message de commit recommande: `benchmark: evaluate Stimmung semantic corpus`.
 
