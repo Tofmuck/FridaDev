@@ -496,12 +496,16 @@ The frozen candidate campaign ran once from commit
 `d69dc8b21e3df9bf4989a407e257c70a8305255d`. Its content-free artifact is
 `benchmark/results/stimmung/2026-08-30-lot4c2-stimmung-strengthening-candidate.jsonl`
 (SHA-256
-`29147002cbaf1741718ea6d616f53944efffb70db41aae7ce0ff0b423c49a6b0`). All
+`637cbc1fac2b03378f451d6fc64f6b0c30b7d9cd183b59b5833e3ee62612c5c5`). All
 276 planned calls were consumed for `0.07247940 USD`. The primary produced 138
 valid calls but failed 11 of 16 dialogues in both repetitions. The fallback
 produced 137 valid calls plus one schema error and also remained below the
 strict semantic threshold. The frozen decision is therefore `inconclusive`;
 the candidate was not copied to the runtime prompt and no deployment followed.
+The final summary preserves the one already-proven fallback regression while
+marking the total regression count incomplete; incomplete evidence can no
+longer be serialized as a misleading zero. The 276 provider call records were
+not changed by this accounting correction.
 
 ## Validation agent benchmark
 

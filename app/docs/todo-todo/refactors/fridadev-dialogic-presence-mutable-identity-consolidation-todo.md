@@ -3069,7 +3069,7 @@ Passe B provider executee depuis le gel pousse
 - `276/276` appels executes une seule fois, sans retry ni fallback automatique;
   cout observe `0.07247940 USD`, sous le plafond; artefact content-free
   `2026-08-30-lot4c2-stimmung-strengthening-candidate.jsonl`, SHA-256
-  `29147002cbaf1741718ea6d616f53944efffb70db41aae7ce0ff0b423c49a6b0`;
+  `637cbc1fac2b03378f451d6fc64f6b0c30b7d9cd183b59b5833e3ee62612c5c5`;
 - primaire: `138/138` transports et schemas valides, mais `11/16` dialogues en
   echec a chacune des deux repetitions; cinq dialogues auparavant en echec
   passent dans chaque repetition, sans regression relative observee;
@@ -3083,10 +3083,12 @@ Passe B provider executee depuis le gel pousse
   aucune des deux sources n'atteint les seuils stricts `1.0`;
 - la regle gelee classe la campagne `inconclusive` a cause de l'unique sortie
   fallback invalide; les echecs semantiques complets du primaire prouvent en
-  outre que la candidate ne satisfait pas la porte de livraison. Le compteur
-  de regression du resume final reste `0` selon la branche gelee
-  `incomplete_or_invalid`, tandis que la comparaison content-free separee
-  conserve visiblement la regression fallback observee;
+  outre que la candidate ne satisfait pas la porte de livraison. La passe
+  corrective content-free du 2026-08-30 conserve les `276` lignes d'appel
+  byte-for-byte, expose `semantic_regression_count=1` pour la regression
+  fallback deja prouvee et `semantic_regression_count_complete=false` parce
+  que la sortie invalide empeche un decompte total. Une preuve incomplete ne
+  fabrique donc plus un faux zero;
 - Phase C interdite: le prompt runtime, les modeles, les parametres, le schema,
   le normaliseur, l'agregateur, l'observabilite produit et le frontend restent
   inchanges; aucun rebuild, restart ou deploiement. 4C.2 reste ouvert et 4C.3

@@ -141,6 +141,7 @@ class Lot4C2StimmungSemanticStrengtheningTests(unittest.TestCase):
         self.assertEqual(validation["final_decision"], "pass")
         self.assertEqual(records[-1]["baseline_artifact_sha256"], self.protocol["baseline_artifact_sha256"])
         self.assertEqual(records[-1]["semantic_regression_count"], 0)
+        self.assertTrue(records[-1]["semantic_regression_count_complete"])
 
     def test_candidate_decision_rejects_one_failure_or_incomplete_result(self) -> None:
         client = _WitnessClient(self.witness_by_dialogue, self.candidate_schedule)
@@ -175,12 +176,14 @@ class Lot4C2StimmungSemanticStrengtheningTests(unittest.TestCase):
         )
         self.assertEqual(decision["decision"], "fail")
         self.assertEqual(decision["semantic_regression_count"], 1)
+        self.assertTrue(decision["semantic_regression_count_complete"])
 
         incomplete = dialogic_campaign.decide_strengthening_from_dialogue_scores(
             scores[:-1],
             historical_records=historical_records,
         )
         self.assertEqual(incomplete["decision"], "inconclusive")
+        self.assertFalse(incomplete["semantic_regression_count_complete"])
 
     def test_historical_artifact_stays_authoritative_and_unchanged(self) -> None:
         historical_records = dialogic_campaign.load_historical_provider_artifact(REPO_ROOT)
@@ -258,9 +261,23 @@ class Lot4C2StimmungSemanticStrengtheningTests(unittest.TestCase):
             ),
             1,
         )
+        self.assertEqual(records[-1]["semantic_regression_count"], 1)
+        self.assertFalse(records[-1]["semantic_regression_count_complete"])
+
+        false_zero = copy.deepcopy(records)
+        false_zero[-1]["semantic_regression_count"] = 0
+        with self.assertRaisesRegex(
+            ValueError,
+            "artifact_summary_reconstruction_mismatch",
+        ):
+            dialogic_campaign.validate_artifact(
+                false_zero,
+                REPO_ROOT,
+                artifact_protocol,
+            )
         self.assertEqual(
             dialogic_campaign._sha256_file(artifact_path),
-            "29147002cbaf1741718ea6d616f53944efffb70db41aae7ce0ff0b423c49a6b0",
+            "637cbc1fac2b03378f451d6fc64f6b0c30b7d9cd183b59b5833e3ee62612c5c5",
         )
 
 

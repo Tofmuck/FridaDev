@@ -206,6 +206,7 @@ _FINAL_KEYS = {
 _STRENGTHENING_FINAL_KEYS = _FINAL_KEYS | {
     "baseline_artifact_sha256",
     "semantic_regression_count",
+    "semantic_regression_count_complete",
 }
 
 
@@ -420,6 +421,9 @@ def _load_strengthening_manifest(repo_root: Path) -> dict[str, Any]:
         raise ValueError("strengthening_manifest_invalid")
     for key in required - {"schema_version"}:
         _validate_sha(data.get(key))
+    # The harness hash is a freeze-time provenance field. Requiring it to match
+    # the evolving reader would make an already-persisted artifact unreadable
+    # as soon as its validation contract is corrected.
     expected_files = {
         "candidate_prompt_sha256": _strengthening_candidate_path(repo_root),
         "runtime_prompt_baseline_sha256": _prompt_path(repo_root),
@@ -427,7 +431,6 @@ def _load_strengthening_manifest(repo_root: Path) -> dict[str, Any]:
         "scorer_sha256": repo_root / "benchmark/suites/stimmung/dialogic_semantics.py",
         "normalizer_sha256": repo_root / "app/core/stimmung_agent.py",
         "aggregator_sha256": repo_root / "app/core/hermeneutic_node/inputs/stimmung_input.py",
-        "campaign_harness_sha256": _harness_path(repo_root),
         "baseline_artifact_sha256": _historical_artifact_path(repo_root),
     }
     if any(data[key] != _sha256_file(path) for key, path in expected_files.items()):
@@ -865,6 +868,17 @@ def decide_strengthening_from_dialogue_scores(
     *,
     historical_records: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
+    historical_passes = _historical_pass_keys(historical_records)
+    semantic_regression_count = sum(
+        (
+            str(item.get("source") or ""),
+            int(item.get("repetition") or 0),
+            str(item.get("dialogue_id") or ""),
+        )
+        in historical_passes
+        for item in scores
+        if item.get("classification") == "fail"
+    )
     grouped_ids = {
         (source, repetition): [
             str(item.get("dialogue_id") or "")
@@ -889,34 +903,32 @@ def decide_strengthening_from_dialogue_scores(
             "decision": "inconclusive",
             "reason_codes": ["dialogue_results_incomplete"],
             "next_micro_lot": None,
-            "semantic_regression_count": 0,
+            "semantic_regression_count": semantic_regression_count,
+            "semantic_regression_count_complete": False,
         }
     if any(item.get("classification") == "inconclusive" for item in scores):
         return {
             "decision": "inconclusive",
             "reason_codes": ["provider_or_schema_inconclusive"],
             "next_micro_lot": None,
-            "semantic_regression_count": 0,
+            "semantic_regression_count": semantic_regression_count,
+            "semantic_regression_count_complete": False,
         }
     failed = [item for item in scores if item.get("classification") == "fail"]
-    historical_passes = _historical_pass_keys(historical_records)
-    regressions = sum(
-        (str(item["source"]), int(item["repetition"]), str(item["dialogue_id"]))
-        in historical_passes
-        for item in failed
-    )
     if failed:
         return {
             "decision": "fail",
             "reason_codes": ["candidate_semantic_failure"],
             "next_micro_lot": None,
-            "semantic_regression_count": regressions,
+            "semantic_regression_count": semantic_regression_count,
+            "semantic_regression_count_complete": True,
         }
     return {
         "decision": "pass",
         "reason_codes": ["all_thresholds_met_no_regression"],
         "next_micro_lot": None,
         "semantic_regression_count": 0,
+        "semantic_regression_count_complete": True,
     }
 
 
@@ -1008,11 +1020,21 @@ def _summary_records(
         for item in calls
     )
     if not metrics_complete:
+        semantic_evidence = (
+            {
+                "semantic_regression_count": decision["semantic_regression_count"],
+                "semantic_regression_count_complete": decision[
+                    "semantic_regression_count_complete"
+                ],
+            }
+            if strengthening
+            else {}
+        )
         decision = {
             "decision": "inconclusive",
             "reason_codes": ["provider_results_or_metrics_incomplete"],
             "next_micro_lot": None,
-            **({"semantic_regression_count": 0} if strengthening else {}),
+            **semantic_evidence,
         }
     final = {
         "artifact_version": artifact_version,
@@ -1171,6 +1193,8 @@ def validate_content_free_record(record: Mapping[str, Any]) -> dict[str, Any]:
             _validate_sha(record.get("baseline_artifact_sha256"))
             if not isinstance(record.get("semantic_regression_count"), int) or not 0 <= record["semantic_regression_count"] <= 64:
                 raise ValueError("semantic_regression_count_invalid")
+            if not isinstance(record.get("semantic_regression_count_complete"), bool):
+                raise ValueError("semantic_regression_count_completeness_invalid")
     return dict(record)
 
 
