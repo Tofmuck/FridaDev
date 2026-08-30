@@ -651,6 +651,47 @@ failures and decision `not_eligible`. The artifact is
 (SHA-256 `3f4da100e9c9553d64bdf44b379a02921297f6984e506b359a40891db4f4ad46`).
 No fallback or runtime action followed.
 
+### Lot 4C.2 offline causal rescoring
+
+The historical dialogic scorer remains frozen because its hash is part of the
+4S.1 and 4C.2 provider manifests. The versioned offline rescorer
+`benchmark.suites.stimmung.causal_rescoring` therefore leaves that scorer and
+all provider artifacts byte-for-byte unchanged, reuses its signal and
+aggregate schema validators, and separates three evidence levels:
+`caller_local_semantics`, `aggregate_trajectory`, and the historical
+`combined_pipeline` score.
+
+The rescorer validates each retained provider artifact with its authoritative
+campaign reconstruction before deriving any record. For every evaluated step,
+it retains only bounded turn identifiers for the actual aggregate window, the
+active-signal subset, and counts of contributors with or without a local
+expectation. An aggregate failure whose window contains a non-evaluated turn is
+classified `not_attributable_unscored_contributors`; it is never converted into
+a certain model failure. No expectation is invented for the 37 non-evaluated
+turns.
+
+Hermetic reconstruction, without provider or secret:
+
+```bash
+PYTHONPATH="$PWD:$PWD/app" python3 -m \
+  benchmark.suites.stimmung.causal_rescoring \
+  --repo-root "$PWD" \
+  --output benchmark/results/stimmung/2026-08-30-lot4c2-stimmung-causal-rescoring.jsonl
+```
+
+The retained derived artifact has 192 dialogue rescores, six configuration
+summaries and one final summary (199 JSONL records; SHA-256
+`4cadffa37afb9802345ec16aaf3095468e37a8c17969374a1935ebac790e4ea0`).
+The strengthened primary prompt passes locally on 28/32 dialogue repetitions
+but still fails four, so it does not meet the unchanged `1.0` threshold.
+Sonnet passes locally on 22/32. Gemini 3.7 medium passes locally on 15/32 but
+its configuration decision remains `inconclusive` because one of the 138
+calls has an invalid JSON result outside the locally evaluated steps; neither
+campaign supports a model cutover. The current evidence does not require a
+GPT-5.2 trial before the residual prompt-local defects are resolved. Runtime,
+prompts, models, settings, the product normalizer and the product aggregator
+remain unchanged.
+
 ## Validation agent benchmark
 
 The validation suite uses the production prompt

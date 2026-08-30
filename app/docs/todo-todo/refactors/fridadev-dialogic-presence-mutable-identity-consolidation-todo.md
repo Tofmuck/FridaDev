@@ -2976,7 +2976,7 @@ Message de commit recommande: `benchmark: evaluate Stimmung semantic corpus`.
 
 ### Micro-lot 4C.2 - Renforcement semantique conditionnel du caller
 
-Statut: ouvert; campagne candidate a 800 tokens executee le 2026-08-30, decision `inconclusive`, aucun cutover runtime
+Statut: ouvert; rescoring causal hors ligne livre le 2026-08-30, aucun cutover runtime
 Effort recommande: `extra high`
 Nature: correctif caller borne, observabilite synchrone et preuves
 Prerequis: decision `strengthen` de 4S.1 localisant un defaut du caller
@@ -3312,6 +3312,78 @@ Resultat de la campagne candidate Sonnet 5 executee depuis le gel pousse
 - la porte de livraison est fermee: aucun prompt, modele live, setting,
   runtime, frontend, rebuild, restart, deploiement ou smoke n'est modifie.
   4C.2 reste ouvert et 4C.3 reste non commence.
+
+Passe corrective de frontiere de preuve executee le 2026-08-30, sans provider:
+
+- contradiction validee: le score historique `score_dialogue` additionnait
+  les codes du signal local et ceux de l'agregat deterministe, puis presentait
+  ce resultat combine comme qualite du caller. Le `6/32` Sonnet se decompose
+  reellement en `6` passes complets, `16` echecs agregateur seuls, `7` echecs
+  mixtes et `3` echecs caller seuls. Le prompt renforce primaire obtenait
+  `28/32` passes caller locales, contre seulement `10/32` passes combinees;
+- architecture de preuve: le scorer et les manifests historiques restent
+  byte-for-byte inchanges. Le rescorer versionne
+  `benchmark/suites/stimmung/causal_rescoring.py` reutilise leurs validateurs
+  de schema et produit trois niveaux fermes: `caller_local_semantics`,
+  `aggregate_trajectory` et `combined_pipeline`. Ce dernier est reconstruit a
+  l'identique pour les `192` scores historiques;
+- provenance des fenetres: chaque etape conserve seulement les identifiants
+  synthetiques des tours effectivement consultes, le sous-ensemble de signaux
+  actifs et les comptes avec/sans attente locale. Les `37` tours non evalues
+  ne recoivent aucune attente retroactive. Tous les echecs agreges observes
+  dependent d'au moins un tour non evalue et restent donc
+  `not_attributable_unscored_contributors`; le temoin 4S.0 prouve leur
+  atteignabilite, pas une faute de l'agregateur;
+- matrice content-free recalculee depuis les appels historiques:
+
+  | campagne/source | caller local pass/fail/inc. | agregat pass/fail/inc. | pipeline combine pass/fail/inc. |
+  | --- | ---: | ---: | ---: |
+  | 4S.1 primaire Gemini 3.1 | `10/22/0` | `8/24/0` | `0/32/0` |
+  | 4S.1 fallback GPT-5.4 Nano | `11/21/0` | `9/23/0` | `4/28/0` |
+  | prompt renforce primaire | `28/4/0` | `10/22/0` | `10/22/0` |
+  | prompt renforce fallback | `25/6/1` | `8/23/1` | `8/23/1` |
+  | Gemini 3.7 medium, 800 | `15/17/0` | `11/21/0` | `5/27/0` |
+  | Sonnet 5 medium | `22/10/0` | `9/23/0` | `6/26/0` |
+
+- decision bornee: le prompt renforce ameliore fortement la responsabilite
+  locale du primaire mais reste `not_eligible` au seuil inchange `1.0`; ses
+  quatre echecs reproductibles concernent `L4S0-ST-001` et `L4S0-ST-003`, avec
+  `signal_overcoded` et `strength_outside_allowed`. Le fallback reste
+  `inconclusive` a cause de son resultat schema manquant. Sonnet reste
+  `not_eligible`. Gemini 3.7 conserve `15/32` passes locales observables mais
+  sa decision reste `inconclusive`: son erreur JSON sur un tour non evalue ne
+  doit pas disparaitre derriere les seuls scores locaux. Aucun des deux
+  modeles ne soutient un cutover face a la candidate de prompt. Un essai
+  GPT-5.2 n'est pas requis par les preuves actuelles avant traitement des
+  quatre defauts locaux residuels;
+- artefact derive content-free:
+  `benchmark/results/stimmung/2026-08-30-lot4c2-stimmung-causal-rescoring.jsonl`,
+  `199` lignes (`192` rescores, `6` syntheses de configuration, `1` synthese
+  finale), SHA-256
+  `4cadffa37afb9802345ec16aaf3095468e37a8c17969374a1935ebac790e4ea0`.
+  Les quatre artefacts provider sources conservent leurs empreintes
+  historiques et aucune ligne provider n'est reecrite;
+- sensibilite: rejet d'un echec agregateur impute au caller, d'un mauvais
+  signal masque par un agregat conforme, d'un agregat corrompu contaminant le
+  score local, d'une attribution certaine avec contributeur non evalue, d'un
+  contenu libre, d'une fausse eligibilite et d'un resultat incomplet presente
+  comme eligible;
+- preuves executees: reproduction rouge de l'API de score separee absente,
+  puis d'une reconstruction combinee qui perdait la source d'un resultat
+  historique incomplet; tests du rescorer `9/9`, goldens 4S.0/4S.1/4C.2
+  `56/56`, caller/normaliseur/agregateur/goldens causaux voisins `33/33`, et
+  decouverte Python hermetique finale `2815/2815` (`2806 + 9`, aucun skip ni
+  expected failure). La baseline globale pre-patch reste JavaScript `137/137`
+  et Chromium `19/19`; ils ne sont pas relances apres patch puisqu'aucun asset,
+  contrat frontend ou runtime n'est touche;
+- commandes de preuve: runners Docker locaux avec depot complet monte read-only,
+  `--network none`, `/tmp` en tmpfs et `PYTHONDONTWRITEBYTECODE=1`; reconstruction
+  CLI hors ligne du JSONL, `git diff --check`, verification des empreintes des
+  quatre sources historiques et controle content-free de l'artefact derive;
+- aucun appel provider, fallback, prompt, modele, setting, schema metier,
+  normaliseur, agregateur runtime, frontend, observabilite produit, rebuild,
+  restart ou deploiement. 4C.2 reste ouvert pour le correctif local residuel;
+  4C.3 reste non commence.
 
 Message de commit recommande si active: `fix: strengthen Stimmung semantic extraction`.
 
