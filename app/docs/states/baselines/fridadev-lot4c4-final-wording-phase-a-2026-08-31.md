@@ -236,6 +236,11 @@ tmpfs et `PYTHONDONTWRITEBYTECODE=1`:
 
 - F4 reste non classe et 4C.4 reste ouvert;
 - aucun resultat provider n'est attache a v1 ou v2;
+- la dette de taille n'est pas masquee: le harness v1 historique reste a
+  `1379` lignes et les responsabilites v2 sont separees entre protocole
+  (`878` lignes), execution (`498`) et notation/finalisation (`672`). Ce
+  decoupage evite d'allonger v1 et ne constitue pas un framework generique;
+  aucun refactor de taille supplementaire n'est engage dans ce micro-lot;
 - aucun runtime, prompt, modele, setting, frontend ou donnee n'est modifie;
 - aucun rebuild, restart ou deploiement n'est effectue;
 - 4O.Z et tous les lots suivants restent non commences.
