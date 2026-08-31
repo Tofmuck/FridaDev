@@ -166,9 +166,9 @@ Lire d'abord:
 - `states/architecture/fridadev-full-pipeline-overview-2026-05-19.md` pour une synthese francaise lisible du pipeline complet, du navigateur aux derives apres reponse.
 - `states/operations/main-prompt-payload-audit.md` pour cartographier le prompt effectif du modele principal et exporter un payload synthetique expurge.
 - `states/baselines/fridadev-lot4c4-final-wording-phase-a-2026-08-31.md`
-  pour le diagnostic Phase A 4C.4: inventaire du raccord derive, corpus/scorer
-  apparies, preuves fakes structurelles et campagne du modele principal gelee
-  mais non executee.
+  pour le diagnostic Phase A 4C.4: inventaire du raccord derive, supersession
+  de v1 avant tout appel, corpus/calendrier v2, runner borne, notation humaine
+  aveugle et campagne du modele principal gelee mais non executee.
 - `states/architecture/fridadev-current-runtime-pipeline.md`
 - `states/audits/fridadev-model-call-catalog-2026-05-17.md` pour cartographier les modeles OpenRouter, embeddings, Whisper, OCR, tokens et contrats de sortie avant tout raffinage provider.
 - `todo-done/refactors/fridadev-model-caller-benchmark-todo.md` pour relire le chantier clos de benchmark, decision et decouplage caller par caller.

@@ -3610,8 +3610,8 @@ Cloture fonctionnelle du 31 aout 2026 avant livraison:
 
 ### Micro-lot 4C.4 - Restitution finale conditionnelle de l'effet dialogique
 
-Statut: ouvert; Phase A obligatoire livree le 31 aout 2026;
-`provider_campaign_required`, campagne non autorisee et non executee
+Statut: ouvert; `Phase A v2 gelee — GO provider separe requis`;
+protocole v1 supersede avant tout appel, campagne non autorisee et non executee
 Effort recommande: `extra high`
 Nature: diagnostic causal puis correctif minimal si dommage prouve
 Prerequis: 4C.3 ferme
@@ -3658,7 +3658,7 @@ Condition de fermeture:
 
 Message de commit recommande si active: `fix: preserve Stimmung in final dialogic posture`.
 
-Decision Phase A du 31 aout 2026:
+Decision Phase A v2 du 31 aout 2026:
 
 - l'inventaire confirme que 4C.3 transmet exactement une directive derivee,
   compacte et unique. Validation la recopie, le vrai constructeur du payload
@@ -3672,21 +3672,46 @@ Decision Phase A du 31 aout 2026:
 - F4.1, F4.2, F4.3 et F4.4 sont validees. F4.5 est validee seulement comme
   porte diagnostique: une campagne appariee du modele principal actif est
   necessaire pour classer F4. F4 lui-meme reste non classe;
-- le corpus v1 contient 14 cas synthetiques dont 12 provider-eligibles. Il
-  separe proprietes du texte final, decisions d'un autre stage et invariants
-  contractuels. Le scorer ne lit aucun texte par regex, rejette toute
-  semantique fake et decide ici `provider_campaign_required`;
-- le protocole futur est gele a 48 appels exactement: 12 cas, deux bras, deux
-  repetitions — minimum retenu pour exposer une variance de decodage isolee
-  sous ce plafond — uniquement `openai/gpt-5.1` avec ses parametres runtime
-  actifs, sans retry, fallback, Batch, Flex, Priority, appel Validation,
-  Stimmung ou juge. Le plafond theorique est `4.340395 USD`, l'estimation prudente
-  `4.7744345 USD` et le plafond absolu `5.00 USD`;
-- corpus, scorer, seuils, calendrier, prompts et constructeurs sont empreintes
-  dans
-  `benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v1.json`.
+- la Phase A v1 livree par `d31df3be0fbae632e084359955cf6ad86c753748`
+  est supersedee avant tout appel provider: sa matiere factuelle n'etait pas
+  transmise, ses six contre-cas etaient doubles en pseudo-paires identiques,
+  et le runner/paquet/notation/finalisation annonces n'existaient pas. V1
+  reste immuable comme historique et ne porte aucun resultat provider;
+- le corpus v2 derive les 14 cas sans recopier leurs attentes. Pour les douze
+  cas provider-eligibles, chacun des 17 faits requis est relie a un literal
+  effectivement present dans l'histoire ou le tour utilisateur transmis. Le
+  scorer ne lit aucun texte par regex et separe comparaisons de transition,
+  evaluations absolues des contre-cas et invariants d'autres stages;
+- le calendrier v2 est gele a 36 appels exactement: six transitions avec deux
+  bras et deux repetitions (`24`), six contre-cas avec un seul bras runtime
+  actif et deux repetitions (`12`). L'ordre A/B est contrebalance et le mapping
+  reste cache au notateur. Presence et hard guard ne fabriquent aucun appel;
+- le runner executable reste offline sans `--execute-live`, verifie le commit
+  pousse et toutes les empreintes avant le premier appel, reutilise le
+  transport OpenRouter partage et impose le seul `openai/gpt-5.1` avec ses
+  parametres runtime actifs, sans retry, fallback, Batch, Flex, Priority,
+  Validation, Stimmung ou juge. Il classe transport, timeout, refus, longueur
+  et sortie valide, puis s'arrete a `human_rating_required`;
+- le workflow prive `0600` produit paquet aveugle, mapping separe et ledger
+  content-free. La finalisation offline valide 24 notes humaines liees au hash
+  du paquet avant de deblinder, ecrit/relit l'artefact durable content-free,
+  puis supprime le brut. Les simulations `synthetic_test` ne peuvent jamais
+  produire de verdict provider;
+- aux prix publics revus le 31 aout 2026, le cout prompt calcule est
+  `0.30759750 USD`, le plafond completion `2.94912000 USD`, le plafond total
+  calcule `3.25671750 USD`, le budget avec marge `3.58238925 USD` et le cap
+  absolu `4.00 USD`;
+- corpus, seuils, calendrier, runner, notation, prompts et constructeurs sont
+  empreintes dans
+  `benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2.json`.
   Le detail autoritatif est
   `app/docs/states/baselines/fridadev-lot4c4-final-wording-phase-a-2026-08-31.md`;
+- les preuves apres patch sont vertes: v1+v2 `20/20`, Stimmung et campagnes
+  historiques `101/101`, doctrine/Validation/payload principal `147/147`,
+  Presence/locks/capsule/manifest/streaming/persistance/observabilite `128/128`,
+  puis decouverte Python complete `2848/2848`. JavaScript `140/140` et
+  Chromium `19/19` ont ete revalides dans la baseline avant patch; aucun asset
+  frontend n'a ete touche par v2;
 - zero appel provider reel, changement runtime, prompt, modele, frontend,
   rebuild, restart ou deploiement. 4C.4 reste ouvert dans l'attente d'un GO
   separe; 4O.Z et tous les lots suivants restent non commences.

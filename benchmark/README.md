@@ -748,52 +748,61 @@ the delivered prompt. The primary and fallback models, generation settings,
 normalizer and aggregate builder are unchanged; no fallback or additional
 provider call was used during delivery.
 
-### Lot 4C.4 final-wording Phase A
+### Lot 4C.4 final-wording Phase A v2
 
-The versioned corpus
-`benchmark/suites/stimmung/fixtures/stimmung_final_wording_corpus_v1.json`
-contains 14 synthetic paired cases. Twelve are eligible for the main-model
-comparison; Presence and the hard-guard-only case remain attached to their
-authoritative stages and schedule no fabricated main-model call. Expectations
-separate final-text properties, other-stage properties and contract-only
-invariants. They never prescribe an exact answer or copy the runtime prompt.
+Phase A v1 was pushed but superseded before any provider call. Its corpus,
+harness and manifest remain immutable historical evidence; the v1 48-call
+schedule must not be run.
 
-`benchmark.suites.stimmung.final_wording_diagnostic` extends the existing
-Stimmung benchmark assets with a bounded paired schedule and structured human
-scorer. It performs no semantic regex matching and rejects any semantic result
-whose provenance is a fake. The Phase A structural goldens traverse the real
-chat coordinator and main-payload builder, but their scripted assistant output
-can yield only `provider_campaign_required`, never a result for F4.
+The authoritative v2 corpus is
+`benchmark/suites/stimmung/fixtures/stimmung_final_wording_corpus_v2.json`.
+It derives all 14 cases from v1 while making every required fact structurally
+traceable to provider-visible dialogue. Six `transition_delicate` cases retain
+two counterbalanced A/B arms. Six provider-eligible countercases now use one
+runtime-active arm only. Presence and the hard guard remain attached to their
+authoritative stages and schedule no main-model call.
+
+The v2 protocol is split by responsibility:
+
+- `final_wording_protocol_v2` validates the corpus, provider-visible matter,
+  payload policy, 36-call schedule, cost and freeze manifest;
+- `final_wording_execution_v2` reuses the shared OpenRouter transport and is
+  offline unless `--execute-live` is explicitly supplied after a separate GO;
+- `final_wording_rating_v2` validates a separately produced blind human rating,
+  unblinds only after completeness checks, writes a content-free artifact and
+  then removes the temporary raw packet and hidden mapping.
 
 The freeze manifest is
-`benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v1.json`.
-It pins the corpus, scorer/harness, main prompts, prompt-context builder,
-Continuity Capsule, main-payload builder, thresholds and exact paired schedule.
-The future schedule is `12 cases x 2 arms x 2 repetitions = 48` calls of the
-active `openai/gpt-5.1` main model only, using `temperature=0.7`, `top_p=1.0`,
-`max_tokens=8192`, hidden `high` reasoning and a 900-second timeout. There is
-one minimal repeat, for two executions per arm, to expose single-decode
-variance while keeping the absolute campaign cap at 48 calls. There is
-no retry, fallback, Batch, Flex, Priority, Validation, Stimmung or model-judge
-call. At public prices observed on 2026-08-31, the theoretical maximum is
-`4.340395 USD`; the 10% prudent estimate is `4.7744345 USD`, below the absolute
-`5.00 USD` cap.
+`benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2.json`.
+It pins v1 and v2 inputs, all three v2 modules, the product prompt builders and
+the exact schedule: `6 x 2 x 2 = 24` transition calls plus
+`6 x 1 x 2 = 12` absolute countercase calls, exactly `36`. It uses only the
+active `openai/gpt-5.1` model with `temperature=0.7`, `top_p=1.0`,
+`max_tokens=8192`, hidden `high` reasoning, a 900-second timeout,
+`allow_fallbacks=false` and `require_parameters=true`. Retry, model fallback,
+Batch, Flex, Priority, Validation, Stimmung and model-judge calls are forbidden.
 
-Phase A permits only the hermetic dry-run below. Live execution deliberately
-stops until Tof gives a separate GO after the freeze commit is pushed:
+At public prices rechecked on 2026-08-31, the calculated prompt cost is
+`0.30759750 USD`, the completion ceiling is `2.94912000 USD`, the calculated
+total ceiling is `3.25671750 USD`, the 10% safety budget is `3.58238925 USD`
+and the absolute cap is `4.00 USD`.
+
+Hermetic dry-run:
 
 ```bash
 PYTHONPATH="$PWD:$PWD/app" python3 -m \
-  benchmark.suites.stimmung.final_wording_diagnostic \
+  benchmark.suites.stimmung.final_wording_execution_v2 \
   --repo-root "$PWD" \
-  --freeze-commit <pushed-phase-a-commit> \
+  --freeze-commit <pushed-v2-commit> \
   --dry-run
 ```
 
-Any future durable artifact is content-free: bounded IDs and categories,
-route/finish metadata, token and cost metrics, response lengths and hashes,
-plus blinded structured ratings. It retains no dialogue, prompt, provider
-response, reasoning or exception text. F4 and Lot 4C.4 remain open.
+After a separately authorized live campaign, the runner writes only private
+`0600` temporary material under `/tmp` and stops at `human_rating_required`.
+The rater receives `rating_packet.json`, never `blind_mapping.json`. The
+offline finalizer accepts only a complete packet-bound rating created outside
+the runner. Synthetic tests can validate this workflow but can never yield a
+provider `pass` or `fail`. F4 and Lot 4C.4 remain open.
 
 ## Validation agent benchmark
 
