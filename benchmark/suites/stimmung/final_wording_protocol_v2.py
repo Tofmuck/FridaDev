@@ -13,10 +13,11 @@ from benchmark.suites.stimmung import final_wording_diagnostic as v1
 
 CORPUS_SCHEMA_VERSION = "stimmung_final_wording_corpus_v2"
 THRESHOLD_SCHEMA_VERSION = "stimmung_final_wording_thresholds_v2"
-PROTOCOL_VERSION = "lot4c4_final_wording_provider_campaign_v2"
-ARTIFACT_VERSION = "lot4c4_final_wording_provider_results_v2"
+PROTOCOL_VERSION = "lot4c4_final_wording_provider_campaign_v2_1"
+ARTIFACT_VERSION = "lot4c4_final_wording_provider_results_v2_1"
+SUPERSEDED_V2_PROTOCOL_VERSION = "lot4c4_final_wording_provider_campaign_v2"
 DEFAULT_FIXTURE = "stimmung_final_wording_corpus_v2.json"
-DEFAULT_FREEZE_MANIFEST = "stimmung_final_wording_freeze_v2.json"
+DEFAULT_FREEZE_MANIFEST = "stimmung_final_wording_freeze_v2_1.json"
 
 ACTIVE_MAIN_MODEL = "openai/gpt-5.1"
 ACTIVE_TEMPERATURE = 0.7
@@ -39,9 +40,10 @@ PRICING_OBSERVED_AT = "2026-08-31"
 PRICING_SOURCE = "https://openrouter.ai/api/v1/models"
 PRICING_USD_PER_TOKEN = {"prompt": 0.00000125, "completion": 0.00001}
 COST_SAFETY_MARGIN = 1.10
-BASELINE_HEAD = "d31df3be0fbae632e084359955cf6ad86c753748"
+BASELINE_HEAD = "9d6b66be05fb89561961deaa4d64f6acbbb42e48"
 V1_CORPUS_SHA256 = "de8f63c6de4ec8d51a47db868e188b06a83d66ed8b07fb2278a5a47734f4f139"
 V1_HARNESS_SHA256 = "2c34180f0d05d3ca2502f8ca71b23065749251945d5f8eb644ef44ba01288c7b"
+V2_FREEZE_SHA256 = "4a682d89d5070bc7ff928aa36696220fcac662bc26ce7fbbba4066f07901e672"
 
 FINAL_TEXT_PROPERTIES = (
     "justified_delicacy_effect",
@@ -64,6 +66,25 @@ CONTRACT_ONLY_PROPERTIES = (
     "main_payload_manifest_coherent",
     "assistant_persistence_and_provenance",
     "json_stream_equivalence",
+)
+V21_MUTATION_MATRIX = (
+    "completed_sequence_recalled_on_resume",
+    "attempt_started_sequence_recalled_on_resume",
+    "attempt_counter_reset_between_invocations",
+    "prior_cost_forgotten_on_resume",
+    "attempt_37_allowed",
+    "cumulative_cost_cap_exceeded_after_resume",
+    "partial_evidence_deleted_after_interruption",
+    "ledger_not_fsynced_before_provider_boundary",
+    "freeze_changed_during_resume",
+    "unknown_outcome_counted_as_free_or_successful",
+    "rating_packet_created_from_incomplete_campaign",
+    "codex_assistance_claimed_as_human_review",
+    "codex_assisted_rating_finalized_without_tof_ratification",
+    "ratification_fingerprint_mismatch",
+    "private_mapping_exposed_in_review_export",
+    "unblinding_before_complete_validation",
+    "raw_content_or_open_reason_code_in_durable_artifact",
 )
 
 _FIXTURE_TOP_KEYS = {
@@ -128,6 +149,10 @@ def freeze_manifest_path(repo_root: Path) -> Path:
 
 def _v1_fixture_path(repo_root: Path) -> Path:
     return repo_root / "benchmark/suites/stimmung/fixtures/stimmung_final_wording_corpus_v1.json"
+
+
+def _v2_freeze_path(repo_root: Path) -> Path:
+    return repo_root / "benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2.json"
 
 
 def _module_paths(repo_root: Path) -> dict[str, Path]:
@@ -635,6 +660,7 @@ def _build_unfrozen_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str
     inputs = {
         "corpus_v2_sha256": _sha256_file(fixture_path(repo_root)),
         "corpus_v1_sha256": _sha256_file(_v1_fixture_path(repo_root)),
+        "superseded_freeze_v2_sha256": _sha256_file(_v2_freeze_path(repo_root)),
         "protocol_module_sha256": _sha256_file(paths["protocol"]),
         "execution_module_sha256": _sha256_file(paths["execution"]),
         "rating_module_sha256": _sha256_file(paths["rating"]),
@@ -651,6 +677,8 @@ def _build_unfrozen_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str
         raise ValueError("v1_corpus_fingerprint_changed")
     if inputs["v1_message_builder_sha256"] != V1_HARNESS_SHA256:
         raise ValueError("v1_message_builder_fingerprint_changed")
+    if inputs["superseded_freeze_v2_sha256"] != V2_FREEZE_SHA256:
+        raise ValueError("superseded_v2_freeze_fingerprint_changed")
     return {
         "protocol_version": PROTOCOL_VERSION,
         "artifact_version": ARTIFACT_VERSION,
@@ -658,7 +686,9 @@ def _build_unfrozen_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str
         "phase_a_status": "provider_campaign_required",
         "freeze_commit": freeze_commit,
         "baseline_head": BASELINE_HEAD,
-        "supersedes_protocol_version": v1.PROTOCOL_VERSION,
+        "supersedes_protocol_version": SUPERSEDED_V2_PROTOCOL_VERSION,
+        "historical_v1_protocol_version": v1.PROTOCOL_VERSION,
+        "v2_provider_calls_observed": 0,
         "v1_provider_calls_observed": 0,
         "corpus_id": corpus["corpus_id"],
         "input_fingerprints": inputs,
@@ -710,11 +740,16 @@ def _build_unfrozen_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str
             "method": "separate_blinded_structured_rating",
             "runner_generates_ratings": False,
             "mapping_hidden_until_rating_validation": True,
+            "review_export_separate_from_private_mapping": True,
+            "tof_human_review": "direct_human_condition",
+            "codex_assisted_review_for_tof": "human_ratification_required",
             "semantic_regex": False,
             "presence_scored_from_final_text": False,
         },
         "decision_rules": {
             "campaign_complete_before_rating": "human_rating_required",
+            "ambiguous_started_attempt": "campaign_incomplete",
+            "codex_assisted_before_tof_ratification": "human_ratification_required",
             "no_authoritative_provider_results": "provider_campaign_required",
             "complete_provider_and_human_evidence_meets_thresholds": "pass",
             "complete_provider_and_human_evidence_misses_thresholds": "fail",
@@ -723,30 +758,35 @@ def _build_unfrozen_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str
         "artifact_policy": {
             "temporary_raw_directory_required": True,
             "temporary_file_mode": "0600",
+            "private_directory_mode": "0700",
+            "atomic_checkpoint_before_each_call": True,
+            "deterministic_live_campaign_paths_from_freeze_commit": True,
+            "resume_completed_attempts_without_recall": True,
+            "ambiguous_attempt_costed_at_call_ceiling": True,
+            "review_export_contains_blind_packet_only": True,
             "durable_content_free": True,
             "raw_dialogue_in_durable_artifact": False,
             "raw_prompt_in_durable_artifact": False,
             "raw_provider_response_in_durable_artifact": False,
             "temporary_raw_deleted_after_valid_finalization": True,
         },
+        "v2_1_mutation_matrix": list(V21_MUTATION_MATRIX),
     }
 
 
 def expected_freeze_manifest(protocol: Mapping[str, Any], repo_root: Path) -> dict[str, Any]:
     corpus = load_corpus(repo_root)
     return {
-        "schema_version": "stimmung_final_wording_freeze_v2",
-        "status": "phase_a_v2_frozen_separate_provider_go_required",
+        "schema_version": "stimmung_final_wording_freeze_v2_1",
+        "status": "phase_a_v2_1_frozen_separate_provider_go_required",
         "baseline_head": BASELINE_HEAD,
         "supersedes": {
-            "protocol_version": v1.PROTOCOL_VERSION,
+            "protocol_version": SUPERSEDED_V2_PROTOCOL_VERSION,
             "reason_codes": [
-                "provider_required_matter_not_visible",
-                "identical_countercase_arms_duplicated",
-                "blind_human_rating_workflow_absent",
-                "bounded_live_runner_absent",
-                "cost_terminology_ambiguous",
-                "v1_already_pushed",
+                "per_attempt_durable_checkpoint_absent",
+                "paid_sequence_recall_possible_after_interruption",
+                "codex_assistance_misrepresented_as_human_review",
+                "review_export_not_separated_from_private_mapping",
             ],
             "provider_calls_observed": 0,
             "provider_results_attached": False,
@@ -812,8 +852,9 @@ def expected_freeze_manifest(protocol: Mapping[str, Any], repo_root: Path) -> di
         "decision_rules": copy.deepcopy(protocol["decision_rules"]),
         "artifact_policy": copy.deepcopy(protocol["artifact_policy"]),
         "mutation_matrix": copy.deepcopy(corpus["mutation_matrix"]),
+        "v2_1_mutation_matrix": list(V21_MUTATION_MATRIX),
         "phase_limits": {
-            "provider_calls_executed_in_phase_a_v2": 0,
+            "provider_calls_executed_in_phase_a_v2_1": 0,
             "runtime_change": False,
             "prompt_change": False,
             "model_or_setting_change": False,

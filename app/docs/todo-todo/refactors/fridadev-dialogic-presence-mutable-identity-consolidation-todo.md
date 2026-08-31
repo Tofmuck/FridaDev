@@ -3610,8 +3610,8 @@ Cloture fonctionnelle du 31 aout 2026 avant livraison:
 
 ### Micro-lot 4C.4 - Restitution finale conditionnelle de l'effet dialogique
 
-Statut: ouvert; `Phase A v2 gelee — GO provider separe requis`;
-protocole v1 supersede avant tout appel, campagne non autorisee et non executee
+Statut: ouvert; `Phase A v2.1 gelee — GO provider separe requis`;
+protocoles v1 et v2 supersedes avant tout appel, campagne non autorisee et non executee
 Effort recommande: `extra high`
 Nature: diagnostic causal puis correctif minimal si dommage prouve
 Prerequis: 4C.3 ferme
@@ -3715,6 +3715,62 @@ Decision Phase A v2 du 31 aout 2026:
 - zero appel provider reel, changement runtime, prompt, modele, frontend,
   rebuild, restart ou deploiement. 4C.4 reste ouvert dans l'attente d'un GO
   separe; 4O.Z et tous les lots suivants restent non commences.
+
+Passe corrective Phase A v2.1 du 31 aout 2026:
+
+- v2 est supersede avant toute campagne: aucun de ses 36 appels n'a ete
+  execute et aucun resultat provider ne lui est attache. Son runner gardait
+  les resultats en memoire jusqu'au dernier appel, pouvait supprimer les
+  preuves sur exception et rappelait potentiellement des sequences deja
+  payees lors d'une nouvelle invocation;
+- le runner existant utilise desormais un ledger content-free atomique `0600`
+  dans un repertoire prive `0700`. Chaque sequence suit `planned`,
+  `attempt_started`, `completed` ou `attempt_outcome_unknown`;
+  `attempt_started` est flush/fsync avant la frontiere provider, puis sortie
+  privee et resultat content-free sont checkpointes sans attendre le 36e
+  appel;
+- une reprise exige le meme commit de gel, protocole, corpus, calendrier,
+  modele, parametres et empreintes. Elle saute les `completed` et ne rappelle
+  jamais un `attempt_started`: celui-ci devient inconnu, consomme une tentative
+  et son plafond de cout, puis force `campaign_incomplete` sans paquet, note ou
+  verdict. Les 36 tentatives et le cap `4.00 USD` sont cumules entre reprises;
+- les chemins live sont uniques et derives du commit de gel, ce qui empeche
+  une simple nouvelle invocation de choisir un autre repertoire pour remettre
+  le compteur a zero. Sans cle d'idempotence provider, v2.1 ne pretend pas
+  garantir un exactly-once externe; une tentative envoyee puis interrompue
+  reste honnetement indeterminee et n'est pas retentee;
+- l'espace prive conserve ledger, sorties et mapping. L'export remis au
+  notateur contient uniquement le paquet aveugle, sans variante, bras actif,
+  directive ou mapping. L'aveuglement est organisationnel et lie par SHA-256,
+  non une isolation forte contre un operateur ouvrant volontairement les deux
+  espaces;
+- `delegated_human_review` et le faux humain `codex_for_tof` sont rejetes. Une
+  note `tof_human_review/rater_id=tof` satisfait la condition humaine; une note
+  `codex_assisted_review_for_tof/rater_id=codex_for_tof` s'arrete a
+  `human_ratification_required` jusqu'a une ratification content-free de Tof
+  liee aux empreintes exactes du paquet et des notes. Refus, mauvaise
+  empreinte, note partielle ou source synthetique ne deblindent rien;
+- le nouveau gel autoritatif est
+  `stimmung_final_wording_freeze_v2_1.json`; le gel v2 reste l'archive du
+  protocole supersede. Le corpus, le calendrier exact `24 + 12 = 36`, le modele
+  `openai/gpt-5.1`, les parametres et le cout maximal `4.00 USD` sont
+  inchanges;
+- les reproductions rouges initiales ont produit `8` tests en `11` erreurs
+  attendues; les dix preuves v2.1 couvrent reprise, quatre fenetres de crash,
+  `Exception`, `KeyboardInterrupt`, atomicite, cumul appels/cout, faux humain,
+  ratification, deblindage et export. Les resultats finaux sont documentes dans
+  le rapport Phase A;
+- preuves finales: v1+v2 `20/20`, v2.1 `10/10`, campagnes Stimmung
+  historiques `101/101`, doctrine/Validation/payload principal `149/149`,
+  Presence/locks/capsule/manifest/streaming/persistance/observabilite
+  `186/186`, puis decouverte Python complete `2858/2858`, exactement dix tests
+  de plus que la baseline `2848/2848`. JavaScript `140/140` et Chromium
+  `19/19` restent les baselines avant patch, aucun asset frontend n'ayant ete
+  touche;
+- zero appel provider reel, changement runtime, prompt, modele, setting,
+  frontend, rebuild, restart ou deploiement. 4C.4 reste ouvert dans l'attente
+  d'un GO provider separe puis de la notation/ratification; 4O.Z et tous les
+  lots suivants restent non commences.
 
 ### Micro-lot 4O.Z - Contre-audit causal et fermeture du Lot 4
 

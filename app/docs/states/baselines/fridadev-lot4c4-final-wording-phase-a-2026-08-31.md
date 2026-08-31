@@ -1,11 +1,169 @@
-# Lot 4C.4 — Phase A du diagnostic de restitution finale
+# Lot 4C.4 — Phase A v2.1 du diagnostic de restitution finale
 
 Date: 31 aout 2026
-Statut: `Phase A v2 gelee — GO provider separe requis`; 4C.4 reste ouvert
-Portee: correction du corpus, du calendrier, du runner et de la notation humaine
+Statut: `Phase A v2.1 gelee — GO provider separe requis`; 4C.4 reste ouvert
+Portee: checkpoint, reprise, export aveugle et provenance de notation v2.1
 Exclusions: runtime, prompts, modeles, settings, frontend, donnees operateur et appels provider reels
 
-## Decision v2
+## Decision v2.1
+
+La Phase A v2 livree par
+`9d6b66be05fb89561961deaa4d64f6acbbb42e48` est supersedee avant tout appel
+provider. Son corpus, son calendrier de 36 appels, son scorer et ses parametres
+restent valides, mais son runner n'enregistrait rien durablement avant le 36e
+retour, supprimait le repertoire de preuve sur exception et acceptait
+`codex_for_tof` sous la provenance mensongere `delegated_human_review`. Paquet
+aveugle et mapping prive partageaient aussi le meme repertoire. V2 ne porte
+aucun resultat provider.
+
+V2.1 est le protocole autoritatif. Il ne classe toujours pas F4: la decision
+reste `provider_campaign_required`, 4C.4 reste ouvert et les 36 appels exigent
+un GO provider separe. Zero appel provider reel n'a ete execute pendant cette
+passe.
+
+## Journal durable et reprise
+
+Le runner conserve le calendrier v2 et ajoute une machine d'etat fermee par
+sequence: `planned`, `attempt_started`, `completed` et
+`attempt_outcome_unknown`. Le ledger content-free est ecrit en `0600`, avec
+flush, `fsync`, remplacement atomique depuis le meme repertoire et `fsync` du
+repertoire. `attempt_started` est durable avant la frontiere externe; le
+resultat prive necessaire a la notation est ensuite checkpointé separement,
+puis le resultat content-free `completed` est ecrit sans attendre le 36e
+appel.
+
+Une reprise exige exactement le meme protocole, commit de gel, corpus,
+calendrier, modele, parametres et empreintes. Elle saute toute sequence
+`completed`. Une sequence restee `attempt_started` devient
+`attempt_outcome_unknown`, n'est jamais rappelee, compte dans les 36 tentatives
+et consomme son plafond de cout calcule. La campagne devient alors
+`campaign_incomplete`; elle ne construit aucun paquet, n'accepte aucune note
+et ne produit aucune decision semantique. Les checkpoints ne sont jamais
+supprimes sur `Exception`, `KeyboardInterrupt` ou autre interruption.
+
+Le compteur et le cout sont recalcules depuis les 36 enregistrements, jamais
+depuis l'invocation courante. Le 37e essai et tout cout cumule superieur au cap
+de `4.00 USD` sont refuses. Pour le chemin live, les repertoires prive et de
+revue ont des noms uniques derives du commit de gel; choisir simplement un
+autre chemin ne permet pas de repartir a zero.
+
+Cette garantie n'est pas un exactly-once provider: OpenRouter ne fournit pas
+ici de cle d'idempotence. Une coupure apres envoi peut donc laisser le resultat
+inconnu. V2.1 garantit seulement qu'une sequence durablement marquee commencee
+n'est jamais rappelee. Une suppression volontaire des preuves temporaires par
+un operateur reste hors de la garantie du runner et rendrait la campagne
+inauditable; le runner lui-meme ne les supprime jamais avant finalisation
+valide.
+
+## Provenance de notation et ratification
+
+Les seules provenances de revue non synthetiques sont maintenant:
+
+- `tof_human_review`, avec `rater_id=tof`, qui satisfait directement la
+  condition humaine si le paquet et les 24 notes sont complets;
+- `codex_assisted_review_for_tof`, avec `rater_id=codex_for_tof`, qui n'est
+  jamais nommee revue humaine et s'arrete a `human_ratification_required`.
+
+La seconde voie exige avant deblindage une ratification creee hors runner:
+`ratifier_id=tof`, empreintes exactes du paquet et du fichier de notes, puis
+decision fermee `accept` ou `refuse`. Un refus conserve les preuves et ne
+deblinde rien. Une acceptation valide permet seulement alors de charger le
+mapping, scorer et finaliser. `delegated_human_review`, un agent se declarant
+humain, une mauvaise empreinte ou une notation partielle sont rejetes. Les
+tests `synthetic_test` restent explicitement synthetiques et ne peuvent jamais
+produire de verdict provider.
+
+## Paquet remis au notateur
+
+L'espace prive de campagne `0700` contient le ledger, les sorties privees et
+`blind_mapping.json`. Un second repertoire `0700`, qui peut etre remis sans
+donner acces au premier, contient initialement uniquement
+`rating_packet.json`. Ce paquet expose le dialogue synthetique, A/B ou
+`single`, les sorties et la grille; il ne contient ni bras actif, ni variante,
+ni directive, ni mapping. Les deux espaces sont lies par SHA-256.
+
+Cet aveuglement est organisationnel et cryptographiquement lie, non une
+isolation forte contre un operateur qui choisirait volontairement de lire les
+deux repertoires. Apres readback valide de l'artefact durable content-free, les
+sorties brutes, le paquet et le mapping sont supprimes; jamais avant.
+
+## Gel et commande future v2.1
+
+Le manifest autoritatif est
+`benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2_1.json`.
+Il pince les trois modules, le corpus v2, le manifest v2 historique, les
+entrees produit, la machine de reprise et les mutations v2.1. Le manifest v2
+reste immuable dans Git mais n'est plus courant.
+
+Apres un GO separe et seulement depuis le commit v2.1 pousse, les deux chemins
+doivent reprendre les douze premiers caracteres du commit de gel:
+
+```bash
+PYTHONPATH="$PWD:$PWD/app" python3 -m \
+  benchmark.suites.stimmung.final_wording_execution_v2 \
+  --repo-root "$PWD" \
+  --freeze-commit <commit-v2.1-pousse> \
+  --execute-live \
+  --output-dir /tmp/lot4c4-final-wording-v2.1-<commit12>-private \
+  --review-export-dir /tmp/lot4c4-final-wording-v2.1-<commit12>-review
+```
+
+Une reprise emploie exactement la meme commande et ajoute `--resume`. Aucune
+commande live n'a ete executee pendant cette Phase A v2.1.
+
+Apres `human_rating_required`, le notateur recoit seulement le repertoire de
+revue et cree `ratings.json` en `0600`. La finalisation offline emploie:
+
+```bash
+PYTHONPATH="$PWD:$PWD/app" python3 -m \
+  benchmark.suites.stimmung.final_wording_rating_v2 \
+  --campaign-dir /tmp/lot4c4-final-wording-v2.1-<commit12>-private \
+  --rating-packet /tmp/lot4c4-final-wording-v2.1-<commit12>-review/rating_packet.json \
+  --ratings /tmp/lot4c4-final-wording-v2.1-<commit12>-review/ratings.json \
+  --durable-output benchmark/results/stimmung/<date>-lot4c4-final-wording-v2.1.json
+```
+
+Pour `codex_assisted_review_for_tof`, cette premiere invocation rend seulement
+`human_ratification_required`. Tof cree ensuite le petit JSON content-free de
+ratification, hors runner provider, et relance la meme commande avec
+`--tof-ratification <chemin-ratification-tof>`. Aucun mapping n'est charge
+avant la validation de cette ratification.
+
+## Preuves v2.1
+
+- reproductions rouges initiales: `8` tests, `11` erreurs attendues avant
+  implementation; elles montraient l'absence d'API de reprise, d'export
+  separe, d'ecriture atomique et de ratification;
+- deux sensibilites supplementaires ont ete ajoutees pendant le contre-audit:
+  retour provider sans checkpoint final et cumul du cap de cout apres reprise;
+- les `10` tests v2.1 couvrent les quatre fenetres de crash, exception Python,
+  `KeyboardInterrupt`, preservation des preuves, reprise sans rappel, cap de
+  36 appels et `4 USD`, gel change, atomicite, faux humain, ratification,
+  deblindage et export sans mapping;
+- baseline avant patch: Python `2848/2848`, JavaScript `140/140`, Chromium
+  `19/19`;
+- protocole historique v1 et v2 courant avant les preuves v2.1: `20/20`; avec
+  les dix preuves v2.1: `30/30`;
+- suites Stimmung, campagnes et goldens historiques: `101/101`;
+- doctrine, Validation et payload principal: `149/149`;
+- Presence, final locks, capsule, manifest, JSON/streaming, persistance et
+  observabilite voisine: `186/186`;
+- decouverte Python complete apres patch: `2858/2858` en `735.657 s`, soit
+  exactement les `2848` tests de baseline plus les `10` nouvelles preuves;
+- JavaScript et Chromium n'ont pas ete relances apres patch: aucun asset
+  frontend n'a ete touche et leurs baselines restent `140/140` et `19/19`;
+- aucune preuve n'utilise un provider, un secret ou une DB operateur.
+
+La dette de taille reste explicite: le harness v1 historique n'est pas
+agrandi, mais les modules v2.1 atteignent respectivement `919` lignes pour le
+protocole, `941` pour l'execution et `1014` pour la notation/finalisation. La
+passe conserve leurs responsabilites existantes et n'introduit ni framework
+generique ni refactor de taille hors du correctif; une reduction ulterieure ne
+pourrait etre engagee que dans un lot borne distinct.
+
+## Archive Phase A v2 supersedee
+
+### Decision v2
 
 Le protocole v1 livre par le commit
 `d31df3be0fbae632e084359955cf6ad86c753748` est supersede avant toute campagne.
@@ -24,7 +182,7 @@ Zero appel provider a ete execute pendant cette passe corrective. 4C.4 reste
 ouvert jusqu'au GO separe, aux 36 appels eventuels, puis a la notation humaine
 deleguee separement a Codex pour Tof et a la finalisation content-free.
 
-## Baseline corrective
+### Baseline corrective v2
 
 - racine et toplevel Git: `/opt/platform/fridadev`;
 - branche `main`; HEAD local, upstream et distant
@@ -41,7 +199,7 @@ deleguee separement a Codex pour Tof et a la finalisation content-free.
   `top_p=1.0`, `response_max_tokens=8192`, raisonnement `high`; timeout du
   caller principal `900 s`.
 
-## Findings correctifs C1 a C6
+### Findings correctifs C1 a C6
 
 - C1 valide: les douze bases factuelles v1 n'etaient jamais ajoutees aux
   messages. Tous les cas provider v2 possedent des faits litteraux relies par
@@ -65,7 +223,7 @@ deleguee separement a Codex pour Tof et a la finalisation content-free.
   la supersession et pince separement corpus v1, corpus v2, builder historique,
   trois modules v2 et entrees produit.
 
-## Corpus et calendrier v2
+### Corpus et calendrier v2
 
 Le corpus autoritatif est
 `benchmark/suites/stimmung/fixtures/stimmung_final_wording_corpus_v2.json`.
@@ -94,7 +252,7 @@ variance de decodage. Pour chaque paire causale, la normalisation prouve que
 seule la directive d'enonciation autorisee differe; le signal Stimmung brut est
 absent et la Continuity Capsule reste unique et terminale.
 
-## Runner borne v2
+### Runner borne v2
 
 Le module `benchmark.suites.stimmung.final_wording_execution_v2` construit le
 protocole et le calendrier avant tout acces au client. Il impose:
@@ -133,7 +291,7 @@ PYTHONPATH="$PWD:$PWD/app" python3 -m \
 Le runner s'arrete ensuite avec `human_rating_required`. Il ne produit aucun
 score semantique.
 
-## Notation humaine aveugle et finalisation
+### Notation annoncee en v2
 
 Le repertoire temporaire contient exactement le paquet aveugle, le mapping
 cache et le ledger content-free. Le paquet fournit le dialogue synthetique,
@@ -166,7 +324,7 @@ temporaire n'est supprime. Les tests de cette Phase A utilisent uniquement des
 sorties `SYNTHETIC_TEST_RESPONSE_*` et des notes `synthetic_test`; leur decision
 reste obligatoirement `provider_campaign_required`.
 
-## Scorer v2
+### Scorer v2
 
 Les transitions mesurent comparativement delicatesse, adequation,
 psychologisation, certitude, verite/preuve et cible masquee. Les contre-cas
@@ -186,7 +344,7 @@ exigent 36 tentatives, 36 sorties completes avec provenance exacte et 24 notes
 humaines valides. Une preuve technique ou de notation incomplete donne
 `inconclusive`; une simulation conserve `provider_campaign_required`.
 
-## Cout v2
+### Cout v2
 
 Prix publics OpenRouter revus le 31 aout 2026: `1.25 USD/M` token d'entree et
 `10 USD/M` token de sortie. Sur les 36 payloads exacts:
@@ -201,7 +359,7 @@ Ce budget n'est pas une estimation probable. Le runner additionne le cout
 provider observe quand il existe, sinon le plafond calcule de l'appel, et
 refuse l'appel suivant s'il depasserait le cap.
 
-## Sensibilite v2
+### Sensibilite v2
 
 Les tests rejettent ou detectent: fait requis absent, liste/paragraphe retire,
 pseudo-paire identique, retour a 48 appels, modele ou parametre modifie, retry
@@ -212,7 +370,7 @@ avant validation, Presence tiree du texte, signal Stimmung brut et changement
 d'un input pince. Le protocole v1 reste validable avec son ancien manifest,
 mais son statut courant est explicitement supersede.
 
-## Preuves correctives executees
+### Preuves correctives executees en v2
 
 Tous les tests utilisent le checkout read-only, `--network none`, `/tmp` en
 tmpfs et `PYTHONDONTWRITEBYTECODE=1`:
@@ -232,7 +390,7 @@ tmpfs et `PYTHONDONTWRITEBYTECODE=1`:
   perimetre: aucun asset frontend n'a ete touche; leurs baselines avant patch
   restent respectivement `140/140` et `19/19`.
 
-## Limites v2
+### Limites v2
 
 - F4 reste non classe et 4C.4 reste ouvert;
 - aucun resultat provider n'est attache a v1 ou v2;

@@ -748,11 +748,18 @@ the delivered prompt. The primary and fallback models, generation settings,
 normalizer and aggregate builder are unchanged; no fallback or additional
 provider call was used during delivery.
 
-### Lot 4C.4 final-wording Phase A v2
+### Lot 4C.4 final-wording Phase A v2.1
 
 Phase A v1 was pushed but superseded before any provider call. Its corpus,
 harness and manifest remain immutable historical evidence; the v1 48-call
 schedule must not be run.
+
+Phase A v2 was then pushed and superseded before any provider call. Its
+36-call corpus, schedule and scorer remain the basis of v2.1, but its runner
+had no per-attempt durable checkpoint, could recall paid sequences after an
+interruption, colocated the blind packet with the private mapping, and called
+`codex_for_tof` a delegated human review. The v2 manifest remains historical
+and must not be used for a campaign.
 
 The authoritative v2 corpus is
 `benchmark/suites/stimmung/fixtures/stimmung_final_wording_corpus_v2.json`.
@@ -762,20 +769,22 @@ two counterbalanced A/B arms. Six provider-eligible countercases now use one
 runtime-active arm only. Presence and the hard guard remain attached to their
 authoritative stages and schedule no main-model call.
 
-The v2 protocol is split by responsibility:
+The authoritative v2.1 protocol keeps the v2 module boundaries:
 
 - `final_wording_protocol_v2` validates the corpus, provider-visible matter,
   payload policy, 36-call schedule, cost and freeze manifest;
-- `final_wording_execution_v2` reuses the shared OpenRouter transport and is
-  offline unless `--execute-live` is explicitly supplied after a separate GO;
-- `final_wording_rating_v2` validates a separately produced blind human rating,
-  unblinds only after completeness checks, writes a content-free artifact and
-  then removes the temporary raw packet and hidden mapping.
+- `final_wording_execution_v2` reuses the shared OpenRouter transport, remains
+  offline without `--execute-live`, checkpoints `attempt_started` before each
+  external attempt, and resumes only from the same frozen campaign;
+- `final_wording_rating_v2` distinguishes direct `tof_human_review` from
+  `codex_assisted_review_for_tof`; Codex assistance requires an exact,
+  content-free Tof ratification before any unblinding.
 
 The freeze manifest is
-`benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2.json`.
-It pins v1 and v2 inputs, all three v2 modules, the product prompt builders and
-the exact schedule: `6 x 2 x 2 = 24` transition calls plus
+`benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2_1.json`.
+It pins the historical v2 freeze, all three current modules, the product prompt
+builders, the state machine and the exact schedule:
+`6 x 2 x 2 = 24` transition calls plus
 `6 x 1 x 2 = 12` absolute countercase calls, exactly `36`. It uses only the
 active `openai/gpt-5.1` model with `temperature=0.7`, `top_p=1.0`,
 `max_tokens=8192`, hidden `high` reasoning, a 900-second timeout,
@@ -793,16 +802,25 @@ Hermetic dry-run:
 PYTHONPATH="$PWD:$PWD/app" python3 -m \
   benchmark.suites.stimmung.final_wording_execution_v2 \
   --repo-root "$PWD" \
-  --freeze-commit <pushed-v2-commit> \
+  --freeze-commit <pushed-v2.1-commit> \
   --dry-run
 ```
 
 After a separately authorized live campaign, the runner writes only private
-`0600` temporary material under `/tmp` and stops at `human_rating_required`.
-The rater receives `rating_packet.json`, never `blind_mapping.json`. The
-offline finalizer accepts only a complete packet-bound rating created outside
-the runner. Synthetic tests can validate this workflow but can never yield a
-provider `pass` or `fail`. F4 and Lot 4C.4 remain open.
+`0600` material in a deterministic `0700` campaign directory under `/tmp`.
+Every completed or ambiguous attempt remains counted across invocations. A
+leftover `attempt_started` becomes a conservatively costed
+`attempt_outcome_unknown`, stops at `campaign_incomplete`, and is never called
+again. This is not an exactly-once provider guarantee because no provider
+idempotency key exists.
+
+Only a separate `0700` review export containing `rating_packet.json` is handed
+to the rater; `blind_mapping.json`, the ledger and private outputs remain in
+the campaign directory. The isolation is organizational and hash-bound, not a
+strong barrier against an operator deliberately opening both locations.
+Synthetic tests exercise the workflow but can never yield a provider `pass` or
+`fail`. F4 and Lot 4C.4 remain open pending a separate provider GO and later
+human review or ratification.
 
 ## Validation agent benchmark
 

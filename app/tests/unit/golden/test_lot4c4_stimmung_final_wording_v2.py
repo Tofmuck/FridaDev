@@ -97,7 +97,7 @@ def _synthetic_ratings(packet: dict[str, object]) -> dict[str, object]:
             }
         ratings.append(rating)
     return {
-        "schema_version": "stimmung_final_wording_ratings_v2",
+        "schema_version": final_wording_rating_v2.RATINGS_SCHEMA_VERSION,
         "packet_sha256": packet["packet_sha256"],
         "rating_source": "synthetic_test",
         "rater_id": "offline_workflow_test",
@@ -186,6 +186,10 @@ class Lot4C4ProtocolV2Tests(unittest.TestCase):
     def test_protocol_v2_has_honest_cost_names_and_detects_every_frozen_mutation(self) -> None:
         summary = final_wording_protocol_v2.validate_protocol(self.protocol, REPO_ROOT)
 
+        self.assertEqual(
+            self.protocol["protocol_version"],
+            "lot4c4_final_wording_provider_campaign_v2_1",
+        )
         self.assertEqual(summary["expected_call_count"], 36)
         self.assertEqual(self.protocol["absolute_call_cap"], 36)
         self.assertEqual(self.protocol["model"], "openai/gpt-5.1")
@@ -236,8 +240,23 @@ class Lot4C4ProtocolV2Tests(unittest.TestCase):
         v1 = final_wording_diagnostic.build_protocol(REPO_ROOT, freeze_commit="f" * 40)
         self.assertEqual(v1["protocol_version"], "lot4c4_final_wording_provider_campaign_v1")
         self.assertEqual(v1["expected_call_count"], 48)
-        self.assertEqual(self.protocol["supersedes_protocol_version"], v1["protocol_version"])
+        self.assertEqual(
+            self.protocol["supersedes_protocol_version"],
+            "lot4c4_final_wording_provider_campaign_v2",
+        )
+        self.assertEqual(self.protocol["historical_v1_protocol_version"], v1["protocol_version"])
+        self.assertEqual(self.protocol["v2_provider_calls_observed"], 0)
         self.assertEqual(self.protocol["v1_provider_calls_observed"], 0)
+        historical_v2 = json.loads(
+            (
+                REPO_ROOT
+                / "benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            historical_v2["status"],
+            "phase_a_v2_frozen_separate_provider_go_required",
+        )
         final_wording_diagnostic.validate_freeze_manifest(
             REPO_ROOT,
             freeze_commit="f" * 40,
@@ -272,6 +291,17 @@ class Lot4C4WorkflowV2Tests(unittest.TestCase):
                         "--execute-live",
                     ]
                 )
+            with self.assertRaises(SystemExit):
+                final_wording_execution_v2.main(
+                    [
+                        "--repo-root",
+                        str(REPO_ROOT),
+                        "--freeze-commit",
+                        "f" * 40,
+                        "--dry-run",
+                        "--resume",
+                    ]
+                )
             self.assertEqual(
                 final_wording_execution_v2.main(
                     [
@@ -288,12 +318,14 @@ class Lot4C4WorkflowV2Tests(unittest.TestCase):
     def test_synthetic_runner_builds_private_blind_packet_mapping_and_content_free_ledger(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as parent:
             output_dir = Path(parent) / "campaign"
+            review_dir = Path(parent) / "review"
             client = _SyntheticClient()
             result = final_wording_execution_v2.run_campaign(
                 repo_root=REPO_ROOT,
                 protocol=self.protocol,
                 client=client,
                 output_dir=output_dir,
+                review_export_dir=review_dir,
                 execution_authorized=True,
                 evidence_source="synthetic_test",
             )
@@ -301,12 +333,12 @@ class Lot4C4WorkflowV2Tests(unittest.TestCase):
             self.assertEqual(result["status"], "human_rating_required")
             self.assertEqual(result["attempted_call_count"], 36)
             self.assertEqual(len(client.calls), 36)
-            for name in ("rating_packet.json", "blind_mapping.json", "call_ledger.json"):
+            for name in ("blind_mapping.json", "call_ledger.json", "private_outputs.json"):
                 path = output_dir / name
                 self.assertTrue(path.is_file())
                 self.assertEqual(path.stat().st_mode & 0o777, 0o600)
 
-            packet_text = (output_dir / "rating_packet.json").read_text(encoding="utf-8")
+            packet_text = (review_dir / "rating_packet.json").read_text(encoding="utf-8")
             mapping_text = (output_dir / "blind_mapping.json").read_text(encoding="utf-8")
             ledger_text = (output_dir / "call_ledger.json").read_text(encoding="utf-8")
             packet = json.loads(packet_text)
@@ -321,20 +353,23 @@ class Lot4C4WorkflowV2Tests(unittest.TestCase):
     def test_incomplete_provider_shape_is_not_a_semantic_result(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as parent:
             output_dir = Path(parent) / "campaign"
+            review_dir = Path(parent) / "review"
             result = final_wording_execution_v2.run_campaign(
                 repo_root=REPO_ROOT,
                 protocol=self.protocol,
                 client=_SyntheticClient(missing_sequence=3),
                 output_dir=output_dir,
+                review_export_dir=review_dir,
                 execution_authorized=True,
                 evidence_source="synthetic_test",
             )
             ledger = json.loads((output_dir / "call_ledger.json").read_text(encoding="utf-8"))
 
-            self.assertEqual(result["status"], "human_rating_required")
+            self.assertEqual(result["status"], "campaign_incomplete")
             self.assertEqual(ledger["status_counts"]["timeout"], 1)
             self.assertFalse(ledger["outputs_complete"])
             self.assertNotIn("decision", ledger)
+            self.assertFalse(review_dir.exists())
 
     def test_runner_rejects_fake_provider_provenance_raw_repo_path_and_cost_overrun(self) -> None:
         client = _SyntheticClient()
@@ -346,6 +381,7 @@ class Lot4C4WorkflowV2Tests(unittest.TestCase):
                     protocol=self.protocol,
                     client=client,
                     output_dir=output_dir,
+                    review_export_dir=Path(parent) / "review",
                     execution_authorized=False,
                     evidence_source="synthetic_test",
                 )
@@ -358,6 +394,7 @@ class Lot4C4WorkflowV2Tests(unittest.TestCase):
                     protocol=self.protocol,
                     client=client,
                     output_dir=output_dir,
+                    review_export_dir=Path(parent) / "review",
                     execution_authorized=True,
                     evidence_source="main_model_provider",
                 )
@@ -372,38 +409,44 @@ class Lot4C4WorkflowV2Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir="/tmp") as parent:
             expensive = _SyntheticClient(cost_usd=1.0)
             output_dir = Path(parent) / "campaign"
-            with self.assertRaisesRegex(ValueError, "cost_cap_would_be_exceeded"):
-                final_wording_execution_v2.run_campaign(
-                    repo_root=REPO_ROOT,
-                    protocol=self.protocol,
-                    client=expensive,
-                    output_dir=output_dir,
-                    execution_authorized=True,
-                    evidence_source="synthetic_test",
-                )
+            result = final_wording_execution_v2.run_campaign(
+                repo_root=REPO_ROOT,
+                protocol=self.protocol,
+                client=expensive,
+                output_dir=output_dir,
+                review_export_dir=Path(parent) / "review",
+                execution_authorized=True,
+                evidence_source="synthetic_test",
+            )
+            self.assertEqual(result["status"], "campaign_incomplete")
+            self.assertEqual(result["reason_code"], "cost_cap_would_be_exceeded")
             self.assertEqual(len(expensive.calls), 4)
-            self.assertFalse(output_dir.exists())
+            self.assertTrue((output_dir / "call_ledger.json").is_file())
 
     def test_synthetic_ratings_validate_workflow_but_cannot_yield_provider_verdict(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as parent:
             output_dir = Path(parent) / "campaign"
+            review_dir = Path(parent) / "review"
             durable_path = Path(parent) / "durable.json"
             final_wording_execution_v2.run_campaign(
                 repo_root=REPO_ROOT,
                 protocol=self.protocol,
                 client=_SyntheticClient(),
                 output_dir=output_dir,
+                review_export_dir=review_dir,
                 execution_authorized=True,
                 evidence_source="synthetic_test",
             )
-            packet = json.loads((output_dir / "rating_packet.json").read_text(encoding="utf-8"))
+            packet_path = review_dir / "rating_packet.json"
+            packet = json.loads(packet_path.read_text(encoding="utf-8"))
             ratings = _synthetic_ratings(packet)
-            ratings_path = output_dir / "ratings.json"
+            ratings_path = review_dir / "ratings.json"
             ratings_path.write_text(json.dumps(ratings), encoding="utf-8")
             os.chmod(ratings_path, 0o600)
 
             artifact = final_wording_rating_v2.finalize_campaign(
                 campaign_dir=output_dir,
+                rating_packet_path=packet_path,
                 ratings_path=ratings_path,
                 durable_output=durable_path,
             )
@@ -426,26 +469,37 @@ class Lot4C4WorkflowV2Tests(unittest.TestCase):
                     "exception_text_included": False,
                 },
             )
-            self.assertFalse((output_dir / "rating_packet.json").exists())
+            self.assertFalse(packet_path.exists())
             self.assertFalse((output_dir / "blind_mapping.json").exists())
             self.assertFalse(ratings_path.exists())
             self.assertTrue(final_wording_rating_v2.validate_durable_artifact(artifact))
+            leaked_reason = copy.deepcopy(artifact)
+            leaked_reason["reason_codes"] = ["raw exception text"]
+            with self.assertRaisesRegex(ValueError, "durable_reason_codes_invalid"):
+                final_wording_rating_v2.validate_durable_artifact(leaked_reason)
+            fake_provider_result = copy.deepcopy(artifact)
+            fake_provider_result["provider_results_observed"] = True
+            with self.assertRaisesRegex(ValueError, "synthetic_provider_verdict_forbidden"):
+                final_wording_rating_v2.validate_durable_artifact(fake_provider_result)
 
     def test_partial_or_self_declared_ratings_do_not_unblind_or_delete_material(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as parent:
             output_dir = Path(parent) / "campaign"
+            review_dir = Path(parent) / "review"
             final_wording_execution_v2.run_campaign(
                 repo_root=REPO_ROOT,
                 protocol=self.protocol,
                 client=_SyntheticClient(),
                 output_dir=output_dir,
+                review_export_dir=review_dir,
                 execution_authorized=True,
                 evidence_source="synthetic_test",
             )
-            packet = json.loads((output_dir / "rating_packet.json").read_text(encoding="utf-8"))
+            packet_path = review_dir / "rating_packet.json"
+            packet = json.loads(packet_path.read_text(encoding="utf-8"))
             ratings = _synthetic_ratings(packet)
             ratings["ratings"].pop()
-            ratings_path = output_dir / "ratings.json"
+            ratings_path = review_dir / "ratings.json"
             ratings_path.write_text(json.dumps(ratings), encoding="utf-8")
             os.chmod(ratings_path, 0o600)
             mapping_path = output_dir / "blind_mapping.json"
@@ -456,10 +510,11 @@ class Lot4C4WorkflowV2Tests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "ratings_incomplete"):
                 final_wording_rating_v2.finalize_campaign(
                     campaign_dir=output_dir,
+                    rating_packet_path=packet_path,
                     ratings_path=ratings_path,
                     durable_output=Path(parent) / "durable.json",
                 )
-            self.assertTrue((output_dir / "rating_packet.json").exists())
+            self.assertTrue(packet_path.exists())
             self.assertTrue((output_dir / "blind_mapping.json").exists())
 
             mapping_path.write_text(original_mapping, encoding="utf-8")
@@ -470,6 +525,7 @@ class Lot4C4WorkflowV2Tests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "rating_source_invalid"):
                 final_wording_rating_v2.finalize_campaign(
                     campaign_dir=output_dir,
+                    rating_packet_path=packet_path,
                     ratings_path=ratings_path,
                     durable_output=Path(parent) / "durable.json",
                 )
@@ -483,6 +539,7 @@ class Lot4C4WorkflowV2Tests(unittest.TestCase):
                     packet=packet,
                     evidence_source="main_model_provider",
                 )
+            delegated["rating_source"] = "codex_assisted_review_for_tof"
             delegated["rater_id"] = "codex_for_tof"
             self.assertEqual(
                 len(
@@ -498,15 +555,17 @@ class Lot4C4WorkflowV2Tests(unittest.TestCase):
     def test_scorer_counts_each_dimension_once_without_making_a_synthetic_verdict(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as parent:
             output_dir = Path(parent) / "campaign"
+            review_dir = Path(parent) / "review"
             final_wording_execution_v2.run_campaign(
                 repo_root=REPO_ROOT,
                 protocol=self.protocol,
                 client=_SyntheticClient(),
                 output_dir=output_dir,
+                review_export_dir=review_dir,
                 execution_authorized=True,
                 evidence_source="synthetic_test",
             )
-            packet = json.loads((output_dir / "rating_packet.json").read_text(encoding="utf-8"))
+            packet = json.loads((review_dir / "rating_packet.json").read_text(encoding="utf-8"))
             mapping = json.loads((output_dir / "blind_mapping.json").read_text(encoding="utf-8"))
             mapping_by_id = final_wording_rating_v2.validate_mapping(mapping, packet)
             ratings = _synthetic_ratings(packet)
