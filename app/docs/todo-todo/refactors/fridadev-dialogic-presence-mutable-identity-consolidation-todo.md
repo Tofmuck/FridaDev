@@ -3610,7 +3610,8 @@ Cloture fonctionnelle du 31 aout 2026 avant livraison:
 
 ### Micro-lot 4C.4 - Restitution finale conditionnelle de l'effet dialogique
 
-Statut: conditionnel, non commence
+Statut: ouvert; Phase A obligatoire livree le 31 aout 2026;
+`provider_campaign_required`, campagne non autorisee et non executee
 Effort recommande: `extra high`
 Nature: diagnostic causal puis correctif minimal si dommage prouve
 Prerequis: 4C.3 ferme
@@ -3656,6 +3657,39 @@ Condition de fermeture:
   prouves si le runtime change.
 
 Message de commit recommande si active: `fix: preserve Stimmung in final dialogic posture`.
+
+Decision Phase A du 31 aout 2026:
+
+- l'inventaire confirme que 4C.3 transmet exactement une directive derivee,
+  compacte et unique. Validation la recopie, le vrai constructeur du payload
+  principal l'injecte une fois et aucun signal Stimmung brut n'atteint le
+  modele principal;
+- les fakes prouvent le transport, les no-op absence/stabilite, la transition,
+  le fail-open Validation, la capsule terminale, le
+  `main_payload_manifest_v1`, JSON/streaming, la persistance, la provenance,
+  Presence et les final locks. Leur reponse assistant scriptable ne prouve
+  aucune qualite semantique finale;
+- F4.1, F4.2, F4.3 et F4.4 sont validees. F4.5 est validee seulement comme
+  porte diagnostique: une campagne appariee du modele principal actif est
+  necessaire pour classer F4. F4 lui-meme reste non classe;
+- le corpus v1 contient 14 cas synthetiques dont 12 provider-eligibles. Il
+  separe proprietes du texte final, decisions d'un autre stage et invariants
+  contractuels. Le scorer ne lit aucun texte par regex, rejette toute
+  semantique fake et decide ici `provider_campaign_required`;
+- le protocole futur est gele a 48 appels exactement: 12 cas, deux bras, deux
+  repetitions — minimum retenu pour exposer une variance de decodage isolee
+  sous ce plafond — uniquement `openai/gpt-5.1` avec ses parametres runtime
+  actifs, sans retry, fallback, Batch, Flex, Priority, appel Validation,
+  Stimmung ou juge. Le plafond theorique est `4.340395 USD`, l'estimation prudente
+  `4.7744345 USD` et le plafond absolu `5.00 USD`;
+- corpus, scorer, seuils, calendrier, prompts et constructeurs sont empreintes
+  dans
+  `benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v1.json`.
+  Le detail autoritatif est
+  `app/docs/states/baselines/fridadev-lot4c4-final-wording-phase-a-2026-08-31.md`;
+- zero appel provider reel, changement runtime, prompt, modele, frontend,
+  rebuild, restart ou deploiement. 4C.4 reste ouvert dans l'attente d'un GO
+  separe; 4O.Z et tous les lots suivants restent non commences.
 
 ### Micro-lot 4O.Z - Contre-audit causal et fermeture du Lot 4
 

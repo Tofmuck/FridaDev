@@ -1,0 +1,102 @@
+{
+  "schema_version": "stimmung_final_wording_freeze_v1",
+  "status": "provider_campaign_required",
+  "baseline_head": "d208d3e300bacfcb836d71e5adb8001384b32776",
+  "protocol_version": "lot4c4_final_wording_provider_campaign_v1",
+  "artifact_version": "lot4c4_final_wording_provider_results_v1",
+  "corpus": {
+    "path": "benchmark/suites/stimmung/fixtures/stimmung_final_wording_corpus_v1.json",
+    "sha256": "de8f63c6de4ec8d51a47db868e188b06a83d66ed8b07fb2278a5a47734f4f139",
+    "case_count": 14,
+    "provider_case_count": 12
+  },
+  "harness": {
+    "path": "benchmark/suites/stimmung/final_wording_diagnostic.py",
+    "sha256": "2c34180f0d05d3ca2502f8ca71b23065749251945d5f8eb644ef44ba01288c7b",
+    "semantic_regex": false,
+    "fake_semantic_results_allowed": false
+  },
+  "product_inputs": {
+    "main_system_prompt_sha256": "760e97ab6aed521a6481b9db938e3d24316215d801a6323f92f4b568eafc4783",
+    "main_hermeneutical_prompt_sha256": "e388d783d1b08df18ea3cfd6e1df51975b879f3e314d9aa517096ed7c5105788",
+    "chat_prompt_context_sha256": "9781ee92cf7f779debec0d11a9d6487278083824f3a77c3d9b7d17c7c3aaa169",
+    "continuity_capsule_sha256": "de2754687c9129e94ab9bc770d6686ff28db57f043e8c363fc9dec8834d525b5",
+    "main_payload_builder_sha256": "3e5c7d8b25052614eea96900f05957a84250c65c5992c42adaf0247668783e1f"
+  },
+  "runtime_policy": {
+    "model": "openai/gpt-5.1",
+    "temperature": 0.7,
+    "top_p": 1.0,
+    "max_tokens": 8192,
+    "reasoning": {"effort": "high", "exclude": true},
+    "timeout_s": 900,
+    "provider": {"allow_fallbacks": false, "require_parameters": true},
+    "transport": "standard",
+    "batch": false,
+    "flex": false,
+    "priority": false,
+    "retry_count": 0
+  },
+  "schedule": {
+    "sha256": "8fbb172691549621e09849959b6120057df3abd34e1d233e8ce94853072c3b42",
+    "repetitions": 2,
+    "repetition_rationale": "minimum_repeat_to_expose_single_decode_variance_within_48_call_cap",
+    "pair_count": 24,
+    "call_count": 48,
+    "absolute_call_cap": 48,
+    "additional_validation_calls": 0,
+    "additional_stimmung_calls": 0,
+    "model_judge_calls": 0
+  },
+  "cost": {
+    "pricing_observed_at": "2026-08-31",
+    "pricing_source": "https://openrouter.ai/openai/gpt-5.1",
+    "prompt_usd_per_token": 0.00000125,
+    "completion_usd_per_token": 0.00001,
+    "prompt_token_estimate_sum": 326588,
+    "completion_token_ceiling": 393216,
+    "theoretical_max_cost_usd": 4.340395,
+    "margin": 1.1,
+    "estimated_max_cost_usd": 4.7744345,
+    "absolute_cost_cap_usd": 5.0
+  },
+  "scoring": {
+    "method": "blinded_structured_human_annotation",
+    "thresholds": {
+      "schema_version": "stimmung_final_wording_thresholds_v1",
+      "transition_delicacy_improvement_rate": 0.8,
+      "transition_formulation_improvement_rate": 0.75,
+      "countercase_formulation_worse_rate": 0.0,
+      "critical_zero_tolerance": ["psychologization", "certainty_change", "truth_or_evidence_change", "masked_target", "presence_regression"],
+      "countercase_overapplication_rate": 0.0
+    },
+    "final_text_properties": ["justified_delicacy_effect", "formulation_fit", "no_psychologization", "no_certainty_change", "no_truth_or_evidence_change", "unmasked_question_request_risk_or_action", "no_delicacy_overapplication"],
+    "other_stage_properties": ["presence_decision", "main_model_call_authorization"],
+    "contract_only_properties": ["identical_dialogic_and_epistemic_matter", "hard_guards_unchanged", "raw_stimmung_absent", "single_terminal_continuity_capsule", "main_payload_manifest_coherent", "assistant_persistence_and_provenance", "json_stream_equivalence"]
+  },
+  "decision_rules": {
+    "all_complete_thresholds_met": "pass",
+    "complete_semantic_threshold_missed": "fail",
+    "all_attempts_recorded_but_response_or_rating_unavailable": "inconclusive",
+    "no_authoritative_provider_results": "provider_campaign_required",
+    "authoritative_existing_semantic_proof_sufficient": "non_required"
+  },
+  "artifact_policy": {
+    "content_free": true,
+    "raw_dialogue": false,
+    "raw_prompt": false,
+    "raw_provider_response": false,
+    "response_hash_and_chars_only": true
+  },
+  "mutation_matrix": ["directive_removed", "directive_duplicated", "raw_stimmung_injected", "epistemic_change_attributed_to_stimmung", "final_lock_bypassed", "continuity_capsule_removed", "continuity_capsule_moved", "continuity_capsule_duplicated", "manifest_incoherent", "fake_semantic_result_fabricated"],
+  "phase_limits": {
+    "provider_calls_executed_in_phase_a": 0,
+    "runtime_change": false,
+    "prompt_change": false,
+    "model_change": false,
+    "frontend_change": false,
+    "deployment": false,
+    "lot4oz_started": false
+  },
+  "delivery_requirement": "commit_and_push_before_separate_go"
+}

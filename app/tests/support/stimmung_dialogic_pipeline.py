@@ -492,6 +492,7 @@ def exercise_stimmung_dialogue(
     outcomes: Sequence[StimmungTurnOutcome],
     stream: bool = False,
     corrupt_signal_after_turns: Sequence[int] = (),
+    validation_fail_after_turns: Sequence[int] = (),
 ) -> dict[str, Any]:
     """Traverse chat and the real store functions over bounded provider/row fakes."""
 
@@ -526,11 +527,13 @@ def exercise_stimmung_dialogue(
     provider_calls: list[dict[str, Any]] = []
     validation_messages: list[list[dict[str, Any]]] = []
     main_messages: list[list[dict[str, Any]]] = []
+    manifests: list[dict[str, Any]] = []
     node_calls: list[dict[str, Any]] = []
     events: list[dict[str, Any]] = []
     responses: list[dict[str, Any]] = []
     chat_response_calls: list[dict[str, Any]] = []
     active_turn = {"index": 0}
+    validation_fail_after = {int(value) for value in validation_fail_after_turns}
     real_chat_response = server_module.chat_service.chat_response
     real_stimmung_caller = server_module.chat_service.stimmung_agent.build_affective_turn_signal
     real_prompt_builder = server_module.conv_store.build_prompt_messages
@@ -568,6 +571,8 @@ def exercise_stimmung_dialogue(
 
         if model in {VALIDATION_PRIMARY_MODEL, VALIDATION_FALLBACK_MODEL}:
             validation_messages.append(messages)
+            if active_turn["index"] + 1 in validation_fail_after:
+                raise request_error_class("lot4_synthetic_validation_transport_error")
             return _FakeResponse(
                 json.dumps(
                     {
@@ -690,6 +695,11 @@ def exercise_stimmung_dialogue(
         patch_attr(server_module.llm, "or_chat_completions_url", lambda: "https://lot4.invalid/chat")
         patch_attr(server_module.chat_service, "chat_response", observed_chat_response)
         patch_attr(server_module.chat_service, "_run_hermeneutic_node_insertion_point", observed_node)
+        patch_attr(
+            server_module.chat_service.main_payload_manifest,
+            "emit_main_payload_manifest",
+            lambda manifest, **_kwargs: manifests.append(copy.deepcopy(dict(manifest))) or True,
+        )
         patch_attr(server_module.chat_service, "_now_iso", now_iso)
         patch_attr(server_module.chat_turn_logger, "_now_iso", now_iso)
         patch_attr(server_module.chat_turn_logger.log_store, "insert_chat_log_event", record_event)
@@ -790,6 +800,7 @@ def exercise_stimmung_dialogue(
         "durable_snapshots": durable_snapshots,
         "events": events,
         "main_messages": main_messages,
+        "manifests": manifests,
         "node_calls": node_calls,
         "provider_calls": provider_calls,
         "reload_object_ids": reload_object_ids,

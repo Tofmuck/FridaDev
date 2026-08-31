@@ -748,6 +748,53 @@ the delivered prompt. The primary and fallback models, generation settings,
 normalizer and aggregate builder are unchanged; no fallback or additional
 provider call was used during delivery.
 
+### Lot 4C.4 final-wording Phase A
+
+The versioned corpus
+`benchmark/suites/stimmung/fixtures/stimmung_final_wording_corpus_v1.json`
+contains 14 synthetic paired cases. Twelve are eligible for the main-model
+comparison; Presence and the hard-guard-only case remain attached to their
+authoritative stages and schedule no fabricated main-model call. Expectations
+separate final-text properties, other-stage properties and contract-only
+invariants. They never prescribe an exact answer or copy the runtime prompt.
+
+`benchmark.suites.stimmung.final_wording_diagnostic` extends the existing
+Stimmung benchmark assets with a bounded paired schedule and structured human
+scorer. It performs no semantic regex matching and rejects any semantic result
+whose provenance is a fake. The Phase A structural goldens traverse the real
+chat coordinator and main-payload builder, but their scripted assistant output
+can yield only `provider_campaign_required`, never a result for F4.
+
+The freeze manifest is
+`benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v1.json`.
+It pins the corpus, scorer/harness, main prompts, prompt-context builder,
+Continuity Capsule, main-payload builder, thresholds and exact paired schedule.
+The future schedule is `12 cases x 2 arms x 2 repetitions = 48` calls of the
+active `openai/gpt-5.1` main model only, using `temperature=0.7`, `top_p=1.0`,
+`max_tokens=8192`, hidden `high` reasoning and a 900-second timeout. There is
+one minimal repeat, for two executions per arm, to expose single-decode
+variance while keeping the absolute campaign cap at 48 calls. There is
+no retry, fallback, Batch, Flex, Priority, Validation, Stimmung or model-judge
+call. At public prices observed on 2026-08-31, the theoretical maximum is
+`4.340395 USD`; the 10% prudent estimate is `4.7744345 USD`, below the absolute
+`5.00 USD` cap.
+
+Phase A permits only the hermetic dry-run below. Live execution deliberately
+stops until Tof gives a separate GO after the freeze commit is pushed:
+
+```bash
+PYTHONPATH="$PWD:$PWD/app" python3 -m \
+  benchmark.suites.stimmung.final_wording_diagnostic \
+  --repo-root "$PWD" \
+  --freeze-commit <pushed-phase-a-commit> \
+  --dry-run
+```
+
+Any future durable artifact is content-free: bounded IDs and categories,
+route/finish metadata, token and cost metrics, response lengths and hashes,
+plus blinded structured ratings. It retains no dialogue, prompt, provider
+response, reasoning or exception text. F4 and Lot 4C.4 remain open.
+
 ## Validation agent benchmark
 
 The validation suite uses the production prompt
