@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ferme apres cutover Validation Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 et 4S.1 fermes, decision 4S.1 `strengthen`; 4C.2 ferme apres livraison du prompt renforce v2 qualifie `32/32` sur le primaire; 4C.3 non commence; observabilite causale complete non prouvee; Lots 5 a 8 et Z non commences
+Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ferme apres cutover Validation Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 et 4S.1 fermes, decision 4S.1 `strengthen`; 4C.2 ferme apres livraison du prompt renforce v2 qualifie `32/32` sur le primaire; 4C.3 ferme apres separation livree entre certitude epistemique et effet d'enonciation; observabilite causale complete non prouvee; Lots 5 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -1637,7 +1637,7 @@ Portee architecturale de cette acceptation:
 
 # LOT 4 - Audit causal et consolidation de Stimmung
 
-Statut: goldens techniques du coeur livres; 4C.1, 4S.0, 4S.1 et 4C.2 fermes; prompt Stimmung renforce v2 qualifie `32/32` sur le primaire puis livre; 4C.3 non commence; observabilite causale complete non prouvee
+Statut: goldens techniques du coeur livres; 4C.1, 4S.0, 4S.1, 4C.2 et 4C.3 fermes; prompt Stimmung renforce v2 qualifie `32/32` sur le primaire puis livre; certitude epistemique et effet d'enonciation separes; observabilite causale complete non prouvee
 Nature: audit causal multi-tours, correctifs bornes, benchmark sous GO separe
 et observabilite synchrone, sans extension fonctionnelle
 Dependance: Lot 3 ferme
@@ -3914,10 +3914,10 @@ preuve lorsqu'un test existant couvre deja exactement l'invariant.
   garantie structurelle et observabilite synchrone livrees.
 - [x] 4S.0 ferme: corpus et seuils semantiques valides humainement par Codex
   sur delegation explicite de Tof.
-- [ ] 4S.1 ferme: campagne primaire/fallback executee sous GO separe et
+- [x] 4S.1 ferme: campagne primaire/fallback executee sous GO separe et
   decision caller tracee.
-- [ ] 4C.2 ferme `corrige` ou `non requis` depuis les preuves 4S.1.
-- [ ] 4C.3 ferme: affect et certitude epistemique separes sans perdre l'effet
+- [x] 4C.2 ferme `corrige` ou `non requis` depuis les preuves 4S.1.
+- [x] 4C.3 ferme: affect et certitude epistemique separes sans perdre l'effet
   dialogique.
 - [ ] 4C.4 ferme `corrige`, `non requis` ou `inconclusive` depuis une preuve
   causale de F4.
