@@ -748,7 +748,7 @@ the delivered prompt. The primary and fallback models, generation settings,
 normalizer and aggregate builder are unchanged; no fallback or additional
 provider call was used during delivery.
 
-### Lot 4C.4 final-wording Phase A v2.1
+### Lot 4C.4 final-wording Phase A v2.2
 
 Phase A v1 was pushed but superseded before any provider call. Its corpus,
 harness and manifest remain immutable historical evidence; the v1 48-call
@@ -769,27 +769,49 @@ two counterbalanced A/B arms. Six provider-eligible countercases now use one
 runtime-active arm only. Presence and the hard guard remain attached to their
 authoritative stages and schedule no main-model call.
 
-The authoritative v2.1 protocol keeps the v2 module boundaries:
+The v2.1 campaign was attempted once after its separate GO. All 36 requests
+were rejected with HTTP 404 before inference because its payload combined
+`require_parameters=true` with `temperature` and `top_p`, which no advertised
+GPT-5.1 endpoint supported. Observed provider cost was zero; the ledger's
+`3.25671750 USD` is only its conservative accounting ceiling. Its immutable
+private evidence remains under
+`/tmp/lot4c4-final-wording-v2.1-ce320fa3acda-private`; it must not be resumed,
+modified or deleted.
+
+The authoritative v2.2 protocol keeps the v2 module boundaries:
 
 - `final_wording_protocol_v2` validates the corpus, provider-visible matter,
   payload policy, 36-call schedule, cost and freeze manifest;
 - `final_wording_execution_v2` reuses the shared OpenRouter transport, remains
   offline without `--execute-live`, checkpoints `attempt_started` before each
-  external attempt, and resumes only from the same frozen campaign;
+  external attempt, and resumes only from the same frozen campaign. Before any
+  POST it checks the exact model endpoint metadata and requires a compatible
+  route;
 - `final_wording_rating_v2` distinguishes direct `tof_human_review` from
   `codex_assisted_review_for_tof`; Codex assistance requires an exact,
   content-free Tof ratification before any unblinding.
 
-The freeze manifest is
-`benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2_1.json`.
-It pins the historical v2 freeze, all three current modules, the product prompt
-builders, the state machine and the exact schedule:
+The authoritative freeze manifest is
+`benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2_2.json`.
+It pins the historical v2 and v2.1 freezes, the shared OpenRouter client, all
+three current modules, the product prompt builders, the state machine and the
+exact schedule:
 `6 x 2 x 2 = 24` transition calls plus
 `6 x 1 x 2 = 12` absolute countercase calls, exactly `36`. It uses only the
-active `openai/gpt-5.1` model with `temperature=0.7`, `top_p=1.0`,
-`max_tokens=8192`, hidden `high` reasoning, a 900-second timeout,
+active `openai/gpt-5.1` model with no sampling parameters, `max_tokens=8192`,
+hidden `high` reasoning, a 900-second timeout,
 `allow_fallbacks=false` and `require_parameters=true`. Retry, model fallback,
 Batch, Flex, Priority, Validation, Stimmung and model-judge calls are forbidden.
+
+Before any future generation, the runner performs only the exact OpenRouter
+model-endpoint metadata GET and records a content-free capability summary. At
+least one endpoint must advertise reasoning, structured outputs, the output
+token parameter and stop sequences actually required by the payload. Otherwise
+the campaign stops before any POST. Sequence 1 is the canary and remains part
+of the 36-call schedule: a valid result continues the remaining 35 calls; an
+authentication, routing or other non-recoverable 4xx result stops immediately,
+without retry or review packet. Network failures alone are `transport_error`;
+401/403, routing 404 and other invalid 4xx requests have distinct closed codes.
 
 At public prices rechecked on 2026-08-31, the calculated prompt cost is
 `0.30759750 USD`, the completion ceiling is `2.94912000 USD`, the calculated
@@ -802,7 +824,7 @@ Hermetic dry-run:
 PYTHONPATH="$PWD:$PWD/app" python3 -m \
   benchmark.suites.stimmung.final_wording_execution_v2 \
   --repo-root "$PWD" \
-  --freeze-commit <pushed-v2.1-commit> \
+  --freeze-commit <pushed-v2.2-commit> \
   --dry-run
 ```
 
@@ -819,8 +841,8 @@ to the rater; `blind_mapping.json`, the ledger and private outputs remain in
 the campaign directory. The isolation is organizational and hash-bound, not a
 strong barrier against an operator deliberately opening both locations.
 Synthetic tests exercise the workflow but can never yield a provider `pass` or
-`fail`. F4 and Lot 4C.4 remain open pending a separate provider GO and later
-human review or ratification.
+`fail`. No provider call was made while preparing v2.2. F4 and Lot 4C.4 remain
+open pending a new, separate provider GO and later human review or ratification.
 
 ## Validation agent benchmark
 

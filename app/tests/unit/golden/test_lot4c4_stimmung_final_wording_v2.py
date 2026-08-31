@@ -188,13 +188,13 @@ class Lot4C4ProtocolV2Tests(unittest.TestCase):
 
         self.assertEqual(
             self.protocol["protocol_version"],
-            "lot4c4_final_wording_provider_campaign_v2_1",
+            "lot4c4_final_wording_provider_campaign_v2_2",
         )
         self.assertEqual(summary["expected_call_count"], 36)
         self.assertEqual(self.protocol["absolute_call_cap"], 36)
         self.assertEqual(self.protocol["model"], "openai/gpt-5.1")
-        self.assertEqual(self.protocol["temperature"], 0.7)
-        self.assertEqual(self.protocol["top_p"], 1.0)
+        self.assertNotIn("temperature", self.protocol)
+        self.assertNotIn("top_p", self.protocol)
         self.assertEqual(self.protocol["max_tokens"], 8192)
         self.assertEqual(self.protocol["reasoning"], {"effort": "high", "exclude": True})
         self.assertEqual(self.protocol["timeout_s"], 900)
@@ -216,6 +216,8 @@ class Lot4C4ProtocolV2Tests(unittest.TestCase):
                 "automatic_model_fallback": False,
                 "provider_fallbacks": False,
                 "require_parameters": True,
+                "model_endpoint_preflight": True,
+                "canary_sequence": 1,
             },
         )
 
@@ -223,7 +225,7 @@ class Lot4C4ProtocolV2Tests(unittest.TestCase):
             (("expected_call_count",), 48),
             (("absolute_call_cap",), 48),
             (("model",), "openai/gpt-5.2"),
-            (("temperature",), 0.2),
+            (("temperature",), 0.7),
             (("transport_policy", "retry_count"), 1),
             (("transport_policy", "provider_fallbacks"), True),
         ):
@@ -242,7 +244,7 @@ class Lot4C4ProtocolV2Tests(unittest.TestCase):
         self.assertEqual(v1["expected_call_count"], 48)
         self.assertEqual(
             self.protocol["supersedes_protocol_version"],
-            "lot4c4_final_wording_provider_campaign_v2",
+            "lot4c4_final_wording_provider_campaign_v2_1",
         )
         self.assertEqual(self.protocol["historical_v1_protocol_version"], v1["protocol_version"])
         self.assertEqual(self.protocol["v2_provider_calls_observed"], 0)

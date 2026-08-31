@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import os
 import time
 from typing import Any
+from urllib.parse import quote
 
 import requests
 
@@ -22,7 +23,13 @@ class OpenRouterClient:
         self.pricing_by_model = pricing_by_model or {}
 
     @classmethod
-    def from_env(cls, *, base_url: str | None = None, title: str = "FridaDev/Benchmark") -> "OpenRouterClient":
+    def from_env(
+        cls,
+        *,
+        base_url: str | None = None,
+        title: str = "FridaDev/Benchmark",
+        fetch_pricing: bool = True,
+    ) -> "OpenRouterClient":
         api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
         if not api_key:
             raise RuntimeError("OPENROUTER_API_KEY is required for a live benchmark")
@@ -34,7 +41,102 @@ class OpenRouterClient:
             referer=referer,
             title=title,
         )
-        return cls(config, pricing_by_model=fetch_model_pricing(config))
+        pricing = fetch_model_pricing(config) if fetch_pricing else {}
+        return cls(config, pricing_by_model=pricing)
+
+    def preflight_model_capabilities(
+        self,
+        model: str,
+        required_capabilities: dict[str, tuple[str, ...]],
+    ) -> dict[str, Any]:
+        parts = model.split("/", 1)
+        if len(parts) != 2 or not all(parts):
+            raise ValueError("model_identifier_invalid")
+        if not required_capabilities or any(
+            not name
+            or not aliases
+            or any(not isinstance(alias, str) or not alias for alias in aliases)
+            for name, aliases in required_capabilities.items()
+        ):
+            raise ValueError("required_capabilities_invalid")
+        author, slug = (quote(part, safe="") for part in parts)
+        url = f"{self.config.base_url}/models/{author}/{slug}/endpoints"
+        required_names = sorted(required_capabilities)
+        try:
+            response = requests.get(
+                url,
+                headers={"Authorization": f"Bearer {self.config.api_key}"},
+                timeout=20,
+            )
+        except Exception:
+            return _capability_summary(
+                status="metadata_request_failed",
+                reason_code="model_endpoint_metadata_transport_error",
+                model=model,
+                http_status=None,
+                endpoint_count=0,
+                compatible_count=0,
+                required_names=required_names,
+            )
+        status_code = _int_or_none(response.status_code)
+        if status_code != 200:
+            return _capability_summary(
+                status="metadata_request_failed",
+                reason_code="model_endpoint_metadata_http_error",
+                model=model,
+                http_status=status_code,
+                endpoint_count=0,
+                compatible_count=0,
+                required_names=required_names,
+            )
+        try:
+            payload = response.json()
+        except Exception:
+            payload = None
+        data = payload.get("data") if isinstance(payload, dict) else None
+        if not isinstance(data, dict) or data.get("id") != model:
+            return _capability_summary(
+                status="model_metadata_mismatch",
+                reason_code="model_endpoint_metadata_mismatch",
+                model=model,
+                http_status=status_code,
+                endpoint_count=0,
+                compatible_count=0,
+                required_names=required_names,
+            )
+        endpoints = data.get("endpoints")
+        if not isinstance(endpoints, list):
+            endpoints = []
+        compatible_count = 0
+        endpoint_count = 0
+        for endpoint in endpoints:
+            if not isinstance(endpoint, dict):
+                continue
+            endpoint_count += 1
+            supported_raw = endpoint.get("supported_parameters")
+            supported = (
+                {value for value in supported_raw if isinstance(value, str)}
+                if isinstance(supported_raw, list)
+                else set()
+            )
+            if all(
+                any(alias in supported for alias in aliases)
+                for aliases in required_capabilities.values()
+            ):
+                compatible_count += 1
+        return _capability_summary(
+            status="compatible" if compatible_count else "no_compatible_endpoint",
+            reason_code=(
+                "compatible_endpoint_available"
+                if compatible_count
+                else "no_compatible_provider_endpoint"
+            ),
+            model=model,
+            http_status=status_code,
+            endpoint_count=endpoint_count,
+            compatible_count=compatible_count,
+            required_names=required_names,
+        )
 
     def chat_completion(self, payload: dict[str, Any], *, caller: str, timeout_s: int) -> dict[str, Any]:
         start = time.perf_counter()
@@ -203,6 +305,27 @@ def _bounded_field(value: Any, *, max_chars: int = 200) -> str:
     return str(value or "").strip()[:max_chars]
 
 
+def _capability_summary(
+    *,
+    status: str,
+    reason_code: str,
+    model: str,
+    http_status: int | None,
+    endpoint_count: int,
+    compatible_count: int,
+    required_names: list[str],
+) -> dict[str, Any]:
+    return {
+        "status": status,
+        "reason_code": reason_code,
+        "model": model,
+        "metadata_http_status": http_status,
+        "endpoint_count": endpoint_count,
+        "compatible_endpoint_count": compatible_count,
+        "required_capabilities": required_names,
+    }
+
+
 def _float_or_none(value: Any) -> float | None:
     try:
         return float(value)
@@ -215,3 +338,10 @@ def _int_or_zero(value: Any) -> int:
         return int(value)
     except (TypeError, ValueError):
         return 0
+
+
+def _int_or_none(value: Any) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None

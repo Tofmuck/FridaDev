@@ -10,12 +10,12 @@ import tempfile
 from typing import Any, Mapping, Sequence
 
 
-PACKET_SCHEMA_VERSION = "stimmung_final_wording_rating_packet_v2_1"
-MAPPING_SCHEMA_VERSION = "stimmung_final_wording_blind_mapping_v2_1"
-RATINGS_SCHEMA_VERSION = "stimmung_final_wording_ratings_v2_1"
-RATIFICATION_SCHEMA_VERSION = "stimmung_final_wording_tof_ratification_v2_1"
-LEDGER_SCHEMA_VERSION = "stimmung_final_wording_call_ledger_v2_1"
-DURABLE_SCHEMA_VERSION = "stimmung_final_wording_durable_result_v2_1"
+PACKET_SCHEMA_VERSION = "stimmung_final_wording_rating_packet_v2_2"
+MAPPING_SCHEMA_VERSION = "stimmung_final_wording_blind_mapping_v2_2"
+RATINGS_SCHEMA_VERSION = "stimmung_final_wording_ratings_v2_2"
+RATIFICATION_SCHEMA_VERSION = "stimmung_final_wording_tof_ratification_v2_2"
+LEDGER_SCHEMA_VERSION = "stimmung_final_wording_call_ledger_v2_2"
+DURABLE_SCHEMA_VERSION = "stimmung_final_wording_durable_result_v2_2"
 
 TRANSITION_RATING_KEYS = {
     "blind_id",
@@ -52,6 +52,11 @@ _COMPLETED_REASON_CODES = {
     "provider_length_termination",
     "unexpected_finish_reason",
     "route_mismatch",
+    "provider_auth_error",
+    "provider_routing_error",
+    "provider_request_error",
+    "provider_server_error",
+    "provider_schema_error",
 }
 _DURABLE_REASON_CODES = {
     "synthetic_workflow_only",
@@ -358,6 +363,12 @@ def validate_ledger(
         "call_cap_would_be_exceeded",
         "cost_cap_would_be_exceeded",
         "absolute_cost_cap_exceeded",
+        "canary_provider_auth_error",
+        "canary_provider_routing_error",
+        "canary_provider_request_error",
+        "provider_auth_error",
+        "provider_routing_error",
+        "provider_request_error",
     }:
         raise ValueError("call_ledger_terminal_reason_invalid")
     record_keys = {
@@ -395,7 +406,18 @@ def validate_ledger(
     observed_cost = 0.0
     accounted_cost = 0.0
     valid_completed = 0
-    allowed_statuses = {"valid", "transport_error", "timeout", "refusal", "length"}
+    allowed_statuses = {
+        "valid",
+        "transport_error",
+        "timeout",
+        "refusal",
+        "length",
+        "provider_auth_error",
+        "provider_routing_error",
+        "provider_request_error",
+        "provider_server_error",
+        "provider_schema_error",
+    }
     for expected_sequence, record in enumerate(records, start=1):
         _exact_keys(record, record_keys, "call_ledger_record_fields_invalid")
         if record.get("sequence") != expected_sequence:

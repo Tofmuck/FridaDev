@@ -13,18 +13,22 @@ from benchmark.suites.stimmung import final_wording_diagnostic as v1
 
 CORPUS_SCHEMA_VERSION = "stimmung_final_wording_corpus_v2"
 THRESHOLD_SCHEMA_VERSION = "stimmung_final_wording_thresholds_v2"
-PROTOCOL_VERSION = "lot4c4_final_wording_provider_campaign_v2_1"
-ARTIFACT_VERSION = "lot4c4_final_wording_provider_results_v2_1"
-SUPERSEDED_V2_PROTOCOL_VERSION = "lot4c4_final_wording_provider_campaign_v2"
+PROTOCOL_VERSION = "lot4c4_final_wording_provider_campaign_v2_2"
+ARTIFACT_VERSION = "lot4c4_final_wording_provider_results_v2_2"
+SUPERSEDED_V21_PROTOCOL_VERSION = "lot4c4_final_wording_provider_campaign_v2_1"
 DEFAULT_FIXTURE = "stimmung_final_wording_corpus_v2.json"
-DEFAULT_FREEZE_MANIFEST = "stimmung_final_wording_freeze_v2_1.json"
+DEFAULT_FREEZE_MANIFEST = "stimmung_final_wording_freeze_v2_2.json"
 
 ACTIVE_MAIN_MODEL = "openai/gpt-5.1"
-ACTIVE_TEMPERATURE = 0.7
-ACTIVE_TOP_P = 1.0
 ACTIVE_MAX_TOKENS = 8192
 ACTIVE_REASONING = {"effort": "high", "exclude": True}
 ACTIVE_TIMEOUT_S = 900
+REQUIRED_ENDPOINT_CAPABILITIES = {
+    "reasoning": ("reasoning",),
+    "structured_outputs": ("response_format", "structured_outputs"),
+    "output_token_limit": ("max_tokens",),
+    "stop_sequences": ("stop",),
+}
 REPETITIONS = 2
 REPETITION_RATIONALE = "minimum_repeat_to_expose_single_decode_variance"
 EXPECTED_CASES = 14
@@ -40,10 +44,11 @@ PRICING_OBSERVED_AT = "2026-08-31"
 PRICING_SOURCE = "https://openrouter.ai/api/v1/models"
 PRICING_USD_PER_TOKEN = {"prompt": 0.00000125, "completion": 0.00001}
 COST_SAFETY_MARGIN = 1.10
-BASELINE_HEAD = "9d6b66be05fb89561961deaa4d64f6acbbb42e48"
+BASELINE_HEAD = "ce320fa3acda1caf562948dc6f64f554f5490c59"
 V1_CORPUS_SHA256 = "de8f63c6de4ec8d51a47db868e188b06a83d66ed8b07fb2278a5a47734f4f139"
 V1_HARNESS_SHA256 = "2c34180f0d05d3ca2502f8ca71b23065749251945d5f8eb644ef44ba01288c7b"
 V2_FREEZE_SHA256 = "4a682d89d5070bc7ff928aa36696220fcac662bc26ce7fbbba4066f07901e672"
+V21_FREEZE_SHA256 = "a3afa9e8537311a107694dfc1e780741cb37676a3afbd789e3917d3e48cbab10"
 
 FINAL_TEXT_PROPERTIES = (
     "justified_delicacy_effect",
@@ -85,6 +90,17 @@ V21_MUTATION_MATRIX = (
     "private_mapping_exposed_in_review_export",
     "unblinding_before_complete_validation",
     "raw_content_or_open_reason_code_in_durable_artifact",
+)
+V22_MUTATION_MATRIX = (
+    "sampling_parameter_reintroduced",
+    "false_compatible_endpoint_accepted",
+    "provider_post_before_capability_preflight",
+    "http_404_masked_as_transport_error",
+    "calls_continue_after_failed_canary",
+    "canary_added_as_call_37",
+    "retry_or_fallback_added",
+    "corpus_scorer_or_messages_changed",
+    "v2_1_history_removed_or_reused",
 )
 
 _FIXTURE_TOP_KEYS = {
@@ -155,6 +171,10 @@ def _v2_freeze_path(repo_root: Path) -> Path:
     return repo_root / "benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2.json"
 
 
+def _v21_freeze_path(repo_root: Path) -> Path:
+    return repo_root / "benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2_1.json"
+
+
 def _module_paths(repo_root: Path) -> dict[str, Path]:
     base = repo_root / "benchmark/suites/stimmung"
     return {
@@ -162,6 +182,7 @@ def _module_paths(repo_root: Path) -> dict[str, Path]:
         "execution": base / "final_wording_execution_v2.py",
         "rating": base / "final_wording_rating_v2.py",
         "v1_message_builder": base / "final_wording_diagnostic.py",
+        "openrouter_client": repo_root / "benchmark/core/openrouter.py",
     }
 
 
@@ -455,8 +476,6 @@ def _payload(messages: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "model": ACTIVE_MAIN_MODEL,
         "messages": messages,
-        "temperature": ACTIVE_TEMPERATURE,
-        "top_p": ACTIVE_TOP_P,
         "max_tokens": ACTIVE_MAX_TOKENS,
         "stop": ["<|endoftext|>", "<|return|>", "<|call|>"],
         "reasoning": dict(ACTIVE_REASONING),
@@ -661,9 +680,11 @@ def _build_unfrozen_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str
         "corpus_v2_sha256": _sha256_file(fixture_path(repo_root)),
         "corpus_v1_sha256": _sha256_file(_v1_fixture_path(repo_root)),
         "superseded_freeze_v2_sha256": _sha256_file(_v2_freeze_path(repo_root)),
+        "superseded_freeze_v2_1_sha256": _sha256_file(_v21_freeze_path(repo_root)),
         "protocol_module_sha256": _sha256_file(paths["protocol"]),
         "execution_module_sha256": _sha256_file(paths["execution"]),
         "rating_module_sha256": _sha256_file(paths["rating"]),
+        "openrouter_client_sha256": _sha256_file(paths["openrouter_client"]),
         "v1_message_builder_sha256": _sha256_file(paths["v1_message_builder"]),
         "main_system_prompt_sha256": _sha256_file(repo_root / "app/prompts/main_system.txt"),
         "main_hermeneutical_prompt_sha256": _sha256_file(
@@ -679,6 +700,8 @@ def _build_unfrozen_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str
         raise ValueError("v1_message_builder_fingerprint_changed")
     if inputs["superseded_freeze_v2_sha256"] != V2_FREEZE_SHA256:
         raise ValueError("superseded_v2_freeze_fingerprint_changed")
+    if inputs["superseded_freeze_v2_1_sha256"] != V21_FREEZE_SHA256:
+        raise ValueError("superseded_v2_1_freeze_fingerprint_changed")
     return {
         "protocol_version": PROTOCOL_VERSION,
         "artifact_version": ARTIFACT_VERSION,
@@ -686,18 +709,28 @@ def _build_unfrozen_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str
         "phase_a_status": "provider_campaign_required",
         "freeze_commit": freeze_commit,
         "baseline_head": BASELINE_HEAD,
-        "supersedes_protocol_version": SUPERSEDED_V2_PROTOCOL_VERSION,
+        "supersedes_protocol_version": SUPERSEDED_V21_PROTOCOL_VERSION,
         "historical_v1_protocol_version": v1.PROTOCOL_VERSION,
+        "v2_1_campaign_history": {
+            "attempted_call_count": 36,
+            "http_404_count": 36,
+            "provider_inference_count": 0,
+            "observed_cost_usd": 0.0,
+            "ledger_conservative_cost_usd": 3.2567175,
+            "ledger_conservative_cost_billed": False,
+            "reusable": False,
+        },
         "v2_provider_calls_observed": 0,
         "v1_provider_calls_observed": 0,
         "corpus_id": corpus["corpus_id"],
         "input_fingerprints": inputs,
         "schedule_sha256": _sha256_text(_compact_json(_schedule_fingerprint(schedule))),
         "model": ACTIVE_MAIN_MODEL,
-        "temperature": ACTIVE_TEMPERATURE,
-        "top_p": ACTIVE_TOP_P,
         "max_tokens": ACTIVE_MAX_TOKENS,
         "reasoning": dict(ACTIVE_REASONING),
+        "required_endpoint_capabilities": {
+            key: list(values) for key, values in REQUIRED_ENDPOINT_CAPABILITIES.items()
+        },
         "timeout_s": ACTIVE_TIMEOUT_S,
         "transport_policy": {
             "mode": "standard",
@@ -708,6 +741,8 @@ def _build_unfrozen_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str
             "automatic_model_fallback": False,
             "provider_fallbacks": False,
             "require_parameters": True,
+            "model_endpoint_preflight": True,
+            "canary_sequence": 1,
         },
         "additional_stage_calls": {
             "validation": 0,
@@ -771,25 +806,30 @@ def _build_unfrozen_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str
             "temporary_raw_deleted_after_valid_finalization": True,
         },
         "v2_1_mutation_matrix": list(V21_MUTATION_MATRIX),
+        "v2_2_mutation_matrix": list(V22_MUTATION_MATRIX),
     }
 
 
 def expected_freeze_manifest(protocol: Mapping[str, Any], repo_root: Path) -> dict[str, Any]:
     corpus = load_corpus(repo_root)
     return {
-        "schema_version": "stimmung_final_wording_freeze_v2_1",
-        "status": "phase_a_v2_1_frozen_separate_provider_go_required",
+        "schema_version": "stimmung_final_wording_freeze_v2_2",
+        "status": "phase_a_v2_2_frozen_separate_provider_go_required",
         "baseline_head": BASELINE_HEAD,
         "supersedes": {
-            "protocol_version": SUPERSEDED_V2_PROTOCOL_VERSION,
+            "protocol_version": SUPERSEDED_V21_PROTOCOL_VERSION,
             "reason_codes": [
-                "per_attempt_durable_checkpoint_absent",
-                "paid_sequence_recall_possible_after_interruption",
-                "codex_assistance_misrepresented_as_human_review",
-                "review_export_not_separated_from_private_mapping",
+                "sampling_parameters_blocked_all_gpt_5_1_routes",
+                "model_capability_preflight_absent",
+                "http_404_taxonomy_incorrect",
+                "failed_canary_did_not_stop_campaign",
             ],
-            "provider_calls_observed": 0,
+            "provider_calls_observed": 36,
+            "provider_http_404_count": 36,
+            "provider_inference_count": 0,
+            "observed_cost_usd": 0.0,
             "provider_results_attached": False,
+            "campaign_reusable": False,
         },
         "protocol_version": PROTOCOL_VERSION,
         "artifact_version": ARTIFACT_VERSION,
@@ -805,10 +845,11 @@ def expected_freeze_manifest(protocol: Mapping[str, Any], repo_root: Path) -> di
         "frozen_inputs": copy.deepcopy(protocol["input_fingerprints"]),
         "runtime_policy": {
             "model": ACTIVE_MAIN_MODEL,
-            "temperature": ACTIVE_TEMPERATURE,
-            "top_p": ACTIVE_TOP_P,
             "max_tokens": ACTIVE_MAX_TOKENS,
             "reasoning": dict(ACTIVE_REASONING),
+            "required_endpoint_capabilities": {
+                key: list(values) for key, values in REQUIRED_ENDPOINT_CAPABILITIES.items()
+            },
             "timeout_s": ACTIVE_TIMEOUT_S,
             "provider": {"allow_fallbacks": False, "require_parameters": True},
             "transport": "standard",
@@ -816,6 +857,8 @@ def expected_freeze_manifest(protocol: Mapping[str, Any], repo_root: Path) -> di
             "flex": False,
             "priority": False,
             "retry_count": 0,
+            "model_endpoint_preflight": True,
+            "canary_sequence": 1,
         },
         "schedule": {
             "sha256": protocol["schedule_sha256"],
@@ -853,8 +896,9 @@ def expected_freeze_manifest(protocol: Mapping[str, Any], repo_root: Path) -> di
         "artifact_policy": copy.deepcopy(protocol["artifact_policy"]),
         "mutation_matrix": copy.deepcopy(corpus["mutation_matrix"]),
         "v2_1_mutation_matrix": list(V21_MUTATION_MATRIX),
+        "v2_2_mutation_matrix": list(V22_MUTATION_MATRIX),
         "phase_limits": {
-            "provider_calls_executed_in_phase_a_v2_1": 0,
+            "provider_calls_executed_in_phase_a_v2_2": 0,
             "runtime_change": False,
             "prompt_change": False,
             "model_or_setting_change": False,

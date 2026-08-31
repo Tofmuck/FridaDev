@@ -21,15 +21,37 @@ _ALLOWED_OBSERVED_MODELS = {
     "openai/gpt-5.1-20251113",
     "openai/gpt-5.1-2025-11-13",
 }
-_VALID_STATUSES = {"valid", "transport_error", "timeout", "refusal", "length"}
+_VALID_STATUSES = {
+    "valid",
+    "transport_error",
+    "timeout",
+    "refusal",
+    "length",
+    "provider_auth_error",
+    "provider_routing_error",
+    "provider_request_error",
+    "provider_server_error",
+    "provider_schema_error",
+}
 _CAMPAIGN_TERMINAL_REASONS = {
     "provider_attempt_outcome_unknown",
     "provider_outputs_incomplete",
     "call_cap_would_be_exceeded",
     "cost_cap_would_be_exceeded",
     "absolute_cost_cap_exceeded",
+    "canary_provider_auth_error",
+    "canary_provider_routing_error",
+    "canary_provider_request_error",
+    "provider_auth_error",
+    "provider_routing_error",
+    "provider_request_error",
 }
-PRIVATE_OUTPUTS_SCHEMA_VERSION = "stimmung_final_wording_private_outputs_v2_1"
+PRIVATE_OUTPUTS_SCHEMA_VERSION = "stimmung_final_wording_private_outputs_v2_2"
+_NONRECOVERABLE_PROVIDER_STATUSES = {
+    "provider_auth_error",
+    "provider_routing_error",
+    "provider_request_error",
+}
 
 
 def _compact_json(value: Any) -> str:
@@ -94,7 +116,38 @@ def _classify_provider_result(response: Mapping[str, Any]) -> dict[str, Any]:
         "raw_text": raw_text or None,
     }
     if not response.get("ok"):
+        status_code = base["status_code"]
         error_kind = str(response.get("error") or "").casefold()
+        if status_code in {401, 403}:
+            return {
+                **base,
+                "status": "provider_auth_error",
+                "reason_code": "provider_auth_error",
+            }
+        if status_code == 404:
+            return {
+                **base,
+                "status": "provider_routing_error",
+                "reason_code": "provider_routing_error",
+            }
+        if status_code is not None and 400 <= status_code < 500:
+            return {
+                **base,
+                "status": "provider_request_error",
+                "reason_code": "provider_request_error",
+            }
+        if status_code is not None and 500 <= status_code < 600:
+            return {
+                **base,
+                "status": "provider_server_error",
+                "reason_code": "provider_server_error",
+            }
+        if "invalid_transport_result" in error_kind:
+            return {
+                **base,
+                "status": "provider_schema_error",
+                "reason_code": "provider_schema_error",
+            }
         timeout = "timeout" in error_kind or "timed out" in error_kind
         return {
             **base,
@@ -108,11 +161,11 @@ def _classify_provider_result(response: Mapping[str, Any]) -> dict[str, Any]:
     if finish_reason != "stop":
         return {
             **base,
-            "status": "transport_error",
+            "status": "provider_schema_error",
             "reason_code": "unexpected_finish_reason",
         }
     if observed_model == "unknown" or observed_provider != "openai":
-        return {**base, "status": "transport_error", "reason_code": "route_mismatch"}
+        return {**base, "status": "provider_routing_error", "reason_code": "route_mismatch"}
     return {**base, "status": "valid", "reason_code": "valid_complete_output"}
 
 
@@ -165,7 +218,7 @@ def expected_live_campaign_paths(protocol: Mapping[str, Any]) -> tuple[Path, Pat
     freeze_commit = str(protocol.get("freeze_commit") or "")
     if len(freeze_commit) != 40:
         raise ValueError("freeze_commit_invalid")
-    stem = f"lot4c4-final-wording-v2.1-{freeze_commit[:12]}"
+    stem = f"lot4c4-final-wording-v2.2-{freeze_commit[:12]}"
     return Path(f"/tmp/{stem}-private"), Path(f"/tmp/{stem}-review")
 
 
@@ -310,10 +363,9 @@ def _runtime_parameters_sha(protocol: Mapping[str, Any]) -> str:
                 key: protocol[key]
                 for key in (
                     "model",
-                    "temperature",
-                    "top_p",
                     "max_tokens",
                     "reasoning",
+                    "required_endpoint_capabilities",
                     "timeout_s",
                     "transport_policy",
                 )
@@ -636,6 +688,7 @@ def run_campaign(
     execution_authorized: bool,
     evidence_source: str,
     progress: Any | None = None,
+    capability_progress: Any | None = None,
     resume: bool = False,
     fault_injector: Any | None = None,
 ) -> dict[str, Any]:
@@ -653,6 +706,27 @@ def run_campaign(
     schedule = protocol_v2.build_request_schedule(repo_root, protocol)
     if len(schedule) != 36 or len(schedule) > int(protocol["absolute_call_cap"]):
         raise ValueError("absolute_call_cap_invalid")
+    capability_preflight: dict[str, Any] | None = None
+    if evidence_source == "main_model_provider":
+        capability_preflight = client.preflight_model_capabilities(
+            protocol_v2.ACTIVE_MAIN_MODEL,
+            protocol_v2.REQUIRED_ENDPOINT_CAPABILITIES,
+        )
+        if callable(capability_progress):
+            capability_progress(capability_preflight)
+        if capability_preflight.get("status") != "compatible":
+            return {
+                "status": "campaign_incomplete",
+                "decision": None,
+                "reason_code": "no_compatible_provider_endpoint",
+                "evidence_source": evidence_source,
+                "attempted_call_count": 0,
+                "completed_call_count": 0,
+                "unknown_outcome_count": 0,
+                "accounted_cost_usd": 0.0,
+                "outputs_complete": False,
+                "capability_preflight": capability_preflight,
+            }
     resolved_output = _validate_output_dir(repo_root, output_dir, resume=resume)
     resolved_review = _validate_review_export_dir(
         repo_root,
@@ -794,6 +868,16 @@ def run_campaign(
                 ledger_path,
                 reason_code=str(ledger["terminal_reason_code"]),
             )
+        completed_status = str(ledger["records"][sequence - 1]["status"])
+        if completed_status in _NONRECOVERABLE_PROVIDER_STATUSES:
+            reason_code = (
+                f"canary_{completed_status}" if sequence == 1 else completed_status
+            )
+            return _incomplete_result(
+                ledger,
+                ledger_path,
+                reason_code=reason_code,
+            )
         if callable(progress):
             progress(sequence, len(schedule), ledger["records"][sequence - 1])
 
@@ -864,7 +948,7 @@ def verify_live_preflight(repo_root: Path, *, freeze_commit: str) -> None:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Lot 4C.4 v2 bounded main-model campaign")
+    parser = argparse.ArgumentParser(description="Lot 4C.4 v2.2 bounded main-model campaign")
     parser.add_argument("--repo-root", type=Path, required=True)
     parser.add_argument("--freeze-commit", required=True)
     parser.add_argument("--dry-run", action="store_true")
@@ -913,7 +997,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         resume=args.resume,
     )
     _validate_live_campaign_paths(protocol, args.output_dir, args.review_export_dir)
-    client = OpenRouterClient.from_env(title="FridaDev/Lot4C4-Final-Wording-v2.1")
+    client = OpenRouterClient.from_env(
+        title="FridaDev/Lot4C4-Final-Wording-v2.2",
+        fetch_pricing=False,
+    )
+
+    def capability_progress(summary: Mapping[str, Any]) -> None:
+        print(
+            _compact_json({"status": "capability_preflight", **dict(summary)}),
+            flush=True,
+        )
 
     def progress(current: int, total: int, _record: Mapping[str, Any]) -> None:
         if current == 1 or current % 6 == 0 or current == total:
@@ -931,6 +1024,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         execution_authorized=True,
         evidence_source="main_model_provider",
         progress=progress,
+        capability_progress=capability_progress,
         resume=args.resume,
     )
     print(_compact_json(result))

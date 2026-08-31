@@ -3610,8 +3610,8 @@ Cloture fonctionnelle du 31 aout 2026 avant livraison:
 
 ### Micro-lot 4C.4 - Restitution finale conditionnelle de l'effet dialogique
 
-Statut: ouvert; `Phase A v2.1 gelee — GO provider separe requis`;
-protocoles v1 et v2 supersedes avant tout appel, campagne non autorisee et non executee
+Statut: ouvert; `Phase A v2.2 gelee — nouveau GO provider separe requis`;
+protocoles v1 et v2 supersedes avant tout appel, v2.1 supersede apres 36 rejets HTTP 404 sans inference
 Effort recommande: `extra high`
 Nature: diagnostic causal puis correctif minimal si dommage prouve
 Prerequis: 4C.3 ferme
@@ -3771,6 +3771,35 @@ Passe corrective Phase A v2.1 du 31 aout 2026:
   frontend, rebuild, restart ou deploiement. 4C.4 reste ouvert dans l'attente
   d'un GO provider separe puis de la notation/ratification; 4O.Z et tous les
   lots suivants restent non commences.
+
+Passe corrective Phase A v2.2 du 31 aout 2026:
+
+- la campagne v2.1 s'est terminee `campaign_incomplete` apres `36` HTTP 404:
+  aucune inference provider et cout observe nul. Son ledger conserve
+  `3.25671750 USD` comme plafond conservateur non facture; son repertoire prive
+  historique reste intact, non relance et non reutilisable;
+- v2.2 retire seulement `temperature=0.7` et `top_p=1.0` du payload GPT-5.1.
+  Modele, reasoning `high` exclu, `max_tokens=8192`, timeout `900`, sorties
+  structurees, `allow_fallbacks=false`, `require_parameters=true`, messages,
+  corpus, calendrier, scorer, notation et seuils sont inchanges;
+- avant tout futur POST, un GET de metadonnees cible exclusivement
+  `openai/gpt-5.1` et exige au moins une route annoncant reasoning, response
+  format/sorties structurees, `max_tokens` et `stop`. La synthese est
+  content-free; une incompatibilite arrete la campagne avec zero tentative;
+- la sequence 1 est le canari inclus dans les 36 appels. Une reponse valide
+  laisse suivre les 35 restantes; toute 4xx non recuperable arrete sans retry,
+  paquet ni notation. 401/403, routage 404 et autre requete 4xx ont des codes
+  fermes distincts; `transport_error` reste reserve au transport;
+- le gel autoritatif devient
+  `stimmung_final_wording_freeze_v2_2.json`; il pince aussi le client
+  OpenRouter et l'historique v2.1. Les mutations rejettent sampling restaure,
+  fausse route compatible, POST avant preflight, 404 masque, poursuite apres
+  canari invalide, 37e appel, retry/fallback, derive messages/corpus/scorer et
+  suppression de l'historique;
+- zero appel provider et zero cout pendant cette passe benchmark/tests/docs.
+  Aucun runtime, prompt, modele, setting, frontend, rebuild, restart ou
+  deploiement. 4C.4 reste ouvert dans l'attente d'un nouveau GO provider
+  separe; 4O.Z et tous les lots suivants restent non commences.
 
 ### Micro-lot 4O.Z - Contre-audit causal et fermeture du Lot 4
 

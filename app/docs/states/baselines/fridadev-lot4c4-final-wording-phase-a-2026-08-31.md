@@ -1,11 +1,75 @@
-# Lot 4C.4 — Phase A v2.1 du diagnostic de restitution finale
+# Lot 4C.4 — Phase A v2.2 du diagnostic de restitution finale
 
 Date: 31 aout 2026
-Statut: `Phase A v2.1 gelee — GO provider separe requis`; 4C.4 reste ouvert
-Portee: checkpoint, reprise, export aveugle et provenance de notation v2.1
+Statut: `Phase A v2.2 gelee — nouveau GO provider separe requis`; 4C.4 reste ouvert
+Portee: compatibilite de routage, preflight, canari et taxonomie provider v2.2
 Exclusions: runtime, prompts, modeles, settings, frontend, donnees operateur et appels provider reels
 
-## Decision v2.1
+## Decision v2.2
+
+La campagne v2.1 autorisee depuis
+`ce320fa3acda1caf562948dc6f64f554f5490c59` s'est terminee
+`campaign_incomplete`: les 36 requetes ont recu HTTP 404, aucune inference n'a
+eu lieu et le cout provider observe est nul. Le ledger conserve
+`3.25671750 USD` comme comptage conservateur de tentatives, pas comme cout
+facture. Les preuves historiques sous
+`/tmp/lot4c4-final-wording-v2.1-ce320fa3acda-private` restent intactes; cette
+campagne n'est ni relancee ni reutilisable.
+
+La cause deja etablie est bornee: le payload v2.1 exigeait
+`temperature=0.7`, `top_p=1.0` et `require_parameters=true`, alors qu'aucun
+endpoint GPT-5.1 annonce les deux parametres de sampling. V2.2 retire uniquement
+`temperature` et `top_p`. Modele `openai/gpt-5.1`, raisonnement `high` exclu,
+`max_tokens=8192`, timeout `900`, sorties structurees,
+`allow_fallbacks=false`, `require_parameters=true`, messages, corpus, scorer,
+notation et seuils restent inchanges.
+
+Avant toute future generation, le runner interroge seulement l'endpoint de
+metadonnees exact du modele. Sa synthese content-free exige au moins une route
+annoncant reasoning, sorties structurees/response format, `max_tokens` et
+`stop`, sans exposer endpoint, secret ou reponse brute. Sans route compatible,
+la campagne s'arrete avant tout POST. Le client live ne charge plus le
+catalogue generique de prix avant ce preflight.
+
+La sequence 1 des 36 sert de canari, sans appel supplementaire. Si elle est
+valide, les 35 restantes suivent automatiquement. Une erreur 401/403 devient
+`provider_auth_error`, une 404 de routage `provider_routing_error`, une autre
+4xx invalide `provider_request_error`; chacune arrete immediatement un canari
+sans retry, paquet ou notation. `transport_error` est reserve aux erreurs
+reseau, DNS, connexion et exceptions de transport.
+
+Le gel autoritatif est
+`benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2_2.json`.
+Il pince le client OpenRouter, les modules v2 existants, les gels historiques,
+le corpus et le calendrier inchange de 36 appels. Cette passe a execute zero
+appel provider et coute zero. V2.2 attend un nouveau GO provider separe; F4
+n'est pas classe et 4C.4 reste ouvert.
+
+Commande offline de controle:
+
+```bash
+PYTHONPATH="$PWD:$PWD/app" python3 -m \
+  benchmark.suites.stimmung.final_wording_execution_v2 \
+  --repo-root "$PWD" \
+  --freeze-commit <commit-v2.2-pousse> \
+  --dry-run
+```
+
+Les six reproductions v2.2 ont d'abord produit neuf echecs et une erreur sur
+le comportement v2.1: sampling present, preflight absent ou ignore, 404 classe
+transport, poursuite apres canari invalide et historique manquant. Les memes
+six preuves sont vertes apres correction, y compris route faussement
+compatible refusee et canari valide suivi d'exactement 35 autres sequences.
+Les suites v1/v2/v2.1 voisines, les tests de reprise/provenance et les six
+preuves v2.2 passent ensemble `36/36`; les tests cibles du client OpenRouter
+passent `2/2`, hermetiquement et sans reseau. Le
+dry-run final annonce exactement `36` appels, budget `3.58238925 USD` et cap
+absolu `4.00 USD`. Aucune decouverte Python complete, suite JavaScript ou
+Chromium n'est executee dans cette passe ciblee.
+
+## Archive Phase A v2.1 supersedee
+
+### Decision v2.1
 
 La Phase A v2 livree par
 `9d6b66be05fb89561961deaa4d64f6acbbb42e48` est supersedee avant tout appel
