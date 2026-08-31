@@ -86,3 +86,104 @@ test('validation request projection never reinterprets historical or incoherent 
   assert.equal(legacy.providerRoutingSent, false);
   assert.equal(legacy.providerFallbacksAllowed, null);
 });
+
+test('dialogic effects preserve epistemic certainty while exposing a distinct transition directive', () => {
+  const stable = projection.dialogicEffectsFromEventPayload('primary_node', {
+    epistemic_effect: 'certain',
+    epistemic_source: 'epistemic_inputs',
+    epistemic_reason_code: 'sufficient_independent_support',
+    enunciation_effect: 'none',
+    enunciation_source: 'stimmung',
+    enunciation_reason_code: 'stimmung_stable',
+  });
+  const transition = projection.dialogicEffectsFromReadModel({
+    authoritative: true,
+    status: 'success',
+    epistemic_effect: 'certain',
+    epistemic_source: 'epistemic_inputs',
+    epistemic_reason_code: 'sufficient_independent_support',
+    enunciation_effect: 'delicate_expression',
+    enunciation_source: 'stimmung',
+    enunciation_reason_code: 'affective_transition',
+  });
+
+  assert.equal(stable.authoritative, true);
+  assert.equal(stable.epistemicEffect, 'certain');
+  assert.equal(stable.enunciationEffect, 'none');
+  assert.equal(transition.authoritative, true);
+  assert.equal(transition.epistemicEffect, 'certain');
+  assert.equal(transition.enunciationEffect, 'delicate_expression');
+});
+
+test('dialogic effects distinguish absent, legacy unknown, and fail-open states', () => {
+  const absent = projection.dialogicEffectsFromEventPayload('validation_agent', {
+    epistemic_effect: 'probable',
+    epistemic_source: 'epistemic_inputs',
+    epistemic_reason_code: 'limited_independent_support',
+    enunciation_effect: 'none',
+    enunciation_source: 'not_applicable',
+    enunciation_reason_code: 'stimmung_absent',
+  });
+  const legacy = projection.dialogicEffectsFromEventPayload('validation_agent', {});
+  const failOpen = projection.dialogicEffectsFromEventPayload('primary_node', {
+    epistemic_effect: 'unknown',
+    epistemic_source: 'fail_open',
+    epistemic_reason_code: 'runtime_error',
+    enunciation_effect: 'unknown',
+    enunciation_source: 'fail_open',
+    enunciation_reason_code: 'runtime_error',
+  });
+
+  assert.equal(absent.status, 'success');
+  assert.equal(absent.enunciationSource, 'not_applicable');
+  assert.equal(legacy.authoritative, false);
+  assert.equal(legacy.status, 'unknown');
+  assert.equal(failOpen.authoritative, true);
+  assert.equal(failOpen.status, 'fail_open');
+  assert.equal(failOpen.reasonCode, 'runtime_error');
+});
+
+test('dialogic effects reject causal mutations and cannot fabricate factual caution', () => {
+  const stimmungAsEpistemicSource = projection.dialogicEffectsFromEventPayload('primary_node', {
+    epistemic_effect: 'probable',
+    epistemic_source: 'stimmung',
+    epistemic_reason_code: 'affective_transition',
+    enunciation_effect: 'delicate_expression',
+    enunciation_source: 'stimmung',
+    enunciation_reason_code: 'affective_transition',
+  });
+  const confusedReasons = projection.dialogicEffectsFromEventPayload('validation_agent', {
+    epistemic_effect: 'certain',
+    epistemic_source: 'epistemic_inputs',
+    epistemic_reason_code: 'affective_transition',
+    enunciation_effect: 'delicate_expression',
+    enunciation_source: 'epistemic_inputs',
+    enunciation_reason_code: 'sufficient_independent_support',
+  });
+  const inconsistentCertainty = projection.dialogicEffectsFromEventPayload('primary_node', {
+    epistemic_effect: 'certain',
+    epistemic_source: 'epistemic_inputs',
+    epistemic_reason_code: 'limited_independent_support',
+    enunciation_effect: 'none',
+    enunciation_source: 'stimmung',
+    enunciation_reason_code: 'stimmung_stable',
+  });
+  const fabricatedSuccess = projection.dialogicEffectsFromReadModel({
+    authoritative: true,
+    status: 'success',
+    epistemic_effect: 'unknown',
+    epistemic_source: 'fail_open',
+    epistemic_reason_code: 'runtime_error',
+    enunciation_effect: 'unknown',
+    enunciation_source: 'fail_open',
+    enunciation_reason_code: 'runtime_error',
+  });
+
+  for (const mutant of [
+    stimmungAsEpistemicSource, confusedReasons, inconsistentCertainty, fabricatedSuccess,
+  ]) {
+    assert.equal(mutant.authoritative, false);
+    assert.equal(mutant.status, 'unknown');
+    assert.equal(mutant.epistemicEffect, 'unknown');
+  }
+});

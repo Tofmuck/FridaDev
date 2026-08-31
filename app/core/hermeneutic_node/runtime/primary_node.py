@@ -3,8 +3,14 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Mapping, Sequence
 
-from core.hermeneutic_node.doctrine.epistemic_regime import build_epistemic_regime
-from core.hermeneutic_node.doctrine.judgment_posture import build_judgment_posture
+from core.hermeneutic_node.doctrine.epistemic_regime import (
+    build_epistemic_effect,
+    build_epistemic_regime,
+)
+from core.hermeneutic_node.doctrine.judgment_posture import (
+    build_enunciation_directive,
+    build_judgment_posture,
+)
 from core.hermeneutic_node.doctrine.output_regime import build_output_regime
 from core.hermeneutic_node.doctrine.source_conflicts import build_source_conflicts
 from core.hermeneutic_node.doctrine.source_priority import build_source_priority
@@ -47,6 +53,8 @@ _FALLBACK_DEGRADED_FIELDS = [
     "source_priority",
     "source_conflicts",
     "pipeline_directives_provisional",
+    "epistemic_effect",
+    "enunciation_directive",
 ]
 _PRIMARY_NODE_STAGE = "primary_node"
 _FALLBACK_SOURCE = "primary_node"
@@ -159,6 +167,8 @@ def _build_upstream_advisory(
 def _build_primary_verdict(
     *,
     epistemic_payload: Mapping[str, str],
+    epistemic_effect: Mapping[str, str],
+    enunciation_directive: Mapping[str, str],
     judgment_posture: str,
     output_regime: Mapping[str, str],
     source_priority: Sequence[Sequence[str]],
@@ -190,6 +200,8 @@ def _build_primary_verdict(
         "epistemic_regime": str(epistemic_payload["epistemic_regime"]),
         "proof_regime": str(epistemic_payload["proof_regime"]),
         "uncertainty_posture": str(epistemic_payload["uncertainty_posture"]),
+        "epistemic_effect": dict(epistemic_effect),
+        "enunciation_directive": dict(enunciation_directive),
         "judgment_posture": str(judgment_posture),
         "discursive_regime": str(output_regime["discursive_regime"]),
         "resituation_level": str(output_regime["resituation_level"]),
@@ -242,6 +254,16 @@ def _fallback_result(
     )
     fallback_primary_verdict = _build_primary_verdict(
         epistemic_payload=_FALLBACK_EPISTEMIC,
+        epistemic_effect={
+            "effect": "unknown",
+            "source": "fail_open",
+            "reason_code": _text(reason_code) or "unknown_error",
+        },
+        enunciation_directive={
+            "effect": "unknown",
+            "source": "fail_open",
+            "reason_code": _text(reason_code) or "unknown_error",
+        },
         judgment_posture=_FALLBACK_JUDGMENT_POSTURE,
         output_regime=_FALLBACK_OUTPUT_REGIME,
         source_priority=_DEFAULT_SOURCE_PRIORITY,
@@ -297,6 +319,14 @@ def build_primary_node(
             stimmung_input=stimmung_input,
             web_input=web_input,
         )
+        epistemic_effect = build_epistemic_effect(
+            epistemic_payload=epistemic_payload,
+            user_turn_input=user_turn_input,
+            user_turn_signals=user_turn_signals,
+        )
+        enunciation_directive = build_enunciation_directive(
+            stimmung_input=stimmung_input,
+        )
         judgment_payload = build_judgment_posture(
             user_turn_signals=user_turn_signals,
             epistemic_regime=epistemic_payload["epistemic_regime"],
@@ -344,6 +374,8 @@ def build_primary_node(
         )
         primary_verdict = _build_primary_verdict(
             epistemic_payload=epistemic_payload,
+            epistemic_effect=epistemic_effect,
+            enunciation_directive=enunciation_directive,
             judgment_posture=judgment_payload["judgment_posture"],
             output_regime=stabilized_output_regime,
             source_priority=source_priority_payload["source_priority"],

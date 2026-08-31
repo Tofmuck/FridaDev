@@ -12,6 +12,8 @@ from core.web_read_state import (
     READ_STATE_PAGE_READ,
 )
 from core.hermeneutic_node.inputs import time_input
+from core.hermeneutic_node.doctrine import epistemic_regime as epistemic_doctrine
+from core.hermeneutic_node.doctrine import judgment_posture as judgment_doctrine
 
 _FINAL_JUDGMENT_INSTRUCTIONS = {
     'answer': 'Tu peux produire une reponse substantive normale',
@@ -60,6 +62,32 @@ def _stable_string_list(value: Any) -> list[str]:
     return ordered
 
 
+def _effect_mapping(
+    value: Any,
+    *,
+    allowed_effects: tuple[str, ...],
+    allowed_sources: tuple[str, ...],
+    allowed_reason_codes: tuple[str, ...],
+) -> dict[str, str]:
+    payload = value if isinstance(value, Mapping) else {}
+    if set(payload) != {'effect', 'source', 'reason_code'}:
+        return {}
+    effect = _text(payload.get('effect'))
+    source = _text(payload.get('source'))
+    reason_code = _text(payload.get('reason_code'))
+    if (
+        effect not in allowed_effects
+        or source not in allowed_sources
+        or reason_code not in allowed_reason_codes
+    ):
+        return {}
+    return {
+        'effect': effect,
+        'source': source,
+        'reason_code': reason_code,
+    }
+
+
 def _looks_like_explicit_identity_revelation(user_msg: str) -> bool:
     normalized = _text(user_msg).lower().replace("'", '’')
     normalized = normalized.replace('’', "'")
@@ -101,7 +129,19 @@ def build_hermeneutic_judgment_block(
     instruction = _FINAL_JUDGMENT_INSTRUCTIONS.get(final_judgment_posture)
     output_regime_instruction = _FINAL_OUTPUT_REGIME_INSTRUCTIONS.get(final_output_regime)
     directives = _stable_string_list(payload.get('pipeline_directives_final'))
-    if not instruction or not directives:
+    epistemic_effect = _effect_mapping(
+        payload.get('epistemic_effect'),
+        allowed_effects=(*epistemic_doctrine.EPISTEMIC_REGIMES, 'unknown'),
+        allowed_sources=epistemic_doctrine.EPISTEMIC_EFFECT_SOURCES,
+        allowed_reason_codes=epistemic_doctrine.EPISTEMIC_EFFECT_REASON_CODES,
+    )
+    enunciation_directive = _effect_mapping(
+        payload.get('enunciation_directive'),
+        allowed_effects=judgment_doctrine.ENUNCIATION_EFFECTS,
+        allowed_sources=judgment_doctrine.ENUNCIATION_SOURCES,
+        allowed_reason_codes=judgment_doctrine.ENUNCIATION_REASON_CODES,
+    )
+    if not instruction or not directives or not epistemic_effect or not enunciation_directive:
         return ''
 
     lines = [
@@ -113,6 +153,21 @@ def build_hermeneutic_judgment_block(
     lines.append(f'Consigne hermeneutique: {instruction}.')
     if output_regime_instruction:
         lines.append(f'Consigne de regime: {output_regime_instruction}.')
+    lines.append(
+        'Effet epistemique: '
+        f"{epistemic_effect['effect']} "
+        f"(source={epistemic_effect['source']}; reason_code={epistemic_effect['reason_code']})."
+    )
+    lines.append(
+        "Effet d'enonciation: "
+        f"{enunciation_directive['effect']} "
+        f"(source={enunciation_directive['source']}; reason_code={enunciation_directive['reason_code']})."
+    )
+    if enunciation_directive['effect'] == 'delicate_expression':
+        lines.append(
+            "Consigne d'enonciation: adapte seulement la delicatesse, le rythme ou la prudence de formulation; "
+            "ne diminue ni la certitude, ni le regime de preuve, ni la posture d'incertitude."
+        )
     lines.append(f"Directives finales actives: {', '.join(directives)}.")
     return '\n'.join(lines)
 

@@ -54,9 +54,15 @@ _SAFE_TEXT_KEYS = {
     'classification',
     'continuity_kind',
     'decision_source',
+    'enunciation_effect',
+    'enunciation_reason_code',
+    'enunciation_source',
     'error_class',
     'error_code',
     'event_family',
+    'epistemic_effect',
+    'epistemic_reason_code',
+    'epistemic_source',
     'final_output_regime',
     'final_status',
     'final_judgment_posture',
@@ -94,6 +100,7 @@ _SAFE_TEXT_KEYS = {
     'validation_reasoning_effort_requested',
     'validation_reasoning_effort_effective',
     'verdict',
+    'uncertainty_posture',
     'write_mode',
 }
 

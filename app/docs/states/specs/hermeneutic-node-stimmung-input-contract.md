@@ -269,8 +269,24 @@ Contraintes:
 Le noeud peut prendre `stimmung` en consideration pour:
 
 - le regime d'enonciation
-- la prudence de transition
+- la delicatesse, le rythme ou la prudence de formulation en transition
 - la tonalite generale de reprise
+
+Depuis le micro-lot 4C.3 du 2026-08-31, cet effet passe par une directive
+derivee compacte `enunciation_directive={effect, source, reason_code}`. Le
+vocabulaire nominal est ferme:
+
+- signal absent: `none / not_applicable / stimmung_absent`;
+- signal stable: `none / stimmung / stimmung_stable`;
+- signal present sans transition qualifiee: `none / stimmung /
+  stimmung_no_transition`;
+- transition: `delicate_expression / stimmung / affective_transition`.
+
+Cette directive ne transporte ni tonalite brute, ni historique de signaux, ni
+contenu du dialogue. Elle ne gouverne jamais `epistemic_regime`,
+`proof_regime`, `uncertainty_posture` ou le vrai. Les etats de fail-open sont
+`unknown / fail_open / <reason_code ferme>` et ne fabriquent aucun effet
+causal.
 
 Le noeud ne doit pas traiter `stimmung` comme:
 
@@ -278,6 +294,7 @@ Le noeud ne doit pas traiter `stimmung` comme:
 - une posture finale
 - une sortie aval
 - la machine `M6` complete
+- une source epistemique ou probatoire
 
 ## 10. Non-goals
 

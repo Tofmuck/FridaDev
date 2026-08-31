@@ -243,6 +243,15 @@
       .map((key) => `${key}=${compactPayloadValue(key, payload[key])}`);
   };
 
+  const dialogicEffectEntries = (stage, payload) => {
+    const effects = validationProjection.dialogicEffectsFromEventPayload(stage, payload);
+    return [
+      `causal_status=${effects.status}`,
+      `epistemic=${effects.epistemicEffect}/${effects.epistemicSource}/${effects.epistemicReasonCode}`,
+      `enunciation=${effects.enunciationEffect}/${effects.enunciationSource}/${effects.enunciationReasonCode}`,
+    ];
+  };
+
   const compareEventsChronoAsc = (left, right) => {
     const leftTs = Date.parse(toText(left?.ts));
     const rightTs = Date.parse(toText(right?.ts));
@@ -750,6 +759,9 @@
       const rag = item?.rag || {};
       const identity = item?.identity || {};
       const hermeneutic = item?.hermeneutic || {};
+      const dialogicEffects = validationProjection.dialogicEffectsFromReadModel(
+        hermeneutic.dialogic_effects || {},
+      );
       const nodeState = hermeneutic.node_state || {};
       const web = item?.web || {};
       const errors = item?.errors || {};
@@ -869,6 +881,18 @@
       appendTurnText(blocksMeta, "identity", toText(identity.status) || "missing", identity.status);
       appendTurnText(blocksMeta, "id_chars", safeCount(identity.chars));
       appendTurnText(blocksMeta, "herm", toText(hermeneutic.status) || "missing", hermeneutic.status);
+      appendTurnText(
+        blocksMeta,
+        "epi",
+        `${dialogicEffects.epistemicEffect}/${dialogicEffects.epistemicSource}/${dialogicEffects.epistemicReasonCode}`,
+        dialogicEffects.status,
+      );
+      appendTurnText(
+        blocksMeta,
+        "enon",
+        `${dialogicEffects.enunciationEffect}/${dialogicEffects.enunciationSource}/${dialogicEffects.enunciationReasonCode}`,
+        dialogicEffects.status,
+      );
       appendTurnText(blocksMeta, "node_read", nodeState.read_valid ? "ok" : "miss", nodeState.read_valid ? "ok" : "degraded");
       appendTurnText(blocksMeta, "node_write", nodeState.write_succeeded ? "ok" : "skip", nodeState.write_succeeded ? "ok" : "skipped");
       blocksCell.appendChild(blocksMeta);
@@ -961,6 +985,11 @@
 
         const payloadMeta = document.createElement("div");
         payloadMeta.className = "admin-card-meta";
+        if (["primary_node", "validation_agent"].includes(toText(event.stage))) {
+          for (const entry of dialogicEffectEntries(event.stage, event.payload)) {
+            payloadMeta.appendChild(createChip(entry));
+          }
+        }
         const entries = payloadEntries(event.payload);
         if (!entries.length) {
           payloadMeta.appendChild(createChip("payload=vide"));

@@ -6,6 +6,29 @@
   ]);
   const HISTORICAL_V1_BUDGET_CHARS = 700;
   const CURRENT_V2_BUDGET_CHARS = 3840;
+  const EPISTEMIC_EFFECTS = new Set(["certain", "probable", "incertain", "suspendu", "contradictoire", "a_verifier"]);
+  const EPISTEMIC_REASONS = new Set([
+    "sufficient_independent_support", "limited_independent_support",
+    "insufficient_independent_support", "ambiguity_present",
+    "underdetermination_present", "ambiguity_and_underdetermination",
+    "missing_user_turn", "independent_blockage", "source_conflict",
+    "external_verification_required",
+  ]);
+  const EPISTEMIC_REASONS_BY_EFFECT = Object.freeze({
+    certain: new Set(["sufficient_independent_support"]),
+    probable: new Set(["limited_independent_support", "ambiguity_present", "underdetermination_present"]),
+    incertain: new Set(["insufficient_independent_support", "ambiguity_present", "underdetermination_present"]),
+    suspendu: new Set(["missing_user_turn", "independent_blockage", "ambiguity_and_underdetermination"]),
+    contradictoire: new Set(["source_conflict"]),
+    a_verifier: new Set(["external_verification_required"]),
+  });
+  const FAIL_OPEN_REASONS = new Set([
+    "unknown_error", "parse_error", "invalid_node_state", "invalid_input", "runtime_error",
+    "http_error", "invalid_json", "prompt_missing", "timeout", "upstream_error", "validation_error",
+  ]);
+  const ENUNCIATION_REASONS = new Set([
+    "stimmung_absent", "stimmung_stable", "stimmung_no_transition", "affective_transition",
+  ]);
 
   const toText = (value) => String(value == null ? "" : value).trim();
   const list = (value) => Array.isArray(value) ? value.map(toText).filter(Boolean) : [];
@@ -282,7 +305,106 @@
     });
   };
 
+  const invalidDialogicEffects = (reasonCode = "legacy_incomplete") => ({
+    authoritative: false,
+    status: "unknown",
+    reasonCode,
+    epistemicEffect: "unknown",
+    epistemicSource: "unknown",
+    epistemicReasonCode: "unknown",
+    enunciationEffect: "unknown",
+    enunciationSource: "unknown",
+    enunciationReasonCode: "unknown",
+  });
+
+  const normalizeDialogicEffects = (value = {}) => {
+    const epistemicEffect = toText(value.epistemicEffect);
+    const epistemicSource = toText(value.epistemicSource);
+    const epistemicReasonCode = toText(value.epistemicReasonCode);
+    const enunciationEffect = toText(value.enunciationEffect);
+    const enunciationSource = toText(value.enunciationSource);
+    const enunciationReasonCode = toText(value.enunciationReasonCode);
+    const failOpen = epistemicEffect === "unknown"
+      && epistemicSource === "fail_open"
+      && enunciationEffect === "unknown"
+      && enunciationSource === "fail_open"
+      && epistemicReasonCode === enunciationReasonCode
+      && FAIL_OPEN_REASONS.has(epistemicReasonCode);
+    const epistemicSuccess = EPISTEMIC_EFFECTS.has(epistemicEffect)
+      && epistemicSource === "epistemic_inputs"
+      && EPISTEMIC_REASONS.has(epistemicReasonCode)
+      && EPISTEMIC_REASONS_BY_EFFECT[epistemicEffect].has(epistemicReasonCode);
+    const enunciationSuccess = (
+      enunciationEffect === "delicate_expression"
+      && enunciationSource === "stimmung"
+      && enunciationReasonCode === "affective_transition"
+    ) || (
+      enunciationEffect === "none"
+      && ENUNCIATION_REASONS.has(enunciationReasonCode)
+      && (
+        enunciationSource === "not_applicable" && enunciationReasonCode === "stimmung_absent"
+        || enunciationSource === "stimmung" && enunciationReasonCode !== "stimmung_absent"
+      )
+    );
+    const derivedStatus = failOpen ? "fail_open" : epistemicSuccess && enunciationSuccess ? "success" : "unknown";
+    const declaredStatus = toText(value.status);
+    const authoritative = value.authoritative === true
+      && derivedStatus !== "unknown"
+      && (!declaredStatus || declaredStatus === derivedStatus);
+    if (!authoritative) return invalidDialogicEffects(toText(value.reasonCode));
+    return {
+      authoritative: true,
+      status: derivedStatus,
+      reasonCode: derivedStatus === "fail_open" ? epistemicReasonCode : "observed_causal_effects",
+      epistemicEffect,
+      epistemicSource,
+      epistemicReasonCode,
+      enunciationEffect,
+      enunciationSource,
+      enunciationReasonCode,
+    };
+  };
+
+  const dialogicEffectsFromEventPayload = (stage, payload = {}) => normalizeDialogicEffects({
+    authoritative: ["primary_node", "validation_agent"].includes(toText(stage)),
+    reasonCode: "legacy_incomplete",
+    epistemicEffect: payload.epistemic_effect,
+    epistemicSource: payload.epistemic_source,
+    epistemicReasonCode: payload.epistemic_reason_code,
+    enunciationEffect: payload.enunciation_effect,
+    enunciationSource: payload.enunciation_source,
+    enunciationReasonCode: payload.enunciation_reason_code,
+  });
+
+  const dialogicEffectsFromReadModel = (effects = {}) => normalizeDialogicEffects({
+    authoritative: effects.authoritative,
+    status: effects.status,
+    reasonCode: "legacy_incomplete",
+    epistemicEffect: effects.epistemic_effect,
+    epistemicSource: effects.epistemic_source,
+    epistemicReasonCode: effects.epistemic_reason_code,
+    enunciationEffect: effects.enunciation_effect,
+    enunciationSource: effects.enunciation_source,
+    enunciationReasonCode: effects.enunciation_reason_code,
+  });
+
+  const dialogicEffectFieldsFromEventPayload = (stage, payload = {}) => {
+    const effects = dialogicEffectsFromEventPayload(stage, payload);
+    return {
+      causal_status: effects.status,
+      epistemic_effect: effects.epistemicEffect,
+      epistemic_source: effects.epistemicSource,
+      epistemic_reason_code: effects.epistemicReasonCode,
+      enunciation_effect: effects.enunciationEffect,
+      enunciation_source: effects.enunciationSource,
+      enunciation_reason_code: effects.enunciationReasonCode,
+    };
+  };
+
   window.FridaValidationProjection = Object.freeze({
+    dialogicEffectFieldsFromEventPayload,
+    dialogicEffectsFromEventPayload,
+    dialogicEffectsFromReadModel,
     fromEventPayload,
     fromReadModel,
     requestFromEventPayload,

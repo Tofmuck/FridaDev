@@ -24,7 +24,7 @@ _GENERAL_TEXT_KEYS = set(
     crawl_primary_status crawl_status day_part_class decision_source dedup_reason_code
     calendar_ambiguity content_hash draft_title_hash
     canonical_projection_version canonical_projection_contract_status stimmung_delivery_status stimmung_delivery_reason_code
-    apply_reason_code apply_status dominant_tone error_class error_code epistemic_regime execution_status fallback_source
+    apply_reason_code apply_status dominant_tone enunciation_effect enunciation_reason_code enunciation_source error_class error_code epistemic_effect epistemic_reason_code epistemic_regime epistemic_source execution_status fallback_source
     final_judgment_posture final_output_regime final_status guarded_original_status
     validation_request_policy_version validation_transport validation_requested_model
     validation_attempt_decision_source validation_reasoning_effort_requested validation_reasoning_effort_effective
@@ -43,7 +43,7 @@ _GENERAL_TEXT_KEYS = set(
     profile_policy_mode profile_source_evidence_policy_kind prompt_kind provider provider_caller
     ancrage_temporel portee_temporelle provider_generation_id provider_model provider_role provider_title product_case_id product_method
     product_truth projected_judgment_posture
-    proof_regime principe query_kind query_plan_kind query_preview read_state reason_code reason_short
+    proof_regime principe query_kind query_plan_kind query_preview read_state reason_code reason_short uncertainty_posture
     read_execution_reason_code read_execution_status regime_de_vigilance runtime_pipeline
     reason_sha256_12 retrieval_error_class retrieval_error_code retrieval_status rerank_profile rerank_policy
     schema_version scope search_profile searxng_language searxng_profile_params_kind

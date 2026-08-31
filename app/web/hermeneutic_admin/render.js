@@ -135,7 +135,8 @@
       || normalized.endsWith("_kind")
       || normalized.endsWith("_code")
       || normalized.endsWith("_class")
-      || normalized.endsWith("_status")
+      || normalized.endsWith("_status") || normalized.endsWith("_effect")
+      || normalized.endsWith("_source")
       || normalized.endsWith("_sha256_12")
       || normalized.endsWith("_ts");
   };
@@ -387,10 +388,8 @@
   const renderStagePayload = (target, stage, payload) => {
     if (!target) return;
     target.innerHTML = "";
-    const safePayload = payload && typeof payload === "object" && !Array.isArray(payload)
-      ? sanitizeStagePayload(payload)
-      : {};
-
+    const safePayload = payload && typeof payload === "object" && !Array.isArray(payload) ? sanitizeStagePayload(payload) : {};
+    if (["primary_node", "validation_agent"].includes(stage)) Object.assign(safePayload, validationProjection.dialogicEffectFieldsFromEventPayload(stage, safePayload));
     if (stage === "validation_prompt_prepared") {
       const delivery = validationProjection.fromEventPayload(stage, safePayload);
       const request = validationProjection.requestFromEventPayload(stage, safePayload);

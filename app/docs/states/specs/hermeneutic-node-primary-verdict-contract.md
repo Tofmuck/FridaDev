@@ -125,6 +125,16 @@ La forme canonique minimale retenue est:
     "epistemic_regime": "...",
     "proof_regime": "...",
     "uncertainty_posture": "...",
+    "epistemic_effect": {
+        "effect": "...",
+        "source": "epistemic_inputs",
+        "reason_code": "...",
+    },
+    "enunciation_directive": {
+        "effect": "none|delicate_expression",
+        "source": "not_applicable|stimmung",
+        "reason_code": "...",
+    },
     "judgment_posture": "...",
     "discursive_regime": "...",
     "resituation_level": "...",
@@ -156,6 +166,13 @@ Regles minimales:
   - restent top-level en V1 pour eviter un second format concurrent, tout en formant ensemble le sous-bloc doctrinal `output_regime`
 - `source_priority`
   - reste la hierarchie doctrinale compacte du Lot 6
+- `epistemic_effect`
+  - recopie le regime epistemique nominal avec une source et un reason code
+    epistemiques fermes; Stimmung n'est jamais une source admissible
+- `enunciation_directive`
+  - porte separement l'effet derive de Stimmung sur la forme dialogique;
+    `delicate_expression` ne change ni certitude, ni preuve, ni posture
+    d'incertitude
 - `source_conflicts`
   - est inclus dans le payload primaire minimal en V1
   - raison: c'est deja une sortie doctrinale compacte du noeud primaire, utile a la validation et a la relecture du verdict
@@ -223,6 +240,9 @@ Regles minimales:
 5. `pipeline_directives_provisional` doit contenir un code explicite de fallback, par exemple `fallback_primary_verdict`
 6. `audit.fallback_used`, `audit.fallback_source`, `audit.node_stage`, `audit.reason_code` et `audit.error_class` doivent porter une cause technique compacte, sans message d'exception brut
 7. le fail-open ne doit pas prendre la forme d'un verdict substantif normal
+8. `epistemic_effect` et `enunciation_directive` valent tous deux
+   `unknown / fail_open / audit.reason_code`; aucune cause nominale n'est
+   inventee
 
 Contraintes minimales de surete:
 

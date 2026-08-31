@@ -170,8 +170,11 @@ L'ordre d'exécution courant dans `chat_service` est observable :
 5. exécution Biblio et rattachement de son état conversationnel ;
 6. exécution Agenda si activé, sinon émission d'un état disabled borné ;
 7. nœud herméneutique `primary -> validation` avec les entrées du tour et la
-   provenance Web structurée ;
-8. injection du jugement herméneutique et des gardes système.
+   provenance Web structurée ; le primaire sépare le régime épistémique fondé
+   sur les preuves de la directive d'énonciation dérivée de Stimmung ;
+8. injection du jugement herméneutique et des gardes système ; une transition
+   affective peut adapter la délicatesse ou le rythme, sans modifier la
+   certitude, le régime de preuve ou la posture d'incertitude.
 
 Biblio et Agenda conservent leurs propres contrats, outils et états. Ils ne sont
 ni Memory, ni Summary, ni Identity, ni Web. Agenda conserve les confirmations
@@ -314,6 +317,12 @@ pas des pipelines concurrents :
 Les manifestes, JSONL, dashboards et artefacts de preuve restent content-free
 selon leurs contrats. Les logs privés identity/memory conservent la visibilité
 explicitement décidée par l'opérateur, sans jamais autoriser un secret.
+
+Les stages `primary_node` et `validation_agent`, le read-model de tour et les
+deux surfaces `/log` et `/hermeneutic-admin` exposent la même séparation
+content-free: effet, source et reason code épistémiques d'une part; effet,
+source et reason code d'énonciation d'autre part. Les événements historiques
+incomplets restent `unknown`; un fail-open n'est jamais requalifié en succès.
 
 ## 9. Pipelines adjacents
 

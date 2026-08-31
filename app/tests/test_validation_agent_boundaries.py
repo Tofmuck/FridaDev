@@ -244,7 +244,17 @@ class ValidationAgentBoundaryTests(unittest.TestCase):
                 "upstream_advisory": {
                     "recommended_judgment_posture": "answer",
                     "proposed_output_regime": "simple",
-                }
+                },
+                "epistemic_effect": {
+                    "effect": "certain",
+                    "source": "epistemic_inputs",
+                    "reason_code": "sufficient_independent_support",
+                },
+                "enunciation_directive": {
+                    "effect": "none",
+                    "source": "not_applicable",
+                    "reason_code": "stimmung_absent",
+                },
             },
             final_judgment_posture="answer",
             final_output_regime="simple",
@@ -265,7 +275,18 @@ class ValidationAgentBoundaryTests(unittest.TestCase):
             validation_contract.validate_model_verdict(result.validated_output)
         caveated_result = validation_contract.ValidationAgentResult(
             validated_output=validation_contract.build_validated_output_payload(
-                primary_verdict={},
+                primary_verdict={
+                    "epistemic_effect": {
+                        "effect": "certain",
+                        "source": "epistemic_inputs",
+                        "reason_code": "sufficient_independent_support",
+                    },
+                    "enunciation_directive": {
+                        "effect": "none",
+                        "source": "not_applicable",
+                        "reason_code": "stimmung_absent",
+                    },
+                },
                 final_judgment_posture="answer",
                 final_output_regime="simple",
                 arbiter_reason="synthetic bounded caveat",

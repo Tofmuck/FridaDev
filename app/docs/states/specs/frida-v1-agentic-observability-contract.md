@@ -946,6 +946,29 @@ comme `completed`: il conserve l'etat autoritatif relu. Une reprise depuis
 `terminal_discard_failed` emet egalement les deux statuts `not_called` et ne
 peut pas produire un troisieme appel provider.
 
+### Separation causale Stimmung / epistemique (micro-lot 4C.3)
+
+Depuis le 2026-08-31, les evenements content-free `primary_node` et
+`validation_agent` portent exactement deux triplets causaux distincts:
+
+- `epistemic_effect`, `epistemic_source`, `epistemic_reason_code`;
+- `enunciation_effect`, `enunciation_source`,
+  `enunciation_reason_code`.
+
+Le premier triplet n'accepte en nominal que `epistemic_inputs` et un reason
+code coherent avec le regime. Le second accepte le no-op absent ou stable et
+`delicate_expression / stimmung / affective_transition`. Aucun des six champs
+ne contient tonalite, dialogue, prompt ou contenu operateur brut.
+
+La garde de payload, `admin_log_projection`, le reader de tour et
+`validation_projection.js` valident ces vocabulaires. Le reader choisit le
+stage `validation_agent` lorsqu'il existe, sinon `primary_node`; un fail-open
+final ne peut donc pas etre masque par un primaire nominal. Les valeurs
+manquantes ou incoherentes restent `unknown`, tandis qu'un fail-open ferme
+reste distinct via `unknown / fail_open / <reason_code>`. `/log` et
+`/hermeneutic-admin` consomment le meme normaliseur frontend et n'inferent
+jamais une prudence epistemique depuis une prose ou une absence de champ.
+
 ## 15. Tests et preuves attendus
 
 Tests minimaux futurs:

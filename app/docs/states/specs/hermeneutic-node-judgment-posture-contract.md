@@ -218,6 +218,12 @@ Ces effets ne fixent pas encore:
 - l'UX detaillee
 - le format exact de la reponse aval
 
+Depuis le micro-lot 4C.3, l'ajustement de forme lie a Stimmung est porte par
+`enunciation_directive`, objet frere derive dans le meme raccord doctrinal. Il
+ne cree aucune nouvelle `judgment_posture`: `none` ou `delicate_expression`
+adapte seulement la delicatesse, le rythme ou la prudence de formulation, sans
+modifier le triplet epistemique ni les priorites `answer / clarify / suspend`.
+
 ## 10. Minimal Output Shape
 
 La forme minimale attendue du bloc doctrinal correspondant est:

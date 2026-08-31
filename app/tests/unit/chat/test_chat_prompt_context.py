@@ -22,6 +22,21 @@ from core import chat_prompt_context
 from core.hermeneutic_node.inputs import stimmung_input, time_input, user_turn_input
 
 
+def _dialogic_effects() -> dict[str, dict[str, str]]:
+    return {
+        'epistemic_effect': {
+            'effect': 'certain',
+            'source': 'epistemic_inputs',
+            'reason_code': 'sufficient_independent_support',
+        },
+        'enunciation_directive': {
+            'effect': 'none',
+            'source': 'stimmung',
+            'reason_code': 'stimmung_stable',
+        },
+    }
+
+
 class ChatPromptContextTests(unittest.TestCase):
     def test_lot3_keeps_chat_prompt_context_free_of_enunciation_mode_and_orality_hint_objects(self) -> None:
         source = inspect.getsource(chat_prompt_context)
@@ -154,6 +169,7 @@ class ChatPromptContextTests(unittest.TestCase):
                         'final_judgment_posture': posture,
                         'final_output_regime': output_regime,
                         'pipeline_directives_final': [f'posture_{posture}', f'regime_{output_regime}'],
+                        **_dialogic_effects(),
                     }
                 )
                 self.assertIn('[JUGEMENT HERMENEUTIQUE]', block)
@@ -161,6 +177,14 @@ class ChatPromptContextTests(unittest.TestCase):
                 self.assertIn(f'Regime final valide: {output_regime}.', block)
                 self.assertIn(f'Consigne hermeneutique: {instruction}', block)
                 self.assertIn(f'Consigne de regime: {regime_instruction}', block)
+                self.assertIn(
+                    'Effet epistemique: certain (source=epistemic_inputs; reason_code=sufficient_independent_support).',
+                    block,
+                )
+                self.assertIn(
+                    "Effet d'enonciation: none (source=stimmung; reason_code=stimmung_stable).",
+                    block,
+                )
                 self.assertIn(
                     f'Directives finales actives: posture_{posture}, regime_{output_regime}.',
                     block,
@@ -174,6 +198,7 @@ class ChatPromptContextTests(unittest.TestCase):
                 'final_judgment_posture': 'answer',
                 'final_output_regime': 'presence',
                 'pipeline_directives_final': ['posture_answer', 'regime_presence'],
+                **_dialogic_effects(),
             }
         )
 

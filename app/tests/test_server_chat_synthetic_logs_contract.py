@@ -14,6 +14,39 @@ from tests.support import server_chat_pipeline
 from tests.support.server_test_bootstrap import load_server_module_for_tests
 
 
+def _dialogic_effects(
+    epistemic_effect: str,
+    epistemic_reason_code: str,
+    *,
+    fail_open: bool = False,
+) -> dict[str, dict[str, str]]:
+    if fail_open:
+        return {
+            'epistemic_effect': {
+                'effect': 'unknown',
+                'source': 'fail_open',
+                'reason_code': epistemic_reason_code,
+            },
+            'enunciation_directive': {
+                'effect': 'unknown',
+                'source': 'fail_open',
+                'reason_code': epistemic_reason_code,
+            },
+        }
+    return {
+        'epistemic_effect': {
+            'effect': epistemic_effect,
+            'source': 'epistemic_inputs',
+            'reason_code': epistemic_reason_code,
+        },
+        'enunciation_directive': {
+            'effect': 'none',
+            'source': 'not_applicable',
+            'reason_code': 'stimmung_absent',
+        },
+    }
+
+
 class ServerChatSyntheticLogsContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -60,8 +93,9 @@ class ServerChatSyntheticLogsContractTests(unittest.TestCase):
         self.server.chat_service.primary_node.build_primary_node = lambda **_kwargs: {
             'primary_verdict': {
                 'schema_version': 'v1',
-                'epistemic_regime': 'ouvert',
+                'epistemic_regime': 'incertain',
                 'proof_regime': 'source_explicite_requise',
+                **_dialogic_effects('incertain', 'insufficient_independent_support'),
                 'judgment_posture': 'clarify',
                 'discursive_regime': 'meta',
                 'source_conflicts': [{'kind': 'memory_conflict'}, {'kind': 'web_conflict'}],
@@ -85,6 +119,7 @@ class ServerChatSyntheticLogsContractTests(unittest.TestCase):
                     'final_judgment_posture': 'clarify',
                     'final_output_regime': 'meta',
                     'pipeline_directives_final': ['posture_clarify', 'regime_meta'],
+                    **_dialogic_effects('incertain', 'insufficient_independent_support'),
                     'arbiter_followed_upstream': True,
                     'advisory_recommendations_followed': [
                         'upstream_recommendation_posture',
@@ -149,12 +184,18 @@ class ServerChatSyntheticLogsContractTests(unittest.TestCase):
             'upstream_output_regime_proposed': 'meta',
             'upstream_active_signal_families': ['referent', 'ancrage_de_source'],
             'upstream_constraint_present': True,
-            'epistemic_regime': 'ouvert',
+            'epistemic_regime': 'incertain',
             'proof_regime': 'source_explicite_requise',
             'source_conflicts_count': 2,
             'fail_open': False,
             'state_used': True,
             'degraded_fields_count': 0,
+            'epistemic_effect': 'incertain',
+            'epistemic_source': 'epistemic_inputs',
+            'epistemic_reason_code': 'insufficient_independent_support',
+            'enunciation_effect': 'none',
+            'enunciation_source': 'not_applicable',
+            'enunciation_reason_code': 'stimmung_absent',
         }
         for key, expected in expected_primary_payload.items():
             self.assertEqual(primary_payload.get(key), expected)
@@ -196,6 +237,12 @@ class ServerChatSyntheticLogsContractTests(unittest.TestCase):
                 'arbiter_reason_included': False,
                 'projected_judgment_posture': 'clarify',
                 'pipeline_directives_final': ['posture_clarify', 'regime_meta'],
+                'epistemic_effect': 'incertain',
+                'epistemic_source': 'epistemic_inputs',
+                'epistemic_reason_code': 'insufficient_independent_support',
+                'enunciation_effect': 'none',
+                'enunciation_source': 'not_applicable',
+                'enunciation_reason_code': 'stimmung_absent',
                 'decision_source': 'primary',
                 'status_schema_version': 'agentic_v1',
                 'model': 'openai/gpt-5.4-mini',
@@ -378,6 +425,7 @@ class ServerChatSyntheticLogsContractTests(unittest.TestCase):
                 'schema_version': 'v1',
                 'epistemic_regime': 'a_verifier',
                 'proof_regime': 'verification_externe_requise',
+                **_dialogic_effects('a_verifier', 'external_verification_required'),
                 'judgment_posture': 'answer',
                 'discursive_regime': 'simple',
                 'source_conflicts': [],
@@ -401,6 +449,7 @@ class ServerChatSyntheticLogsContractTests(unittest.TestCase):
                     'final_judgment_posture': 'clarify',
                     'final_output_regime': 'simple',
                     'pipeline_directives_final': ['posture_clarify', 'regime_simple'],
+                    **_dialogic_effects('a_verifier', 'external_verification_required'),
                     'arbiter_followed_upstream': False,
                     'advisory_recommendations_followed': ['upstream_output_regime_proposed'],
                     'advisory_recommendations_overridden': ['upstream_recommendation_posture'],
@@ -463,6 +512,12 @@ class ServerChatSyntheticLogsContractTests(unittest.TestCase):
                 'arbiter_reason_included': False,
                 'projected_judgment_posture': 'clarify',
                 'pipeline_directives_final': ['posture_clarify', 'regime_simple'],
+                'epistemic_effect': 'a_verifier',
+                'epistemic_source': 'epistemic_inputs',
+                'epistemic_reason_code': 'external_verification_required',
+                'enunciation_effect': 'none',
+                'enunciation_source': 'not_applicable',
+                'enunciation_reason_code': 'stimmung_absent',
                 'decision_source': 'primary',
                 'status_schema_version': 'agentic_v1',
                 'model': 'openai/gpt-5.4-mini',
@@ -516,8 +571,9 @@ class ServerChatSyntheticLogsContractTests(unittest.TestCase):
         self.server.chat_service.primary_node.build_primary_node = lambda **_kwargs: {
             'primary_verdict': {
                 'schema_version': 'v1',
-                'epistemic_regime': 'ouvert',
+                'epistemic_regime': 'incertain',
                 'proof_regime': 'source_explicite_requise',
+                **_dialogic_effects('incertain', 'insufficient_independent_support'),
                 'judgment_posture': 'answer',
                 'discursive_regime': 'simple',
                 'source_conflicts': [],
@@ -533,6 +589,7 @@ class ServerChatSyntheticLogsContractTests(unittest.TestCase):
                     'final_judgment_posture': 'suspend',
                     'final_output_regime': 'simple',
                     'pipeline_directives_final': ['posture_suspend', 'regime_simple', 'fallback_validation'],
+                    **_dialogic_effects('unknown', 'timeout', fail_open=True),
                     'arbiter_followed_upstream': False,
                     'advisory_recommendations_followed': ['upstream_output_regime_proposed'],
                     'advisory_recommendations_overridden': ['upstream_recommendation_posture'],
@@ -588,6 +645,12 @@ class ServerChatSyntheticLogsContractTests(unittest.TestCase):
                 'pipeline_directives_final': ['posture_suspend', 'regime_simple', 'fallback_validation'],
                 'decision_source': 'fail_open',
                 'reason_code': 'timeout',
+                'epistemic_effect': 'unknown',
+                'epistemic_source': 'fail_open',
+                'epistemic_reason_code': 'timeout',
+                'enunciation_effect': 'unknown',
+                'enunciation_source': 'fail_open',
+                'enunciation_reason_code': 'timeout',
                 'status_schema_version': 'agentic_v1',
                 'model': 'openai/gpt-5.4-nano',
             },

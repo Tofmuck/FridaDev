@@ -23,10 +23,53 @@ UNCERTAINTY_POSTURES = (
     "explicite",
     "bloquante",
 )
+EPISTEMIC_EFFECT_SOURCES = (
+    "epistemic_inputs",
+    "fail_open",
+)
+EPISTEMIC_REASON_CODES_BY_EFFECT = {
+    "certain": ("sufficient_independent_support",),
+    "probable": (
+        "limited_independent_support",
+        "ambiguity_present",
+        "underdetermination_present",
+    ),
+    "incertain": (
+        "insufficient_independent_support",
+        "ambiguity_present",
+        "underdetermination_present",
+    ),
+    "suspendu": (
+        "missing_user_turn",
+        "independent_blockage",
+        "ambiguity_and_underdetermination",
+    ),
+    "contradictoire": ("source_conflict",),
+    "a_verifier": ("external_verification_required",),
+}
+EPISTEMIC_FAIL_OPEN_REASON_CODES = (
+    "unknown_error",
+    "parse_error",
+    "invalid_node_state",
+    "invalid_input",
+    "runtime_error",
+    "http_error",
+    "invalid_json",
+    "prompt_missing",
+    "timeout",
+    "upstream_error",
+    "validation_error",
+)
+EPISTEMIC_EFFECT_REASON_CODES = tuple(
+    dict.fromkeys(
+        reason_code
+        for reason_codes in EPISTEMIC_REASON_CODES_BY_EFFECT.values()
+        for reason_code in reason_codes
+    )
+) + EPISTEMIC_FAIL_OPEN_REASON_CODES
 
 _WEB_REQUIRED_TYPES = {"scientifique"}
 _CURRENT_FACT_TYPES = {"factuelle", "scientifique"}
-_CAUTIONARY_SHIFT_STATES = {"candidate_shift", "shifted"}
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
@@ -154,14 +197,6 @@ def _signal_flags(user_turn_signals: Mapping[str, Any]) -> tuple[bool, bool, int
     )
 
 
-def _stimmung_is_cautionary(stimmung_input: Mapping[str, Any]) -> bool:
-    if not bool(stimmung_input.get("present")):
-        return False
-    if _text(stimmung_input.get("stability")) == "volatile":
-        return True
-    return _text(stimmung_input.get("shift_state")) in _CAUTIONARY_SHIFT_STATES
-
-
 def _needs_external_verification(
     *,
     user_turn_input: Mapping[str, Any],
@@ -264,7 +299,7 @@ def build_epistemic_regime(
     stimmung_input: Mapping[str, Any] | None = None,
     web_input: Mapping[str, Any] | None = None,
 ) -> dict[str, str]:
-    del time_input, identity_input, recent_context_input
+    del time_input, identity_input, recent_context_input, stimmung_input
 
     memory_retrieved_payload = _mapping(memory_retrieved)
     memory_arbitration_payload = _mapping(memory_arbitration)
@@ -272,7 +307,6 @@ def build_epistemic_regime(
     recent_window_input_payload = _mapping(recent_window_input)
     user_turn_input_payload = _mapping(user_turn_input)
     user_turn_signals_payload = _mapping(user_turn_signals)
-    stimmung_input_payload = _mapping(stimmung_input)
     web_input_payload = _mapping(web_input)
 
     if not user_turn_input_payload:
@@ -301,7 +335,6 @@ def build_epistemic_regime(
     ambiguity_present, underdetermination_present, active_signal_families_count = _signal_flags(
         user_turn_signals_payload
     )
-    stimmung_caution = _stimmung_is_cautionary(stimmung_input_payload)
     required_provenances = _required_provenances(user_turn_input_payload)
     satisfied_provenances = _satisfied_provenances(
         recent_window_input=recent_window_input_payload,
@@ -321,13 +354,12 @@ def build_epistemic_regime(
         and not ambiguity_present
         and not underdetermination_present
         and not missing_non_external_provenances
-        and not stimmung_caution
         and _memory_is_univocal(memory_arbitration_payload)
     ):
         return _build_result("certain", "suffisant_en_l_etat", "discrete")
 
     if support_count >= 1 and not severe_blockage:
-        posture = "prudente" if (ambiguity_present or underdetermination_present or stimmung_caution) else "discrete"
+        posture = "prudente" if (ambiguity_present or underdetermination_present) else "discrete"
         return _build_result("probable", "source_explicite_requise", posture)
 
     if severe_blockage:
@@ -336,5 +368,47 @@ def build_epistemic_regime(
     return _build_result(
         "incertain",
         "source_explicite_requise",
-        "explicite" if (ambiguity_present or underdetermination_present or stimmung_caution) else "prudente",
+        "explicite" if (ambiguity_present or underdetermination_present) else "prudente",
     )
+
+
+def build_epistemic_effect(
+    *,
+    epistemic_payload: Mapping[str, Any],
+    user_turn_input: Mapping[str, Any] | None = None,
+    user_turn_signals: Mapping[str, Any] | None = None,
+) -> dict[str, str]:
+    regime = _text(_mapping(epistemic_payload).get("epistemic_regime"))
+    if regime not in EPISTEMIC_REGIMES:
+        raise ValueError("invalid_epistemic_effect")
+
+    signals = _mapping(user_turn_signals)
+    ambiguity_present = bool(signals.get("ambiguity_present"))
+    underdetermination_present = bool(signals.get("underdetermination_present"))
+    if regime == "certain":
+        reason_code = "sufficient_independent_support"
+    elif regime == "contradictoire":
+        reason_code = "source_conflict"
+    elif regime == "a_verifier":
+        reason_code = "external_verification_required"
+    elif regime == "suspendu":
+        if not _mapping(user_turn_input):
+            reason_code = "missing_user_turn"
+        elif ambiguity_present and underdetermination_present:
+            reason_code = "ambiguity_and_underdetermination"
+        else:
+            reason_code = "independent_blockage"
+    elif ambiguity_present:
+        reason_code = "ambiguity_present"
+    elif underdetermination_present:
+        reason_code = "underdetermination_present"
+    elif regime == "probable":
+        reason_code = "limited_independent_support"
+    else:
+        reason_code = "insufficient_independent_support"
+
+    return {
+        "effect": regime,
+        "source": "epistemic_inputs",
+        "reason_code": reason_code,
+    }

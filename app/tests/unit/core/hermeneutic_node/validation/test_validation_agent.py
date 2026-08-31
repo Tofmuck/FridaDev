@@ -56,11 +56,29 @@ def _primary_verdict(
     discursive_regime_value = discursive_regime or ("simple" if judgment_posture == "answer" else "meta")
     active_signal_families = list(active_signal_families or [])
     source_conflicts = list(source_conflicts or [])
+    epistemic_reason_codes = {
+        "certain": "sufficient_independent_support",
+        "probable": "limited_independent_support",
+        "incertain": "insufficient_independent_support",
+        "suspendu": "independent_blockage",
+        "contradictoire": "source_conflict",
+        "a_verifier": "external_verification_required",
+    }
     return {
         "schema_version": "v1",
         "epistemic_regime": epistemic_regime,
         "proof_regime": proof_regime,
         "uncertainty_posture": uncertainty_posture,
+        "epistemic_effect": {
+            "effect": epistemic_regime,
+            "source": "epistemic_inputs",
+            "reason_code": epistemic_reason_codes[epistemic_regime],
+        },
+        "enunciation_directive": {
+            "effect": "none",
+            "source": "not_applicable",
+            "reason_code": "stimmung_absent",
+        },
         "judgment_posture": judgment_posture,
         "discursive_regime": discursive_regime_value,
         "resituation_level": "none",
@@ -300,6 +318,8 @@ def _expected_validated_output(
     fail_open: bool = False,
     applied_hard_guards: list[str] | None = None,
     hard_guard_effect: str | None = None,
+    epistemic_effect: str = "incertain",
+    epistemic_reason_code: str = "insufficient_independent_support",
 ) -> dict[str, object]:
     directives = [f"posture_{final_judgment_posture}", f"regime_{final_output_regime}"]
     if fail_open:
@@ -310,6 +330,16 @@ def _expected_validated_output(
         "final_judgment_posture": final_judgment_posture,
         "final_output_regime": final_output_regime,
         "pipeline_directives_final": directives,
+        "epistemic_effect": {
+            "effect": epistemic_effect,
+            "source": "epistemic_inputs",
+            "reason_code": epistemic_reason_code,
+        },
+        "enunciation_directive": {
+            "effect": "none",
+            "source": "not_applicable",
+            "reason_code": "stimmung_absent",
+        },
         "arbiter_followed_upstream": arbiter_followed_upstream,
         "advisory_recommendations_followed": advisory_recommendations_followed,
         "advisory_recommendations_overridden": advisory_recommendations_overridden,
@@ -478,6 +508,16 @@ class ValidationAgentTests(unittest.TestCase):
             "node_stage": "primary_node",
             "reason_code": "runtime_error",
             "error_class": "RuntimeError",
+        }
+        primary_verdict["epistemic_effect"] = {
+            "effect": "unknown",
+            "source": "fail_open",
+            "reason_code": "runtime_error",
+        }
+        primary_verdict["enunciation_directive"] = {
+            "effect": "unknown",
+            "source": "fail_open",
+            "reason_code": "runtime_error",
         }
 
         result = validation_agent.build_validated_output(
@@ -1163,6 +1203,8 @@ class ValidationAgentTests(unittest.TestCase):
                     arbiter_reason="verification actuelle indisponible",
                     applied_hard_guards=[hard_guards.HARD_GUARD_EXTERNAL_VERIFICATION_MISSING],
                     hard_guard_effect=hard_guards.HARD_GUARD_EFFECT_ANSWER_FORBIDDEN,
+                    epistemic_effect="a_verifier",
+                    epistemic_reason_code="external_verification_required",
                 ),
             },
             {
@@ -1461,6 +1503,8 @@ class ValidationAgentTests(unittest.TestCase):
                 arbiter_reason="verification actuelle indisponible",
                 applied_hard_guards=[hard_guards.HARD_GUARD_EXTERNAL_VERIFICATION_MISSING],
                 hard_guard_effect=hard_guards.HARD_GUARD_EFFECT_ANSWER_FORBIDDEN,
+                epistemic_effect="a_verifier",
+                epistemic_reason_code="external_verification_required",
             ),
         )
 
@@ -1518,6 +1562,8 @@ class ValidationAgentTests(unittest.TestCase):
                 arbiter_reason="preuve partielle formulee prudemment",
                 applied_hard_guards=[hard_guards.HARD_GUARD_EXTERNAL_VERIFICATION_MISSING],
                 hard_guard_effect=hard_guards.HARD_GUARD_EFFECT_CAVEAT_REQUIRED,
+                epistemic_effect="a_verifier",
+                epistemic_reason_code="external_verification_required",
             ),
         )
         self.assertIn(

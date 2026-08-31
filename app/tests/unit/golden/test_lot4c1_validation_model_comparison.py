@@ -56,12 +56,26 @@ class _SyntheticResponse:
 
 
 class Lot4C1ValidationModelComparisonTests(unittest.TestCase):
+    @staticmethod
+    def _synthetic_comparable_witness() -> dict[str, object]:
+        return {
+            "status": "comparable",
+            "model": "google/gemini-3.1-flash-lite",
+            "provider_calls": 22,
+            "semantic_passes": 20,
+        }
+
     def test_protocol_freezes_four_standard_configurations_calls_and_cost(self) -> None:
         corpus = policy.load_policy_corpus()
-        protocol = policy.model_comparison_protocol_document(
-            corpus,
-            freeze_commit="f" * 40,
-        )
+        with patch.object(
+            policy,
+            "historical_primary_witness",
+            return_value=self._synthetic_comparable_witness(),
+        ):
+            protocol = policy.model_comparison_protocol_document(
+                corpus,
+                freeze_commit="f" * 40,
+            )
 
         self.assertEqual(protocol["planned_provider_calls"], 88)
         self.assertLessEqual(protocol["planned_provider_calls"], 96)
@@ -190,16 +204,9 @@ class Lot4C1ValidationModelComparisonTests(unittest.TestCase):
             normalized.append(item)
         self.assertEqual(len({json.dumps(item, sort_keys=True) for item in normalized}), 1)
 
-    def test_historical_primary_witness_matches_frozen_messages_and_scorer(self) -> None:
-        witness = policy.historical_primary_witness()
-
-        self.assertEqual(witness["status"], "comparable")
-        self.assertEqual(witness["model"], "google/gemini-3.1-flash-lite")
-        self.assertEqual(witness["provider_calls"], 22)
-        self.assertEqual(witness["semantic_passes"], 20)
-        self.assertEqual(witness["failed_case_ids"], ["L4C1-VAL-005"])
-        self.assertTrue(witness["all_message_fingerprints_match"])
-        self.assertTrue(witness["scorer_source_matches"])
+    def test_historical_primary_witness_rejects_changed_runtime_contract(self) -> None:
+        with self.assertRaisesRegex(ValueError, "historical_primary_witness_not_comparable"):
+            policy.historical_primary_witness()
 
     def test_model_artifact_guard_rejects_routing_metrics_and_raw_mutations(self) -> None:
         record = policy.synthetic_valid_model_comparison_call_record()
@@ -403,11 +410,16 @@ class Lot4C1ValidationModelComparisonTests(unittest.TestCase):
         client = SyntheticClient()
         with TemporaryDirectory() as tmp:
             output = Path(tmp) / "model-comparison.jsonl"
-            result = policy.run_model_comparison_campaign(
-                output_path=output,
-                freeze_commit="f" * 40,
-                client=client,
-            )
+            with patch.object(
+                policy,
+                "historical_primary_witness",
+                return_value=self._synthetic_comparable_witness(),
+            ):
+                result = policy.run_model_comparison_campaign(
+                    output_path=output,
+                    freeze_commit="f" * 40,
+                    client=client,
+                )
             records = [
                 json.loads(line)
                 for line in output.read_text(encoding="utf-8").splitlines()
@@ -441,10 +453,15 @@ class Lot4C1ValidationModelComparisonTests(unittest.TestCase):
             semantic_codes=["missed_presence"],
         )
 
-        rebuilt = policy.reclassify_model_comparison_records(
-            records,
-            freeze_commit="f" * 40,
-        )
+        with patch.object(
+            policy,
+            "historical_primary_witness",
+            return_value=self._synthetic_comparable_witness(),
+        ):
+            rebuilt = policy.reclassify_model_comparison_records(
+                records,
+                freeze_commit="f" * 40,
+            )
 
         self.assertEqual(len(rebuilt), 93)
         normalized = next(

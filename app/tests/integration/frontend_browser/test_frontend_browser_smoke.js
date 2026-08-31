@@ -1037,6 +1037,16 @@ function logsMockScript({ metricsMode = 'nominal' } = {}) {
               identity: { status: "present", chars: 12 },
               hermeneutic: {
                 status: "present",
+                dialogic_effects: {
+                  authoritative: true,
+                  status: "success",
+                  epistemic_effect: "certain",
+                  epistemic_source: "epistemic_inputs",
+                  epistemic_reason_code: "sufficient_independent_support",
+                  enunciation_effect: "delicate_expression",
+                  enunciation_source: "stimmung",
+                  enunciation_reason_code: "affective_transition",
+                },
                 node_state: { read_valid: true, write_succeeded: true },
               },
               web: { status: "ok", requested: true },
@@ -1071,6 +1081,16 @@ function logsMockScript({ metricsMode = 'nominal' } = {}) {
               identity: { status: "present", chars: 12 },
               hermeneutic: {
                 status: "present",
+                dialogic_effects: {
+                  authoritative: false,
+                  status: "unknown",
+                  epistemic_effect: "unknown",
+                  epistemic_source: "unknown",
+                  epistemic_reason_code: "unknown",
+                  enunciation_effect: "unknown",
+                  enunciation_source: "unknown",
+                  enunciation_reason_code: "unknown",
+                },
                 node_state: { read_valid: true, write_succeeded: true },
               },
               web: { status: "not_applicable", requested: false },
@@ -1122,6 +1142,12 @@ function logsMockScript({ metricsMode = 'nominal' } = {}) {
                 source_kind: "sk_live_artificial_lot7_1",
                 event_family: "sk_or_artificial_lot7_1",
                 model: "sk-live-artificial-lot7-1",
+                epistemic_effect: "unknown",
+                epistemic_source: "fail_open",
+                epistemic_reason_code: "validation_error",
+                enunciation_effect: "unknown",
+                enunciation_source: "fail_open",
+                enunciation_reason_code: "validation_error",
               },
             }],
           }), {
@@ -1183,6 +1209,8 @@ test('logs page applies filters from query string and exports scoped markdown in
     await assertTextContains(turnRows.nth(0), 'projection=1220/3840');
     await assertTextContains(turnRows.nth(0), 'projection_contract=current_v2');
     await assertTextContains(turnRows.nth(0), 'redondantes=time_input,recent_context_input,recent_window_input');
+    await assertTextContains(turnRows.nth(0), 'epi=certain/epistemic_inputs/sufficient_independent_support');
+    await assertTextContains(turnRows.nth(0), 'enon=delicate_expression/stimmung/affective_transition');
     const unprovedRowText = String(await turnRows.nth(1).textContent() || '');
     assert.equal(unprovedRowText.includes('stimmung→validation=full'), false);
     assert.equal(unprovedRowText.includes('stimmung→validation=unknown'), true);
@@ -1191,6 +1219,9 @@ test('logs page applies filters from query string and exports scoped markdown in
     await assertTextContains(page.locator('#logGroups'), 'reason_code=llm_call_ok');
     await assertTextContains(page.locator('#logGroups'), 'reason_code=[redacted]');
     await assertTextContains(page.locator('#logGroups'), 'error_code=provider_timeout');
+    await assertTextContains(page.locator('#logGroups'), 'causal_status=fail_open');
+    await assertTextContains(page.locator('#logGroups'), 'epistemic=unknown/fail_open/validation_error');
+    await assertTextContains(page.locator('#logGroups'), 'enunciation=unknown/fail_open/validation_error');
     await assertTextContains(page.locator('#logGroups'), 'raw_event_payloads_included=false');
     await assertTextContains(page.locator('#logGroups'), 'runtime_source=[redacted]');
     const groupsText = await page.locator('#logGroups').textContent();
@@ -2165,18 +2196,56 @@ function hermeneuticAdminMockScript({
                 operator_note: "RAW_UNKNOWN_STAGE_TEXT_SHOULD_NOT_RENDER",
                 response_chars: 24,
               };
+          const effectPayload = turnId === "turn-2"
+            ? {
+                epistemic_effect: "probable",
+                epistemic_source: "stimmung",
+                epistemic_reason_code: "affective_transition",
+                enunciation_effect: "delicate_expression",
+                enunciation_source: "stimmung",
+                enunciation_reason_code: "affective_transition",
+              }
+            : turnId === "turn-3"
+            ? {
+                epistemic_effect: "unknown",
+                epistemic_source: "fail_open",
+                epistemic_reason_code: "validation_error",
+                enunciation_effect: "unknown",
+                enunciation_source: "fail_open",
+                enunciation_reason_code: "validation_error",
+              }
+            : {
+                epistemic_effect: "certain",
+                epistemic_source: "epistemic_inputs",
+                epistemic_reason_code: "sufficient_independent_support",
+                enunciation_effect: "delicate_expression",
+                enunciation_source: "stimmung",
+                enunciation_reason_code: "affective_transition",
+              };
           return new Response(JSON.stringify({
             ok: true,
-            items: [{
-              event_id: "evt-" + turnId,
-              conversation_id: "conv-herm",
-              turn_id: turnId,
-              stage: "validation_prompt_prepared",
-              status: "ok",
-              ts: "2026-05-14T10:00:00Z",
-              duration_ms: 12,
-              payload,
-            }],
+            items: [
+              {
+                event_id: "evt-prompt-" + turnId,
+                conversation_id: "conv-herm",
+                turn_id: turnId,
+                stage: "validation_prompt_prepared",
+                status: "ok",
+                ts: "2026-05-14T10:00:00Z",
+                duration_ms: 12,
+                payload,
+              },
+              {
+                event_id: "evt-validation-" + turnId,
+                conversation_id: "conv-herm",
+                turn_id: turnId,
+                stage: "validation_agent",
+                status: turnId === "turn-3" ? "error" : "ok",
+                ts: "2026-05-14T10:00:01Z",
+                duration_ms: 13,
+                payload: effectPayload,
+              },
+            ],
           }), { status: 200, headers: { "Content-Type": "application/json" } });
         }
 
@@ -2312,6 +2381,10 @@ test('hermeneutic admin keeps turn selection targeted and stage payloads content
     assert.equal(firstTurnText.includes('modele=google/gemini-3.7-flash'), true);
     assert.equal(firstTurnText.includes('raisonnement=medium'), true);
     assert.equal(firstTurnText.includes('sampling=absent'), true);
+    for (const causalValue of [
+      'success', 'certain', 'epistemic_inputs', 'sufficient_independent_support',
+      'delicate_expression', 'stimmung', 'affective_transition',
+    ]) assert.equal(firstTurnText.includes(causalValue), true, `${causalValue} must render`);
 
     const initialCounts = await page.evaluate(() => {
       const calls = window.__fridaBrowserState.calls;
@@ -2342,6 +2415,8 @@ test('hermeneutic admin keeps turn selection targeted and stage payloads content
       true,
       'unproved delivery must render as unknown',
     );
+    assert.equal(unprovedProjectionText.includes('unknown'), true);
+    assert.equal(unprovedProjectionText.includes('probable'), false);
 
     await page.selectOption('#hermeneuticTurnId', 'turn-3');
     await page.waitForFunction(() =>
@@ -2351,6 +2426,8 @@ test('hermeneutic admin keeps turn selection targeted and stage payloads content
     );
     assert.equal(historicalProjectionText.includes('Stimmung vers Validation: full'), true);
     assert.equal(historicalProjectionText.includes('contrat=historical_v1'), true);
+    assert.equal(historicalProjectionText.includes('fail_open'), true);
+    assert.equal(historicalProjectionText.includes('validation_error'), true);
 
     const afterCounts = await page.evaluate(() => {
       const calls = window.__fridaBrowserState.calls;

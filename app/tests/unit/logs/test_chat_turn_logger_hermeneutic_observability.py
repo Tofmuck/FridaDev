@@ -514,11 +514,59 @@ class ChatTurnLoggerHermeneuticObservabilityTests(unittest.TestCase):
         self.assertEqual(payload['reason_code'], 'runtime_error')
         self.assertEqual(payload['error_class'], 'RuntimeError')
         self.assertEqual(payload['degraded_fields_count'], 1)
+        self.assertEqual(payload['epistemic_effect'], 'unknown')
+        self.assertEqual(payload['epistemic_source'], 'fail_open')
+        self.assertEqual(payload['epistemic_reason_code'], 'runtime_error')
+        self.assertEqual(payload['enunciation_effect'], 'unknown')
+        self.assertEqual(payload['enunciation_source'], 'fail_open')
+        self.assertEqual(payload['enunciation_reason_code'], 'runtime_error')
         serialized = repr(payload)
         self.assertNotIn('message utilisateur brut', serialized)
         self.assertNotIn('prompt', serialized)
         self.assertNotIn('stack', serialized)
         self.assertNotIn('traceback', serialized)
+
+        inconsistent = hermeneutic_node_logger.build_primary_node_payload(
+            primary_payload={
+                'primary_verdict': {
+                    'epistemic_regime': 'probable',
+                    'epistemic_effect': {
+                        'effect': 'certain',
+                        'source': 'epistemic_inputs',
+                        'reason_code': 'sufficient_independent_support',
+                    },
+                    'enunciation_directive': {
+                        'effect': 'none',
+                        'source': 'stimmung',
+                        'reason_code': 'stimmung_stable',
+                    },
+                    'audit': {'fail_open': False},
+                },
+            }
+        )
+        self.assertEqual(inconsistent['epistemic_effect'], 'unknown')
+        self.assertEqual(inconsistent['epistemic_source'], 'unknown')
+
+        unmarked_fail_open = hermeneutic_node_logger.build_primary_node_payload(
+            primary_payload={
+                'primary_verdict': {
+                    'epistemic_regime': 'suspendu',
+                    'epistemic_effect': {
+                        'effect': 'unknown',
+                        'source': 'fail_open',
+                        'reason_code': 'runtime_error',
+                    },
+                    'enunciation_directive': {
+                        'effect': 'unknown',
+                        'source': 'fail_open',
+                        'reason_code': 'runtime_error',
+                    },
+                    'audit': {'fail_open': False},
+                },
+            }
+        )
+        self.assertEqual(unmarked_fail_open['epistemic_effect'], 'unknown')
+        self.assertEqual(unmarked_fail_open['epistemic_source'], 'unknown')
 
 
 if __name__ == '__main__':

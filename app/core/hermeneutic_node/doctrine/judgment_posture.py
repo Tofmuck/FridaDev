@@ -10,6 +10,34 @@ JUDGMENT_POSTURES = (
     "clarify",
     "suspend",
 )
+ENUNCIATION_EFFECTS = (
+    "none",
+    "delicate_expression",
+    "unknown",
+)
+ENUNCIATION_SOURCES = (
+    "not_applicable",
+    "stimmung",
+    "fail_open",
+)
+ENUNCIATION_REASON_CODES = (
+    "stimmung_absent",
+    "stimmung_stable",
+    "stimmung_no_transition",
+    "affective_transition",
+    "unknown_error",
+    "parse_error",
+    "invalid_node_state",
+    "invalid_input",
+    "runtime_error",
+    "http_error",
+    "invalid_json",
+    "prompt_missing",
+    "timeout",
+    "upstream_error",
+    "validation_error",
+)
+_ENUNCIATION_SHIFT_STATES = {"candidate_shift", "shifted"}
 
 _SUSPENDING_EPISTEMIC_REGIMES = {
     "contradictoire",
@@ -127,3 +155,37 @@ def build_judgment_posture(
         return _build_result("clarify")
 
     return _build_result("answer")
+
+
+def build_enunciation_directive(
+    *,
+    stimmung_input: Mapping[str, Any] | None = None,
+) -> dict[str, str]:
+    payload = _mapping(stimmung_input)
+    if payload.get("present") is not True:
+        return {
+            "effect": "none",
+            "source": "not_applicable",
+            "reason_code": "stimmung_absent",
+        }
+
+    if (
+        _text(payload.get("stability")) == "volatile"
+        or _text(payload.get("shift_state")) in _ENUNCIATION_SHIFT_STATES
+    ):
+        return {
+            "effect": "delicate_expression",
+            "source": "stimmung",
+            "reason_code": "affective_transition",
+        }
+
+    return {
+        "effect": "none",
+        "source": "stimmung",
+        "reason_code": (
+            "stimmung_stable"
+            if _text(payload.get("stability")) == "stable"
+            and _text(payload.get("shift_state")) == "steady"
+            else "stimmung_no_transition"
+        ),
+    }

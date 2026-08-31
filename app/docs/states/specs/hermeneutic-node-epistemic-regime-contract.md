@@ -64,7 +64,12 @@ Leur calcul peut s'appuyer notamment sur:
 - `contexte_recent`
 - `web`
 - `tour_utilisateur`
-- `stimmung`
+
+Depuis le micro-lot 4C.3 du 2026-08-31, `stimmung` est explicitement exclue de
+ce calcul. Un mouvement affectif ne constitue ni une preuve, ni une ambiguite,
+ni une sous-determination, ni une contradiction. Il peut modifier
+l'enonciation via une directive separee, mais jamais `epistemic_regime`,
+`proof_regime` ou `uncertainty_posture` sans raison epistemique independante.
 
 Il ne doit pas s'appuyer directement sur:
 
@@ -237,6 +242,8 @@ Invariants minimaux:
 - pas de champ decoratif doctrinal supplementaire a ce stade
 - pas de prose libre
 - pas de justification longue integree au payload minimal
+- a matiere factuelle et preuves identiques, Stimmung absente, stable ou en
+  transition conserve le meme triplet epistemique
 
 ## 9. Node Usage Boundary
 

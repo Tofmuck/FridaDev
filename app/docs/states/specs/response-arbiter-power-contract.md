@@ -245,6 +245,10 @@ Regles normatives:
 - si l'arbitre suit l'amont, le bloc projete reflete ce verdict final;
 - si l'arbitre casse l'amont, c'est le verdict final de l'arbitre qui est projete;
 - aucune recommendation amont ne doit redevenir souveraine au moment de la projection finale.
+- l'effet epistemique et l'effet d'enonciation restent deux provenances
+  structurees distinctes dans le bloc; une transition affective peut modifier
+  la maniere d'enoncer, jamais le degre de certitude sans raison epistemique
+  independante.
 - si l'arbitre valide `answer/presence`, le bloc projete porte
   `regime_presence`, puis l'aval canonise `...` par la voie d'override commune;
   le provider principal n'est pas appele.
@@ -260,6 +264,13 @@ Le futur arbitre final doit produire directement au minimum:
 - `advisory_recommendations_followed`
 - `advisory_recommendations_overridden`
 - `arbiter_reason`
+- `epistemic_effect = {effect, source, reason_code}`
+- `enunciation_directive = {effect, source, reason_code}`
+
+Les deux derniers objets sont herites du verdict primaire valide et controles
+par Validation. L'arbitre ne les produit pas depuis sa prose libre. Un
+fallback reussi les conserve; un fail-open les remplace tous deux par
+`unknown / fail_open / <reason_code ferme>` sans fabriquer un succes causal.
 
 Taxonomie runtime de `final_output_regime`:
 

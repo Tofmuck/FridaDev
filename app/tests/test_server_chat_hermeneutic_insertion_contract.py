@@ -110,6 +110,16 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
             'primary_verdict': {
                 'schema_version': 'v1',
                 'epistemic_regime': 'incertain',
+                'epistemic_effect': {
+                    'effect': 'incertain',
+                    'source': 'epistemic_inputs',
+                    'reason_code': 'insufficient_independent_support',
+                },
+                'enunciation_directive': {
+                    'effect': 'none',
+                    'source': 'not_applicable',
+                    'reason_code': 'stimmung_absent',
+                },
                 'judgment_posture': 'clarify',
                 'discursive_regime': 'meta',
                 'pipeline_directives_provisional': ['posture_clarify', 'regime_meta'],
@@ -125,6 +135,16 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
                     'final_judgment_posture': 'answer',
                     'final_output_regime': 'simple',
                     'pipeline_directives_final': ['posture_answer', 'regime_simple'],
+                    'epistemic_effect': {
+                        'effect': 'incertain',
+                        'source': 'epistemic_inputs',
+                        'reason_code': 'insufficient_independent_support',
+                    },
+                    'enunciation_directive': {
+                        'effect': 'none',
+                        'source': 'not_applicable',
+                        'reason_code': 'stimmung_absent',
+                    },
                     'arbiter_followed_upstream': False,
                     'advisory_recommendations_followed': [],
                     'advisory_recommendations_overridden': [
@@ -184,6 +204,16 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
                 'final_judgment_posture': 'answer',
                 'final_output_regime': 'simple',
                 'pipeline_directives_final': ['posture_answer', 'regime_simple'],
+                'epistemic_effect': {
+                    'effect': 'incertain',
+                    'source': 'epistemic_inputs',
+                    'reason_code': 'insufficient_independent_support',
+                },
+                'enunciation_directive': {
+                    'effect': 'none',
+                    'source': 'not_applicable',
+                    'reason_code': 'stimmung_absent',
+                },
                 'arbiter_followed_upstream': False,
                 'advisory_recommendations_followed': [],
                 'advisory_recommendations_overridden': [
@@ -904,6 +934,16 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
                 'schema_version': 'v1',
                 'epistemic_regime': 'incertain',
                 'proof_regime': 'source_explicite_requise',
+                'epistemic_effect': {
+                    'effect': 'incertain',
+                    'source': 'epistemic_inputs',
+                    'reason_code': 'insufficient_independent_support',
+                },
+                'enunciation_directive': {
+                    'effect': 'none',
+                    'source': 'not_applicable',
+                    'reason_code': 'stimmung_absent',
+                },
                 'judgment_posture': 'clarify',
                 'discursive_regime': 'meta',
                 'source_conflicts': [],
@@ -927,6 +967,16 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
                     'final_judgment_posture': 'answer',
                     'final_output_regime': 'simple',
                     'pipeline_directives_final': ['posture_answer', 'regime_simple'],
+                    'epistemic_effect': {
+                        'effect': 'incertain',
+                        'source': 'epistemic_inputs',
+                        'reason_code': 'insufficient_independent_support',
+                    },
+                    'enunciation_directive': {
+                        'effect': 'none',
+                        'source': 'not_applicable',
+                        'reason_code': 'stimmung_absent',
+                    },
                     'arbiter_followed_upstream': False,
                     'advisory_recommendations_followed': [],
                     'advisory_recommendations_overridden': [
@@ -994,6 +1044,12 @@ class ServerChatHermeneuticInsertionContractTests(unittest.TestCase):
                 'arbiter_reason_included': False,
                 'projected_judgment_posture': 'answer',
                 'pipeline_directives_final': ['posture_answer', 'regime_simple'],
+                'epistemic_effect': 'incertain',
+                'epistemic_source': 'epistemic_inputs',
+                'epistemic_reason_code': 'insufficient_independent_support',
+                'enunciation_effect': 'none',
+                'enunciation_source': 'not_applicable',
+                'enunciation_reason_code': 'stimmung_absent',
                 'decision_source': 'primary',
                 'status_schema_version': 'agentic_v1',
                 'model': 'openai/gpt-5.4-mini',

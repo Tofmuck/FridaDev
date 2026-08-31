@@ -7,7 +7,12 @@ import unittest
 from core.hermeneutic_node.doctrine import epistemic_regime
 from core.hermeneutic_node.inputs import stimmung_input as canonical_stimmung_input
 from core.hermeneutic_node.runtime import primary_node
-from core.hermeneutic_node.validation import hard_guards, validation_agent, validation_messages
+from core.hermeneutic_node.validation import (
+    hard_guards,
+    validation_agent,
+    validation_contract,
+    validation_messages,
+)
 from tests.support.server_test_bootstrap import load_server_module_for_tests
 from tests.support.stimmung_dialogic_pipeline import (
     MAIN_MODEL,
@@ -119,12 +124,7 @@ def _assert_absent_stable_transition_regimes(
         "proof_regime": "suffisant_en_l_etat",
         "uncertainty_posture": "discrete",
     }
-    expected_cautious = {
-        "epistemic_regime": "probable",
-        "proof_regime": "source_explicite_requise",
-        "uncertainty_posture": "prudente",
-    }
-    if absent != expected_inert or stable != expected_inert or transition != expected_cautious:
+    if absent != expected_inert or stable != expected_inert or transition != expected_inert:
         raise AssertionError("absent/stable/transition regime contract changed")
 
 
@@ -184,6 +184,8 @@ def _assert_main_payload_is_derived_only(messages: list[dict[str, object]]) -> N
     serialized = json.dumps(messages, sort_keys=True)
     if "stimmung_input" in serialized or "active_tones" in serialized:
         raise AssertionError("main payload leaked raw or aggregated Stimmung material")
+    if serialized.count("Effet d'enonciation:") != 1:
+        raise AssertionError("main payload lost or duplicated the bounded enunciation directive")
 
 
 class Lot4StimmungCausalGoldenTests(unittest.TestCase):
@@ -347,7 +349,216 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
         self.assertFalse(rebuilt["present"])
         self.assertEqual(rebuilt["turns_considered"], 0)
 
-    def test_stable_signal_is_inert_but_shift_makes_the_primary_regime_cautious(self) -> None:
+    def test_primary_coordinator_keeps_strong_epistemic_certainty_and_separates_enunciation(self) -> None:
+        common = copy.deepcopy(_strong_regime_inputs())
+        common["user_turn_signals"]["present"] = True
+        common["time_input"] = {
+            "schema_version": "v1",
+            "now_utc_iso": "2026-08-31T09:00:00Z",
+            "timezone": "UTC",
+            "now_local_iso": "2026-08-31T09:00:00+00:00",
+            "local_date": "2026-08-31",
+            "local_time": "09:00",
+            "local_weekday": "monday",
+            "day_part_class": "morning",
+            "day_part_human": "matin",
+        }
+        absent = {
+            "schema_version": "v1",
+            "present": False,
+            "dominant_tone": None,
+            "active_tones": [],
+            "stability": "",
+            "shift_state": "",
+            "turns_considered": 0,
+        }
+        stable = {
+            "schema_version": "v1",
+            "present": True,
+            "dominant_tone": "apaisement",
+            "active_tones": [{"tone": "apaisement", "strength": 7}],
+            "stability": "stable",
+            "shift_state": "steady",
+            "turns_considered": 4,
+        }
+        transition = {
+            **stable,
+            "dominant_tone": "colere",
+            "active_tones": [{"tone": "colere", "strength": 9}],
+            "stability": "volatile",
+            "shift_state": "candidate_shift",
+        }
+
+        verdicts = []
+        for index, stimmung in enumerate((absent, stable, transition), start=1):
+            verdicts.append(
+                primary_node.build_primary_node(
+                    conversation_id=f"conv-lot4c3-{index}",
+                    updated_at="2026-08-31T09:00:00Z",
+                    **common,
+                    stimmung_input=stimmung,
+                )["primary_verdict"]
+            )
+
+        epistemic_fields = (
+            "epistemic_regime",
+            "proof_regime",
+            "uncertainty_posture",
+        )
+        expected_epistemic = (
+            "certain",
+            "suffisant_en_l_etat",
+            "discrete",
+        )
+        self.assertEqual(
+            [tuple(verdict[field] for field in epistemic_fields) for verdict in verdicts],
+            [expected_epistemic] * 3,
+        )
+        self.assertEqual(
+            [verdict["epistemic_effect"] for verdict in verdicts],
+            [
+                {
+                    "effect": "certain",
+                    "source": "epistemic_inputs",
+                    "reason_code": "sufficient_independent_support",
+                }
+            ]
+            * 3,
+        )
+        self.assertEqual(
+            [verdict["enunciation_directive"] for verdict in verdicts],
+            [
+                {
+                    "effect": "none",
+                    "source": "not_applicable",
+                    "reason_code": "stimmung_absent",
+                },
+                {
+                    "effect": "none",
+                    "source": "stimmung",
+                    "reason_code": "stimmung_stable",
+                },
+                {
+                    "effect": "delicate_expression",
+                    "source": "stimmung",
+                    "reason_code": "affective_transition",
+                },
+            ],
+        )
+
+    def test_real_chat_coordinator_preserves_epistemic_posture_but_carries_transition_enunciation(self) -> None:
+        stable = exercise_stimmung_dialogue(
+            self.server,
+            outcomes=[primary_signal(affective_signal("apaisement", 7)) for _ in range(4)],
+        )
+        transition = exercise_stimmung_dialogue(
+            self.server,
+            outcomes=[
+                *[primary_signal(affective_signal("apaisement", 7)) for _ in range(3)],
+                primary_signal(affective_signal("colere", 9)),
+            ],
+        )
+
+        stable_verdict = stable["node_calls"][-1]["primary_payload"]["primary_verdict"]
+        transition_verdict = transition["node_calls"][-1]["primary_payload"]["primary_verdict"]
+        self.assertEqual(
+            {
+                key: stable_verdict[key]
+                for key in ("epistemic_regime", "proof_regime", "uncertainty_posture")
+            },
+            {
+                key: transition_verdict[key]
+                for key in ("epistemic_regime", "proof_regime", "uncertainty_posture")
+            },
+        )
+        self.assertEqual(stable_verdict["enunciation_directive"]["effect"], "none")
+        self.assertEqual(
+            transition_verdict["enunciation_directive"],
+            {
+                "effect": "delicate_expression",
+                "source": "stimmung",
+                "reason_code": "affective_transition",
+            },
+        )
+        transition_validation = transition["node_calls"][-1]["validated_output"]
+        self.assertEqual(
+            transition_validation["enunciation_directive"],
+            transition_verdict["enunciation_directive"],
+        )
+        transition_main = json.dumps(transition["main_messages"][-1], sort_keys=True)
+        self.assertIn("delicate_expression", transition_main)
+        self.assertNotIn("active_tones", transition_main)
+        self.assertNotIn("dominant_tone", transition_main)
+
+    def test_independent_underdetermination_keeps_epistemic_caution_distinct_from_transition(self) -> None:
+        common = copy.deepcopy(_strong_regime_inputs())
+        common["user_turn_signals"] = {
+            "present": True,
+            "ambiguity_present": False,
+            "underdetermination_present": True,
+            "active_signal_families": ["critere"],
+            "active_signal_families_count": 1,
+        }
+        common["time_input"] = {
+            "schema_version": "v1",
+            "now_utc_iso": "2026-08-31T09:00:00Z",
+            "timezone": "UTC",
+            "now_local_iso": "2026-08-31T09:00:00+00:00",
+            "local_date": "2026-08-31",
+            "local_time": "09:00",
+            "local_weekday": "monday",
+            "day_part_class": "morning",
+            "day_part_human": "matin",
+        }
+        stable = {
+            "schema_version": "v1",
+            "present": True,
+            "dominant_tone": "apaisement",
+            "active_tones": [{"tone": "apaisement", "strength": 7}],
+            "stability": "stable",
+            "shift_state": "steady",
+            "turns_considered": 4,
+        }
+        transition = {
+            **stable,
+            "dominant_tone": "colere",
+            "active_tones": [{"tone": "colere", "strength": 9}],
+            "stability": "volatile",
+            "shift_state": "candidate_shift",
+        }
+        verdicts = [
+            primary_node.build_primary_node(
+                conversation_id=f"conv-lot4c3-underdetermined-{index}",
+                updated_at="2026-08-31T09:00:00Z",
+                **common,
+                stimmung_input=stimmung,
+            )["primary_verdict"]
+            for index, stimmung in enumerate((stable, transition), start=1)
+        ]
+        for verdict in verdicts:
+            self.assertEqual(
+                (
+                    verdict["epistemic_regime"],
+                    verdict["proof_regime"],
+                    verdict["uncertainty_posture"],
+                ),
+                ("probable", "source_explicite_requise", "prudente"),
+            )
+            self.assertEqual(
+                verdict["epistemic_effect"],
+                {
+                    "effect": "probable",
+                    "source": "epistemic_inputs",
+                    "reason_code": "underdetermination_present",
+                },
+            )
+        self.assertEqual(verdicts[0]["enunciation_directive"]["effect"], "none")
+        self.assertEqual(
+            verdicts[1]["enunciation_directive"]["effect"],
+            "delicate_expression",
+        )
+
+    def test_absent_stable_and_shifted_stimmung_are_epistemically_inert(self) -> None:
         common = _strong_regime_inputs()
         absent = {
             "schema_version": "v1",
@@ -391,9 +602,9 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
         self.assertEqual(
             volatile_regime,
             {
-                "epistemic_regime": "probable",
-                "proof_regime": "source_explicite_requise",
-                "uncertainty_posture": "prudente",
+                "epistemic_regime": "certain",
+                "proof_regime": "suffisant_en_l_etat",
+                "uncertainty_posture": "discrete",
             },
         )
 
@@ -599,7 +810,7 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
             ["stimmung_input", "user_turn_signals"],
         )
 
-    def test_main_model_receives_only_derived_judgment_and_can_lose_the_causal_difference(self) -> None:
+    def test_main_model_receives_only_distinct_derived_epistemic_and_enunciation_effects(self) -> None:
         stable = exercise_stimmung_dialogue(
             self.server,
             outcomes=[primary_signal(affective_signal("apaisement", 7)) for _ in range(4)],
@@ -613,7 +824,7 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
         )
         stable_primary = stable["node_calls"][-1]["primary_payload"]["primary_verdict"]
         transition_primary = transition["node_calls"][-1]["primary_payload"]["primary_verdict"]
-        self.assertNotEqual(
+        self.assertEqual(
             stable_primary["uncertainty_posture"],
             transition_primary["uncertainty_posture"],
         )
@@ -638,7 +849,10 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
             for item in transition["main_messages"][-1]
             if item["role"] == "system" and "[JUGEMENT HERMENEUTIQUE]" in item["content"]
         ][0]
-        self.assertEqual(stable_block, transition_block)
+        self.assertNotEqual(stable_block, transition_block)
+        self.assertIn("Effet d'enonciation: none", stable_block)
+        self.assertIn("Effet d'enonciation: delicate_expression", transition_block)
+        self.assertIn("ne diminue ni la certitude", transition_block)
         self.assertEqual(
             [call["model"] for call in stable["provider_calls"] if call["model"] == MAIN_MODEL],
             [MAIN_MODEL] * 4,
@@ -807,6 +1021,26 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
                 stable_caution_mutant,
                 transition_regime,
             )
+        with self.assertRaises(AssertionError):
+            _assert_absent_stable_transition_regimes(
+                absent_regime,
+                stable_regime,
+                stable_caution_mutant,
+            )
+        proof_mutant = dict(transition_regime, proof_regime="source_explicite_requise")
+        with self.assertRaises(AssertionError):
+            _assert_absent_stable_transition_regimes(
+                absent_regime,
+                stable_regime,
+                proof_mutant,
+            )
+        uncertainty_mutant = dict(transition_regime, uncertainty_posture="prudente")
+        with self.assertRaises(AssertionError):
+            _assert_absent_stable_transition_regimes(
+                absent_regime,
+                stable_regime,
+                uncertainty_mutant,
+            )
 
         retained_capture = capture_validation_request(
             {"aaa_padding": "x" * 800, "stimmung_input": stimmung}
@@ -827,9 +1061,70 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
         main_payload = copy.deepcopy(result["main_messages"][-1])
 
         _assert_main_payload_is_derived_only(main_payload)
+        duplicated_directive = copy.deepcopy(main_payload)
+        bounded_block = next(
+            item
+            for item in duplicated_directive
+            if item.get("role") == "system"
+            and "Effet d'enonciation:" in str(item.get("content") or "")
+        )
+        duplicated_directive.append(copy.deepcopy(bounded_block))
+        with self.assertRaises(AssertionError):
+            _assert_main_payload_is_derived_only(duplicated_directive)
         main_payload.append({"role": "system", "content": json.dumps({"stimmung_input": stimmung})})
         with self.assertRaises(AssertionError):
             _assert_main_payload_is_derived_only(main_payload)
+
+        transition_primary = primary_node.build_primary_node(
+            conversation_id="conv-lot4c3-mutation",
+            updated_at="2026-08-31T09:00:00Z",
+            time_input={
+                "schema_version": "v1",
+                "now_utc_iso": "2026-08-31T09:00:00Z",
+                "timezone": "UTC",
+                "now_local_iso": "2026-08-31T09:00:00+00:00",
+                "local_date": "2026-08-31",
+                "local_time": "09:00",
+                "local_weekday": "monday",
+                "day_part_class": "morning",
+                "day_part_human": "matin",
+            },
+            user_turn_input=_strong_regime_inputs()["user_turn_input"],
+            user_turn_signals={
+                **_strong_regime_inputs()["user_turn_signals"],
+                "present": True,
+            },
+            memory_retrieved=_strong_regime_inputs()["memory_retrieved"],
+            memory_arbitration=_strong_regime_inputs()["memory_arbitration"],
+            summary_input=_strong_regime_inputs()["summary_input"],
+            recent_window_input=_strong_regime_inputs()["recent_window_input"],
+            stimmung_input=transition_stimmung,
+            web_input={},
+        )["primary_verdict"]
+        validation_contract.validate_primary_verdict(transition_primary)
+        confused_source = copy.deepcopy(transition_primary)
+        confused_source["enunciation_directive"]["source"] = "not_applicable"
+        with self.assertRaises(ValueError):
+            validation_contract.validate_primary_verdict(confused_source)
+        confused_reason = copy.deepcopy(transition_primary)
+        confused_reason["epistemic_effect"]["reason_code"] = "underdetermination_present"
+        with self.assertRaises(ValueError):
+            validation_contract.validate_primary_verdict(confused_reason)
+        suppressed_enunciation = copy.deepcopy(transition_primary)
+        suppressed_enunciation["enunciation_directive"] = {
+            "effect": "none",
+            "source": "stimmung",
+            "reason_code": "stimmung_stable",
+        }
+        with self.assertRaises(AssertionError):
+            self.assertEqual(
+                suppressed_enunciation["enunciation_directive"],
+                {
+                    "effect": "delicate_expression",
+                    "source": "stimmung",
+                    "reason_code": "affective_transition",
+                },
+            )
 
         _assert_caller_provenance(result["caller_events"])
         fallback_mutant = copy.deepcopy(result["caller_events"])

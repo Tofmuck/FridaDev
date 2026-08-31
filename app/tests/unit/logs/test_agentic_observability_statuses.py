@@ -576,6 +576,68 @@ class AgenticObservabilityStatusTests(unittest.TestCase):
         self.assertEqual(item['errors']['refused_count'], 1)
         self.assertEqual(item['errors']['error_count'], 0)
 
+    def test_turn_pipeline_projects_only_authoritative_dialogic_effects(self) -> None:
+        transition = {
+            'epistemic_effect': 'certain',
+            'epistemic_source': 'epistemic_inputs',
+            'epistemic_reason_code': 'sufficient_independent_support',
+            'enunciation_effect': 'delicate_expression',
+            'enunciation_source': 'stimmung',
+            'enunciation_reason_code': 'affective_transition',
+        }
+        fail_open = {
+            'epistemic_effect': 'unknown',
+            'epistemic_source': 'fail_open',
+            'epistemic_reason_code': 'validation_error',
+            'enunciation_effect': 'unknown',
+            'enunciation_source': 'fail_open',
+            'enunciation_reason_code': 'validation_error',
+        }
+
+        success_item = build_turn_pipeline_item(
+            self._complete_events()
+            + [
+                self._event('primary_node', payload=transition),
+                self._event('validation_agent', payload=transition),
+            ]
+        )
+        fail_open_item = build_turn_pipeline_item(
+            self._complete_events()
+            + [
+                self._event('primary_node', payload=transition),
+                self._event('validation_agent', status='error', payload=fail_open),
+            ]
+        )
+        legacy_item = build_turn_pipeline_item(
+            self._complete_events() + [self._event('primary_node', payload={'epistemic_regime': 'probable'})]
+        )
+        causal_mutant = dict(transition)
+        causal_mutant.update(
+            epistemic_effect='probable',
+            epistemic_source='stimmung',
+            epistemic_reason_code='affective_transition',
+        )
+        mutant_item = build_turn_pipeline_item(
+            self._complete_events() + [self._event('validation_agent', payload=causal_mutant)]
+        )
+
+        effects = success_item['hermeneutic']['dialogic_effects']
+        self.assertTrue(effects['authoritative'])
+        self.assertEqual(effects['status'], 'success')
+        self.assertEqual(effects['epistemic_effect'], 'certain')
+        self.assertEqual(effects['enunciation_effect'], 'delicate_expression')
+        self.assertEqual(
+            fail_open_item['hermeneutic']['dialogic_effects']['status'],
+            'fail_open',
+        )
+        self.assertEqual(
+            legacy_item['hermeneutic']['dialogic_effects']['status'],
+            'unknown',
+        )
+        self.assertFalse(
+            mutant_item['hermeneutic']['dialogic_effects']['authoritative'],
+        )
+
     def _find_item(self, checklist: dict[str, Any], key: str) -> dict[str, Any]:
         for item in checklist.get('items') or []:
             if item.get('key') == key:

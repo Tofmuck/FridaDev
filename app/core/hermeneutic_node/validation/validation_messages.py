@@ -486,6 +486,8 @@ def build_messages_with_projection(
                 "- identifie l'acte dialogique accompli avant d'evaluer: question, affirmation, correction, hypothese, depot, suspension, cloture ou autre\n"
                 "- distingue comprendre la proposition, integrer une correction factuelle etayee, etre convaincue par un argument et adopter une position\n"
                 "- ni l'insistance, ni le desaccord reformule, ni l'intensite affective ne prouvent qu'une position doit etre adoptee\n"
+                "- un mouvement affectif peut modifier seulement la maniere d'enoncer; il ne modifie jamais epistemic_effect, proof_regime ou uncertainty_posture sans raison epistemique independante\n"
+                "- conserve epistemic_effect et enunciation_directive comme deux provenances structurees distinctes; ne deduis jamais l'une depuis l'autre\n"
                 "- ne fabrique pas non plus un desaccord pour simuler une independance\n"
                 "- privilegie la lecture la plus coherente du tour, la continuite dialogique locale et la reponse simple\n"
                 "- ne choisis clarify qu'apres l'echec d'une interpretation coherente depuis le contexte, ou si des lectures incompatibles entraineraient des actions materiellement differentes\n"

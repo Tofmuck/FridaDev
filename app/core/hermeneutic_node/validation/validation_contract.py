@@ -5,6 +5,8 @@ import json
 from typing import Any, Mapping, Sequence
 
 from core.hermeneutic_node.inputs import recent_context_input as canonical_recent_context_input
+from core.hermeneutic_node.doctrine import epistemic_regime as epistemic_doctrine
+from core.hermeneutic_node.doctrine import judgment_posture as judgment_doctrine
 from . import hard_guards
 
 
@@ -63,6 +65,8 @@ _ALLOWED_PRIMARY_VERDICT_KEYS = {
     "epistemic_regime",
     "proof_regime",
     "uncertainty_posture",
+    "epistemic_effect",
+    "enunciation_directive",
     "judgment_posture",
     "discursive_regime",
     "resituation_level",
@@ -102,6 +106,8 @@ _VALIDATED_OUTPUT_REQUIRED_KEYS = {
     "final_judgment_posture",
     "final_output_regime",
     "pipeline_directives_final",
+    "epistemic_effect",
+    "enunciation_directive",
     "arbiter_followed_upstream",
     "advisory_recommendations_followed",
     "advisory_recommendations_overridden",
@@ -349,6 +355,87 @@ def _validated_source_conflicts(value: Any) -> list[dict[str, Any]]:
     return conflicts
 
 
+def _validated_effect_mapping(
+    value: Any,
+    *,
+    allowed_effects: Sequence[str],
+    allowed_sources: Sequence[str],
+    allowed_reason_codes: Sequence[str],
+    error_code: str,
+) -> dict[str, str]:
+    payload = _mapping(value)
+    if set(payload) != {"effect", "source", "reason_code"}:
+        raise ValueError(error_code)
+    effect = _text(payload.get("effect"))
+    source = _text(payload.get("source"))
+    reason_code = _text(payload.get("reason_code"))
+    if (
+        effect not in allowed_effects
+        or source not in allowed_sources
+        or reason_code not in allowed_reason_codes
+    ):
+        raise ValueError(error_code)
+    return {
+        "effect": effect,
+        "source": source,
+        "reason_code": reason_code,
+    }
+
+
+def _validated_epistemic_effect(value: Any, *, error_code: str) -> dict[str, str]:
+    result = _validated_effect_mapping(
+        value,
+        allowed_effects=(*epistemic_doctrine.EPISTEMIC_REGIMES, "unknown"),
+        allowed_sources=epistemic_doctrine.EPISTEMIC_EFFECT_SOURCES,
+        allowed_reason_codes=epistemic_doctrine.EPISTEMIC_EFFECT_REASON_CODES,
+        error_code=error_code,
+    )
+    allowed_reasons_by_effect = {
+        **epistemic_doctrine.EPISTEMIC_REASON_CODES_BY_EFFECT,
+        "unknown": epistemic_doctrine.EPISTEMIC_FAIL_OPEN_REASON_CODES,
+    }
+    if result["reason_code"] not in allowed_reasons_by_effect[result["effect"]]:
+        raise ValueError(error_code)
+    if (result["effect"] == "unknown") != (result["source"] == "fail_open"):
+        raise ValueError(error_code)
+    return result
+
+
+def _validated_enunciation_directive(value: Any, *, error_code: str) -> dict[str, str]:
+    result = _validated_effect_mapping(
+        value,
+        allowed_effects=judgment_doctrine.ENUNCIATION_EFFECTS,
+        allowed_sources=judgment_doctrine.ENUNCIATION_SOURCES,
+        allowed_reason_codes=judgment_doctrine.ENUNCIATION_REASON_CODES,
+        error_code=error_code,
+    )
+    if result["effect"] == "unknown":
+        if (
+            result["source"] != "fail_open"
+            or result["reason_code"] not in epistemic_doctrine.EPISTEMIC_FAIL_OPEN_REASON_CODES
+        ):
+            raise ValueError(error_code)
+    elif result["effect"] == "delicate_expression":
+        if result != {
+            "effect": "delicate_expression",
+            "source": "stimmung",
+            "reason_code": "affective_transition",
+        }:
+            raise ValueError(error_code)
+    elif not (
+        result == {
+            "effect": "none",
+            "source": "not_applicable",
+            "reason_code": "stimmung_absent",
+        }
+        or result["effect"] == "none"
+        and result["source"] == "stimmung"
+        and result["reason_code"] in {"stimmung_stable", "stimmung_no_transition"}
+    ):
+        raise ValueError(error_code)
+    return result
+
+
 def _validated_upstream_advisory(
     value: Any,
     *,
@@ -441,6 +528,33 @@ def validate_primary_verdict(value: Any) -> dict[str, Any]:
             if not _text(audit_payload.get(field_name)):
                 raise ValueError("invalid_primary_verdict")
 
+    epistemic_effect = _validated_epistemic_effect(
+        payload.get("epistemic_effect"),
+        error_code="invalid_primary_verdict",
+    )
+    enunciation_directive = _validated_enunciation_directive(
+        payload.get("enunciation_directive"),
+        error_code="invalid_primary_verdict",
+    )
+    fail_open = bool(audit_payload.get("fail_open"))
+    if fail_open:
+        fallback_reason = _text(audit_payload.get("reason_code"))
+        for effect_payload in (epistemic_effect, enunciation_directive):
+            if effect_payload != {
+                "effect": "unknown",
+                "source": "fail_open",
+                "reason_code": fallback_reason,
+            }:
+                raise ValueError("invalid_primary_verdict")
+    else:
+        if (
+            epistemic_effect["effect"] != _text(payload.get("epistemic_regime"))
+            or epistemic_effect["source"] != "epistemic_inputs"
+            or enunciation_directive["source"] == "fail_open"
+            or enunciation_directive["effect"] == "unknown"
+        ):
+            raise ValueError("invalid_primary_verdict")
+
     upstream_advisory_payload = _validated_upstream_advisory(
         payload.get("upstream_advisory"),
         fallback_judgment_posture=judgment_posture,
@@ -453,6 +567,8 @@ def validate_primary_verdict(value: Any) -> dict[str, Any]:
         "epistemic_regime": _text(payload.get("epistemic_regime")),
         "proof_regime": _text(payload.get("proof_regime")),
         "uncertainty_posture": _text(payload.get("uncertainty_posture")),
+        "epistemic_effect": epistemic_effect,
+        "enunciation_directive": enunciation_directive,
         "judgment_posture": judgment_posture,
         "discursive_regime": _text(payload.get("discursive_regime")),
         "resituation_level": _text(payload.get("resituation_level")),
@@ -664,6 +780,38 @@ def validate_validated_output_payload(value: Any, *, fail_open: bool) -> dict[st
         raise ValidationPayloadError("validation_error")
     if hard_guard_effect == hard_guards.HARD_GUARD_EFFECT_ANSWER_FORBIDDEN and posture == "answer":
         raise ValidationPayloadError("validation_error")
+    try:
+        epistemic_effect = _validated_epistemic_effect(
+            payload.get("epistemic_effect"),
+            error_code="validation_error",
+        )
+        enunciation_directive = _validated_enunciation_directive(
+            payload.get("enunciation_directive"),
+            error_code="validation_error",
+        )
+    except ValueError as exc:
+        raise ValidationPayloadError("validation_error") from exc
+    if fail_open:
+        if not all(
+            effect_payload["effect"] == "unknown"
+            and effect_payload["source"] == "fail_open"
+            for effect_payload in (epistemic_effect, enunciation_directive)
+        ):
+            raise ValidationPayloadError("validation_error")
+    else:
+        inherited_primary_fail_open = (
+            epistemic_effect["effect"] == "unknown"
+            and epistemic_effect["source"] == "fail_open"
+            and enunciation_directive["effect"] == "unknown"
+            and enunciation_directive["source"] == "fail_open"
+            and epistemic_effect["reason_code"] == enunciation_directive["reason_code"]
+        )
+        nominal_effects = (
+            epistemic_effect["source"] == "epistemic_inputs"
+            and enunciation_directive["source"] != "fail_open"
+        )
+        if not (inherited_primary_fail_open or nominal_effects):
+            raise ValidationPayloadError("validation_error")
     return dict(payload)
 
 
@@ -764,6 +912,7 @@ def build_validated_output_payload(
     fail_open: bool,
     applied_hard_guards: Sequence[str],
     hard_guard_effect: str | None = None,
+    fail_open_reason_code: str | None = None,
 ) -> dict[str, Any]:
     upstream_advisory = _upstream_advisory(primary_verdict)
     upstream_recommendation_posture = _text(upstream_advisory.get("recommended_judgment_posture"))
@@ -787,6 +936,30 @@ def build_validated_output_payload(
             final_judgment_posture=final_judgment_posture,
             final_output_regime=final_output_regime,
             fail_open=fail_open,
+        ),
+        "epistemic_effect": (
+            {
+                "effect": "unknown",
+                "source": "fail_open",
+                "reason_code": _text(fail_open_reason_code) or "upstream_error",
+            }
+            if fail_open
+            else _validated_epistemic_effect(
+                primary_verdict.get("epistemic_effect"),
+                error_code="invalid_primary_verdict",
+            )
+        ),
+        "enunciation_directive": (
+            {
+                "effect": "unknown",
+                "source": "fail_open",
+                "reason_code": _text(fail_open_reason_code) or "upstream_error",
+            }
+            if fail_open
+            else _validated_enunciation_directive(
+                primary_verdict.get("enunciation_directive"),
+                error_code="invalid_primary_verdict",
+            )
         ),
         "arbiter_followed_upstream": arbiter_followed_upstream,
         "advisory_recommendations_followed": _stable_unique(followed),
@@ -816,6 +989,7 @@ def _build_fail_open_validated_output(
         fail_open=True,
         applied_hard_guards=applied_hard_guards,
         hard_guard_effect=hard_guard_effect,
+        fail_open_reason_code=reason_code,
     )
 
 

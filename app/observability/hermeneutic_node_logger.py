@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Mapping, Sequence
 from urllib.parse import urlparse
 
+from core.hermeneutic_node.doctrine import epistemic_regime as epistemic_doctrine
 from observability import chat_turn_logger
 
 
@@ -610,6 +611,100 @@ def _summarize_web(payload: Mapping[str, Any] | None) -> dict[str, Any]:
     }
 
 
+def _dialogic_effect_fields(
+    *,
+    epistemic_effect: Any,
+    enunciation_directive: Any,
+    fail_open: bool,
+    fail_open_reason_code: str,
+    expected_epistemic_regime: str = "",
+) -> dict[str, str]:
+    epistemic = _mapping(epistemic_effect)
+    enunciation = _mapping(enunciation_directive)
+    epistemic_values = {
+        "effect": _text(epistemic.get("effect")),
+        "source": _text(epistemic.get("source")),
+        "reason_code": _text(epistemic.get("reason_code")),
+    }
+    enunciation_values = {
+        "effect": _text(enunciation.get("effect")),
+        "source": _text(enunciation.get("source")),
+        "reason_code": _text(enunciation.get("reason_code")),
+    }
+    paired_fail_open = (
+        epistemic_values["effect"] == "unknown"
+        and epistemic_values["source"] == "fail_open"
+        and enunciation_values["effect"] == "unknown"
+        and enunciation_values["source"] == "fail_open"
+        and epistemic_values["reason_code"] == enunciation_values["reason_code"]
+        and epistemic_values["reason_code"] in epistemic_doctrine.EPISTEMIC_FAIL_OPEN_REASON_CODES
+    )
+    expected_regime = _text(expected_epistemic_regime)
+    nominal_epistemic = (
+        epistemic_values["effect"] in epistemic_doctrine.EPISTEMIC_REASON_CODES_BY_EFFECT
+        and epistemic_values["source"] == "epistemic_inputs"
+        and epistemic_values["reason_code"]
+        in epistemic_doctrine.EPISTEMIC_REASON_CODES_BY_EFFECT[epistemic_values["effect"]]
+        and (not expected_regime or epistemic_values["effect"] == expected_regime)
+    )
+    nominal_enunciation = (
+        enunciation_values == {
+            "effect": "delicate_expression",
+            "source": "stimmung",
+            "reason_code": "affective_transition",
+        }
+        or enunciation_values == {
+            "effect": "none",
+            "source": "not_applicable",
+            "reason_code": "stimmung_absent",
+        }
+        or enunciation_values["effect"] == "none"
+        and enunciation_values["source"] == "stimmung"
+        and enunciation_values["reason_code"] in {"stimmung_stable", "stimmung_no_transition"}
+    )
+    if (paired_fail_open and fail_open) or (nominal_epistemic and nominal_enunciation):
+        return {
+            "epistemic_effect": epistemic_values["effect"],
+            "epistemic_source": epistemic_values["source"],
+            "epistemic_reason_code": epistemic_values["reason_code"],
+            "enunciation_effect": enunciation_values["effect"],
+            "enunciation_source": enunciation_values["source"],
+            "enunciation_reason_code": enunciation_values["reason_code"],
+        }
+
+    if fail_open and _text(fail_open_reason_code) in epistemic_doctrine.EPISTEMIC_FAIL_OPEN_REASON_CODES:
+        reason_code = _text(fail_open_reason_code) or "unknown_error"
+        return {
+            "epistemic_effect": "unknown",
+            "epistemic_source": "fail_open",
+            "epistemic_reason_code": reason_code,
+            "enunciation_effect": "unknown",
+            "enunciation_source": "fail_open",
+            "enunciation_reason_code": reason_code,
+        }
+
+    return {
+        "epistemic_effect": "unknown",
+        "epistemic_source": "unknown",
+        "epistemic_reason_code": "legacy_incomplete",
+        "enunciation_effect": "unknown",
+        "enunciation_source": "unknown",
+        "enunciation_reason_code": "legacy_incomplete",
+    }
+
+
+def _effects_claim_fail_open(epistemic_effect: Any, enunciation_directive: Any) -> bool:
+    epistemic = _mapping(epistemic_effect)
+    enunciation = _mapping(enunciation_directive)
+    return (
+        _text(epistemic.get("effect")) == "unknown"
+        and _text(epistemic.get("source")) == "fail_open"
+        and _text(enunciation.get("effect")) == "unknown"
+        and _text(enunciation.get("source")) == "fail_open"
+        and _text(epistemic.get("reason_code")) == _text(enunciation.get("reason_code"))
+    )
+
+
 def build_primary_node_payload(
     *,
     primary_payload: Mapping[str, Any] | None,
@@ -620,6 +715,13 @@ def build_primary_node_payload(
     audit = _mapping(primary_verdict.get("audit"))
     degraded_fields = [value for value in (_text(item) for item in _sequence(audit.get("degraded_fields"))) if value]
     fail_open = bool(audit.get("fail_open", False))
+    effect_fields = _dialogic_effect_fields(
+        epistemic_effect=primary_verdict.get("epistemic_effect"),
+        enunciation_directive=primary_verdict.get("enunciation_directive"),
+        fail_open=fail_open,
+        fail_open_reason_code=_text(audit.get("reason_code")),
+        expected_epistemic_regime=_text(primary_verdict.get("epistemic_regime")),
+    )
     payload = {
         "upstream_recommendation_posture": _text(
             upstream_advisory.get("recommended_judgment_posture") or primary_verdict.get("judgment_posture")
@@ -642,6 +744,8 @@ def build_primary_node_payload(
         ),
         "epistemic_regime": _text(primary_verdict.get("epistemic_regime")),
         "proof_regime": _text(primary_verdict.get("proof_regime")),
+        "uncertainty_posture": _text(primary_verdict.get("uncertainty_posture")),
+        **effect_fields,
         "source_conflicts_count": len(_sequence(primary_verdict.get("source_conflicts"))),
         "fail_open": bool(audit.get("fail_open", False)),
         "state_used": bool(audit.get("state_used", False)),
@@ -747,6 +851,22 @@ def build_validation_agent_payload(
         for value in (_text(item) for item in _sequence(validated_output.get("applied_hard_guards")))
         if value
     ]
+    status = _text(getattr(validated_result, "status", ""))
+    reason_code = _text(getattr(validated_result, "reason_code", ""))
+    inherited_fail_open = _effects_claim_fail_open(
+        validated_output.get("epistemic_effect"),
+        validated_output.get("enunciation_directive"),
+    )
+    effect_fields = _dialogic_effect_fields(
+        epistemic_effect=validated_output.get("epistemic_effect"),
+        enunciation_directive=validated_output.get("enunciation_directive"),
+        fail_open=(
+            status == "error"
+            or _text(getattr(validated_result, "decision_source", "")) == "fail_open"
+            or inherited_fail_open
+        ),
+        fail_open_reason_code=reason_code,
+    )
     payload = {
         "dialogue_messages_count": len(_sequence(validation_context_payload.get("messages"))),
         "dialogue_truncated": bool(validation_context_payload.get("truncated", False)),
@@ -784,11 +904,11 @@ def build_validation_agent_payload(
         "projected_judgment_posture": _text(validated_output.get("final_judgment_posture")),
         "pipeline_directives_final": directives,
         "decision_source": _text(getattr(validated_result, "decision_source", "")),
+        **effect_fields,
     }
     hard_guard_effect = _text(validated_output.get("hard_guard_effect"))
     if hard_guard_effect:
         payload["hard_guard_effect"] = hard_guard_effect
-    reason_code = _text(getattr(validated_result, "reason_code", ""))
     if reason_code:
         payload["reason_code"] = reason_code
     return payload
@@ -830,6 +950,12 @@ def empty_hermeneutic_prompt_injection_payload() -> dict[str, Any]:
         "source": "not_injected",
         "fallback": False,
         "reason_code": "",
+        "epistemic_effect": "unknown",
+        "epistemic_source": "unknown",
+        "epistemic_reason_code": "legacy_incomplete",
+        "enunciation_effect": "unknown",
+        "enunciation_source": "unknown",
+        "enunciation_reason_code": "legacy_incomplete",
     }
 
 
@@ -851,6 +977,16 @@ def build_hermeneutic_prompt_injection_payload(
     decision_source = _text(getattr(validated_result, "decision_source", ""))
     reason_code = _text(getattr(validated_result, "reason_code", ""))
     fallback = bool(status and status != "ok") or decision_source in {"fallback", "fail_open"} or bool(reason_code)
+    inherited_fail_open = _effects_claim_fail_open(
+        validated_output.get("epistemic_effect"),
+        validated_output.get("enunciation_directive"),
+    )
+    effect_fields = _dialogic_effect_fields(
+        epistemic_effect=validated_output.get("epistemic_effect"),
+        enunciation_directive=validated_output.get("enunciation_directive"),
+        fail_open=status == "error" or decision_source == "fail_open" or inherited_fail_open,
+        fail_open_reason_code=reason_code,
+    )
 
     payload = empty_hermeneutic_prompt_injection_payload()
     payload.update(
@@ -868,6 +1004,7 @@ def build_hermeneutic_prompt_injection_payload(
             "source": decision_source or ("validation_agent" if validated_output else "not_injected"),
             "fallback": fallback,
             "reason_code": reason_code,
+            **effect_fields,
         }
     )
     return payload

@@ -171,6 +171,10 @@ Regles minimales:
 - `justifications` restent hors `primary_verdict`
 - `validation_dialogue_context` ne vaut pas side input faible
 - les entrees canoniques pertinentes restent disponibles pour relire le verdict dans son cadre
+- `primary_verdict.epistemic_effect` et
+  `primary_verdict.enunciation_directive` restent deux objets stricts
+  `{effect, source, reason_code}`; Validation ne peut ni les confondre, ni
+  deduire une prudence epistemique depuis Stimmung
 
 Transport borne courant des entrees canoniques:
 
@@ -294,6 +298,21 @@ Depuis le lot 2 runtime:
 - `pipeline_directives_final` derive du verdict final arbitral;
 - le bloc `[JUGEMENT HERMENEUTIQUE]` est projete depuis cette sortie finale.
 
+Depuis le micro-lot 4C.3 du 2026-08-31:
+
+- la sortie validee recopie `epistemic_effect` et `enunciation_directive` sans
+  les rederiver depuis le texte du modele;
+- meme matiere factuelle et memes preuves impliquent la meme certitude,
+  Stimmung absente, stable ou en transition;
+- une transition peut seulement produire
+  `delicate_expression / stimmung / affective_transition`;
+- une ambiguite, une sous-determination, une contradiction, un manque de
+  preuve ou un hard guard independant peut conserver une prudence epistemique,
+  avec une source et un reason code epistemiques;
+- un fail-open Validation porte les deux effets comme
+  `unknown / fail_open / <reason_code ferme>`; un fallback reussi conserve les
+  effets valides du primaire et ne se presente pas comme une cause.
+
 ## 9. Minimal Operational Frame
 
 Cadre minimal retenu:
@@ -351,6 +370,12 @@ Les signaux minimaux a journaliser sont maintenant au moins:
 - `projected_judgment_posture`
 - `decision_source`
 - `reason_code` si present
+- `epistemic_effect`
+- `epistemic_source`
+- `epistemic_reason_code`
+- `enunciation_effect`
+- `enunciation_source`
+- `enunciation_reason_code`
 
 Ne doivent jamais etre journalises brutement:
 
@@ -393,6 +418,13 @@ Preuves de fermeture lot 6:
 - `app/tests/test_server_chat_hermeneutic_insertion_contract.py`, `app/tests/test_server_chat_compact_observability_contract.py` et `app/tests/test_server_chat_synthetic_logs_contract.py` verifient les parcours bout-en-bout, les logs compacts, les overrides lisibles, les garde-fous visibles et la coherence entre verdict final et `[JUGEMENT HERMENEUTIQUE]`;
 - `app/tests/unit/logs/test_chat_turn_logger_hermeneutic_observability.py` verifie les empreintes compactes `validation_prompt_prepared`, `hermeneutic_prompt_injection` et les champs content-free associes;
 - aucune nouvelle filiere de logs n'est ouverte: `chat_turn_logger` et `hermeneutic_node_logger` restent les seams canoniques.
+- les six champs causaux sont emis aux stages `primary_node` et
+  `validation_agent`, gardes par allowlist, puis projetes par le read-model de
+  tour; un evenement historique incomplet reste `unknown`, et le read-model
+  retient Validation lorsqu'elle existe afin qu'un fail-open final ne soit pas
+  maquille par un primaire nominal;
+- `/log` et `/hermeneutic-admin` utilisent le meme normaliseur frontend ferme:
+  aucun effet n'est infere depuis une prose libre ou l'absence d'un champ.
 
 ## 11. Non-goals
 

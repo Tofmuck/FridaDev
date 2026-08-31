@@ -25,6 +25,8 @@ if str(APP_ROOT) not in sys.path:
     sys.path.insert(0, str(APP_ROOT))
 
 from benchmark.core.openrouter import OpenRouterClient, OpenRouterConfig
+from core.hermeneutic_node.doctrine import epistemic_regime as epistemic_doctrine
+from core.hermeneutic_node.doctrine import judgment_posture as judgment_doctrine
 from core.hermeneutic_node.inputs import identity_input
 from core.hermeneutic_node.inputs import memory_arbitration_input
 from core.hermeneutic_node.inputs import memory_retrieved_input
@@ -533,12 +535,20 @@ def _primary_verdict(case: Mapping[str, Any]) -> dict[str, Any]:
     source = dict(case.get("primary") or {})
     posture = str(source.get("judgment_posture") or "answer")
     regime = str(source.get("discursive_regime") or "simple")
+    epistemic_regime = str(source.get("epistemic_regime") or "certain")
     active = [str(item) for item in case.get("tags") or []]
     payload = {
         "schema_version": "v1",
-        "epistemic_regime": str(source.get("epistemic_regime") or "certain"),
+        "epistemic_regime": epistemic_regime,
         "proof_regime": str(source.get("proof_regime") or "source_explicite_requise"),
         "uncertainty_posture": str(source.get("uncertainty_posture") or "discrete"),
+        "epistemic_effect": epistemic_doctrine.build_epistemic_effect(
+            epistemic_payload={"epistemic_regime": epistemic_regime},
+            user_turn_input={"present": True},
+        ),
+        "enunciation_directive": judgment_doctrine.build_enunciation_directive(
+            stimmung_input=_stimmung(str(case.get("stimmung") or "absent")),
+        ),
         "judgment_posture": posture,
         "discursive_regime": regime,
         "resituation_level": "none",

@@ -3463,7 +3463,8 @@ Message de commit recommande si active: `fix: strengthen Stimmung semantic extra
 
 ### Micro-lot 4C.3 - Separation affect et certitude epistemique
 
-Statut: obligatoire, non commence
+Statut: cloture fonctionnelle prouvee le 31 aout 2026; commit, push et livraison
+ciblee encore a inscrire ci-dessous
 Effort recommande: `extra high`
 Nature: decision semantique, correctif runtime borne et observabilite synchrone
 Prerequis: 4S.1 ferme; 4C.2 ferme ou classe non requis
@@ -3508,13 +3509,96 @@ Observabilite simultanee:
 
 Condition de fermeture:
 
-- [ ] Regle semantique approuvee avant patch.
-- [ ] Affect seul incapable de degrader la certitude.
-- [ ] Effet dialogique d'enonciation preserve et prouve.
-- [ ] Invariants voisins, observabilite et mutations controles.
+- [x] Regle semantique approuvee avant patch.
+- [x] Affect seul incapable de degrader la certitude.
+- [x] Effet dialogique d'enonciation preserve et prouve.
+- [x] Invariants voisins, observabilite et mutations controles.
 - [ ] Tests, documentation, commit, push et livraison ciblee prouves.
 
 Message de commit recommande: `fix: separate Stimmung from epistemic certainty`.
+
+Cloture fonctionnelle du 31 aout 2026 avant livraison:
+
+- Tof a relu et approuve avant patch la regle suivante: un mouvement affectif
+  peut modifier la maniere d'enoncer, mais jamais le degre de certitude sans
+  raison epistemique independante. La meme matiere factuelle et les memes
+  preuves produisent donc le meme triplet epistemique, que Stimmung soit
+  absente, stable ou en transition;
+- F1 est valide: `stimmung_caution` interdisait a un input pourtant fortement
+  etabli de rester `certain`. F2 est valide: le meme embranchement forcait
+  aussi `uncertainty_posture=prudente` sans raison epistemique independante.
+  F3 est valide: un golden 4C verrouillait explicitement la degradation
+  `certain -> probable` sous transition;
+- F4 est valide dans son sens local: supprimer seulement la condition aurait
+  retire l'effet utile de Stimmung. Il est corrige ici en transportant une
+  directive derivee d'enonciation. L'efficacite de cette directive dans la
+  formulation finale et toute comparaison provider restent exclusivement le
+  diagnostic conditionnel de 4C.4, toujours non commence;
+- F5 est valide: les evenements ne distinguaient pas effet epistemique et effet
+  d'enonciation avec leurs provenances. F6 est partiellement valide comme
+  risque structurel: les projections pouvaient rendre une posture prudente
+  sans permettre d'etablir si sa source etait factuelle ou affective; aucune
+  preuve d'un libelle frontend precis mensonger n'a ete inventee;
+- l'architecture minimale retire Stimmung de
+  `build_epistemic_regime`: certitude, regime de preuve et posture
+  d'incertitude sont derives uniquement des inputs epistemiques. Le verdict
+  primaire ajoute deux triplets stricts, `epistemic_effect` et
+  `enunciation_directive`. Absence et stabilite restent des no-op explicites;
+  seule une transition produit `delicate_expression/stimmung/affective_transition`;
+- Validation exige puis recopie ces deux triplets sans les rederiver. Le
+  modele principal recoit leur projection structuree et une instruction bornee
+  qui autorise uniquement delicatesse, rythme et formulation, jamais une
+  modification de certitude, preuve ou incertitude. Aucune tonalite brute,
+  contenu operateur, nouvelle route, nouveau stage ou nouveau modele n'est
+  ajoute;
+- le chemin d'observabilite est synchrone: verdict runtime, evenements
+  `primary_node` / `validation_agent` / `prompt_injection`, garde de payload,
+  projection admin, reader, `turn_pipeline_read_model`, API existantes, puis
+  `/log` et `/hermeneutic-admin`. Les six champs autoritatifs distinguent les
+  trois champs epistemiques des trois champs d'enonciation. Les deux frontends
+  reutilisent le meme normaliseur ferme et ne deduisent rien d'un texte libre;
+- `none`, `not_applicable`, `unknown`, succes et fail-open restent distincts.
+  Un evenement historique incomplet devient `unknown`; Validation prime sur le
+  primaire quand elle existe; primaire, fallback et fail-open ne fabriquent
+  aucune causalite. Les reconstructions repetees ne dupliquent pas la directive;
+- les reproductions rouges ont traverse le coordinateur primaire et le vrai
+  coordinateur chat: avant correction, l'input fortement etabli restait
+  `certain/discrete` avec Stimmung absente ou stable mais devenait
+  `probable/prudente` en transition. Deux tests ont echoue comme attendu avant
+  le patch, tout en constatant que la transition devait conserver un effet
+  d'enonciation observable;
+- les preuves principales sont
+  `app/tests/unit/golden/test_lot4_stimmung_causal_goldens.py`,
+  `app/tests/unit/core/hermeneutic_node/runtime/test_primary_node.py`,
+  `app/tests/unit/core/hermeneutic_node/validation/test_validation_agent.py`,
+  `app/tests/unit/chat/test_chat_prompt_context.py`,
+  `app/tests/unit/logs/test_agentic_observability_statuses.py`,
+  `app/tests/unit/frontend_chat/test_validation_projection_module.js` et
+  `app/tests/integration/frontend_browser/test_frontend_browser_smoke.js`;
+- les mutations controlees rejettent: degradation `certain -> probable` par
+  Stimmung seule; changement de `proof_regime` ou `uncertainty_posture` par
+  Stimmung; suppression de l'effet d'enonciation; confusion des sources ou
+  reason codes; injection du signal brut; duplication de directive; succes
+  fabrique depuis un fail-open; prudence epistemique frontend sans provenance;
+- les invariants voisins sont verts: questions, demandes, risques, actions
+  materielles, hard guards, Presence et priorites des final locks; parite JSON
+  et streaming; persistance et provenance; capsule terminale et
+  `main_payload_manifest_v1`. Les anciens temoins provider 4C.1 refusent
+  honnetement leur comparabilite avec le contrat de messages 4C.3; leur
+  mecanique reste testee avec un temoin synthetique explicite, sans campagne;
+- baseline avant patch: Python `2824/2824`, JavaScript `137/137`, Chromium
+  `19/19`. Preuves finales avant livraison: doctrine/primaire `47/47`, goldens
+  causaux `13/13`, Validation/modele principal `96/96`, Presence/final locks
+  `50/50`, JSON/streaming/persistance `36/36`, capsule/manifest `25/25`,
+  observabilite backend/read-model/API `108/108`, JavaScript `140/140`,
+  Chromium `19/19`, puis decouverte Python hermetique `2828/2828`. Le delta
+  exact est de quatre tests Python et trois tests JavaScript, sans skip, TODO
+  ni expected failure;
+- aucun tour utilisateur reel, appel provider reel, changement de prompt
+  Stimmung, modele, fallback, sampling, timeout, normaliseur ou agregateur n'a
+  ete execute. Le diagnostic de restitution finale reste assigne a 4C.4; le
+  contre-audit causal global reste assigne a 4O.Z. Ces deux lots et tous les
+  lots suivants demeurent ouverts et non commences.
 
 ### Micro-lot 4C.4 - Restitution finale conditionnelle de l'effet dialogique
 

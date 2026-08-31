@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Sequence
 
+from core.hermeneutic_node.doctrine import epistemic_regime as epistemic_doctrine
+from core.hermeneutic_node.doctrine import judgment_posture as judgment_doctrine
 from core.hermeneutic_node.validation import validation_contract, validation_transport
 from observability import agentic_status
 from observability.turn_observability_checklist import build_turn_observability_checklist
@@ -414,12 +416,73 @@ def _identity_summary(prompt_payload: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _dialogic_effects_summary(payload: Mapping[str, Any]) -> dict[str, Any]:
+    values = {
+        'epistemic_effect': _text(payload.get('epistemic_effect')),
+        'epistemic_source': _text(payload.get('epistemic_source')),
+        'epistemic_reason_code': _text(payload.get('epistemic_reason_code')),
+        'enunciation_effect': _text(payload.get('enunciation_effect')),
+        'enunciation_source': _text(payload.get('enunciation_source')),
+        'enunciation_reason_code': _text(payload.get('enunciation_reason_code')),
+    }
+    if not all(values.values()):
+        return {
+            'authoritative': False,
+            'status': 'unknown',
+            **{key: 'unknown' for key in values},
+        }
+
+    fail_open = (
+        values['epistemic_effect'] == 'unknown'
+        and values['epistemic_source'] == 'fail_open'
+        and values['enunciation_effect'] == 'unknown'
+        and values['enunciation_source'] == 'fail_open'
+        and values['epistemic_reason_code'] == values['enunciation_reason_code']
+        and values['epistemic_reason_code'] in epistemic_doctrine.EPISTEMIC_FAIL_OPEN_REASON_CODES
+    )
+    epistemic_reasons_by_effect = epistemic_doctrine.EPISTEMIC_REASON_CODES_BY_EFFECT
+    enunciation_success = (
+        values['enunciation_effect'] == 'delicate_expression'
+        and values['enunciation_source'] == 'stimmung'
+        and values['enunciation_reason_code'] == 'affective_transition'
+        or values['enunciation_effect'] == 'none'
+        and (
+            values['enunciation_source'] == 'not_applicable'
+            and values['enunciation_reason_code'] == 'stimmung_absent'
+            or values['enunciation_source'] == 'stimmung'
+            and values['enunciation_reason_code'] in {'stimmung_stable', 'stimmung_no_transition'}
+        )
+    )
+    success = (
+        values['epistemic_effect'] in epistemic_reasons_by_effect
+        and values['epistemic_source'] == 'epistemic_inputs'
+        and values['epistemic_reason_code'] in epistemic_reasons_by_effect[values['epistemic_effect']]
+        and values['enunciation_effect'] in judgment_doctrine.ENUNCIATION_EFFECTS
+        and values['enunciation_source'] in judgment_doctrine.ENUNCIATION_SOURCES
+        and values['enunciation_reason_code'] in judgment_doctrine.ENUNCIATION_REASON_CODES
+        and enunciation_success
+    )
+    if not (fail_open or success):
+        return {
+            'authoritative': False,
+            'status': 'unknown',
+            **{key: 'unknown' for key in values},
+        }
+    return {
+        'authoritative': True,
+        'status': 'fail_open' if fail_open else 'success',
+        **values,
+    }
+
+
 def _hermeneutic_summary(events: Sequence[Mapping[str, Any]], prompt_payload: Mapping[str, Any]) -> dict[str, Any]:
     fingerprint = _mapping(prompt_payload.get('hermeneutic_prompt_injection'))
     present = bool(fingerprint.get('present'))
     status = 'present' if present else ('missing' if not fingerprint else 'absent')
     primary = _latest_stage_event(events, 'primary_node')
     primary_payload = _payload(primary or {})
+    validation = _latest_stage_event(events, 'validation_agent')
+    effect_payload = _payload(validation or {}) if validation else primary_payload
     node_state = {
         'primary_node_present': bool(primary),
         'read_present': bool(primary_payload.get('node_state_read_present')),
@@ -445,6 +508,7 @@ def _hermeneutic_summary(events: Sequence[Mapping[str, Any]], prompt_payload: Ma
         'epistemic_regime': _text(fingerprint.get('epistemic_regime')),
         'fallback': bool(fingerprint.get('fallback')),
         'reason_code': _reason_code(fingerprint),
+        'dialogic_effects': _dialogic_effects_summary(effect_payload),
         'node_state': node_state,
     }
 
