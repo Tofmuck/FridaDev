@@ -3463,8 +3463,7 @@ Message de commit recommande si active: `fix: strengthen Stimmung semantic extra
 
 ### Micro-lot 4C.3 - Separation affect et certitude epistemique
 
-Statut: cloture fonctionnelle prouvee le 31 aout 2026; commit, push et livraison
-ciblee encore a inscrire ci-dessous
+Statut: ferme et livre le 31 aout 2026
 Effort recommande: `extra high`
 Nature: decision semantique, correctif runtime borne et observabilite synchrone
 Prerequis: 4S.1 ferme; 4C.2 ferme ou classe non requis
@@ -3513,7 +3512,7 @@ Condition de fermeture:
 - [x] Affect seul incapable de degrader la certitude.
 - [x] Effet dialogique d'enonciation preserve et prouve.
 - [x] Invariants voisins, observabilite et mutations controles.
-- [ ] Tests, documentation, commit, push et livraison ciblee prouves.
+- [x] Tests, documentation, commit, push et livraison ciblee prouves.
 
 Message de commit recommande: `fix: separate Stimmung from epistemic certainty`.
 
@@ -3598,7 +3597,16 @@ Cloture fonctionnelle du 31 aout 2026 avant livraison:
   Stimmung, modele, fallback, sampling, timeout, normaliseur ou agregateur n'a
   ete execute. Le diagnostic de restitution finale reste assigne a 4C.4; le
   contre-audit causal global reste assigne a 4O.Z. Ces deux lots et tous les
-  lots suivants demeurent ouverts et non commences.
+  lots suivants demeurent ouverts et non commences;
+- commit runtime `ce608975931f4b5a925285777e82c5dcb2a82060` pousse sur `main`.
+  FridaDev seul a ete rebuild sans pull puis recree avec `--no-deps` et sans
+  rebuild implicite: conteneur
+  `8f318b3c367d4335ee373461abff4a6b2ed3cc6d302648133d3d3ea0a4d94b74`,
+  image `sha256:be0e5d4abb0f923e51d92ec2c83c14b528c2572f7a9506ec78ce35ce1edeb2e7`,
+  `StartedAt=2026-08-31T11:53:13.70842987Z`, HTTP interne `200`, healthy,
+  restart `0`, OOM false. Les empreintes des treize fichiers runtime/frontend
+  modifies correspondent entre checkout et conteneur; les identifiants et
+  `StartedAt` de tous les conteneurs voisins sont inchanges.
 
 ### Micro-lot 4C.4 - Restitution finale conditionnelle de l'effet dialogique
 
