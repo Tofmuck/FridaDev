@@ -156,11 +156,10 @@ class Lot4C4WorkflowV23Tests(unittest.TestCase):
             REPO_ROOT,
             self.protocol,
         )
-        self.assertEqual(len(schedule), 36)
-        self.assertEqual(self.protocol["schedule_sha256"], HISTORICAL_SCHEDULE_SHA256)
+        self.assertEqual(len(schedule), 24)
         self.assertEqual(
             self.protocol["protocol_version"],
-            "lot4c4_final_wording_provider_campaign_v2_3",
+            "lot4c4_final_wording_bounded_candidate_v2_4",
         )
         self.assertNotIn("temperature", self.protocol)
         self.assertNotIn("top_p", self.protocol)
@@ -350,10 +349,10 @@ class Lot4C4WorkflowV23Tests(unittest.TestCase):
                 )
             self.assertEqual(result["status"], "human_rating_required")
             self.assertEqual(client.events[0], "preflight")
-            self.assertEqual(client.events[1:], ["post"] * 36)
-            self.assertEqual(len(client.calls), 36)
+            self.assertEqual(client.events[1:], ["post"] * 24)
+            self.assertEqual(len(client.calls), 24)
 
-    def test_v22_history_is_pinned_and_cannot_be_reused_as_v23(self) -> None:
+    def test_v21_v22_and_v23_history_is_pinned_and_cannot_be_reused(self) -> None:
         historical_path = (
             REPO_ROOT
             / "benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2_1.json"
@@ -372,7 +371,7 @@ class Lot4C4WorkflowV23Tests(unittest.TestCase):
         )
         self.assertEqual(
             self.protocol["supersedes_protocol_version"],
-            "lot4c4_final_wording_provider_campaign_v2_2",
+            "lot4c4_final_wording_provider_campaign_v2_3",
         )
         self.assertEqual(
             self.protocol["v2_2_preflight_history"],

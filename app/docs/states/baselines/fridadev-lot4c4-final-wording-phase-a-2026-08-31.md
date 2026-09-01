@@ -53,6 +53,83 @@ expressive et non active. Sa qualification reduite exige un nouveau gel Git,
 une campagne separee de 24 appels maximum et une nouvelle notation/ratification
 avant tout cutover runtime. 4O.Z et les lots suivants restent non commences.
 
+## Candidate bornee v2.4 — non active
+
+Les six hypotheses sont confirmees au HEAD du gel. Le regime epistemique
+supprime `stimmung_input` avant son calcul; la posture produit separement
+`delicate_expression/stimmung/affective_transition`; Validation conserve cette
+separation. La perte de borne se situe dans la traduction finale active de
+`chat_prompt_context.py`: elle permet encore une prudence de formulation et ne
+pose ni priorite exhaustive du fond, ni budget expressif ferme, ni repli no-op.
+Les goldens anterieurs verrouillent le raccord, Presence, les final locks et
+les enveloppes, mais ne suffisent pas a garantir l'integrite semantique de la
+reformulation; la ratification v2.3 en a observe deux violations critiques.
+
+La candidate unique porte l'identite `surface_only_v1`. Son contrat ferme:
+
+- subordonne tout effet a la demande, aux faits, preuves, hard guards et au
+  regime epistemique, avec reponse directe avant ajustement dialogique;
+- permet seulement choix lexical, connecteurs et rythme, a longueur comparable
+  et avec au plus une breve reprise dialogique;
+- preserve reponse demandee, faits, sources, hypotheses, inferences,
+  conclusions, actions, certitude et regimes de preuve;
+- interdit ajout ou retrait de proposition, reserve, raison ou conclusion,
+  diagnostic, conseil non demande, attribution psychologique et masquage de
+  question, demande, risque ou action;
+- impose le no-op si l'ajustement risque d'atteindre le fond.
+
+Le texte exact n'est pas recopie dans ce rapport: il est construit depuis le
+contrat ferme, borne a 900 caracteres, puis pince avec sa version et son
+SHA-256 dans
+`benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2_4.json`.
+Il n'est pas injecte dans le runtime actif. Aucun caller, agregateur, contrat
+Validation, modele, parametre, guard, signal Stimmung brut ou branche `none`
+n'est modifie.
+
+L'observabilite active transporte `enunciation_effect` de l'evenement aux
+read-models et aux deux renderers, sans identite de politique. Le gel declare
+donc `surface_only_v1` comme identite content-free future et explicitement
+inactive. Si la campagne, la notation et la ratification autorisent un cutover,
+sa propagation devra etre atomique sur evenement, garde, reader,
+read-model/API et renderers, sans prompt, reponse, tonalite, raisonnement ou
+dialogue brut.
+
+## Protocole reduit v2.4
+
+Le corpus v2 et ses faits provider-visibles restent inchanges. Seuls les six
+cas `transition_delicate` sont programmes: consigne runtime courante contre
+candidate bornee, deux repetitions et ordre A/B contrebalance, soit exactement
+`6 x 2 x 2 = 24` appels. Les six contre-cas ne sont pas rappeles: le test
+compare byte-for-byte leur construction v2.3 et courante et leur resultat
+ratifie `12/12` reste autoritatif.
+
+Le runner, le transport OpenRouter partage, le preflight, le canari en sequence
+1, les checkpoints atomiques, la politique de reprise et le workflow aveugle
+sont reutilises. Modele `openai/gpt-5.1`, reasoning `high` exclu,
+`max_tokens=8192`, timeout `900`, `allow_fallbacks=false` et
+`require_parameters=true` restent inchanges; aucun sampling, stop, retry,
+fallback, Batch, Flex, Priority, Validation, Stimmung ou modele juge n'est
+ajoute. Le plafond calcule est `2.17482500 USD`, le budget avec marge
+`2.39230750 USD` et le cap absolu `3.00 USD`.
+
+Le scorer compare uniquement candidate et consigne active. Psychologisation,
+changement de certitude, verite ou preuve et cible masquee sont critiques; une
+seule occurrence cote candidate force `fail`. Les sorties synthetiques ne
+peuvent produire aucun verdict provider. Une campagne complete s'arrete a
+`human_rating_required`, avant notation, deblindage ou decision. La candidate
+reste non active et 4C.4 ouvert jusqu'a notation et ratification separees.
+
+Les preuves hermetiques du gel passent `34/34` sur candidate, corpus,
+protocole, runner, reprise, paquet, notation et historique v1-v2.3, puis
+`120/120` sur les goldens 4C.3/4C.4, Stimmung, doctrine, Validation, payload,
+manifest et observabilite. Elles rejettent notamment derive du contrat ou de
+son empreinte, signal Stimmung brut, modification des gardes provider, branche
+`none` rappelee, cap superieur a 24/3 USD et acceptation d'une seule defaillance
+critique. Le dry-run annonce `24` appels, `12` comparaisons, budget
+`2.39230750 USD`, cap `3.00 USD` et `provider_campaign_required`. Aucun appel
+provider, rebuild, restart, deploiement ou changement runtime n'est effectue
+pendant le gel.
+
 ## Archive Phase A v2.2 supersedee
 
 ## Decision v2.2

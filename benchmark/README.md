@@ -748,7 +748,7 @@ the delivered prompt. The primary and fallback models, generation settings,
 normalizer and aggregate builder are unchanged; no fallback or additional
 provider call was used during delivery.
 
-### Lot 4C.4 final-wording Phase A v2.3
+### Lot 4C.4 bounded final-wording candidate v2.4
 
 Phase A v1 was pushed but superseded before any provider call. Its corpus,
 harness and manifest remain immutable historical evidence; the v1 48-call
@@ -784,10 +784,19 @@ or cost. Its capability contract was broader than its payload: it required
 structured outputs without sending `response_format`, and still sent and
 required unsupported stop sequences. V2.2 is historical and must not be run.
 
-The authoritative v2.3 protocol keeps the v2 module boundaries:
+The ratified v2.3 campaign completed 36/36 valid calls. Its countercases were
+adequate 12/12, while the treatment improved delicacy in 5/12 paired
+observations and formulation in 6/12, with two critical treatment failures.
+Tof ratified the Codex-assisted review and classified F4 as partial: the causal
+effect is useful but insufficiently bounded. This is the authoritative
+content-free human decision, not a cryptographic reconstruction of the deleted
+raw packet or mapping. V2.3 must not be replayed.
+
+The authoritative benchmark-only v2.4 protocol keeps the v2 module boundaries:
 
 - `final_wording_protocol_v2` validates the corpus, provider-visible matter,
-  payload policy, 36-call schedule, cost and freeze manifest;
+  payload policy, bounded candidate, 24-call schedule, cost and freeze
+  manifest;
 - `final_wording_execution_v2` reuses the shared OpenRouter transport, remains
   offline without `--execute-live`, checkpoints `attempt_started` before each
   external attempt, and resumes only from the same frozen campaign. Before any
@@ -797,13 +806,21 @@ The authoritative v2.3 protocol keeps the v2 module boundaries:
   `codex_assisted_review_for_tof`; Codex assistance requires an exact,
   content-free Tof ratification before any unblinding.
 
+The inactive candidate has the content-free identity `surface_only_v1`. Its
+closed structured policy and exact rendered-text SHA-256 are pinned without
+copying corpus cases into the instruction. It allows lexical choice,
+connectors and rhythm only, preserves substance and epistemic status, forbids
+psychological attribution and content addition/removal, and falls back to
+no-op whenever substance could change. The production prompt remains
+unchanged.
+
 The authoritative freeze manifest is
-`benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2_3.json`.
-It pins the historical v2, v2.1 and v2.2 freezes, the shared OpenRouter client, all
-three current modules, the product prompt builders, the state machine and the
-exact schedule:
-`6 x 2 x 2 = 24` transition calls plus
-`6 x 1 x 2 = 12` absolute countercase calls, exactly `36`. It uses only the
+`benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2_4.json`.
+It pins v2.3 and the earlier historical freezes, the shared OpenRouter client,
+all three current modules, the product prompt builders, the state machine and
+the exact reduced schedule: `6 x 2 x 2 = 24` transition calls. The six
+countercases are not recalled because their `none` path is byte-identical and
+their ratified v2.3 result remains authoritative. It uses only the
 active `openai/gpt-5.1` model with no sampling or stop parameters, `max_tokens=8192`,
 hidden `high` reasoning, a 900-second timeout,
 `allow_fallbacks=false` and `require_parameters=true`. Retry, model fallback,
@@ -814,15 +831,15 @@ model-endpoint metadata GET and records a content-free capability summary. At
 least one endpoint must advertise exactly the required `reasoning` and
 `max_tokens` capabilities. Otherwise
 the campaign stops before any POST. Sequence 1 is the canary and remains part
-of the 36-call schedule: a valid result continues the remaining 35 calls; an
+of the 24-call schedule: a valid result continues the remaining 23 calls; an
 authentication, routing or other non-recoverable 4xx result stops immediately,
 without retry or review packet. Network failures alone are `transport_error`;
 401/403, routing 404 and other invalid 4xx requests have distinct closed codes.
 
 At public prices rechecked on 2026-08-31, the calculated prompt cost is
-`0.30759750 USD`, the completion ceiling is `2.94912000 USD`, the calculated
-total ceiling is `3.25671750 USD`, the 10% safety budget is `3.58238925 USD`
-and the absolute cap is `4.00 USD`.
+`0.20874500 USD`, the completion ceiling is `1.96608000 USD`, the calculated
+total ceiling is `2.17482500 USD`, the 10% safety budget is `2.39230750 USD`
+and the absolute cap is `3.00 USD`.
 
 Hermetic dry-run:
 
@@ -830,7 +847,7 @@ Hermetic dry-run:
 PYTHONPATH="$PWD:$PWD/app" python3 -m \
   benchmark.suites.stimmung.final_wording_execution_v2 \
   --repo-root "$PWD" \
-  --freeze-commit <pushed-v2.3-commit> \
+  --freeze-commit <pushed-v2.4-commit> \
   --dry-run
 ```
 
@@ -847,8 +864,12 @@ to the rater; `blind_mapping.json`, the ledger and private outputs remain in
 the campaign directory. The isolation is organizational and hash-bound, not a
 strong barrier against an operator deliberately opening both locations.
 Synthetic tests exercise the workflow but can never yield a provider `pass` or
-`fail`. No provider call was made while preparing v2.3. F4 and Lot 4C.4 remain
-open pending a new, separate provider GO and later human review or ratification.
+`fail`. One candidate-side critical failure forces `fail`; a complete campaign
+still stops at `human_rating_required`. The candidate is not observable as an
+active policy: `surface_only_v1` is reserved content-free for a future cutover
+that would have to update the event/read-model/renderers together. F4 remains
+partial and Lot 4C.4 open pending the authorized reduced campaign and later
+human review or ratification.
 
 ## Validation agent benchmark
 

@@ -154,32 +154,20 @@ class Lot4C4ProtocolV2Tests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "required_fact_not_provider_visible"):
             final_wording_protocol_v2.validate_corpus(missing_list)
 
-    def test_schedule_has_24_causal_calls_and_12_single_arm_countercase_calls(self) -> None:
+    def test_schedule_has_only_24_bounded_candidate_causal_calls(self) -> None:
         summary = final_wording_protocol_v2.validate_schedule(self.corpus, self.schedule)
 
-        self.assertEqual(len(self.schedule), 36)
+        self.assertEqual(len(self.schedule), 24)
         self.assertEqual(summary["causal_call_count"], 24)
-        self.assertEqual(summary["absolute_call_count"], 12)
+        self.assertEqual(summary["absolute_call_count"], 0)
         self.assertEqual(summary["causal_comparison_count"], 12)
-        self.assertEqual(summary["absolute_observation_count"], 12)
+        self.assertEqual(summary["absolute_observation_count"], 0)
         self.assertEqual(summary["unauthorized_difference_count"], 0)
         self.assertEqual(summary["identical_causal_pair_count"], 0)
         self.assertEqual(summary["raw_stimmung_occurrence_count"], 0)
 
-        countercase_items = [
-            item for item in self.schedule if item["comparison_kind"] == "absolute_countercase"
-        ]
-        self.assertEqual({item["variant"] for item in countercase_items}, {"runtime_active"})
-        self.assertEqual(
-            len({(item["case_id"], item["repetition"]) for item in countercase_items}),
-            12,
-        )
-
         doubled = copy.deepcopy(self.schedule)
-        countercase = next(
-            item for item in doubled if item["comparison_kind"] == "absolute_countercase"
-        )
-        doubled.append({**copy.deepcopy(countercase), "sequence": 37})
+        doubled.append({**copy.deepcopy(doubled[0]), "sequence": 25})
         with self.assertRaisesRegex(ValueError, "schedule_cardinality_invalid"):
             final_wording_protocol_v2.validate_schedule(self.corpus, doubled)
 
@@ -188,10 +176,10 @@ class Lot4C4ProtocolV2Tests(unittest.TestCase):
 
         self.assertEqual(
             self.protocol["protocol_version"],
-            "lot4c4_final_wording_provider_campaign_v2_3",
+            "lot4c4_final_wording_bounded_candidate_v2_4",
         )
-        self.assertEqual(summary["expected_call_count"], 36)
-        self.assertEqual(self.protocol["absolute_call_cap"], 36)
+        self.assertEqual(summary["expected_call_count"], 24)
+        self.assertEqual(self.protocol["absolute_call_cap"], 24)
         self.assertEqual(self.protocol["model"], "openai/gpt-5.1")
         self.assertNotIn("temperature", self.protocol)
         self.assertNotIn("top_p", self.protocol)
@@ -244,7 +232,7 @@ class Lot4C4ProtocolV2Tests(unittest.TestCase):
         self.assertEqual(v1["expected_call_count"], 48)
         self.assertEqual(
             self.protocol["supersedes_protocol_version"],
-            "lot4c4_final_wording_provider_campaign_v2_2",
+            "lot4c4_final_wording_provider_campaign_v2_3",
         )
         self.assertEqual(self.protocol["historical_v1_protocol_version"], v1["protocol_version"])
         self.assertEqual(self.protocol["v2_provider_calls_observed"], 0)
@@ -333,8 +321,8 @@ class Lot4C4WorkflowV2Tests(unittest.TestCase):
             )
 
             self.assertEqual(result["status"], "human_rating_required")
-            self.assertEqual(result["attempted_call_count"], 36)
-            self.assertEqual(len(client.calls), 36)
+            self.assertEqual(result["attempted_call_count"], 24)
+            self.assertEqual(len(client.calls), 24)
             for name in ("blind_mapping.json", "call_ledger.json", "private_outputs.json"):
                 path = output_dir / name
                 self.assertTrue(path.is_file())
@@ -344,7 +332,7 @@ class Lot4C4WorkflowV2Tests(unittest.TestCase):
             mapping_text = (output_dir / "blind_mapping.json").read_text(encoding="utf-8")
             ledger_text = (output_dir / "call_ledger.json").read_text(encoding="utf-8")
             packet = json.loads(packet_text)
-            self.assertEqual(len(packet["items"]), 24)
+            self.assertEqual(len(packet["items"]), 12)
             self.assertNotIn('"variant"', packet_text)
             self.assertNotIn('"control"', packet_text)
             self.assertNotIn('"treatment"', packet_text)
@@ -422,7 +410,7 @@ class Lot4C4WorkflowV2Tests(unittest.TestCase):
             )
             self.assertEqual(result["status"], "campaign_incomplete")
             self.assertEqual(result["reason_code"], "cost_cap_would_be_exceeded")
-            self.assertEqual(len(expensive.calls), 4)
+            self.assertEqual(len(expensive.calls), 3)
             self.assertTrue((output_dir / "call_ledger.json").is_file())
 
     def test_synthetic_ratings_validate_workflow_but_cannot_yield_provider_verdict(self) -> None:
@@ -551,7 +539,7 @@ class Lot4C4WorkflowV2Tests(unittest.TestCase):
                         evidence_source="main_model_provider",
                     )
                 ),
-                24,
+                12,
             )
 
     def test_scorer_counts_each_dimension_once_without_making_a_synthetic_verdict(self) -> None:
@@ -575,18 +563,19 @@ class Lot4C4WorkflowV2Tests(unittest.TestCase):
             for blind_id, item in mapping_by_id.items():
                 if item["comparison_kind"] != "causal_transition":
                     continue
-                treatment_slot = next(
+                candidate_slot = next(
                     slot
                     for slot, detail in item["slots"].items()
-                    if detail["variant"] == "treatment"
+                    if detail["variant"] == "bounded_candidate"
                 )
-                preferred = "better_a" if treatment_slot == "A" else "better_b"
+                preferred = "better_a" if candidate_slot == "A" else "better_b"
                 by_id[blind_id]["delicacy_effect"] = preferred
                 by_id[blind_id]["formulation_fit"] = preferred
-            metrics = final_wording_rating_v2._score_validated_ratings(by_id, mapping_by_id)
+            metrics = final_wording_rating_v2._score_validated_ratings(
+                by_id, mapping_by_id
+            )
             self.assertEqual(metrics["transition_delicacy_improvement_rate"], 1.0)
             self.assertEqual(metrics["transition_formulation_improvement_rate"], 1.0)
-            self.assertEqual(metrics["countercase_formulation_adequacy_rate"], 1.0)
             self.assertEqual(metrics["critical_failure_count"], 0)
 
             transition_id = next(
@@ -595,7 +584,9 @@ class Lot4C4WorkflowV2Tests(unittest.TestCase):
                 if item["comparison_kind"] == "causal_transition"
             )
             by_id[transition_id]["psychologization"] = "both"
-            mutated = final_wording_rating_v2._score_validated_ratings(by_id, mapping_by_id)
+            mutated = final_wording_rating_v2._score_validated_ratings(
+                by_id, mapping_by_id
+            )
             self.assertEqual(mutated["critical_failure_count"], 1)
             decision = final_wording_rating_v2._decision(
                 evidence_source="synthetic_test",

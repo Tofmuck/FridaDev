@@ -13,11 +13,11 @@ from benchmark.suites.stimmung import final_wording_diagnostic as v1
 
 CORPUS_SCHEMA_VERSION = "stimmung_final_wording_corpus_v2"
 THRESHOLD_SCHEMA_VERSION = "stimmung_final_wording_thresholds_v2"
-PROTOCOL_VERSION = "lot4c4_final_wording_provider_campaign_v2_3"
-ARTIFACT_VERSION = "lot4c4_final_wording_provider_results_v2_3"
-SUPERSEDED_V22_PROTOCOL_VERSION = "lot4c4_final_wording_provider_campaign_v2_2"
+PROTOCOL_VERSION = "lot4c4_final_wording_bounded_candidate_v2_4"
+ARTIFACT_VERSION = "lot4c4_final_wording_bounded_results_v2_4"
+SUPERSEDED_V23_PROTOCOL_VERSION = "lot4c4_final_wording_provider_campaign_v2_3"
 DEFAULT_FIXTURE = "stimmung_final_wording_corpus_v2.json"
-DEFAULT_FREEZE_MANIFEST = "stimmung_final_wording_freeze_v2_3.json"
+DEFAULT_FREEZE_MANIFEST = "stimmung_final_wording_freeze_v2_4.json"
 
 ACTIVE_MAIN_MODEL = "openai/gpt-5.1"
 ACTIVE_MAX_TOKENS = 8192
@@ -34,20 +34,57 @@ EXPECTED_PROVIDER_CASES = 12
 EXPECTED_TRANSITION_CASES = 6
 EXPECTED_COUNTERCASES = 6
 EXPECTED_CAUSAL_COMPARISONS = EXPECTED_TRANSITION_CASES * REPETITIONS
-EXPECTED_ABSOLUTE_OBSERVATIONS = EXPECTED_COUNTERCASES * REPETITIONS
-EXPECTED_CALLS = (EXPECTED_CAUSAL_COMPARISONS * 2) + EXPECTED_ABSOLUTE_OBSERVATIONS
+EXPECTED_ABSOLUTE_OBSERVATIONS = 0
+EXPECTED_CALLS = EXPECTED_CAUSAL_COMPARISONS * 2
 ABSOLUTE_CALL_CAP = EXPECTED_CALLS
-ABSOLUTE_COST_CAP_USD = 4.0
+ABSOLUTE_COST_CAP_USD = 3.0
 PRICING_OBSERVED_AT = "2026-08-31"
 PRICING_SOURCE = "https://openrouter.ai/api/v1/models"
 PRICING_USD_PER_TOKEN = {"prompt": 0.00000125, "completion": 0.00001}
 COST_SAFETY_MARGIN = 1.10
-BASELINE_HEAD = "58052eaaeec9035adc8bd25d3421c594fd851b90"
+BASELINE_HEAD = "e51de209a487c80a7939a283d4e49ad866811cd6"
 V1_CORPUS_SHA256 = "de8f63c6de4ec8d51a47db868e188b06a83d66ed8b07fb2278a5a47734f4f139"
 V1_HARNESS_SHA256 = "2c34180f0d05d3ca2502f8ca71b23065749251945d5f8eb644ef44ba01288c7b"
 V2_FREEZE_SHA256 = "4a682d89d5070bc7ff928aa36696220fcac662bc26ce7fbbba4066f07901e672"
 V21_FREEZE_SHA256 = "a3afa9e8537311a107694dfc1e780741cb37676a3afbd789e3917d3e48cbab10"
 V22_FREEZE_SHA256 = "428fd763c65f2692069b569ee740631642abd06214cd92e3f23bbd31915a99a2"
+V23_FREEZE_SHA256 = "77bf7bf67c8bcb1b61ae18a8ec3f86a3f0cffa4b2eb1dc82334e2a4b0f7ccb70"
+
+_BOUNDED_ALLOWED_OPERATIONS = ("lexical_choice", "connectors", "rhythm")
+_BOUNDED_PRESERVED = (
+    "requested_answer",
+    "facts",
+    "sources",
+    "hypotheses",
+    "inferences",
+    "conclusions",
+    "actions",
+    "certainty_degrees",
+    "proof_regimes",
+    "hard_guards",
+)
+_BOUNDED_FORBIDDEN = (
+    "add_or_remove_proposition",
+    "add_or_remove_reservation",
+    "add_or_remove_reason",
+    "add_or_remove_conclusion",
+    "add_diagnosis",
+    "add_unsolicited_advice",
+    "psychological_attribution",
+    "mask_question_request_risk_or_action",
+)
+BOUNDED_ENUNCIATION_POLICY = {
+    "version": "surface_only_v1",
+    "priority": "direct_answer_and_substance_first",
+    "allowed_operations": _BOUNDED_ALLOWED_OPERATIONS,
+    "preserved": _BOUNDED_PRESERVED,
+    "forbidden": _BOUNDED_FORBIDDEN,
+    "fallback": "no_op_if_substance_risk",
+}
+BOUNDED_ENUNCIATION_POLICY_SHA256 = (
+    "72d7b887b49f0e8d7d3e2ff0ba91a65e2772448f885f03455ffbd47f45b2d143"
+)
+OBSERVABILITY_POLICY_VERSION = "surface_only_v1"
 
 FINAL_TEXT_PROPERTIES = (
     "justified_delicacy_effect",
@@ -112,6 +149,20 @@ V23_MUTATION_MATRIX = (
     "retry_or_fallback_added",
     "corpus_scorer_or_messages_changed",
     "v2_2_history_removed_or_reused",
+)
+V24_MUTATION_MATRIX = (
+    "prudence_role_reintroduced",
+    "substance_priority_removed",
+    "proposition_reservation_reason_or_conclusion_mutation_allowed",
+    "psychological_attribution_allowed",
+    "no_op_fallback_removed",
+    "raw_stimmung_injected",
+    "countercase_none_path_changed",
+    "caller_aggregator_validation_model_settings_or_guards_changed",
+    "candidate_differs_from_frozen_policy",
+    "single_critical_failure_accepted",
+    "call_count_exceeds_24",
+    "cost_cap_exceeds_3_usd",
 )
 
 _FIXTURE_TOP_KEYS = {
@@ -188,6 +239,10 @@ def _v21_freeze_path(repo_root: Path) -> Path:
 
 def _v22_freeze_path(repo_root: Path) -> Path:
     return repo_root / "benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2_2.json"
+
+
+def _v23_freeze_path(repo_root: Path) -> Path:
+    return repo_root / "benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2_3.json"
 
 
 def _module_paths(repo_root: Path) -> dict[str, Path]:
@@ -445,10 +500,56 @@ def case_by_id(corpus: Mapping[str, Any], case_id: Any) -> Mapping[str, Any]:
     raise ValueError("unknown_case_id")
 
 
+def bounded_candidate_instruction() -> str:
+    policy = BOUNDED_ENUNCIATION_POLICY
+    if (
+        set(policy)
+        != {"version", "priority", "allowed_operations", "preserved", "forbidden", "fallback"}
+        or policy["version"] != "surface_only_v1"
+        or policy["priority"] != "direct_answer_and_substance_first"
+        or policy["allowed_operations"] != _BOUNDED_ALLOWED_OPERATIONS
+        or policy["preserved"] != _BOUNDED_PRESERVED
+        or policy["forbidden"] != _BOUNDED_FORBIDDEN
+        or policy["fallback"] != "no_op_if_substance_risk"
+    ):
+        raise ValueError("bounded_enunciation_policy_invalid")
+    rendered = (
+        "Consigne d'enonciation: politique=surface_only_v1; "
+        "priorite=repondre d'abord directement a la demande, sous autorite des faits, sources, "
+        "hypotheses, inferences, conclusions, actions, degres de certitude, regimes de preuve et "
+        "hard guards; operations_permises=choix lexical, connecteurs et rythme, a longueur "
+        "comparable, avec au plus une breve reprise dialogique; fond_invariant=n'ajoute ni ne "
+        "retire proposition, reserve, raison ou conclusion, diagnostic, conseil non demande ou "
+        "attribution psychologique, et ne masque aucune question, demande, risque ou action; repli=si "
+        "l'ajustement risque de toucher au fond, n'ajuste rien."
+    )
+    if _sha256_text(rendered) != BOUNDED_ENUNCIATION_POLICY_SHA256:
+        raise ValueError("bounded_enunciation_policy_fingerprint_invalid")
+    return rendered
+
+
+def _replace_runtime_instruction(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    replaced = copy.deepcopy(messages)
+    occurrences = 0
+    for message in replaced:
+        if message.get("role") != "system":
+            continue
+        lines = str(message.get("content") or "").splitlines()
+        for index, line in enumerate(lines):
+            if line.startswith("Consigne d'enonciation:"):
+                lines[index] = bounded_candidate_instruction()
+                occurrences += 1
+        message["content"] = "\n".join(lines)
+    if occurrences != 1:
+        raise ValueError("runtime_enunciation_instruction_cardinality_invalid")
+    return replaced
+
+
 def _runtime_variant(case: Mapping[str, Any], variant: str) -> str:
-    if variant in {"control", "treatment"}:
-        return variant
-    if variant == "runtime_active" and case.get("enunciation_state") != "transition_delicate":
+    if case.get("enunciation_state") == "transition_delicate" and variant in {
+        "runtime_current",
+        "bounded_candidate",
+    }:
         return "treatment"
     raise ValueError("variant_invalid")
 
@@ -456,8 +557,20 @@ def _runtime_variant(case: Mapping[str, Any], variant: str) -> str:
 def build_messages(case: Mapping[str, Any], variant: str) -> list[dict[str, Any]]:
     runtime_variant = _runtime_variant(case, variant)
     messages = v1._build_messages(case, runtime_variant)
+    if variant == "bounded_candidate":
+        messages = _replace_runtime_instruction(messages)
     _validate_provider_visible_matter(case, messages)
     return messages
+
+
+def countercase_runtime_messages(case: Mapping[str, Any]) -> list[dict[str, Any]]:
+    if case.get("enunciation_state") == "transition_delicate":
+        raise ValueError("countercase_required")
+    return v1._build_messages(case, "treatment")
+
+
+def v23_countercase_runtime_messages(case: Mapping[str, Any]) -> list[dict[str, Any]]:
+    return countercase_runtime_messages(case)
 
 
 def _validate_provider_visible_matter(
@@ -484,7 +597,11 @@ def _validate_provider_visible_matter(
 
 def _variant_order(case_index: int, repetition: int) -> tuple[str, str]:
     control_first = (case_index + repetition) % 2 == 0
-    return ("control", "treatment") if control_first else ("treatment", "control")
+    return (
+        ("runtime_current", "bounded_candidate")
+        if control_first
+        else ("bounded_candidate", "runtime_current")
+    )
 
 
 def _payload(messages: list[dict[str, Any]]) -> dict[str, Any]:
@@ -499,13 +616,16 @@ def _payload(messages: list[dict[str, Any]]) -> dict[str, Any]:
 
 def _build_request_schedule(repo_root: Path) -> list[dict[str, Any]]:
     corpus = load_corpus(repo_root)
-    provider_cases = [case for case in corpus["cases"] if case["provider_eligible"]]
+    provider_cases = [
+        case
+        for case in corpus["cases"]
+        if case["provider_eligible"] and case["enunciation_state"] == "transition_delicate"
+    ]
     schedule: list[dict[str, Any]] = []
     sequence = 0
     for repetition in range(1, REPETITIONS + 1):
         for case_index, case in enumerate(provider_cases, start=1):
-            transition = case["enunciation_state"] == "transition_delicate"
-            variants = _variant_order(case_index, repetition) if transition else ("runtime_active",)
+            variants = _variant_order(case_index, repetition)
             for slot_index, variant in enumerate(variants):
                 sequence += 1
                 messages = build_messages(case, variant)
@@ -520,10 +640,8 @@ def _build_request_schedule(repo_root: Path) -> list[dict[str, Any]]:
                         "sequence": sequence,
                         "case_id": case["id"],
                         "repetition": repetition,
-                        "comparison_kind": (
-                            "causal_transition" if transition else "absolute_countercase"
-                        ),
-                        "blind_slot": ("A" if slot_index == 0 else "B") if transition else "single",
+                        "comparison_kind": "causal_transition",
+                        "blind_slot": "A" if slot_index == 0 else "B",
                         "variant": variant,
                         "messages_sha256": _sha256_text(_compact_json(messages)),
                         "prompt_token_estimate": prompt_tokens,
@@ -603,35 +721,27 @@ def validate_schedule(
             if case["enunciation_state"] != "transition_delicate":
                 raise ValueError("causal_non_transition_invalid")
             if item.get("blind_slot") not in {"A", "B"} or item.get("variant") not in {
-                "control",
-                "treatment",
+                "runtime_current",
+                "bounded_candidate",
             }:
                 raise ValueError("causal_arm_invalid")
             variants = causal.setdefault(key, {})
             if item["variant"] in variants:
                 raise ValueError("causal_variant_duplicate")
             variants[str(item["variant"])] = item
-        elif item.get("comparison_kind") == "absolute_countercase":
-            if case["enunciation_state"] == "transition_delicate":
-                raise ValueError("transition_misclassified_absolute")
-            if item.get("blind_slot") != "single" or item.get("variant") != "runtime_active":
-                raise ValueError("absolute_arm_invalid")
-            if key in absolute:
-                raise ValueError("absolute_observation_duplicate")
-            absolute.add(key)
         else:
             raise ValueError("comparison_kind_invalid")
     unauthorized = 0
     identical = 0
     for variants in causal.values():
-        if set(variants) != {"control", "treatment"}:
+        if set(variants) != {"runtime_current", "bounded_candidate"}:
             raise ValueError("causal_pair_incomplete")
-        control = variants["control"]["payload"]["messages"]
-        treatment = variants["treatment"]["payload"]["messages"]
-        if control == treatment:
+        current = variants["runtime_current"]["payload"]["messages"]
+        candidate = variants["bounded_candidate"]["payload"]["messages"]
+        if current == candidate:
             identical += 1
-        if v1._normalized_messages_for_pair(control) != v1._normalized_messages_for_pair(
-            treatment
+        if v1._normalized_messages_for_pair(current) != v1._normalized_messages_for_pair(
+            candidate
         ):
             unauthorized += 1
     if len(causal) != EXPECTED_CAUSAL_COMPARISONS:
@@ -696,6 +806,7 @@ def _build_unfrozen_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str
         "superseded_freeze_v2_sha256": _sha256_file(_v2_freeze_path(repo_root)),
         "superseded_freeze_v2_1_sha256": _sha256_file(_v21_freeze_path(repo_root)),
         "superseded_freeze_v2_2_sha256": _sha256_file(_v22_freeze_path(repo_root)),
+        "superseded_freeze_v2_3_sha256": _sha256_file(_v23_freeze_path(repo_root)),
         "protocol_module_sha256": _sha256_file(paths["protocol"]),
         "execution_module_sha256": _sha256_file(paths["execution"]),
         "rating_module_sha256": _sha256_file(paths["rating"]),
@@ -719,14 +830,16 @@ def _build_unfrozen_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str
         raise ValueError("superseded_v2_1_freeze_fingerprint_changed")
     if inputs["superseded_freeze_v2_2_sha256"] != V22_FREEZE_SHA256:
         raise ValueError("superseded_v2_2_freeze_fingerprint_changed")
+    if inputs["superseded_freeze_v2_3_sha256"] != V23_FREEZE_SHA256:
+        raise ValueError("superseded_v2_3_freeze_fingerprint_changed")
     return {
         "protocol_version": PROTOCOL_VERSION,
         "artifact_version": ARTIFACT_VERSION,
-        "campaign_kind": "causal_transitions_and_absolute_countercases_current_main_model",
+        "campaign_kind": "causal_transition_current_runtime_vs_bounded_candidate",
         "phase_a_status": "provider_campaign_required",
         "freeze_commit": freeze_commit,
         "baseline_head": BASELINE_HEAD,
-        "supersedes_protocol_version": SUPERSEDED_V22_PROTOCOL_VERSION,
+        "supersedes_protocol_version": SUPERSEDED_V23_PROTOCOL_VERSION,
         "historical_v1_protocol_version": v1.PROTOCOL_VERSION,
         "v2_1_campaign_history": {
             "attempted_call_count": 36,
@@ -748,6 +861,18 @@ def _build_unfrozen_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str
             "campaign_started": False,
             "reusable": False,
         },
+        "v2_3_ratified_history": {
+            "attempted_call_count": 36,
+            "valid_call_count": 36,
+            "countercase_adequate_count": 12,
+            "transition_delicacy_improved_count": 5,
+            "transition_formulation_improved_count": 6,
+            "critical_failure_count": 2,
+            "classification": "partial",
+            "ratified_by": "tof",
+            "raw_material_retained": False,
+            "reusable": False,
+        },
         "v2_provider_calls_observed": 0,
         "v1_provider_calls_observed": 0,
         "corpus_id": corpus["corpus_id"],
@@ -758,6 +883,17 @@ def _build_unfrozen_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str
         "reasoning": dict(ACTIVE_REASONING),
         "required_endpoint_capabilities": {
             key: list(values) for key, values in REQUIRED_ENDPOINT_CAPABILITIES.items()
+        },
+        "candidate_policy": {
+            "version": BOUNDED_ENUNCIATION_POLICY["version"],
+            "sha256": BOUNDED_ENUNCIATION_POLICY_SHA256,
+            "active_in_runtime": False,
+        },
+        "observability_policy": {
+            "current_runtime_policy_version": "unobserved",
+            "candidate_version": OBSERVABILITY_POLICY_VERSION,
+            "active_in_runtime": False,
+            "future_cutover_propagation_required": True,
         },
         "timeout_s": ACTIVE_TIMEOUT_S,
         "transport_policy": {
@@ -836,31 +972,26 @@ def _build_unfrozen_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str
         "v2_1_mutation_matrix": list(V21_MUTATION_MATRIX),
         "v2_2_mutation_matrix": list(V22_MUTATION_MATRIX),
         "v2_3_mutation_matrix": list(V23_MUTATION_MATRIX),
+        "v2_4_mutation_matrix": list(V24_MUTATION_MATRIX),
     }
 
 
 def expected_freeze_manifest(protocol: Mapping[str, Any], repo_root: Path) -> dict[str, Any]:
     corpus = load_corpus(repo_root)
     return {
-        "schema_version": "stimmung_final_wording_freeze_v2_3",
-        "status": "phase_a_v2_3_frozen_separate_provider_go_required",
+        "schema_version": "stimmung_final_wording_freeze_v2_4",
+        "status": "bounded_candidate_frozen_human_rating_required_after_provider",
         "baseline_head": BASELINE_HEAD,
         "supersedes": {
-            "protocol_version": SUPERSEDED_V22_PROTOCOL_VERSION,
-            "reason_codes": [
-                "stop_parameter_not_supported_by_gpt_5_1_endpoints",
-                "structured_outputs_capability_not_sent_by_payload",
-                "preflight_capabilities_not_aligned_with_actual_payload",
-            ],
-            "metadata_get_count": 1,
-            "metadata_http_status": 200,
-            "endpoint_count": 5,
-            "compatible_endpoint_count": 0,
-            "provider_calls_observed": 0,
-            "provider_inference_count": 0,
-            "observed_cost_usd": 0.0,
-            "provider_results_attached": False,
-            "campaign_started": False,
+            "protocol_version": SUPERSEDED_V23_PROTOCOL_VERSION,
+            "classification": "partial",
+            "valid_call_count": 36,
+            "countercase_adequate_count": 12,
+            "transition_delicacy_improved_count": 5,
+            "transition_formulation_improved_count": 6,
+            "critical_failure_count": 2,
+            "ratified_by": "tof",
+            "cryptographic_reconstruction_claimed": False,
             "campaign_reusable": False,
         },
         "protocol_version": PROTOCOL_VERSION,
@@ -875,6 +1006,8 @@ def expected_freeze_manifest(protocol: Mapping[str, Any], repo_root: Path) -> di
             "absolute_countercase_count": EXPECTED_COUNTERCASES,
         },
         "frozen_inputs": copy.deepcopy(protocol["input_fingerprints"]),
+        "candidate_policy": copy.deepcopy(protocol["candidate_policy"]),
+        "observability_policy": copy.deepcopy(protocol["observability_policy"]),
         "runtime_policy": {
             "model": ACTIVE_MAIN_MODEL,
             "max_tokens": ACTIVE_MAX_TOKENS,
@@ -896,7 +1029,7 @@ def expected_freeze_manifest(protocol: Mapping[str, Any], repo_root: Path) -> di
             "sha256": protocol["schedule_sha256"],
             "repetitions": REPETITIONS,
             "causal_comparison_count": EXPECTED_CAUSAL_COMPARISONS,
-            "absolute_observation_count": EXPECTED_ABSOLUTE_OBSERVATIONS,
+            "absolute_observation_count": 0,
             "call_count": EXPECTED_CALLS,
             "absolute_call_cap": ABSOLUTE_CALL_CAP,
             "validation_calls": 0,
@@ -930,8 +1063,9 @@ def expected_freeze_manifest(protocol: Mapping[str, Any], repo_root: Path) -> di
         "v2_1_mutation_matrix": list(V21_MUTATION_MATRIX),
         "v2_2_mutation_matrix": list(V22_MUTATION_MATRIX),
         "v2_3_mutation_matrix": list(V23_MUTATION_MATRIX),
+        "v2_4_mutation_matrix": list(V24_MUTATION_MATRIX),
         "phase_limits": {
-            "provider_calls_executed_in_phase_a_v2_3": 0,
+            "provider_calls_executed_before_frozen_commit": 0,
             "runtime_change": False,
             "prompt_change": False,
             "model_or_setting_change": False,
@@ -939,7 +1073,7 @@ def expected_freeze_manifest(protocol: Mapping[str, Any], repo_root: Path) -> di
             "rebuild_restart_or_deployment": False,
             "lot4oz_started": False,
         },
-        "delivery_requirement": "commit_and_push_before_separate_provider_go",
+        "delivery_requirement": "commit_and_push_before_authorized_24_call_campaign",
     }
 
 

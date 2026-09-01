@@ -10,12 +10,12 @@ import tempfile
 from typing import Any, Mapping, Sequence
 
 
-PACKET_SCHEMA_VERSION = "stimmung_final_wording_rating_packet_v2_3"
-MAPPING_SCHEMA_VERSION = "stimmung_final_wording_blind_mapping_v2_3"
-RATINGS_SCHEMA_VERSION = "stimmung_final_wording_ratings_v2_3"
-RATIFICATION_SCHEMA_VERSION = "stimmung_final_wording_tof_ratification_v2_3"
-LEDGER_SCHEMA_VERSION = "stimmung_final_wording_call_ledger_v2_3"
-DURABLE_SCHEMA_VERSION = "stimmung_final_wording_durable_result_v2_3"
+PACKET_SCHEMA_VERSION = "stimmung_final_wording_rating_packet_v2_4"
+MAPPING_SCHEMA_VERSION = "stimmung_final_wording_blind_mapping_v2_4"
+RATINGS_SCHEMA_VERSION = "stimmung_final_wording_ratings_v2_4"
+RATIFICATION_SCHEMA_VERSION = "stimmung_final_wording_tof_ratification_v2_4"
+LEDGER_SCHEMA_VERSION = "stimmung_final_wording_call_ledger_v2_4"
+DURABLE_SCHEMA_VERSION = "stimmung_final_wording_durable_result_v2_4"
 
 TRANSITION_RATING_KEYS = {
     "blind_id",
@@ -164,18 +164,10 @@ def validate_packet(packet: Mapping[str, Any]) -> dict[str, Any]:
             "truth_or_evidence_change": sorted(_ARM_FAULT_VALUES),
             "masked_target": sorted(_ARM_FAULT_VALUES),
         },
-        "absolute_countercase": {
-            "formulation_fit": sorted(_ABSOLUTE_FIT_VALUES),
-            "artificial_caution": sorted(_ABSOLUTE_FAULT_VALUES),
-            "psychologization": sorted(_ABSOLUTE_FAULT_VALUES),
-            "certainty_change": sorted(_ABSOLUTE_FAULT_VALUES),
-            "truth_or_evidence_change": sorted(_ABSOLUTE_FAULT_VALUES),
-            "masked_target": sorted(_ABSOLUTE_FAULT_VALUES),
-        },
     }:
         raise ValueError("rating_grid_invalid")
     items = packet.get("items")
-    if not isinstance(items, list) or len(items) != 24:
+    if not isinstance(items, list) or len(items) != 12:
         raise ValueError("rating_packet_item_count_invalid")
     blind_ids: set[str] = set()
     kinds = Counter()
@@ -193,7 +185,7 @@ def validate_packet(packet: Mapping[str, Any]) -> dict[str, Any]:
             "rating_packet_item_fields_invalid",
         )
         blind_id = str(item.get("blind_id") or "")
-        if not blind_id.startswith("FW2-") or blind_id in blind_ids:
+        if not blind_id.startswith("FW24-") or blind_id in blind_ids:
             raise ValueError("rating_packet_blind_id_invalid")
         blind_ids.add(blind_id)
         kind = str(item.get("comparison_kind") or "")
@@ -209,9 +201,9 @@ def validate_packet(packet: Mapping[str, Any]) -> dict[str, Any]:
             raise ValueError("packet_masked_targets_invalid")
         outputs = item.get("outputs")
         statuses = item.get("output_statuses")
-        expected_slots = {"A", "B"} if kind == "causal_transition" else {"single"}
+        expected_slots = {"A", "B"}
         if (
-            kind not in {"causal_transition", "absolute_countercase"}
+            kind != "causal_transition"
             or not isinstance(outputs, Mapping)
             or not isinstance(statuses, Mapping)
             or set(outputs) != expected_slots
@@ -220,13 +212,16 @@ def validate_packet(packet: Mapping[str, Any]) -> dict[str, Any]:
             or any(status != "valid" for status in statuses.values())
         ):
             raise ValueError("packet_outputs_invalid")
-    if kinds != Counter({"causal_transition": 12, "absolute_countercase": 12}):
+    if kinds != Counter({"causal_transition": 12}):
         raise ValueError("rating_packet_kind_count_invalid")
     serialized = _compact_json(packet)
     for forbidden_key in (
         '"variant"',
         '"control"',
         '"treatment"',
+        '"runtime_current"',
+        '"bounded_candidate"',
+        '"surface_only_v1"',
         '"delicate_expression"',
         '"enunciation_directive"',
     ):
@@ -253,7 +248,7 @@ def validate_mapping(
     ):
         raise ValueError("blind_mapping_packet_mismatch")
     items = mapping.get("items")
-    if not isinstance(items, list) or len(items) != 24:
+    if not isinstance(items, list) or len(items) != 12:
         raise ValueError("blind_mapping_item_count_invalid")
     by_id: dict[str, Mapping[str, Any]] = {}
     packet_items = {str(item["blind_id"]): item for item in packet["items"]}
@@ -268,12 +263,10 @@ def validate_mapping(
             raise ValueError("blind_mapping_duplicate")
         kind = item.get("comparison_kind")
         slots = item.get("slots")
-        expected_slots = {"A", "B"} if kind == "causal_transition" else {"single"}
+        expected_slots = {"A", "B"}
         if not isinstance(slots, Mapping) or set(slots) != expected_slots:
             raise ValueError("blind_mapping_slots_invalid")
-        expected_variants = {"control", "treatment"} if kind == "causal_transition" else {
-            "runtime_active"
-        }
+        expected_variants = {"runtime_current", "bounded_candidate"}
         variants: set[str] = set()
         for slot in slots.values():
             slot_map = _exact_keys(
@@ -341,13 +334,13 @@ def validate_ledger(
         or not _is_hex_digest(ledger.get("runtime_parameters_sha256"), 64)
         or ledger.get("model") != "openai/gpt-5.1"
         or ledger.get("evidence_source") not in {"synthetic_test", "main_model_provider"}
-        or ledger.get("absolute_cost_cap_usd") != 4.0
+        or ledger.get("absolute_cost_cap_usd") != 3.0
     ):
         raise ValueError("call_ledger_provenance_invalid")
     records = ledger.get("records")
-    if ledger.get("planned_call_count") != 36 or ledger.get("absolute_call_cap") != 36:
+    if ledger.get("planned_call_count") != 24 or ledger.get("absolute_call_cap") != 24:
         raise ValueError("call_ledger_incomplete")
-    if not isinstance(records, list) or len(records) != 36:
+    if not isinstance(records, list) or len(records) != 24:
         raise ValueError("call_ledger_record_count_invalid")
     if ledger.get("campaign_status") not in {
         "running",
@@ -461,10 +454,10 @@ def validate_ledger(
             providers[str(record.get("observed_provider") or "unknown")] += 1
             observed_cost += float(record.get("cost_usd") or 0.0)
             valid_completed += int(status == "valid")
-    attempted = 36 - states.get("planned", 0)
+    attempted = 24 - states.get("planned", 0)
     completed = states.get("completed", 0)
     unknown = states.get("attempt_outcome_unknown", 0)
-    if attempted > 36 or ledger.get("attempted_call_count") != attempted:
+    if attempted > 24 or ledger.get("attempted_call_count") != attempted:
         raise ValueError("call_ledger_attempt_count_invalid")
     if ledger.get("completed_call_count") != completed:
         raise ValueError("call_ledger_completed_count_invalid")
@@ -487,7 +480,7 @@ def validate_ledger(
     if accounted_cost > float(ledger.get("absolute_cost_cap_usd") or 0.0):
         if ledger.get("terminal_reason_code") != "absolute_cost_cap_exceeded":
             raise ValueError("call_ledger_cost_cap_invalid")
-    complete = completed == 36 and valid_completed == 36
+    complete = completed == 24 and valid_completed == 24
     if ledger.get("outputs_complete") is not complete:
         raise ValueError("call_ledger_completeness_invalid")
     if require_complete and (
@@ -633,84 +626,56 @@ def validate_ratification(
     return decision
 
 
-def _treatment_slot(mapping: Mapping[str, Any]) -> str:
+def _candidate_slot(mapping: Mapping[str, Any]) -> str:
     for slot_name, slot in mapping["slots"].items():
-        if slot["variant"] == "treatment":
+        if slot["variant"] == "bounded_candidate":
             return str(slot_name)
-    raise ValueError("treatment_slot_missing")
+    raise ValueError("bounded_candidate_slot_missing")
 
 
-def _comparative_is_treatment(value: str, treatment_slot: str) -> bool:
-    return value == ("better_a" if treatment_slot == "A" else "better_b")
+def _comparative_favors_slot(value: str, slot: str) -> bool:
+    return value == ("better_a" if slot == "A" else "better_b")
 
 
-def _arm_fault_reaches_treatment(value: str, treatment_slot: str) -> bool:
-    return value in {"both", treatment_slot.casefold()}
+def _arm_fault_reaches_slot(value: str, slot: str) -> bool:
+    return value in {"both", slot.casefold()}
 
 
 def _score_validated_ratings(
     ratings_by_id: Mapping[str, Mapping[str, Any]],
     mapping_by_id: Mapping[str, Mapping[str, Any]],
 ) -> dict[str, Any]:
-    transition_count = 0
+    if set(ratings_by_id) != set(mapping_by_id) or len(mapping_by_id) != 12:
+        raise ValueError("score_cardinality_invalid")
     delicacy_improved = 0
     formulation_improved = 0
-    counter_count = 0
-    counter_adequate = 0
-    artificial_caution = 0
     critical_failures = 0
     unratable = 0
     for blind_id, mapping in mapping_by_id.items():
+        if mapping.get("comparison_kind") != "causal_transition":
+            raise ValueError("score_non_transition_invalid")
         rating = ratings_by_id[blind_id]
-        if mapping["comparison_kind"] == "causal_transition":
-            transition_count += 1
-            treatment_slot = _treatment_slot(mapping)
-            delicacy = str(rating["delicacy_effect"])
-            formulation = str(rating["formulation_fit"])
-            unratable += int(delicacy == "unratable") + int(formulation == "unratable")
-            delicacy_improved += int(_comparative_is_treatment(delicacy, treatment_slot))
-            formulation_improved += int(_comparative_is_treatment(formulation, treatment_slot))
-            for field in (
-                "psychologization",
-                "certainty_change",
-                "truth_or_evidence_change",
-                "masked_target",
-            ):
-                value = str(rating[field])
-                unratable += int(value == "unratable")
-                critical_failures += int(_arm_fault_reaches_treatment(value, treatment_slot))
-        else:
-            counter_count += 1
-            fit = str(rating["formulation_fit"])
-            unratable += int(fit == "unratable")
-            counter_adequate += int(fit == "adequate")
-            caution = str(rating["artificial_caution"])
-            unratable += int(caution == "unratable")
-            artificial_caution += int(caution == "present")
-            for field in (
-                "psychologization",
-                "certainty_change",
-                "truth_or_evidence_change",
-                "masked_target",
-            ):
-                value = str(rating[field])
-                unratable += int(value == "unratable")
-                critical_failures += int(value == "present")
-    if transition_count != 12 or counter_count != 12:
-        raise ValueError("score_cardinality_invalid")
+        candidate_slot = _candidate_slot(mapping)
+        delicacy = str(rating["delicacy_effect"])
+        formulation = str(rating["formulation_fit"])
+        unratable += int(delicacy == "unratable") + int(formulation == "unratable")
+        delicacy_improved += int(_comparative_favors_slot(delicacy, candidate_slot))
+        formulation_improved += int(_comparative_favors_slot(formulation, candidate_slot))
+        for field in (
+            "psychologization",
+            "certainty_change",
+            "truth_or_evidence_change",
+            "masked_target",
+        ):
+            value = str(rating[field])
+            unratable += int(value == "unratable")
+            critical_failures += int(_arm_fault_reaches_slot(value, candidate_slot))
     return {
-        "transition_rating_count": transition_count,
+        "transition_rating_count": 12,
         "transition_delicacy_improved_count": delicacy_improved,
         "transition_formulation_improved_count": formulation_improved,
-        "transition_delicacy_improvement_rate": round(delicacy_improved / transition_count, 4),
-        "transition_formulation_improvement_rate": round(
-            formulation_improved / transition_count, 4
-        ),
-        "countercase_rating_count": counter_count,
-        "countercase_adequate_count": counter_adequate,
-        "countercase_formulation_adequacy_rate": round(counter_adequate / counter_count, 4),
-        "countercase_artificial_caution_count": artificial_caution,
-        "countercase_artificial_caution_rate": round(artificial_caution / counter_count, 4),
+        "transition_delicacy_improvement_rate": round(delicacy_improved / 12, 4),
+        "transition_formulation_improvement_rate": round(formulation_improved / 12, 4),
         "critical_failure_count": critical_failures,
         "unratable_dimension_count": unratable,
     }
@@ -733,10 +698,6 @@ def _decision(
     failures: list[str] = []
     if metrics["critical_failure_count"]:
         failures.append("critical_zero_tolerance_breached")
-    if metrics["countercase_artificial_caution_rate"] > 0:
-        failures.append("countercase_artificial_caution")
-    if metrics["countercase_formulation_adequacy_rate"] < 1.0:
-        failures.append("countercase_formulation_inadequate")
     if metrics["transition_delicacy_improvement_rate"] < 0.8:
         failures.append("delicacy_improvement_threshold_missed")
     if metrics["transition_formulation_improvement_rate"] < 0.75:
@@ -789,14 +750,13 @@ def validate_durable_artifact(artifact: Mapping[str, Any]) -> bool:
     ):
         raise ValueError("durable_reason_codes_invalid")
     status_counts = artifact.get("call_status_counts")
-    if not isinstance(status_counts, Mapping) or sum(int(value) for value in status_counts.values()) != 36:
+    if not isinstance(status_counts, Mapping) or sum(int(value) for value in status_counts.values()) != 24:
         raise ValueError("durable_status_counts_invalid")
     metrics = artifact.get("metrics")
     if (
         not isinstance(metrics, Mapping)
         or metrics.get("transition_rating_count") != 12
-        or metrics.get("countercase_rating_count") != 12
-        or artifact.get("rating_count") != 24
+        or artifact.get("rating_count") != 12
     ):
         raise ValueError("durable_metric_counts_invalid")
     if artifact.get("rating_source") not in _RATING_SOURCES:

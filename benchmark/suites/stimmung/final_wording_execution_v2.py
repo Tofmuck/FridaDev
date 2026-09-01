@@ -46,7 +46,7 @@ _CAMPAIGN_TERMINAL_REASONS = {
     "provider_routing_error",
     "provider_request_error",
 }
-PRIVATE_OUTPUTS_SCHEMA_VERSION = "stimmung_final_wording_private_outputs_v2_3"
+PRIVATE_OUTPUTS_SCHEMA_VERSION = "stimmung_final_wording_private_outputs_v2_4"
 _NONRECOVERABLE_PROVIDER_STATUSES = {
     "provider_auth_error",
     "provider_routing_error",
@@ -218,7 +218,7 @@ def expected_live_campaign_paths(protocol: Mapping[str, Any]) -> tuple[Path, Pat
     freeze_commit = str(protocol.get("freeze_commit") or "")
     if len(freeze_commit) != 40:
         raise ValueError("freeze_commit_invalid")
-    stem = f"lot4c4-final-wording-v2.3-{freeze_commit[:12]}"
+    stem = f"lot4c4-final-wording-v2.4-{freeze_commit[:12]}"
     return Path(f"/tmp/{stem}-private"), Path(f"/tmp/{stem}-review")
 
 
@@ -463,20 +463,12 @@ def _rating_grid() -> dict[str, dict[str, list[str]]]:
             "truth_or_evidence_change": sorted(rating_v2._ARM_FAULT_VALUES),
             "masked_target": sorted(rating_v2._ARM_FAULT_VALUES),
         },
-        "absolute_countercase": {
-            "formulation_fit": sorted(rating_v2._ABSOLUTE_FIT_VALUES),
-            "artificial_caution": sorted(rating_v2._ABSOLUTE_FAULT_VALUES),
-            "psychologization": sorted(rating_v2._ABSOLUTE_FAULT_VALUES),
-            "certainty_change": sorted(rating_v2._ABSOLUTE_FAULT_VALUES),
-            "truth_or_evidence_change": sorted(rating_v2._ABSOLUTE_FAULT_VALUES),
-            "masked_target": sorted(rating_v2._ABSOLUTE_FAULT_VALUES),
-        },
     }
 
 
 def _blind_id(protocol_sha: str, case_id: str, repetition: int) -> str:
-    material = f"{protocol_sha}:{case_id}:{repetition}:lot4c4-v2.1"
-    return f"FW2-{_sha256_text(material)[:16]}"
+    material = f"{protocol_sha}:{case_id}:{repetition}:lot4c4-v2.4"
+    return f"FW24-{_sha256_text(material)[:16]}"
 
 
 def _build_rating_material(
@@ -493,18 +485,17 @@ def _build_rating_material(
         )
     packet_items: list[dict[str, Any]] = []
     mapping_items: list[dict[str, Any]] = []
-    for case in [item for item in corpus["cases"] if item["provider_eligible"]]:
+    for case in [
+        item
+        for item in corpus["cases"]
+        if item["provider_eligible"] and item["enunciation_state"] == "transition_delicate"
+    ]:
         for repetition in (1, 2):
             key = (str(case["id"]), repetition)
             arms = grouped.get(key, [])
-            expected_arm_count = 2 if case["enunciation_state"] == "transition_delicate" else 1
-            if len(arms) != expected_arm_count:
+            if len(arms) != 2:
                 raise ValueError("rating_material_call_group_incomplete")
-            kind = (
-                "causal_transition"
-                if case["enunciation_state"] == "transition_delicate"
-                else "absolute_countercase"
-            )
+            kind = "causal_transition"
             blind_id = _blind_id(protocol_sha, str(case["id"]), repetition)
             outputs: dict[str, str | None] = {}
             statuses: dict[str, str] = {}
@@ -704,7 +695,9 @@ def run_campaign(
     if evidence_source == "main_model_provider":
         _validate_live_campaign_paths(protocol, output_dir, review_export_dir)
     schedule = protocol_v2.build_request_schedule(repo_root, protocol)
-    if len(schedule) != 36 or len(schedule) > int(protocol["absolute_call_cap"]):
+    if len(schedule) != protocol_v2.EXPECTED_CALLS or len(schedule) > int(
+        protocol["absolute_call_cap"]
+    ):
         raise ValueError("absolute_call_cap_invalid")
     capability_preflight: dict[str, Any] | None = None
     if evidence_source == "main_model_provider":
@@ -882,7 +875,10 @@ def run_campaign(
             progress(sequence, len(schedule), ledger["records"][sequence - 1])
 
     _refresh_ledger(ledger)
-    if ledger["attempted_call_count"] != 36 or ledger["completed_call_count"] != 36:
+    if (
+        ledger["attempted_call_count"] != protocol_v2.EXPECTED_CALLS
+        or ledger["completed_call_count"] != protocol_v2.EXPECTED_CALLS
+    ):
         raise ValueError("campaign_attempt_count_incomplete")
     if not ledger["outputs_complete"]:
         return _incomplete_result(
@@ -948,7 +944,7 @@ def verify_live_preflight(repo_root: Path, *, freeze_commit: str) -> None:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Lot 4C.4 v2.3 bounded main-model campaign")
+    parser = argparse.ArgumentParser(description="Lot 4C.4 v2.4 bounded-candidate campaign")
     parser.add_argument("--repo-root", type=Path, required=True)
     parser.add_argument("--freeze-commit", required=True)
     parser.add_argument("--dry-run", action="store_true")
@@ -998,7 +994,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     _validate_live_campaign_paths(protocol, args.output_dir, args.review_export_dir)
     client = OpenRouterClient.from_env(
-        title="FridaDev/Lot4C4-Final-Wording-v2.3",
+        title="FridaDev/Lot4C4-Bounded-Enunciation-v2.4",
         fetch_pricing=False,
     )
 

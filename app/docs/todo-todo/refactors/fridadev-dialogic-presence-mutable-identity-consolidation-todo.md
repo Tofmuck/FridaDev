@@ -3831,6 +3831,48 @@ Decision humaine ratifiee de Tof du 1 septembre 2026:
   non active, sans rejouer les 36 appels v2.3. 4O.Z et les lots suivants
   restent non commences.
 
+Gel benchmark-only v2.4 du 1 septembre 2026:
+
+- F1 est confirme: `epistemic_regime.py` retire explicitement
+  `stimmung_input` avant le calcul epistemique. F2 est confirme:
+  `judgment_posture.py` produit separement la directive fermee
+  `delicate_expression/stimmung/affective_transition`. F3 est confirme:
+  Validation valide puis transporte cette structure sans en rederiver le
+  fond;
+- F4 et F5 sont confirmes: la perte de borne est localisee dans la traduction
+  finale de `chat_prompt_context.py`, dont la consigne active autorise encore
+  une prudence de formulation et ne pose ni budget expressif ferme, ni verrou
+  complet du fond, ni repli no-op. F6 est confirme: les goldens existants
+  prouvent le transport et les invariants aval, pas l'integrite semantique de
+  la transformation finale; les deux defaillances critiques ratifiees en v2.3
+  rendent cette limite effective;
+- l'unique candidate `surface_only_v1`, encore inactive, ferme la portee aux
+  choix lexicaux, connecteurs et rythme, a longueur comparable et avec au plus
+  une breve reprise dialogique. Elle exige la demande et le fond en premier,
+  preserve faits, preuves, certitude, conclusions, actions et guards, interdit
+  ajout/retrait de contenu ou attribution psychologique et impose un no-op au
+  moindre risque sur le fond. Son texte exact et son SHA-256 sont geles dans
+  `stimmung_final_wording_freeze_v2_4.json`;
+- l'observabilite active expose l'effet, mais aucune identite de politique.
+  Le gel reserve donc l'identite content-free `surface_only_v1`, non active;
+  un cutover ulterieur positif devra la propager dans l'evenement, la garde,
+  les readers, read-model/API et les deux renderers, sans texte de prompt,
+  reponse, tonalite ou dialogue;
+- la qualification reutilise le corpus, le transport, le journal resumable,
+  le preflight, le scorer et la notation v2.3. Elle programme uniquement les
+  six transitions, deux bras et deux repetitions, soit `24` appels maximum.
+  Les six contre-cas ne sont pas rappeles: leur branche `none` est prouvee
+  byte-for-byte identique et la ratification v2.3 reste autoritative;
+- le modele et les parametres v2.3 restent inchanges hors bloc de directive
+  allowliste. Le plafond calcule est `2.17482500 USD`, le budget avec marge
+  `2.39230750 USD` et le cap absolu `3.00 USD`; canari en sequence 1, aucun
+  retry, fallback, Batch, Flex, Priority, autre modele ou juge;
+- une seule defaillance critique de la candidate force `fail`. Vingt-quatre
+  sorties completes conduisent seulement a `human_rating_required`: aucun
+  cutover, deblindage ou classement final n'est autorise sans notation puis
+  ratification. 4C.4 reste ouvert et `surface_only_v1` ne doit jamais etre
+  presentee comme active avant livraison runtime separee.
+
 ### Micro-lot 4O.Z - Contre-audit causal et fermeture du Lot 4
 
 Statut: non commence; dernier micro-lot du Lot 4

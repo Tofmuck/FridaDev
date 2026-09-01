@@ -159,7 +159,7 @@ class Lot4C4WorkflowV21Tests(unittest.TestCase):
             result = self._run(parent, resumed, resume=True)
             self.assertEqual(result["status"], "human_rating_required")
             self.assertEqual(len(first.calls), 3)
-            self.assertEqual(len(resumed.calls), 33)
+            self.assertEqual(len(resumed.calls), 21)
             self.assertNotEqual(first.calls[0]["messages"], resumed.calls[0]["messages"])
 
     def test_attempt_started_becomes_costed_unknown_and_is_never_recalled(self) -> None:
@@ -206,7 +206,7 @@ class Lot4C4WorkflowV21Tests(unittest.TestCase):
             result = self._run(parent, resumed, resume=True)
             self.assertEqual(result["status"], "human_rating_required")
             self.assertEqual(len(first.calls), 2)
-            self.assertEqual(len(resumed.calls), 34)
+            self.assertEqual(len(resumed.calls), 22)
 
     def test_returned_response_without_completed_checkpoint_is_unknown(self) -> None:
         def crash(stage: str, sequence: int) -> None:
@@ -346,10 +346,10 @@ class Lot4C4WorkflowV21Tests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory(dir="/tmp") as raw_parent:
             parent = Path(raw_parent)
-            first = _SyntheticClient(cost_usd=1.0)
+            first = _SyntheticClient(cost_usd=0.75)
             with self.assertRaises(_InjectedCrash):
                 self._run(parent, first, fault_injector=crash)
-            resumed = _SyntheticClient(cost_usd=1.0)
+            resumed = _SyntheticClient(cost_usd=0.75)
             result = self._run(parent, resumed, resume=True)
             ledger = _read_json(parent / "campaign-private/call_ledger.json")
 
@@ -358,7 +358,7 @@ class Lot4C4WorkflowV21Tests(unittest.TestCase):
             self.assertEqual(len(first.calls), 3)
             self.assertEqual(len(resumed.calls), 1)
             self.assertEqual(ledger["attempted_call_count"], 4)
-            self.assertEqual(ledger["accounted_cost_usd"], 4.0)
+            self.assertEqual(ledger["accounted_cost_usd"], 3.0)
 
     def test_codex_assistance_requires_tof_ratification_before_unblinding(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as raw_parent:
@@ -418,7 +418,7 @@ class Lot4C4WorkflowV21Tests(unittest.TestCase):
                         evidence_source="synthetic_test",
                     )
                 ),
-                24,
+                12,
             )
 
             ratings_sha = hashlib.sha256(ratings_path.read_bytes()).hexdigest()
