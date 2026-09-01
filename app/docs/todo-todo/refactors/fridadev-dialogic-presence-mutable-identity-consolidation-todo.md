@@ -3610,8 +3610,8 @@ Cloture fonctionnelle du 31 aout 2026 avant livraison:
 
 ### Micro-lot 4C.4 - Restitution finale conditionnelle de l'effet dialogique
 
-Statut: ouvert; `Phase A v2.3 gelee — nouveau GO provider separe requis`;
-v2.2 supersede avant toute generation apres un preflight sans route compatible
+Statut: ouvert; F4 classe `partiel` apres campagne v2.3 ratifiee; candidate
+bornee benchmark-only requise avant tout cutover runtime
 Effort recommande: `extra high`
 Nature: diagnostic causal puis correctif minimal si dommage prouve
 Prerequis: 4C.3 ferme
@@ -3814,6 +3814,22 @@ Passe corrective Phase A v2.3 du 1 septembre 2026:
 - le gel autoritatif devient `stimmung_final_wording_freeze_v2_3.json`.
   Zero appel provider, zero cout, aucun runtime ou frontend, rebuild, restart
   ou deploiement. 4C.4 reste ouvert et attend un nouveau GO provider separe.
+
+Decision humaine ratifiee de Tof du 1 septembre 2026:
+
+- la campagne v2.3 a produit `36/36` appels valides; les contre-cas sont
+  adequats `12/12`, le traitement ameliore la delicatesse sur `5/12` et la
+  formulation generale sur `6/12`, mais porte deux defaillances critiques;
+- Tof ratifie la notation assistee realisee par Codex et classe F4 `partiel`:
+  l'effet causal est reel et utile, mais la directive d'enonciation actuelle
+  n'est pas suffisamment bornee;
+- cette inscription est la decision humaine content-free autoritative de Tof,
+  pas une reconstruction cryptographique de l'ancien paquet. Paquet, reponses
+  et mapping ont ete supprimes apres ratification conformement au protocole et
+  ne doivent pas etre restaures;
+- 4C.4 reste ouvert uniquement pour geler puis evaluer une candidate bornee,
+  non active, sans rejouer les 36 appels v2.3. 4O.Z et les lots suivants
+  restent non commences.
 
 ### Micro-lot 4O.Z - Contre-audit causal et fermeture du Lot 4
 

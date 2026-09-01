@@ -1,9 +1,9 @@
 # Lot 4C.4 — Phase A v2.3 du diagnostic de restitution finale
 
 Date: 1 septembre 2026
-Statut: `Phase A v2.3 gelee — nouveau GO provider separe requis`; 4C.4 reste ouvert
-Portee: alignement exact du payload et des capacites de preflight v2.3
-Exclusions: runtime, prompts, modeles, settings, frontend, donnees operateur et appels provider reels
+Statut: campagne v2.3 ratifiee; F4 `partiel`; 4C.4 reste ouvert pour une candidate bornee
+Portee: diagnostic causal v2.3 et correction suivante strictement expressive
+Exclusions: runtime actif, prompts actifs, modeles, settings, frontend et donnees operateur
 
 ## Decision v2.3
 
@@ -30,6 +30,28 @@ Les preuves ciblees v2/v2.1/v2.3 passent `27/27`, les tests cibles du client
 OpenRouter `2/2`, et le dry-run reste `ready_offline` avec `36` appels,
 budget `3.58238925 USD` et cap absolu `4.00 USD`. Aucune suite Python complete,
 JavaScript ou Chromium n'est executee.
+
+## Ratification humaine content-free de la campagne v2.3
+
+Tof confirme et ratifie explicitement la notation assistee realisee par Codex:
+
+- `36/36` appels provider valides;
+- contre-cas adequats `12/12`;
+- amelioration de delicatesse cote traitement `5/12`;
+- amelioration generale de formulation cote traitement `6/12`;
+- deux defaillances critiques cote traitement.
+
+La decision humaine autoritative est F4 `partiel`: l'effet causal de la
+directive derivee est reel et utile, mais sa traduction finale est
+insuffisamment bornee. Cette section consigne la ratification content-free de
+Tof; elle ne pretend pas reconstruire cryptographiquement le paquet aveugle,
+les reponses ou le mapping v2.3, supprimes apres ratification conformement au
+protocole. Les 36 appels v2.3 ne doivent jamais etre rejoues.
+
+4C.4 reste ouvert pour une unique candidate benchmark-only, strictement
+expressive et non active. Sa qualification reduite exige un nouveau gel Git,
+une campagne separee de 24 appels maximum et une nouvelle notation/ratification
+avant tout cutover runtime. 4O.Z et les lots suivants restent non commences.
 
 ## Archive Phase A v2.2 supersedee
 
