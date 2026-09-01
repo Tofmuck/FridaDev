@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ferme apres cutover Validation Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 et 4S.1 fermes, decision 4S.1 `strengthen`; 4C.2 ferme apres livraison du prompt renforce v2 qualifie `32/32` sur le primaire; 4C.3 ferme apres separation livree entre certitude epistemique et effet d'enonciation; observabilite causale complete non prouvee; Lots 5 a 8 et Z non commences
+Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ferme apres cutover Validation Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 et 4S.1 fermes, decision 4S.1 `strengthen`; 4C.2 ferme apres livraison du prompt renforce v2 qualifie `32/32` sur le primaire; 4C.3 ferme apres separation livree entre certitude epistemique et effet d'enonciation; 4C.4 ferme `inconclusive` avec decision produit `keep_current_v2.3`, apres rejet de la candidate bornee sur GPT-5.1 et GPT-5.2; 4O.Z non commence; observabilite causale complete non prouvee; Lots 5 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -1637,7 +1637,7 @@ Portee architecturale de cette acceptation:
 
 # LOT 4 - Audit causal et consolidation de Stimmung
 
-Statut: goldens techniques du coeur livres; 4C.1, 4S.0, 4S.1, 4C.2 et 4C.3 fermes; prompt Stimmung renforce v2 qualifie `32/32` sur le primaire puis livre; certitude epistemique et effet d'enonciation separes; observabilite causale complete non prouvee
+Statut: goldens techniques du coeur livres; 4C.1, 4S.0, 4S.1, 4C.2, 4C.3 et 4C.4 fermes; prompt Stimmung renforce v2 qualifie `32/32` sur le primaire puis livre; certitude epistemique et effet d'enonciation separes; decision `keep_current_v2.3`, candidate de restitution bornee rejetee sur GPT-5.1 et GPT-5.2 sans cutover; observabilite causale complete non prouvee; 4O.Z non commence
 Nature: audit causal multi-tours, correctifs bornes, benchmark sous GO separe
 et observabilite synchrone, sans extension fonctionnelle
 Dependance: Lot 3 ferme
@@ -3610,8 +3610,9 @@ Cloture fonctionnelle du 31 aout 2026 avant livraison:
 
 ### Micro-lot 4C.4 - Restitution finale conditionnelle de l'effet dialogique
 
-Statut: ouvert; F4 classe `partiel` apres campagne v2.3 ratifiee; candidate
-bornee benchmark-only requise avant tout cutover runtime
+Statut: ferme `inconclusive` le 1 septembre 2026; decision produit
+`keep_current_v2.3`; F4 reste `partiel`; candidate `surface_only_v1` rejetee
+sur GPT-5.1 et GPT-5.2, non active
 Effort recommande: `extra high`
 Nature: diagnostic causal puis correctif minimal si dommage prouve
 Prerequis: 4C.3 ferme
@@ -3650,11 +3651,13 @@ Preuves obligatoires si correction:
 
 Condition de fermeture:
 
-- [ ] F4 classe par une comparaison causale explicite.
-- [ ] `non requis` documente, ou correctif minimal prouve sans signal brut.
-- [ ] Aucun nouveau stage, modele, caller ou capacite produit.
-- [ ] Tests, observabilite, documentation, commit, push et livraison ciblee
-  prouves si le runtime change.
+- [x] F4 classe `partiel` par des comparaisons causales explicites et ratifiees.
+- [x] Fermeture `inconclusive` et decision `keep_current_v2.3` documentees:
+  aucune correction sure n'est prouvee; la candidate unique est rejetee sur
+  deux modeles.
+- [x] Aucun nouveau stage, modele runtime, caller ou capacite produit.
+- [x] Tests, artefacts content-free, documentation, commit et push prouves;
+  aucune livraison runtime n'est applicable puisque le runtime ne change pas.
 
 Message de commit recommande si active: `fix: preserve Stimmung in final dialogic posture`.
 
@@ -3896,6 +3899,40 @@ Gel de replication GPT-5.2 v2.5 du 1 septembre 2026:
   caps. La campagne autorisee doit encore s'arreter a
   `human_rating_required`; aucune notation, livraison runtime ou fermeture de
   4C.4 n'appartient a ce travail. 4O.Z reste non commence.
+
+Finalisation ratifiee v2.4/v2.5 du 1 septembre 2026:
+
+- les deux campagnes sont completes, ratifiees et sans dimension non notee:
+  `24/24` sorties valides pour GPT-5.1 et `24/24` pour GPT-5.2, sans retry,
+  fallback ni appel supplementaire pendant la finalisation offline;
+- avec GPT-5.1, `surface_only_v1` ameliore la delicatesse dans `4/12` cas et
+  la formulation dans `6/12`, avec `3` defaillances critiques. La decision
+  formelle est `fail`; cout observe `0.389553 USD`;
+- avec GPT-5.2, a protocole, messages, candidate, scorer et seuils identiques,
+  elle ameliore la delicatesse dans `4/12` cas et la formulation dans `5/12`,
+  avec `5` defaillances critiques. La decision formelle est aussi `fail`; cout
+  observe `0.25418820 USD`;
+- la replication invalide l'hypothese selon laquelle GPT-5.1 serait seul
+  responsable de l'echec. La candidate expressive elle-meme n'est pas une
+  correction robuste. `surface_only_v1` est rejetee et reste inactive;
+- les artefacts durables content-free sont
+  `benchmark/results/stimmung/2026-09-01-lot4c4-final-wording-v2-4-gpt-5-1.json`
+  (SHA-256 `7bcfd7f15b7941a3b1257594c3c0f694148a3aa4e1a3c4daba6cf1e182cdd2be`)
+  et
+  `benchmark/results/stimmung/2026-09-01-lot4c4-final-wording-v2-5-gpt-5-2.json`
+  (SHA-256 `4a6b0f6f1f38c6917a3dfd50ceeb992ca6a61a4ce1c20afcfaefcfdc3a6dc5da`);
+- F4 reste `partiel`: l'effet dialogique existe, mais les benefices et dommages
+  ne sont pas separes par une politique sure. La decision humaine de Tof est
+  `keep_current_v2.3`: conserver la consigne actuellement utilisee et laisser
+  le dialogue quotidien constituer l'epreuve qualitative principale de son
+  effectivite. Les benchmarks restent des gardes diagnostiques, jamais un
+  substitut au dialogue. La frontiere active conservee
+  `app/core/chat_prompt_context.py` a l'empreinte SHA-256
+  `9781ee92cf7f779debec0d11a9d6487278083824f3a77c3d9b7d17c7c3aaa169`,
+  identique dans le checkout et le conteneur;
+- 4C.4 ferme donc `inconclusive`, sans correctif runtime, prompt actif, modele
+  actif, observabilite produit, rebuild, restart ou deploiement. Une nouvelle
+  candidate ou campagne exige une decision distincte; 4O.Z reste non commence.
 
 ### Micro-lot 4O.Z - Contre-audit causal et fermeture du Lot 4
 
@@ -4159,8 +4196,9 @@ preuve lorsqu'un test existant couvre deja exactement l'invariant.
 - [x] 4C.2 ferme `corrige` ou `non requis` depuis les preuves 4S.1.
 - [x] 4C.3 ferme: affect et certitude epistemique separes sans perdre l'effet
   dialogique.
-- [ ] 4C.4 ferme `corrige`, `non requis` ou `inconclusive` depuis une preuve
-  causale de F4.
+- [x] 4C.4 ferme `inconclusive` depuis une preuve causale de F4, avec decision
+  produit `keep_current_v2.3` et dialogue quotidien comme epreuve qualitative
+  principale.
 - [ ] 4O.Z ferme: contre-audit causal, contrats et README concernes coherents.
 - [x] Corpus semantique multi-tours du caller valide humainement: ironie, affect rapporte,
   correction, intensite sans changement epistemique, question, demande, risque,

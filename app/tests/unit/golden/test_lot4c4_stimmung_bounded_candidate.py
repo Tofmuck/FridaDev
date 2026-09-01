@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import json
 from pathlib import Path
 import unittest
 from unittest import mock
@@ -12,7 +13,7 @@ from benchmark.suites.stimmung import final_wording_rating_v2 as rating
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-FREEZE_COMMIT = "e51de209a487c80a7939a283d4e49ad866811cd6"
+FREEZE_COMMIT = "7fcf26d8d3991b6d64f586b89025b9404316e30e"
 
 
 class Lot4C4BoundedCandidateTests(unittest.TestCase):
@@ -68,6 +69,19 @@ class Lot4C4BoundedCandidateTests(unittest.TestCase):
 
     def test_countercase_none_path_remains_byte_identical_and_is_not_scheduled(self) -> None:
         corpus = protocol.load_corpus(REPO_ROOT)
+        manifest = json.loads(
+            (
+                REPO_ROOT
+                / "benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2_4.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(
+            protocol._sha256_file(
+                REPO_ROOT
+                / "benchmark/suites/stimmung/final_wording_diagnostic.py"
+            ),
+            manifest["frozen_inputs"]["v1_message_builder_sha256"],
+        )
         countercases = [
             case
             for case in corpus["cases"]
@@ -77,7 +91,7 @@ class Lot4C4BoundedCandidateTests(unittest.TestCase):
         for case in countercases:
             self.assertEqual(
                 protocol.countercase_runtime_messages(case),
-                protocol.v23_countercase_runtime_messages(case),
+                v1._build_messages(case, "treatment"),
             )
         schedule_ids = {
             item["case_id"]

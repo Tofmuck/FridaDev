@@ -1,0 +1,55 @@
+{
+  "call_count": 24,
+  "call_status_counts": {
+    "valid": 24
+  },
+  "content_policy": {
+    "exception_text_included": false,
+    "raw_dialogue_included": false,
+    "raw_prompt_included": false,
+    "raw_provider_output_included": false,
+    "reasoning_text_included": false
+  },
+  "decision": "fail",
+  "evidence_source": "main_model_provider",
+  "finish_reason_counts": {
+    "stop": 24
+  },
+  "metrics": {
+    "critical_failure_count": 5,
+    "transition_delicacy_improved_count": 4,
+    "transition_delicacy_improvement_rate": 0.3333,
+    "transition_formulation_improved_count": 5,
+    "transition_formulation_improvement_rate": 0.4167,
+    "transition_rating_count": 12,
+    "unratable_dimension_count": 0
+  },
+  "observed_cost_usd": 0.2541882,
+  "outputs_complete": true,
+  "protocol_sha256": "802038682293f01c0e2e83c0ca25c170d7fa2bc557c324b669a816b02e1905ed",
+  "provider_results_observed": true,
+  "ratification_source": "tof_human_ratification",
+  "rating_count": 12,
+  "rating_source": "codex_assisted_review_for_tof",
+  "reason_codes": [
+    "critical_zero_tolerance_breached",
+    "delicacy_improvement_threshold_missed",
+    "formulation_improvement_threshold_missed"
+  ],
+  "route_counts": {
+    "models": {
+      "openai/gpt-5.2": 24
+    },
+    "providers": {
+      "openai": 24
+    }
+  },
+  "schema_version": "stimmung_final_wording_durable_result_v2_4",
+  "source_fingerprints": {
+    "ledger_sha256": "19b989d9ab1cff4b5e0725cd96a5ef2bba18fa2c1468bd5d1cf9702ea28f2a1f",
+    "mapping_sha256": "0758ed9f9d071288087f8e5ef67cca6d3ec2e340fe514ad72cd50f786f8ce7e4",
+    "packet_sha256": "48599c144304c80f01de76fe907c80734e1ef9431dedfede404b022e58a9ff00",
+    "ratification_sha256": "2fe98f104b2d1225db83963184e7c675772efc86d77daad5ab8ec2b9fb5e1ed9",
+    "ratings_sha256": "256bff07a7a0338d9cad25863839a7454253dcc6528516541f7e810b749c1a24"
+  }
+}

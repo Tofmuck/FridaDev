@@ -1,8 +1,8 @@
-# Lot 4C.4 — Phase A v2.3 du diagnostic de restitution finale
+# Lot 4C.4 — Diagnostic causal final v2.4/v2.5
 
 Date: 1 septembre 2026
-Statut: campagne v2.3 ratifiee; F4 `partiel`; 4C.4 reste ouvert pour une candidate bornee
-Portee: diagnostic causal v2.3 et correction suivante strictement expressive
+Statut: 4C.4 ferme `inconclusive`; decision `keep_current_v2.3`; F4 `partiel`; `surface_only_v1` rejetee et inactive
+Portee: diagnostic causal v2.3, candidate v2.4, replication v2.5 et decision produit sans correction runtime
 Exclusions: runtime actif, prompts actifs, modeles, settings, frontend et donnees operateur
 
 ## Decision v2.3
@@ -171,6 +171,47 @@ fermeture de 4C.4 restent separes.
 Aucun runtime actif, prompt, setting, frontend ou observabilite produit n'est
 modifie. Aucun rebuild, restart ou deploiement n'est effectue; 4O.Z et les lots
 suivants restent non commences.
+
+## Finalisation ratifiee v2.4/v2.5
+
+Les deux campagnes reduites sont completes, notees puis ratifiees. Le workflow
+offline a valide les empreintes exactes, deblinde seulement apres ratification,
+ecrit et relu les artefacts durables content-free, puis supprime les deux
+espaces temporaires prives et de revue. Aucun appel provider supplementaire
+n'a ete execute pendant cette finalisation.
+
+| Campagne | Modele | Delicatesse | Formulation | Defaillances critiques | Decision | Cout observe |
+| --- | --- | ---: | ---: | ---: | --- | ---: |
+| v2.4 | `openai/gpt-5.1` | 4/12 | 6/12 | 3 | `fail` | 0.389553 USD |
+| v2.5 | `openai/gpt-5.2` | 4/12 | 5/12 | 5 | `fail` | 0.25418820 USD |
+
+Les deux series ont `24/24` sorties valides, `12/12` comparaisons notees et
+zero dimension non notee. GPT-5.2 ne sauve donc pas la candidate: il conserve
+le meme faible gain de delicatesse, reduit le gain de formulation et augmente
+les defaillances critiques. L'echec n'est pas imputable au seul GPT-5.1; la
+politique `surface_only_v1` n'est pas une correction robuste.
+
+Les artefacts autoritatifs sont:
+
+- `benchmark/results/stimmung/2026-09-01-lot4c4-final-wording-v2-4-gpt-5-1.json`,
+  SHA-256 `7bcfd7f15b7941a3b1257594c3c0f694148a3aa4e1a3c4daba6cf1e182cdd2be`;
+- `benchmark/results/stimmung/2026-09-01-lot4c4-final-wording-v2-5-gpt-5-2.json`,
+  SHA-256 `4a6b0f6f1f38c6917a3dfd50ceeb992ca6a61a4ce1c20afcfaefcfdc3a6dc5da`.
+
+F4 reste `partiel`: Stimmung produit parfois un benefice de formulation, mais
+la candidate evaluee ne separe pas ce benefice des dommages au fond. La decision
+humaine de Tof est `keep_current_v2.3`: conserver la consigne active et prendre
+le dialogue quotidien comme epreuve qualitative principale de son effectivite.
+Les benchmarks restent des gardes diagnostiques et ne remplacent pas le
+dialogue. La frontiere active conservee est
+`app/core/chat_prompt_context.py`, SHA-256
+`9781ee92cf7f779debec0d11a9d6487278083824f3a77c3d9b7d17c7c3aaa169`,
+identique dans le checkout et le conteneur. 4C.4 est donc ferme `inconclusive`,
+sans cutover ni changement du
+runtime, du prompt actif, du modele actif, de l'observabilite produit ou du
+frontend. Une nouvelle candidate ou campagne ne constitue pas la continuation
+automatique de ce micro-lot et exige une decision distincte. 4O.Z reste non
+commence.
 
 ## Archive Phase A v2.2 supersedee
 

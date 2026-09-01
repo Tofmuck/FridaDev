@@ -1,18 +1,53 @@
 from __future__ import annotations
 
 import copy
+import hashlib
+import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
 from unittest import mock
 
 from benchmark.core import openrouter
+from benchmark.suites.stimmung import final_wording_rating_v2 as rating_v2
 from benchmark.suites.stimmung import final_wording_protocol_v2 as protocol_v24
 from benchmark.suites.stimmung import final_wording_gpt52_v25 as campaign_v25
+from benchmark.suites.stimmung import final_wording_gpt52_v25_finalize as finalize_v25
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 FREEZE_COMMIT = "f" * 40
+RESULTS_ROOT = REPO_ROOT / "benchmark/results/stimmung"
+
+
+def _write_0600(path: Path, value: object) -> None:
+    path.write_text(json.dumps(value), encoding="utf-8")
+    os.chmod(path, 0o600)
+
+
+def _codex_ratings(packet: dict[str, object]) -> dict[str, object]:
+    items = packet["items"]
+    assert isinstance(items, list)
+    return {
+        "schema_version": rating_v2.RATINGS_SCHEMA_VERSION,
+        "packet_sha256": packet["packet_sha256"],
+        "rating_source": "codex_assisted_review_for_tof",
+        "rater_id": "codex_for_tof",
+        "ratings_created_outside_runner": True,
+        "ratings": [
+            {
+                "blind_id": item["blind_id"],
+                "delicacy_effect": "equivalent",
+                "formulation_fit": "equivalent",
+                "psychologization": "none",
+                "certainty_change": "none",
+                "truth_or_evidence_change": "none",
+                "masked_target": "none",
+            }
+            for item in items
+        ],
+    }
 
 
 class _SyntheticGPT52Client:
@@ -230,6 +265,174 @@ class Lot4C4GPT52V25Tests(unittest.TestCase):
                     payload["provider"],
                     {"allow_fallbacks": False, "require_parameters": True},
                 )
+
+    def test_v25_finalizer_requires_ratification_then_preserves_gpt52_evidence(self) -> None:
+        campaign = campaign_v25.build_protocol(REPO_ROOT, freeze_commit=FREEZE_COMMIT)
+        with tempfile.TemporaryDirectory(dir="/tmp") as raw:
+            root = Path(raw)
+            private_dir = root / "private"
+            review_dir = root / "review"
+            result = campaign_v25.run_campaign(
+                repo_root=REPO_ROOT,
+                protocol=campaign,
+                client=_SyntheticGPT52Client(),
+                output_dir=private_dir,
+                review_export_dir=review_dir,
+                execution_authorized=True,
+                evidence_source="synthetic_test",
+            )
+            self.assertEqual(result["status"], "human_rating_required")
+            packet_path = review_dir / "rating_packet.json"
+            packet = json.loads(packet_path.read_text(encoding="utf-8"))
+            ratings_path = review_dir / "ratings.json"
+            _write_0600(ratings_path, _codex_ratings(packet))
+            ledger_path = private_dir / "call_ledger.json"
+            ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+            durable_path = root / "durable.json"
+
+            with mock.patch.object(
+                campaign_v25,
+                "expected_live_campaign_paths",
+                return_value=(private_dir, review_dir),
+            ):
+                with self.assertRaisesRegex(ValueError, "call_ledger_provenance_invalid"):
+                    rating_v2.finalize_campaign(
+                        campaign_dir=private_dir,
+                        rating_packet_path=packet_path,
+                        ratings_path=ratings_path,
+                        durable_output=durable_path,
+                    )
+                pending = finalize_v25.finalize_campaign(
+                    repo_root=REPO_ROOT,
+                    freeze_commit=FREEZE_COMMIT,
+                    campaign_dir=private_dir,
+                    rating_packet_path=packet_path,
+                    ratings_path=ratings_path,
+                    durable_output=durable_path,
+                )
+                self.assertEqual(pending["status"], "human_ratification_required")
+                self.assertTrue(private_dir.is_dir())
+                self.assertTrue(review_dir.is_dir())
+                self.assertFalse(durable_path.exists())
+
+                ratings_sha = hashlib.sha256(ratings_path.read_bytes()).hexdigest()
+                ratification_path = root / "ratification.json"
+                _write_0600(
+                    ratification_path,
+                    {
+                        "schema_version": rating_v2.RATIFICATION_SCHEMA_VERSION,
+                        "packet_sha256": packet["packet_sha256"],
+                        "ratings_sha256": ratings_sha,
+                        "ratification_source": "tof_human_ratification",
+                        "ratifier_id": "tof",
+                        "decision": "accept",
+                        "ratification_created_outside_provider_runner": True,
+                    },
+                )
+                artifact = finalize_v25.finalize_campaign(
+                    repo_root=REPO_ROOT,
+                    freeze_commit=FREEZE_COMMIT,
+                    campaign_dir=private_dir,
+                    rating_packet_path=packet_path,
+                    ratings_path=ratings_path,
+                    ratification_path=ratification_path,
+                    durable_output=durable_path,
+                )
+
+            self.assertEqual(artifact["decision"], "provider_campaign_required")
+            self.assertEqual(artifact["route_counts"]["models"], {"openai/gpt-5.2": 24})
+            self.assertEqual(artifact["observed_cost_usd"], ledger["observed_cost_usd"])
+            self.assertEqual(artifact["ratification_source"], "tof_human_ratification")
+            self.assertFalse(private_dir.exists())
+            self.assertFalse(review_dir.exists())
+            self.assertTrue(durable_path.is_file())
+
+    def test_v25_finalize_cli_is_offline(self) -> None:
+        artifact = {
+            "decision": "fail",
+            "call_count": 24,
+            "rating_count": 12,
+        }
+        with mock.patch.object(
+            finalize_v25,
+            "finalize_campaign",
+            return_value=artifact,
+        ) as finalize, mock.patch.object(
+            campaign_v25.OpenRouterClient,
+            "from_env",
+        ) as from_env:
+            status = finalize_v25.main(
+                [
+                    "--repo-root", str(REPO_ROOT),
+                    "--freeze-commit", FREEZE_COMMIT,
+                    "--campaign-dir", "/tmp/private",
+                    "--rating-packet", "/tmp/review/rating_packet.json",
+                    "--ratings", "/tmp/review/ratings.json",
+                    "--tof-ratification", "/tmp/ratification.json",
+                    "--durable-output", "/tmp/durable.json",
+                ]
+            )
+        self.assertEqual(status, 0)
+        finalize.assert_called_once()
+        from_env.assert_not_called()
+
+    def test_ratified_gpt51_and_gpt52_artifacts_reject_the_same_candidate(self) -> None:
+        expected = {
+            "2026-09-01-lot4c4-final-wording-v2-4-gpt-5-1.json": {
+                "model": "openai/gpt-5.1",
+                "cost": 0.389553,
+                "delicacy": 4,
+                "formulation": 6,
+                "critical": 3,
+            },
+            "2026-09-01-lot4c4-final-wording-v2-5-gpt-5-2.json": {
+                "model": "openai/gpt-5.2",
+                "cost": 0.2541882,
+                "delicacy": 4,
+                "formulation": 5,
+                "critical": 5,
+            },
+        }
+        for filename, evidence in expected.items():
+            with self.subTest(filename=filename):
+                artifact = json.loads(
+                    (RESULTS_ROOT / filename).read_text(encoding="utf-8")
+                )
+                self.assertTrue(rating_v2.validate_durable_artifact(artifact))
+                self.assertEqual(artifact["decision"], "fail")
+                self.assertEqual(
+                    artifact["reason_codes"],
+                    [
+                        "critical_zero_tolerance_breached",
+                        "delicacy_improvement_threshold_missed",
+                        "formulation_improvement_threshold_missed",
+                    ],
+                )
+                self.assertEqual(
+                    artifact["route_counts"]["models"],
+                    {evidence["model"]: 24},
+                )
+                self.assertEqual(artifact["observed_cost_usd"], evidence["cost"])
+                metrics = artifact["metrics"]
+                self.assertEqual(
+                    metrics["transition_delicacy_improved_count"],
+                    evidence["delicacy"],
+                )
+                self.assertEqual(
+                    metrics["transition_formulation_improved_count"],
+                    evidence["formulation"],
+                )
+                self.assertEqual(
+                    metrics["critical_failure_count"], evidence["critical"]
+                )
+                recalculated, reasons, observed = rating_v2._decision(
+                    evidence_source="main_model_provider",
+                    ledger={"outputs_complete": True},
+                    metrics=metrics,
+                )
+                self.assertEqual(recalculated, artifact["decision"])
+                self.assertEqual(reasons, artifact["reason_codes"])
+                self.assertTrue(observed)
 
     def test_dry_run_is_offline_and_frozen(self) -> None:
         summary = campaign_v25.dry_run(REPO_ROOT, freeze_commit=FREEZE_COMMIT)

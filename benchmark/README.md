@@ -866,10 +866,8 @@ strong barrier against an operator deliberately opening both locations.
 Synthetic tests exercise the workflow but can never yield a provider `pass` or
 `fail`. One candidate-side critical failure forces `fail`; a complete campaign
 still stops at `human_rating_required`. The candidate is not observable as an
-active policy: `surface_only_v1` is reserved content-free for a future cutover
-that would have to update the event/read-model/renderers together. F4 remains
-partial and Lot 4C.4 open pending the authorized reduced campaign and later
-human review or ratification.
+active policy. The ratified v2.4 result below rejected `surface_only_v1`; it
+must not be cut over or presented as a future active policy from this result.
 
 The v2.5 GPT-5.2 replication imports this frozen v2.4 campaign through
 `final_wording_gpt52_v25` instead of copying its runner. The sole
@@ -894,6 +892,37 @@ PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$PWD:$PWD/app" python3 -m \
   --freeze-commit <pushed-v2.5-commit> \
   --dry-run
 ```
+
+The frozen v2.5 runner remains byte-for-byte unchanged after its campaign.
+Offline human-rating finalization is provided separately by
+`final_wording_gpt52_v25_finalize`; it validates the exact v2.5 paths, protocol,
+ledger, model and cost before reusing the shared v2.4 scorer. It never creates a
+provider client.
+
+Both reduced campaigns completed 24/24 valid calls and 12/12 ratified blind
+comparisons, with no unratable dimension:
+
+| Campaign | Model | Delicacy improved | Formulation improved | Critical failures | Decision | Observed cost |
+| --- | --- | ---: | ---: | ---: | --- | ---: |
+| v2.4 | `openai/gpt-5.1` | 4/12 | 6/12 | 3 | `fail` | 0.389553 USD |
+| v2.5 | `openai/gpt-5.2` | 4/12 | 5/12 | 5 | `fail` | 0.25418820 USD |
+
+The model-only replication therefore rejects the hypothesis that GPT-5.1 alone
+caused the failure. `surface_only_v1` itself is not a robust correction and
+remains inactive. The human product decision is `keep_current_v2.3`: retain the
+active instruction and use ongoing real dialogue as the primary qualitative
+test of its effectiveness. Benchmarks remain diagnostic guards rather than a
+substitute for dialogue. F4 stays partial and Lot 4C.4 closes `inconclusive`,
+without runtime, prompt, active-model, frontend or observability-product
+change. A new candidate or campaign requires a separate decision rather than
+continuing this closed micro-lot.
+
+Durable content-free evidence:
+
+- `benchmark/results/stimmung/2026-09-01-lot4c4-final-wording-v2-4-gpt-5-1.json`
+  (SHA-256 `7bcfd7f15b7941a3b1257594c3c0f694148a3aa4e1a3c4daba6cf1e182cdd2be`);
+- `benchmark/results/stimmung/2026-09-01-lot4c4-final-wording-v2-5-gpt-5-2.json`
+  (SHA-256 `4a6b0f6f1f38c6917a3dfd50ceeb992ca6a61a4ce1c20afcfaefcfdc3a6dc5da`).
 
 ## Validation agent benchmark
 
