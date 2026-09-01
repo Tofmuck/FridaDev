@@ -3873,6 +3873,30 @@ Gel benchmark-only v2.4 du 1 septembre 2026:
   ratification. 4C.4 reste ouvert et `surface_only_v1` ne doit jamais etre
   presentee comme active avant livraison runtime separee.
 
+Gel de replication GPT-5.2 v2.5 du 1 septembre 2026:
+
+- v2.5 importe le protocole v2.4 sans recopier le corpus, les messages, la
+  candidate, le scorer, le runner resumable, le canari ou le workflow aveugle.
+  La seule variable provider-visible est le slug, de `openai/gpt-5.1` vers
+  `openai/gpt-5.2`; `surface_only_v1` reste strictement identique et inactive;
+- le raisonnement reste force a `{effort: high, exclude: true}` malgre le
+  defaut public `medium`; `max_tokens=8192`, timeout `900`, absence de sampling
+  et de `stop`, `allow_fallbacks=false`, `require_parameters=true`, zero retry,
+  Batch, Flex, Priority, fallback ou juge sont inchanges;
+- le preflight relit avant POST l'endpoint du slug exact puis sa fiche modele.
+  Il exige `reasoning` et `max_tokens`, l'effort `high`, au moins `400000`
+  tokens de contexte et `128000` de sortie maximale, et les prix geles
+  `1.75/14 USD` par million input/output. Toute derive arrete avant generation;
+- le calendrier reste `6 x 2 x 2 = 24` appels, canari compris en sequence 1.
+  Le plafond calcule vaut `3.04475500 USD`, le budget avec marge
+  `3.34923050 USD` et le cap absolu `4.00 USD`;
+- le gel autoritatif est `stimmung_final_wording_freeze_v2_5.json`. Il rejette
+  notamment un autre modele, une provenance GPT-5.1 presentee comme GPT-5.2,
+  une derive des messages/candidate/seuils, un fallback ou un depassement des
+  caps. La campagne autorisee doit encore s'arreter a
+  `human_rating_required`; aucune notation, livraison runtime ou fermeture de
+  4C.4 n'appartient a ce travail. 4O.Z reste non commence.
+
 ### Micro-lot 4O.Z - Contre-audit causal et fermeture du Lot 4
 
 Statut: non commence; dernier micro-lot du Lot 4

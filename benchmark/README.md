@@ -871,6 +871,30 @@ that would have to update the event/read-model/renderers together. F4 remains
 partial and Lot 4C.4 open pending the authorized reduced campaign and later
 human review or ratification.
 
+The v2.5 GPT-5.2 replication imports this frozen v2.4 campaign through
+`final_wording_gpt52_v25` instead of copying its runner. The sole
+provider-visible change is `openai/gpt-5.2`; all 24 messages, arm order,
+candidate SHA, scorer and decision rules remain v2.4-identical. Hidden
+reasoning is still forced to `high`, with `max_tokens=8192`, a 900-second
+timeout, no sampling or stop, and no retry, fallback or service tier.
+
+The v2.5 preflight checks the exact model endpoint capabilities and the fresh
+model metadata before any POST. It requires `reasoning`, `max_tokens`, support
+for effort `high`, at least 400k context and 128k output, and the frozen public
+prices of 1.75/14 USD per million input/output. Those prices produce a
+`3.04475500 USD` calculated ceiling, `3.34923050 USD` safety budget and a
+`4.00 USD` absolute cap. A GPT-5.1 observed route is rejected as provenance
+mismatch. The canary is sequence 1 of 24 and the terminal success state remains
+`human_rating_required`.
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$PWD:$PWD/app" python3 -m \
+  benchmark.suites.stimmung.final_wording_gpt52_v25 \
+  --repo-root "$PWD" \
+  --freeze-commit <pushed-v2.5-commit> \
+  --dry-run
+```
+
 ## Validation agent benchmark
 
 The validation suite uses the production prompt

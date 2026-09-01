@@ -130,6 +130,48 @@ critique. Le dry-run annonce `24` appels, `12` comparaisons, budget
 provider, rebuild, restart, deploiement ou changement runtime n'est effectue
 pendant le gel.
 
+## Replication GPT-5.2 v2.5 — candidate toujours inactive
+
+V2.5 repete exactement la comparaison causale v2.4 avec une variable unique:
+le payload remplace `openai/gpt-5.1` par `openai/gpt-5.2`. Un adaptateur etroit
+importe les constructeurs, validateurs et runner v2.4; il ne recopie ni
+calendrier, corpus, messages, candidate, scorer, checkpoints ni paquet aveugle.
+Les 24 messages et l'ordre A/B gardent leurs empreintes v2.4, et la candidate
+reste `surface_only_v1`, SHA-256
+`72d7b887b49f0e8d7d3e2ff0ba91a65e2772448f885f03455ffbd47f45b2d143`,
+inactive dans le runtime.
+
+Le profil force `reasoning={effort: high, exclude: true}` et conserve
+`max_tokens=8192`, timeout `900`, l'absence de sampling et de `stop`, ainsi que
+`allow_fallbacks=false` et `require_parameters=true`. Aucun retry, fallback,
+Batch, Flex, Priority, contre-cas, Validation, Stimmung ou modele juge n'est
+autorise. Une provenance observee GPT-5.1 ne peut pas satisfaire le ledger
+GPT-5.2.
+
+Avant le premier POST, le preflight relit les endpoints du slug exact et la
+fiche modele OpenRouter content-free. Il exige une route annoncant `reasoning`
+et `max_tokens`, l'effort `high`, au moins `400000` tokens de contexte,
+`128000` de sortie maximale et les prix geles `1.75/14 USD` par million de
+tokens input/output. Le calendrier reste `6 x 2 x 2 = 24`, avec le canari en
+sequence 1. Le plafond calcule est `3.04475500 USD`, le budget avec marge
+`3.34923050 USD` et le cap absolu `4.00 USD`.
+
+Le manifest autoritatif est
+`benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2_5.json`.
+Les preuves hermetiques v2.5 couvrent variable unique, effort `high`, prix et
+capacites, refus de provenance GPT-5.1, reutilisation du runner et arret
+synthetique a `human_rating_required`: `7/7` preuves v2.5 et `50/50` sur
+l'ensemble cible v1-v2.5, dans l'image applicative locale, checkout read-only,
+reseau coupe et `/tmp` en tmpfs. Le dry-run annonce `24` appels, budget
+`3.34923050 USD`, cap `4.00 USD` et `provider_campaign_required`. Le commit et
+le push du gel precedent obligatoirement tout POST. La campagne autorisee
+s'arrete au paquet aveugle: notation, deblindage, decision, cutover et
+fermeture de 4C.4 restent separes.
+
+Aucun runtime actif, prompt, setting, frontend ou observabilite produit n'est
+modifie. Aucun rebuild, restart ou deploiement n'est effectue; 4O.Z et les lots
+suivants restent non commences.
+
 ## Archive Phase A v2.2 supersedee
 
 ## Decision v2.2
