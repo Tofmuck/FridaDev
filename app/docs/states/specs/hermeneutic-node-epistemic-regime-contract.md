@@ -1,11 +1,11 @@
 # Hermeneutic Node Epistemic Regime Contract
 
-Statut: draft normatif ouvert
+Statut: contrat vivant partiellement livre; contre-audit 4O.Z du 1 septembre 2026; raccord `source_conflicts -> contradictoire` manquant assigne a 4C.5
 Portee: contrat doctrinal minimal pour `epistemic_regime`, `proof_regime` et `uncertainty_posture`
 
 ## 1. Purpose
 
-Cette spec fixe le socle doctrinal minimal du Lot 4.
+Cette spec fixe le socle doctrinal minimal du regime epistemique.
 
 Elle tranche:
 
@@ -14,8 +14,10 @@ Elle tranche:
 - la definition minimale de `uncertainty_posture`
 - les conditions minimales de passage entre classes
 
-Elle ne code rien.
-Elle ferme le contrat doctrinal qui devra preceder `app/core/hermeneutic_node/doctrine/epistemic_regime.py`.
+Elle decrit le contrat vise par
+`app/core/hermeneutic_node/doctrine/epistemic_regime.py`. Le runtime courant
+implemente les autres regimes, mais pas encore l'entree `contradictoire` depuis
+un conflit inter-sources structure.
 
 ## 2. Repo Grounding
 
@@ -30,12 +32,12 @@ Notamment:
 - `user_turn_input.py`
 - `stimmung_input.py`
 
-Le Lot 4 change de nature:
+Le runtime respecte la separation suivante:
 
 - `inputs/` = matieres canoniques que le noeud recoit
 - `doctrine/` = logique doctrinale que le noeud elabore
 
-La cible code de ce lot reste donc:
+L'implementation autoritative, avec la limite 4C.5 ci-dessus, est:
 
 - `app/core/hermeneutic_node/doctrine/epistemic_regime.py`
 
@@ -92,7 +94,7 @@ Cet ensemble est conserve tel quel car il reste:
 
 - deja aligne avec l'architecture de reference
 - court
-- suffisamment distinctif pour le futur code
+- suffisamment distinctif pour le code et les logs courants
 - plus robuste qu'une reduction qui fusionnerait des cas differents
 
 Distinctions minimales:
@@ -164,9 +166,9 @@ Definitions minimales:
 - `bloquante`
   - l'incertitude empeche une tenue substantielle propre du tour
 
-Utilite future minimale:
+Utilite runtime minimale:
 
-- preparer Lot 5 sans le pre-decider
+- alimenter `judgment_posture` sans la pre-decider
 - distinguer un doute mineur d'un blocage reel
 - permettre au noeud de nuancer sans tout suspendre
 
@@ -193,8 +195,15 @@ Ordre minimal de lecture:
 5. `incertain` si une lecture existe mais reste trop faible ou trop pauvre
 6. `suspendu` si aucune lecture responsable ne peut etre tenue a ce tour
 
+Ecart runtime confirme par 4O.Z: `build_source_conflicts()` peut produire un
+conflit d'ancrage explicite, mais le noeud primaire calcule actuellement
+`epistemic_regime` avant `source_conflicts` et `_explicit_conflict_signal()`
+retourne inconditionnellement `False`. Le regime `contradictoire` est donc
+inatteignable par ce chemin. 4C.5 doit corriger ce raccord sans inventer de
+conflit, avant que le Lot 4 puisse fermer.
+
 Cet ordre n'est pas une machine a etats exhaustive.
-Il fixe seulement les priorites minimales qui empechent un futur code arbitraire.
+Il fixe seulement les priorites minimales qui empechent une implementation arbitraire.
 
 ### 7.3 Minimal Passage Rules
 
@@ -252,7 +261,7 @@ Ces sorties servent a:
 - cadrer la tenue epistemique du noeud
 - preparer `judgment_posture`
 - preparer la hierarchie des sources
-- preparer le traitement futur des conflits inter-sources
+- cadrer le traitement des conflits inter-sources
 
 Elles ne servent pas a:
 
@@ -263,11 +272,10 @@ Elles ne servent pas a:
 
 ## 10. Non-goals
 
-Cette spec n'ouvre pas encore:
+Cette spec n'ouvre pas:
 
-- la runtime de `epistemic_regime.py`
 - la posture de jugement finale
 - la hierarchie complete des sources
-- le moteur complet de conflits inter-sources
+- l'extension du moteur de conflits au-dela des conflits deja structures
 - une machine a etats exhaustive
 - la redaction finale de la reponse utilisateur

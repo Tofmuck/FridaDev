@@ -1,7 +1,12 @@
 # Hermeneutic Node Stimmung Input Contract
 
-Statut: draft normatif ouvert
+Statut: contrat vivant livre; revalide pendant le contre-audit 4O.Z le 1 septembre 2026
 Portee: contrat d'entree utile pour `FridaDev`, sans importation de la machine `M6` complete
+
+Le runtime autoritatif est `stimmung_agent.py` -> persistance compacte dans
+`message.meta.affective_turn_signal` -> `stimmung_input.py` -> noeud primaire
+et Validation. Le signal brut n'atteint pas le payload principal; seule la
+directive d'enonciation derivee y est projetee.
 
 ## 1. Purpose
 
@@ -298,10 +303,10 @@ Le noeud ne doit pas traiter `stimmung` comme:
 
 ## 10. Non-goals
 
-Cette spec n'ouvre pas encore:
+Cette spec n'ouvre pas:
 
 - une gouvernance affective complete
 - une doctrine complete de souverainete ou de priorite
 - une importation brute de `M6`
-- la runtime complete de `stimmung_agent.py`
-- la runtime complete de `stimmung_input.py`
+- un second caller, un second agregateur ou un chemin runtime concurrent
+- une nouvelle politique de restitution finale

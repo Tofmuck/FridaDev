@@ -1,11 +1,11 @@
 # Hermeneutic Node Judgment Posture Contract
 
-Statut: draft normatif ouvert
+Statut: contrat vivant livre; revalide pendant le contre-audit 4O.Z le 1 septembre 2026
 Portee: contrat doctrinal minimal pour `judgment_posture`
 
 ## 1. Purpose
 
-Cette spec fixe le socle doctrinal minimal du Lot 5.
+Cette spec fixe le socle doctrinal minimal de `judgment_posture`.
 
 Elle tranche:
 
@@ -16,8 +16,8 @@ Elle tranche:
 - le lien explicite avec `epistemic_regime`, `proof_regime` et `uncertainty_posture` du Lot 4
 - les effets doctrinaux minimaux de chaque posture
 
-Elle ne code rien.
-Elle ferme le contrat doctrinal qui devra preceder `app/core/hermeneutic_node/doctrine/judgment_posture.py`.
+Elle decrit le contrat implemente par
+`app/core/hermeneutic_node/doctrine/judgment_posture.py`.
 
 ## 2. Repo Grounding
 
@@ -31,12 +31,12 @@ Notamment:
 - `user_turn_input.py`
 - `epistemic_regime.py`
 
-Le Lot 5 reste dans le meme cadre:
+Le runtime reste dans le meme cadre:
 
 - `inputs/` = matieres canoniques recues par le noeud
 - `doctrine/` = logique doctrinale elaboree par le noeud
 
-La cible code de ce lot reste donc:
+L'implementation autoritative est:
 
 - `app/core/hermeneutic_node/doctrine/judgment_posture.py`
 
@@ -194,7 +194,7 @@ Modulations minimales:
 - une `uncertainty_posture = bloquante` pousse vers `suspend`
 - une `uncertainty_posture = explicite` ne suffit pas a elle seule a produire `suspend`
 - `proof_regime = verification_externe_requise` n'impose plus a lui seul `suspend`
-- le lot 5 ferme `answer` downstream via garde-fou dur si la verification externe manque reellement
+- les hard guards de Validation courants ferment `answer` downstream si la verification externe manque reellement
 - `proof_regime = arbitrage_requis` pousse vers `suspend`
 
 ## 9. Minimal Effects
@@ -242,7 +242,7 @@ Invariants minimaux:
 
 ## 11. Non-goals
 
-Cette spec n'ouvre pas encore:
+Cette spec n'ouvre pas:
 
 - la validation finale aval
 - la formulation exacte de la reponse utilisateur

@@ -176,6 +176,17 @@ L'ordre d'exécution courant dans `chat_service` est observable :
    affective peut adapter la délicatesse ou le rythme, sans modifier la
    certitude, le régime de preuve ou la posture d'incertitude.
 
+La décision produit ratifiée par 4C.4 est `keep_current_v2.3` : le bloc courant
+de `chat_prompt_context.py` est conservé.
+La candidate benchmark `surface_only_v1` a été rejetée sur GPT-5.1 et GPT-5.2,
+reste inactive et n'est raccordée à aucun chemin runtime ou frontend.
+
+Limite active relevée par le contre-audit 4O.Z : le noeud primaire calcule le
+régime épistémique avant `source_conflicts`, tandis que son signal de conflit
+explicite reste neutralisé. Un conflit structuré peut donc être conservé dans
+le verdict sans produire le régime contractuel `contradictoire`; le correctif
+borné 4C.5 doit précéder la fermeture du Lot 4.
+
 Biblio et Agenda conservent leurs propres contrats, outils et états. Ils ne sont
 ni Memory, ni Summary, ni Identity, ni Web. Agenda conserve les confirmations
 humaines requises pour toute mutation externe significative.

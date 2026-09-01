@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, 4C.1 ferme apres cutover Validation Gemini 3.7 Flash medium et smoke live unique vert; 4S.0 et 4S.1 fermes, decision 4S.1 `strengthen`; 4C.2 ferme apres livraison du prompt renforce v2 qualifie `32/32` sur le primaire; 4C.3 ferme apres separation livree entre certitude epistemique et effet d'enonciation; 4C.4 ferme `inconclusive` avec decision produit `keep_current_v2.3`, apres rejet de la candidate bornee sur GPT-5.1 et GPT-5.2; 4O.Z non commence; observabilite causale complete non prouvee; Lots 5 a 8 et Z non commences
+Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, contre-audit 4O.Z execute mais bloque par le gap produit `source_conflicts -> contradictoire`, micro-lot correctif 4C.5 non commence; classification globale attendue `strengthen`, caller renforce, F2 corrige par separation epistemique/enonciative, F4 `partiel` et 4C.4 `inconclusive` avec decision produit `keep_current_v2.3`; Lots 5 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -1637,7 +1637,7 @@ Portee architecturale de cette acceptation:
 
 # LOT 4 - Audit causal et consolidation de Stimmung
 
-Statut: goldens techniques du coeur livres; 4C.1, 4S.0, 4S.1, 4C.2, 4C.3 et 4C.4 fermes; prompt Stimmung renforce v2 qualifie `32/32` sur le primaire puis livre; certitude epistemique et effet d'enonciation separes; decision `keep_current_v2.3`, candidate de restitution bornee rejetee sur GPT-5.1 et GPT-5.2 sans cutover; observabilite causale complete non prouvee; 4O.Z non commence
+Statut: actif; 4C.1, 4S.0, 4S.1, 4C.2, 4C.3 et 4C.4 fermes; 4O.Z execute mais reste ouvert apres identification du gap produit `source_conflicts -> contradictoire`; 4C.5 correctif non commence; classification globale attendue `strengthen`; prompt Stimmung renforce v2 qualifie `32/32` sur le primaire puis livre; certitude epistemique et effet d'enonciation separes pour Stimmung; F4 reste `partiel`, 4C.4 `inconclusive` et la decision produit reste `keep_current_v2.3`; candidate `surface_only_v1` rejetee et inactive; Lot 5 non commence
 Nature: audit causal multi-tours, correctifs bornes, benchmark sous GO separe
 et observabilite synchrone, sans extension fonctionnelle
 Dependance: Lot 3 ferme
@@ -3936,10 +3936,185 @@ Finalisation ratifiee v2.4/v2.5 du 1 septembre 2026:
 
 ### Micro-lot 4O.Z - Contre-audit causal et fermeture du Lot 4
 
-Statut: non commence; dernier micro-lot du Lot 4
+Statut: contre-audit execute le 1 septembre 2026; reste ouvert; micro-lot correctif 4C.5 requis; Lot 5 non commence
 Effort recommande: `extra high`
 Nature: audit transversal, tests et documentation; aucun correctif opportuniste
 Prerequis: 4C.1, 4S.0, 4S.1 et 4C.3 fermes; 4C.2 et 4C.4 fermes ou non requis
+
+#### Contre-audit execute le 1 septembre 2026
+
+Le contre-audit a reutilise les contrats, fixtures, goldens, projections et
+smokes existants. Aucun nouveau corpus, harness, prompt, modele, provider,
+appel reseau, tour utilisateur, runtime ou frontend produit n'a ete ajoute ou
+modifie. Le contre-audit a corrige les statuts documentaires devenus faux et a
+identifie un gap produit bloquant: `build_source_conflicts()` peut produire un
+conflit d'ancrage structure, mais `build_epistemic_regime()` est appele avant ce
+calcul et `_explicit_conflict_signal()` retourne toujours `False`. Le regime
+contractuel `contradictoire` est donc inatteignable dans le primaire.
+
+Classification globale attendue apres correction: `strengthen`. Elle est
+imposee par les renforcements reels deja livres: transport structurel complet
+vers Validation en 4C.1,
+renforcement du caller en 4C.2, puis separation entre effet epistemique et
+effet d'enonciation en 4C.3. Les decisions locales restent distinctes:
+
+- caller: `strengthen`, prompt v2 qualifie `32/32` puis livre par 4C.2;
+- F2: `strengthen`, ancien rabattement affectif de la certitude retire et
+  remplace par la directive d'enonciation de 4C.3;
+- F4: `inconclusive`, toujours `partiel`; decision produit
+  `keep_current_v2.3`. La candidate benchmark `surface_only_v1` a echoue sur
+  GPT-5.1 et GPT-5.2, reste rejetee et inactive.
+
+#### Matrice causale autoritative
+
+Les noms de tests ci-dessous designent les preuves exactes; toutes lisent le
+HEAD courant et les fixtures ne recopient pas les algorithmes produit.
+
+| Transition | Contrat vivant | Source autoritative | Evenement et champs content-free | Reader, read-model, API, surface | Preuve exacte | Statut |
+| --- | --- | --- | --- | --- | --- | --- |
+| caller primaire/fallback/fail-open | `hermeneutic-node-stimmung-input-contract.md` | `stimmung_agent.py`, `chat_turn_runtime_inputs.run_stimmung_agent_stage` | `stimmung_prompt_prepared`: caller, modele, counts et parametres bornes; `stimmung_agent`: `present`, tonalites fermees, `confidence`, `decision_source`, `reason_code` | `log_store.read_chat_log_events`, projection admin; diagnostic de stage `/hermeneutic-admin` | `test_chat_turn_logger_hermeneutic_observability.py::test_stimmung_agent_stage_emits_compact_upstream_payload`; `test_lot4_stimmung_causal_goldens.py::test_primary_fallback_and_fail_open_provenance_remain_distinct` | prouve |
+| persistance -> rehydratation | contrat Stimmung, pipeline runtime | `chat_service.chat_response`, `chat_turn_runtime_inputs.store_latest_user_affective_turn_signal`, `conversations_store.save_conversation/load_conversation` | aucun event n'est reutilise comme source metier; la relecture est resumee ensuite par `hermeneutic_node_insertion.inputs.stimmung` | stockage conversationnel, puis reader du seam | `test_lot4_stimmung_causal_goldens.py::test_real_coordinator_store_functions_round_trip_and_aggregate_four_primary_signals`; `::test_json_and_stream_share_the_same_store_fake_signal_history_without_duplication` | prouve |
+| rehydratation -> agregation | contrat Stimmung | `stimmung_input.extract_recent_affective_turn_signals/build_stimmung_input` | `hermeneutic_node_insertion.inputs.stimmung`: `present`, `dominant_tone`, `active_tones`, `stability`, `shift_state`, `turns_considered` | projection admin de stage; `/hermeneutic-admin` | `test_lot4_stimmung_causal_goldens.py::test_multi_turn_corpus_observes_shift_alternation_neutral_return_and_invalid_middle`; `test_stimmung_input.py::test_build_stimmung_input_returns_missing_when_latest_user_signal_is_unavailable` | prouve |
+| agregation -> regime primaire | contrats Stimmung et regime epistemique | `primary_node.run_primary_node`, `epistemic_regime.build_epistemic_regime`, `judgment_posture.build_enunciation_directive` | `primary_node`: triplets `epistemic_*` et `enunciation_*`; fail-open ferme et `reason_code` | garde de payload, projection admin et reader causal | `test_lot4_stimmung_causal_goldens.py::test_absent_stable_and_shifted_stimmung_are_epistemically_inert`; `::test_primary_coordinator_keeps_strong_epistemic_certainty_and_separates_enunciation` | prouve |
+| conflit inter-sources -> regime `contradictoire` | contrat regime epistemique | `source_conflicts.build_source_conflicts`, `primary_node.run_primary_node`, `epistemic_regime._explicit_conflict_signal` | `primary_node.source_conflicts` peut exposer un conflit content-free, mais `epistemic_regime` ne peut pas emettre `source_conflict` depuis ce resultat | les readers preservent le conflit et le triplet epistemique tels quels; aucune projection ne doit inventer le raccord | `test_source_conflicts.py::test_build_source_conflicts_detects_residual_source_anchor_conflict`; inspection autoritative de `_explicit_conflict_signal()` et de l'ordre du primaire | gap produit |
+| primaire -> Validation | contrat Validation | `validation_canonical_projection.build_projection`, `validation_messages.build_messages_with_projection`, `validation_agent.run_validation_agent` | `validation_prompt_prepared`: version, contrat, chars/budget, familles incluses/omises/no-data/invalides, statut et raison de livraison Stimmung, provenance de tentative | `_canonical_projection_summary`, `providers.secondary.validation.canonical_projection`, `/api/admin/logs/chat/turns`, deux surfaces | `test_lot4_stimmung_causal_goldens.py::test_validation_capture_preserves_complete_stimmung_independent_of_neighbor_volume_and_names`; `test_log_store_phase3.py::test_validation_projection_rejects_partial_or_unproved_full_in_read_models` | prouve |
+| Validation -> posture/payload principal | contrats Validation et posture | `validation_contract.build_validated_output_payload`, `validation_canonical_projection`, `chat_prompt_context.build_hermeneutic_judgment_block` | `validation_agent` et `prompt_injection`: deux triplets stricts, posture/regime finaux; `prompt_prepared` reste counts-only | reader donne priorite a Validation; bloc principal sans signal Stimmung brut | `test_lot4_stimmung_causal_goldens.py::test_main_model_receives_only_distinct_derived_epistemic_and_enunciation_effects`; `test_validation_agent.py::test_canonical_projection_is_whole_bounded_repeatable_and_rejects_partial_metadata` | prouve |
+| evenements -> garde/projection | contrat observabilite agentique | `hermeneutic_node_logger`, `observability_payload_guard_stage_schema`, `admin_log_projection` | six champs causaux allowlistes; incoherence ou historique incomplet -> `unknown`; contenu brut bloque | `log_store.read_chat_log_events(payload_projection=admin)` | `test_chat_turn_logger_hermeneutic_observability.py::test_primary_node_fail_open_event_keeps_compact_cause_without_raw_exception`; `test_observability_payload_guard.py::test_validation_and_stimmung_content_free_payloads_pass` | prouve |
+| reader -> read-model/API | contrats observabilite et dashboard | `turn_pipeline_read_model._dialogic_effects_summary/build_turn_pipeline_item`, `log_store.read_chat_turn_pipeline`, `admin_logs_dashboard_routes.api_admin_chat_log_turns` | meme vocabulaire strict; Validation prime sur le primaire; fail-open reste distinct | `hermeneutic.dialogic_effects`, `/api/admin/logs/chat/turns` | `test_agentic_observability_statuses.py::test_turn_pipeline_projects_only_authoritative_dialogic_effects`; `test_frontend_logs_phase5.py::test_frontend_flow_contract_selection_then_scoped_deletes` | prouve |
+| read-model/event -> renderer `/log` | contrats observabilite et dashboard | `validation_projection.js`, `log/log.js` | aucun parsing de texte libre; causalite, livraison Validation et fail-open normalises | table de tours et groupes d'evenements `/log` | `test_validation_projection_module.js::dialogic effects reject causal mutations and cannot fabricate factual caution`; `test_frontend_browser_smoke.js::logs page applies filters from query string and exports scoped markdown in browser` | prouve |
+| event -> renderer `/hermeneutic-admin` | contrats observabilite et dashboard | `admin_log_projection`, `validation_projection.js`, `hermeneutic_admin/render.js` | stages critiques content-free; `full`, historique, invalide et fail-open ne sont pas requalifies | `/api/admin/logs/chat`, diagnostic de tour `/hermeneutic-admin` | `test_frontend_browser_smoke.js::hermeneutic admin keeps turn selection targeted and stage payloads content-free` | prouve |
+| Presence, hard guards et final locks | contrats Validation, posture et pipeline runtime | `validation_contract`, `chat_agent_lane_orchestration.resolve_agent_lane_assistant_output`, `chat_llm_flow` | final lock: source, raison et meta content-free; Presence exige `answer/presence` et vaut exactement `...`; fail-open ne l'invente pas | manifeste, logs de persistance et rehydratation | `test_lot4_stimmung_causal_goldens.py::test_stimmung_does_not_create_presence_clarify_suspend_or_override_hard_guards`; `test_chat_agent_lane_orchestration.py::test_invalid_domain_locks_fall_back_to_validated_presence_only`; `test_chat_llm_flow.py::test_presence_override_is_exact_single_save_success_with_normal_dialogue_derivations` | prouve |
+| JSON/streaming -> persistance | pipeline runtime | `chat_llm_flow.run_llm_exchange`, `chat_assistant_finalization` | `persist_response`, terminal streaming et meta assistant content-free; un seul save canonique | historique recharge et transport chat | `test_lot4_stimmung_causal_goldens.py::test_json_and_stream_share_the_same_store_fake_signal_history_without_duplication`; `test_lot9_golden_harness.py::test_chat_fixture_covers_non_stream_stream_and_single_persistence` | prouve |
+| capsule -> manifest | pipeline runtime, observabilite agentique | `chat_main_payload.prepare_main_payload`, `main_payload_manifest.build_main_payload_manifest` | `main_payload_manifest_v1`: lanes, final lock, capsule, counts et statuts sans contenu; lock exclut la capsule et le modele | projection admin du manifest | `test_main_payload_manifest.py::test_continuity_capsule_injection_is_structured_and_content_free`; `::test_final_lock_keeps_continuity_capsule_out_of_prompt`; `test_lot9_golden_harness.py::test_lot9b_coordinator_manifest_capsule_is_terminal_stable_and_content_free` | prouve |
+| politique finale et artefacts 4C.4 | rapport 4C.4 | `chat_prompt_context.py`; finaliseurs et validateurs v2.4/v2.5 | artefacts durables: counts, decisions, metriques, empreintes et flags content-free uniquement | aucune projection runtime de `surface_only_v1`, car candidate inactive | `test_lot4c4_stimmung_bounded_candidate.py::test_raw_stimmung_and_runtime_policy_mutations_are_rejected`; `test_lot4c4_stimmung_gpt52_v25.py::test_ratified_gpt51_and_gpt52_artifacts_reject_the_same_candidate` | prouve |
+
+#### Findings Z1 a Z9
+
+- Z1 `prouve`: un signal est stocke une fois sur le tour user, relu dans
+  l'ordre et agrege sur quatre signaux valides maximum; les mutations retrait,
+  duplication, inversion, cinquieme signal et double reconstruction echouent.
+- Z2 `prouve`: `epistemic_regime.py` ignore explicitement Stimmung et les
+  goldens absent/stable/transition conservent certitude, preuve et incertitude
+  a inputs epistemiques identiques; seul `enunciation_directive` peut changer.
+- Z3 `prouve`: Validation exige et recopie les deux effets distincts; le bloc
+  principal transporte l'effet d'enonciation derive sans `stimmung_input`,
+  tonalite ou signal brut.
+- Z4 `prouve`: caller et Validation conservent `primary`, `fallback` et
+  `fail_open`; les readers et renderers refusent toute requalification en
+  succes.
+- Z5 `prouve`: logger, garde, projection admin, reader, read-model, API et les
+  deux renderers partagent le meme vocabulaire causal ferme et le meme
+  normaliseur frontend; aucun texte libre ne sert de source.
+- Z6 `prouve`: Presence, questions, demandes, risques, actions, hard guards,
+  final locks, JSON/streaming, persistance, capsule et manifest restent couverts
+  par les goldens transversaux et les suites voisines.
+- Z7 `gap produit`: aucun ancien raccord `stimmung_caution`, branche candidate
+  ou politique 4C.4 n'est appele par le runtime et `surface_only_v1` reste
+  confinee aux fixtures et outils benchmark. En revanche, le contrat vivant du
+  regime epistemique exige `contradictoire` sur conflit materiel explicite,
+  alors que `_explicit_conflict_signal()` neutralise ce raccord. Cette
+  contradiction code/contrat bloque la fermeture et est assignee a 4C.5.
+- Z8 `prouve`: la frontiere active reste `chat_prompt_context.py` sous decision
+  `keep_current_v2.3`; `surface_only_v1` est rejetee, inactive et absente du
+  runtime.
+- Z9 `prouve`: les deux artefacts 4C.4 gardent leurs SHA-256 annonces, `24/24`
+  sorties et `12/12` notations chacun, zero dimension non notee, decisions
+  `fail`, et leur politique de contenu interdit dialogue, prompt, sortie
+  provider, raisonnement et texte d'exception.
+
+#### Preuves, sensibilite et limites
+
+Les preuves ciblees ont revalide la cloture 4C.4 `17/17`, le coeur causal, la
+doctrine, Validation, le payload principal, Presence, les final locks,
+JSON/streaming, la persistance, la capsule, le manifest, l'observabilite, les
+read-models, les API et les contrats statiques frontend. Le normaliseur
+frontend causal passe en ciblage `5/5`. Une invocation documentaire trop
+etroite a nomme par erreur `tests.unit.chat.test_chat_agent_lane_orchestration`;
+les `317` autres tests de cette invocation etaient verts et le module reel
+`tests.unit.core.test_chat_agent_lane_orchestration` a ensuite passe `3/3`.
+Cet ecart de commande n'est ni un ecart de code ni un ecart de baseline.
+
+Les mutations rejetees couvrent notamment: retrait/duplication/inversion du
+signal, fenetre ou hysteresis fausse, transition transformee en prudence
+epistemique, disparition ou duplication de la directive, livraison Validation
+inventee, fallback presente comme primaire, fail-open presente comme succes,
+contenu brut ajoute, projection incoherente et influence frontend fabriquee.
+
+Le gap bloquant a ete reproduit sans reseau dans l'image locale, sur un cas
+synthetique content-free commun aux vrais builders: `build_source_conflicts()`
+retourne un conflit, puis `build_epistemic_regime()` retourne
+`a_verifier/verification_externe_requise` au lieu de `contradictoire`. Le
+diagnostic imprime uniquement
+`source_conflicts_count=1`, les deux regimes fermes et
+`reproduced_gap=True`. Les deux tests unitaires voisins executes separement
+passent `2/2`; ils prouvent les composants isoles et expliquent pourquoi la
+suite complete verte n'a pas detecte l'absence du raccord transversal.
+
+La decouverte Python hermetique complete, JavaScript complet et Chromium
+complet sont executes une seule fois a la fin du contre-audit; leurs totaux
+autoritatifs sont inscrits ci-dessous apres execution:
+
+- `python -m unittest discover`, dans l'image applicative locale avec checkout
+  read-only, reseau coupe et `/tmp` en tmpfs: `2881/2881` en `733.243 s`;
+- `node --test app/tests/unit/frontend_chat/*.js`, sous namespace reseau vide:
+  `140/140`;
+- `node --test app/tests/integration/frontend_browser/*.js`, sous namespace
+  reseau avec loopback local uniquement, cache Playwright existant, sans
+  installation ni telechargement: `19/19`.
+
+Les trois passes finissent avec zero echec, erreur, skip, TODO ou expected
+failure. Elles ont ete executees une seule fois apres le premier patch
+documentaire; les ajustements suivants ne touchent que le constat de gap et le
+statut de fermeture.
+
+Limites residuelles non bloquantes: la fixture de persistance traverse les
+fonctions produit et une representation de lignes, pas une DB PostgreSQL
+operateur; aucune campagne provider ni aucun tour utilisateur n'est rejoue.
+F4 ne devient pas une dette sans proprietaire: il reste la decision produit
+explicite `keep_current_v2.3`; toute nouvelle candidate ou campagne exigerait
+un micro-lot distinct decide par Tof. Le gap `contradictoire` est, lui,
+bloquant et assigne au micro-lot 4C.5 ci-dessous. Le Lot 5 reste entierement
+ouvert et non commence.
+
+#### Micro-lot 4C.5 - Raccorder les conflits explicites au regime contradictoire
+
+Statut: non commence; correctif requis avant reprise et fermeture de 4O.Z
+
+Nature: correction de coherence doctrinale a comportement borne; aucune
+extension de famille de conflit, de modele, de prompt, de provider, de route,
+de surface ou de capacite.
+
+Fichiers candidats bornes:
+
+- `app/core/hermeneutic_node/runtime/primary_node.py`;
+- `app/core/hermeneutic_node/doctrine/epistemic_regime.py`;
+- tests doctrine/primaire/Validation, observabilite et deux renderers voisins;
+- contrats vivants et cette roadmap si leur verite change.
+
+Invariants:
+
+- consommer une seule fois le resultat structure de `build_source_conflicts()`;
+- produire `contradictoire/arbitrage_requis/bloquante` seulement lorsqu'un
+  conflit materiel explicite valide existe, sans heuristique textuelle;
+- ne pas modifier le regime en l'absence de conflit et ne jamais laisser
+  Stimmung creer, aggraver ou resoudre un conflit de sources;
+- propager le meme etat causal content-free dans Validation, evenement,
+  reader, read-model, API et les deux renderers, sans faux succes;
+- preserver Presence, hard guards, final locks, JSON/streaming, persistance,
+  capsule et manifest.
+
+Preuves minimales:
+
+- test sensible d'integration primaire rejetant la mutation qui ignore un
+  `source_conflicts` valide;
+- contre-cas absence, conflit invalide et signal Stimmung seul;
+- tests Validation/observabilite/read-model/frontend/navigateur des transitions
+  `contradictoire`, puis suites completes selon le risque.
+
+Condition de sortie: conflit explicite structure -> regime `contradictoire` ->
+posture/Validation -> evenement -> reader/read-model/API -> deux renderers
+prouve de bout en bout; aucune nouvelle detection de conflit; 4O.Z repris et
+ferme seulement apres contre-audit vert. Lot 5 toujours non commence.
 
 Objectif exact: verifier que les corrections et decisions precedentes forment
 un pipeline coherent, observable et documente, puis fermer le Lot 4 avant tout
@@ -3974,16 +4149,18 @@ Decision documentaire finale:
 
 Condition de fermeture:
 
-- [ ] Tous les micro-lots obligatoires sont fermes et les conditionnels classes.
-- [ ] Corpus et campagne primaire/fallback ont une decision explicite.
-- [ ] F2 est corrige et F4 tranche.
-- [ ] Matrice causale backend/read-model/frontend et navigateur complete.
-- [ ] Suites finales et sensibilite restent vertes sans skip nouveau.
-- [ ] Roadmap, contrats et README concernes sont coherents.
-- [ ] Commit, push, worktree propre, divergence `0/0` et runtime prouve.
-- [ ] Lot 5 reste non commence jusqu'a cette fermeture.
+- [ ] Tous les micro-lots obligatoires sont fermes et les conditionnels classes: 4C.5 reste requis.
+- [x] Corpus et campagne primaire/fallback ont une decision explicite.
+- [x] F2 est corrige et F4 tranche.
+- [ ] Matrice causale backend/read-model/frontend et navigateur complete: raccord `contradictoire` manquant.
+- [x] Suites finales et sensibilite restent vertes sans skip nouveau.
+- [x] Roadmap, contrats et README concernes decrivent le gap courant.
+- [ ] Correctif 4C.5 et reprise 4O.Z committes/pousses, worktree propre,
+  divergence `0/0` et runtime prouve.
+- [x] Lot 5 reste non commence jusqu'a cette fermeture.
 
-Message de commit recommande: `docs: close Lot 4 Stimmung causal consolidation`.
+Message de commit de ce contre-audit bloque:
+`docs: record Lot 4O.Z causal gap`.
 
 ## Passe 4.0 - Goldens causaux hermetiques
 
@@ -4199,16 +4376,17 @@ preuve lorsqu'un test existant couvre deja exactement l'invariant.
 - [x] 4C.4 ferme `inconclusive` depuis une preuve causale de F4, avec decision
   produit `keep_current_v2.3` et dialogue quotidien comme epreuve qualitative
   principale.
-- [ ] 4O.Z ferme: contre-audit causal, contrats et README concernes coherents.
+- [ ] 4O.Z ferme: bloque par 4C.5, contrats et README concernes coherents.
 - [x] Corpus semantique multi-tours du caller valide humainement: ironie, affect rapporte,
   correction, intensite sans changement epistemique, question, demande, risque,
   action materielle et contre-cas Presence.
 - [x] Reception effective par Validation et posture finale prouvees.
-- [ ] Matrice observabilite backend/read-model/frontend prouvee.
+- [ ] Matrice observabilite backend/read-model/frontend prouvee: toutes les transitions sauf `source_conflicts -> contradictoire` sont prouvees.
 - [x] Primaire et fallback distingues sans requalification d'echec.
 - [x] Findings F1 a F6 valides, invalides ou nuances par preuves.
-- [ ] Decision globale `strengthen` documentee; decisions du caller, de F2 et
-  de F4 classees separement depuis leurs preuves.
+- [ ] Decision globale `strengthen` finale differee jusqu'a la reprise de 4O.Z;
+  classification attendue et decisions du caller, de F2 et de F4 documentees
+  separement depuis leurs preuves.
 - [x] Aucun caller, mode ou capacite produit ajoute.
 - [x] Aucun micro-lot correctif ou Lot 5 commence implicitement.
 

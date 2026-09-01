@@ -76,7 +76,12 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Note suspendue memoire/intention `feed her from herself`: `todo-todo/memory/Frida_from_herself.md`
 - Archive recadrage mutable add-only ontologique: `todo-done/refactors/mutable-identity-add-only-ontology-todo.md`
 - Archive refonte des mutables identity judge-first: `todo-done/refactors/mutable-identity-judge-refactor-todo.md`
-- Roadmap active de consolidation Presence dialogique / Identity mutable, avec observabilite backend et frontend obligatoire dans chaque micro-lot: `todo-todo/refactors/fridadev-dialogic-presence-mutable-identity-consolidation-todo.md`
+- Roadmap active de consolidation Presence dialogique / Identity mutable:
+  Lots 0 a 3 fermes, Lot 4 bloque par le raccord manquant des conflits
+  explicites au regime `contradictoire` releve en 4O.Z, micro-lot 4C.5 non
+  commence et Lot 5 non commence; observabilite backend et frontend obligatoire
+  dans chaque micro-lot:
+  `todo-todo/refactors/fridadev-dialogic-presence-mutable-identity-consolidation-todo.md`
 - Contrat source-of-truth juge mutable: `states/specs/mutable-identity-judge-contract.md`
 - Validation finale refonte mutable judge-first 2026-05-25: `todo-done/validations/mutable-identity-judge-final-validation-2026-05-25.md`
 - Roadmap finale produit Frida 1.0: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
