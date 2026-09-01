@@ -191,6 +191,11 @@
     providerRoutingSent: null,
     providerFallbacksAllowed: null,
     providerRequireParameters: null,
+    responseFormatSent: null,
+    responseFormatType: "",
+    jsonSchemaName: "",
+    jsonSchemaStrict: null,
+    jsonSchemaAdditionalProperties: null,
   });
 
   const normalizeRequest = (request = {}) => {
@@ -207,20 +212,25 @@
     const historicalRouting = request.providerRoutingSent === false
       && request.providerFallbacksAllowed == null
       && request.providerRequireParameters == null;
-    const active = policyVersion === "validation_request_gemini_3_7_flash_medium_v1"
+    const strictSchema = request.responseFormatSent === true
+      && request.responseFormatType === "json_schema"
+      && request.jsonSchemaName === "validation_agent_verdict_v1"
+      && request.jsonSchemaStrict === true
+      && request.jsonSchemaAdditionalProperties === false;
+    const active = policyVersion === "validation_request_gemini_3_7_flash_medium_strict_v2"
       && decisionSource === "primary"
       && requestedModel === "google/gemini-3.7-flash"
       && requestedEffort === "medium" && effectiveEffort === "medium"
       && request.reasoningSent === true && request.reasoningExcluded === true
       && maxTokens === 500 && request.temperatureSent === false && request.topPSent === false
-      && activeRouting;
-    const fallback = policyVersion === "validation_request_gpt_5_4_nano_fallback_v1"
+      && activeRouting && strictSchema;
+    const fallback = policyVersion === "validation_request_gpt_5_4_nano_fallback_strict_v2"
       && decisionSource === "fallback"
       && requestedModel === "openai/gpt-5.4-nano"
       && requestedEffort === "none" && effectiveEffort === "none"
       && request.reasoningSent === false && request.reasoningExcluded === false
-      && maxTokens === 140 && request.temperatureSent === true && request.topPSent === true
-      && historicalRouting;
+      && maxTokens === 140 && request.temperatureSent === false && request.topPSent === false
+      && activeRouting && strictSchema;
     const legacy = policyVersion === "validation_request_gemini_3_1_flash_lite_v1"
       && decisionSource === "primary"
       && requestedModel === "google/gemini-3.1-flash-lite"
@@ -252,6 +262,11 @@
       providerRoutingSent: request.providerRoutingSent,
       providerFallbacksAllowed: request.providerFallbacksAllowed ?? null,
       providerRequireParameters: request.providerRequireParameters ?? null,
+      responseFormatSent: request.responseFormatSent ?? null,
+      responseFormatType: toText(request.responseFormatType),
+      jsonSchemaName: toText(request.jsonSchemaName),
+      jsonSchemaStrict: request.jsonSchemaStrict ?? null,
+      jsonSchemaAdditionalProperties: request.jsonSchemaAdditionalProperties ?? null,
     };
   };
 
@@ -277,6 +292,11 @@
       providerRoutingSent: request.validation_provider_routing_sent,
       providerFallbacksAllowed: request.validation_provider_fallbacks_allowed,
       providerRequireParameters: request.validation_provider_require_parameters,
+      responseFormatSent: request.validation_response_format_sent,
+      responseFormatType: request.validation_response_format_type,
+      jsonSchemaName: request.validation_json_schema_name,
+      jsonSchemaStrict: request.validation_json_schema_strict,
+      jsonSchemaAdditionalProperties: request.validation_json_schema_additional_properties,
     });
   };
 
@@ -302,6 +322,11 @@
       providerRoutingSent: request.provider_routing_sent,
       providerFallbacksAllowed: request.provider_fallbacks_allowed,
       providerRequireParameters: request.provider_require_parameters,
+      responseFormatSent: request.response_format_sent,
+      responseFormatType: request.response_format_type,
+      jsonSchemaName: request.json_schema_name,
+      jsonSchemaStrict: request.json_schema_strict,
+      jsonSchemaAdditionalProperties: request.json_schema_additional_properties,
     });
   };
 

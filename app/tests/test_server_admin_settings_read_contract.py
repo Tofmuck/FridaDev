@@ -663,7 +663,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         )
         self.assertEqual(
             data['readonly_info']['request_policy']['value'],
-            'validation_request_gemini_3_7_flash_medium_v1',
+            'validation_request_gemini_3_7_flash_medium_strict_v2',
         )
         self.assertEqual(data['readonly_info']['fallback_max_tokens']['value'], 140)
         self.assertIn('final_judgment_posture', data['readonly_info']['validated_output_contract']['value'])

@@ -249,6 +249,11 @@ def _validation_request_summary(
         'provider_routing_sent': validated['validation_provider_routing_sent'],
         'provider_fallbacks_allowed': validated.get('validation_provider_fallbacks_allowed'),
         'provider_require_parameters': validated.get('validation_provider_require_parameters'),
+        'response_format_sent': validated.get('validation_response_format_sent'),
+        'response_format_type': validated.get('validation_response_format_type'),
+        'json_schema_name': validated.get('validation_json_schema_name'),
+        'json_schema_strict': validated.get('validation_json_schema_strict'),
+        'json_schema_additional_properties': validated.get('validation_json_schema_additional_properties'),
     }
 
 

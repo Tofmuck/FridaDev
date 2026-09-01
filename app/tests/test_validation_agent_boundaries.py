@@ -36,6 +36,37 @@ from core.hermeneutic_node.validation import (
 )
 
 
+STRICT_VALIDATION_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "validation_agent_verdict_v1",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": [
+                "schema_version",
+                "final_judgment_posture",
+                "final_output_regime",
+                "arbiter_reason",
+            ],
+            "properties": {
+                "schema_version": {"type": "string", "enum": ["v1"]},
+                "final_judgment_posture": {
+                    "type": "string",
+                    "enum": ["answer", "clarify", "suspend"],
+                },
+                "final_output_regime": {
+                    "type": "string",
+                    "enum": ["meta", "simple", "presence"],
+                },
+                "arbiter_reason": {"type": "string"},
+            },
+        },
+    },
+}
+
+
 class _FakeResponse:
     def raise_for_status(self) -> None:
         return None
@@ -86,7 +117,7 @@ class _FakeLlm:
 
 
 class ValidationAgentBoundaryTests(unittest.TestCase):
-    def test_request_policy_builds_exact_primary_and_unchanged_fallback_payloads(self) -> None:
+    def test_request_policy_builds_exact_strict_active_and_unchanged_legacy_payloads(self) -> None:
         llm_module = _FakeLlm()
         messages = [
             {"role": "system", "content": "SYSTEM SENTINEL"},
@@ -136,7 +167,8 @@ class ValidationAgentBoundaryTests(unittest.TestCase):
             primary.payload["provider"],
             {"allow_fallbacks": False, "require_parameters": True},
         )
-        for forbidden in ("temperature", "top_p", "response_format", "service_tier"):
+        self.assertEqual(primary.payload["response_format"], STRICT_VALIDATION_RESPONSE_FORMAT)
+        for forbidden in ("temperature", "top_p", "service_tier"):
             self.assertNotIn(forbidden, primary.payload)
         self.assertEqual(primary.observability["validation_reasoning_effort_effective"], "medium")
         self.assertTrue(primary.observability["validation_reasoning_sent"])
@@ -144,18 +176,33 @@ class ValidationAgentBoundaryTests(unittest.TestCase):
         self.assertFalse(primary.observability["validation_temperature_sent"])
         self.assertFalse(primary.observability["validation_top_p_sent"])
         self.assertTrue(primary.observability["validation_provider_routing_sent"])
+        self.assertTrue(primary.observability["validation_response_format_sent"])
+        self.assertEqual(primary.observability["validation_response_format_type"], "json_schema")
+        self.assertEqual(
+            primary.observability["validation_json_schema_name"],
+            "validation_agent_verdict_v1",
+        )
+        self.assertTrue(primary.observability["validation_json_schema_strict"])
+        self.assertFalse(
+            primary.observability["validation_json_schema_additional_properties"]
+        )
 
         self.assertNotIn("reasoning", fallback.payload)
-        self.assertEqual(fallback.payload["temperature"], 0.0)
-        self.assertEqual(fallback.payload["top_p"], 1.0)
+        self.assertNotIn("temperature", fallback.payload)
+        self.assertNotIn("top_p", fallback.payload)
         self.assertEqual(fallback.payload["max_tokens"], 140)
-        self.assertNotIn("provider", fallback.payload)
+        self.assertEqual(
+            fallback.payload["provider"],
+            {"allow_fallbacks": False, "require_parameters": True},
+        )
+        self.assertEqual(fallback.payload["response_format"], STRICT_VALIDATION_RESPONSE_FORMAT)
         self.assertFalse(fallback.observability["validation_reasoning_sent"])
-        self.assertTrue(fallback.observability["validation_temperature_sent"])
-        self.assertTrue(fallback.observability["validation_top_p_sent"])
-        self.assertFalse(fallback.observability["validation_provider_routing_sent"])
-        self.assertNotIn("validation_provider_fallbacks_allowed", fallback.observability)
-        self.assertNotIn("validation_provider_require_parameters", fallback.observability)
+        self.assertFalse(fallback.observability["validation_temperature_sent"])
+        self.assertFalse(fallback.observability["validation_top_p_sent"])
+        self.assertTrue(fallback.observability["validation_provider_routing_sent"])
+        self.assertFalse(fallback.observability["validation_provider_fallbacks_allowed"])
+        self.assertTrue(fallback.observability["validation_provider_require_parameters"])
+        self.assertTrue(fallback.observability["validation_response_format_sent"])
 
         self.assertNotIn("provider", legacy.payload)
         self.assertFalse(legacy.observability["validation_provider_routing_sent"])
@@ -167,7 +214,8 @@ class ValidationAgentBoundaryTests(unittest.TestCase):
             dict(primary.observability, validation_temperature_sent=True),
             dict(fallback.observability, validation_reasoning_sent=True),
             dict(primary.observability, validation_provider_routing_sent=False),
-            dict(fallback.observability, validation_provider_fallbacks_allowed=False),
+            dict(fallback.observability, validation_temperature_sent=True),
+            dict(primary.observability, validation_json_schema_strict=False),
         ):
             with self.assertRaises(ValueError):
                 validation_transport.validate_request_observability(mutant)
@@ -220,6 +268,61 @@ class ValidationAgentBoundaryTests(unittest.TestCase):
                 llm_module=llm_module,
             )
 
+    def test_strict_fallback_uses_only_officially_supported_model_parameters(self) -> None:
+        prepared = validation_transport.prepare_validation_request(
+            model=validation_transport.FALLBACK_MODEL,
+            decision_source="fallback",
+            messages=[{"role": "user", "content": "synthetic"}],
+            timeout_s=15,
+            temperature=0.0,
+            top_p=1.0,
+            max_tokens=500,
+            reasoning_effort="medium",
+            llm_module=_FakeLlm(),
+        )
+        openai_endpoint_supported_parameters = {
+            "reasoning",
+            "include_reasoning",
+            "seed",
+            "max_tokens",
+            "response_format",
+            "structured_outputs",
+            "tools",
+            "tool_choice",
+            "reasoning_effort",
+        }
+        transport_keys = {"model", "messages", "provider", "metadata", "trace"}
+        sent_model_parameters = set(prepared.payload) - transport_keys
+
+        self.assertEqual(
+            sent_model_parameters - openai_endpoint_supported_parameters,
+            set(),
+        )
+        self.assertEqual(
+            prepared.payload["provider"],
+            {"allow_fallbacks": False, "require_parameters": True},
+        )
+
+    def test_provider_schema_conformant_non_answer_presence_is_still_rejected_locally(self) -> None:
+        verdict = {
+            "schema_version": "v1",
+            "final_judgment_posture": "clarify",
+            "final_output_regime": "presence",
+            "arbiter_reason": "synthetic",
+        }
+        schema = STRICT_VALIDATION_RESPONSE_FORMAT["json_schema"]["schema"]
+
+        self.assertEqual(set(verdict), set(schema["required"]))
+        self.assertTrue(
+            all(verdict[key] in schema["properties"][key]["enum"] for key in (
+                "schema_version",
+                "final_judgment_posture",
+                "final_output_regime",
+            ))
+        )
+        with self.assertRaises(validation_contract.ValidationPayloadError):
+            validation_contract.validate_model_verdict(verdict)
+
     def test_pure_contract_accepts_valid_verdict_and_rejects_non_answer_presence(self) -> None:
         valid = {
             "schema_version": "v1",
@@ -237,6 +340,21 @@ class ValidationAgentBoundaryTests(unittest.TestCase):
         mutant["final_judgment_posture"] = "clarify"
         with self.assertRaises(validation_contract.ValidationPayloadError):
             validation_contract.validate_model_verdict(mutant)
+
+        invalid_payloads = []
+        extra = dict(valid)
+        extra["unexpected"] = "rejected"
+        invalid_payloads.append(extra)
+        missing = dict(valid)
+        missing.pop("arbiter_reason")
+        invalid_payloads.append(missing)
+        unknown_enum = dict(valid)
+        unknown_enum["final_output_regime"] = "unknown"
+        invalid_payloads.append(unknown_enum)
+        for invalid in invalid_payloads:
+            with self.subTest(keys=sorted(invalid)):
+                with self.assertRaises(validation_contract.ValidationPayloadError):
+                    validation_contract.validate_model_verdict(invalid)
 
     def test_normalized_agent_result_has_its_own_contract_boundary(self) -> None:
         normalized_output = validation_contract.build_validated_output_payload(

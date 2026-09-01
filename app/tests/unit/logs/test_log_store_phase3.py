@@ -714,7 +714,7 @@ class LogStorePhase3Tests(unittest.TestCase):
             event for event in current_events if event['stage'] == 'validation_prompt_prepared'
         )
         prepared['payload']['validation_request'] = {
-                'validation_request_policy_version': 'validation_request_gemini_3_7_flash_medium_v1',
+                'validation_request_policy_version': 'validation_request_gemini_3_7_flash_medium_strict_v2',
                 'validation_transport': 'standard',
                 'validation_requested_model': 'google/gemini-3.7-flash',
                 'validation_attempt_decision_source': 'primary',
@@ -728,6 +728,11 @@ class LogStorePhase3Tests(unittest.TestCase):
                 'validation_provider_routing_sent': True,
                 'validation_provider_fallbacks_allowed': False,
                 'validation_provider_require_parameters': True,
+                'validation_response_format_sent': True,
+                'validation_response_format_type': 'json_schema',
+                'validation_json_schema_name': 'validation_agent_verdict_v1',
+                'validation_json_schema_strict': True,
+                'validation_json_schema_additional_properties': False,
             }
         prepared['model'] = 'google/gemini-3.7-flash'
         current_events.append(
@@ -744,7 +749,7 @@ class LogStorePhase3Tests(unittest.TestCase):
 
         item = log_store.build_turn_pipeline_item(current_events)
         request = item['providers']['secondary']['validation']['request']
-        self.assertEqual(request['policy_version'], 'validation_request_gemini_3_7_flash_medium_v1')
+        self.assertEqual(request['policy_version'], 'validation_request_gemini_3_7_flash_medium_strict_v2')
         self.assertEqual(request['requested_model'], 'google/gemini-3.7-flash')
         self.assertEqual(request['observed_model'], 'google/gemini-3.7-flash')
         self.assertEqual(request['observed_provider'], 'Google AI Studio')
@@ -757,6 +762,11 @@ class LogStorePhase3Tests(unittest.TestCase):
         self.assertFalse(request['top_p_sent'])
         self.assertFalse(request['provider_fallbacks_allowed'])
         self.assertTrue(request['provider_routing_sent'])
+        self.assertTrue(request['response_format_sent'])
+        self.assertEqual(request['response_format_type'], 'json_schema')
+        self.assertEqual(request['json_schema_name'], 'validation_agent_verdict_v1')
+        self.assertTrue(request['json_schema_strict'])
+        self.assertFalse(request['json_schema_additional_properties'])
         self.assertTrue(request['authoritative'])
 
         self.assertTrue(observability_payload_guard.guard_payload(prepared['payload']).accepted)
@@ -764,7 +774,7 @@ class LogStorePhase3Tests(unittest.TestCase):
         projected_request = projected['validation_request']
         self.assertEqual(
             projected_request['validation_request_policy_version'],
-            'validation_request_gemini_3_7_flash_medium_v1',
+            'validation_request_gemini_3_7_flash_medium_strict_v2',
         )
         self.assertEqual(projected_request['validation_requested_model'], 'google/gemini-3.7-flash')
         self.assertEqual(projected_request['validation_reasoning_effort_effective'], 'medium')
@@ -776,10 +786,41 @@ class LogStorePhase3Tests(unittest.TestCase):
         fallback_prepared['model'] = 'openai/gpt-5.4-nano'
         fallback_prepared['payload']['attempt_decision_source'] = 'fallback'
         fallback_prepared['payload']['validation_request'] = {
-            'validation_request_policy_version': 'validation_request_gpt_5_4_nano_fallback_v1',
+            'validation_request_policy_version': 'validation_request_gpt_5_4_nano_fallback_strict_v2',
             'validation_transport': 'standard',
             'validation_requested_model': 'openai/gpt-5.4-nano',
             'validation_attempt_decision_source': 'fallback',
+            'validation_reasoning_effort_requested': 'none',
+            'validation_reasoning_effort_effective': 'none',
+            'validation_reasoning_sent': False,
+            'validation_reasoning_excluded': False,
+            'validation_max_tokens_effective': 140,
+            'validation_temperature_sent': False,
+            'validation_top_p_sent': False,
+            'validation_provider_routing_sent': True,
+            'validation_provider_fallbacks_allowed': False,
+            'validation_provider_require_parameters': True,
+            'validation_response_format_sent': True,
+            'validation_response_format_type': 'json_schema',
+            'validation_json_schema_name': 'validation_agent_verdict_v1',
+            'validation_json_schema_strict': True,
+            'validation_json_schema_additional_properties': False,
+        }
+        fallback_item = log_store.build_turn_pipeline_item([fallback_prepared])
+        fallback_request = fallback_item['providers']['secondary']['validation']['request']
+        self.assertTrue(fallback_request['authoritative'])
+        self.assertTrue(fallback_request['provider_routing_sent'])
+        self.assertFalse(fallback_request['provider_fallbacks_allowed'])
+        self.assertTrue(fallback_request['provider_require_parameters'])
+        self.assertTrue(fallback_request['response_format_sent'])
+
+        legacy_prepared = copy.deepcopy(prepared)
+        legacy_prepared['model'] = 'google/gemini-3.1-flash-lite'
+        legacy_prepared['payload']['validation_request'] = {
+            'validation_request_policy_version': 'validation_request_gemini_3_1_flash_lite_v1',
+            'validation_transport': 'standard',
+            'validation_requested_model': 'google/gemini-3.1-flash-lite',
+            'validation_attempt_decision_source': 'primary',
             'validation_reasoning_effort_requested': 'none',
             'validation_reasoning_effort_effective': 'none',
             'validation_reasoning_sent': False,
@@ -789,12 +830,15 @@ class LogStorePhase3Tests(unittest.TestCase):
             'validation_top_p_sent': True,
             'validation_provider_routing_sent': False,
         }
-        fallback_item = log_store.build_turn_pipeline_item([fallback_prepared])
-        fallback_request = fallback_item['providers']['secondary']['validation']['request']
-        self.assertTrue(fallback_request['authoritative'])
-        self.assertFalse(fallback_request['provider_routing_sent'])
-        self.assertIsNone(fallback_request['provider_fallbacks_allowed'])
-        self.assertIsNone(fallback_request['provider_require_parameters'])
+        legacy_item = log_store.build_turn_pipeline_item([legacy_prepared])
+        legacy_request = legacy_item['providers']['secondary']['validation']['request']
+        self.assertTrue(legacy_request['authoritative'])
+        self.assertEqual(
+            legacy_request['policy_version'],
+            'validation_request_gemini_3_1_flash_lite_v1',
+        )
+        self.assertIsNone(legacy_request['response_format_sent'])
+        self.assertIsNone(legacy_request['json_schema_strict'])
 
         historical_item = log_store.build_turn_pipeline_item(
             self._complete_turn_events(web_search_enabled=False)

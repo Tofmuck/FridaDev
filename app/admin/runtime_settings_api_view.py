@@ -7,6 +7,7 @@ from admin.runtime_settings_spec import get_field_spec, get_section_spec
 from core import prompt_loader
 from core.hermeneutic_node.inputs import recent_context_input as canonical_recent_context_input
 from core.hermeneutic_node.inputs import recent_window_input as canonical_recent_window_input
+from core.hermeneutic_node.validation import validation_transport
 from identity import identity_governance
 from memory import mutable_identity_judge_common, mutable_identity_judge_v2
 
@@ -648,7 +649,7 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
             },
             'request_policy': {
                 'label': 'VALIDATION_AGENT_REQUEST_POLICY',
-                'value': 'validation_request_gemini_3_7_flash_medium_v1',
+                'value': validation_transport.PRIMARY_REQUEST_POLICY_VERSION,
                 'is_editable': False,
                 'source': 'runtime_contract',
             },

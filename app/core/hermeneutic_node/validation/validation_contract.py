@@ -11,6 +11,7 @@ from . import hard_guards
 
 
 SCHEMA_VERSION = "v1"
+PROVIDER_SCHEMA_NAME = "validation_agent_verdict_v1"
 FALLBACK_MODEL = "openai/gpt-5.4-nano"
 ALLOWED_PRIMARY_JUDGMENT_POSTURES = ("answer", "clarify", "suspend")
 ALLOWED_FINAL_OUTPUT_REGIMES = ("meta", "simple", "presence")
@@ -94,12 +95,13 @@ _ALLOWED_UPSTREAM_ADVISORY_KEYS = {
     "constraint_present",
 }
 
-_ALLOWED_MODEL_PAYLOAD_KEYS = {
+MODEL_VERDICT_REQUIRED_KEYS = (
     "schema_version",
     "final_judgment_posture",
     "final_output_regime",
     "arbiter_reason",
-}
+)
+_ALLOWED_MODEL_PAYLOAD_KEYS = set(MODEL_VERDICT_REQUIRED_KEYS)
 _VALIDATED_OUTPUT_REQUIRED_KEYS = {
     "schema_version",
     "validation_decision",
@@ -145,6 +147,33 @@ class ValidationJsonError(ValueError):
 
 class ValidationPayloadError(ValueError):
     pass
+
+
+def provider_response_format() -> dict[str, Any]:
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": PROVIDER_SCHEMA_NAME,
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": list(MODEL_VERDICT_REQUIRED_KEYS),
+                "properties": {
+                    "schema_version": {"type": "string", "enum": [SCHEMA_VERSION]},
+                    "final_judgment_posture": {
+                        "type": "string",
+                        "enum": list(ALLOWED_PRIMARY_JUDGMENT_POSTURES),
+                    },
+                    "final_output_regime": {
+                        "type": "string",
+                        "enum": list(ALLOWED_FINAL_OUTPUT_REGIMES),
+                    },
+                    "arbiter_reason": {"type": "string"},
+                },
+            },
+        },
+    }
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:

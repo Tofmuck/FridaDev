@@ -83,6 +83,7 @@
     "validation_requested_model",
     "validation_attempt_decision_source",
     "validation_reasoning_effort_requested", "validation_reasoning_effort_effective",
+    "validation_response_format_type", "validation_json_schema_name",
   ]);
 
   const toText = (value) => String(value == null ? "" : value).trim();

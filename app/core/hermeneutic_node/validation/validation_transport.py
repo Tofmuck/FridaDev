@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Sequence
 
+from . import validation_contract
+
 
 PRIMARY_MODEL = "google/gemini-3.7-flash"
 LEGACY_PRIMARY_MODEL = "google/gemini-3.1-flash-lite"
@@ -12,9 +14,9 @@ PRIMARY_MAX_TOKENS = 500
 LEGACY_MAX_TOKENS = 140
 FALLBACK_MAX_TOKENS = 140
 REQUEST_TIMEOUT_S = 15
-PRIMARY_REQUEST_POLICY_VERSION = "validation_request_gemini_3_7_flash_medium_v1"
+PRIMARY_REQUEST_POLICY_VERSION = "validation_request_gemini_3_7_flash_medium_strict_v2"
 LEGACY_REQUEST_POLICY_VERSION = "validation_request_gemini_3_1_flash_lite_v1"
-FALLBACK_REQUEST_POLICY_VERSION = "validation_request_gpt_5_4_nano_fallback_v1"
+FALLBACK_REQUEST_POLICY_VERSION = "validation_request_gpt_5_4_nano_fallback_strict_v2"
 STANDARD_PROVIDER_ROUTING = {"allow_fallbacks": False, "require_parameters": True}
 _REQUEST_OBSERVABILITY_BASE_KEYS = {
     "validation_request_policy_version",
@@ -29,6 +31,13 @@ _REQUEST_OBSERVABILITY_BASE_KEYS = {
     "validation_temperature_sent",
     "validation_top_p_sent",
     "validation_provider_routing_sent",
+}
+_REQUEST_OBSERVABILITY_STRICT_SCHEMA_KEYS = {
+    "validation_response_format_sent",
+    "validation_response_format_type",
+    "validation_json_schema_name",
+    "validation_json_schema_strict",
+    "validation_json_schema_additional_properties",
 }
 
 
@@ -57,6 +66,7 @@ def _request_observability(
     temperature_sent: bool,
     top_p_sent: bool,
     provider_routing_sent: bool,
+    response_format_sent: bool,
 ) -> dict[str, Any]:
     payload = {
         "validation_request_policy_version": policy_version,
@@ -77,6 +87,14 @@ def _request_observability(
             validation_provider_fallbacks_allowed=False,
             validation_provider_require_parameters=True,
         )
+    if response_format_sent:
+        payload.update(
+            validation_response_format_sent=True,
+            validation_response_format_type="json_schema",
+            validation_json_schema_name=validation_contract.PROVIDER_SCHEMA_NAME,
+            validation_json_schema_strict=True,
+            validation_json_schema_additional_properties=False,
+        )
     validate_request_observability(payload)
     return payload
 
@@ -87,21 +105,27 @@ def validate_request_observability(value: Mapping[str, Any]) -> dict[str, Any]:
     expected = {
         PRIMARY_REQUEST_POLICY_VERSION: (
             "primary", PRIMARY_MODEL, PRIMARY_REASONING_EFFORT,
-            PRIMARY_MAX_TOKENS, True, True, False, False,
+            PRIMARY_MAX_TOKENS, True, True, False, False, True,
         ),
         LEGACY_REQUEST_POLICY_VERSION: (
             "primary", LEGACY_PRIMARY_MODEL, "none",
-            LEGACY_MAX_TOKENS, False, False, True, True,
+            LEGACY_MAX_TOKENS, False, False, True, True, False,
         ),
         FALLBACK_REQUEST_POLICY_VERSION: (
             "fallback", FALLBACK_MODEL, "none",
-            FALLBACK_MAX_TOKENS, False, False, True, True,
+            FALLBACK_MAX_TOKENS, False, False, False, False, True,
         ),
     }.get(version)
     if expected is None:
         raise ValueError("unknown_validation_request_policy_version")
-    source, model, effort, max_tokens, reasoning_sent, excluded, temperature_sent, top_p_sent = expected
-    provider_routing_sent = version == PRIMARY_REQUEST_POLICY_VERSION
+    (
+        source, model, effort, max_tokens, reasoning_sent, excluded,
+        temperature_sent, top_p_sent, response_format_sent,
+    ) = expected
+    provider_routing_sent = version in {
+        PRIMARY_REQUEST_POLICY_VERSION,
+        FALLBACK_REQUEST_POLICY_VERSION,
+    }
     expected_keys = set(_REQUEST_OBSERVABILITY_BASE_KEYS)
     if provider_routing_sent:
         expected_keys.update(
@@ -110,6 +134,8 @@ def validate_request_observability(value: Mapping[str, Any]) -> dict[str, Any]:
                 "validation_provider_require_parameters",
             }
         )
+    if response_format_sent:
+        expected_keys.update(_REQUEST_OBSERVABILITY_STRICT_SCHEMA_KEYS)
     if set(payload) != expected_keys:
         raise ValueError("invalid_validation_request_observability_fields")
     if payload.get("validation_attempt_decision_source") != source or payload.get("validation_requested_model") != model:
@@ -130,6 +156,14 @@ def validate_request_observability(value: Mapping[str, Any]) -> dict[str, Any]:
         coherence += (
             ("validation_provider_fallbacks_allowed", False),
             ("validation_provider_require_parameters", True),
+        )
+    if response_format_sent:
+        coherence += (
+            ("validation_response_format_sent", True),
+            ("validation_response_format_type", "json_schema"),
+            ("validation_json_schema_name", validation_contract.PROVIDER_SCHEMA_NAME),
+            ("validation_json_schema_strict", True),
+            ("validation_json_schema_additional_properties", False),
         )
     for key, expected_value in coherence:
         if payload.get(key) != expected_value or type(payload.get(key)) is not type(expected_value):
@@ -202,12 +236,14 @@ def prepare_validation_request(
             reasoning={"effort": PRIMARY_REASONING_EFFORT, "exclude": True},
             max_tokens=PRIMARY_MAX_TOKENS,
             provider=dict(STANDARD_PROVIDER_ROUTING),
+            response_format=validation_contract.provider_response_format(),
         )
         observability = _request_observability(
             policy_version=PRIMARY_REQUEST_POLICY_VERSION, decision_source=decision_source,
             model=model, reasoning_effort=PRIMARY_REASONING_EFFORT, reasoning_sent=True,
             reasoning_excluded=True, max_tokens=PRIMARY_MAX_TOKENS,
             temperature_sent=False, top_p_sent=False, provider_routing_sent=True,
+            response_format_sent=True,
         )
     elif decision_source == "primary" and model == LEGACY_PRIMARY_MODEL:
         payload.update(temperature=float(temperature), top_p=float(top_p), max_tokens=LEGACY_MAX_TOKENS)
@@ -216,14 +252,20 @@ def prepare_validation_request(
             model=model, reasoning_effort="none", reasoning_sent=False,
             reasoning_excluded=False, max_tokens=LEGACY_MAX_TOKENS,
             temperature_sent=True, top_p_sent=True, provider_routing_sent=False,
+            response_format_sent=False,
         )
     elif decision_source == "fallback" and model == FALLBACK_MODEL:
-        payload.update(temperature=float(temperature), top_p=float(top_p), max_tokens=FALLBACK_MAX_TOKENS)
+        payload.update(
+            max_tokens=FALLBACK_MAX_TOKENS,
+            provider=dict(STANDARD_PROVIDER_ROUTING),
+            response_format=validation_contract.provider_response_format(),
+        )
         observability = _request_observability(
             policy_version=FALLBACK_REQUEST_POLICY_VERSION, decision_source=decision_source,
             model=model, reasoning_effort="none", reasoning_sent=False,
             reasoning_excluded=False, max_tokens=FALLBACK_MAX_TOKENS,
-            temperature_sent=True, top_p_sent=True, provider_routing_sent=False,
+            temperature_sent=False, top_p_sent=False, provider_routing_sent=True,
+            response_format_sent=True,
         )
     else:
         raise ValueError("unsupported_validation_request_policy")

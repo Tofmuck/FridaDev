@@ -633,6 +633,13 @@ class ValidationAgentTests(unittest.TestCase):
             requests_module.calls[0]["json"]["provider"],
             {"allow_fallbacks": False, "require_parameters": True},
         )
+        self.assertEqual(
+            requests_module.calls[0]["json"]["response_format"]["type"],
+            "json_schema",
+        )
+        self.assertTrue(
+            requests_module.calls[0]["json"]["response_format"]["json_schema"]["strict"]
+        )
         self.assertEqual(requests_module.calls[0]["json"]["metadata"]["frida_caller"], "validation_agent")
         self.assertEqual(requests_module.calls[0]["json"]["metadata"]["frida_slot"], "validation_agent_model")
         self.assertEqual(requests_module.calls[0]["json"]["trace"]["trace_name"], "FridaDev")
@@ -962,7 +969,7 @@ class ValidationAgentTests(unittest.TestCase):
             if item["stage"] == "validation_prompt_prepared"
         )
         request = event["payload"]["validation_request"]
-        self.assertEqual(request["validation_request_policy_version"], "validation_request_gemini_3_7_flash_medium_v1")
+        self.assertEqual(request["validation_request_policy_version"], "validation_request_gemini_3_7_flash_medium_strict_v2")
         self.assertEqual(request["validation_reasoning_effort_requested"], "medium")
         self.assertEqual(request["validation_reasoning_effort_effective"], "medium")
         self.assertTrue(request["validation_reasoning_sent"])
@@ -971,6 +978,11 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertFalse(request["validation_temperature_sent"])
         self.assertFalse(request["validation_top_p_sent"])
         self.assertEqual(request["validation_transport"], "standard")
+        self.assertTrue(request["validation_response_format_sent"])
+        self.assertEqual(request["validation_response_format_type"], "json_schema")
+        self.assertEqual(request["validation_json_schema_name"], "validation_agent_verdict_v1")
+        self.assertTrue(request["validation_json_schema_strict"])
+        self.assertFalse(request["validation_json_schema_additional_properties"])
 
     def test_fail_open_without_hard_guard_does_not_project_suspend(self) -> None:
         requests_module = _FakeRequests([
@@ -1889,10 +1901,14 @@ class ValidationAgentTests(unittest.TestCase):
         )
         fallback_payload = requests_module.calls[1]["json"]
         self.assertNotIn("reasoning", fallback_payload)
-        self.assertEqual(fallback_payload["temperature"], 0.0)
-        self.assertEqual(fallback_payload["top_p"], 1.0)
+        self.assertNotIn("temperature", fallback_payload)
+        self.assertNotIn("top_p", fallback_payload)
         self.assertEqual(fallback_payload["max_tokens"], 140)
-        self.assertNotIn("provider", fallback_payload)
+        self.assertEqual(
+            fallback_payload["provider"],
+            {"allow_fallbacks": False, "require_parameters": True},
+        )
+        self.assertTrue(fallback_payload["response_format"]["json_schema"]["strict"])
         fallback_event = [
             item for item in self.observed_events
             if item["stage"] == "validation_prompt_prepared"
@@ -1900,11 +1916,12 @@ class ValidationAgentTests(unittest.TestCase):
         fallback_request = fallback_event["payload"]["validation_request"]
         self.assertEqual(
             fallback_request["validation_request_policy_version"],
-            "validation_request_gpt_5_4_nano_fallback_v1",
+            "validation_request_gpt_5_4_nano_fallback_strict_v2",
         )
-        self.assertFalse(fallback_request["validation_provider_routing_sent"])
-        self.assertNotIn("validation_provider_fallbacks_allowed", fallback_request)
-        self.assertNotIn("validation_provider_require_parameters", fallback_request)
+        self.assertTrue(fallback_request["validation_provider_routing_sent"])
+        self.assertFalse(fallback_request["validation_provider_fallbacks_allowed"])
+        self.assertTrue(fallback_request["validation_provider_require_parameters"])
+        self.assertTrue(fallback_request["validation_response_format_sent"])
         self.assertEqual(result.validated_output["validation_decision"], "confirm")
 
     def test_build_validated_output_returns_fail_open_after_double_failure(self) -> None:

@@ -400,14 +400,20 @@ Regle forte:
   `stimmung_delivery_status=full|absent` et un reason code ferme; les
   metadonnees sont validees avant emission et ne recopient ni la projection,
   ni un ton, ni un contenu de source
-- le cutover Validation du 2026-08-29 ajoute au meme evenement un bloc ferme
+- le cutover Validation du 2026-08-29, complete par le Lot 5V du 2026-09-01,
+  ajoute au meme evenement un bloc ferme
   `validation_request`: version de politique, modele demande, source
   primaire/fallback, transport standard, effort demande/effectif, presence du
   raisonnement, `exclude`, budget effectif et presence/absence effective de
-  `temperature`/`top_p`. `validation_provider_routing_sent` indique si un bloc
-  de routage a reellement ete transmis; ses deux proprietes ne sont exposees
-  que pour le primaire Gemini 3.7 qui les envoie. Ce bloc provient de la
-  requete preparee elle-meme;
+  `temperature`/`top_p`. Les deux politiques actives transmettent
+  `response_format.type=json_schema`, le schema ferme
+  `validation_agent_verdict_v1`, `strict=true`,
+  `provider.allow_fallbacks=false` et `provider.require_parameters=true`; le
+  fallback GPT-5.4 Nano omet le sampling non supporte. Les champs
+  `validation_response_format_*` et `validation_json_schema_*` en donnent une
+  preuve content-free. Le primaire Gemini 3.1 reste une politique historique,
+  sans requalification structured output. Ce bloc provient de la requete
+  preparee elle-meme;
   les appels historiques qui ne le possedent pas restent `unknown`. Le modele
   et le provider observes proviennent de l'evenement provider lorsqu'ils sont
   disponibles; aucune reception n'est presentee comme une preuve causale.

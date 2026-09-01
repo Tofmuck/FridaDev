@@ -324,7 +324,9 @@ Minimum checklist groups:
   - when a Validation projection claim is present, its structural metadata is validated from `validation_prompt_prepared`; an invalid status such as `partial` degrades the Validation checklist item with the bounded validation error code
   - when a Validation request-policy claim is present, the same prepared
     event must satisfy the closed request policy; an incoherent effort, model,
-    budget, sampling or routing claim degrades the item
+    budget, sampling, routing or JSON Schema strict claim degrades the item;
+    active v2 claims include content-free proof of `response_format`, schema
+    name, `strict=true` and `additionalProperties=false`
 - web:
   - `web_search` is `not_applicable` when web was not requested;
   - when web was requested, `ok`, `skipped` with `reason_code`, or `error` with compact cause must be represented without raw query/result content;
@@ -374,7 +376,9 @@ Minimum item groups:
   - the same lane projects `request` only from a coherent
     `validation_prompt_prepared.validation_request`; it joins observed
     model/provider from the actual `llm_call` lane and never infers current
-    Gemini settings for historical events;
+    Gemini settings for historical events; active v2 requests also project
+    the strict response-format and schema flags, while incomplete or old
+    active-policy claims remain non-authoritative;
   - legacy or missing provider callers are counted as `unknown`, never merged with the main lane;
 - RAG: `retrieved -> basket -> kept -> injected`, sourced from `memory_chain_snapshot` when available;
 - Identity: block presence, chars, short hash and selected-id count only;

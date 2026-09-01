@@ -12,7 +12,7 @@ const projection = global.window.FridaValidationProjection;
 
 test('validation request projection renders the effective Gemini medium request only from authoritative metadata', () => {
   const request = projection.requestFromEventPayload('validation_prompt_prepared', {
-    validation_request_policy_version: 'validation_request_gemini_3_7_flash_medium_v1',
+    validation_request_policy_version: 'validation_request_gemini_3_7_flash_medium_strict_v2',
     validation_transport: 'standard',
     validation_attempt_decision_source: 'primary',
     validation_reasoning_effort_requested: 'medium',
@@ -25,6 +25,11 @@ test('validation request projection renders the effective Gemini medium request 
     validation_provider_routing_sent: true,
     validation_provider_fallbacks_allowed: false,
     validation_provider_require_parameters: true,
+    validation_response_format_sent: true,
+    validation_response_format_type: 'json_schema',
+    validation_json_schema_name: 'validation_agent_verdict_v1',
+    validation_json_schema_strict: true,
+    validation_json_schema_additional_properties: false,
     validation_requested_model: 'google/gemini-3.7-flash',
     observed_model: 'google/gemini-3.7-flash',
     observed_provider: 'Google AI Studio',
@@ -38,6 +43,11 @@ test('validation request projection renders the effective Gemini medium request 
   assert.equal(request.temperatureSent, false);
   assert.equal(request.topPSent, false);
   assert.equal(request.providerRoutingSent, true);
+  assert.equal(request.responseFormatSent, true);
+  assert.equal(request.responseFormatType, 'json_schema');
+  assert.equal(request.jsonSchemaName, 'validation_agent_verdict_v1');
+  assert.equal(request.jsonSchemaStrict, true);
+  assert.equal(request.jsonSchemaAdditionalProperties, false);
 });
 
 test('validation request projection never reinterprets historical or incoherent metadata as Gemini medium', () => {
@@ -50,7 +60,7 @@ test('validation request projection never reinterprets historical or incoherent 
   assert.equal(historical.status, 'unknown');
 
   const mutant = projection.requestFromEventPayload('validation_prompt_prepared', {
-    validation_request_policy_version: 'validation_request_gemini_3_7_flash_medium_v1',
+    validation_request_policy_version: 'validation_request_gemini_3_7_flash_medium_strict_v2',
     validation_transport: 'standard',
     validation_attempt_decision_source: 'primary',
     validation_reasoning_effort_requested: 'medium',
@@ -62,10 +72,34 @@ test('validation request projection never reinterprets historical or incoherent 
     validation_top_p_sent: false,
     validation_provider_fallbacks_allowed: false,
     validation_provider_require_parameters: true,
+    validation_response_format_sent: true,
+    validation_response_format_type: 'json_schema',
+    validation_json_schema_name: 'validation_agent_verdict_v1',
+    validation_json_schema_strict: true,
+    validation_json_schema_additional_properties: false,
     validation_requested_model: 'google/gemini-3.7-flash',
   });
   assert.equal(mutant.authoritative, false);
   assert.equal(mutant.status, 'unknown');
+
+  const unprovedStructuredOutput = projection.requestFromEventPayload('validation_prompt_prepared', {
+    validation_request_policy_version: 'validation_request_gemini_3_7_flash_medium_strict_v2',
+    validation_transport: 'standard',
+    validation_attempt_decision_source: 'primary',
+    validation_reasoning_effort_requested: 'medium',
+    validation_reasoning_effort_effective: 'medium',
+    validation_reasoning_sent: true,
+    validation_reasoning_excluded: true,
+    validation_max_tokens_effective: 500,
+    validation_temperature_sent: false,
+    validation_top_p_sent: false,
+    validation_provider_routing_sent: true,
+    validation_provider_fallbacks_allowed: false,
+    validation_provider_require_parameters: true,
+    validation_requested_model: 'google/gemini-3.7-flash',
+  });
+  assert.equal(unprovedStructuredOutput.authoritative, false);
+  assert.equal(unprovedStructuredOutput.status, 'unknown');
 
   const legacy = projection.requestFromEventPayload('validation_prompt_prepared', {
     validation_request_policy_version: 'validation_request_gemini_3_1_flash_lite_v1',

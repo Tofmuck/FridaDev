@@ -4423,16 +4423,40 @@ Executer un micro-lot par `GO`:
 
 ## 5V - Validation
 
-- [ ] Deriver le schema provider du contrat de verdict existant, sans second
+Statut: ferme le 1 septembre 2026; 5S non commence
+
+- [x] Deriver le schema provider du contrat de verdict existant, sans second
   contrat metier.
-- [ ] Prouver separement la compatibilite primaire/fallback avec
+- [x] Prouver separement la compatibilite primaire/fallback avec
   `response_format.type=json_schema`, `strict=true` et
   `provider.require_parameters=true`.
-- [ ] Ajouter ces parametres aux seules branches compatibles; une
+- [x] Ajouter ces parametres aux seules branches compatibles; une
   incompatibilite impose une decision separee, jamais un changement silencieux
   de modele.
-- [ ] Conserver parseur local, hard guards, fail-open et interdiction de
+- [x] Conserver parseur local, hard guards, fail-open et interdiction de
   produire Presence sur erreur.
+
+Preuves de fermeture:
+
+- le schema `validation_agent_verdict_v1` est derive des quatre champs, enums
+  et version du validateur local; `additionalProperties=false`, tous les champs
+  sont requis et `strict=true`;
+- les politiques actives `validation_request_gemini_3_7_flash_medium_strict_v2`
+  et `validation_request_gpt_5_4_nano_fallback_strict_v2` transmettent ce
+  schema avec `allow_fallbacks=false` et `require_parameters=true`; le fallback
+  n'envoie plus `temperature` ni `top_p`, non supportes par ses endpoints, sans
+  changer modele, plafond ou timeout; Gemini 3.1 reste historique et inchange;
+- le decodeur JSON et `validate_model_verdict()` restent souverains, notamment
+  pour refuser `presence` hors `answer`; transport, schema et verdict metier
+  conservent des echecs distincts et aucun fail-open ne produit Presence;
+- l'evenement prepare, la garde, la projection admin, le read-model et les
+  normaliseurs existants exposent les bits content-free de schema; une preuve
+  v2 incomplete reste `unknown`, sans requalification retrospective;
+- preuves finales: ciblage Python `230/230`, JavaScript `5/5`, Chromium cible
+  `2/2`, decouverte Python unique `2883/2883`, puis contre-audit historique
+  `39/39`; deux canaris directs, un par modele actif, ont retourne un JSON
+  conforme puis valide localement, sans retry ni fallback automatique et sous
+  un plafond calcule de `0,0037245 USD`.
 
 ## 5S - Stimmung
 
