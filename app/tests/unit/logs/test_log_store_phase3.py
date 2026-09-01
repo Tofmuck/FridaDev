@@ -854,6 +854,115 @@ class LogStorePhase3Tests(unittest.TestCase):
         )
         self.assertFalse(observability_payload_guard.guard_payload(raw_mutant).accepted)
 
+    def test_stimmung_request_policy_distinguishes_primary_fallback_and_history(self) -> None:
+        events = self._complete_turn_events(web_search_enabled=False)
+        prepared = next(event for event in events if event['stage'] == 'stimmung_prompt_prepared')
+        prepared['model'] = 'google/gemini-3.1-flash-lite'
+        prepared['payload'].update(
+            attempt_decision_source='primary',
+            stimmung_status='prepared',
+            stimmung_request={
+                'stimmung_request_policy_version': 'stimmung_request_gemini_3_1_flash_lite_strict_v2',
+                'stimmung_transport': 'standard',
+                'stimmung_requested_model': 'google/gemini-3.1-flash-lite',
+                'stimmung_attempt_decision_source': 'primary',
+                'stimmung_max_tokens_effective': 220,
+                'stimmung_timeout_s_effective': 10,
+                'stimmung_temperature_sent': True,
+                'stimmung_temperature_effective': 0.1,
+                'stimmung_top_p_sent': True,
+                'stimmung_top_p_effective': 1.0,
+                'stimmung_provider_routing_sent': True,
+                'stimmung_provider_fallbacks_allowed': False,
+                'stimmung_provider_require_parameters': True,
+                'stimmung_response_format_sent': True,
+                'stimmung_response_format_type': 'json_schema',
+                'stimmung_json_schema_name': 'stimmung_affective_turn_signal_v1',
+                'stimmung_json_schema_strict': True,
+                'stimmung_json_schema_additional_properties': False,
+            },
+        )
+        events.append(
+            self._event(
+                'llm_call',
+                payload={
+                    'provider_caller': 'stimmung_agent',
+                    'provider_model': 'google/gemini-3.1-flash-lite',
+                    'provider': 'Google AI Studio',
+                },
+            )
+        )
+
+        item = log_store.build_turn_pipeline_item(events)
+        request = item['providers']['secondary']['stimmung']['request']
+        self.assertTrue(request['authoritative'])
+        self.assertEqual(
+            request['policy_version'],
+            'stimmung_request_gemini_3_1_flash_lite_strict_v2',
+        )
+        self.assertTrue(request['temperature_sent'])
+        self.assertEqual(request['temperature_effective'], 0.1)
+        self.assertTrue(request['top_p_sent'])
+        self.assertTrue(request['provider_require_parameters'])
+        self.assertFalse(request['provider_fallbacks_allowed'])
+        self.assertTrue(request['json_schema_strict'])
+        self.assertEqual(request['observed_provider'], 'Google AI Studio')
+        self.assertTrue(observability_payload_guard.guard_payload(prepared['payload']).accepted)
+        projected, _redaction = admin_log_projection.project_payload(prepared['payload'])
+        self.assertEqual(
+            projected['stimmung_request'],
+            prepared['payload']['stimmung_request'],
+        )
+        self.assertEqual(
+            projected['stimmung_request']['stimmung_request_policy_version'],
+            'stimmung_request_gemini_3_1_flash_lite_strict_v2',
+        )
+        self.assertEqual(projected['stimmung_request']['stimmung_max_tokens_effective'], 220)
+
+        fallback_prepared = copy.deepcopy(prepared)
+        fallback_prepared['model'] = 'openai/gpt-5.4-nano'
+        fallback_prepared['payload']['attempt_decision_source'] = 'fallback'
+        fallback_prepared['payload']['stimmung_request'] = {
+            'stimmung_request_policy_version': 'stimmung_request_gpt_5_4_nano_fallback_strict_v2',
+            'stimmung_transport': 'standard',
+            'stimmung_requested_model': 'openai/gpt-5.4-nano',
+            'stimmung_attempt_decision_source': 'fallback',
+            'stimmung_max_tokens_effective': 220,
+            'stimmung_timeout_s_effective': 10,
+            'stimmung_temperature_sent': False,
+            'stimmung_top_p_sent': False,
+            'stimmung_provider_routing_sent': True,
+            'stimmung_provider_fallbacks_allowed': False,
+            'stimmung_provider_require_parameters': True,
+            'stimmung_response_format_sent': True,
+            'stimmung_response_format_type': 'json_schema',
+            'stimmung_json_schema_name': 'stimmung_affective_turn_signal_v1',
+            'stimmung_json_schema_strict': True,
+            'stimmung_json_schema_additional_properties': False,
+        }
+        fallback_item = log_store.build_turn_pipeline_item([fallback_prepared])
+        fallback_request = fallback_item['providers']['secondary']['stimmung']['request']
+        self.assertTrue(fallback_request['authoritative'])
+        self.assertFalse(fallback_request['temperature_sent'])
+        self.assertIsNone(fallback_request['temperature_effective'])
+        self.assertFalse(fallback_request['top_p_sent'])
+        self.assertIsNone(fallback_request['top_p_effective'])
+
+        historical_item = log_store.build_turn_pipeline_item(
+            self._complete_turn_events(web_search_enabled=False)
+        )
+        historical_request = historical_item['providers']['secondary']['stimmung']['request']
+        self.assertFalse(historical_request['authoritative'])
+        self.assertEqual(historical_request['status'], 'unknown')
+
+        mutant = copy.deepcopy(fallback_prepared)
+        mutant['payload']['stimmung_request']['stimmung_json_schema_strict'] = False
+        mutant_item = log_store.build_turn_pipeline_item([mutant])
+        mutant_request = mutant_item['providers']['secondary']['stimmung']['request']
+        self.assertFalse(mutant_request['authoritative'])
+        checklist = log_store.build_turn_observability_checklist([mutant])
+        self.assertEqual(self._find_item(checklist, 'stimmung_agent')['status'], 'degraded')
+
     def test_admin_projection_keeps_only_content_free_validation_delivery_truth(self) -> None:
         payload = next(
             event['payload']

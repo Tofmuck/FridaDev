@@ -189,7 +189,8 @@ et ne possede aucune autorite Identity ou canonique.
 - `stimmung_prompt_prepared`
   - content-free proof of the secondary provider payload prepared by `stimmung_agent`
   - must be distinguishable from the main LLM payload and from `validation_prompt_prepared`
-  - allowed fields: `payload_kind`, `provider_caller=stimmung_agent`, secondary/main booleans, model, sampling settings, `timeout_s`, message counts, role counts, prompt/user char counts, recent-window counts, attempt source, fail-open/reason flags
+  - allowed fields: `payload_kind`, `provider_caller=stimmung_agent`, secondary/main booleans, model, effective sampling settings, `timeout_s`, message counts, role counts, prompt/user char counts, recent-window counts, attempt source, fail-open/reason flags
+  - `stimmung_request` is a closed content-free block derived from the effective request: policy version, requested model/source, standard transport, effective output/timeout, sampling keys actually sent, provider routing with `allow_fallbacks=false` and `require_parameters=true`, and strict JSON Schema identity; historical events without it remain `unknown`
   - forbidden: raw prompt, raw messages, raw content, raw current user message, raw recent window, canonical input dumps
 
 - `primary_node`

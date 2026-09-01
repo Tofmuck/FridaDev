@@ -79,7 +79,8 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Roadmap active de consolidation Presence dialogique / Identity mutable:
   Lots 0 a 4 fermes, decision globale Stimmung `strengthen`, proposition 4C.5
   de raccord automatique `source_conflicts -> contradictoire` classee
-  `invalide/non requise`; Lots 5 et 6 recales aux seuls residus prouves, Lot 7
+  `invalide/non requise`; Lot 5 ferme apres raccord strict provider de
+  Validation et Stimmung, Lot 6 recale au seul residu prouve, Lot 7
   conditionne par une mesure de latence, Lot 8 ferme `non requis/absorbe` sans
   nouvelle campagne et Lot Z reduit au contre-audit differentiel puis a
   l'archivage:

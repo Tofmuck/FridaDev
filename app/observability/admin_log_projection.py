@@ -101,6 +101,12 @@ _SAFE_TEXT_KEYS = {
     'validation_reasoning_effort_effective',
     'validation_response_format_type',
     'validation_json_schema_name',
+    'stimmung_request_policy_version',
+    'stimmung_transport',
+    'stimmung_requested_model',
+    'stimmung_attempt_decision_source',
+    'stimmung_response_format_type',
+    'stimmung_json_schema_name',
     'verdict',
     'uncertainty_posture',
     'write_mode',
@@ -149,6 +155,7 @@ _SAFE_CONTAINER_KEYS = {
     'node_state_write',
     'providers',
     'validation_request',
+    'stimmung_request',
     'rag',
     'redaction',
     'source',
@@ -209,7 +216,10 @@ _BLOCKED_KEY_PARTS = (
     'token',
     'webdav',
 )
-_SAFE_TOKEN_METRIC_KEYS = {'validation_max_tokens_effective'}
+_SAFE_TOKEN_METRIC_KEYS = {
+    'validation_max_tokens_effective',
+    'stimmung_max_tokens_effective',
+}
 
 _DANGEROUS_VALUE_PARTS = (
     'api-key',
@@ -309,7 +319,7 @@ def _is_safe_model_value(value: str) -> bool:
 def _is_safe_text_value(key: str, value: Any) -> bool:
     text = str(value or '').strip()
     lower = str(key or '').strip().lower()
-    if lower in {'model', 'validation_requested_model'}:
+    if lower in {'model', 'validation_requested_model', 'stimmung_requested_model'}:
         return _is_safe_model_value(text)
     if lower in {'provider', 'provider_title'}:
         return bool(text) and len(text) <= 120 and not _looks_dangerous_text(text)

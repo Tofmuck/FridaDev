@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 4 fermes; decision globale du Lot 4 `strengthen`, caller renforce, F2 corrige par separation epistemique/enonciative, F4 `partiel` et 4C.4 `inconclusive` avec decision produit `keep_current_v2.3`; faux blocage 4C.5 classe `invalide/non requis` apres contre-audit croise des contrats; Lots 5 et 6 recales et non commences; Lot 7 ramene a une decision de latence conditionnelle; Lot 8 ferme `non requis/absorbe`; Lot Z ramene a la cloture differentielle et a l'archivage
+Statut: TODO actif; Lots 0 a 5 fermes; decision globale du Lot 4 `strengthen`, caller renforce, F2 corrige par separation epistemique/enonciative, F4 `partiel` et 4C.4 `inconclusive` avec decision produit `keep_current_v2.3`; faux blocage 4C.5 classe `invalide/non requis` apres contre-audit croise des contrats; Lot 6 recale et non commence; Lot 7 ramene a une decision de latence conditionnelle; Lot 8 ferme `non requis/absorbe`; Lot Z ramene a la cloture differentielle et a l'archivage
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -4407,7 +4407,7 @@ reserver une seule decouverte complete a la cloture globale.
 
 # LOT 5 - Structured outputs provider restants
 
-Statut: recale, non commence
+Statut: ferme le 1 septembre 2026; 5V et 5S fermes; Lot 6 non commence
 Nature: deux micro-lots transport, sans changement semantique
 Dependance: Lot 4 ferme
 
@@ -4460,30 +4460,56 @@ Preuves de fermeture:
 
 ## 5S - Stimmung
 
-- [ ] Deriver le schema du signal affectif normalise existant.
-- [ ] Prouver separement la compatibilite primaire/fallback puis ajouter le
+Statut: ferme le 1 septembre 2026; comportement Stimmung et politique
+`keep_current_v2.3` inchanges
+
+- [x] Deriver le schema du signal affectif normalise existant.
+- [x] Prouver separement la compatibilite primaire/fallback puis ajouter le
   schema strict aux branches compatibles.
-- [ ] Ne modifier ni tonalites, force, prompt, agregateur, modele, sampling,
+- [x] Ne modifier ni tonalites, force, prompt, agregateur, modele, sampling
+  primaire, settings persistants,
   timeout, fallback, doctrine ou politique `keep_current_v2.3`.
-- [ ] Conserver normalisation, validation locale et fail-open.
+- [x] Conserver normalisation, validation locale et fail-open.
+
+Preuves de fermeture:
+
+- `stimmung_affective_turn_signal_v1` derive les cinq champs, la version, les
+  neuf tonalites et les bornes `strength/confidence` du validateur local; la
+  racine et les objets de tonalite sont fermes et tous leurs champs requis;
+- les politiques `stimmung_request_gemini_3_1_flash_lite_strict_v2` et
+  `stimmung_request_gpt_5_4_nano_fallback_strict_v2` envoient le meme schema,
+  `allow_fallbacks=false` et `require_parameters=true`; le primaire conserve
+  `0.1/1.0`, tandis que le fallback omet seulement ces deux cles provider non
+  supportees, sans modifier les settings ni le plafond `220` ou le timeout;
+- `_safe_json_loads()` puis `_validate_affective_turn_signal()` restent
+  souverains sur les coherences `present/tones/dominant_tone`; JSON invalide,
+  validation invalide, fallback applicatif et fail-open restent distincts;
+- l'evenement prepare, sa garde et le read-model exposent la politique, le
+  modele/source, les parametres effectivement envoyes, le routage et le schema;
+  un historique incomplet reste `unknown`; aucun renderer ne presentait le
+  sampling fallback comme effectif, donc aucun asset frontend n'a change;
+- preuves finales: suites ciblees et voisines `190/190`; deux canaris directs,
+  un par modele, HTTP `200`, modele/provider observes, `finish_reason=stop`,
+  JSON/schema puis validation locale valides, sans retry ni fallback provider,
+  pour un cout maximal calcule de `0,000486 USD`.
 
 ## Preuves et observabilite
 
-- [ ] Payloads primaire/fallback exacts, enums et champs supplementaires
+- [x] Payloads primaire/fallback exacts, enums et champs supplementaires
   refuses, sortie provider valide mais metier invalide rejetee.
-- [ ] Erreur de compatibilite honnete, sans fallback provider implicite.
-- [ ] Presence, final locks et fail-open inchanges.
-- [ ] Les champs backend/API/frontend existants sont completes seulement s'ils
+- [x] Erreur de compatibilite honnete, sans fallback provider implicite.
+- [x] Presence, final locks et fail-open inchanges.
+- [x] Les champs backend/API/frontend existants sont completes seulement s'ils
   deviendraient faux apres le raccord; aucune nouvelle surface.
-- [ ] Retirer `response_format` ou `require_parameters` fait echouer la preuve.
-- [ ] Suites ciblees et voisines; decouverte complete reservee au Lot Z sauf
+- [x] Retirer `response_format` ou `require_parameters` fait echouer la preuve.
+- [x] Suites ciblees et voisines; decouverte complete reservee au Lot Z sauf
   regression transverse concrete.
 
 ## Fermeture
 
-- [ ] `5V` et `5S` fermes separement et livres de facon ciblee.
-- [ ] Aucun changement de modele, prompt, semantique ou capacite produit.
-- [ ] Validation locale toujours souveraine et observabilite synchrone.
+- [x] `5V` et `5S` fermes separement et livres de facon ciblee.
+- [x] Aucun changement de modele, prompt, semantique ou capacite produit.
+- [x] Validation locale toujours souveraine et observabilite synchrone.
 
 # LOT 6 - Residu Validation, sans reconstruire 4C.1
 

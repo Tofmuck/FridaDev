@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import types
 import unittest
@@ -18,8 +19,62 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from core import stimmung_agent
+from core import token_counter
 from observability import chat_turn_logger
 from observability import log_store
+
+
+STRICT_STIMMUNG_RESPONSE_FORMAT = {
+    'type': 'json_schema',
+    'json_schema': {
+        'name': 'stimmung_affective_turn_signal_v1',
+        'strict': True,
+        'schema': {
+            'type': 'object',
+            'additionalProperties': False,
+            'required': [
+                'schema_version',
+                'present',
+                'tones',
+                'dominant_tone',
+                'confidence',
+            ],
+            'properties': {
+                'schema_version': {'type': 'string', 'enum': ['v1']},
+                'present': {'type': 'boolean'},
+                'tones': {
+                    'type': 'array',
+                    'maxItems': 9,
+                    'items': {
+                        'type': 'object',
+                        'additionalProperties': False,
+                        'required': ['tone', 'strength'],
+                        'properties': {
+                            'tone': {
+                                'type': 'string',
+                                'enum': list(stimmung_agent.ALLOWED_TONES),
+                            },
+                            'strength': {
+                                'type': 'integer',
+                                'minimum': 1,
+                                'maximum': 10,
+                            },
+                        },
+                    },
+                },
+                'dominant_tone': {
+                    'type': ['string', 'null'],
+                    'enum': [*stimmung_agent.ALLOWED_TONES, None],
+                },
+                'confidence': {
+                    'type': 'number',
+                    'minimum': 0.0,
+                    'maximum': 1.0,
+                },
+            },
+        },
+    },
+}
 
 
 class _FakeRequests:
@@ -134,6 +189,17 @@ class StimmungAgentTests(unittest.TestCase):
         self.assertEqual(result.signal['dominant_tone'], 'frustration')
         self.assertEqual(result.signal['tones'][1], {'tone': 'confusion', 'strength': 4})
         self.assertEqual(requests_module.calls[0]['json']['model'], stimmung_agent.PRIMARY_MODEL)
+        self.assertEqual(requests_module.calls[0]['json']['temperature'], 0.1)
+        self.assertEqual(requests_module.calls[0]['json']['top_p'], 1.0)
+        self.assertEqual(requests_module.calls[0]['json']['max_tokens'], 220)
+        self.assertEqual(
+            requests_module.calls[0]['json']['provider'],
+            {'allow_fallbacks': False, 'require_parameters': True},
+        )
+        self.assertEqual(
+            requests_module.calls[0]['json']['response_format'],
+            STRICT_STIMMUNG_RESPONSE_FORMAT,
+        )
         self.assertEqual(requests_module.calls[0]['json']['metadata']['frida_caller'], 'stimmung_agent')
         self.assertEqual(requests_module.calls[0]['json']['metadata']['frida_slot'], 'stimmung_agent_model')
         self.assertEqual(requests_module.calls[0]['json']['trace']['trace_name'], 'FridaDev')
@@ -240,6 +306,29 @@ class StimmungAgentTests(unittest.TestCase):
             payload['sampling'],
             {'temperature': 0.1, 'top_p': 1.0, 'max_tokens': 220, 'timeout_s': 10},
         )
+        self.assertEqual(
+            payload['stimmung_request'],
+            {
+                'stimmung_request_policy_version': 'stimmung_request_gemini_3_1_flash_lite_strict_v2',
+                'stimmung_transport': 'standard',
+                'stimmung_requested_model': stimmung_agent.PRIMARY_MODEL,
+                'stimmung_attempt_decision_source': 'primary',
+                'stimmung_max_tokens_effective': 220,
+                'stimmung_timeout_s_effective': 10,
+                'stimmung_temperature_sent': True,
+                'stimmung_temperature_effective': 0.1,
+                'stimmung_top_p_sent': True,
+                'stimmung_top_p_effective': 1.0,
+                'stimmung_provider_routing_sent': True,
+                'stimmung_provider_fallbacks_allowed': False,
+                'stimmung_provider_require_parameters': True,
+                'stimmung_response_format_sent': True,
+                'stimmung_response_format_type': 'json_schema',
+                'stimmung_json_schema_name': 'stimmung_affective_turn_signal_v1',
+                'stimmung_json_schema_strict': True,
+                'stimmung_json_schema_additional_properties': False,
+            },
+        )
         self.assertFalse(payload['fail_open'])
         self.assertEqual(payload['reason_code'], '')
 
@@ -294,6 +383,8 @@ class StimmungAgentTests(unittest.TestCase):
         self.assertEqual(requests_module.calls[0]['json']['temperature'], 0.6)
         self.assertEqual(requests_module.calls[0]['json']['top_p'], 0.77)
         self.assertEqual(requests_module.calls[0]['json']['max_tokens'], 333)
+        self.assertNotIn('provider', requests_module.calls[0]['json'])
+        self.assertNotIn('response_format', requests_module.calls[0]['json'])
         self.assertEqual(requests_module.calls[0]['json']['metadata']['frida_caller'], 'stimmung_agent')
         self.assertEqual(requests_module.calls[0]['json']['metadata']['frida_slot'], 'stimmung_agent_model')
         self.assertEqual(requests_module.calls[0]['timeout'], 22)
@@ -489,6 +580,80 @@ class StimmungAgentTests(unittest.TestCase):
             [stimmung_agent.PRIMARY_MODEL, stimmung_agent.FALLBACK_MODEL],
         )
         self.assertEqual(result.signal['dominant_tone'], 'neutralite')
+        primary_payload = requests_module.calls[0]['json']
+        fallback_payload = requests_module.calls[1]['json']
+        self.assertEqual(primary_payload['temperature'], 0.1)
+        self.assertEqual(primary_payload['top_p'], 1.0)
+        self.assertNotIn('temperature', fallback_payload)
+        self.assertNotIn('top_p', fallback_payload)
+        self.assertEqual(fallback_payload['max_tokens'], 220)
+        self.assertEqual(
+            fallback_payload['provider'],
+            {'allow_fallbacks': False, 'require_parameters': True},
+        )
+        self.assertEqual(fallback_payload['response_format'], STRICT_STIMMUNG_RESPONSE_FORMAT)
+
+    def test_provider_schema_is_closed_bounded_and_keeps_local_business_validation_sovereign(self) -> None:
+        response_format = stimmung_agent.provider_response_format()
+        schema = response_format['json_schema']['schema']
+
+        self.assertEqual(response_format, STRICT_STIMMUNG_RESPONSE_FORMAT)
+        self.assertFalse(schema['additionalProperties'])
+        self.assertEqual(set(schema['required']), set(schema['properties']))
+        self.assertEqual(schema['properties']['tones']['maxItems'], len(stimmung_agent.ALLOWED_TONES))
+        tone_schema = schema['properties']['tones']['items']
+        self.assertFalse(tone_schema['additionalProperties'])
+        self.assertEqual(set(tone_schema['required']), set(tone_schema['properties']))
+        self.assertEqual(
+            set(tone_schema['properties']['tone']['enum']),
+            set(stimmung_agent.ALLOWED_TONES),
+        )
+        schema_conformant = {
+            'schema_version': 'v1',
+            'present': True,
+            'tones': [{'tone': 'confusion', 'strength': 6}],
+            'dominant_tone': 'confusion',
+            'confidence': 0.6,
+        }
+        extra_field = dict(schema_conformant, unexpected='rejected')
+        missing_field = dict(schema_conformant)
+        missing_field.pop('confidence')
+        unknown_enum = dict(schema_conformant)
+        unknown_enum['tones'] = [{'tone': 'melancolie', 'strength': 6}]
+        self.assertFalse(set(extra_field) <= set(schema['properties']))
+        self.assertFalse(set(schema['required']) <= set(missing_field))
+        self.assertNotIn(
+            unknown_enum['tones'][0]['tone'],
+            tone_schema['properties']['tone']['enum'],
+        )
+
+        schema_conformant_but_business_invalid = {
+            'schema_version': 'v1',
+            'present': True,
+            'tones': [{'tone': 'confusion', 'strength': 6}],
+            'dominant_tone': 'frustration',
+            'confidence': 0.6,
+        }
+        with self.assertRaises(stimmung_agent._SignalValidationError):
+            stimmung_agent._validate_affective_turn_signal(
+                schema_conformant_but_business_invalid
+            )
+
+    def test_maximal_canonical_provider_shape_fits_existing_output_budget(self) -> None:
+        longest_tone = max(stimmung_agent.ALLOWED_TONES, key=len)
+        maximal_shape = {
+            'schema_version': 'v1',
+            'present': True,
+            'tones': [
+                {'tone': longest_tone, 'strength': 10}
+                for _index in range(len(stimmung_agent.ALLOWED_TONES))
+            ],
+            'dominant_tone': longest_tone,
+            'confidence': 0.9999999999999999,
+        }
+        compact_json = json.dumps(maximal_shape, ensure_ascii=False, separators=(',', ':'))
+
+        self.assertLessEqual(token_counter.estimate_text_tokens(compact_json), 220)
 
     def test_build_affective_turn_signal_returns_fail_open_after_double_failure(self) -> None:
         observed: list[dict[str, object]] = []
@@ -546,6 +711,23 @@ class StimmungAgentTests(unittest.TestCase):
             [item['payload_json']['attempt_decision_source'] for item in prepared_events],
             ['primary', 'fallback'],
         )
+        self.assertEqual(
+            prepared_events[0]['payload_json']['sampling'],
+            {'temperature': 0.1, 'top_p': 1.0, 'max_tokens': 220, 'timeout_s': 10},
+        )
+        self.assertEqual(
+            prepared_events[1]['payload_json']['sampling'],
+            {'max_tokens': 220, 'timeout_s': 10},
+        )
+        fallback_request = prepared_events[1]['payload_json']['stimmung_request']
+        self.assertEqual(
+            fallback_request['stimmung_request_policy_version'],
+            'stimmung_request_gpt_5_4_nano_fallback_strict_v2',
+        )
+        self.assertFalse(fallback_request['stimmung_temperature_sent'])
+        self.assertFalse(fallback_request['stimmung_top_p_sent'])
+        self.assertTrue(fallback_request['stimmung_provider_require_parameters'])
+        self.assertFalse(fallback_request['stimmung_provider_fallbacks_allowed'])
         self.assertTrue(all(item['payload_json']['secondary_provider_payload'] for item in prepared_events))
         self.assertTrue(all(not item['payload_json']['main_llm_payload'] for item in prepared_events))
         self.assertNotIn('Je ne comprends rien', repr([item['payload_json'] for item in prepared_events]))

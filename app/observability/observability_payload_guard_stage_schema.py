@@ -29,6 +29,8 @@ _GENERAL_TEXT_KEYS = set(
     validation_request_policy_version validation_transport validation_requested_model
     validation_attempt_decision_source validation_reasoning_effort_requested validation_reasoning_effort_effective
     validation_response_format_type validation_json_schema_name
+    stimmung_request_policy_version stimmung_transport stimmung_requested_model
+    stimmung_attempt_decision_source stimmung_response_format_type stimmung_json_schema_name
     failure_class recovery_action processing_state window_fingerprint next_window_progress
     geste_dialogique_dominant hard_guard_effect injection_class
     fallback_reason finish_reason
@@ -92,6 +94,10 @@ _GENERAL_SCALAR_KEYS = set(
     validation_reasoning_sent validation_reasoning_excluded validation_max_tokens_effective
     validation_temperature_sent validation_top_p_sent validation_provider_routing_sent validation_provider_fallbacks_allowed validation_provider_require_parameters
     validation_response_format_sent validation_json_schema_strict validation_json_schema_additional_properties
+    stimmung_max_tokens_effective stimmung_timeout_s_effective
+    stimmung_temperature_sent stimmung_temperature_effective stimmung_top_p_sent stimmung_top_p_effective
+    stimmung_provider_routing_sent stimmung_provider_fallbacks_allowed stimmung_provider_require_parameters
+    stimmung_response_format_sent stimmung_json_schema_strict stimmung_json_schema_additional_properties
     confidence content_free conversation_saved current_embedding_blocked current_embedding_calls
     current_embedding_reused dimensions draft_description_present draft_present draft_private embedding_calls_total fallback family_calendar
     has_in_progress_turn legacy_writer_disabled messages_saved mutable_len nextcloud_access now_iso_present
@@ -174,6 +180,7 @@ _GENERAL_CONTAINER_KEYS = {
     "retrieved_candidates",
     "rerank_reason_counts",
     "sampling",
+    "stimmung_request",
     "source_material_summary",
     "state",
     "state_transition",
@@ -308,7 +315,7 @@ def _is_safe_general_text_value(key: str, value: Any) -> bool:
     return _is_safe_code_text(
         value,
         allow_empty=True,
-        allow_model=lower in {"model", "provider_model", "validation_requested_model"},
+        allow_model=lower in {"model", "provider_model", "validation_requested_model", "stimmung_requested_model"},
     )
 
 

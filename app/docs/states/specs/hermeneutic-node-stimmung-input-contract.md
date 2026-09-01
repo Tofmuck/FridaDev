@@ -1,6 +1,6 @@
 # Hermeneutic Node Stimmung Input Contract
 
-Statut: contrat vivant livre; revalide pendant le contre-audit 4O.Z le 1 septembre 2026
+Statut: contrat vivant livre; transport provider strict 5S livre le 1 septembre 2026
 Portee: contrat d'entree utile pour `FridaDev`, sans importation de la machine `M6` complete
 
 Le runtime autoritatif est `stimmung_agent.py` -> persistance compacte dans
@@ -163,6 +163,26 @@ Invariants:
 - le signal est emis par tour, mais peut etre calcule sur une fenetre conversationnelle locale bornee a `5` tours
 - cette contextualisation locale ne vaut pas stabilisation multi-tours
 
+Contrat provider actif depuis 5S:
+
+- le JSON Schema `stimmung_affective_turn_signal_v1` est derive de cette forme
+  canonique et non du prompt: cinq champs requis, objets fermes, neuf tonalites
+  existantes, `strength=1..10`, `confidence=0..1` et au plus neuf entrees;
+- le schema ne remplace pas `_safe_json_loads()` puis
+  `_validate_affective_turn_signal()`: les coherences entre `present`, `tones`
+  et `dominant_tone`, ainsi que la deduplication locale existante, restent
+  controlees apres la reponse provider;
+- primaire `google/gemini-3.1-flash-lite`: politique
+  `stimmung_request_gemini_3_1_flash_lite_strict_v2`, sampling configure
+  `temperature=0.1`, `top_p=1.0`, plafond `220`, timeout `10 s`;
+- fallback applicatif `openai/gpt-5.4-nano`: politique
+  `stimmung_request_gpt_5_4_nano_fallback_strict_v2`, meme schema, plafond et
+  timeout, mais `temperature/top_p` omis du payload car ses endpoints actifs ne
+  les declarent pas supportes; les valeurs persistees ne sont pas modifiees;
+- les deux politiques imposent `provider.allow_fallbacks=false` et
+  `provider.require_parameters=true`; OpenRouter ne choisit donc pas un autre
+  modele ou une route sans les parametres demandes.
+
 ## 6. Minimal Contract For `stimmung`
 
 Forme minimale attendue:
@@ -259,7 +279,14 @@ Observability minimale du provider secondaire:
 - `stimmung_prompt_prepared` est emis avant l'appel provider du `stimmung_agent`
 - cet event prouve content-free que le provider secondaire a recu un payload prepare
 - il doit distinguer `provider_caller=stimmung_agent`, `secondary_provider_payload=true` et `main_llm_payload=false`
-- il peut exposer les counts, longueurs, reglages de sampling, timeout, source de tentative et flags de fallback
+- il expose les counts, longueurs, source de tentative et parametres
+  effectivement envoyes; le fallback GPT-5.4 Nano ne presente donc aucun
+  sampling provider effectif
+- le bloc content-free `stimmung_request` expose la version de politique, le
+  modele/source demandes, le plafond, le timeout, la presence effective du
+  sampling, le routage exigeant et l'identite du JSON Schema strict
+- un evenement historique sans ce bloc, ou un bloc incoherent, reste
+  `unknown`; il n'est jamais requalifie retroactivement comme strict
 - il ne doit pas exposer le prompt du `stimmung_agent`, les messages, le tour utilisateur courant, la fenetre recente ou un contenu conversationnel brut
 
 Contraintes:

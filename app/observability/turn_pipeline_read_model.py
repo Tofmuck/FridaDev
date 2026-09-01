@@ -5,6 +5,7 @@ from typing import Any, Mapping, Sequence
 from core.hermeneutic_node.doctrine import epistemic_regime as epistemic_doctrine
 from core.hermeneutic_node.doctrine import judgment_posture as judgment_doctrine
 from core.hermeneutic_node.validation import validation_contract, validation_transport
+from core import stimmung_transport
 from observability import agentic_status
 from observability.turn_observability_checklist import build_turn_observability_checklist
 from observability.turn_pipeline_biblio_summary import build_biblio_summary
@@ -257,6 +258,59 @@ def _validation_request_summary(
     }
 
 
+def _stimmung_request_summary(
+    prepared_event: Mapping[str, Any] | None,
+    caller_summary: Mapping[str, Any],
+) -> dict[str, Any]:
+    payload = _payload(prepared_event or {})
+    request_payload = _mapping(payload.get('stimmung_request'))
+    if not request_payload.get('stimmung_request_policy_version'):
+        return {
+            'authoritative': False,
+            'status': 'unknown',
+            'reason_code': 'historical_request_policy_unobserved',
+            'requested_model': '',
+            'observed_model': _text(caller_summary.get('provider_model')),
+            'observed_provider': _text(caller_summary.get('provider')),
+        }
+    try:
+        validated = stimmung_transport.validate_request_observability(request_payload)
+    except ValueError as exc:
+        return {
+            'authoritative': False,
+            'status': 'unknown',
+            'reason_code': str(exc.args[0]) if exc.args else 'invalid_stimmung_request_observability',
+            'requested_model': _text(request_payload.get('stimmung_requested_model')),
+            'observed_model': _text(caller_summary.get('provider_model')),
+            'observed_provider': _text(caller_summary.get('provider')),
+        }
+    return {
+        'authoritative': True,
+        'status': 'prepared',
+        'reason_code': 'observed_effective_request',
+        'policy_version': validated['stimmung_request_policy_version'],
+        'transport': validated['stimmung_transport'],
+        'decision_source': validated['stimmung_attempt_decision_source'],
+        'requested_model': validated['stimmung_requested_model'],
+        'observed_model': _text(caller_summary.get('provider_model')),
+        'observed_provider': _text(caller_summary.get('provider')),
+        'max_tokens_effective': validated['stimmung_max_tokens_effective'],
+        'timeout_s_effective': validated['stimmung_timeout_s_effective'],
+        'temperature_sent': validated['stimmung_temperature_sent'],
+        'temperature_effective': validated.get('stimmung_temperature_effective'),
+        'top_p_sent': validated['stimmung_top_p_sent'],
+        'top_p_effective': validated.get('stimmung_top_p_effective'),
+        'provider_routing_sent': validated['stimmung_provider_routing_sent'],
+        'provider_fallbacks_allowed': validated['stimmung_provider_fallbacks_allowed'],
+        'provider_require_parameters': validated['stimmung_provider_require_parameters'],
+        'response_format_sent': validated['stimmung_response_format_sent'],
+        'response_format_type': validated['stimmung_response_format_type'],
+        'json_schema_name': validated['stimmung_json_schema_name'],
+        'json_schema_strict': validated['stimmung_json_schema_strict'],
+        'json_schema_additional_properties': validated['stimmung_json_schema_additional_properties'],
+    }
+
+
 def _secondary_provider_status(status_values: set[str], *, event_present: bool) -> str:
     if not event_present:
         return agentic_status.STATUS_NOT_APPLICABLE
@@ -383,6 +437,16 @@ def _providers_summary(events: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             )
             summary['validation_status'] = _text(prepared_payload.get('validation_status'))
             summary['request'] = _validation_request_summary(
+                prepared_events[-1] if prepared_events else None,
+                summary,
+            )
+        elif key == 'stimmung':
+            prepared_payload = _payload(prepared_events[-1] if prepared_events else {})
+            summary['attempt_decision_source'] = _text(
+                prepared_payload.get('attempt_decision_source')
+            )
+            summary['stimmung_status'] = _text(prepared_payload.get('stimmung_status'))
+            summary['request'] = _stimmung_request_summary(
                 prepared_events[-1] if prepared_events else None,
                 summary,
             )

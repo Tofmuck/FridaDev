@@ -1067,7 +1067,19 @@ def build_stimmung_prompt_prepared_payload(
     max_tokens: int,
     timeout_s: int,
     context_window_turns: int,
+    request_observability: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
+    request_payload = dict(_mapping(request_observability))
+    sampling = {
+        'max_tokens': int(request_payload.get('stimmung_max_tokens_effective') or max_tokens),
+        'timeout_s': int(request_payload.get('stimmung_timeout_s_effective') or timeout_s),
+    }
+    if not request_payload or request_payload.get('stimmung_temperature_sent') is True:
+        sampling['temperature'] = float(
+            request_payload.get('stimmung_temperature_effective', temperature)
+        )
+    if not request_payload or request_payload.get('stimmung_top_p_sent') is True:
+        sampling['top_p'] = float(request_payload.get('stimmung_top_p_effective', top_p))
     payload = {
         "schema_version": "v1",
         "payload_kind": "secondary_stimmung_agent_provider",
@@ -1076,15 +1088,12 @@ def build_stimmung_prompt_prepared_payload(
         "main_llm_payload": False,
         "stimmung_status": "prepared",
         "attempt_decision_source": _text(decision_source) or "unknown",
-        "sampling": {
-            "temperature": float(temperature),
-            "top_p": float(top_p),
-            "max_tokens": int(max_tokens),
-            "timeout_s": int(timeout_s),
-        },
+        "sampling": sampling,
         "fail_open": False,
         "reason_code": "",
     }
+    if request_payload:
+        payload['stimmung_request'] = request_payload
     payload.update(_provider_message_stats(messages))
     payload.update(
         _recent_window_stats(
@@ -1106,6 +1115,7 @@ def emit_stimmung_prompt_prepared(
     max_tokens: int,
     timeout_s: int,
     context_window_turns: int,
+    request_observability: Mapping[str, Any] | None = None,
 ) -> bool:
     return chat_turn_logger.emit(
         "stimmung_prompt_prepared",
@@ -1121,6 +1131,7 @@ def emit_stimmung_prompt_prepared(
             max_tokens=max_tokens,
             timeout_s=timeout_s,
             context_window_turns=context_window_turns,
+            request_observability=request_observability,
         ),
     )
 

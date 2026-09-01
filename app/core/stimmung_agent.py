@@ -11,13 +11,14 @@ from admin import runtime_settings
 from core.hermeneutic_node.inputs import recent_window_input as canonical_recent_window_input
 from core import llm_client
 from core import prompt_loader
+from core import stimmung_transport
 from observability import hermeneutic_node_logger
 
 logger = logging.getLogger('frida.stimmung_agent')
 
 SCHEMA_VERSION = 'v1'
-PRIMARY_MODEL = 'google/gemini-3.1-flash-lite'
-FALLBACK_MODEL = 'openai/gpt-5.4-nano'
+PRIMARY_MODEL = stimmung_transport.PRIMARY_MODEL
+FALLBACK_MODEL = stimmung_transport.FALLBACK_MODEL
 PROMPT_PATH = 'prompts/stimmung_agent.txt'
 REQUEST_TIMEOUT_S = 10
 CONTEXT_WINDOW_TURNS = canonical_recent_window_input.MAX_RECENT_TURNS
@@ -46,6 +47,57 @@ _ALLOWED_SIGNAL_KEYS = {
     'confidence',
 }
 _ALLOWED_TONE_KEYS = {'tone', 'strength'}
+
+
+def provider_response_format() -> dict[str, Any]:
+    return {
+        'type': 'json_schema',
+        'json_schema': {
+            'name': stimmung_transport.PROVIDER_SCHEMA_NAME,
+            'strict': True,
+            'schema': {
+                'type': 'object',
+                'additionalProperties': False,
+                'required': [
+                    'schema_version',
+                    'present',
+                    'tones',
+                    'dominant_tone',
+                    'confidence',
+                ],
+                'properties': {
+                    'schema_version': {'type': 'string', 'enum': [SCHEMA_VERSION]},
+                    'present': {'type': 'boolean'},
+                    'tones': {
+                        'type': 'array',
+                        'maxItems': len(ALLOWED_TONES),
+                        'items': {
+                            'type': 'object',
+                            'additionalProperties': False,
+                            'required': ['tone', 'strength'],
+                            'properties': {
+                                'tone': {'type': 'string', 'enum': list(ALLOWED_TONES)},
+                                'strength': {
+                                    'type': 'integer',
+                                    'minimum': 1,
+                                    'maximum': 10,
+                                },
+                            },
+                        },
+                    },
+                    'dominant_tone': {
+                        'type': ['string', 'null'],
+                        'enum': [*ALLOWED_TONES, None],
+                    },
+                    'confidence': {
+                        'type': 'number',
+                        'minimum': 0.0,
+                        'maximum': 1.0,
+                    },
+                },
+            },
+        },
+    }
 
 
 @dataclass(frozen=True)
@@ -319,6 +371,17 @@ def _call_model(
         user_msg=user_msg,
         recent_window_input_payload=recent_window_input_payload,
     )
+    prepared_request = stimmung_transport.prepare_stimmung_request(
+        model=model,
+        decision_source=decision_source,
+        messages=messages,
+        timeout_s=timeout_s,
+        temperature=temperature,
+        top_p=top_p,
+        max_tokens=max_tokens,
+        response_format=provider_response_format(),
+        llm_module=llm_client,
+    )
     hermeneutic_node_logger.emit_stimmung_prompt_prepared(
         model=model,
         decision_source=decision_source,
@@ -329,22 +392,13 @@ def _call_model(
         max_tokens=max_tokens,
         timeout_s=timeout_s,
         context_window_turns=CONTEXT_WINDOW_TURNS,
-    )
-    payload = llm_client.with_provider_attribution(
-        {
-            'model': model,
-            'messages': messages,
-            'temperature': temperature,
-            'top_p': top_p,
-            'max_tokens': max_tokens,
-        },
-        caller='stimmung_agent',
+        request_observability=prepared_request.observability,
     )
     response = requests_module.post(
         llm_client.or_chat_completions_url(),
-        json=payload,
+        json=prepared_request.payload,
         headers=llm_client.or_headers(caller='stimmung_agent'),
-        timeout=timeout_s,
+        timeout=prepared_request.timeout_s,
     )
     response.raise_for_status()
     response_payload = llm_client.read_openrouter_response_payload(response)
