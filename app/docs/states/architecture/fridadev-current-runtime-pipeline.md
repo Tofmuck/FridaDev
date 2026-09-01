@@ -181,11 +181,12 @@ de `chat_prompt_context.py` est conservé.
 La candidate benchmark `surface_only_v1` a été rejetée sur GPT-5.1 et GPT-5.2,
 reste inactive et n'est raccordée à aucun chemin runtime ou frontend.
 
-Limite active relevée par le contre-audit 4O.Z : le noeud primaire calcule le
-régime épistémique avant `source_conflicts`, tandis que son signal de conflit
-explicite reste neutralisé. Un conflit structuré peut donc être conservé dans
-le verdict sans produire le régime contractuel `contradictoire`; le correctif
-borné 4C.5 doit précéder la fermeture du Lot 4.
+Le contre-audit 4O.Z confirme aussi que `contradictoire` reste un vocabulaire
+contractuel accepté sans producteur canonique actif dans le primaire courant.
+Les seuls `source_conflicts` effectivement produits portent
+`issue=review_required` : ils restent inspectables et peuvent accompagner une
+clarification issue des signaux canoniques, sans imposer automatiquement
+`contradictoire`, `arbitrage_requis`, `bloquante` ou `suspend`.
 
 Biblio et Agenda conservent leurs propres contrats, outils et états. Ils ne sont
 ni Memory, ni Summary, ni Identity, ni Web. Agenda conserve les confirmations

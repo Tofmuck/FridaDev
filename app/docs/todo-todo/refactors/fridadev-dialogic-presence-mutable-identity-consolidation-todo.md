@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 3 fermes; Lot 4 actif, contre-audit 4O.Z execute mais bloque par le gap produit `source_conflicts -> contradictoire`, micro-lot correctif 4C.5 non commence; classification globale attendue `strengthen`, caller renforce, F2 corrige par separation epistemique/enonciative, F4 `partiel` et 4C.4 `inconclusive` avec decision produit `keep_current_v2.3`; Lots 5 a 8 et Z non commences
+Statut: TODO actif; Lots 0 a 4 fermes; decision globale du Lot 4 `strengthen`, caller renforce, F2 corrige par separation epistemique/enonciative, F4 `partiel` et 4C.4 `inconclusive` avec decision produit `keep_current_v2.3`; faux blocage 4C.5 classe `invalide/non requis` apres contre-audit croise des contrats; Lots 5 a 8 et Z non commences
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -1637,7 +1637,7 @@ Portee architecturale de cette acceptation:
 
 # LOT 4 - Audit causal et consolidation de Stimmung
 
-Statut: actif; 4C.1, 4S.0, 4S.1, 4C.2, 4C.3 et 4C.4 fermes; 4O.Z execute mais reste ouvert apres identification du gap produit `source_conflicts -> contradictoire`; 4C.5 correctif non commence; classification globale attendue `strengthen`; prompt Stimmung renforce v2 qualifie `32/32` sur le primaire puis livre; certitude epistemique et effet d'enonciation separes pour Stimmung; F4 reste `partiel`, 4C.4 `inconclusive` et la decision produit reste `keep_current_v2.3`; candidate `surface_only_v1` rejetee et inactive; Lot 5 non commence
+Statut: ferme le 1 septembre 2026; decision globale `strengthen`; 4C.1, 4S.0, 4S.1, 4C.2, 4C.3, 4C.4 et 4O.Z fermes; proposition 4C.5 classee `invalide/non requise`; prompt Stimmung renforce v2 qualifie `32/32` sur le primaire puis livre; certitude epistemique et effet d'enonciation separes pour Stimmung; F4 reste `partiel`, 4C.4 `inconclusive` et la decision produit reste `keep_current_v2.3`; candidate `surface_only_v1` rejetee et inactive; Lot 5 non commence
 Nature: audit causal multi-tours, correctifs bornes, benchmark sous GO separe
 et observabilite synchrone, sans extension fonctionnelle
 Dependance: Lot 3 ferme
@@ -3936,7 +3936,7 @@ Finalisation ratifiee v2.4/v2.5 du 1 septembre 2026:
 
 ### Micro-lot 4O.Z - Contre-audit causal et fermeture du Lot 4
 
-Statut: contre-audit execute le 1 septembre 2026; reste ouvert; micro-lot correctif 4C.5 requis; Lot 5 non commence
+Statut: ferme le 1 septembre 2026; proposition 4C.5 invalidee/non requise; Lot 4 ferme; Lot 5 non commence
 Effort recommande: `extra high`
 Nature: audit transversal, tests et documentation; aucun correctif opportuniste
 Prerequis: 4C.1, 4S.0, 4S.1 et 4C.3 fermes; 4C.2 et 4C.4 fermes ou non requis
@@ -3947,13 +3947,16 @@ Le contre-audit a reutilise les contrats, fixtures, goldens, projections et
 smokes existants. Aucun nouveau corpus, harness, prompt, modele, provider,
 appel reseau, tour utilisateur, runtime ou frontend produit n'a ete ajoute ou
 modifie. Le contre-audit a corrige les statuts documentaires devenus faux et a
-identifie un gap produit bloquant: `build_source_conflicts()` peut produire un
-conflit d'ancrage structure, mais `build_epistemic_regime()` est appele avant ce
-calcul et `_explicit_conflict_signal()` retourne toujours `False`. Le regime
-contractuel `contradictoire` est donc inatteignable dans le primaire.
+observe que `build_epistemic_regime()` ne produit actuellement jamais
+`contradictoire`. Une premiere lecture a classe trop vite cette observation
+comme un gap `source_conflicts -> contradictoire`. Le contre-audit croise du
+contrat `hermeneutic-node-source-conflict-contract.md`, du code et des tests
+invalide ce blocage: le seul conflit produit est
+`conflit_d_ancrage_de_source` avec `issue=review_required`, sans signal de
+materialite ou de gravite qui autoriserait un regime dur et bloquant.
 
-Classification globale attendue apres correction: `strengthen`. Elle est
-imposee par les renforcements reels deja livres: transport structurel complet
+Decision globale: `strengthen`. Elle est imposee par les renforcements reels
+deja livres: transport structurel complet
 vers Validation en 4C.1,
 renforcement du caller en 4C.2, puis separation entre effet epistemique et
 effet d'enonciation en 4C.3. Les decisions locales restent distinctes:
@@ -3976,7 +3979,7 @@ HEAD courant et les fixtures ne recopient pas les algorithmes produit.
 | persistance -> rehydratation | contrat Stimmung, pipeline runtime | `chat_service.chat_response`, `chat_turn_runtime_inputs.store_latest_user_affective_turn_signal`, `conversations_store.save_conversation/load_conversation` | aucun event n'est reutilise comme source metier; la relecture est resumee ensuite par `hermeneutic_node_insertion.inputs.stimmung` | stockage conversationnel, puis reader du seam | `test_lot4_stimmung_causal_goldens.py::test_real_coordinator_store_functions_round_trip_and_aggregate_four_primary_signals`; `::test_json_and_stream_share_the_same_store_fake_signal_history_without_duplication` | prouve |
 | rehydratation -> agregation | contrat Stimmung | `stimmung_input.extract_recent_affective_turn_signals/build_stimmung_input` | `hermeneutic_node_insertion.inputs.stimmung`: `present`, `dominant_tone`, `active_tones`, `stability`, `shift_state`, `turns_considered` | projection admin de stage; `/hermeneutic-admin` | `test_lot4_stimmung_causal_goldens.py::test_multi_turn_corpus_observes_shift_alternation_neutral_return_and_invalid_middle`; `test_stimmung_input.py::test_build_stimmung_input_returns_missing_when_latest_user_signal_is_unavailable` | prouve |
 | agregation -> regime primaire | contrats Stimmung et regime epistemique | `primary_node.run_primary_node`, `epistemic_regime.build_epistemic_regime`, `judgment_posture.build_enunciation_directive` | `primary_node`: triplets `epistemic_*` et `enunciation_*`; fail-open ferme et `reason_code` | garde de payload, projection admin et reader causal | `test_lot4_stimmung_causal_goldens.py::test_absent_stable_and_shifted_stimmung_are_epistemically_inert`; `::test_primary_coordinator_keeps_strong_epistemic_certainty_and_separates_enunciation` | prouve |
-| conflit inter-sources -> regime `contradictoire` | contrat regime epistemique | `source_conflicts.build_source_conflicts`, `primary_node.run_primary_node`, `epistemic_regime._explicit_conflict_signal` | `primary_node.source_conflicts` peut exposer un conflit content-free, mais `epistemic_regime` ne peut pas emettre `source_conflict` depuis ce resultat | les readers preservent le conflit et le triplet epistemique tels quels; aucune projection ne doit inventer le raccord | `test_source_conflicts.py::test_build_source_conflicts_detects_residual_source_anchor_conflict`; inspection autoritative de `_explicit_conflict_signal()` et de l'ordre du primaire | gap produit |
+| conflit inter-sources -> regime primaire | contrats conflits de sources et regime epistemique | `source_conflicts.build_source_conflicts`, `primary_node.run_primary_node`, `epistemic_regime._explicit_conflict_signal` | `primary_node.source_conflicts` expose `review_required`; aucun champ ne qualifie une contradiction materielle dure; `contradictoire` reste sans producteur actif | readers et projections preservent le conflit et le triplet epistemique sans inventer de raccord | `test_source_conflicts.py::test_build_source_conflicts_emits_only_review_required_issue`; `test_primary_node.py::test_build_primary_node_propagates_source_conflicts_into_primary_verdict` | prouve: separation intentionnelle |
 | primaire -> Validation | contrat Validation | `validation_canonical_projection.build_projection`, `validation_messages.build_messages_with_projection`, `validation_agent.run_validation_agent` | `validation_prompt_prepared`: version, contrat, chars/budget, familles incluses/omises/no-data/invalides, statut et raison de livraison Stimmung, provenance de tentative | `_canonical_projection_summary`, `providers.secondary.validation.canonical_projection`, `/api/admin/logs/chat/turns`, deux surfaces | `test_lot4_stimmung_causal_goldens.py::test_validation_capture_preserves_complete_stimmung_independent_of_neighbor_volume_and_names`; `test_log_store_phase3.py::test_validation_projection_rejects_partial_or_unproved_full_in_read_models` | prouve |
 | Validation -> posture/payload principal | contrats Validation et posture | `validation_contract.build_validated_output_payload`, `validation_canonical_projection`, `chat_prompt_context.build_hermeneutic_judgment_block` | `validation_agent` et `prompt_injection`: deux triplets stricts, posture/regime finaux; `prompt_prepared` reste counts-only | reader donne priorite a Validation; bloc principal sans signal Stimmung brut | `test_lot4_stimmung_causal_goldens.py::test_main_model_receives_only_distinct_derived_epistemic_and_enunciation_effects`; `test_validation_agent.py::test_canonical_projection_is_whole_bounded_repeatable_and_rejects_partial_metadata` | prouve |
 | evenements -> garde/projection | contrat observabilite agentique | `hermeneutic_node_logger`, `observability_payload_guard_stage_schema`, `admin_log_projection` | six champs causaux allowlistes; incoherence ou historique incomplet -> `unknown`; contenu brut bloque | `log_store.read_chat_log_events(payload_projection=admin)` | `test_chat_turn_logger_hermeneutic_observability.py::test_primary_node_fail_open_event_keeps_compact_cause_without_raw_exception`; `test_observability_payload_guard.py::test_validation_and_stimmung_content_free_payloads_pass` | prouve |
@@ -4008,12 +4011,12 @@ HEAD courant et les fixtures ne recopient pas les algorithmes produit.
 - Z6 `prouve`: Presence, questions, demandes, risques, actions, hard guards,
   final locks, JSON/streaming, persistance, capsule et manifest restent couverts
   par les goldens transversaux et les suites voisines.
-- Z7 `gap produit`: aucun ancien raccord `stimmung_caution`, branche candidate
-  ou politique 4C.4 n'est appele par le runtime et `surface_only_v1` reste
-  confinee aux fixtures et outils benchmark. En revanche, le contrat vivant du
-  regime epistemique exige `contradictoire` sur conflit materiel explicite,
-  alors que `_explicit_conflict_signal()` neutralise ce raccord. Cette
-  contradiction code/contrat bloque la fermeture et est assignee a 4C.5.
+- Z7 `prouve`: aucun ancien raccord `stimmung_caution`, branche candidate ou
+  politique 4C.4 n'est appele par le runtime et `surface_only_v1` reste
+  confinee aux fixtures et outils benchmark. L'inaccessibilite actuelle de
+  `contradictoire` reste documentee sans devenir une contradiction code/contrat:
+  aucun signal canonique courant ne qualifie la contradiction materielle dure,
+  et `review_required` ne doit pas etre transforme en blocage automatique.
 - Z8 `prouve`: la frontiere active reste `chat_prompt_context.py` sous decision
   `keep_current_v2.3`; `surface_only_v1` est rejetee, inactive et absente du
   runtime.
@@ -4040,15 +4043,13 @@ epistemique, disparition ou duplication de la directive, livraison Validation
 inventee, fallback presente comme primaire, fail-open presente comme succes,
 contenu brut ajoute, projection incoherente et influence frontend fabriquee.
 
-Le gap bloquant a ete reproduit sans reseau dans l'image locale, sur un cas
-synthetique content-free commun aux vrais builders: `build_source_conflicts()`
-retourne un conflit, puis `build_epistemic_regime()` retourne
-`a_verifier/verification_externe_requise` au lieu de `contradictoire`. Le
-diagnostic imprime uniquement
-`source_conflicts_count=1`, les deux regimes fermes et
-`reproduced_gap=True`. Les deux tests unitaires voisins executes separement
-passent `2/2`; ils prouvent les composants isoles et expliquent pourquoi la
-suite complete verte n'a pas detecte l'absence du raccord transversal.
+La sonde sans reseau de la premiere passe reste factuellement valide:
+`build_source_conflicts()` retourne un conflit tandis que
+`build_epistemic_regime()` ne retourne pas `contradictoire`. Sa conclusion
+`reproduced_gap=True` est en revanche invalidee par le contrat croise: la sonde
+n'apportait aucun signal structure de materialite ou de gravite et ne pouvait
+donc pas prouver qu'un raccord manquait. Les tests cibles confirment au
+contraire la separation actuelle entre `review_required` et les regimes durs.
 
 La decouverte Python hermetique complete, JavaScript complet et Chromium
 complet sont executes une seule fois a la fin du contre-audit; leurs totaux
@@ -4072,49 +4073,35 @@ fonctions produit et une representation de lignes, pas une DB PostgreSQL
 operateur; aucune campagne provider ni aucun tour utilisateur n'est rejoue.
 F4 ne devient pas une dette sans proprietaire: il reste la decision produit
 explicite `keep_current_v2.3`; toute nouvelle candidate ou campagne exigerait
-un micro-lot distinct decide par Tof. Le gap `contradictoire` est, lui,
-bloquant et assigne au micro-lot 4C.5 ci-dessous. Le Lot 5 reste entierement
-ouvert et non commence.
+un micro-lot distinct decide par Tof. `contradictoire` reste un vocabulaire
+contractuel accepte sans producteur canonique actif; cette absence n'est ni un
+gap Stimmung ni une dette assignee. Le Lot 5 reste entierement ouvert et non
+commence.
 
-#### Micro-lot 4C.5 - Raccorder les conflits explicites au regime contradictoire
+#### Micro-lot 4C.5 - Proposition de raccord des conflits au regime contradictoire
 
-Statut: non commence; correctif requis avant reprise et fermeture de 4O.Z
+Statut: `invalide/non requis` le 1 septembre 2026 apres contre-audit croise;
+aucun patch runtime, test, frontend ou observabilite produit
 
-Nature: correction de coherence doctrinale a comportement borne; aucune
-extension de famille de conflit, de modele, de prompt, de provider, de route,
-de surface ou de capacite.
+Requalification C1-C6:
 
-Fichiers candidats bornes:
+- C1 valide: `_explicit_conflict_signal()` retourne toujours `False` et aucun
+  producteur courant n'atteint `contradictoire`;
+- C2 valide: `source_conflicts` ne porte que `conflict_type`, `sources` et
+  `issue=review_required`, sans qualification de contradiction dure;
+- C3 valide: son contrat interdit qu'un conflit residuel impose a lui seul
+  `contradictoire`, `a_verifier`, `suspendu` ou une posture bloquante;
+- C4 valide: le raccord exige initialement par 4C.5 aurait transforme un signal
+  de relecture en `arbitrage_requis/bloquante` et cree un comportement doctrinal
+  non autorise;
+- C5 valide: aucun champ de gravite, detecteur, heuristique ou taxonomie n'est
+  ajoute sous la doctrine de consolidation;
+- C6 valide: `contradictoire` reste un vocabulaire accepte sans producteur
+  canonique actif; `review_required` conserve son sens non bloquant; 4O.Z et le
+  Lot 4 ferment, tandis que le Lot 5 reste non commence.
 
-- `app/core/hermeneutic_node/runtime/primary_node.py`;
-- `app/core/hermeneutic_node/doctrine/epistemic_regime.py`;
-- tests doctrine/primaire/Validation, observabilite et deux renderers voisins;
-- contrats vivants et cette roadmap si leur verite change.
-
-Invariants:
-
-- consommer une seule fois le resultat structure de `build_source_conflicts()`;
-- produire `contradictoire/arbitrage_requis/bloquante` seulement lorsqu'un
-  conflit materiel explicite valide existe, sans heuristique textuelle;
-- ne pas modifier le regime en l'absence de conflit et ne jamais laisser
-  Stimmung creer, aggraver ou resoudre un conflit de sources;
-- propager le meme etat causal content-free dans Validation, evenement,
-  reader, read-model, API et les deux renderers, sans faux succes;
-- preserver Presence, hard guards, final locks, JSON/streaming, persistance,
-  capsule et manifest.
-
-Preuves minimales:
-
-- test sensible d'integration primaire rejetant la mutation qui ignore un
-  `source_conflicts` valide;
-- contre-cas absence, conflit invalide et signal Stimmung seul;
-- tests Validation/observabilite/read-model/frontend/navigateur des transitions
-  `contradictoire`, puis suites completes selon le risque.
-
-Condition de sortie: conflit explicite structure -> regime `contradictoire` ->
-posture/Validation -> evenement -> reader/read-model/API -> deux renderers
-prouve de bout en bout; aucune nouvelle detection de conflit; 4O.Z repris et
-ferme seulement apres contre-audit vert. Lot 5 toujours non commence.
+Decision de sortie: ne pas implementer 4C.5. Aucun producteur, signal ou
+chantier `contradictoire` n'est ouvert ou anticipe par cette roadmap.
 
 Objectif exact: verifier que les corrections et decisions precedentes forment
 un pipeline coherent, observable et documente, puis fermer le Lot 4 avant tout
@@ -4149,18 +4136,18 @@ Decision documentaire finale:
 
 Condition de fermeture:
 
-- [ ] Tous les micro-lots obligatoires sont fermes et les conditionnels classes: 4C.5 reste requis.
+- [x] Tous les micro-lots obligatoires sont fermes et les conditionnels classes; 4C.5 est invalide/non requis.
 - [x] Corpus et campagne primaire/fallback ont une decision explicite.
 - [x] F2 est corrige et F4 tranche.
-- [ ] Matrice causale backend/read-model/frontend et navigateur complete: raccord `contradictoire` manquant.
+- [x] Matrice causale backend/read-model/frontend et navigateur complete; separation `review_required`/regimes durs prouvee.
 - [x] Suites finales et sensibilite restent vertes sans skip nouveau.
-- [x] Roadmap, contrats et README concernes decrivent le gap courant.
-- [ ] Correctif 4C.5 et reprise 4O.Z committes/pousses, worktree propre,
-  divergence `0/0` et runtime prouve.
+- [x] Roadmap, contrats et README concernes decrivent la requalification sans
+  masquer l'absence de producteur actif.
+- [x] Aucun correctif 4C.5 requis; livraison 4O.Z committable sans diff runtime.
 - [x] Lot 5 reste non commence jusqu'a cette fermeture.
 
-Message de commit de ce contre-audit bloque:
-`docs: record Lot 4O.Z causal gap`.
+Message de commit de la requalification finale:
+`docs: correct Lot 4 conflict classification`.
 
 ## Passe 4.0 - Goldens causaux hermetiques
 
@@ -4376,17 +4363,16 @@ preuve lorsqu'un test existant couvre deja exactement l'invariant.
 - [x] 4C.4 ferme `inconclusive` depuis une preuve causale de F4, avec decision
   produit `keep_current_v2.3` et dialogue quotidien comme epreuve qualitative
   principale.
-- [ ] 4O.Z ferme: bloque par 4C.5, contrats et README concernes coherents.
+- [x] 4O.Z ferme: 4C.5 invalide/non requis, contrats et README concernes coherents.
 - [x] Corpus semantique multi-tours du caller valide humainement: ironie, affect rapporte,
   correction, intensite sans changement epistemique, question, demande, risque,
   action materielle et contre-cas Presence.
 - [x] Reception effective par Validation et posture finale prouvees.
-- [ ] Matrice observabilite backend/read-model/frontend prouvee: toutes les transitions sauf `source_conflicts -> contradictoire` sont prouvees.
+- [x] Matrice observabilite backend/read-model/frontend prouvee; aucun raccord automatique `source_conflicts -> contradictoire` requis.
 - [x] Primaire et fallback distingues sans requalification d'echec.
 - [x] Findings F1 a F6 valides, invalides ou nuances par preuves.
-- [ ] Decision globale `strengthen` finale differee jusqu'a la reprise de 4O.Z;
-  classification attendue et decisions du caller, de F2 et de F4 documentees
-  separement depuis leurs preuves.
+- [x] Decision globale `strengthen` documentee; decisions du caller, de F2 et
+  de F4 classees separement depuis leurs preuves.
 - [x] Aucun caller, mode ou capacite produit ajoute.
 - [x] Aucun micro-lot correctif ou Lot 5 commence implicitement.
 

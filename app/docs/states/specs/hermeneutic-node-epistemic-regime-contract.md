@@ -1,6 +1,6 @@
 # Hermeneutic Node Epistemic Regime Contract
 
-Statut: contrat vivant partiellement livre; contre-audit 4O.Z du 1 septembre 2026; raccord `source_conflicts -> contradictoire` manquant assigne a 4C.5
+Statut: contrat vivant livre; contre-audit croise 4O.Z du 1 septembre 2026; `contradictoire` accepte sans producteur canonique actif, 4C.5 invalide/non requis
 Portee: contrat doctrinal minimal pour `epistemic_regime`, `proof_regime` et `uncertainty_posture`
 
 ## 1. Purpose
@@ -14,10 +14,11 @@ Elle tranche:
 - la definition minimale de `uncertainty_posture`
 - les conditions minimales de passage entre classes
 
-Elle decrit le contrat vise par
+Elle decrit le contrat implemente par
 `app/core/hermeneutic_node/doctrine/epistemic_regime.py`. Le runtime courant
-implemente les autres regimes, mais pas encore l'entree `contradictoire` depuis
-un conflit inter-sources structure.
+conserve `contradictoire` dans son vocabulaire et ses validations, sans
+producteur canonique actif. Un `source_conflicts` portant seulement
+`issue=review_required` n'est pas un tel producteur.
 
 ## 2. Repo Grounding
 
@@ -37,7 +38,7 @@ Le runtime respecte la separation suivante:
 - `inputs/` = matieres canoniques que le noeud recoit
 - `doctrine/` = logique doctrinale que le noeud elabore
 
-L'implementation autoritative, avec la limite 4C.5 ci-dessus, est:
+L'implementation autoritative est:
 
 - `app/core/hermeneutic_node/doctrine/epistemic_regime.py`
 
@@ -195,12 +196,20 @@ Ordre minimal de lecture:
 5. `incertain` si une lecture existe mais reste trop faible ou trop pauvre
 6. `suspendu` si aucune lecture responsable ne peut etre tenue a ce tour
 
-Ecart runtime confirme par 4O.Z: `build_source_conflicts()` peut produire un
-conflit d'ancrage explicite, mais le noeud primaire calcule actuellement
-`epistemic_regime` avant `source_conflicts` et `_explicit_conflict_signal()`
-retourne inconditionnellement `False`. Le regime `contradictoire` est donc
-inatteignable par ce chemin. 4C.5 doit corriger ce raccord sans inventer de
-conflit, avant que le Lot 4 puisse fermer.
+Etat runtime confirme puis requalifie par 4O.Z:
+
+- `_explicit_conflict_signal()` retourne inconditionnellement `False` et aucun
+  producteur canonique actif n'emet actuellement `contradictoire`;
+- `build_source_conflicts()` ne produit que des conflits residuels avec
+  `issue=review_required`, sans indicateur autoritatif de materialite, de
+  gravite ou de contradiction dure;
+- conformement au contrat `hermeneutic-node-source-conflict-contract.md`, un
+  tel conflit peut exister sans imposer `contradictoire`, `a_verifier`,
+  `suspendu`, `arbitrage_requis` ou `bloquante`.
+
+L'absence de producteur actif reste donc documentee, mais ne constitue pas un
+gap produit. Raccorder automatiquement tout `source_conflicts` non vide
+creerait au contraire une sur-reaction epistemique non autorisee.
 
 Cet ordre n'est pas une machine a etats exhaustive.
 Il fixe seulement les priorites minimales qui empechent une implementation arbitraire.
