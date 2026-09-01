@@ -79,8 +79,10 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Roadmap active de consolidation Presence dialogique / Identity mutable:
   Lots 0 a 4 fermes, decision globale Stimmung `strengthen`, proposition 4C.5
   de raccord automatique `source_conflicts -> contradictoire` classee
-  `invalide/non requise`, et Lot 5 non commence; observabilite backend et
-  frontend obligatoire dans chaque micro-lot:
+  `invalide/non requise`; Lots 5 et 6 recales aux seuls residus prouves, Lot 7
+  conditionne par une mesure de latence, Lot 8 ferme `non requis/absorbe` sans
+  nouvelle campagne et Lot Z reduit au contre-audit differentiel puis a
+  l'archivage:
   `todo-todo/refactors/fridadev-dialogic-presence-mutable-identity-consolidation-todo.md`
 - Contrat source-of-truth juge mutable: `states/specs/mutable-identity-judge-contract.md`
 - Validation finale refonte mutable judge-first 2026-05-25: `todo-done/validations/mutable-identity-judge-final-validation-2026-05-25.md`
