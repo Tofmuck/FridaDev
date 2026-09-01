@@ -46,7 +46,7 @@ _CAMPAIGN_TERMINAL_REASONS = {
     "provider_routing_error",
     "provider_request_error",
 }
-PRIVATE_OUTPUTS_SCHEMA_VERSION = "stimmung_final_wording_private_outputs_v2_2"
+PRIVATE_OUTPUTS_SCHEMA_VERSION = "stimmung_final_wording_private_outputs_v2_3"
 _NONRECOVERABLE_PROVIDER_STATUSES = {
     "provider_auth_error",
     "provider_routing_error",
@@ -218,7 +218,7 @@ def expected_live_campaign_paths(protocol: Mapping[str, Any]) -> tuple[Path, Pat
     freeze_commit = str(protocol.get("freeze_commit") or "")
     if len(freeze_commit) != 40:
         raise ValueError("freeze_commit_invalid")
-    stem = f"lot4c4-final-wording-v2.2-{freeze_commit[:12]}"
+    stem = f"lot4c4-final-wording-v2.3-{freeze_commit[:12]}"
     return Path(f"/tmp/{stem}-private"), Path(f"/tmp/{stem}-review")
 
 
@@ -948,7 +948,7 @@ def verify_live_preflight(repo_root: Path, *, freeze_commit: str) -> None:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Lot 4C.4 v2.2 bounded main-model campaign")
+    parser = argparse.ArgumentParser(description="Lot 4C.4 v2.3 bounded main-model campaign")
     parser.add_argument("--repo-root", type=Path, required=True)
     parser.add_argument("--freeze-commit", required=True)
     parser.add_argument("--dry-run", action="store_true")
@@ -998,7 +998,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     _validate_live_campaign_paths(protocol, args.output_dir, args.review_export_dir)
     client = OpenRouterClient.from_env(
-        title="FridaDev/Lot4C4-Final-Wording-v2.2",
+        title="FridaDev/Lot4C4-Final-Wording-v2.3",
         fetch_pricing=False,
     )
 

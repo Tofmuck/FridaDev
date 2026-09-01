@@ -1,0 +1,225 @@
+{
+  "artifact_policy": {
+    "ambiguous_attempt_costed_at_call_ceiling": true,
+    "atomic_checkpoint_before_each_call": true,
+    "deterministic_live_campaign_paths_from_freeze_commit": true,
+    "durable_content_free": true,
+    "private_directory_mode": "0700",
+    "raw_dialogue_in_durable_artifact": false,
+    "raw_prompt_in_durable_artifact": false,
+    "raw_provider_response_in_durable_artifact": false,
+    "resume_completed_attempts_without_recall": true,
+    "review_export_contains_blind_packet_only": true,
+    "temporary_file_mode": "0600",
+    "temporary_raw_deleted_after_valid_finalization": true,
+    "temporary_raw_directory_required": true
+  },
+  "artifact_version": "lot4c4_final_wording_provider_results_v2_3",
+  "baseline_head": "58052eaaeec9035adc8bd25d3421c594fd851b90",
+  "corpus": {
+    "absolute_countercase_count": 6,
+    "case_count": 14,
+    "causal_transition_case_count": 6,
+    "derived_v1_sha256": "de8f63c6de4ec8d51a47db868e188b06a83d66ed8b07fb2278a5a47734f4f139",
+    "path": "benchmark/suites/stimmung/fixtures/stimmung_final_wording_corpus_v2.json",
+    "provider_case_count": 12,
+    "sha256": "2f52556beadc9e888a53426e7dff13a68cfb7b44d09aa224d53b12d6aafe19cb"
+  },
+  "cost": {
+    "absolute_cost_cap_usd": 4.0,
+    "budget_with_safety_margin_usd": 3.58238925,
+    "calculated_completion_ceiling_cost_usd": 2.94912,
+    "calculated_prompt_cost_usd": 0.3075975,
+    "calculated_total_ceiling_cost_usd": 3.2567175,
+    "completion_token_ceiling": 294912,
+    "completion_usd_per_token": 1e-05,
+    "pricing_observed_at": "2026-08-31",
+    "pricing_source": "https://openrouter.ai/api/v1/models",
+    "prompt_token_estimate_sum": 246078,
+    "prompt_usd_per_token": 1.25e-06,
+    "safety_margin": 1.1
+  },
+  "decision_rules": {
+    "ambiguous_started_attempt": "campaign_incomplete",
+    "campaign_complete_before_rating": "human_rating_required",
+    "codex_assisted_before_tof_ratification": "human_ratification_required",
+    "complete_provider_and_human_evidence_meets_thresholds": "pass",
+    "complete_provider_and_human_evidence_misses_thresholds": "fail",
+    "no_authoritative_provider_results": "provider_campaign_required",
+    "provider_or_rating_evidence_incomplete": "inconclusive"
+  },
+  "delivery_requirement": "commit_and_push_before_separate_provider_go",
+  "frozen_inputs": {
+    "chat_prompt_context_sha256": "9781ee92cf7f779debec0d11a9d6487278083824f3a77c3d9b7d17c7c3aaa169",
+    "continuity_capsule_sha256": "de2754687c9129e94ab9bc770d6686ff28db57f043e8c363fc9dec8834d525b5",
+    "corpus_v1_sha256": "de8f63c6de4ec8d51a47db868e188b06a83d66ed8b07fb2278a5a47734f4f139",
+    "corpus_v2_sha256": "2f52556beadc9e888a53426e7dff13a68cfb7b44d09aa224d53b12d6aafe19cb",
+    "execution_module_sha256": "2b4d4a31231e496a27cc29db1c2d6b58ef60dca4cb52dae41ce105970460f815",
+    "main_hermeneutical_prompt_sha256": "e388d783d1b08df18ea3cfd6e1df51975b879f3e314d9aa517096ed7c5105788",
+    "main_payload_builder_sha256": "3e5c7d8b25052614eea96900f05957a84250c65c5992c42adaf0247668783e1f",
+    "main_system_prompt_sha256": "760e97ab6aed521a6481b9db938e3d24316215d801a6323f92f4b568eafc4783",
+    "openrouter_client_sha256": "b36420aa7b8653292dbf1dfb51563fb02def0652b8f86c9f0e00893c75c1eacb",
+    "protocol_module_sha256": "b01873169f8908e3f5412247d58aa28ac794933208d74457fbca0a77b313d819",
+    "rating_module_sha256": "f165dd9fbeceb62b894ec928644907f56a3b58c99fbfeb73e4206d8f820569d6",
+    "superseded_freeze_v2_1_sha256": "a3afa9e8537311a107694dfc1e780741cb37676a3afbd789e3917d3e48cbab10",
+    "superseded_freeze_v2_2_sha256": "428fd763c65f2692069b569ee740631642abd06214cd92e3f23bbd31915a99a2",
+    "superseded_freeze_v2_sha256": "4a682d89d5070bc7ff928aa36696220fcac662bc26ce7fbbba4066f07901e672",
+    "v1_message_builder_sha256": "2c34180f0d05d3ca2502f8ca71b23065749251945d5f8eb644ef44ba01288c7b"
+  },
+  "mutation_matrix": [
+    "required_fact_removed",
+    "requested_material_removed",
+    "identical_arms_claimed_causal",
+    "call_count_restored_to_48",
+    "fallback_or_retry_added",
+    "runtime_policy_changed",
+    "live_execution_not_explicit",
+    "call_or_cost_cap_exceeded",
+    "blind_mapping_exposed",
+    "ratings_incomplete",
+    "fake_or_agent_rating_claimed_human",
+    "semantic_decision_before_rating",
+    "raw_packet_inside_repo",
+    "temporary_mapping_retained",
+    "raw_response_in_durable_artifact",
+    "presence_inferred_from_final_text",
+    "raw_stimmung_injected",
+    "v1_presented_as_current",
+    "frozen_input_changed"
+  ],
+  "phase_limits": {
+    "frontend_change": false,
+    "lot4oz_started": false,
+    "model_or_setting_change": false,
+    "prompt_change": false,
+    "provider_calls_executed_in_phase_a_v2_3": 0,
+    "rebuild_restart_or_deployment": false,
+    "runtime_change": false
+  },
+  "protocol_version": "lot4c4_final_wording_provider_campaign_v2_3",
+  "rating_policy": {
+    "codex_assisted_review_for_tof": "human_ratification_required",
+    "mapping_hidden_until_rating_validation": true,
+    "method": "separate_blinded_structured_rating",
+    "presence_scored_from_final_text": false,
+    "review_export_separate_from_private_mapping": true,
+    "runner_generates_ratings": false,
+    "semantic_regex": false,
+    "tof_human_review": "direct_human_condition"
+  },
+  "runtime_policy": {
+    "batch": false,
+    "canary_sequence": 1,
+    "flex": false,
+    "max_tokens": 8192,
+    "model": "openai/gpt-5.1",
+    "model_endpoint_preflight": true,
+    "priority": false,
+    "provider": {
+      "allow_fallbacks": false,
+      "require_parameters": true
+    },
+    "reasoning": {
+      "effort": "high",
+      "exclude": true
+    },
+    "required_endpoint_capabilities": {
+      "output_token_limit": [
+        "max_tokens"
+      ],
+      "reasoning": [
+        "reasoning"
+      ]
+    },
+    "retry_count": 0,
+    "timeout_s": 900,
+    "transport": "standard"
+  },
+  "schedule": {
+    "absolute_call_cap": 36,
+    "absolute_observation_count": 12,
+    "call_count": 36,
+    "causal_comparison_count": 12,
+    "fallback_calls": 0,
+    "model_judge_calls": 0,
+    "repetitions": 2,
+    "sha256": "73130ead0e87c596347eb5cb09f3a8fa46be541a229d79199a876e7d8e272c7b",
+    "stimmung_calls": 0,
+    "validation_calls": 0
+  },
+  "schema_version": "stimmung_final_wording_freeze_v2_3",
+  "status": "phase_a_v2_3_frozen_separate_provider_go_required",
+  "supersedes": {
+    "campaign_reusable": false,
+    "campaign_started": false,
+    "compatible_endpoint_count": 0,
+    "endpoint_count": 5,
+    "metadata_get_count": 1,
+    "metadata_http_status": 200,
+    "observed_cost_usd": 0.0,
+    "protocol_version": "lot4c4_final_wording_provider_campaign_v2_2",
+    "provider_calls_observed": 0,
+    "provider_inference_count": 0,
+    "provider_results_attached": false,
+    "reason_codes": [
+      "stop_parameter_not_supported_by_gpt_5_1_endpoints",
+      "structured_outputs_capability_not_sent_by_payload",
+      "preflight_capabilities_not_aligned_with_actual_payload"
+    ]
+  },
+  "thresholds": {
+    "countercase_artificial_caution_rate": 0.0,
+    "countercase_formulation_adequacy_rate": 1.0,
+    "critical_zero_tolerance": [
+      "psychologization",
+      "certainty_change",
+      "truth_or_evidence_change",
+      "masked_target"
+    ],
+    "schema_version": "stimmung_final_wording_thresholds_v2",
+    "transition_delicacy_improvement_rate": 0.8,
+    "transition_formulation_improvement_rate": 0.75
+  },
+  "v2_1_mutation_matrix": [
+    "completed_sequence_recalled_on_resume",
+    "attempt_started_sequence_recalled_on_resume",
+    "attempt_counter_reset_between_invocations",
+    "prior_cost_forgotten_on_resume",
+    "attempt_37_allowed",
+    "cumulative_cost_cap_exceeded_after_resume",
+    "partial_evidence_deleted_after_interruption",
+    "ledger_not_fsynced_before_provider_boundary",
+    "freeze_changed_during_resume",
+    "unknown_outcome_counted_as_free_or_successful",
+    "rating_packet_created_from_incomplete_campaign",
+    "codex_assistance_claimed_as_human_review",
+    "codex_assisted_rating_finalized_without_tof_ratification",
+    "ratification_fingerprint_mismatch",
+    "private_mapping_exposed_in_review_export",
+    "unblinding_before_complete_validation",
+    "raw_content_or_open_reason_code_in_durable_artifact"
+  ],
+  "v2_2_mutation_matrix": [
+    "sampling_parameter_reintroduced",
+    "false_compatible_endpoint_accepted",
+    "provider_post_before_capability_preflight",
+    "http_404_masked_as_transport_error",
+    "calls_continue_after_failed_canary",
+    "canary_added_as_call_37",
+    "retry_or_fallback_added",
+    "corpus_scorer_or_messages_changed",
+    "v2_1_history_removed_or_reused"
+  ],
+  "v2_3_mutation_matrix": [
+    "stop_parameter_reintroduced",
+    "artificial_structured_outputs_capability_required",
+    "required_capability_not_sent_by_payload",
+    "sampling_parameter_reintroduced",
+    "provider_post_before_capability_preflight",
+    "calls_continue_after_failed_canary",
+    "canary_added_as_call_37",
+    "retry_or_fallback_added",
+    "corpus_scorer_or_messages_changed",
+    "v2_2_history_removed_or_reused"
+  ]
+}

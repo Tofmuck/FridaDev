@@ -1,9 +1,37 @@
-# Lot 4C.4 — Phase A v2.2 du diagnostic de restitution finale
+# Lot 4C.4 — Phase A v2.3 du diagnostic de restitution finale
 
-Date: 31 aout 2026
-Statut: `Phase A v2.2 gelee — nouveau GO provider separe requis`; 4C.4 reste ouvert
-Portee: compatibilite de routage, preflight, canari et taxonomie provider v2.2
+Date: 1 septembre 2026
+Statut: `Phase A v2.3 gelee — nouveau GO provider separe requis`; 4C.4 reste ouvert
+Portee: alignement exact du payload et des capacites de preflight v2.3
 Exclusions: runtime, prompts, modeles, settings, frontend, donnees operateur et appels provider reels
+
+## Decision v2.3
+
+V2.2 est supersede avant toute generation: son unique GET de metadonnees a
+retourne HTTP 200, cinq endpoints et zero route compatible, puis le runner
+s'est arrete avant POST, inference, campagne ou cout. Le payload envoyait
+encore `stop`, tandis que le preflight exigeait aussi des sorties structurees
+sans envoyer `response_format`; ces deux exigences etaient artificielles.
+
+V2.3 retire seulement `stop` du payload et limite les capacites requises a
+`reasoning` et `max_tokens`, les deux parametres effectivement envoyes et
+routes. Modele `openai/gpt-5.1`, reasoning `high` exclu, plafond `8192`,
+timeout `900`, `allow_fallbacks=false`, `require_parameters=true`, absence de
+sampling, retry, Batch, Flex et Priority restent inchanges. Corpus, messages,
+scorer, seuils et calendrier `24 + 12 = 36`, avec canari en sequence 1, gardent
+leurs empreintes.
+
+Le gel autoritatif devient
+`benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2_3.json`.
+Cette passe n'execute aucun GET ou POST provider et coute zero. V2.3 attend un
+nouveau GO provider separe; F4 n'est pas classe et 4C.4 reste ouvert.
+
+Les preuves ciblees v2/v2.1/v2.3 passent `27/27`, les tests cibles du client
+OpenRouter `2/2`, et le dry-run reste `ready_offline` avec `36` appels,
+budget `3.58238925 USD` et cap absolu `4.00 USD`. Aucune suite Python complete,
+JavaScript ou Chromium n'est executee.
+
+## Archive Phase A v2.2 supersedee
 
 ## Decision v2.2
 

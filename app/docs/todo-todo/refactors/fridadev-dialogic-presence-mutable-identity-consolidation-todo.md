@@ -3610,8 +3610,8 @@ Cloture fonctionnelle du 31 aout 2026 avant livraison:
 
 ### Micro-lot 4C.4 - Restitution finale conditionnelle de l'effet dialogique
 
-Statut: ouvert; `Phase A v2.2 gelee — nouveau GO provider separe requis`;
-protocoles v1 et v2 supersedes avant tout appel, v2.1 supersede apres 36 rejets HTTP 404 sans inference
+Statut: ouvert; `Phase A v2.3 gelee — nouveau GO provider separe requis`;
+v2.2 supersede avant toute generation apres un preflight sans route compatible
 Effort recommande: `extra high`
 Nature: diagnostic causal puis correctif minimal si dommage prouve
 Prerequis: 4C.3 ferme
@@ -3800,6 +3800,20 @@ Passe corrective Phase A v2.2 du 31 aout 2026:
   Aucun runtime, prompt, modele, setting, frontend, rebuild, restart ou
   deploiement. 4C.4 reste ouvert dans l'attente d'un nouveau GO provider
   separe; 4O.Z et tous les lots suivants restent non commences.
+
+Passe corrective Phase A v2.3 du 1 septembre 2026:
+
+- v2.2 est supersede avant toute generation: son preflight a observe HTTP 200,
+  cinq endpoints et zero compatible, sans POST, inference, campagne ou cout;
+- le payload v2.2 envoyait encore `stop`, et son preflight exigeait aussi des
+  sorties structurees sans `response_format`; v2.3 retire `stop` et exige
+  exactement `reasoning` et `max_tokens`, les capacites reellement envoyees;
+- modele, reasoning `high` exclu, plafond `8192`, timeout `900`, gardes
+  provider, absence de sampling/retry/fallback, corpus, messages, scorer,
+  seuils et calendrier de 36 appels avec canari en sequence 1 sont inchanges;
+- le gel autoritatif devient `stimmung_final_wording_freeze_v2_3.json`.
+  Zero appel provider, zero cout, aucun runtime ou frontend, rebuild, restart
+  ou deploiement. 4C.4 reste ouvert et attend un nouveau GO provider separe.
 
 ### Micro-lot 4O.Z - Contre-audit causal et fermeture du Lot 4
 

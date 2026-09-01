@@ -16,6 +16,9 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 HISTORICAL_V21_FREEZE_SHA256 = (
     "a3afa9e8537311a107694dfc1e780741cb37676a3afbd789e3917d3e48cbab10"
 )
+HISTORICAL_V22_FREEZE_SHA256 = (
+    "428fd763c65f2692069b569ee740631642abd06214cd92e3f23bbd31915a99a2"
+)
 HISTORICAL_SCHEDULE_SHA256 = (
     "73130ead0e87c596347eb5cb09f3a8fa46be541a229d79199a876e7d8e272c7b"
 )
@@ -54,9 +57,7 @@ class _MetadataResponse:
                         "max_prompt_tokens": 400000,
                         "supported_parameters": [
                             "reasoning",
-                            "response_format",
                             "max_tokens",
-                            "stop",
                         ],
                         "status": 0,
                         "uptime_last_30m": 100.0,
@@ -67,14 +68,6 @@ class _MetadataResponse:
                 ],
             }
         }
-
-
-class _MetadataResponseMissingStop(_MetadataResponse):
-    @staticmethod
-    def json() -> dict[str, object]:
-        payload = copy.deepcopy(_MetadataResponse.json())
-        payload["data"]["endpoints"][0]["supported_parameters"].remove("stop")
-        return payload
 
 
 class _SyntheticProviderClient(openrouter.OpenRouterClient):
@@ -150,7 +143,7 @@ class _SyntheticProviderClient(openrouter.OpenRouterClient):
         }
 
 
-class Lot4C4WorkflowV22Tests(unittest.TestCase):
+class Lot4C4WorkflowV23Tests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.protocol = final_wording_protocol_v2.build_protocol(
@@ -165,12 +158,17 @@ class Lot4C4WorkflowV22Tests(unittest.TestCase):
         )
         self.assertEqual(len(schedule), 36)
         self.assertEqual(self.protocol["schedule_sha256"], HISTORICAL_SCHEDULE_SHA256)
+        self.assertEqual(
+            self.protocol["protocol_version"],
+            "lot4c4_final_wording_provider_campaign_v2_3",
+        )
         self.assertNotIn("temperature", self.protocol)
         self.assertNotIn("top_p", self.protocol)
         for item in schedule:
             payload = item["payload"]
             self.assertNotIn("temperature", payload)
             self.assertNotIn("top_p", payload)
+            self.assertNotIn("stop", payload)
             self.assertEqual(payload["model"], "openai/gpt-5.1")
             self.assertEqual(payload["max_tokens"], 8192)
             self.assertEqual(payload["reasoning"], {"effort": "high", "exclude": True})
@@ -186,6 +184,27 @@ class Lot4C4WorkflowV22Tests(unittest.TestCase):
                 final_wording_protocol_v2.load_corpus(REPO_ROOT),
                 mutated,
             )
+        mutated = copy.deepcopy(schedule)
+        mutated[0]["payload"]["stop"] = ["<|endoftext|>"]
+        with self.assertRaisesRegex(ValueError, "schedule_runtime_policy_invalid"):
+            final_wording_protocol_v2.validate_schedule(
+                final_wording_protocol_v2.load_corpus(REPO_ROOT),
+                mutated,
+            )
+
+        self.assertEqual(
+            self.protocol["required_endpoint_capabilities"],
+            {
+                "reasoning": ["reasoning"],
+                "output_token_limit": ["max_tokens"],
+            },
+        )
+        mutated_protocol = copy.deepcopy(self.protocol)
+        mutated_protocol["required_endpoint_capabilities"]["structured_outputs"] = [
+            "response_format"
+        ]
+        with self.assertRaises(ValueError):
+            final_wording_protocol_v2.validate_protocol(mutated_protocol, REPO_ROOT)
 
     def test_model_endpoint_preflight_is_exact_and_content_free(self) -> None:
         client = openrouter.OpenRouterClient(
@@ -200,9 +219,7 @@ class Lot4C4WorkflowV22Tests(unittest.TestCase):
                 "openai/gpt-5.1",
                 {
                     "reasoning": ("reasoning",),
-                    "structured_outputs": ("response_format", "structured_outputs"),
                     "output_token_limit": ("max_tokens",),
-                    "stop_sequences": ("stop",),
                 },
             )
 
@@ -225,17 +242,6 @@ class Lot4C4WorkflowV22Tests(unittest.TestCase):
             },
         )
         self.assertNotIn("synthetic endpoint", json.dumps(summary))
-        with mock.patch.object(
-            openrouter.requests,
-            "get",
-            return_value=_MetadataResponseMissingStop(),
-        ):
-            missing = client.preflight_model_capabilities(
-                "openai/gpt-5.1",
-                final_wording_protocol_v2.REQUIRED_ENDPOINT_CAPABILITIES,
-            )
-        self.assertEqual(missing["status"], "no_compatible_endpoint")
-        self.assertEqual(missing["compatible_endpoint_count"], 0)
 
     def test_preflight_rejects_missing_or_false_compatible_endpoints_before_post(self) -> None:
         for status in ("no_compatible_endpoint", "model_metadata_mismatch"):
@@ -347,7 +353,7 @@ class Lot4C4WorkflowV22Tests(unittest.TestCase):
             self.assertEqual(client.events[1:], ["post"] * 36)
             self.assertEqual(len(client.calls), 36)
 
-    def test_v21_history_is_pinned_and_cannot_be_reused_as_v22(self) -> None:
+    def test_v22_history_is_pinned_and_cannot_be_reused_as_v23(self) -> None:
         historical_path = (
             REPO_ROOT
             / "benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2_1.json"
@@ -356,9 +362,31 @@ class Lot4C4WorkflowV22Tests(unittest.TestCase):
             final_wording_protocol_v2._sha256_file(historical_path),
             HISTORICAL_V21_FREEZE_SHA256,
         )
+        historical_v22_path = (
+            REPO_ROOT
+            / "benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2_2.json"
+        )
+        self.assertEqual(
+            final_wording_protocol_v2._sha256_file(historical_v22_path),
+            HISTORICAL_V22_FREEZE_SHA256,
+        )
         self.assertEqual(
             self.protocol["supersedes_protocol_version"],
-            "lot4c4_final_wording_provider_campaign_v2_1",
+            "lot4c4_final_wording_provider_campaign_v2_2",
+        )
+        self.assertEqual(
+            self.protocol["v2_2_preflight_history"],
+            {
+                "metadata_get_count": 1,
+                "metadata_http_status": 200,
+                "endpoint_count": 5,
+                "compatible_endpoint_count": 0,
+                "provider_post_count": 0,
+                "provider_inference_count": 0,
+                "observed_cost_usd": 0.0,
+                "campaign_started": False,
+                "reusable": False,
+            },
         )
         self.assertEqual(
             self.protocol["v2_1_campaign_history"],

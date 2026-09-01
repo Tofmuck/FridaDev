@@ -188,7 +188,7 @@ class Lot4C4ProtocolV2Tests(unittest.TestCase):
 
         self.assertEqual(
             self.protocol["protocol_version"],
-            "lot4c4_final_wording_provider_campaign_v2_2",
+            "lot4c4_final_wording_provider_campaign_v2_3",
         )
         self.assertEqual(summary["expected_call_count"], 36)
         self.assertEqual(self.protocol["absolute_call_cap"], 36)
@@ -244,7 +244,7 @@ class Lot4C4ProtocolV2Tests(unittest.TestCase):
         self.assertEqual(v1["expected_call_count"], 48)
         self.assertEqual(
             self.protocol["supersedes_protocol_version"],
-            "lot4c4_final_wording_provider_campaign_v2_1",
+            "lot4c4_final_wording_provider_campaign_v2_2",
         )
         self.assertEqual(self.protocol["historical_v1_protocol_version"], v1["protocol_version"])
         self.assertEqual(self.protocol["v2_provider_calls_observed"], 0)

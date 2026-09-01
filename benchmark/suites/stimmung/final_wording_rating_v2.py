@@ -10,12 +10,12 @@ import tempfile
 from typing import Any, Mapping, Sequence
 
 
-PACKET_SCHEMA_VERSION = "stimmung_final_wording_rating_packet_v2_2"
-MAPPING_SCHEMA_VERSION = "stimmung_final_wording_blind_mapping_v2_2"
-RATINGS_SCHEMA_VERSION = "stimmung_final_wording_ratings_v2_2"
-RATIFICATION_SCHEMA_VERSION = "stimmung_final_wording_tof_ratification_v2_2"
-LEDGER_SCHEMA_VERSION = "stimmung_final_wording_call_ledger_v2_2"
-DURABLE_SCHEMA_VERSION = "stimmung_final_wording_durable_result_v2_2"
+PACKET_SCHEMA_VERSION = "stimmung_final_wording_rating_packet_v2_3"
+MAPPING_SCHEMA_VERSION = "stimmung_final_wording_blind_mapping_v2_3"
+RATINGS_SCHEMA_VERSION = "stimmung_final_wording_ratings_v2_3"
+RATIFICATION_SCHEMA_VERSION = "stimmung_final_wording_tof_ratification_v2_3"
+LEDGER_SCHEMA_VERSION = "stimmung_final_wording_call_ledger_v2_3"
+DURABLE_SCHEMA_VERSION = "stimmung_final_wording_durable_result_v2_3"
 
 TRANSITION_RATING_KEYS = {
     "blind_id",
