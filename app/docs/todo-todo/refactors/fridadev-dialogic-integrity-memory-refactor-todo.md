@@ -2,8 +2,8 @@
 
 Date de cadrage : 2 septembre 2026.
 
-**Statut : roadmap ouverte ; I1 et I2 fermés et livrés ; correctif M1 vérifié,
-livraison en cours ; lots suivants non commencés.**
+**Statut : roadmap ouverte ; I1, I2 et M1 fermés et livrés ; lots suivants
+non commencés.**
 
 ## 1. But et décision de périmètre
 
@@ -68,7 +68,7 @@ sans attendre O1.
 | --- | --- | --- | --- | --- | --- |
 | 1 | I1 | Une erreur de streaming reste une interruption | F01 | xhigh | fermé et livré |
 | 2 | I2 | Une lecture Identity en panne ne permet aucun remplacement | F02 | xhigh | fermé et livré |
-| 3 | M1 | Un résumé n'est acquis qu'après stockage confirmé | F03 | xhigh | correctif vérifié ; livraison en cours |
+| 3 | M1 | Un résumé n'est acquis qu'après stockage confirmé | F03 | xhigh | fermé et livré |
 | 4 | M2 | La déduplication ne retire pas une formulation distincte avant jugement | F04 | xhigh | non commencé |
 | 5 | O1 | Les hints dialogiques sont comptés par leur vrai reader | F07 | high | non commencé |
 | 6 | B1 | Un extrait tronqué n'est jamais annoncé complet | F06 | xhigh | non commencé |
@@ -78,7 +78,7 @@ sans attendre O1.
 - [x] Cadrage documentaire et limites de preuve consignés.
 - [x] I1 fermé avec preuves et livraison convenues.
 - [x] I2 fermé avec preuves et livraison convenues.
-- [ ] M1 fermé avec preuves et livraison convenues.
+- [x] M1 fermé avec preuves et livraison convenues.
 - [ ] M2 fermé avec preuves et livraison convenues.
 - [ ] O1 fermé avec preuves et livraison convenues.
 - [ ] B1 fermé avec preuve agentique requise.
@@ -313,7 +313,7 @@ chat/persistance existant.
   légitime. Sur échec du rattachement des traces, préserver le texte déjà stocké,
   qualifier honnêtement l'état et vérifier la cohérence du prochain tour sans
   rollback aveugle ni boucle de retries nouvellement ajoutée.
-- [ ] Prouver le chemin nominal après sauvegarde/réhydratation et préserver le
+- [x] Prouver le chemin nominal après sauvegarde/réhydratation et préserver le
   diagnostic privé existant. Corriger le test qui exige True après échec sans
   retirer son assertion utile sur le diagnostic ; documenter et livrer M1.
 
@@ -357,6 +357,29 @@ lot ne crée ni résumé hiérarchique, ni nouvelle politique de sélection temp
   injectée et écriture ensuite disponible; aucune panne PostgreSQL live, donnée
   opérateur, perte historique ou qualité sémantique globale n'a été recherchée
   ni constatée.
+
+### Livraison M1 effective — 2 septembre 2026
+
+- Commit code/tests/contrat
+  `7ec484e0ebd4eb989ab34e03ae91ab224e420f5a` poussé sur `main`, puis
+  rebuild sans pull et recréation du seul service `fridadev` avec
+  `--no-deps --force-recreate`.
+- Image livrée :
+  `sha256:c489455303fd234866de25ea473d1e197b27dcea8b96135cf89d1c8010a79734` ;
+  conteneur `b609192c45f3d3cfbd4831f42d1bf20efc04e1e6dee22a40e065e74edd441aff`,
+  `StartedAt=2026-09-02T19:30:58.05151292Z`, running, healthy, restart `0`,
+  OOM `false`.
+- Le healthcheck déclaré sur `http://127.0.0.1:8089/` retourne `200` depuis
+  le conteneur; aucune route `/health` ni appel modèle n'a été utilisé.
+- Les SHA-256 des quatre fichiers runtime M1 modifiés sont identiques entre
+  checkout et conteneur. Les 74 tests ciblés sont verts dans l'image livrée,
+  sans montage du checkout ni réseau.
+- Les 31 conteneurs voisins conservent exactement leurs IDs, images et
+  `StartedAt`; PostgreSQL, Caddy et les autres services n'ont pas été recréés.
+- L'image précédente
+  `sha256:e35334d13fc30824c47f397e6e60f48162024c715676eaae0c982bbcb72a0ed6`
+  est restée disponible comme référence de retour applicatif ciblé. M2 et les
+  lots suivants restent non commencés.
 
 ## 8. M2 — Préserver les variantes avant le jugement Memory
 
