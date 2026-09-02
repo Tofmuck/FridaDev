@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 5 fermes; decision globale du Lot 4 `strengthen`, caller renforce, F2 corrige par separation epistemique/enonciative, F4 `partiel` et 4C.4 `inconclusive` avec decision produit `keep_current_v2.3`; faux blocage 4C.5 classe `invalide/non requis` apres contre-audit croise des contrats; Lot 6 recale et non commence; Lot 7 ramene a une decision de latence conditionnelle; Lot 8 ferme `non requis/absorbe`; Lot Z ramene a la cloture differentielle et a l'archivage
+Statut: TODO actif; Lots 0 a 6 fermes; decision globale du Lot 4 `strengthen`, caller renforce, F2 corrige par separation epistemique/enonciative, F4 `partiel` et 4C.4 `inconclusive` avec decision produit `keep_current_v2.3`; faux blocage 4C.5 classe `invalide/non requis` apres contre-audit croise des contrats; Lot 7 ramene a sa decision de latence conditionnelle et non commence; Lot 8 ferme `non requis/absorbe`; Lot Z ramene a la cloture differentielle et a l'archivage
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
