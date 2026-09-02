@@ -2,8 +2,8 @@
 
 Date de cadrage : 2 septembre 2026.
 
-**Statut : roadmap ouverte ; I1 fermé et livré ; correctif I2 vérifié, livraison
-applicative en attente ; M1 et les lots suivants non commencés.**
+**Statut : roadmap ouverte ; I1 et I2 fermés et livrés ; M1 et les lots
+suivants non commencés.**
 
 ## 1. But et décision de périmètre
 
@@ -67,7 +67,7 @@ sans attendre O1.
 | Ordre | Lot | Résultat attendu | Finding | Réflexion conseillée | Statut |
 | --- | --- | --- | --- | --- | --- |
 | 1 | I1 | Une erreur de streaming reste une interruption | F01 | xhigh | fermé et livré |
-| 2 | I2 | Une lecture Identity en panne ne permet aucun remplacement | F02 | xhigh | correctif vérifié, livraison en attente |
+| 2 | I2 | Une lecture Identity en panne ne permet aucun remplacement | F02 | xhigh | fermé et livré |
 | 3 | M1 | Un résumé n'est acquis qu'après stockage confirmé | F03 | xhigh | non commencé |
 | 4 | M2 | La déduplication ne retire pas une formulation distincte avant jugement | F04 | xhigh | non commencé |
 | 5 | O1 | Les hints dialogiques sont comptés par leur vrai reader | F07 | high | non commencé |
@@ -77,7 +77,7 @@ sans attendre O1.
 
 - [x] Cadrage documentaire et limites de preuve consignés.
 - [x] I1 fermé avec preuves et livraison convenues.
-- [ ] I2 fermé avec preuves et livraison convenues.
+- [x] I2 fermé avec preuves et livraison convenues.
 - [ ] M1 fermé avec preuves et livraison convenues.
 - [ ] M2 fermé avec preuves et livraison convenues.
 - [ ] O1 fermé avec preuves et livraison convenues.
@@ -226,7 +226,7 @@ Tests : `app/tests/unit/memory/test_mutable_identity_apply.py`,
 - [x] Prouver les contre-cas : absence réellement lue → création légitime ; canon
   présent → ajout conservant l'ancien ; no_change → aucune écriture ; erreur
   d'écriture → résultat non réussi. Préserver les éditions administrateur.
-- [ ] Vérifier audit et projection du résultat sans inventer une lecture réussie ;
+- [x] Vérifier audit et projection du résultat sans inventer une lecture réussie ;
   documenter et livrer I2.
 
 **Fermeture :** panne de lecture démontrée et impossibilité de l'écrasement
@@ -266,6 +266,28 @@ PostgreSQL réelle.
 - Limite : le stockage factice prouve le chemin applicatif sous panne injectée ;
   aucune panne PostgreSQL live, donnée Identity opérateur ou perte historique
   n'a été recherchée ni constatée.
+
+### Livraison I2 effective — 2 septembre 2026
+
+- Commit code/tests/contrat `7e2b56b328db2d899c29c92947b6c969570fc214`
+  poussé sur `main`, puis rebuild sans pull et recréation du seul service
+  `fridadev` avec `--no-deps`.
+- Image livrée :
+  `sha256:e35334d13fc30824c47f397e6e60f48162024c715676eaae0c982bbcb72a0ed6` ;
+  conteneur `ab48d39f34aa10c3b3d8883baf5a9f4ac96a4aac2efc85cd1848bbb193e52da3`,
+  `StartedAt=2026-09-02T18:41:02.20706282Z`, running, healthy, restart `0`,
+  OOM `false`.
+- Le healthcheck déclaré sur `http://127.0.0.1:8089/` retourne `200` depuis le
+  conteneur. Ce Compose ne publie pas ce port sur l'hôte ; aucune route
+  `/health` n'a été inventée.
+- Les SHA-256 de `memory_identity_mutables.py`, `memory_store.py` et
+  `mutable_identity_apply.py` sont identiques entre checkout et conteneur. Les
+  120 tests ciblés sont aussi verts directement dans l'image livrée, sans
+  montage du checkout ni réseau.
+- Les 31 conteneurs voisins conservent exactement leurs IDs, images et
+  `StartedAt`; PostgreSQL, Caddy et les autres services n'ont pas été recréés.
+- Le contre-audit indépendant ciblé ne rapporte aucun finding Critical,
+  Important ou Minor. M1 et les lots suivants restent non commencés.
 
 ## 7. M1 — Acquérir un résumé seulement après stockage
 
