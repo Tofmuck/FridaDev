@@ -26,7 +26,6 @@ if str(APP_ROOT) not in sys.path:
 
 from benchmark.core.openrouter import OpenRouterClient, OpenRouterConfig
 from benchmark.suites.validation_agent import lot4c1_comparison as projection
-from core.hermeneutic_node.validation import validation_contract
 
 
 CONTROL_PATH = Path(
@@ -58,10 +57,23 @@ POLICY_HASHES = {
     "current": CURRENT_POLICY_SHA256,
     "candidate": CANDIDATE_POLICY_SHA256,
 }
+HISTORICAL_PRIMARY_MODEL = "google/gemini-3.1-flash-lite"
+HISTORICAL_FALLBACK_MODEL = "openai/gpt-5.4-nano"
+HISTORICAL_MODEL_ROLES = {
+    HISTORICAL_PRIMARY_MODEL: "primary",
+    HISTORICAL_FALLBACK_MODEL: "fallback",
+}
+HISTORICAL_MAX_TOKENS = 140
+HISTORICAL_TIMEOUT_S = 15
+HISTORICAL_TEMPERATURE = 0.0
+HISTORICAL_TOP_P = 1.0
+HISTORICAL_REASONING_EFFORT = None
 CASE_COUNT = 11
 POLICY_COUNT = 2
 REPETITIONS = 2
-PLANNED_PROVIDER_CALLS = CASE_COUNT * POLICY_COUNT * len(projection.MODEL_ROLES) * REPETITIONS
+PLANNED_PROVIDER_CALLS = (
+    CASE_COUNT * POLICY_COUNT * len(HISTORICAL_MODEL_ROLES) * REPETITIONS
+)
 ABSOLUTE_PROVIDER_CALL_CAP = 96
 MAX_ESTIMATED_COST_USD = 0.10
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -169,6 +181,12 @@ HISTORICAL_PROMPT_SHA256 = (
 )
 HISTORICAL_CORPUS_SHA256 = (
     "bb0416662dd0cd9a42436c7f185c86e44ec877090326a6c0cf4ec4846c1184d4"
+)
+HISTORICAL_ALLOWED_PRIMARY_JUDGMENT_POSTURES = frozenset(
+    {"answer", "clarify", "suspend"}
+)
+HISTORICAL_ALLOWED_FINAL_OUTPUT_REGIMES = frozenset(
+    {"meta", "simple", "presence"}
 )
 MODEL_COMPARISON_CONFIGURATIONS = {
     "gemini_3_7_flash_medium": {
@@ -478,14 +496,14 @@ def protocol_document(corpus: Mapping[str, Any], *, freeze_commit: str) -> dict[
         "candidate_policy_sha256": CANDIDATE_POLICY_SHA256,
         "models": [
             {"source": source, "model": model}
-            for model, source in projection.MODEL_ROLES.items()
+            for model, source in HISTORICAL_MODEL_ROLES.items()
         ],
         "generation": {
-            "temperature": projection.TEMPERATURE,
-            "top_p": projection.TOP_P,
-            "max_tokens": projection.MAX_TOKENS,
-            "timeout_s": projection.TIMEOUT_S,
-            "reasoning_effort": projection.REASONING_EFFORT,
+            "temperature": HISTORICAL_TEMPERATURE,
+            "top_p": HISTORICAL_TOP_P,
+            "max_tokens": HISTORICAL_MAX_TOKENS,
+            "timeout_s": HISTORICAL_TIMEOUT_S,
+            "reasoning_effort": HISTORICAL_REASONING_EFFORT,
         },
         "case_count": CASE_COUNT,
         "repetitions": REPETITIONS,
@@ -604,7 +622,7 @@ def campaign_decision(records: Sequence[Mapping[str, Any]]) -> dict[str, str]:
         groups.setdefault((str(record.get("case_id")), str(record.get("source"))), []).append(
             record
         )
-    if len(groups) != CASE_COUNT * len(projection.MODEL_ROLES):
+    if len(groups) != CASE_COUNT * len(HISTORICAL_MODEL_ROLES):
         return {"decision": "inconclusive", "reason_code": "missing_case_model_group"}
     if any(len(group) != REPETITIONS for group in groups.values()):
         return {"decision": "inconclusive", "reason_code": "missing_paired_repetition"}
@@ -638,11 +656,11 @@ def _validate_hash(value: Any, *, allow_empty: bool = False) -> None:
 
 def _expected_generation() -> dict[str, Any]:
     return {
-        "temperature": projection.TEMPERATURE,
-        "top_p": projection.TOP_P,
-        "max_tokens": projection.MAX_TOKENS,
-        "timeout_s": projection.TIMEOUT_S,
-        "reasoning_effort": projection.REASONING_EFFORT,
+        "temperature": HISTORICAL_TEMPERATURE,
+        "top_p": HISTORICAL_TOP_P,
+        "max_tokens": HISTORICAL_MAX_TOKENS,
+        "timeout_s": HISTORICAL_TIMEOUT_S,
+        "reasoning_effort": HISTORICAL_REASONING_EFFORT,
     }
 
 
@@ -675,9 +693,9 @@ def validate_content_free_record(record: Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError("invalid_lot4c1_policy_artifact_divergence")
     posture = payload.get("final_judgment_posture")
     regime = payload.get("final_output_regime")
-    if posture is not None and posture not in validation_contract.ALLOWED_PRIMARY_JUDGMENT_POSTURES:
+    if posture is not None and posture not in HISTORICAL_ALLOWED_PRIMARY_JUDGMENT_POSTURES:
         raise ValueError("invalid_lot4c1_policy_artifact_posture")
-    if regime is not None and regime not in validation_contract.ALLOWED_FINAL_OUTPUT_REGIMES:
+    if regime is not None and regime not in HISTORICAL_ALLOWED_FINAL_OUTPUT_REGIMES:
         raise ValueError("invalid_lot4c1_policy_artifact_regime")
     source = payload.get("source")
     model = payload.get("model")
@@ -688,13 +706,13 @@ def validate_content_free_record(record: Mapping[str, Any]) -> dict[str, Any]:
     latency = payload.get("latency_ms")
     if latency is not None and (
         not _is_finite_number(latency)
-        or not 0 <= float(latency) <= projection.TIMEOUT_S * 1000
+        or not 0 <= float(latency) <= HISTORICAL_TIMEOUT_S * 1000
     ):
         raise ValueError("invalid_lot4c1_policy_artifact_latency")
     for key, limit in (
         ("prompt_tokens", PLANNED_PROVIDER_CALLS * 10_000),
-        ("completion_tokens", PLANNED_PROVIDER_CALLS * projection.MAX_TOKENS),
-        ("total_tokens", PLANNED_PROVIDER_CALLS * (10_000 + projection.MAX_TOKENS)),
+        ("completion_tokens", PLANNED_PROVIDER_CALLS * HISTORICAL_MAX_TOKENS),
+        ("total_tokens", PLANNED_PROVIDER_CALLS * (10_000 + HISTORICAL_MAX_TOKENS)),
     ):
         value = payload.get(key)
         if value is not None and (
@@ -711,7 +729,7 @@ def validate_content_free_record(record: Mapping[str, Any]) -> dict[str, Any]:
     if record_type in {"provider_call", "pair_comparison"}:
         if payload.get("case_id") not in valid_case_ids:
             raise ValueError("invalid_lot4c1_policy_artifact_case")
-        if source not in {"primary", "fallback"} or projection.MODEL_ROLES.get(model) != source:
+        if source not in {"primary", "fallback"} or HISTORICAL_MODEL_ROLES.get(model) != source:
             raise ValueError("invalid_lot4c1_policy_artifact_model")
         repetition = payload.get("repetition")
         if (
@@ -823,8 +841,8 @@ def synthetic_valid_provider_record() -> dict[str, Any]:
         "policy_sha256": CURRENT_POLICY_SHA256,
         "freeze_commit": "f" * 40,
         "source": "primary",
-        "model": projection.PRIMARY_MODEL,
-        "observed_model": projection.PRIMARY_MODEL,
+        "model": HISTORICAL_PRIMARY_MODEL,
+        "observed_model": HISTORICAL_PRIMARY_MODEL,
         "observed_provider": "Google",
         "generation": _expected_generation(),
         "repetition": 1,
@@ -849,7 +867,9 @@ def _source_sha256(callable_object: Any) -> str:
     return _sha256_text(inspect.getsource(callable_object))
 
 
-def historical_primary_witness() -> dict[str, Any]:
+def historical_primary_archive() -> dict[str, Any]:
+    """Validate the frozen control without consulting current runtime builders."""
+
     artifact_path = REPO_ROOT / HISTORICAL_CONTROL_PATH
     artifact_sha256 = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
     if artifact_sha256 != HISTORICAL_CONTROL_ARTIFACT_SHA256:
@@ -859,6 +879,91 @@ def historical_primary_witness() -> dict[str, Any]:
         for line in artifact_path.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
+    if len(records) != 133:
+        raise ValueError("historical_control_artifact_record_count_mismatch")
+    if any(
+        record["corpus_sha256"] != HISTORICAL_CORPUS_SHA256
+        or record["freeze_commit"] != HISTORICAL_CONTROL_FREEZE_COMMIT
+        for record in records
+    ):
+        raise ValueError("historical_control_artifact_provenance_mismatch")
+    provider_calls = [
+        record for record in records if record["record_type"] == "provider_call"
+    ]
+    groups: dict[tuple[str, str, int], dict[str, Mapping[str, Any]]] = {}
+    for record in provider_calls:
+        key = (record["case_id"], record["source"], record["repetition"])
+        policy_records = groups.setdefault(key, {})
+        if record["policy"] in policy_records:
+            raise ValueError("historical_control_duplicate_policy_call")
+        policy_records[record["policy"]] = record
+    expected_groups = {
+        (f"L4C1-VAL-{index:03d}", source, repetition)
+        for index in range(1, CASE_COUNT + 1)
+        for source in HISTORICAL_MODEL_ROLES.values()
+        for repetition in range(1, REPETITIONS + 1)
+    }
+    if set(groups) != expected_groups:
+        raise ValueError("historical_control_policy_pair_count_mismatch")
+    pair_fingerprints_match = []
+    for policy_records in groups.values():
+        if set(policy_records) != set(POLICY_VERSIONS):
+            raise ValueError("historical_control_policy_pair_incomplete")
+        current = policy_records["current"]
+        candidate = policy_records["candidate"]
+        pair_fingerprints_match.append(
+            all(
+                current[key] == candidate[key]
+                for key in (
+                    "system_sha256",
+                    "nonpolicy_user_sha256",
+                    "canonical_sha256",
+                )
+            )
+            and current["policy_sha256"] == CURRENT_POLICY_SHA256
+            and candidate["policy_sha256"] == CANDIDATE_POLICY_SHA256
+        )
+    if not all(pair_fingerprints_match):
+        raise ValueError("historical_control_policy_pair_fingerprint_mismatch")
+    calls = [
+        record
+        for record in provider_calls
+        if record["source"] == "primary" and record["policy"] == "current"
+    ]
+    failed_case_ids = sorted(
+        {
+            str(record["case_id"])
+            for record in calls
+            if not bool(record["scorer_pass"])
+        }
+    )
+    if not all(
+        (
+            len(provider_calls) == PLANNED_PROVIDER_CALLS,
+            len(calls) == 22,
+            sum(bool(record["scorer_pass"]) for record in calls) == 20,
+            failed_case_ids == ["L4C1-VAL-005"],
+        )
+    ):
+        raise ValueError("historical_control_artifact_result_mismatch")
+    return {
+        "status": "comparable",
+        "model": HISTORICAL_PRIMARY_MODEL,
+        "provider_calls": len(calls),
+        "semantic_passes": sum(bool(record["scorer_pass"]) for record in calls),
+        "failed_case_ids": failed_case_ids,
+        "artifact_sha256": artifact_sha256,
+        "freeze_commit": HISTORICAL_CONTROL_FREEZE_COMMIT,
+        "corpus_sha256": HISTORICAL_CORPUS_SHA256,
+        "prompt_sha256": HISTORICAL_PROMPT_SHA256,
+        "scorer_sha256": HISTORICAL_SCORER_SOURCE_SHA256,
+        "policy_pair_count": len(groups),
+        "all_policy_pair_fingerprints_match": all(pair_fingerprints_match),
+    }
+
+
+def historical_primary_witness() -> dict[str, Any]:
+    archive = historical_primary_archive()
     corpus = load_policy_corpus()
     prompt = (REPO_ROOT / "app/prompts/validation_agent.txt").read_text(
         encoding="utf-8"
@@ -877,10 +982,21 @@ def historical_primary_witness() -> dict[str, Any]:
             == HISTORICAL_POLICY_PAIR_BUILDER_SOURCE_SHA256,
         )
     )
-    if corpus_sha256(corpus) != HISTORICAL_CORPUS_SHA256:
-        raise ValueError("historical_control_corpus_hash_mismatch")
-    if _sha256_text(prompt) != HISTORICAL_PROMPT_SHA256:
-        raise ValueError("historical_control_prompt_hash_mismatch")
+    if not all(
+        (
+            corpus_sha256(corpus) == HISTORICAL_CORPUS_SHA256,
+            _sha256_text(prompt) == HISTORICAL_PROMPT_SHA256,
+            scorer_source_matches,
+            builder_sources_match,
+        )
+    ):
+        raise ValueError("historical_primary_witness_not_comparable")
+    artifact_path = REPO_ROOT / HISTORICAL_CONTROL_PATH
+    records = [
+        validate_content_free_record(json.loads(line))
+        for line in artifact_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
     calls = [
         record
         for record in records
@@ -912,34 +1028,25 @@ def historical_primary_witness() -> dict[str, Any]:
                     )
                 )
             )
-    failed_case_ids = sorted(
-        {
-            str(record["case_id"])
-            for record in calls
-            if not bool(record["scorer_pass"])
-        }
-    )
     comparable = all(
         (
             len(calls) == 22,
             len(by_case_repetition) == 22,
             all(message_matches),
-            scorer_source_matches,
-            builder_sources_match,
             all(record["freeze_commit"] == HISTORICAL_CONTROL_FREEZE_COMMIT for record in calls),
             sum(bool(record["scorer_pass"]) for record in calls) == 20,
-            failed_case_ids == ["L4C1-VAL-005"],
+            archive["failed_case_ids"] == ["L4C1-VAL-005"],
         )
     )
     if not comparable:
         raise ValueError("historical_primary_witness_not_comparable")
     return {
         "status": "comparable",
-        "model": projection.PRIMARY_MODEL,
+        "model": HISTORICAL_PRIMARY_MODEL,
         "provider_calls": len(calls),
         "semantic_passes": sum(bool(record["scorer_pass"]) for record in calls),
-        "failed_case_ids": failed_case_ids,
-        "artifact_sha256": artifact_sha256,
+        "failed_case_ids": archive["failed_case_ids"],
+        "artifact_sha256": archive["artifact_sha256"],
         "freeze_commit": HISTORICAL_CONTROL_FREEZE_COMMIT,
         "corpus_sha256": HISTORICAL_CORPUS_SHA256,
         "prompt_sha256": HISTORICAL_PROMPT_SHA256,
@@ -969,7 +1076,7 @@ def model_comparison_protocol_document(
         raise ValueError("invalid_lot4c1_model_comparison_freeze_commit")
     if MODEL_COMPARISON_PLANNED_CALLS > MODEL_COMPARISON_ABSOLUTE_CALL_CAP:
         raise ValueError("provider_call_cap_exceeded")
-    witness = historical_primary_witness()
+    witness = historical_primary_archive()
     metadata = _model_metadata_document()
     configurations = [
         {
@@ -1229,9 +1336,9 @@ def validate_model_comparison_record(record: Mapping[str, Any]) -> dict[str, Any
             raise ValueError("invalid_model_comparison_artifact_service_tier")
         posture = payload.get("final_judgment_posture")
         regime = payload.get("final_output_regime")
-        if posture is not None and posture not in validation_contract.ALLOWED_PRIMARY_JUDGMENT_POSTURES:
+        if posture is not None and posture not in HISTORICAL_ALLOWED_PRIMARY_JUDGMENT_POSTURES:
             raise ValueError("invalid_model_comparison_artifact_posture")
-        if regime is not None and regime not in validation_contract.ALLOWED_FINAL_OUTPUT_REGIMES:
+        if regime is not None and regime not in HISTORICAL_ALLOWED_FINAL_OUTPUT_REGIMES:
             raise ValueError("invalid_model_comparison_artifact_regime")
         if not isinstance(payload.get("scorer_pass"), bool):
             raise ValueError("invalid_model_comparison_artifact_scorer")
@@ -1404,7 +1511,7 @@ def validate_model_comparison_record(record: Mapping[str, Any]) -> dict[str, Any
             _validate_hash(payload.get(key))
         if (
             payload.get("historical_control_status") != "comparable"
-            or payload.get("historical_control_model") != projection.PRIMARY_MODEL
+            or payload.get("historical_control_model") != HISTORICAL_PRIMARY_MODEL
             or payload.get("historical_control_provider_calls") != 22
             or payload.get("historical_control_semantic_passes") != 20
         ):
@@ -1899,6 +2006,7 @@ def run_model_comparison_campaign(
     freeze_commit: str,
     client: OpenRouterClient,
 ) -> dict[str, Any]:
+    historical_primary_witness()
     corpus = load_policy_corpus()
     protocol = model_comparison_protocol_document(corpus, freeze_commit=freeze_commit)
     prompt = (REPO_ROOT / "app/prompts/validation_agent.txt").read_text(
@@ -2006,7 +2114,7 @@ def run_live_campaign(
         pair = build_policy_message_pair(case, system_prompt)
         fingerprints = policy_pair_fingerprints(pair)
         built = projection.build_current_messages(case, system_prompt)
-        for model, source in projection.MODEL_ROLES.items():
+        for model, source in HISTORICAL_MODEL_ROLES.items():
             for repetition in range(1, REPETITIONS + 1):
                 scored: dict[str, dict[str, Any]] = {}
                 order = ("current", "candidate") if repetition % 2 else ("candidate", "current")
@@ -2018,12 +2126,12 @@ def run_live_campaign(
                         {
                             "model": model,
                             "messages": pair[policy],
-                            "temperature": projection.TEMPERATURE,
-                            "top_p": projection.TOP_P,
-                            "max_tokens": projection.MAX_TOKENS,
+                            "temperature": HISTORICAL_TEMPERATURE,
+                            "top_p": HISTORICAL_TOP_P,
+                            "max_tokens": HISTORICAL_MAX_TOKENS,
                         },
                         caller="validation_agent",
-                        timeout_s=projection.TIMEOUT_S,
+                        timeout_s=HISTORICAL_TIMEOUT_S,
                     )
                     provider_status, provider_reason = projection._provider_status(provider)
                     if provider_status == "ok":

@@ -55,38 +55,11 @@ class Lot4C1ValidationPolicyComparisonTests(unittest.TestCase):
             policy.CANDIDATE_POLICY_SHA256,
         )
 
-    def test_candidate_pair_changes_only_the_frozen_policy_fragment(self) -> None:
-        for case in policy.load_policy_corpus()["cases"]:
-            with self.subTest(case=case["id"]):
-                pair = policy.build_policy_message_pair(case, "synthetic-system")
-                fingerprints = policy.policy_pair_fingerprints(pair)
+    def test_frozen_policy_pairs_changed_only_the_policy_fragment_at_freeze(self) -> None:
+        archive = policy.historical_primary_archive()
 
-                self.assertEqual(
-                    fingerprints["current_canonical_sha256"],
-                    fingerprints["candidate_canonical_sha256"],
-                )
-                self.assertEqual(
-                    fingerprints["current_system_sha256"],
-                    fingerprints["candidate_system_sha256"],
-                )
-                self.assertEqual(
-                    fingerprints["current_nonpolicy_user_sha256"],
-                    fingerprints["candidate_nonpolicy_user_sha256"],
-                )
-                self.assertNotEqual(
-                    fingerprints["current_policy_sha256"],
-                    fingerprints["candidate_policy_sha256"],
-                )
-                self.assertEqual(
-                    pair["current"][1]["content"].count(policy.CURRENT_POLICY_FRAGMENT),
-                    1,
-                )
-                self.assertEqual(
-                    pair["candidate"][1]["content"].count(
-                        policy.CANDIDATE_POLICY_FRAGMENT
-                    ),
-                    1,
-                )
+        self.assertEqual(archive["policy_pair_count"], 44)
+        self.assertTrue(archive["all_policy_pair_fingerprints_match"])
 
     def test_shared_scorer_rejects_critical_answer_and_nonmaterial_clarify(self) -> None:
         cases = {case["id"]: case for case in policy.load_policy_corpus()["cases"]}
@@ -111,8 +84,14 @@ class Lot4C1ValidationPolicyComparisonTests(unittest.TestCase):
         self.assertFalse(critical_answer["pass"])
         self.assertFalse(countercase_clarify["pass"])
         self.assertTrue(countercase_answer["pass"])
+        user_turn_signals = projection.build_case_inputs(countercase)[
+            "user_turn_signals"
+        ]
         self.assertEqual(
-            projection._primary_verdict(countercase)["upstream_advisory"][
+            projection._primary_verdict(
+                countercase,
+                user_turn_signals=user_turn_signals,
+            )["upstream_advisory"][
                 "recommended_judgment_posture"
             ],
             "clarify",

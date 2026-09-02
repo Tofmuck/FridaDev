@@ -56,26 +56,12 @@ class _SyntheticResponse:
 
 
 class Lot4C1ValidationModelComparisonTests(unittest.TestCase):
-    @staticmethod
-    def _synthetic_comparable_witness() -> dict[str, object]:
-        return {
-            "status": "comparable",
-            "model": "google/gemini-3.1-flash-lite",
-            "provider_calls": 22,
-            "semantic_passes": 20,
-        }
-
     def test_protocol_freezes_four_standard_configurations_calls_and_cost(self) -> None:
         corpus = policy.load_policy_corpus()
-        with patch.object(
-            policy,
-            "historical_primary_witness",
-            return_value=self._synthetic_comparable_witness(),
-        ):
-            protocol = policy.model_comparison_protocol_document(
-                corpus,
-                freeze_commit="f" * 40,
-            )
+        protocol = policy.model_comparison_protocol_document(
+            corpus,
+            freeze_commit="f" * 40,
+        )
 
         self.assertEqual(protocol["planned_provider_calls"], 88)
         self.assertLessEqual(protocol["planned_provider_calls"], 96)
@@ -190,7 +176,7 @@ class Lot4C1ValidationModelComparisonTests(unittest.TestCase):
         prompt = (REPO_ROOT / "app/prompts/validation_agent.txt").read_text(
             encoding="utf-8"
         ).strip()
-        messages = policy.build_policy_message_pair(case, prompt)["current"]
+        messages = policy.projection.build_current_messages(case, prompt)["messages"]
         payloads = [
             policy.build_model_comparison_payload(messages, config_id)
             for config_id in policy.MODEL_COMPARISON_CONFIGURATION_IDS
@@ -207,6 +193,25 @@ class Lot4C1ValidationModelComparisonTests(unittest.TestCase):
     def test_historical_primary_witness_rejects_changed_runtime_contract(self) -> None:
         with self.assertRaisesRegex(ValueError, "historical_primary_witness_not_comparable"):
             policy.historical_primary_witness()
+
+    def test_historical_archive_integrity_ignores_runtime_drift_but_rejects_mutation(self) -> None:
+        archive = policy.historical_primary_archive()
+
+        self.assertEqual(archive["status"], "comparable")
+        self.assertEqual(archive["provider_calls"], 22)
+        self.assertEqual(archive["policy_pair_count"], 44)
+        self.assertTrue(archive["all_policy_pair_fingerprints_match"])
+
+        source = REPO_ROOT / policy.HISTORICAL_CONTROL_PATH
+        with TemporaryDirectory() as tmp:
+            mutant = Path(tmp) / source.name
+            mutant.write_bytes(source.read_bytes() + b"\n")
+            with patch.object(policy, "HISTORICAL_CONTROL_PATH", mutant):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "historical_control_artifact_hash_mismatch",
+                ):
+                    policy.historical_primary_archive()
 
     def test_model_artifact_guard_rejects_routing_metrics_and_raw_mutations(self) -> None:
         record = policy.synthetic_valid_model_comparison_call_record()
@@ -367,75 +372,30 @@ class Lot4C1ValidationModelComparisonTests(unittest.TestCase):
         self.assertNotIn("reasoning_details", observed)
         self.assertNotIn("SYNTHETIC_REASONING_MUST_NOT_ESCAPE", json.dumps(observed))
 
-    def test_live_orchestrator_makes_exactly_88_calls_and_writes_93_records(self) -> None:
+    def test_historical_live_orchestrator_refuses_current_noncomparable_inputs(self) -> None:
         class SyntheticClient:
             def __init__(self) -> None:
                 self.calls: list[dict] = []
 
             def chat_completion(self, payload: dict, *, caller: str, timeout_s: int) -> dict:
                 self.calls.append(copy.deepcopy(payload))
-                return {
-                    "ok": True,
-                    "status_code": 200,
-                    "elapsed_ms": 10.0,
-                    "error": None,
-                    "raw_text": json.dumps(
-                        {
-                            "schema_version": "v1",
-                            "final_judgment_posture": "answer",
-                            "final_output_regime": "simple",
-                            "arbiter_reason": "synthetic",
-                        }
-                    ),
-                    "finish_reason": "stop",
-                    "native_finish_reason": "stop",
-                    "usage": {
-                        "prompt_tokens": 100,
-                        "completion_tokens": 20,
-                        "total_tokens": 120,
-                        "completion_tokens_details": {"reasoning_tokens": 10},
-                    },
-                    "cost_estimate_usd": 0.0001,
-                    "cost_estimate_source": "openrouter_models_pricing",
-                    "generation_id": "synthetic",
-                    "model": payload["model"],
-                    "provider": (
-                        "Google AI Studio"
-                        if payload["model"].startswith("google/")
-                        else "OpenAI"
-                    ),
-                    "service_tier": "default",
-                }
+                raise AssertionError("noncomparable historical campaign made a call")
 
         client = SyntheticClient()
         with TemporaryDirectory() as tmp:
             output = Path(tmp) / "model-comparison.jsonl"
-            with patch.object(
-                policy,
-                "historical_primary_witness",
-                return_value=self._synthetic_comparable_witness(),
+            with self.assertRaisesRegex(
+                ValueError,
+                "historical_primary_witness_not_comparable",
             ):
-                result = policy.run_model_comparison_campaign(
+                policy.run_model_comparison_campaign(
                     output_path=output,
                     freeze_commit="f" * 40,
                     client=client,
                 )
-            records = [
-                json.loads(line)
-                for line in output.read_text(encoding="utf-8").splitlines()
-            ]
 
-        self.assertEqual(len(client.calls), 88)
-        self.assertEqual(len(records), 93)
-        self.assertEqual(sum(item["record_type"] == "provider_call" for item in records), 88)
-        self.assertEqual(sum(item["record_type"] == "configuration_summary" for item in records), 4)
-        self.assertEqual(sum(item["record_type"] == "campaign_summary" for item in records), 1)
-        self.assertTrue(all(policy.validate_model_comparison_record(item) for item in records))
-        self.assertFalse(result["decision"]["runtime_cutover_authorized"])
-        serialized = json.dumps(records)
-        self.assertNotIn("synthetic-system", serialized)
-        self.assertNotIn("synthetic-user", serialized)
-        self.assertNotIn("arbiter_reason", serialized)
+            self.assertFalse(output.exists())
+        self.assertEqual(client.calls, [])
 
     def test_reclassification_separates_invalid_json_without_new_provider_output(self) -> None:
         records = [
@@ -453,15 +413,10 @@ class Lot4C1ValidationModelComparisonTests(unittest.TestCase):
             semantic_codes=["missed_presence"],
         )
 
-        with patch.object(
-            policy,
-            "historical_primary_witness",
-            return_value=self._synthetic_comparable_witness(),
-        ):
-            rebuilt = policy.reclassify_model_comparison_records(
-                records,
-                freeze_commit="f" * 40,
-            )
+        rebuilt = policy.reclassify_model_comparison_records(
+            records,
+            freeze_commit="f" * 40,
+        )
 
         self.assertEqual(len(rebuilt), 93)
         normalized = next(

@@ -37,6 +37,16 @@ FridaDev web pipeline (SearXNG + Crawl4AI) with OpenRouter server tools
 `openrouter:web_search` on bounded Exa and Parallel runs. It is an operator
 benchmark for the next product decision, not a runtime integration.
 
+## Frozen evidence and current code
+
+Retained campaign artifacts and freeze manifests are historical evidence. Their
+loaders authenticate the frozen bytes, inputs, fingerprints and results without
+requiring source files at the current HEAD to retain their old hashes. Source
+hashes inside a closed manifest describe freeze-time provenance. Current
+builders, normalizers and validators are exercised separately with their
+current signatures and contracts. When current inputs differ, the archive can
+remain intact while reuse as a comparable control is refused before any call.
+
 ## Run the arbiter campaign
 
 From the repository root:
@@ -468,7 +478,9 @@ than creating another provider framework. Its benchmark-only prompt candidate
 and closed freeze manifest live beside the Stimmung fixtures. The manifest
 pins the candidate, runtime prompt baseline, corpus, scorer, product
 normalizer, product aggregator, campaign harness and retained 4S.1 artifact by
-SHA-256. The runtime prompt is not changed before the candidate passes.
+SHA-256. The whole manifest is itself pinned: source hashes are freeze-time
+provenance, while retained input and artifact bytes remain checked directly.
+The runtime prompt is not changed before the candidate passes.
 
 The candidate changes only the system-prompt bytes visible to the provider.
 Models, source roles, generation parameters, timeout, corpus, schedule,
@@ -1058,17 +1070,21 @@ service was changed.
 
 ### Lot 4C.1 Validation primary-model comparison
 
-The bounded model comparison reuses the frozen Lot 4C.1 policy corpus,
-production message builders, v2 canonical projection and semantic scorer. It
-does not modify the runtime model or prompt. Four standard, non-Batch
-configurations are compared: Gemini 3.7 Flash and GPT-5.6 Luna Pro, each at
-`medium` and `high` reasoning effort. Sampling parameters are intentionally
-omitted for these candidates; reasoning text is excluded and never retained.
+The frozen model comparison reused the Lot 4C.1 policy corpus, message builders,
+v2 canonical projection and semantic scorer that were exact at its freeze. Its
+artifact is now validated independently from current builders; the current HEAD
+is explicitly non-comparable after Lot 6 and a historical rerun is refused
+before any provider call. It does not modify the runtime model or prompt. Four
+standard, non-Batch configurations are compared: Gemini 3.7 Flash and GPT-5.6
+Luna Pro, each at `medium` and `high` reasoning effort. Sampling parameters are
+intentionally omitted for these candidates; reasoning text is excluded and
+never retained.
 
 The protocol fixes eleven cases, two repetitions, `max_tokens=500`, a `15 s`
 timeout, 88 calls, a 96-call absolute cap and a prudent `0.28 USD` cost cap.
-Provider fallback is disabled and parameter support is required. Run only
-after the protocol commit has been pushed:
+Provider fallback is disabled and parameter support is required. The command
+below records the historical invocation; it is not runnable as a comparable
+campaign from the current HEAD:
 
 ```bash
 OPENROUTER_API_KEY=... python3 -m \

@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: archive fermee le 2 septembre 2026; Lots 0 a 8 et Z fermes; decision globale du Lot 4 `strengthen`, caller renforce, F2 corrige par separation epistemique/enonciative, F4 `partiel` et 4C.4 `inconclusive` avec decision produit `keep_current_v2.3`; faux blocage 4C.5 classe `invalide/non requis` apres contre-audit croise des contrats; resultat technique 7D `inconclusive`, mais Lot 7 ferme `non_requis` a ce jour sur decision de Tof, sans 7C; Lot 8 ferme `non requis/absorbe`; Lot Z ferme apres contre-audit differentiel, avec reserve non bloquante sur les temoins golden historiques devenus non comparables
+Statut: archive fermee le 2 septembre 2026; Lots 0 a 8 et Z fermes; decision globale du Lot 4 `strengthen`, caller renforce, F2 corrige par separation epistemique/enonciative, F4 `partiel` et 4C.4 `inconclusive` avec decision produit `keep_current_v2.3`; faux blocage 4C.5 classe `invalide/non requis` apres contre-audit croise des contrats; resultat technique 7D `inconclusive`, mais Lot 7 ferme `non_requis` a ce jour sur decision de Tof, sans 7C; Lot 8 ferme `non requis/absorbe`; Lot Z ferme apres contre-audit differentiel, reserve des temoins golden historiques resolue par separation entre integrite gelee et conformite du code courant
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -4868,6 +4868,35 @@ Reserve non bloquante: la decouverte globale reste donc non verte tant que ces
 tests historiques sont executes contre les sources courantes. Les suites
 ciblees des deltas et les invariants runtime sont vertes; corriger les campagnes
 gelees aurait contredit leur provenance et le hors-scope explicite du Lot Z.
+
+### Correctif post-cloture des tests historiques - 2 septembre 2026
+
+La reserve ci-dessus est conservee comme resultat du contre-audit initial puis
+resolue par une passe strictement bornee aux tests et a leur outillage. Les
+artefacts JSONL, manifests, corpus, candidates, scores, prompts et sources
+runtime restent inchanges.
+
+- F1: les `13` erreurs de fragment provenaient de la reconstruction d'une
+  consigne gelee avec le builder courant modifie au Lot 6. L'integrite 4C.1 est
+  maintenant verifiee sur l'artefact exact, ses `44` paires et leurs empreintes;
+  le builder courant est teste separement.
+- F2: le test courant fournit desormais `user_turn_signals` a
+  `_primary_verdict`, conformement a sa signature et aux vrais inputs courants.
+- F3/F4: les deux manifests Stimmung sont authentifies byte pour byte; leurs
+  hashes de sources sont une provenance de gel. L'empreinte historique du
+  normaliseur reste `314bbd75...`, distincte sans erreur de l'empreinte du
+  runtime 5S courant. Une alteration de manifest reste rejetee.
+- F5: l'integrite de l'archive Validation et sa comparabilite au HEAD sont deux
+  controles distincts. L'archive reste lisible; sa reutilisation comme temoin
+  courant echoue explicitement avec `historical_primary_witness_not_comparable`
+  avant toute ecriture ou tout appel provider.
+
+Preuves finales, dans l'image locale, depot read-only, reseau coupe et `/tmp`
+en tmpfs: `70/70` sur les huit modules demandes; `78/78` avec le voisin direct
+4S.1; puis l'unique decouverte complete `2888/2888` en `736,935 s`, sans echec,
+erreur, skip ni expected failure. Le delta de `+28` depuis les `2860` du constat
+rouge correspond a `26` methodes auparavant bloquees par trois `setUpClass` et
+aux deux nouvelles preuves d'integrite; aucun test n'est masque ou retire.
 
 ## Archivage
 

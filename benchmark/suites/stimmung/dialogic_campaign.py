@@ -66,12 +66,21 @@ PHASE_A_FREEZE_COMMIT = "c02e1dd7ad53c6eb33296c563304c5e4d7be3f7e"
 PHASE_A_HARNESS_SHA256 = "2458512091d7d51c9414bd6256bc969f6d42f19a6545468a5a1a45a3ea46566e"
 STRENGTHENING_CANDIDATE_FIXTURE = "stimmung_semantic_strengthening_candidate_v1.txt"
 STRENGTHENING_FREEZE_MANIFEST = "stimmung_semantic_strengthening_freeze_v1.json"
+STRENGTHENING_FREEZE_MANIFEST_SHA256 = (
+    "28cd19c3d4e6311540027183bf8bd6dbe54699d375158bff857c77457f4a6494"
+)
+STRENGTHENING_FROZEN_NORMALIZER_SHA256 = (
+    "314bbd75f20ff02baa1acd38e5d7d5384abd779eb2c1435bb740dc33bfc7771a"
+)
 FINAL_STRENGTHENING_CORPUS_FIXTURE = "stimmung_dialogic_semantic_v3.json"
 FINAL_STRENGTHENING_CANDIDATE_FIXTURE = (
     "stimmung_semantic_strengthening_candidate_v2.txt"
 )
 FINAL_STRENGTHENING_FREEZE_MANIFEST = (
     "stimmung_semantic_strengthening_final_freeze_v2.json"
+)
+FINAL_STRENGTHENING_FREEZE_MANIFEST_SHA256 = (
+    "b9aa62027f2ebb3b23367d717d667e1428b55eb8248c786ae26007630c89ffe6"
 )
 FINAL_STRENGTHENING_EXPECTED_CALLS = EXPECTED_TURNS * REPETITIONS
 FINAL_STRENGTHENING_ABSOLUTE_CALL_CAP = FINAL_STRENGTHENING_EXPECTED_CALLS
@@ -791,7 +800,10 @@ def build_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str, Any]:
 
 
 def _load_strengthening_manifest(repo_root: Path) -> dict[str, Any]:
-    data = json.loads(_strengthening_manifest_path(repo_root).read_text(encoding="utf-8"))
+    manifest_path = _strengthening_manifest_path(repo_root)
+    if _sha256_file(manifest_path) != STRENGTHENING_FREEZE_MANIFEST_SHA256:
+        raise ValueError("strengthening_manifest_integrity_mismatch")
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
     required = {
         "schema_version",
         "candidate_prompt_sha256",
@@ -809,20 +821,18 @@ def _load_strengthening_manifest(repo_root: Path) -> dict[str, Any]:
         raise ValueError("strengthening_manifest_invalid")
     for key in required - {"schema_version"}:
         _validate_sha(data.get(key))
-    # The harness hash is a freeze-time provenance field. Requiring it to match
-    # the evolving reader would make an already-persisted artifact unreadable
-    # as soon as its validation contract is corrected.
+    # Source hashes are freeze-time provenance fields. The pinned manifest
+    # authenticates them; only immutable campaign inputs are read back here.
     expected_files = {
         "candidate_prompt_sha256": _strengthening_candidate_path(repo_root),
         "corpus_sha256": _corpus_path(repo_root),
-        "scorer_sha256": repo_root / "benchmark/suites/stimmung/dialogic_semantics.py",
-        "normalizer_sha256": repo_root / "app/core/stimmung_agent.py",
-        "aggregator_sha256": repo_root / "app/core/hermeneutic_node/inputs/stimmung_input.py",
         "baseline_artifact_sha256": _historical_artifact_path(repo_root),
     }
     if any(data[key] != _sha256_file(path) for key, path in expected_files.items()):
         raise ValueError("strengthening_manifest_fingerprint_mismatch")
     if data["runtime_prompt_baseline_sha256"] != RUNTIME_PROMPT_BASELINE_SHA256:
+        raise ValueError("strengthening_manifest_fingerprint_mismatch")
+    if data["normalizer_sha256"] != STRENGTHENING_FROZEN_NORMALIZER_SHA256:
         raise ValueError("strengthening_manifest_fingerprint_mismatch")
     if data["candidate_prompt_sha256"] == data["runtime_prompt_baseline_sha256"]:
         raise ValueError("strengthening_candidate_not_distinct")
@@ -926,9 +936,10 @@ def build_strengthening_protocol(repo_root: Path, *, freeze_commit: str) -> dict
 
 
 def _load_final_strengthening_manifest(repo_root: Path) -> dict[str, Any]:
-    data = json.loads(
-        _final_strengthening_manifest_path(repo_root).read_text(encoding="utf-8")
-    )
+    manifest_path = _final_strengthening_manifest_path(repo_root)
+    if _sha256_file(manifest_path) != FINAL_STRENGTHENING_FREEZE_MANIFEST_SHA256:
+        raise ValueError("final_strengthening_manifest_integrity_mismatch")
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
     required = {
         "schema_version",
         "source_corpus_sha256",
@@ -1004,11 +1015,6 @@ def _load_final_strengthening_manifest(repo_root: Path) -> dict[str, Any]:
         "corpus_sha256": _final_strengthening_corpus_path(repo_root),
         "source_candidate_prompt_sha256": _strengthening_candidate_path(repo_root),
         "candidate_prompt_sha256": _final_strengthening_candidate_path(repo_root),
-        "local_scorer_sha256": repo_root
-        / "benchmark/suites/stimmung/causal_rescoring.py",
-        "normalizer_sha256": repo_root / "app/core/stimmung_agent.py",
-        "aggregator_sha256": repo_root
-        / "app/core/hermeneutic_node/inputs/stimmung_input.py",
         "historical_candidate_artifact_sha256": (
             _final_strengthening_historical_artifact_path(repo_root)
         ),
@@ -1016,6 +1022,8 @@ def _load_final_strengthening_manifest(repo_root: Path) -> dict[str, Any]:
     if any(data[key] != _sha256_file(path) for key, path in expected_files.items()):
         raise ValueError("final_strengthening_manifest_fingerprint_mismatch")
     if data["runtime_prompt_baseline_sha256"] != RUNTIME_PROMPT_BASELINE_SHA256:
+        raise ValueError("final_strengthening_manifest_fingerprint_mismatch")
+    if data["normalizer_sha256"] != STRENGTHENING_FROZEN_NORMALIZER_SHA256:
         raise ValueError("final_strengthening_manifest_fingerprint_mismatch")
     if data["candidate_prompt_sha256"] in {
         data["source_candidate_prompt_sha256"],

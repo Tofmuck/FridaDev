@@ -236,8 +236,12 @@ class Lot4C2StimmungGeminiModelComparisonTests(unittest.TestCase):
             dialogic_campaign.RUNTIME_PROMPT_BASELINE_SHA256,
         )
         self.assertEqual(
-            dialogic_campaign._sha256_file(REPO_ROOT / "app/core/stimmung_agent.py"),
+            dialogic_campaign.STRENGTHENING_FROZEN_NORMALIZER_SHA256,
             "314bbd75f20ff02baa1acd38e5d7d5384abd779eb2c1435bb740dc33bfc7771a",
+        )
+        self.assertNotEqual(
+            dialogic_campaign._sha256_file(REPO_ROOT / "app/core/stimmung_agent.py"),
+            dialogic_campaign.STRENGTHENING_FROZEN_NORMALIZER_SHA256,
         )
 
     def test_retained_candidate_artifact_is_content_free_and_reconstructible(self) -> None:

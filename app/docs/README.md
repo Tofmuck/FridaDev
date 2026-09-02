@@ -82,7 +82,8 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
   inactive; transports Validation/Stimmung stricts sur leurs deux bras actifs;
   Lot 7 ferme `non_requis` par decision de Tof malgre une latence courante non
   mesuree, sans 7C; Lot 8 `non requis/absorbe` et cloture differentielle
-  archivee avec sa reserve sur les temoins golden historiques:
+  archivee; la reserve des temoins golden historiques est resolue par la
+  separation entre integrite gelee et tests du code courant:
   `todo-done/refactors/fridadev-dialogic-presence-mutable-identity-consolidation-todo.md`
 - Contrat source-of-truth juge mutable: `states/specs/mutable-identity-judge-contract.md`
 - Validation finale refonte mutable judge-first 2026-05-25: `todo-done/validations/mutable-identity-judge-final-validation-2026-05-25.md`

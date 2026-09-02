@@ -5,6 +5,8 @@ import json
 import sys
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 
 def _repo_root() -> Path:
@@ -86,6 +88,36 @@ class Lot4C2StimmungSemanticStrengtheningTests(unittest.TestCase):
                 threshold_mutant,
                 REPO_ROOT,
             )
+
+    def test_frozen_normalizer_provenance_survives_runtime_drift_and_rejects_mutation(self) -> None:
+        self.assertEqual(
+            self.protocol["normalizer_sha256"],
+            dialogic_campaign.STRENGTHENING_FROZEN_NORMALIZER_SHA256,
+        )
+        self.assertNotEqual(
+            dialogic_campaign._sha256_file(REPO_ROOT / "app/core/stimmung_agent.py"),
+            self.protocol["normalizer_sha256"],
+        )
+
+        source = dialogic_campaign._strengthening_manifest_path(REPO_ROOT)
+        manifest = json.loads(source.read_text(encoding="utf-8"))
+        manifest["normalizer_sha256"] = "f" * 64
+        with TemporaryDirectory() as tmp:
+            mutant = Path(tmp) / source.name
+            mutant.write_text(json.dumps(manifest), encoding="utf-8")
+            with patch.object(
+                dialogic_campaign,
+                "_strengthening_manifest_path",
+                return_value=mutant,
+            ):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "strengthening_manifest_integrity_mismatch",
+                ):
+                    dialogic_campaign.build_strengthening_protocol(
+                        REPO_ROOT,
+                        freeze_commit="f" * 40,
+                    )
 
     def test_candidate_changes_only_the_system_prompt_seen_by_the_provider(self) -> None:
         self.assertEqual(len(self.historical_schedule), 276)
