@@ -76,15 +76,14 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Note suspendue memoire/intention `feed her from herself`: `todo-todo/memory/Frida_from_herself.md`
 - Archive recadrage mutable add-only ontologique: `todo-done/refactors/mutable-identity-add-only-ontology-todo.md`
 - Archive refonte des mutables identity judge-first: `todo-done/refactors/mutable-identity-judge-refactor-todo.md`
-- Roadmap active de consolidation Presence dialogique / Identity mutable:
-  Lots 0 a 4 fermes, decision globale Stimmung `strengthen`, proposition 4C.5
-  de raccord automatique `source_conflicts -> contradictoire` classee
-  `invalide/non requise`; Lot 5 ferme apres raccord strict provider de
-  Validation et Stimmung, Lot 6 recale au seul residu prouve, Lot 7
-  conditionne par une mesure de latence, Lot 8 ferme `non requis/absorbe` sans
-  nouvelle campagne et Lot Z reduit au contre-audit differentiel puis a
-  l'archivage:
-  `todo-todo/refactors/fridadev-dialogic-presence-mutable-identity-consolidation-todo.md`
+- Archive de consolidation Presence dialogique / Identity mutable:
+  Lots 0 a 8 et Z fermes; decision globale Stimmung `strengthen`, F4 `partiel`,
+  4C.4 `inconclusive`, `keep_current_v2.3` conserve et `surface_only_v1`
+  inactive; transports Validation/Stimmung stricts sur leurs deux bras actifs;
+  Lot 7 ferme `non_requis` par decision de Tof malgre une latence courante non
+  mesuree, sans 7C; Lot 8 `non requis/absorbe` et cloture differentielle
+  archivee avec sa reserve sur les temoins golden historiques:
+  `todo-done/refactors/fridadev-dialogic-presence-mutable-identity-consolidation-todo.md`
 - Contrat source-of-truth juge mutable: `states/specs/mutable-identity-judge-contract.md`
 - Validation finale refonte mutable judge-first 2026-05-25: `todo-done/validations/mutable-identity-judge-final-validation-2026-05-25.md`
 - Roadmap finale produit Frida 1.0: `todo-todo/product/fridadev-final-product-roadmap-todo.md`

@@ -334,18 +334,20 @@ Discipline minimale:
   `presence`
 - les autres seuils chiffres restent portes par les runtime settings et leurs specs dediees
 
-Configuration runtime retenue par decision humaine du 2026-08-29:
+Configuration runtime courante, issue de la decision humaine du 2026-08-29 et
+du renforcement transport 5V du 2026-09-01:
 
 - primaire `google/gemini-3.7-flash`, transport OpenRouter standard;
 - `reasoning={"effort":"medium","exclude":true}` et `max_tokens=500`;
 - `temperature` et `top_p` absents de la requete primaire;
-- fallback inchange `openai/gpt-5.4-nano`, sans raisonnement explicite, avec
-  `temperature=0.0`, `top_p=1.0` et `max_tokens=140`;
+- fallback `openai/gpt-5.4-nano`, sans raisonnement explicite ni
+  `temperature`/`top_p`, avec `max_tokens=140`;
 - timeout `15s` sur les deux tentatives;
-- le routage OpenRouter strict `allow_fallbacks=false` et
-  `require_parameters=true` appartient uniquement au primaire Gemini 3.7;
-  le primaire historique Gemini 3.1 et le fallback GPT-5.4 Nano conservent
-  leur payload anterieur sans bloc `provider` explicite.
+- les deux bras actifs demandent le schema strict
+  `validation_agent_verdict_v1` et le routage OpenRouter
+  `allow_fallbacks=false`, `require_parameters=true`;
+- seul le primaire historique Gemini 3.1 conserve sa politique anterieure,
+  sans bloc `provider` ni `response_format` explicite.
 
 ## 10. Minimal Observability
 

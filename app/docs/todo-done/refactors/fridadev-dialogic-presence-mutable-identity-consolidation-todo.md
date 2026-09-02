@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 7 fermes; decision globale du Lot 4 `strengthen`, caller renforce, F2 corrige par separation epistemique/enonciative, F4 `partiel` et 4C.4 `inconclusive` avec decision produit `keep_current_v2.3`; faux blocage 4C.5 classe `invalide/non requis` apres contre-audit croise des contrats; resultat technique 7D `inconclusive`, mais Lot 7 ferme `non_requis` a ce jour sur decision de Tof, sans 7C; Lot 8 ferme `non requis/absorbe`; Lot Z ramene a la cloture differentielle et a l'archivage
+Statut: archive fermee le 2 septembre 2026; Lots 0 a 8 et Z fermes; decision globale du Lot 4 `strengthen`, caller renforce, F2 corrige par separation epistemique/enonciative, F4 `partiel` et 4C.4 `inconclusive` avec decision produit `keep_current_v2.3`; faux blocage 4C.5 classe `invalide/non requis` apres contre-audit croise des contrats; resultat technique 7D `inconclusive`, mais Lot 7 ferme `non_requis` a ce jour sur decision de Tof, sans 7C; Lot 8 ferme `non requis/absorbe`; Lot Z ferme apres contre-audit differentiel, avec reserve non bloquante sur les temoins golden historiques devenus non comparables
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -49,8 +49,9 @@ L'ordre obligatoire est:
    Stimmung, en conservant leurs validateurs locaux;
 7. qualifier puis corriger seulement les duplications ou previews Validation
    encore reellement fragiles, sans reconstruire l'input v2 deja livre;
-8. mesurer la latence cumulee deja bornee et n'ouvrir un correctif que si son
-   utilite est prouvee;
+8. mesurer la latence cumulee sous les timeouts configures et n'ouvrir un
+   correctif que si son utilite est prouvee, sans assimiler leur somme a une
+   garantie murale;
 9. consolider les decisions de modeles deja acquises sans nouvelle campagne;
 10. contre-auditer uniquement les deltas, mettre a jour les references devenues
     fausses, executer une preuve finale unique puis archiver.
@@ -4395,8 +4396,9 @@ Constats au HEAD `63477149d68621da79a9657059fb9cb698609d8e`:
   bornes et leur observabilite ont deja ete livres par 4C.1;
 - quelques previews historiques et une possible duplication normative du
   prompt Validation restent a qualifier;
-- Validation est deja bornee a deux tentatives de `15` secondes et Stimmung a
-  deux tentatives de `10` secondes: les bornes sont cumulables, pas infinies;
+- Validation est limitee a deux tentatives ayant chacune un timeout configure
+  de `15` secondes et Stimmung a deux tentatives ayant chacune un timeout de
+  `10` secondes; leur somme ne constitue pas une garantie murale;
 - les decisions de modeles ont deja ete prises et documentees pour
   Presence/Validation, Stimmung et Identity;
 - 4O.Z a deja fourni le contre-audit causal transversal du Lot 4.
@@ -4708,8 +4710,10 @@ theorique cumulatif.
   contenu, caller, modele/source, statut, duree, timeout et `turn_id`.
 - **F4 partielle:** la chaine existante permet le calcul offline, mais
   l'historique ne permet pas de mesurer la configuration courante.
-- **F5 validee:** la longue traine sequentielle lors d'un echec est bornee;
-  aucune attente infinie n'est trouvee.
+- **F5 validee au niveau orchestration:** le risque est une longue traine
+  sequentielle lors des echecs, pas une boucle de retry infinie. Les timeouts
+  sont configures par tentative, sans que leur somme atteste une borne murale
+  stricte du transport et des traitements locaux.
 - **F6 retenue:** a l'echelle mono-utilisateur, un correctif n'est justifie que
   par une frequence ou un cout courant reellement genant.
 
@@ -4781,8 +4785,8 @@ disponibilite d'un modele plus recent ne suffit pas.
 
 # LOT Z - Cloture differentielle et archivage
 
-Statut: recale, non commence
-Nature: cloture proportionnee
+Statut: ferme le 2 septembre 2026; contre-audit differentiel valide et archive
+Nature: cloture proportionnee, documentation et preuves sans mutation runtime
 Dependance: Lots 5/6/7 fermes; 7D technique `inconclusive`, decision produit
 Lot 7 `non_requis` a ce jour, aucun 7C
 
@@ -4793,36 +4797,87 @@ coherence finale.
 
 ## Contre-audit differentiel
 
-- [ ] Schema strict demande sur chaque branche declaree compatible, validation
+- [x] Schema strict demande sur chaque branche declaree compatible, validation
   locale souveraine et aucun fallback provider implicite.
-- [ ] Aucun input/projection 4C.1 duplique, doctrine Validation concurrente ou
+- [x] Aucun input/projection 4C.1 duplique, doctrine Validation concurrente ou
   valeur contractuelle tronquee.
-- [ ] Decision 7D coherente avec les mesures; si 7C existe, borne et chronologie
-  veridiques.
-- [ ] Backend, API, surfaces existantes, tests et docs racontent les memes
+- [x] Decision 7D coherente avec les mesures; aucun 7C n'existe et la somme des
+  timeouts configures n'est pas presentee comme une garantie murale.
+- [x] Backend, API, surfaces existantes, tests et docs racontent les memes
   versions actives.
-- [ ] Aucun contenu, secret, nouveau modele ou nouvelle capacite.
+- [x] Aucun contenu, secret, nouveau modele ou nouvelle capacite.
+
+### Verdict des cinq hypotheses
+
+Les deltas 5V `fb6ffab4`, 5S `b029f960`, Lot 6 `a6d83f47` puis
+`736e9902`, et la decision documentaire Lot 7 ont ete relus avec leurs appels,
+tests, projections et contrats vivants.
+
+1. **Transport valide.** Validation et Stimmung demandent le schema strict et
+   `allow_fallbacks=false` / `require_parameters=true` sur leurs deux bras
+   actifs. Le sampling est propre a chaque bras; les politiques historiques
+   restent distinctes. Les validateurs locaux demeurent souverains.
+2. **Matiere Validation validee.** Les structures legitimes restent completes,
+   les donnees hors contrat sont rejetees et les bornes suivent leurs
+   producteurs. Le dialogue conserve la limite volontaire amont de cinq
+   messages et `420` caracteres par contenu. Lot 6 retire la doctrine dupliquee
+   du message de tache sans recreer 4C.1.
+3. **Invariants valides.** Presence exacte, hard guards, fail-open, separation
+   certitude/enonciation et ordre dialogique restent inchanges et couverts par
+   les suites ciblees.
+4. **Observabilite validee.** Evenements, gardes, read-models, API et renderers
+   projettent les requetes effectivement preparees et les versions actives;
+   absence ou historique incomplet reste `unknown`. Trois formulations vivantes
+   devenues fausses apres 5V/5S ont ete synchronisees dans le contrat
+   Validation, le contrat des logs et le catalogue des callers.
+5. **Cloture validee.** 7D reste techniquement `inconclusive`; la fermeture
+   `non_requis` est une decision de Tof, pas une mesure de performance. Les
+   limites acceptees, `strengthen`, F4 `partiel`, 4C.4 `inconclusive`,
+   `keep_current_v2.3`, `surface_only_v1` inactive et Lot 8 absorbe sont
+   conserves. Aucun benchmark n'est reinterprete.
 
 ## Documentation et preuves finales
 
-- [ ] Mettre a jour seulement les documents rendus faux: `README.md`, hub docs,
-  pipeline, contrats touches, catalogue des callers et cette roadmap.
-- [ ] Suites ciblees/voisines des derniers deltas puis une seule decouverte
+- [x] Examiner `README.md` et le pipeline, restes vrais; actualiser seulement le
+  hub docs, les contrats devenus faux, le catalogue des callers et cette
+  roadmap.
+- [x] Suites ciblees/voisines des derniers deltas puis une seule decouverte
   Python hermetique complete.
-- [ ] JavaScript seulement si contrat/asset frontend modifie; Chromium seulement
+- [x] JavaScript seulement si contrat/asset frontend modifie; Chromium seulement
   si renderer, route ou contrat navigateur modifie.
-- [ ] Smoke content-free uniquement pour un raccord live non prouvable
-  hermetiquement, sans campagne de modele.
-- [ ] Coherence finale Git, runtime, README, pipeline, contrats et surfaces.
+- [x] Aucun smoke provider: verification live limitee a la sante, l'image,
+  `StartedAt` et aux empreintes des fichiers runtime concernes.
+- [x] Coherence finale Git, runtime, README, pipeline, contrats et surfaces.
+
+Preuves executees:
+
+- Python cible: `155/155` verts sur Validation, Stimmung, Presence,
+  observabilite et settings voisins;
+- JavaScript cible: `5/5` verts; Chromium: `2/2` controles selectionnes verts,
+  `13` tests non selectionnes par le filtre, sans batterie generale;
+- decouverte Python complete hermetique, reseau coupe et checkout en lecture
+  seule: `2 860` tests en `586,416 s`, avec `3` echecs et `17` erreurs;
+- les vingt anomalies sont circonscrites aux temoins golden historiques 4C.1 et
+  4C.2: fragment Validation retire par Lot 6, signature/corpus renforces par
+  `736e9902`, et empreinte de `stimmung_agent.py` changee par 5S. Elles prouvent
+  la non-comparabilite des campagnes gelees avec le runtime courant; elles ne
+  reproduisent aucun defaut produit ni echec des contrats actifs. Ces artefacts
+  ne sont ni reecrits, ni rejoues, ni requalifies pour obtenir un faux vert.
+
+Reserve non bloquante: la decouverte globale reste donc non verte tant que ces
+tests historiques sont executes contre les sources courantes. Les suites
+ciblees des deltas et les invariants runtime sont vertes; corriger les campagnes
+gelees aurait contredit leur provenance et le hors-scope explicite du Lot Z.
 
 ## Archivage
 
-- deplacer ce fichier vers
+- [x] deplacer ce fichier vers
   `app/docs/todo-done/refactors/fridadev-dialogic-presence-mutable-identity-consolidation-todo.md`;
-- remplacer le lien actif dans `app/docs/README.md`;
-- conserver `strengthen`, `keep_current_v2.3`, Lot 8 `non requis/absorbe` et les
+- [x] remplacer le lien actif dans `app/docs/README.md`;
+- [x] conserver `strengthen`, `keep_current_v2.3`, Lot 8 `non requis/absorbe` et les
   limites residuelles;
-- commit, push, worktree propre et divergence `0/0`.
+- [x] preparer le commit documentaire final; push, worktree propre et
+  divergence `0/0` sont verifies apres ce commit dans le retour de livraison.
 
 ## Arret global
 
@@ -4831,6 +4886,10 @@ deux callers demandent un transport strict sur les branches compatibles, le
 Lot 6 reste corrige, la decision produit Lot 7 `non_requis` reste distincte de
 la latence courante non mesuree, toutes les surfaces racontent la meme
 architecture et aucune extension fonctionnelle n'a ete ajoutee.
+
+Condition atteinte le 2 septembre 2026. La reserve des tests golden historiques
+est explicite et ne vaut ni finding produit ni remise en cause des decisions
+acquises.
 
 ## Hors-scope
 

@@ -216,10 +216,13 @@ et ne possede aucune autorite Identity ou canonique.
     prepared provider request: policy version, requested model, primary/fallback
     source, standard transport, requested/effective effort, reasoning sent,
     `exclude`, effective output budget, effective presence of sampling keys,
-    whether a provider-routing block was sent, and fallback/parameter
-    enforcement only when that block was actually present. Historical events without
-    this block remain `unknown`; model/provider observed come only from the
-    matching provider event when available
+    whether a provider-routing block was sent, fallback/parameter enforcement,
+    and the effective `response_format.type`, schema name, `strict` and
+    `additionalProperties` posture only when those blocks were actually
+    present. Both active v2 arms require the strict
+    `validation_agent_verdict_v1` schema; historical events without this block
+    remain `unknown`. Model/provider observed come only from the matching
+    provider event when available
   - `partial`, inconsistent counters, unknown family names, a raw-content flag set to true, or an unversioned `full` claim are invalid rather than normal display states
   - forbidden: raw prompt, raw messages, raw validation dialogue, raw canonical inputs, raw memory traces/summaries, raw identity content
 
