@@ -2,8 +2,8 @@
 
 Date de cadrage : 2 septembre 2026.
 
-**Statut : roadmap ouverte ; I1 et I2 fermés et livrés ; M1 et les lots
-suivants non commencés.**
+**Statut : roadmap ouverte ; I1 et I2 fermés et livrés ; correctif M1 vérifié,
+livraison en cours ; lots suivants non commencés.**
 
 ## 1. But et décision de périmètre
 
@@ -68,7 +68,7 @@ sans attendre O1.
 | --- | --- | --- | --- | --- | --- |
 | 1 | I1 | Une erreur de streaming reste une interruption | F01 | xhigh | fermé et livré |
 | 2 | I2 | Une lecture Identity en panne ne permet aucun remplacement | F02 | xhigh | fermé et livré |
-| 3 | M1 | Un résumé n'est acquis qu'après stockage confirmé | F03 | xhigh | non commencé |
+| 3 | M1 | Un résumé n'est acquis qu'après stockage confirmé | F03 | xhigh | correctif vérifié ; livraison en cours |
 | 4 | M2 | La déduplication ne retire pas une formulation distincte avant jugement | F04 | xhigh | non commencé |
 | 5 | O1 | Les hints dialogiques sont comptés par leur vrai reader | F07 | high | non commencé |
 | 6 | B1 | Un extrait tronqué n'est jamais annoncé complet | F06 | xhigh | non commencé |
@@ -302,14 +302,14 @@ Tests : `app/tests/unit/memory/test_summarizer_phase4.py`,
 `app/tests/unit/memory/test_memory_trace_summary_store_boundary.py` et support
 chat/persistance existant.
 
-- [ ] Reproduire échec du stockage texte au vrai niveau qui absorbe actuellement
+- [x] Reproduire échec du stockage texte au vrai niveau qui absorbe actuellement
   l'erreur, puis suivre le booléen, les marques et l'événement côté coordinateur.
-- [ ] Faire remonter une issue de stockage non ambiguë ; conditionner l'acquisition
+- [x] Faire remonter une issue de stockage non ambiguë ; conditionner l'acquisition
   et les marques à la conservation effective du résumé. Garder la génération,
   la persistance et le rattachement des traces comme opérations distinctes.
-- [ ] Sur échec texte, prouver absence de nouvelles marques/cutoff acquis et de
+- [x] Sur échec texte, prouver absence de nouvelles marques/cutoff acquis et de
   summary_generated trompeur ; les messages restent disponibles au tour suivant.
-- [ ] Sur texte stocké mais embedding indisponible, conserver le résumé texte
+- [x] Sur texte stocké mais embedding indisponible, conserver le résumé texte
   légitime. Sur échec du rattachement des traces, préserver le texte déjà stocké,
   qualifier honnêtement l'état et vérifier la cohérence du prochain tour sans
   rollback aveugle ni boucle de retries nouvellement ajoutée.
@@ -320,6 +320,43 @@ chat/persistance existant.
 **Fermeture :** les indicateurs d'acquisition correspondent au stockage effectif ;
 aucune perte de disponibilité des messages du fait d'une écriture manquée. Le
 lot ne crée ni résumé hiérarchique, ni nouvelle politique de sélection temporelle.
+
+### Preuves M1 avant livraison — 2 septembre 2026
+
+- F1, F2, F4 et F5 sont valides au HEAD I2. F3 est partielle : les marques
+  excluent bien les messages du prochain travail, mais un premier échec texte
+  ne crée pas à lui seul de cutoff SQL; ce cutoff vient d'un résumé actif
+  effectivement relu.
+- Rouge observé sur la vraie chaîne writer SQL factice → façade
+  `memory_traces_summaries` → façade `memory_store` → résumeur : l'erreur
+  absorbée laissait le chemin poursuivre sans diagnostic d'échec au résumeur.
+- Le writer texte retourne désormais un booléen après commit; les deux façades
+  le transmettent. `False` et `None` arrêtent rattachement, marques,
+  `summarize_done`, sauvegarde conversationnelle de phase summary,
+  `summary_generated` et état d'acquisition.
+- Les variantes sans et avec résumé antérieur gardent toutes leurs marques
+  initiales et ne produisent aucune ligne summary sous panne. Au passage
+  suivant disponible, les messages sont encore éligibles et un stockage
+  confirmé permet leur acquisition.
+- Une panne d'embedding conserve le texte avec embedding nul; le vrai reader de
+  résumé actif et le vrai builder de prompt relisent ce texte, remplacent la
+  fenêtre couverte et gardent les tours récents. Une panne du rattachement des
+  traces garde le texte et son diagnostic distinct, sans seconde génération au
+  tour suivant.
+- Une mutation contrôlée neutralisant la garde sur le résultat du writer remet
+  en échec la preuve centrale, avec et sans résumé antérieur; la restauration
+  la remet au vert.
+- Batterie hermétique : 74 tests ciblés et voisins, `OK`, checkout read-only,
+  réseau désactivé, sans secret, provider ni DB opérateur. Elle couvre aussi
+  seuil non atteint, prompt absent, panne provider, persistance/réhydratation
+  des marques, cutoff, injection et observabilité summary.
+- Le contre-audit indépendant ciblé, après correction de ses deux retours sur
+  les doubles `None` et la comparaison du conflit idempotent, ne rapporte plus
+  aucun finding Critical, Important ou Minor.
+- Limite : le double de connexion/SQL prouve le chemin applicatif sous panne
+  injectée et écriture ensuite disponible; aucune panne PostgreSQL live, donnée
+  opérateur, perte historique ou qualité sémantique globale n'a été recherchée
+  ni constatée.
 
 ## 8. M2 — Préserver les variantes avant le jugement Memory
 

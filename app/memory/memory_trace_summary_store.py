@@ -152,10 +152,11 @@ def save_summary(
     embed_fn: Callable[..., list[float]],
     logger: Any,
     embed_with_purpose_fn: Callable[..., list[float]],
-) -> None:
+) -> bool:
     """
     Persist a summary into `summaries`.
     Embedding failure does not prevent text persistence.
+    Return True only after the text write commits, False when it fails.
     """
     content = summary.get('content', '')
     try:
@@ -178,6 +179,7 @@ def save_summary(
                         (id, conversation_id, start_ts, end_ts, content, embedding)
                     VALUES (%s, %s, %s, %s, %s, %s::vector)
                     ON CONFLICT (id) DO NOTHING
+                    RETURNING id
                     ''',
                     (
                         summary['id'],
@@ -188,10 +190,39 @@ def save_summary(
                         str(vec) if vec is not None else None,
                     ),
                 )
+                inserted = cur.fetchone()
+                if inserted is None:
+                    cur.execute(
+                        '''
+                        SELECT 1
+                        FROM summaries
+                        WHERE id = %s
+                          AND conversation_id = %s
+                          AND start_ts IS NOT DISTINCT FROM %s::timestamptz
+                          AND end_ts IS NOT DISTINCT FROM %s::timestamptz
+                          AND content = %s
+                        ''',
+                        (
+                            summary['id'],
+                            conversation_id,
+                            summary.get('start_ts') or None,
+                            summary.get('end_ts') or None,
+                            content,
+                        ),
+                    )
+                    if cur.fetchone() is None:
+                        logger.error(
+                            'save_summary_conflict_mismatch conv=%s summary_id=%s',
+                            conversation_id,
+                            summary['id'][:8],
+                        )
+                        return False
             conn.commit()
         logger.info('summary_saved conv=%s summary_id=%s', conversation_id, summary['id'][:8])
+        return True
     except Exception as exc:
         logger.error('save_summary_error conv=%s err=%s', conversation_id, exc)
+        return False
 
 
 def update_traces_summary_id(

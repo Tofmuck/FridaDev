@@ -120,7 +120,28 @@ Le runtime peut generer un resume seulement si:
 - `chat_service` appelle `summarizer.maybe_summarize()` pendant un vrai tour de chat;
 - les messages `user`/`assistant` non resumes depassent `SUMMARY_THRESHOLD_TOKENS`;
 - il reste, apres exclusion des `SUMMARY_KEEP_TURNS` derniers tours, des messages a resumer;
-- l'appel LLM de summarization reussit, puis `save_summary()` et `update_traces_summary_id()` ecrivent en base.
+- l'appel LLM de summarization reussit;
+- `save_summary()` confirme la conservation du texte avant tout rattachement de
+  traces, marque `summarized_by` ou annonce `summary_generated`;
+- `update_traces_summary_id()` rattache ensuite les traces comme operation
+  distincte.
+
+Mise a jour M1, 2026-09-02:
+- le writer de `summaries` retourne `true` seulement apres le commit de
+  l'ecriture texte, et `false` lorsqu'il absorbe une erreur SQL; les deux
+  facades transmettent ce resultat sans convertir `None` en succes;
+- sur `false`, le resume genere n'est pas acquis: aucune nouvelle marque
+  `summarized_by`, aucun rattachement de traces, aucun `summarize_done`,
+  `summary_generated` ou etat `summary_generation_observed=true`;
+- une panne d'embedding reste tolerante: le texte est stocke avec un vecteur
+  nul, demeure lisible comme resume actif et peut etre injecte au prompt;
+- un echec de rattachement des traces ne rollbacke pas le texte deja commite et
+  conserve son diagnostic distinct `update_traces_summary_id_error`; il
+  n'ajoute ni retry ni regeneration automatique;
+- `ON CONFLICT (id) DO NOTHING` reste idempotent et non ecrasant. Un conflit
+  n'est accepte comme conservation que si la ligne existante porte exactement
+  la meme conversation, fenetre et texte; sinon le writer retourne `false`.
+  Le chemin nominal genere un nouvel UUID. M1 ne refond pas cette politique.
 
 ### 5.2 Ce qui est observe live
 

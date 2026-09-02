@@ -101,7 +101,7 @@ def maybe_summarize(conversation: dict[str, Any], model: str) -> bool:
     """
     Si les messages bruts dépassent SUMMARY_THRESHOLD_TOKENS, résume les tours anciens,
     les marque avec summarized_by, et stocke le résumé en base.
-    Retourne True si un résumé a été généré.
+    Retourne True si un résumé a été généré et son texte conservé.
     """
     unsummarized = _raw_dialogue(conversation)
     if not unsummarized:
@@ -156,14 +156,23 @@ def maybe_summarize(conversation: dict[str, Any], model: str) -> bool:
         "turn_count": len(to_summarize),
     }
 
-    # Persister le résumé en DB + rétro-renseigner summary_id sur les traces couvertes
+    # Persister le résumé en DB avant d'acquérir ses marques conversationnelles.
     try:
         from memory import memory_store
         conv_id = conversation.get("id", "")
-        memory_store.save_summary(conv_id, summary_entry)
-        memory_store.update_traces_summary_id(conv_id, summary_id, start_ts, end_ts)
+        summary_saved = memory_store.save_summary(conv_id, summary_entry)
     except Exception as exc:
         logger.error("summary_db_save_failed conv_id=%s err=%s", conversation.get("id"), exc)
+        return False
+    if not summary_saved:
+        logger.error("summary_db_save_failed conv_id=%s", conversation.get("id"))
+        return False
+
+    # Le rattachement des traces reste distinct du stockage texte déjà confirmé.
+    try:
+        memory_store.update_traces_summary_id(conv_id, summary_id, start_ts, end_ts)
+    except Exception as exc:
+        logger.error("update_traces_summary_id_error conv_id=%s err=%s", conversation.get("id"), exc)
 
     # Marquer les messages couverts (par identité objet — même session, pas de GC)
     to_summarize_ids = {id(m) for m in to_summarize}

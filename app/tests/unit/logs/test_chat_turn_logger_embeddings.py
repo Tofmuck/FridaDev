@@ -48,6 +48,9 @@ class ChatTurnLoggerEmbeddingsTests(unittest.TestCase):
             def fetchall(self) -> list[tuple[Any, ...]]:
                 return []
 
+            def fetchone(self) -> tuple[str]:
+                return ('summary-1',)
+
         class FakeConn:
             def __enter__(self) -> 'FakeConn':
                 return self

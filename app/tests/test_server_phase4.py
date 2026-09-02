@@ -145,6 +145,10 @@ class ServerPhase4BehaviorTests(unittest.TestCase):
             'estimate_models': [],
             'summary_models': [],
             'llm_runtime_model': None,
+            'admin_events': [],
+            'summary_states': [],
+            'persist_phases': [],
+            'conversation_saves': 0,
         }
         conversation = {
             'id': 'conv-phase4-chat',
@@ -169,11 +173,15 @@ class ServerPhase4BehaviorTests(unittest.TestCase):
                 'headers': {},
             }
 
+        def fake_save_conversation(*_args, **_kwargs):
+            observed['conversation_saves'] += 1
+
         conv_store_module = SimpleNamespace(
             append_message=lambda conv, role, content, meta=None, timestamp=None: conv['messages'].append(
                 {'role': role, 'content': content, 'timestamp': timestamp, **({'meta': meta} if meta is not None else {})}
             ),
-            save_conversation=lambda *_args, **_kwargs: None,
+            save_conversation=fake_save_conversation,
+            mark_next_persist_phase=lambda phase: observed['persist_phases'].append(phase),
             build_prompt_messages=lambda conv, *_args, **_kwargs: [
                 {'role': str(message.get('role') or ''), 'content': str(message.get('content') or '')}
                 for message in conv.get('messages', [])
@@ -226,7 +234,13 @@ class ServerPhase4BehaviorTests(unittest.TestCase):
             stack.enter_context(patch.object(chat_service, '_run_hermeneutic_node_insertion_point', return_value={}))
             stack.enter_context(patch.object(chat_service, '_now_iso', return_value='2026-04-21T00:02:00Z'))
             stack.enter_context(patch.object(chat_service.chat_llm_flow, 'run_llm_exchange', side_effect=fake_run_llm_exchange))
-            stack.enter_context(patch.object(chat_service.chat_turn_logger, 'set_state', side_effect=lambda *_args, **_kwargs: None))
+            stack.enter_context(
+                patch.object(
+                    chat_service.chat_turn_logger,
+                    'set_state',
+                    side_effect=lambda key, value: observed['summary_states'].append((key, value)),
+                )
+            )
             stack.enter_context(patch.object(chat_service.canonical_stimmung_input, 'build_stimmung_input', return_value={}))
             stack.enter_context(patch.object(chat_service.canonical_web_input, 'build_web_input_from_runtime_payload', side_effect=lambda payload: dict(payload)))
             stack.enter_context(patch.object(chat_service.assistant_output_contract, 'resolve_assistant_output_policy', return_value=None))
@@ -239,7 +253,9 @@ class ServerPhase4BehaviorTests(unittest.TestCase):
                 runtime_settings_module=runtime_settings_module,
                 summarizer_module=SimpleNamespace(maybe_summarize=fake_maybe_summarize),
                 identity_module=SimpleNamespace(),
-                admin_logs_module=SimpleNamespace(log_event=lambda *_args, **_kwargs: None),
+                admin_logs_module=SimpleNamespace(
+                    log_event=lambda event, **kwargs: observed['admin_events'].append((event, kwargs))
+                ),
                 llm_module=SimpleNamespace(),
                 requests_module=SimpleNamespace(),
                 token_utils_module=SimpleNamespace(estimate_tokens=fake_estimate_tokens),
@@ -257,6 +273,11 @@ class ServerPhase4BehaviorTests(unittest.TestCase):
         )
         self.assertEqual(observed['summary_models'], ['openrouter/runtime-main-model'])
         self.assertEqual(observed['llm_runtime_model'], 'openrouter/runtime-main-model')
+        self.assertIn(('summary_generation_observed', False), observed['summary_states'])
+        self.assertNotIn(('summary_generation_observed', True), observed['summary_states'])
+        self.assertFalse(any(event == 'summary_generated' for event, _payload in observed['admin_events']))
+        self.assertEqual(observed['persist_phases'], [])
+        self.assertEqual(observed['conversation_saves'], 0)
 
 
 if __name__ == '__main__':

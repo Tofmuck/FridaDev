@@ -336,6 +336,97 @@ class ConversationsStoreSaveResultTests(unittest.TestCase):
         self.assertIsNone(result.reason)
         self.assertEqual(result.message_count, 2)
 
+    def test_summary_marks_survive_message_storage_rows_and_rehydration_in_order(self) -> None:
+        conversation_id = '11111111-1111-4111-8111-111111111111'
+        normalized = conversations_store.normalize_messages_for_storage(
+            [
+                {
+                    'role': 'user',
+                    'content': 'old user',
+                    'timestamp': '2026-09-02T10:00:00Z',
+                    'summarized_by': 'summary-durable',
+                },
+                {
+                    'role': 'assistant',
+                    'content': 'old assistant',
+                    'timestamp': '2026-09-02T10:01:00Z',
+                    'summarized_by': 'summary-durable',
+                },
+                {
+                    'role': 'user',
+                    'content': 'recent user',
+                    'timestamp': '2026-09-02T10:02:00Z',
+                },
+                {
+                    'role': 'assistant',
+                    'content': 'recent assistant',
+                    'timestamp': '2026-09-02T10:03:00Z',
+                },
+            ],
+            ts_to_iso_func=lambda raw: str(raw),
+            coerce_bool_func=conversations_store.coerce_bool,
+        )
+        stored_rows = conversations_store.conversation_message_insert_rows(
+            conversation_id,
+            normalized,
+            parse_iso_to_dt_func=conversations_store.parse_iso_to_dt,
+        )
+
+        class Cursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, _sql, _params):
+                return None
+
+            def fetchall(self):
+                return [
+                    {
+                        'role': row[2],
+                        'content': row[3],
+                        'timestamp': row[4],
+                        'summarized_by': row[5],
+                        'embedded': row[6],
+                        'meta': None,
+                    }
+                    for row in stored_rows
+                ]
+
+        class Connection:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self, **_kwargs):
+                return Cursor()
+
+        rehydrated = conversations_store.load_messages_from_db(
+            conversation_id,
+            normalize_conversation_id_func=lambda raw: str(raw) if raw else None,
+            db_conn_func=lambda: Connection(),
+            ts_to_iso_func=lambda raw: conversations_store.ts_to_iso(
+                raw,
+                now_iso_func=lambda: self.fail('stored timestamps must stay authoritative'),
+            ),
+            logger=type('Logger', (), {'warning': lambda *_args, **_kwargs: None})(),
+        )
+
+        self.assertEqual([message['content'] for message in rehydrated], [
+            'old user',
+            'old assistant',
+            'recent user',
+            'recent assistant',
+        ])
+        self.assertEqual(rehydrated[0]['summarized_by'], 'summary-durable')
+        self.assertEqual(rehydrated[1]['summarized_by'], 'summary-durable')
+        self.assertNotIn('summarized_by', rehydrated[2])
+        self.assertNotIn('summarized_by', rehydrated[3])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -308,8 +308,8 @@ def retrieve_for_arbiter_with_status(
 
 # Summary persistence
 
-def save_summary(conversation_id: str, summary: dict[str, Any]) -> None:
-    memory_traces_summaries.save_summary(
+def save_summary(conversation_id: str, summary: dict[str, Any]) -> bool:
+    return memory_traces_summaries.save_summary(
         conversation_id,
         summary,
         conn_factory=_conn,

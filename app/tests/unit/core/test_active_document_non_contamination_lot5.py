@@ -201,7 +201,7 @@ class ActiveDocumentNonContaminationLot5Test(unittest.TestCase):
             mock.patch.object(summarizer.config, "SUMMARY_KEEP_TURNS", 1),
             mock.patch.object(summarizer, "estimate_tokens", side_effect=fake_estimate_tokens),
             mock.patch.object(summarizer, "summarize_conversation", side_effect=fake_summarize_conversation),
-            mock.patch("memory.memory_store.save_summary", return_value=None),
+            mock.patch("memory.memory_store.save_summary", return_value=True),
             mock.patch("memory.memory_store.update_traces_summary_id", return_value=None),
         ):
             self.assertTrue(summarizer.maybe_summarize(conversation, "model-test"))
@@ -343,7 +343,7 @@ class ActiveDocumentNonContaminationLot5Test(unittest.TestCase):
             mock.patch.object(summarizer.config, "SUMMARY_KEEP_TURNS", 1),
             mock.patch.object(summarizer, "estimate_tokens", side_effect=fake_estimate_tokens),
             mock.patch.object(summarizer, "summarize_conversation", side_effect=fake_summarize_conversation),
-            mock.patch("memory.memory_store.save_summary", return_value=None),
+            mock.patch("memory.memory_store.save_summary", return_value=True),
             mock.patch("memory.memory_store.update_traces_summary_id", return_value=None),
         ):
             self.assertTrue(summarizer.maybe_summarize(conversation, "model-test"))
@@ -482,7 +482,7 @@ class ActiveDocumentNonContaminationLot5Test(unittest.TestCase):
             mock.patch.object(summarizer.config, "SUMMARY_KEEP_TURNS", 1),
             mock.patch.object(summarizer, "estimate_tokens", side_effect=fake_estimate_tokens),
             mock.patch.object(summarizer, "summarize_conversation", side_effect=fake_summarize_conversation),
-            mock.patch("memory.memory_store.save_summary", return_value=None),
+            mock.patch("memory.memory_store.save_summary", return_value=True),
             mock.patch("memory.memory_store.update_traces_summary_id", return_value=None),
         ):
             self.assertTrue(summarizer.maybe_summarize(conversation, "model-test"))

@@ -800,8 +800,8 @@ def save_summary(
     conn_factory: Callable[[], Any],
     embed_fn: Callable[..., list[float]],
     logger: Any,
-) -> None:
-    memory_trace_summary_store.save_summary(
+) -> bool:
+    return memory_trace_summary_store.save_summary(
         conversation_id,
         summary,
         conn_factory=conn_factory,

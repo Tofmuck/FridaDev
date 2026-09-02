@@ -16,7 +16,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 
 - [Revue de recherche FridaDev, fonctionnalité par fonctionnalité — 2 septembre 2026](todo-todo/audits/fridadev-research-feature-audit-2026-09-02.md) : audit source conservé ; F01 et F02 sont corrigés et livrés par I1 et I2 ; les autres findings restent inchangés.
 
-- [Roadmap intégrité et continuité de la mémoire dialogique](todo-todo/refactors/fridadev-dialogic-integrity-memory-refactor-todo.md) : correctifs séparés streaming/Identity, puis Memory, compteur des hints et lecture/reprise Biblio ; I1 et I2 sont fermés et livrés sur le runtime applicatif. M1 et les lots suivants restent non commencés ; les autres findings restent dans l'audit source.
+- [Roadmap intégrité et continuité de la mémoire dialogique](todo-todo/refactors/fridadev-dialogic-integrity-memory-refactor-todo.md) : correctifs séparés streaming/Identity, puis Memory, compteur des hints et lecture/reprise Biblio ; I1 et I2 sont fermés et livrés sur le runtime applicatif. Le correctif M1 est vérifié et sa livraison est en cours ; les lots suivants restent non commencés et les autres findings restent dans l'audit source.
 
 - Audit repo canonique: `todo-done/audits/fridadev_repo_audit.md`
 - Roadmap finale produit Frida 1.0: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
