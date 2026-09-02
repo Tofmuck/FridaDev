@@ -42,6 +42,7 @@ def exercise_chat_llm_surface(
     assistant_text: str | None = None,
     web_context_injected_to_main_model: bool = False,
     provider_behavior: str = 'success',
+    provider_stream_payloads: tuple[dict[str, Any] | str, ...] | None = None,
 ) -> dict[str, object]:
     """Exercise the real LLM/persistence boundary with bounded synthetic fakes."""
 
@@ -56,6 +57,10 @@ def exercise_chat_llm_surface(
         raise ValueError('unsupported synthetic provider behavior')
     if provider_behavior == 'partial_stream_error' and not stream_req:
         raise ValueError('partial provider failure requires streaming')
+    if provider_stream_payloads is not None and not stream_req:
+        raise ValueError('synthetic provider stream payloads require streaming')
+    if provider_stream_payloads is not None and provider_behavior != 'success':
+        raise ValueError('synthetic provider stream payloads require success behavior')
     if regime not in {'answer', 'presence'}:
         raise ValueError('unsupported synthetic dialogic regime')
     if regime == 'presence' and not is_override:
@@ -207,6 +212,15 @@ def exercise_chat_llm_surface(
             return None
 
         def iter_lines(self, decode_unicode=True, delimiter='\n'):
+            if provider_stream_payloads is not None:
+                for payload in provider_stream_payloads:
+                    data = (
+                        payload
+                        if isinstance(payload, str)
+                        else json.dumps(payload, ensure_ascii=False)
+                    )
+                    yield 'data: ' + data
+                return
             yield 'data: ' + json.dumps(
                 {'choices': [{'delta': {'content': assistant_text}}]},
                 ensure_ascii=False,

@@ -127,6 +127,12 @@ Les invariants suivants sont normatifs:
 Codes emis ou propages canoniquement dans le flux/backend:
 - `upstream_error`
   - sens: echec du provider LLM pendant la requete ou la lecture du stream amont;
+  - inclut une trame SSE amont portant un objet `error` top-level ou un
+    `finish_reason="error"`, meme sous HTTP 200 et avant tout contenu;
+  - inclut aussi un evenement `data:` non JSON ou une fin amont sans marqueur
+    `[DONE]`, qui ne prouvent pas l'achevement du stream provider;
+  - le message et le payload bruts du provider ne sont ni exposes dans le
+    terminal public ni persistes dans le marqueur d'interruption;
   - famille frontend: `upstream_error`.
 - `stream_finalize_error`
   - sens: echec local de finalisation apres reception du flux amont, ou exception locale du stream avant terminal cote wrapper serveur;
@@ -327,9 +333,13 @@ Sequence attendue:
 ### 11.2 Erreur upstream mid-stream
 
 Sequence attendue:
-1. contenu visible eventuel deja recu;
-2. terminal `error` avec `error_code="upstream_error"` et `updated_at` si la persistance du marqueur a reussi;
-3. persistance d'un marqueur assistant interrompu sans texte partiel.
+1. une exception de transport, une trame amont explicitement en erreur, un
+   evenement `data:` malforme ou une fin sans `[DONE]` est reconnu pendant la
+   lecture, avant ou apres un contenu visible eventuel;
+2. les trames sans contenu qui ne portent pas d'erreur, notamment metadata et
+   usage, restent des trames comptables et ne provoquent pas d'interruption;
+3. terminal `error` avec `error_code="upstream_error"` et `updated_at` si la persistance du marqueur a reussi;
+4. persistance d'un marqueur assistant interrompu sans texte partiel.
 
 ### 11.3 Erreur locale de finalisation
 

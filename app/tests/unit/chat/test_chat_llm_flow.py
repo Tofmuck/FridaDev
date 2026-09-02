@@ -122,6 +122,228 @@ class ChatLlmFlowTests(unittest.TestCase):
             return assistant_effect + identity_effects + ['memory_traces']
         return assistant_effect + ['memory_traces'] + identity_effects
 
+    def test_provider_stream_error_frames_remain_interrupted_without_success_effects(self) -> None:
+        fragment = 'Artificial partial assistant fragment.'
+        provider_error_message = 'Synthetic failure ' + _DANGEROUS_SENTINEL
+        cases = (
+            (
+                'top_level_error_before_content',
+                (
+                    {
+                        'error': {
+                            'code': 'server_error',
+                            'message': provider_error_message,
+                        },
+                        'choices': [],
+                    },
+                    '[DONE]',
+                ),
+                '',
+            ),
+            (
+                'finish_reason_error_after_fragment',
+                (
+                    {'choices': [{'index': 0, 'delta': {'content': fragment}}]},
+                    {
+                        'choices': [
+                            {
+                                'index': 0,
+                                'delta': {'content': ''},
+                                'finish_reason': 'error',
+                            }
+                        ]
+                    },
+                    '[DONE]',
+                ),
+                fragment,
+            ),
+            (
+                'unified_error_after_fragment',
+                (
+                    {'choices': [{'index': 0, 'delta': {'content': fragment}}]},
+                    {
+                        'error': {
+                            'code': 'server_error',
+                            'message': provider_error_message,
+                        },
+                        'choices': [
+                            {
+                                'index': 0,
+                                'delta': {'content': ''},
+                                'finish_reason': 'error',
+                            }
+                        ],
+                    },
+                ),
+                fragment,
+            ),
+        )
+
+        for name, provider_stream_payloads, expected_visible_text in cases:
+            with self.subTest(name=name):
+                case = server_chat_pipeline.exercise_chat_llm_surface(
+                    surface='normal_stream',
+                    assistant_text=fragment,
+                    provider_stream_payloads=provider_stream_payloads,
+                )
+                observed = case['observed']
+                conversation = case['conversation']
+
+                self.assertIsNone(case['raised_exception'])
+                self.assertEqual(case['visible_text'], expected_visible_text)
+                self.assertEqual(
+                    case['terminal'],
+                    {
+                        'event': 'error',
+                        'error_code': 'upstream_error',
+                        'updated_at': case['timestamp'],
+                    },
+                )
+                self.assertEqual(
+                    ''.join(case['stream_parts']).count(
+                        chat_stream_control.STREAM_CONTROL_PREFIX
+                    ),
+                    1,
+                )
+                self.assertEqual(observed['save_calls'], 1)
+                self.assertEqual(observed['post_effect_sequence'], [])
+                self.assertEqual(len(observed['durable_snapshots']), 1)
+                self.assertEqual(
+                    conversation['messages'],
+                    [
+                        {'role': 'user', 'content': case['user_text']},
+                        {
+                            'role': 'assistant',
+                            'content': '',
+                            'timestamp': case['timestamp'],
+                            'meta': {
+                                'assistant_turn': {
+                                    'status': 'interrupted',
+                                    'error_code': 'upstream_error',
+                                }
+                            },
+                        },
+                    ],
+                )
+                self.assertEqual(
+                    observed['durable_snapshots'][0],
+                    conversation['messages'],
+                )
+                self.assertEqual(
+                    _event_payloads(observed['admin_events'], 'llm_stream_error'),
+                    [
+                        {
+                            'level': 'ERROR',
+                            'conversation_id': conversation['id'],
+                            'model': 'synthetic-main-model',
+                            'error_class': 'SyntheticRequestException',
+                            'error_code': 'upstream_error',
+                            'reason_code': 'llm_upstream_error',
+                        }
+                    ],
+                )
+                _assert_content_free(
+                    self,
+                    case['terminal'],
+                    conversation,
+                    observed['admin_events'],
+                    observed['logger_error_calls'],
+                )
+
+    def test_provider_stream_empty_choice_metadata_remains_a_success(self) -> None:
+        fragment = 'Artificial complete assistant answer.'
+        case = server_chat_pipeline.exercise_chat_llm_surface(
+            surface='normal_stream',
+            assistant_text=fragment,
+            provider_stream_payloads=(
+                {'id': 'synthetic-generation', 'choices': []},
+                {
+                    'choices': [
+                        {
+                            'index': 0,
+                            'delta': {'content': fragment},
+                            'finish_reason': 'stop',
+                        }
+                    ]
+                },
+                {
+                    'usage': {
+                        'prompt_tokens': 10,
+                        'completion_tokens': 5,
+                        'total_tokens': 15,
+                    },
+                    'choices': [],
+                },
+                '[DONE]',
+            ),
+        )
+
+        self.assertIsNone(case['raised_exception'])
+        self.assertEqual(case['visible_text'], fragment)
+        self.assertEqual(
+            case['terminal'],
+            {'event': 'done', 'updated_at': case['timestamp']},
+        )
+        self.assertEqual(case['conversation']['messages'][-1]['content'], fragment)
+        self.assertEqual(
+            case['observed']['post_effect_sequence'],
+            self._expected_post_persistence_sequence(
+                surface='normal_stream',
+                fail_at=None,
+            ),
+        )
+
+    def test_provider_stream_unproven_endings_remain_interrupted(self) -> None:
+        fragment = 'Artificial partial assistant fragment.'
+        cases = (
+            (
+                'eof_without_done',
+                ({'choices': [{'index': 0, 'delta': {'content': fragment}}]},),
+            ),
+            (
+                'invalid_json_before_done',
+                (
+                    {'choices': [{'index': 0, 'delta': {'content': fragment}}]},
+                    '{',
+                    '[DONE]',
+                ),
+            ),
+        )
+
+        for name, provider_stream_payloads in cases:
+            with self.subTest(name=name):
+                case = server_chat_pipeline.exercise_chat_llm_surface(
+                    surface='normal_stream',
+                    assistant_text=fragment,
+                    provider_stream_payloads=provider_stream_payloads,
+                )
+
+                self.assertIsNone(case['raised_exception'])
+                self.assertEqual(case['visible_text'], fragment)
+                self.assertEqual(
+                    case['terminal'],
+                    {
+                        'event': 'error',
+                        'error_code': 'upstream_error',
+                        'updated_at': case['timestamp'],
+                    },
+                )
+                self.assertEqual(case['observed']['post_effect_sequence'], [])
+                self.assertEqual(
+                    case['conversation']['messages'][-1],
+                    {
+                        'role': 'assistant',
+                        'content': '',
+                        'timestamp': case['timestamp'],
+                        'meta': {
+                            'assistant_turn': {
+                                'status': 'interrupted',
+                                'error_code': 'upstream_error',
+                            }
+                        },
+                    },
+                )
+
     def test_post_persistence_auxiliary_failure_matrix_preserves_success_on_all_surfaces(self) -> None:
         effect_to_observed_name = {
             'assistant_text_estimation': 'assistant_text_observability',

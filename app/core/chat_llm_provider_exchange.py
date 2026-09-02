@@ -153,25 +153,54 @@ def iter_stream_provider_content(
             requested_model=prepared_call.call_model,
         )
         response.encoding = response.encoding or 'utf-8'
+        provider_done = False
         for line in response.iter_lines(decode_unicode=True, delimiter='\n'):
             if not line or not line.startswith('data:'):
                 continue
             data_str = line[5:].strip()
             if data_str == '[DONE]':
+                provider_done = True
                 break
             try:
                 chunk = json.loads(data_str)
             except json.JSONDecodeError:
-                continue
+                raise requests_module.exceptions.RequestException(
+                    'provider stream error'
+                ) from None
+            if not isinstance(chunk, Mapping):
+                raise requests_module.exceptions.RequestException(
+                    'provider stream error'
+                )
             state.provider_metadata = llm_module.merge_openrouter_provider_metadata(
                 state.provider_metadata,
                 chunk,
                 requested_model=prepared_call.call_model,
             )
-            delta = chunk.get('choices', [{}])[0].get('delta', {})
+            if isinstance(chunk.get('error'), Mapping):
+                raise requests_module.exceptions.RequestException(
+                    'provider stream error'
+                )
+            choices = chunk.get('choices')
+            choice = (
+                choices[0]
+                if isinstance(choices, list)
+                and choices
+                and isinstance(choices[0], Mapping)
+                else {}
+            )
+            if str(choice.get('finish_reason') or '').strip().lower() == 'error':
+                raise requests_module.exceptions.RequestException(
+                    'provider stream error'
+                )
+            delta_value = choice.get('delta')
+            delta = delta_value if isinstance(delta_value, Mapping) else {}
             content = delta.get('content')
             if content:
                 yield llm_module.sanitize_provider_text(content)
+        if not provider_done:
+            raise requests_module.exceptions.RequestException(
+                'provider stream error'
+            )
 
 
 def emit_provider_response_observability(

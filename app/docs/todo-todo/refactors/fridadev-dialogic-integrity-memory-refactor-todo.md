@@ -2,7 +2,7 @@
 
 Date de cadrage : 2 septembre 2026.
 
-**Statut : roadmap ouverte ; cadrage documentaire réalisé ; aucun lot correctif commencé.**
+**Statut : roadmap ouverte ; I1 corrigé et validé hermétiquement, livraison applicative en attente ; I2 et les lots suivants non commencés.**
 
 ## 1. But et décision de périmètre
 
@@ -65,7 +65,7 @@ sans attendre O1.
 
 | Ordre | Lot | Résultat attendu | Finding | Réflexion conseillée | Statut |
 | --- | --- | --- | --- | --- | --- |
-| 1 | I1 | Une erreur de streaming reste une interruption | F01 | xhigh | non commencé |
+| 1 | I1 | Une erreur de streaming reste une interruption | F01 | xhigh | correctif validé, livraison en attente |
 | 2 | I2 | Une lecture Identity en panne ne permet aucun remplacement | F02 | xhigh | non commencé |
 | 3 | M1 | Un résumé n'est acquis qu'après stockage confirmé | F03 | xhigh | non commencé |
 | 4 | M2 | La déduplication ne retire pas une formulation distincte avant jugement | F04 | xhigh | non commencé |
@@ -142,13 +142,13 @@ Tests/support à réutiliser : `app/tests/support/server_chat_pipeline.py`,
 `app/tests/unit/chat/test_chat_llm_flow_boundaries.py`,
 `app/tests/unit/chat/test_chat_stream_control.py`.
 
-- [ ] Reproduire une trame top-level error / finish_reason=error sous HTTP 200,
+- [x] Reproduire une trame top-level error / finish_reason=error sous HTTP 200,
   avant tout texte puis après un fragment, avec le vrai reader et le coordinateur.
-- [ ] Raccorder l'erreur provider au chemin d'interruption existant ; ne pas créer
+- [x] Raccorder l'erreur provider au chemin d'interruption existant ; ne pas créer
   une seconde machine de finalisation ni persister le détail brut du provider.
-- [ ] Prouver terminal error unique, aucun assistant partiel canonisé et aucune
+- [x] Prouver terminal error unique, aucun assistant partiel canonisé et aucune
   dérivation post-save ; message utilisateur et diagnostic borné conservés.
-- [ ] Préserver succès nominal, trames d'usage sans contenu, exception réseau,
+- [x] Préserver succès nominal, trames d'usage sans contenu, exception réseau,
   JSON non-stream et final locks. Vérifier le terminal reçu par le navigateur
   avec les tests frontend existants si son contrat est effectivement touché.
 - [ ] Mettre à jour uniquement les contrats/mentions devenus faux et livrer I1.
@@ -157,6 +157,36 @@ Tests/support à réutiliser : `app/tests/support/server_chat_pipeline.py`,
 effets de succès ; le retour à l'ancien reader fait échouer la preuve.
 Les autres fins non nominales rencontrées dans cette même frontière sont
 qualifiées explicitement, sans réécrire tout le protocole.
+
+### Preuves I1 avant livraison — 2 septembre 2026
+
+- Reproduction rouge dans le vrai reader et le vrai coordinateur, via le support
+  existant : erreur top-level avant contenu, `finish_reason="error"` après un
+  fragment et forme unifiée après fragment produisaient toutes `done`.
+- Correctif minimal : le reader lève la `RequestException` bornée déjà traitée
+  par le coordinateur ; aucun payload ou message provider brut ne franchit le
+  terminal, le marqueur persistant ou l'observabilité.
+- L'auto-audit unique a reproduit deux fins voisines encore fail-open :
+  `choices: []` levait hors du chemin d'interruption, tandis qu'un EOF sans
+  `[DONE]` ou un événement `data:` non JSON pouvait encore valider un fragment.
+  Les trois cas rejoignent désormais le même chemin borné ; `choices: []`
+  reste nominal pour les trames metadata/usage valides.
+- Preuve verte ciblée : 34 tests `unittest` couvrent le flux, ses frontières,
+  le contrôle terminal et la normalisation assistant. Sont notamment conservés
+  le succès avec trames metadata/usage à `choices` vide, l'exception réseau, le
+  JSON non-stream, Presence/final locks, les échecs de sauvegarde et finalisation.
+- Sensibilité : le retrait temporaire de la reconnaissance des deux marqueurs
+  provider remet la preuve centrale en échec même lorsque `[DONE]` suit la
+  trame fautive ; sa restauration la remet au vert.
+- Qualification bornée : seul un objet `error` top-level ou
+  `finish_reason="error"` rejoint `upstream_error`. Une trame vide, de metadata,
+  d'usage ou portant une fin non-error n'est pas reclassée par I1. Un événement
+  `data:` non JSON ou un EOF sans `[DONE]` rejoint aussi l'interruption, faute de
+  preuve d'achèvement provider. Aucun contrat navigateur n'a changé ; aucune
+  batterie frontend n'est donc requise.
+- Environnement : image locale existante, conteneur jetable, checkout monté
+  read-only, `--network none`, `/tmp` en tmpfs, sans provider, secret, DB
+  opérateur ni donnée live. La livraison runtime n'est pas encore revendiquée.
 
 ## 6. I2 — Distinguer canon absent et canon illisible
 
