@@ -14,6 +14,8 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 
 ### Current-state
 
+- [Revue de recherche FridaDev, fonctionnalité par fonctionnalité — 2 septembre 2026](todo-todo/audits/fridadev-research-feature-audit-2026-09-02.md) : constats et recommandation soumis à Tof ; aucune correction ni expérimentation engagée.
+
 - Audit repo canonique: `todo-done/audits/fridadev_repo_audit.md`
 - Roadmap finale produit Frida 1.0: `todo-todo/product/fridadev-final-product-roadmap-todo.md`
 - Archive des refactors Lot 9 du mega-audit: `todo-done/refactors/frida-v1-mega-audit-lot9-refactors-todo.md` pour la roadmap golden-test-first fermee et sa decision d'arret 9Z.
