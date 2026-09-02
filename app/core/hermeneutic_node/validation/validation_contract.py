@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 import json
+import re
 from typing import Any, Mapping, Sequence
 
-from core.hermeneutic_node.inputs import recent_context_input as canonical_recent_context_input
 from core.hermeneutic_node.doctrine import epistemic_regime as epistemic_doctrine
 from core.hermeneutic_node.doctrine import judgment_posture as judgment_doctrine
+from core.hermeneutic_node.doctrine import output_regime as output_doctrine
+from core.hermeneutic_node.doctrine import source_conflicts as source_conflicts_doctrine
+from core.hermeneutic_node.doctrine import source_priority as source_priority_doctrine
+from core.hermeneutic_node.inputs import recent_context_input as canonical_recent_context_input
+from core.hermeneutic_node.inputs import user_turn_input as canonical_user_turn_input
 from . import hard_guards
 
 
@@ -94,6 +100,17 @@ _ALLOWED_UPSTREAM_ADVISORY_KEYS = {
     "active_signal_families_count",
     "constraint_present",
 }
+_PRIMARY_CONFLICT_KEYS = {"conflict_type", "sources", "issue"}
+_RUNTIME_CONFLICT_TYPES = {"conflit_d_ancrage_de_source"}
+_RUNTIME_CONFLICT_SOURCES = set(source_conflicts_doctrine._CONTENT_SOURCE_FAMILIES)
+_RUNTIME_SIGNAL_FAMILIES = set(canonical_user_turn_input._SIGNAL_FAMILY_ORDER)
+_PRIMARY_DEGRADED_FIELDS = _ALLOWED_PRIMARY_VERDICT_KEYS - {
+    "schema_version",
+    "upstream_advisory",
+    "audit",
+}
+_PRIMARY_ERROR_CLASS_MAX_CHARS = 80
+_RUNTIME_TIMESTAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 
 MODEL_VERDICT_REQUIRED_KEYS = (
     "schema_version",
@@ -346,42 +363,99 @@ def _compact_text(value: Any, *, max_chars: int) -> str:
     return f"{text[: max(0, max_chars - 3)].rstrip()}..."
 
 
-def _validated_string_list(value: Any, *, error_code: str) -> list[str]:
+def _validated_string_list(
+    value: Any,
+    *,
+    error_code: str,
+    allowed_values: Sequence[str] | set[str] | None = None,
+    max_items: int | None = None,
+) -> list[str]:
     if not isinstance(value, list):
+        raise ValueError(error_code)
+    if max_items is not None and len(value) > max_items:
         raise ValueError(error_code)
 
     normalized: list[str] = []
     for item in value:
+        if not isinstance(item, str):
+            raise ValueError(error_code)
         text_value = _text(item)
-        if not text_value:
+        if not text_value or (
+            allowed_values is not None and text_value not in allowed_values
+        ):
             raise ValueError(error_code)
         normalized.append(text_value)
-    return _stable_unique(normalized)
+    if len(set(normalized)) != len(normalized):
+        raise ValueError(error_code)
+    return normalized
 
 
 def _validated_source_priority(value: Any) -> list[list[str]]:
-    if not isinstance(value, list):
+    source_families = set(source_priority_doctrine.SOURCE_FAMILIES)
+    if not isinstance(value, list) or not value or len(value) > len(source_families):
         raise ValueError("invalid_primary_verdict")
 
     validated: list[list[str]] = []
+    seen: set[str] = set()
     for rank in value:
-        if not isinstance(rank, list):
+        if not isinstance(rank, list) or not rank:
             raise ValueError("invalid_primary_verdict")
-        normalized_rank = _validated_string_list(rank, error_code="invalid_primary_verdict")
+        normalized_rank = _validated_string_list(
+            rank,
+            error_code="invalid_primary_verdict",
+            allowed_values=source_families,
+            max_items=len(source_families),
+        )
+        if seen.intersection(normalized_rank):
+            raise ValueError("invalid_primary_verdict")
+        seen.update(normalized_rank)
         validated.append(normalized_rank)
+    if seen != source_families:
+        raise ValueError("invalid_primary_verdict")
     return validated
 
 
 def _validated_source_conflicts(value: Any) -> list[dict[str, Any]]:
-    if not isinstance(value, list):
+    if not isinstance(value, list) or len(value) > len(_RUNTIME_CONFLICT_TYPES):
         raise ValueError("invalid_primary_verdict")
 
     conflicts: list[dict[str, Any]] = []
+    seen_types: set[str] = set()
     for item in value:
-        if not isinstance(item, Mapping):
+        if not isinstance(item, Mapping) or set(item) != _PRIMARY_CONFLICT_KEYS:
             raise ValueError("invalid_primary_verdict")
-        conflicts.append(dict(item))
+        conflict_type = _text(item.get("conflict_type"))
+        if conflict_type not in _RUNTIME_CONFLICT_TYPES or conflict_type in seen_types:
+            raise ValueError("invalid_primary_verdict")
+        sources = _validated_string_list(
+            item.get("sources"),
+            error_code="invalid_primary_verdict",
+            allowed_values=_RUNTIME_CONFLICT_SOURCES,
+            max_items=len(_RUNTIME_CONFLICT_SOURCES),
+        )
+        if (
+            len(sources) < 2
+            or _text(item.get("issue")) != source_conflicts_doctrine.CONFLICT_ISSUE
+        ):
+            raise ValueError("invalid_primary_verdict")
+        seen_types.add(conflict_type)
+        conflicts.append(
+            {
+                "conflict_type": conflict_type,
+                "sources": sources,
+                "issue": source_conflicts_doctrine.CONFLICT_ISSUE,
+            }
+        )
     return conflicts
+
+
+def _valid_primary_error_class(value: Any) -> bool:
+    error_class = _text(value)
+    return (
+        bool(error_class)
+        and len(error_class) <= _PRIMARY_ERROR_CLASS_MAX_CHARS
+        and all(char.isalnum() or char == "_" for char in error_class)
+    )
 
 
 def _validated_effect_mapping(
@@ -493,17 +567,26 @@ def _validated_upstream_advisory(
         raise ValueError("invalid_primary_verdict")
 
     proposed_output_regime = _text(payload.get("proposed_output_regime"))
-    if not proposed_output_regime:
+    if proposed_output_regime not in output_doctrine.DISCURSIVE_REGIMES:
         raise ValueError("invalid_primary_verdict")
 
     active_signal_families = (
         _validated_string_list(
             payload.get("active_signal_families"),
             error_code="invalid_primary_verdict",
+            allowed_values=_RUNTIME_SIGNAL_FAMILIES,
+            max_items=len(_RUNTIME_SIGNAL_FAMILIES),
         )
         if payload.get("active_signal_families") != []
         else []
     )
+    active_signal_families_count = payload.get("active_signal_families_count")
+    if (
+        isinstance(active_signal_families_count, bool)
+        or not isinstance(active_signal_families_count, int)
+        or active_signal_families_count != len(active_signal_families)
+    ):
+        raise ValueError("invalid_primary_verdict")
     if not isinstance(payload.get("constraint_present"), bool):
         raise ValueError("invalid_primary_verdict")
 
@@ -531,15 +614,16 @@ def validate_primary_verdict(value: Any) -> dict[str, Any]:
     if judgment_posture not in ALLOWED_PRIMARY_JUDGMENT_POSTURES:
         raise ValueError("invalid_primary_verdict")
 
-    for field_name in (
-        "epistemic_regime",
-        "proof_regime",
-        "uncertainty_posture",
-        "discursive_regime",
-        "resituation_level",
-        "time_reference_mode",
-    ):
-        if not _text(payload.get(field_name)):
+    closed_fields = {
+        "epistemic_regime": epistemic_doctrine.EPISTEMIC_REGIMES,
+        "proof_regime": epistemic_doctrine.PROOF_REGIMES,
+        "uncertainty_posture": epistemic_doctrine.UNCERTAINTY_POSTURES,
+        "discursive_regime": output_doctrine.DISCURSIVE_REGIMES,
+        "resituation_level": output_doctrine.RESITUATION_LEVELS,
+        "time_reference_mode": output_doctrine.TIME_REFERENCE_MODES,
+    }
+    for field_name, allowed_values in closed_fields.items():
+        if _text(payload.get(field_name)) not in allowed_values:
             raise ValueError("invalid_primary_verdict")
 
     audit_payload = _mapping(payload.get("audit"))
@@ -553,9 +637,19 @@ def validate_primary_verdict(value: Any) -> dict[str, Any]:
     if audit_keys == _ALLOWED_PRIMARY_AUDIT_FAIL_OPEN_KEYS:
         if not bool(audit_payload.get("fail_open")):
             raise ValueError("invalid_primary_verdict")
-        for field_name in ("fallback_source", "node_stage", "reason_code", "error_class"):
-            if not _text(audit_payload.get(field_name)):
-                raise ValueError("invalid_primary_verdict")
+        if audit_payload.get("fallback_used") is not True:
+            raise ValueError("invalid_primary_verdict")
+        if _text(audit_payload.get("fallback_source")) != "primary_node":
+            raise ValueError("invalid_primary_verdict")
+        if _text(audit_payload.get("node_stage")) != "primary_node":
+            raise ValueError("invalid_primary_verdict")
+        if (
+            _text(audit_payload.get("reason_code"))
+            not in epistemic_doctrine.EPISTEMIC_FAIL_OPEN_REASON_CODES
+        ):
+            raise ValueError("invalid_primary_verdict")
+        if not _valid_primary_error_class(audit_payload.get("error_class")):
+            raise ValueError("invalid_primary_verdict")
 
     epistemic_effect = _validated_epistemic_effect(
         payload.get("epistemic_effect"),
@@ -575,6 +669,11 @@ def validate_primary_verdict(value: Any) -> dict[str, Any]:
                 "reason_code": fallback_reason,
             }:
                 raise ValueError("invalid_primary_verdict")
+        if (
+            judgment_posture != "suspend"
+            or _text(payload.get("discursive_regime")) != "meta"
+        ):
+            raise ValueError("invalid_primary_verdict")
     else:
         if (
             epistemic_effect["effect"] != _text(payload.get("epistemic_regime"))
@@ -584,12 +683,50 @@ def validate_primary_verdict(value: Any) -> dict[str, Any]:
         ):
             raise ValueError("invalid_primary_verdict")
 
+    source_priority = _validated_source_priority(payload.get("source_priority"))
+    source_conflicts = _validated_source_conflicts(payload.get("source_conflicts"))
+    if fail_open and source_conflicts:
+        raise ValueError("invalid_primary_verdict")
+
     upstream_advisory_payload = _validated_upstream_advisory(
         payload.get("upstream_advisory"),
         fallback_judgment_posture=judgment_posture,
         fallback_output_regime=_text(payload.get("discursive_regime")),
-        fallback_constraint_present=bool(payload.get("source_conflicts")),
+        fallback_constraint_present=bool(source_conflicts),
     )
+    if (
+        upstream_advisory_payload["recommended_judgment_posture"] != judgment_posture
+        or upstream_advisory_payload["proposed_output_regime"]
+        != _text(payload.get("discursive_regime"))
+        or upstream_advisory_payload["constraint_present"] != bool(source_conflicts)
+        or fail_open and upstream_advisory_payload["active_signal_families"]
+    ):
+        raise ValueError("invalid_primary_verdict")
+
+    expected_pipeline_directives = [f"posture_{judgment_posture}"]
+    if fail_open:
+        expected_pipeline_directives.append("fallback_primary_verdict")
+    pipeline_directives = _validated_string_list(
+        payload.get("pipeline_directives_provisional"),
+        error_code="invalid_primary_verdict",
+        allowed_values=set(expected_pipeline_directives),
+        max_items=len(expected_pipeline_directives),
+    )
+    if pipeline_directives != expected_pipeline_directives:
+        raise ValueError("invalid_primary_verdict")
+
+    degraded_fields = (
+        _validated_string_list(
+            audit_payload.get("degraded_fields"),
+            error_code="invalid_primary_verdict",
+            allowed_values=_PRIMARY_DEGRADED_FIELDS,
+            max_items=len(_PRIMARY_DEGRADED_FIELDS),
+        )
+        if audit_payload.get("degraded_fields") != []
+        else []
+    )
+    if bool(degraded_fields) != fail_open:
+        raise ValueError("invalid_primary_verdict")
 
     result = {
         "schema_version": SCHEMA_VERSION,
@@ -602,22 +739,14 @@ def validate_primary_verdict(value: Any) -> dict[str, Any]:
         "discursive_regime": _text(payload.get("discursive_regime")),
         "resituation_level": _text(payload.get("resituation_level")),
         "time_reference_mode": _text(payload.get("time_reference_mode")),
-        "source_priority": _validated_source_priority(payload.get("source_priority")),
-        "source_conflicts": _validated_source_conflicts(payload.get("source_conflicts")),
+        "source_priority": source_priority,
+        "source_conflicts": source_conflicts,
         "upstream_advisory": upstream_advisory_payload,
-        "pipeline_directives_provisional": _validated_string_list(
-            payload.get("pipeline_directives_provisional"),
-            error_code="invalid_primary_verdict",
-        ),
+        "pipeline_directives_provisional": pipeline_directives,
         "audit": {
             "fail_open": bool(audit_payload.get("fail_open")),
             "state_used": bool(audit_payload.get("state_used")),
-            "degraded_fields": _validated_string_list(
-                audit_payload.get("degraded_fields"),
-                error_code="invalid_primary_verdict",
-            )
-            if audit_payload.get("degraded_fields") != []
-            else [],
+            "degraded_fields": degraded_fields,
         },
     }
     if audit_keys == _ALLOWED_PRIMARY_AUDIT_FAIL_OPEN_KEYS:
@@ -664,11 +793,18 @@ def validate_validation_dialogue_context(value: Any) -> dict[str, Any]:
     if not retained_messages:
         raise ValueError("invalid_validation_dialogue_context")
 
-    validated_payload = dict(payload)
-    validated_payload.update(normalized_payload)
-    if "schema_version" in validated_payload:
-        validated_payload["schema_version"] = _text(validated_payload.get("schema_version")) or SCHEMA_VERSION
-    return validated_payload
+    for message in retained_messages:
+        timestamp = message.get("timestamp")
+        if timestamp is None:
+            continue
+        if not isinstance(timestamp, str) or not _RUNTIME_TIMESTAMP_RE.fullmatch(timestamp):
+            raise ValueError("invalid_validation_dialogue_context")
+        try:
+            datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ")
+        except ValueError as exc:
+            raise ValueError("invalid_validation_dialogue_context") from exc
+
+    return normalized_payload
 
 
 def _upstream_advisory(primary_verdict: Mapping[str, Any]) -> Mapping[str, Any]:

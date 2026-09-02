@@ -317,16 +317,15 @@ def validation_time_reference(canonical_inputs: Mapping[str, Any]) -> dict[str, 
     timezone_name = _text(time_payload.get("timezone"))
     if not now_utc_iso or not timezone_name:
         return {}
-    if not _text(time_payload.get("now_local_iso")):
-        try:
-            time_payload = canonical_time_input.build_time_input(
-                now_utc_iso=now_utc_iso,
-                timezone_name=timezone_name,
-            )
-        except Exception:
-            time_payload = dict(time_payload)
+    try:
+        time_payload = canonical_time_input.build_time_input(
+            now_utc_iso=now_utc_iso,
+            timezone_name=timezone_name,
+        )
+    except Exception:
+        return {}
     return {
-        "now_utc_iso": _text(time_payload.get("now_utc_iso")) or now_utc_iso,
+        "now_utc_iso": _text(time_payload.get("now_utc_iso")),
         "timezone": timezone_name,
         "now_local_iso": _text(time_payload.get("now_local_iso")),
         "local_date": _text(time_payload.get("local_date")),

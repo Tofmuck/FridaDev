@@ -34,7 +34,7 @@
         {"role": "assistant", "content": "Je reste avec ce point synthetique."},
         {"role": "user", "content": "Je depose simplement ce point ici, sans demande de developpement."}
       ],
-      "primary": {"judgment_posture": "answer", "discursive_regime": "presence"},
+      "primary": {"judgment_posture": "answer", "discursive_regime": "simple"},
       "stimmung": "stable",
       "matter": {"memory": false, "summary": false, "identity": false, "web": "absent"},
       "expected": {"allowed_pairs": [["answer", "presence"]], "presence_policy": "required", "critical": true, "fallback_preexisting_gap": "missed_presence"}
@@ -82,7 +82,7 @@
         {"role": "assistant", "content": "Le jalon synthetique est date."},
         {"role": "user", "content": "Le jalon de demain vient-il avant celui de la semaine prochaine ?"}
       ],
-      "primary": {"judgment_posture": "answer", "discursive_regime": "simple", "time_reference_mode": "now"},
+      "primary": {"judgment_posture": "answer", "discursive_regime": "simple", "time_reference_mode": "immediate_now"},
       "stimmung": "absent",
       "matter": {"memory": false, "summary": false, "identity": false, "web": "absent"},
       "expected": {"allowed_pairs": [["answer", "simple"]], "presence_policy": "forbidden", "critical": true}

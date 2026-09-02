@@ -531,12 +531,19 @@ def corpus_sha256(payload: Mapping[str, Any]) -> str:
     return _sha256_text(json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
 
 
-def _primary_verdict(case: Mapping[str, Any]) -> dict[str, Any]:
+def _primary_verdict(
+    case: Mapping[str, Any],
+    *,
+    user_turn_signals: Mapping[str, Any],
+) -> dict[str, Any]:
     source = dict(case.get("primary") or {})
     posture = str(source.get("judgment_posture") or "answer")
     regime = str(source.get("discursive_regime") or "simple")
     epistemic_regime = str(source.get("epistemic_regime") or "certain")
-    active = [str(item) for item in case.get("tags") or []]
+    active = [
+        str(item)
+        for item in user_turn_signals.get("active_signal_families") or []
+    ]
     payload = {
         "schema_version": "v1",
         "epistemic_regime": epistemic_regime,
@@ -553,7 +560,14 @@ def _primary_verdict(case: Mapping[str, Any]) -> dict[str, Any]:
         "discursive_regime": regime,
         "resituation_level": "none",
         "time_reference_mode": str(source.get("time_reference_mode") or "atemporal"),
-        "source_priority": [["tour_utilisateur"], ["temps"], ["memoire", "contexte_recent", "identity"]],
+        "source_priority": [
+            ["tour_utilisateur"],
+            ["temps"],
+            ["memoire", "contexte_recent", "identity"],
+            ["resume"],
+            ["web"],
+            ["stimmung"],
+        ],
         "source_conflicts": [],
         "upstream_advisory": {
             "schema_version": "v1",
@@ -722,7 +736,10 @@ def _dialogue_context(case: Mapping[str, Any]) -> dict[str, Any]:
 
 def build_current_messages(case: Mapping[str, Any], system_prompt: str) -> dict[str, Any]:
     canonical_inputs = build_case_inputs(case)
-    primary = _primary_verdict(case)
+    primary = _primary_verdict(
+        case,
+        user_turn_signals=canonical_inputs["user_turn_signals"],
+    )
     guard = hard_guards.evaluate_hard_guards(
         primary_verdict=primary,
         canonical_inputs=canonical_inputs,

@@ -84,11 +84,7 @@ def _primary_verdict(
         "discursive_regime": discursive_regime_value,
         "resituation_level": "none",
         "time_reference_mode": "atemporal",
-        "source_priority": [
-            ["tour_utilisateur"],
-            ["temps"],
-            ["memoire", "contexte_recent", "identity"],
-        ],
+        "source_priority": [list(rank) for rank in primary_node._DEFAULT_SOURCE_PRIORITY],
         "source_conflicts": source_conflicts,
         "upstream_advisory": {
             "schema_version": "v1",
@@ -515,6 +511,45 @@ class ValidationAgentTests(unittest.TestCase):
                 canonical_inputs={},
             )
 
+    def test_validate_primary_verdict_rejects_unbounded_source_priority(self) -> None:
+        primary_verdict = _maximal_runtime_fail_open_primary_verdict()
+        primary_verdict["source_priority"][0][0] = "x" * 50000
+
+        with self.assertRaisesRegex(ValueError, "invalid_primary_verdict"):
+            validation_contract.validate_primary_verdict(primary_verdict)
+
+    def test_validate_primary_verdict_rejects_free_form_source_conflict(self) -> None:
+        primary_verdict = _primary_verdict()
+        primary_verdict["source_conflicts"] = [{"free_form": "x" * 50000}]
+
+        with self.assertRaisesRegex(ValueError, "invalid_primary_verdict"):
+            validation_contract.validate_primary_verdict(primary_verdict)
+
+    def test_validate_primary_verdict_rejects_unbounded_textual_contract_fields(self) -> None:
+        fixtures: list[dict[str, object]] = []
+
+        proof_regime = _primary_verdict()
+        proof_regime["proof_regime"] = "x" * 50000
+        fixtures.append(proof_regime)
+
+        upstream_signals = _primary_verdict()
+        upstream_signals["upstream_advisory"]["active_signal_families"] = ["x" * 50000]
+        upstream_signals["upstream_advisory"]["active_signal_families_count"] = 1
+        fixtures.append(upstream_signals)
+
+        directives = _primary_verdict()
+        directives["pipeline_directives_provisional"] = ["x" * 50000]
+        fixtures.append(directives)
+
+        fail_open_error = _maximal_runtime_fail_open_primary_verdict()
+        fail_open_error["audit"]["error_class"] = "X" * 50000
+        fixtures.append(fail_open_error)
+
+        for fixture in fixtures:
+            with self.subTest(field_size=len(json.dumps(fixture))):
+                with self.assertRaisesRegex(ValueError, "invalid_primary_verdict"):
+                    validation_contract.validate_primary_verdict(fixture)
+
     def test_build_validated_output_accepts_primary_fail_open_compact_cause(self) -> None:
         primary_verdict = _primary_verdict(
             judgment_posture="suspend",
@@ -577,6 +612,35 @@ class ValidationAgentTests(unittest.TestCase):
                 validation_dialogue_context={},
                 canonical_inputs={},
             )
+
+    def test_validate_dialogue_context_rejects_unbounded_timestamp(self) -> None:
+        dialogue = canonical_recent_context_input.build_validation_dialogue_context(
+            messages=[
+                {
+                    "role": "user",
+                    "content": "synthetic fixture",
+                    "timestamp": "2" * 50000,
+                }
+            ]
+        )
+
+        with self.assertRaisesRegex(ValueError, "invalid_validation_dialogue_context"):
+            validation_contract.validate_validation_dialogue_context(dialogue)
+
+    def test_validate_dialogue_context_preserves_runtime_utc_timestamp(self) -> None:
+        dialogue = canonical_recent_context_input.build_validation_dialogue_context(
+            messages=[
+                {
+                    "role": "user",
+                    "content": "synthetic fixture",
+                    "timestamp": "2026-09-02T06:52:55Z",
+                }
+            ]
+        )
+
+        validated = validation_contract.validate_validation_dialogue_context(dialogue)
+
+        self.assertEqual(validated["messages"][0]["timestamp"], "2026-09-02T06:52:55Z")
 
     def test_build_validated_output_rejects_non_mapping_justifications(self) -> None:
         with self.assertRaisesRegex(ValueError, "invalid_justifications"):
@@ -2129,6 +2193,20 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertIn('"timezone":"Europe/Paris"', user_message)
         self.assertIn("dimanche 17 mai 2026 à 23h Europe/Paris — hier", user_message)
         self.assertIn("lundi 18 mai 2026 à 0h05 Europe/Paris — à l'instant", user_message)
+
+    def test_validation_time_reference_rebuilds_the_runtime_canonical_shape(self) -> None:
+        reference = validation_agent._validation_time_reference(
+            {
+                "time_input": {
+                    "now_utc_iso": "2026-09-02T06:52:55Z",
+                    "timezone": "Europe/Paris",
+                    "now_local_iso": "x" * 50000,
+                }
+            }
+        )
+
+        self.assertEqual(reference["now_utc_iso"], "2026-09-02T06:52:55Z")
+        self.assertEqual(reference["now_local_iso"], "2026-09-02T08:52:55+02:00")
 
     def test_build_messages_bounds_large_validation_inputs(self) -> None:
         large_context = {

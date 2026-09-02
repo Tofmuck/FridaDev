@@ -4513,7 +4513,8 @@ Preuves de fermeture:
 
 # LOT 6 - Residu Validation, sans reconstruire 4C.1
 
-Statut: ferme le 2 septembre 2026, decision `corrige`; Lot 7 non commence
+Statut: referme le 2 septembre 2026 apres passe corrective finale, decision
+`corrige`; Lot 7 non commence
 Nature: audit cible puis correction conditionnelle a comportement constant
 Dependance: Lot 5 ferme
 
@@ -4542,6 +4543,13 @@ Baseline: `main` au HEAD attendu
 HTTP interne `/` `200`, health `healthy`, restart `0`, OOM `false`; Lot 5 etait
 ferme, Lots 6 et 7 non commences.
 
+Baseline de la passe corrective finale: `main` au HEAD
+`a6d83f47e002171f7d86248cd24eabd1dd79a093`, local, upstream et distant
+alignes `0/0`, worktree propre. Le runtime utilisait l'image
+`sha256:b8d4cafd9e949871b41ad8482fc33ab81aef81554d970631589f3ba5bceb91a5`,
+HTTP interne `/` `200`, health `healthy`, restart `0`, OOM `false`; le Lot 6
+etait presente comme ferme et le Lot 7 restait non commence.
+
 ### F1 - Cartographie normative
 
 | Instructions comparees | Classe | Decision |
@@ -4565,34 +4573,52 @@ rappels dependants des donnees du tour.
 | Famille active | Builder / validateur autoritatifs | Mesure compacte | Verdict |
 | --- | --- | ---: | --- |
 | reference temporelle | `time_input.build_time_input` puis `validation_time_reference` | maximum mesure `176/420` sur les timezones IANA installees | complete |
-| dialogue | `recent_context_input.build_validation_dialogue_context`, `validate_validation_dialogue_context`, compactage `5 x 420` | texte ordinaire `3258/4200`; guillemets ou antislash `5358`; borne JSON demontrable avec controles echappes `13758` | la borne tardive remplacait une structure valide par une preview |
-| verdict primaire | `primary_node._build_primary_verdict`, `validate_primary_verdict` | nominal conservateur `1168`; fail-open builder maximal `1406/1000` | la borne tardive supprimait des champs contractuels |
+| dialogue | `recent_context_input.build_validation_dialogue_context`, `validate_validation_dialogue_context`, `time_input.build_time_input`, compactage `5 x 420` | contre-exemple accepte avant correction `50211`, dont timestamp `50000`; apres correction, fixture maximale echappee sur la timezone runtime `13657`, timestamp `20` | le validateur accepte seulement le timestamp UTC seconde produit par le store; la reference temporelle est reconstruite depuis le builder canonique |
+| verdict primaire | `primary_node._build_primary_verdict`, doctrines `source_priority` / `source_conflicts`, `validate_primary_verdict` | contre-exemple accepte avant correction `50923`, dont source `50000`; apres correction: producteurs `939` nominal, `1065` conflit, `1406` fail-open maximal; borne structurelle acceptee `1432` | enums, listes, cardinalites, conflits et audit fermes sur les autorites productrices |
 | justifications | caller produit `chat_service._run_hermeneutic_node_insertion_point` + `validate_support_mapping` | `{}` = `2/700`; aucun autre caller produit actif | complete |
 | hard guards | `hard_guards.evaluate_hard_guards` + `HardGuardDecision.prompt_payload` | maximum `161/320` | complete |
 | inputs canoniques 4C.1 | projection v2 existante | acquis `3546/3840` emittable, `3741/3840` accepte | inchange, non reconstruit |
 
 Les limites de cinq messages et de `420` caracteres par contenu restent le
-compactage volontaire amont. Seules les deux bornes JSON tardives fragiles du
-dialogue valide et du verdict primaire ont ete retirees: les structures
-canoniques deja bornees sont maintenant incluses integralement, sans hausse
-arbitraire ni enveloppe `preview`.
+compactage volontaire amont. La premiere correction avait retire les deux
+bornes JSON tardives fragiles, mais le contre-audit final a prouve que
+`validate_primary_verdict` acceptait encore des textes et mappings libres et
+que `validate_validation_dialogue_context` acceptait un timestamp arbitraire.
+Les validateurs sont maintenant fermes sur les taxonomies et formes des
+producteurs actifs. Toute valeur acceptee est incluse integralement; aucune
+hausse arbitraire ni enveloppe `preview` n'est reapparue.
+
+Autorites de la borne: enums epistemiques et d'enonciation dans les modules
+doctrinaux; huit familles de `source_priority`; conflit runtime ferme
+`conflit_d_ancrage_de_source` avec sources et issue doctrinales; six familles de
+signaux emises par `user_turn_input`; directives et audit emis par
+`primary_node`; timestamps normalises par `conversations_store.ts_to_iso` en
+`YYYY-MM-DDTHH:MM:SSZ`; cinq messages et contenus `420` portes par le contrat
+Validation. Le maximum `1432` est celui de la forme acceptee par ces contraintes,
+pas un maximum simplement observe sur un builder.
 
 ### F3 - Effet produit et correction
 
 La perte etait susceptible de priver Validation de l'ordre ou de la matiere du
 dialogue et de champs du verdict amont, donc d'influencer `answer`, `clarify`,
-`suspend` ou un faux choix de Presence. Les hard guards restaient separes et
-complets, mais leur integrite ne restaurait pas les donnees perdues. Le patch ne
-change ni les taxonomies, ni Presence, ni les hard guards, ni la separation
-epistemique/enonciation, ni le schema provider strict, ni la validation metier
-locale. Aucun input, pipeline, modele, appel provider ou mecanisme 4C.1 n'est
-ajoute.
+`suspend` ou un faux choix de Presence. La passe corrective ferme aussi la
+croissance apres retrait des previews: un objet hors vocabulaire ou hors forme
+runtime est rejete avant construction du message. Les hard guards restent
+separes et complets. Le patch ne change ni les taxonomies, ni Presence, ni les
+hard guards, ni la separation epistemique/enonciation, ni le schema provider
+strict, ni la validation metier locale. Aucun input, pipeline, modele, appel
+provider ou mecanisme 4C.1 n'est ajoute.
 
-Preuves hermetiques: cycle rouge puis vert `3/3`; suites Validation,
-structured output, Presence, hard guards, goldens differentiels 4C.1 et voisins
-Stimmung `86/86`; parcours serveur cibles d'insertion, Presence, fail-open,
-reconstruction et ordre du dialogue `6/6`. Total utile final `92/92`, sans
-provider, decouverte complete, JavaScript ni Chromium.
+Preuves hermetiques de la passe finale: C1 et C2 rouges puis verts, mapping de
+conflit libre et champs textuels hors contrat rejetes, reference temporelle
+reconstruite. Suites Validation, producteur primaire, structured output,
+Presence, hard guards, goldens differentiels 4C.1 et voisins Stimmung
+`105/105`; parcours serveur cibles d'insertion, Presence, fail-open,
+reconstruction et ordre du dialogue `7/7`. Total utile final `112/112`, sans
+provider, decouverte complete, JavaScript ni Chromium. Le helper 4C.1 a ete
+realigne sur la forme primaire courante (huit sources, signaux du vrai builder,
+regimes doctrinaux valides), sans toucher a sa projection ni relancer sa
+campagne.
 
 ## Sortie
 
@@ -4601,6 +4627,8 @@ Decision: `corrige`.
 - duplication prouvee retiree du seul message technique;
 - serialisation complete des structures existantes `primary_verdict` et
   `validation_dialogue_context` apres leurs builders/validateurs;
+- validateurs fermes sur les vocabulaires, cardinalites, mappings et timestamps
+  effectivement produits; reference temporelle reconstruite canoniquement;
 - aucune autre preview, borne ou projection modifiee.
 
 Preuves: corpus affecte Presence/`answer/clarify/suspend`, ordre du dialogue,
