@@ -2,7 +2,7 @@
 
 Date de cadrage : 2 septembre 2026.
 
-**Statut : roadmap ouverte ; I1 corrigé et validé hermétiquement, livraison applicative en attente ; I2 et les lots suivants non commencés.**
+**Statut : roadmap ouverte ; I1 fermé et livré ; I2 et les lots suivants non commencés.**
 
 ## 1. But et décision de périmètre
 
@@ -65,7 +65,7 @@ sans attendre O1.
 
 | Ordre | Lot | Résultat attendu | Finding | Réflexion conseillée | Statut |
 | --- | --- | --- | --- | --- | --- |
-| 1 | I1 | Une erreur de streaming reste une interruption | F01 | xhigh | correctif validé, livraison en attente |
+| 1 | I1 | Une erreur de streaming reste une interruption | F01 | xhigh | fermé et livré |
 | 2 | I2 | Une lecture Identity en panne ne permet aucun remplacement | F02 | xhigh | non commencé |
 | 3 | M1 | Un résumé n'est acquis qu'après stockage confirmé | F03 | xhigh | non commencé |
 | 4 | M2 | La déduplication ne retire pas une formulation distincte avant jugement | F04 | xhigh | non commencé |
@@ -75,7 +75,7 @@ sans attendre O1.
 | 8 | Z | Vérification finale limitée aux raccords modifiés | ci-dessus | high | non commencé |
 
 - [x] Cadrage documentaire et limites de preuve consignés.
-- [ ] I1 fermé avec preuves et livraison convenues.
+- [x] I1 fermé avec preuves et livraison convenues.
 - [ ] I2 fermé avec preuves et livraison convenues.
 - [ ] M1 fermé avec preuves et livraison convenues.
 - [ ] M2 fermé avec preuves et livraison convenues.
@@ -151,7 +151,7 @@ Tests/support à réutiliser : `app/tests/support/server_chat_pipeline.py`,
 - [x] Préserver succès nominal, trames d'usage sans contenu, exception réseau,
   JSON non-stream et final locks. Vérifier le terminal reçu par le navigateur
   avec les tests frontend existants si son contrat est effectivement touché.
-- [ ] Mettre à jour uniquement les contrats/mentions devenus faux et livrer I1.
+- [x] Mettre à jour uniquement les contrats/mentions devenus faux et livrer I1.
 
 **Fermeture :** la trame provider en erreur ne peut plus produire done ni les
 effets de succès ; le retour à l'ancien reader fait échouer la preuve.
@@ -186,7 +186,22 @@ qualifiées explicitement, sans réécrire tout le protocole.
   batterie frontend n'est donc requise.
 - Environnement : image locale existante, conteneur jetable, checkout monté
   read-only, `--network none`, `/tmp` en tmpfs, sans provider, secret, DB
-  opérateur ni donnée live. La livraison runtime n'est pas encore revendiquée.
+  opérateur ni donnée live. Aucun tour de dialogue réel n'a été lancé.
+
+### Livraison I1 effective — 2 septembre 2026
+
+- Commit applicatif `178dba1b39ca4f500645cc954a677d148e1e1741` poussé sur
+  `main`, puis rebuild sans pull depuis la sous-stack applicative et recréation
+  du seul service `fridadev` avec `--no-deps --force-recreate`.
+- Nouvelle image `sha256:f7f0ec6c74e2671b8ec9c30021fa3bdfa25470b394fd0d2b6930b8611f4b919a` ;
+  conteneur `platform-fridadev` démarré à
+  `2026-09-02T16:57:12.19563561Z`, `running`, `healthy`, restart `0`, OOM `false`.
+- Healthcheck autoritatif confirmé sur la route déclarée `/`, port interne
+  `8089` : HTTP `200`. Aucun `/health` supposé, aucun appel modèle ou tour réel.
+- Les SHA-256 des six fichiers I1 modifiés sont identiques entre checkout et
+  conteneur. Les identifiants, images et statuts de tous les conteneurs voisins
+  sont inchangés ; PostgreSQL, Caddy et les autres services n'ont pas été
+  recréés ni redémarrés.
 
 ## 6. I2 — Distinguer canon absent et canon illisible
 
