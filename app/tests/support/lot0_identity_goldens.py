@@ -310,7 +310,12 @@ class RealStagingIdentityStore:
             'persisted_count': len(items),
         }
 
-    def get_mutable_identity(self, subject: str) -> dict[str, Any] | None:
+    def get_mutable_identity(
+        self,
+        subject: str,
+        *,
+        strict: bool = False,
+    ) -> dict[str, Any] | None:
         value = self.mutable.get(subject)
         return copy.deepcopy(value) if value is not None else None
 

@@ -603,6 +603,11 @@ Seul `verdict = add` valide peut ajouter dans `identity_mutables`.
 Le nouveau pipeline:
 
 - ecrit seulement le canon mutable dans `identity_mutables`;
+- relit strictement les canons `llm` et `user` avant toute planification
+  automatique: `None` signifie alors une absence et une exception de lecture
+  devient `mutable_store_unavailable` sans outcome applique ni ecriture;
+- conserve le mode tolerant historique de `get_mutable_identity()` pour les
+  lectures admin, read-models et autres consommateurs non mutateurs;
 - borne le contenu canonique final de chaque sujet a `IDENTITY_MUTABLE_MAX_CHARS`, apres append des propositions admises du run;
 - persiste les mutations `llm` / `user` d'un meme contrat en transaction batch all-or-nothing: si un sujet echoue, aucun sujet n'est ecrit;
 - ecrit un audit compact content-free dans `identity_mutable_audit` ou dans la surface d'audit finale retenue;
@@ -709,6 +714,12 @@ juge: il reprend exclusivement le CAS de consommation/finalisation.
 - `write_recovery`: `canonical_write_failed`, `mutable_store_unavailable`,
   `staging_finalize_failed`; reprise idempotente, puis consommation terminale
   sans faux succes si la preuve canonique reste impossible.
+
+Pour `mutable_store_unavailable`, la premiere tentative preserve la fenetre
+sans ecriture sous `write_recovery_pending`; l'echec de la tentative bornee
+suivante consomme terminalement cette fenetre sans canonisation. Cette reprise
+ne relit pas le juge au-dela de la politique commune et ne cree aucune boucle
+supplementaire.
 
 Les gardes locales sont `40000` caracteres de fenetre et `16000` tokens de
 prompt estimes. Elles ne tronquent rien: au-dela, la fenetre entiere est refusee

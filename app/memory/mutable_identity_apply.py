@@ -261,10 +261,18 @@ def apply_mutable_judge_contract(
     outcomes: list[dict[str, Any]] = []
     max_content_chars = int(config.IDENTITY_MUTABLE_MAX_CHARS)
 
+    try:
+        for subject in sorted(_ALLOWED_SUBJECTS):
+            current_item = _mapping(get_mutable_identity(subject, strict=True))
+            current_by_subject[subject] = _text(current_item.get('content'))
+    except Exception:
+        return {
+            **_empty_summary('mutable_store_unavailable'),
+            'failed_count': 1,
+        }
+
     for subject in sorted(_ALLOWED_SUBJECTS):
-        current_item = _mapping(get_mutable_identity(subject))
-        current_content = _text(current_item.get('content'))
-        current_by_subject[subject] = current_content
+        current_content = current_by_subject[subject]
         next_content, subject_outcomes = _subject_plan(
             verdicts=verdicts_by_subject.get(subject) or [],
             current_content=current_content,

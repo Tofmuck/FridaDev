@@ -92,7 +92,12 @@ class _MutableStore:
         self.audit: list[dict[str, Any]] = []
         self.fail_on_subject: str | None = None
 
-    def get_mutable_identity(self, subject: str) -> dict[str, Any] | None:
+    def get_mutable_identity(
+        self,
+        subject: str,
+        *,
+        strict: bool = False,
+    ) -> dict[str, Any] | None:
         item = self.mutable.get(subject)
         return copy.deepcopy(item) if item is not None else None
 
@@ -214,6 +219,22 @@ class MutableIdentityApplyTests(unittest.TestCase):
         self.assertEqual(store.mutable['llm']['content'], proposition)
         self.assertNotIn('user', store.mutable)
         self.assertEqual(store.upsert_calls[0]['updated_by'], 'mutable_identity_judge_apply')
+
+    def test_add_preserves_existing_canon_exactly_before_new_proposition(self) -> None:
+        old_content = 'Tof conserve une limite anterieure.'
+        proposition = 'Tof tient une frontiere durable.'
+        store = _MutableStore({'user': old_content})
+
+        summary = mutable_identity_apply.apply_mutable_judge_contract(
+            _contract(_add(proposition=proposition)),
+            memory_store_module=store,
+        )
+
+        expected_content = f'{old_content}\n{proposition}'
+        self.assertEqual(summary['status'], 'ok')
+        self.assertTrue(summary['writes_applied'])
+        self.assertEqual(store.mutable['user']['content'], expected_content)
+        self.assertEqual(store.upsert_calls[0]['content'], expected_content)
 
     def test_no_change_writes_nothing(self) -> None:
         store = _MutableStore({'user': 'Tof tient deja une frontiere.'})

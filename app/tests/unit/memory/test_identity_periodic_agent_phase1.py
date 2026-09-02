@@ -171,8 +171,16 @@ class _InMemoryIdentityStore:
         self.mutable: dict[str, dict[str, Any]] = {}
         self.staging: dict[str, dict[str, Any]] = {}
         self.upsert_calls: list[tuple[str, str, str, str]] = []
+        self.fail_strict_mutable_reads = False
 
-    def get_mutable_identity(self, subject: str) -> dict[str, Any] | None:
+    def get_mutable_identity(
+        self,
+        subject: str,
+        *,
+        strict: bool = False,
+    ) -> dict[str, Any] | None:
+        if strict and self.fail_strict_mutable_reads:
+            raise RuntimeError('synthetic mutable identity read unavailable')
         item = self.mutable.get(subject)
         return copy.deepcopy(item) if item is not None else None
 
@@ -880,6 +888,72 @@ class IdentityPeriodicAgentPhase1Tests(unittest.TestCase):
             memory_identity_periodic_agent.BUFFER_TARGET_PAIRS,
         )
         self.assertEqual(store.upsert_calls, [])
+
+    def test_mutable_read_failure_uses_bounded_write_recovery_without_partial_write(self) -> None:
+        store = _InMemoryIdentityStore()
+        old_content = 'Tof conserve une limite anterieure.'
+        store.mutable['user'] = {
+            'subject': 'user',
+            'content': old_content,
+            'source_trace_id': None,
+            'updated_by': 'seed',
+            'update_reason': 'seed',
+        }
+        store.fail_strict_mutable_reads = True
+        proposition = 'Tof tient une frontiere durable.'
+        arbiter_module = SimpleNamespace(
+            run_mutable_identity_judge=lambda _payload: _judge_ok(
+                _contract(_persist_add('user', proposition))
+            )
+        )
+
+        for index in range(1, memory_identity_periodic_agent.BUFFER_TARGET_PAIRS):
+            memory_identity_periodic_agent.stage_identity_turn_pair(
+                'conv-mutable-read-failure',
+                _support_pair(index, proposition),
+                arbiter_module=arbiter_module,
+                memory_store_module=store,
+            )
+
+        summary = memory_identity_periodic_agent.stage_identity_turn_pair(
+            'conv-mutable-read-failure',
+            _support_pair(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS, proposition),
+            arbiter_module=arbiter_module,
+            memory_store_module=store,
+        )
+
+        self.assertEqual(summary['status'], 'skipped')
+        self.assertEqual(summary['reason_code'], 'mutable_store_unavailable')
+        self.assertEqual(summary['last_agent_status'], 'write_recovery_pending')
+        self.assertEqual(summary['failure_class'], 'write_recovery')
+        self.assertEqual(summary['recovery_action'], 'apply_recovery')
+        self.assertFalse(summary['writes_applied'])
+        self.assertFalse(summary['buffer_cleared'])
+        self.assertEqual(store.mutable['user']['content'], old_content)
+        self.assertEqual(store.upsert_calls, [])
+        retry_staging = store.get_identity_staging_state('conv-mutable-read-failure')
+        self.assertEqual(retry_staging['buffer_pairs_count'], memory_identity_periodic_agent.BUFFER_TARGET_PAIRS)
+        self.assertEqual(retry_staging['last_agent_status'], 'write_recovery_pending')
+        self.assertEqual(retry_staging['last_agent_reason'], 'mutable_store_unavailable')
+
+        terminal = memory_identity_periodic_agent.stage_identity_turn_pair(
+            'conv-mutable-read-failure',
+            _support_pair(memory_identity_periodic_agent.BUFFER_TARGET_PAIRS + 1, proposition),
+            arbiter_module=arbiter_module,
+            memory_store_module=store,
+        )
+
+        self.assertEqual(terminal['status'], 'skipped')
+        self.assertEqual(terminal['reason_code'], 'mutable_store_unavailable')
+        self.assertEqual(terminal['last_agent_status'], 'terminal_discarded')
+        self.assertEqual(terminal['failure_class'], 'write_recovery')
+        self.assertEqual(terminal['recovery_action'], 'terminal_consume_without_write')
+        self.assertFalse(terminal['writes_applied'])
+        self.assertTrue(terminal['buffer_cleared'])
+        self.assertEqual(store.mutable['user']['content'], old_content)
+        self.assertEqual(store.upsert_calls, [])
+        terminal_staging = store.get_identity_staging_state('conv-mutable-read-failure')
+        self.assertEqual(terminal_staging['buffer_pairs_count'], 1)
 
     def test_preserves_buffer_when_agent_returns_contradictory_no_change_mix(self) -> None:
         store = _InMemoryIdentityStore()

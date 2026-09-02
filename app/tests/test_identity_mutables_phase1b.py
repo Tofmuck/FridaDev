@@ -11,6 +11,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from memory import memory_store
+from memory import mutable_identity_apply
 
 
 class _SchemaCursor:
@@ -52,11 +53,13 @@ class _MutableIdentityCursor:
         audit_state: list[dict[str, object]],
         query_log: list[str],
         staging_state: dict[str, dict[str, object]] | None = None,
+        read_failures: dict[str, int] | None = None,
     ) -> None:
         self._state = state
         self._audit_state = audit_state
         self._query_log = query_log
         self._staging_state = staging_state if staging_state is not None else {}
+        self._read_failures = read_failures if read_failures is not None else {}
         self._counter = 0
         self._results: list[tuple[object, ...]] = []
 
@@ -178,6 +181,12 @@ class _MutableIdentityCursor:
 
         if 'from identity_mutables' in normalized and 'where subject = %s' in normalized:
             subject = str(params[0])
+            if (
+                not normalized.startswith('select content from identity_mutables')
+                and int(self._read_failures.get(subject) or 0) > 0
+            ):
+                self._read_failures[subject] -= 1
+                raise RuntimeError('synthetic mutable identity read unavailable')
             entry = self._state.get(subject)
             if normalized.startswith('select content from identity_mutables'):
                 self._results = [(entry['content'],)] if entry else []
@@ -205,11 +214,13 @@ class _MutableIdentityConnection:
         audit_state: list[dict[str, object]],
         query_log: list[str],
         staging_state: dict[str, dict[str, object]] | None = None,
+        read_failures: dict[str, int] | None = None,
     ) -> None:
         self._state = state
         self._audit_state = audit_state
         self._query_log = query_log
         self._staging_state = staging_state if staging_state is not None else {}
+        self._read_failures = read_failures if read_failures is not None else {}
         self.committed = False
 
     def __enter__(self):
@@ -224,6 +235,7 @@ class _MutableIdentityConnection:
             self._audit_state,
             self._query_log,
             self._staging_state,
+            self._read_failures,
         )
 
     def commit(self):
@@ -231,6 +243,77 @@ class _MutableIdentityConnection:
 
 
 class IdentityMutablesPhase1BTests(unittest.TestCase):
+    def test_mutable_add_does_not_replace_existing_canon_when_strict_read_fails(self) -> None:
+        old_content = 'Tof conserve une limite anterieure.'
+        new_proposition = 'Tof tient une frontiere durable.'
+        state: dict[str, dict[str, object]] = {
+            'user': {
+                'subject': 'user',
+                'content': old_content,
+                'source_trace_id': None,
+                'updated_by': 'seed',
+                'update_reason': 'seed',
+                'created_ts': '2026-04-05T12:00:00Z',
+                'updated_ts': '2026-04-05T12:00:00Z',
+            }
+        }
+        audit_state: list[dict[str, object]] = []
+        query_log: list[str] = []
+        read_failures = {'user': 2}
+        original_conn = memory_store._conn
+        memory_store._conn = lambda: _MutableIdentityConnection(
+            state,
+            audit_state,
+            query_log,
+            read_failures=read_failures,
+        )
+        contract = {
+            'schema_version': 'mutable_judge_v2',
+            'meta': {
+                'execution_status': 'complete',
+                'window_pairs_count': 5,
+                'window_complete': True,
+            },
+            'verdicts': [
+                {
+                    'subject': 'user',
+                    'verdict': 'add',
+                    'proposition': new_proposition,
+                    'reason_code': 'explicit_self_limit_continuity',
+                    'continuity_kind': 'limit',
+                    'source_refs': ['pair_03'],
+                    'guard_notes': ['not_task_local'],
+                },
+                {
+                    'subject': 'llm',
+                    'verdict': 'add',
+                    'proposition': 'Frida tient une voix propre.',
+                    'reason_code': 'explicit_frida_self_definition_continuity',
+                    'continuity_kind': 'posture',
+                    'source_refs': ['pair_03'],
+                    'guard_notes': ['not_task_local'],
+                },
+            ],
+        }
+        try:
+            self.assertIsNone(memory_store.get_mutable_identity('user'))
+            summary = mutable_identity_apply.apply_mutable_judge_contract(
+                contract,
+                memory_store_module=memory_store,
+            )
+        finally:
+            memory_store._conn = original_conn
+
+        self.assertEqual(summary['status'], 'skipped')
+        self.assertEqual(summary['reason_code'], 'mutable_store_unavailable')
+        self.assertFalse(summary['writes_applied'])
+        self.assertEqual(summary['applied_count'], 0)
+        self.assertEqual(summary['failed_count'], 1)
+        self.assertEqual(state['user']['content'], old_content)
+        self.assertNotIn('llm', state)
+        self.assertEqual(audit_state, [])
+        self.assertFalse(any(query.startswith('insert into identity_mutables') for query in query_log))
+
     def test_init_db_creates_identity_mutables_table_and_index(self) -> None:
         observed_queries: list[str] = []
         original_conn = memory_store._conn

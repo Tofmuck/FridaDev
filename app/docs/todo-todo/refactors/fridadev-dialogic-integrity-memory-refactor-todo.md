@@ -2,7 +2,8 @@
 
 Date de cadrage : 2 septembre 2026.
 
-**Statut : roadmap ouverte ; I1 fermé et livré ; I2 et les lots suivants non commencés.**
+**Statut : roadmap ouverte ; I1 fermé et livré ; correctif I2 vérifié, livraison
+applicative en attente ; M1 et les lots suivants non commencés.**
 
 ## 1. But et décision de périmètre
 
@@ -66,7 +67,7 @@ sans attendre O1.
 | Ordre | Lot | Résultat attendu | Finding | Réflexion conseillée | Statut |
 | --- | --- | --- | --- | --- | --- |
 | 1 | I1 | Une erreur de streaming reste une interruption | F01 | xhigh | fermé et livré |
-| 2 | I2 | Une lecture Identity en panne ne permet aucun remplacement | F02 | xhigh | non commencé |
+| 2 | I2 | Une lecture Identity en panne ne permet aucun remplacement | F02 | xhigh | correctif vérifié, livraison en attente |
 | 3 | M1 | Un résumé n'est acquis qu'après stockage confirmé | F03 | xhigh | non commencé |
 | 4 | M2 | La déduplication ne retire pas une formulation distincte avant jugement | F04 | xhigh | non commencé |
 | 5 | O1 | Les hints dialogiques sont comptés par leur vrai reader | F07 | high | non commencé |
@@ -215,14 +216,14 @@ Tests : `app/tests/unit/memory/test_mutable_identity_apply.py`,
 `app/tests/unit/memory/test_identity_liveness_lot1.py`,
 `app/tests/unit/memory/test_identity_staging_lot2.py`.
 
-- [ ] Reproduire canon existant + lecture indisponible + écriture disponible,
+- [x] Reproduire canon existant + lecture indisponible + écriture disponible,
   avec proposition admise par le véritable validateur add-only.
-- [ ] Fermer la frontière mutante : l'erreur de lecture n'est plus assimilée à
+- [x] Fermer la frontière mutante : l'erreur de lecture n'est plus assimilée à
   une absence établie. Adapter ses consommateurs nécessaires, sans étendre une
   exception nouvelle à toutes les lectures admin supposées tolérantes.
-- [ ] Prouver zéro remplacement et zéro faux succès en cas de lecture en panne ;
+- [x] Prouver zéro remplacement et zéro faux succès en cas de lecture en panne ;
   conserver la politique bornée d'échec/reprise et les fences existantes.
-- [ ] Prouver les contre-cas : absence réellement lue → création légitime ; canon
+- [x] Prouver les contre-cas : absence réellement lue → création légitime ; canon
   présent → ajout conservant l'ancien ; no_change → aucune écriture ; erreur
   d'écriture → résultat non réussi. Préserver les éditions administrateur.
 - [ ] Vérifier audit et projection du résultat sans inventer une lecture réussie ;
@@ -232,6 +233,39 @@ Tests : `app/tests/unit/memory/test_mutable_identity_apply.py`,
 consécutif. Aucun replay manuel du staging, migration ni nouveau protocole de
 transaction distribuée. Le stockage factice n'est pas présenté comme une panne
 PostgreSQL réelle.
+
+### Preuves I2 avant livraison — 2 septembre 2026
+
+- Les hypothèses I2/1 et I2/2 sont valides au HEAD I1 : le reader tolérant
+  retournait `None` après une exception, puis l'applicateur préparait un batch
+  depuis un faux canon vide.
+  La reproduction traverse le cursor SQL factice, `memory_store`, le validateur
+  add-only et l'applicateur ; lecture indisponible puis writer disponible
+  produisaient `status=ok` et remplaçaient le canon synthétique antérieur.
+- L'hypothèse I2/3 est valide : `get_mutable_identity(..., strict=True)` reste
+  un opt-in local à l'applicateur. Les lecteurs admin/read-models conservent le
+  défaut tolérant et les éditions administrateur `set/clear` gardent leurs
+  writers actuels.
+- L'hypothèse I2/4 est valide : `mutable_store_unavailable` appartenait déjà à
+  `write_recovery`. L'application retourne désormais `skipped`,
+  `writes_applied=false` et `failed_count=1` avant toute planification. Le
+  coordinateur conserve la première fenêtre sous `write_recovery_pending`, puis
+  la consomme sans écriture au second échec et conserve la paire courante comme
+  début de la fenêtre suivante.
+- Rouge observé : les deux preuves centrales recevaient `ok`; le store SQL
+  factice remplaçait le canon `user` et pouvait créer le canon `llm` du même
+  batch. Après correctif : ancien canon inchangé, aucun `INSERT`, aucun audit et
+  aucune écriture sur l'autre sujet.
+- Une mutation contrôlée remplaçant l'appel strict par le mode tolérant remet la
+  preuve SQL centrale en échec avec `ok`; la protection restaurée la remet au
+  vert.
+- Batterie hermétique : 120 tests ciblés et voisins, `OK`, checkout read-only,
+  réseau désactivé, sans secret, provider ni DB opérateur. Elle couvre absence,
+  canon présent avec append exact, `no_change`, échec d'écriture, fences,
+  concurrence, vivacité, projections, lectures tolérantes et éditions admin.
+- Limite : le stockage factice prouve le chemin applicatif sous panne injectée ;
+  aucune panne PostgreSQL live, donnée Identity opérateur ou perte historique
+  n'a été recherchée ni constatée.
 
 ## 7. M1 — Acquérir un résumé seulement après stockage
 

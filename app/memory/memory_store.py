@@ -355,9 +355,14 @@ def enrich_traces_with_summaries(traces: list[dict[str, Any]]) -> list[dict[str,
 
 # Identity retrieval
 
-def get_mutable_identity(subject: str) -> dict[str, Any] | None:
+def get_mutable_identity(
+    subject: str,
+    *,
+    strict: bool = False,
+) -> dict[str, Any] | None:
     return memory_identity_mutables.get_mutable_identity(
         subject,
+        strict=strict,
         conn_factory=_conn,
         logger=logger,
     )

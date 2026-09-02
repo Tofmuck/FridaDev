@@ -458,7 +458,7 @@ class IdentityPhase4MainModelTests(unittest.TestCase):
                 self.mutable: dict[str, dict[str, str | None]] = {}
                 self.upsert_calls: list[tuple[str, str, str, str]] = []
 
-            def get_mutable_identity(self, subject: str):
+            def get_mutable_identity(self, subject: str, *, strict: bool = False):
                 item = self.mutable.get(subject)
                 return dict(item) if item is not None else None
 

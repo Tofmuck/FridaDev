@@ -110,6 +110,7 @@ def _record_mutable_identity_audit(
 def get_mutable_identity(
     subject: str,
     *,
+    strict: bool = False,
     conn_factory: Callable[[], Any],
     logger: Any,
 ) -> dict[str, Any] | None:
@@ -139,6 +140,8 @@ def get_mutable_identity(
                 return _row_to_mutable_identity(cur.fetchone())
     except Exception as exc:
         logger.error('get_mutable_identity_error subject=%s err=%s', canonical_subject, exc)
+        if strict:
+            raise
         return None
 
 

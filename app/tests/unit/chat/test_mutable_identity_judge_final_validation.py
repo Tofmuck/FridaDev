@@ -94,7 +94,12 @@ class _ConversationCrashStore:
     def record_identity_evidence(self, *_args: Any, **_kwargs: Any) -> None:
         return None
 
-    def get_mutable_identity(self, subject: str) -> dict[str, Any] | None:
+    def get_mutable_identity(
+        self,
+        subject: str,
+        *,
+        strict: bool = False,
+    ) -> dict[str, Any] | None:
         item = self.mutable.get(subject)
         return copy.deepcopy(item) if item is not None else None
 
