@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 6 fermes; decision globale du Lot 4 `strengthen`, caller renforce, F2 corrige par separation epistemique/enonciative, F4 `partiel` et 4C.4 `inconclusive` avec decision produit `keep_current_v2.3`; faux blocage 4C.5 classe `invalide/non requis` apres contre-audit croise des contrats; Lot 7 ramene a sa decision de latence conditionnelle et non commence; Lot 8 ferme `non requis/absorbe`; Lot Z ramene a la cloture differentielle et a l'archivage
+Statut: TODO actif; Lots 0 a 6 fermes; decision globale du Lot 4 `strengthen`, caller renforce, F2 corrige par separation epistemique/enonciative, F4 `partiel` et 4C.4 `inconclusive` avec decision produit `keep_current_v2.3`; faux blocage 4C.5 classe `invalide/non requis` apres contre-audit croise des contrats; Lot 7 ouvert, 7D `inconclusive` faute de donnees comparables au runtime courant et aucun 7C cree; Lot 8 ferme `non requis/absorbe`; Lot Z ramene a la cloture differentielle et a l'archivage
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -4645,7 +4645,7 @@ patch reste local.
 
 # LOT 7 - Decision de latence avant correctif
 
-Statut: recale, diagnostic non commence; correctif conditionnel
+Statut: ouvert; 7D `inconclusive` le 2 septembre 2026; aucun 7C cree
 Nature: lecture seule puis eventuel micro-lot `7C`
 Dependance: Lots 5 et 6 fermes
 
@@ -4657,12 +4657,77 @@ potentiellement genante, pas une attente infinie.
 
 ## 7D - Diagnostic sans patch
 
-- [ ] Lire les latences content-free deja disponibles par caller/source, sans
-  ajouter de telemetrie avant d'avoir prouve qu'elle manque.
-- [ ] Distinguer timeout configure, durees primaire/fallback et temps total.
-- [ ] Calculer p50/p95/p99 seulement si l'echantillon le permet.
-- [ ] Classer l'impact reel pour l'unique utilisateur: acceptable, genant ou
-  bloquant.
+Decision: `inconclusive`.
+
+La source lue en lecture seule est `observability.chat_log_events` via
+`log_store.read_chat_log_events`. La fenetre globale disponible va du 28 mars
+au 20 aout 2026: `14 852` appels `llm_call` et `8 565` fins de tour. Les
+evenements de preparation existent du 15 mai au 20 aout pour Stimmung (`722`)
+et du 13 mai au 20 aout pour Validation (`1 914`). Apres appariement strict par
+tour et ordre d'evenements, seuls les appels portant le caller explicite sont
+retenus: `602` tentatives sur `601` tours Stimmung et `604` tentatives sur `601`
+tours Validation, du 15 mai au 21 juin. Les appels historiques attribues a
+`llm` ou sans caller, ainsi que les preparations sans appel appariable, sont
+exclus pour eviter confusion et double comptage.
+
+### Mesures historiques exploitables
+
+| Stage | Primaires | Fallbacks | Tours avec fallback | Duree primaire | Duree du stage avec fallback |
+| --- | ---: | ---: | ---: | --- | --- |
+| Stimmung | `601`, tous `ok` | `1`, `ok`, `1 231 ms` | `1/601`, `0,166 %` | min `529`, mediane `849`, p95 `1 795`, p99 `5 253`, max `8 438 ms` | `2 368 ms`, un seul cas |
+| Validation | `601`: `600 ok`, `1 error` | `3`, tous `ok`; resultat final: `2 ok`, `1 fail_open/invalid_json` | `3/601`, `0,499 %` | min `618`, mediane `938`, p95 `1 965`, p99 `7 008`, max `12 849 ms` | min `3 215`, mediane `3 221`, max `11 669 ms`; `n=3` |
+
+Les tours sans fallback mesurent respectivement `600` et `598` observations;
+leurs durees de stage ont les memes ordres de grandeur que les primaires. La
+part arithmetique observable du stage dans la duree totale du tour, sans
+attribution causale du reste, est pour Stimmung sans fallback: mediane
+`4,648 %`, p95 `12,789 %`, p99 `20,745 %`, max `36,4 %`; l'unique fallback
+vaut `14,568 %`. Pour Validation sans fallback: mediane `5,097 %`, p95
+`14,039 %`, p99 `33,048 %`, max `60,769 %`; avec fallback, min `15,953 %`,
+mediane `19,575 %`, max `52,381 %` (`n=3`). Aucun percentile n'est calcule sur
+les fallbacks, leurs effectifs etant inferieurs a `20`.
+
+Stimmung avait deja un timeout de `10 s`: aucune des `602` tentatives ne
+depasse `90 %` de cette borne; maximum observe `8 438 ms`. Validation melange
+des timeouts historiques de `10 s` et `15 s`; dans le sous-ensemble `15 s`
+(`445` tentatives, ancien primaire), le maximum est `12 849 ms`, donc aucun cas
+a `90 %` de la borne. Ces maxima sont observes et ne sont pas le maximum
+theorique cumulatif.
+
+### Findings F1-F6 et limite de comparabilite
+
+- **F1 validee:** chaque agent parcourt primaire puis fallback dans une boucle
+  synchrone et s'arrete au premier succes; aucun appel concurrent.
+- **F2 validee:** chaque tentative recoit le timeout complet du stage, `10 s`
+  pour Stimmung et `15 s` pour Validation.
+- **F3 validee:** `llm_call`, les preparations et `turn_end` portent, sans
+  contenu, caller, modele/source, statut, duree, timeout et `turn_id`.
+- **F4 partielle:** la chaine existante permet le calcul offline, mais
+  l'historique ne permet pas de mesurer la configuration courante.
+- **F5 validee:** la longue traine sequentielle lors d'un echec est bornee;
+  aucune attente infinie n'est trouvee.
+- **F6 retenue:** a l'echelle mono-utilisateur, un correctif n'est justifie que
+  par une frequence ou un cout courant reellement genant.
+
+Le dernier evenement date du 20 aout. Il precede le primaire Validation
+`google/gemini-3.7-flash` du 29 aout et les renforcements Stimmung des 30 aout
+et 1er septembre. Il existe `0` tour complet avec le tuple Validation courant;
+les `576` tours portant le modele primaire Stimmung courant precedent son
+prompt et son transport strict actuels. Les mesures historiques indiquent des
+fallbacks rares et des medianes faibles, mais ne prouvent ni l'acceptabilite ni
+la gene du runtime actuel.
+
+Preuve manquante: une fenetre naturelle post-cutover d'au moins `20` tours
+appariables par stage, avec caller/source explicites et `turn_end`, sans appel
+provoque. L'absence de fallback dans cette fenetre permettra d'etayer
+`non_requis`; tout fallback naturel sera mesure individuellement jusqu'a ce que
+les seuils de percentile soient atteints. Aucun ajout de telemetrie n'est
+necessaire: les champs courants suffisent lorsqu'ils auront ete produits.
+
+- [x] Lire les latences content-free deja disponibles par caller/source.
+- [x] Distinguer timeout configure, durees primaire/fallback et temps total.
+- [x] Respecter les seuils d'effectif des percentiles.
+- [ ] Classer l'impact courant: donnees post-cutover manquantes.
 
 Sorties:
 
@@ -4675,10 +4740,11 @@ Sorties:
 
 ## Fermeture
 
-- [ ] Decision explicite fondee sur les mesures.
-- [ ] Aucun correctif sans benefice prouve.
-- [ ] Si `7C` existe: borne murale, horloge fake, chronologie et fail-open
-  prouves; observabilite mise a jour dans le meme lot.
+- [x] Decision 7D explicite `inconclusive`, fondee sur la non-comparabilite
+  prouvee des mesures disponibles.
+- [x] Aucun correctif sans benefice prouve; aucun patch runtime ou frontend.
+- [x] `7C` n'est pas cree. Le Lot 7 reste ouvert jusqu'a la preuve naturelle
+  manquante; le Lot Z reste non commence.
 
 # LOT 8 - Decisions de modeles deja acquises
 
