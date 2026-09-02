@@ -34,6 +34,7 @@ from core.hermeneutic_node.inputs import recent_context_input as canonical_recen
 from core.hermeneutic_node.inputs import time_input as canonical_time_input
 from core.hermeneutic_node.inputs import user_turn_input as canonical_user_turn_input
 from core.hermeneutic_node.inputs import web_input as canonical_web_input
+from core.hermeneutic_node.runtime import primary_node
 from core.hermeneutic_node.validation import (
     hard_guards,
     validation_agent,
@@ -104,6 +105,33 @@ def _primary_verdict(
             "degraded_fields": [],
         },
     }
+
+
+def _maximal_runtime_fail_open_primary_verdict() -> dict[str, object]:
+    payload = primary_node._build_primary_verdict(
+        epistemic_payload=primary_node._FALLBACK_EPISTEMIC,
+        epistemic_effect={
+            "effect": "unknown",
+            "source": "fail_open",
+            "reason_code": "invalid_node_state",
+        },
+        enunciation_directive={
+            "effect": "unknown",
+            "source": "fail_open",
+            "reason_code": "invalid_node_state",
+        },
+        judgment_posture=primary_node._FALLBACK_JUDGMENT_POSTURE,
+        output_regime=primary_node._FALLBACK_OUTPUT_REGIME,
+        source_priority=primary_node._DEFAULT_SOURCE_PRIORITY,
+        source_conflicts=[],
+        user_turn_signals=None,
+        fail_open=True,
+        state_used=False,
+        degraded_fields=primary_node._FALLBACK_DEGRADED_FIELDS,
+        fallback_reason_code="invalid_node_state",
+        fallback_error_class="X" * 80,
+    )
+    return validation_contract.validate_primary_verdict(payload)
 
 
 def _accepted_3712_counterexample_to_old_maximum_claim() -> dict[str, object]:
@@ -730,11 +758,15 @@ class ValidationAgentTests(unittest.TestCase):
         self.assertIn("dernier enonce et le dialogue comme texte", user_message)
         self.assertIn("sans checklist ni sortie dediee", user_message)
 
-        schema_tail = user_message.split("schema attendu: ", 1)[1].lower()
+        schema_properties = validation_contract.provider_response_format()["json_schema"]["schema"][
+            "properties"
+        ]
         for forbidden_key in ("warum", "wofuer", "wozu", "interpretive_center", "triad"):
-            self.assertNotIn(forbidden_key, schema_tail)
+            self.assertNotIn(forbidden_key, schema_properties)
 
     def test_build_messages_enforces_dialogic_meaning_independence_and_presence_boundary(self) -> None:
+        canonical_system_prompt = (APP_DIR / validation_agent.PROMPT_PATH).read_text(encoding="utf-8")
+        validation_agent.prompt_loader.read_prompt_text = lambda _path: canonical_system_prompt
         requests_module = _FakeRequests(
             [
                 _FakeResponse(
@@ -758,21 +790,18 @@ class ValidationAgentTests(unittest.TestCase):
             requests_module=requests_module,
         )
 
-        user_message = requests_module.calls[0]["json"]["messages"][1]["content"]
+        provider_messages = requests_module.calls[0]["json"]["messages"]
+        system_message = provider_messages[0]["content"]
+        user_message = provider_messages[1]["content"]
         for snippet in (
-            "presume que le tour a un sens dans l'histoire locale du dialogue",
-            "premisses implicites comme hypotheses interpretatives",
-            "distingue comprendre la proposition",
-            "ni l'insistance, ni le desaccord reformule, ni l'intensite affective",
-            "ne choisis clarify qu'apres l'echec d'une interpretation coherente",
-            "un signal lexical, une ponctuation ou une recommandation amont",
-            "final_output_regime = presence",
+            "premisses implicites seulement comme hypotheses interpretatives",
+            "final_output_regime=presence",
             "trois points ASCII",
-            "ne le choisis jamais pour une question, une demande, une detresse, un risque",
-            "suspend conserve exclusivement son sens epistemique",
+            "presence ne signifie jamais suspend",
             '"final_output_regime":"simple|meta|presence"',
         ):
-            self.assertIn(snippet, user_message)
+            self.assertIn(snippet, system_message)
+            self.assertNotIn(snippet, user_message)
 
     def test_model_verdict_rejects_triadic_output_fields(self) -> None:
         base_payload = {
@@ -2008,10 +2037,62 @@ class ValidationAgentTests(unittest.TestCase):
             user_message.index("validation_dialogue_context"),
             user_message.index("primary_verdict"),
         )
-        self.assertIn('"final_judgment_posture":"answer|clarify|suspend"', user_message)
-        self.assertIn('"final_output_regime":"simple|meta|presence"', user_message)
-        self.assertIn('"arbiter_reason":"raison_courte_lisible"', user_message)
-        self.assertNotIn("validation_decision", user_message.split("schema attendu: ", 1)[1])
+
+    def test_build_messages_keeps_output_schema_authority_only_in_system_message(self) -> None:
+        schema_fragment = '"final_judgment_posture":"answer|clarify|suspend"'
+        messages = validation_agent._build_messages(
+            system_prompt=f"Sortie canonique: {{{schema_fragment}}}",
+            primary_verdict=_primary_verdict(),
+            justifications={},
+            validation_dialogue_context=_dialogue_context(),
+            canonical_inputs=_canonical_inputs(),
+            hard_guard_payload={},
+        )
+
+        self.assertIn(schema_fragment, messages[0]["content"])
+        self.assertNotIn(schema_fragment, messages[1]["content"])
+        self.assertEqual(sum(message["content"].count(schema_fragment) for message in messages), 1)
+
+    def test_build_messages_includes_maximal_runtime_primary_verdict_whole(self) -> None:
+        primary_verdict = _maximal_runtime_fail_open_primary_verdict()
+        messages = validation_agent._build_messages(
+            system_prompt="SYSTEM PROMPT",
+            primary_verdict=primary_verdict,
+            justifications={},
+            validation_dialogue_context=_dialogue_context(),
+            canonical_inputs={},
+            hard_guard_payload={},
+        )
+
+        primary_material = (
+            messages[1]["content"]
+            .split("primary_verdict (recommendation structuree amont, secondaire et non terminale):\n", 1)[1]
+            .split("\n\njustifications", 1)[0]
+        )
+        self.assertEqual(json.loads(primary_material), primary_verdict)
+        self.assertNotIn("preview", json.loads(primary_material))
+
+    def test_compacted_dialogue_keeps_maximal_json_escaping_structure_whole(self) -> None:
+        dialogue = canonical_recent_context_input.build_validation_dialogue_context(
+            messages=[
+                {
+                    "role": "user" if index % 2 == 0 else "assistant",
+                    "content": "\x01" * validation_agent.MAX_VALIDATION_CONTEXT_MESSAGE_CHARS,
+                    "timestamp": f"2026-12-31T23:59:5{index}Z",
+                }
+                for index in range(validation_agent.MAX_VALIDATION_CONTEXT_MESSAGES)
+            ]
+        )
+
+        material = validation_agent._compacted_validation_dialogue_context(dialogue)
+        compacted = json.loads(material)
+
+        self.assertNotIn("preview", compacted)
+        self.assertEqual(compacted["retained_message_count"], 5)
+        self.assertEqual(
+            [len(message["content"]) for message in compacted["messages"]],
+            [420, 420, 420, 420, 420],
+        )
 
     def test_build_messages_puts_local_temporal_reference_before_validation_context(self) -> None:
         messages = validation_agent._build_messages(

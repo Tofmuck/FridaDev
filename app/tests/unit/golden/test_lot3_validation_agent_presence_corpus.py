@@ -149,7 +149,8 @@ class ValidationAgentPresenceCorpusTests(unittest.TestCase):
 
         self.assertEqual(payload["messages"], expected_messages)
         self.assertEqual(hard_guards["hard_guard_effect"], "answer_forbidden")
-        self.assertIn("simple|meta|presence", payload["messages"][1]["content"])
+        self.assertIn("simple|meta|presence", payload["messages"][0]["content"])
+        self.assertNotIn("simple|meta|presence", payload["messages"][1]["content"])
 
     def test_presence_scorer_rejects_controlled_semantic_mutations_without_reading_dialogue_text(self) -> None:
         positive = self._case("P3-001")

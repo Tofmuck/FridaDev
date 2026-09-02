@@ -4513,7 +4513,7 @@ Preuves de fermeture:
 
 # LOT 6 - Residu Validation, sans reconstruire 4C.1
 
-Statut: recale, non commence
+Statut: ferme le 2 septembre 2026, decision `corrige`; Lot 7 non commence
 Nature: audit cible puis correction conditionnelle a comportement constant
 Dependance: Lot 5 ferme
 
@@ -4529,18 +4529,79 @@ relancer une campagne de modeles.
 
 ## Audit restant
 
-- [ ] Cartographier uniquement les instructions communes au prompt systeme et
+- [x] Cartographier uniquement les instructions communes au prompt systeme et
   au message technique de `validation_messages.py`.
-- [ ] Distinguer duplication normative et rappel necessaire au tour.
-- [ ] Pour chaque `_bounded_json_preview(...)`, prouver si une valeur valide du
+- [x] Distinguer duplication normative et rappel necessaire au tour.
+- [x] Pour chaque `_bounded_json_preview(...)`, prouver si une valeur valide du
   contrat peut etre coupee; mesurer les maxima sur fixtures synthetiques.
+
+Baseline: `main` au HEAD attendu
+`b029f96088f387635b8094e458e0c7af1c7d8b60`, upstream `origin/main`, divergence
+`0/0`, worktree propre. Le runtime pre-lot utilisait
+`platform-fridadev-app:local`, `StartedAt=2026-09-01T18:59:56.102069158Z`,
+HTTP interne `/` `200`, health `healthy`, restart `0`, OOM `false`; Lot 5 etait
+ferme, Lots 6 et 7 non commences.
+
+### F1 - Cartographie normative
+
+| Instructions comparees | Classe | Decision |
+| --- | --- | --- |
+| priorite de `temporal_reference`, du dialogue canonise, de ses cinq messages et des supports secondaires | descriptions de champs et priorite systeme; pas de seconde doctrine dans les libelles de donnees | conservees |
+| presomption de sens; premisses comme hypotheses; acte dialogique; comprendre/corriger/etre convaincue/adopter; insistance/affect; independance; seuil de clarification | autorite normative commune reellement dupliquee | autorite conservee dans `validation_agent.txt`, repetitions retirees de `Tache:` |
+| Warum / Wofür / Wozu | rappel compact necessaire au tour, explicitement requis par le contrat triadique | conserve une fois dans `Tache:` sans checklist ni sortie nouvelle |
+| separation `epistemic_effect` / `enunciation_directive`, preference `simple`, reserve `meta` | rappel necessaire pour interpreter les structures propres au tour | conserve |
+| Presence, ses contre-cas, `answer` obligatoire et distinction avec `suspend` | autorite normative commune reellement dupliquee | autorite conservee dans le prompt systeme, repetitions retirees de `Tache:` |
+| `answer_forbidden`, `caveat_required` et effet non automatique sur `meta` | contrainte technique liee au payload hard guard du tour | conservee dans `Tache:` |
+| `validation_decision` derivee downstream | contrainte technique complementaire a l'interdit systeme de la renvoyer | conservee |
+| JSON strict et schema exact | duplication technique/normative; le schema strict Lot 5 et le validateur local restent souverains | schema conserve dans le systeme et le transport provider, copie retiree de `Tache:` |
+
+Aucune contradiction de fond n'a ete trouvee. Le risque de derive venait de la
+copie editable des memes regles dans deux messages; le systeme est desormais
+l'autorite canonique, tandis que `Tache:` ne porte que l'operation et les
+rappels dependants des donnees du tour.
+
+### F2 - Maxima et perte reproduite
+
+| Famille active | Builder / validateur autoritatifs | Mesure compacte | Verdict |
+| --- | --- | ---: | --- |
+| reference temporelle | `time_input.build_time_input` puis `validation_time_reference` | maximum mesure `176/420` sur les timezones IANA installees | complete |
+| dialogue | `recent_context_input.build_validation_dialogue_context`, `validate_validation_dialogue_context`, compactage `5 x 420` | texte ordinaire `3258/4200`; guillemets ou antislash `5358`; borne JSON demontrable avec controles echappes `13758` | la borne tardive remplacait une structure valide par une preview |
+| verdict primaire | `primary_node._build_primary_verdict`, `validate_primary_verdict` | nominal conservateur `1168`; fail-open builder maximal `1406/1000` | la borne tardive supprimait des champs contractuels |
+| justifications | caller produit `chat_service._run_hermeneutic_node_insertion_point` + `validate_support_mapping` | `{}` = `2/700`; aucun autre caller produit actif | complete |
+| hard guards | `hard_guards.evaluate_hard_guards` + `HardGuardDecision.prompt_payload` | maximum `161/320` | complete |
+| inputs canoniques 4C.1 | projection v2 existante | acquis `3546/3840` emittable, `3741/3840` accepte | inchange, non reconstruit |
+
+Les limites de cinq messages et de `420` caracteres par contenu restent le
+compactage volontaire amont. Seules les deux bornes JSON tardives fragiles du
+dialogue valide et du verdict primaire ont ete retirees: les structures
+canoniques deja bornees sont maintenant incluses integralement, sans hausse
+arbitraire ni enveloppe `preview`.
+
+### F3 - Effet produit et correction
+
+La perte etait susceptible de priver Validation de l'ordre ou de la matiere du
+dialogue et de champs du verdict amont, donc d'influencer `answer`, `clarify`,
+`suspend` ou un faux choix de Presence. Les hard guards restaient separes et
+complets, mais leur integrite ne restaurait pas les donnees perdues. Le patch ne
+change ni les taxonomies, ni Presence, ni les hard guards, ni la separation
+epistemique/enonciation, ni le schema provider strict, ni la validation metier
+locale. Aucun input, pipeline, modele, appel provider ou mecanisme 4C.1 n'est
+ajoute.
+
+Preuves hermetiques: cycle rouge puis vert `3/3`; suites Validation,
+structured output, Presence, hard guards, goldens differentiels 4C.1 et voisins
+Stimmung `86/86`; parcours serveur cibles d'insertion, Presence, fail-open,
+reconstruction et ordre du dialogue `6/6`. Total utile final `92/92`, sans
+provider, decouverte complete, JavaScript ni Chromium.
 
 ## Sortie
 
-- `non_requis` si aucune valeur valide n'est coupee et aucune autorite
-  concurrente n'existe;
-- `corrige` sinon: retirer seulement la duplication prouvee et remplacer les
-  seules previews fragiles par une projection existante ou minimale.
+Decision: `corrige`.
+
+- duplication prouvee retiree du seul message technique;
+- serialisation complete des structures existantes `primary_verdict` et
+  `validation_dialogue_context` apres leurs builders/validateurs;
+- aucune autre preview, borne ou projection modifiee.
 
 Preuves: corpus affecte Presence/`answer/clarify/suspend`, ordre du dialogue,
 maxima contractuels et hard guards. Suites ciblees et voisines seulement si le
@@ -4548,9 +4609,11 @@ patch reste local.
 
 ## Fermeture
 
-- [ ] Decision `non_requis` ou `corrige` prouvee.
-- [ ] Aucun nouvel input, changement semantique ou duplication de 4C.1.
-- [ ] Documentation/observabilite modifiees seulement si leur verite change.
+- [x] Decision `corrige` prouvee par reproductions rouges puis vertes.
+- [x] Aucun nouvel input, changement semantique ou duplication de 4C.1.
+- [x] Documentation limitee a cette section; observabilite et contrats vivants
+  restent vrais et inchanges.
+- [x] Lot 7 non commence.
 
 # LOT 7 - Decision de latence avant correctif
 
