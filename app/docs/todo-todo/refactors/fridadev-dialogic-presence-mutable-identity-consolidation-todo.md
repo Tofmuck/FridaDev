@@ -1,6 +1,6 @@
 # FridaDev - Consolidation Presence dialogique et Identity mutable
 
-Statut: TODO actif; Lots 0 a 6 fermes; decision globale du Lot 4 `strengthen`, caller renforce, F2 corrige par separation epistemique/enonciative, F4 `partiel` et 4C.4 `inconclusive` avec decision produit `keep_current_v2.3`; faux blocage 4C.5 classe `invalide/non requis` apres contre-audit croise des contrats; Lot 7 ouvert, 7D `inconclusive` faute de donnees comparables au runtime courant et aucun 7C cree; Lot 8 ferme `non requis/absorbe`; Lot Z ramene a la cloture differentielle et a l'archivage
+Statut: TODO actif; Lots 0 a 7 fermes; decision globale du Lot 4 `strengthen`, caller renforce, F2 corrige par separation epistemique/enonciative, F4 `partiel` et 4C.4 `inconclusive` avec decision produit `keep_current_v2.3`; faux blocage 4C.5 classe `invalide/non requis` apres contre-audit croise des contrats; resultat technique 7D `inconclusive`, mais Lot 7 ferme `non_requis` a ce jour sur decision de Tof, sans 7C; Lot 8 ferme `non requis/absorbe`; Lot Z ramene a la cloture differentielle et a l'archivage
 Date d'ouverture: 2026-08-20
 Type: consolidation runtime, tests, observabilite et documentation, sans extension fonctionnelle
 Agent cible: GPT-5.6, raisonnement approfondi
@@ -4645,15 +4645,19 @@ patch reste local.
 
 # LOT 7 - Decision de latence avant correctif
 
-Statut: ouvert; 7D `inconclusive` le 2 septembre 2026; aucun 7C cree
-Nature: lecture seule puis eventuel micro-lot `7C`
+Statut: ferme le 2 septembre 2026; 7D technique `inconclusive`, decision produit
+`non_requis` a ce jour sur decision de Tof; aucun 7C cree
+Nature: lecture seule et decision produit; `7C` non requis a ce jour
 Dependance: Lots 5 et 6 fermes
 
 ## Premisse corrigee
 
-Les appels ne sont pas sans borne: Validation cumule au plus `2 x 15 s` et
-Stimmung `2 x 10 s`, hors surcout local. Le risque est une attente sequentielle
-potentiellement genante, pas une attente infinie.
+Chaque tentative recoit un timeout configure: `15 s` pour Validation et `10 s`
+pour Stimmung. Leur addition sequentielle de configuration n'est pas une
+garantie de duree murale totale: le transport, l'annulation et les traitements
+locaux peuvent ajouter un ecart. Le risque a examiner reste une attente
+sequentielle potentiellement genante en dialogue, pas un maximum theorique
+presente comme une latence observee.
 
 ## 7D - Diagnostic sans patch
 
@@ -4717,34 +4721,34 @@ prompt et son transport strict actuels. Les mesures historiques indiquent des
 fallbacks rares et des medianes faibles, mais ne prouvent ni l'acceptabilite ni
 la gene du runtime actuel.
 
-Preuve manquante: une fenetre naturelle post-cutover d'au moins `20` tours
-appariables par stage, avec caller/source explicites et `turn_end`, sans appel
-provoque. L'absence de fallback dans cette fenetre permettra d'etayer
-`non_requis`; tout fallback naturel sera mesure individuellement jusqu'a ce que
-les seuils de percentile soient atteints. Aucun ajout de telemetrie n'est
-necessaire: les champs courants suffisent lorsqu'ils auront ete produits.
+Tof confirme qu'aucun dialogue n'a eu lieu depuis le 20 aout 2026. L'absence
+de donnees post-cutover est donc attendue et ne constitue pas un indice de
+panne de journalisation. La latence courante reste non mesuree.
+
+Decision produit explicite de Tof: aucun correctif n'est justifie aujourd'hui;
+le runtime est conserve, le Lot 7 ferme `non_requis` a ce jour et aucun 7C
+n'est cree. Cette decision ne requalifie pas 7D en validation experimentale
+des performances courantes. Le dialogue quotidien sert de detection: une
+attente reellement genante constatee pourra rouvrir le sujet et sera examinee
+avec les traces content-free existantes, sans seuil prealable arbitraire ni
+investigation de journalisation motivee par la seule absence de dialogue.
 
 - [x] Lire les latences content-free deja disponibles par caller/source.
 - [x] Distinguer timeout configure, durees primaire/fallback et temps total.
 - [x] Respecter les seuils d'effectif des percentiles.
-- [ ] Classer l'impact courant: donnees post-cutover manquantes.
+- [x] Conserver l'impact courant comme non mesure; decision produit separee.
 
-Sorties:
-
-- `non_requis` si les latences sont acceptees;
-- `strengthen` si un probleme est prouve: ouvrir alors `7C`, qui donne au
-  fallback le budget restant sans concurrence, changement de modele ni
-  modification du juge Identity.
-
-7D n'autorise ni patch runtime/frontend, ni appel provider.
+7D n'a autorise ni patch runtime/frontend, ni appel provider. Une reouverture
+exigerait une gene reelle constatee puis une decision distincte avant tout
+eventuel correctif.
 
 ## Fermeture
 
 - [x] Decision 7D explicite `inconclusive`, fondee sur la non-comparabilite
   prouvee des mesures disponibles.
-- [x] Aucun correctif sans benefice prouve; aucun patch runtime ou frontend.
-- [x] `7C` n'est pas cree. Le Lot 7 reste ouvert jusqu'a la preuve naturelle
-  manquante; le Lot Z reste non commence.
+- [x] Decision produit `non_requis` a ce jour prise par Tof malgre la latence
+  courante non mesuree; aucun patch runtime ou frontend.
+- [x] `7C` n'est pas cree. Le Lot 7 est ferme; le Lot Z peut commencer.
 
 # LOT 8 - Decisions de modeles deja acquises
 
@@ -4779,7 +4783,8 @@ disponibilite d'un modele plus recent ne suffit pas.
 
 Statut: recale, non commence
 Nature: cloture proportionnee
-Dependance: Lots 5/6 fermes; 7D decide et eventuel 7C ferme
+Dependance: Lots 5/6/7 fermes; 7D technique `inconclusive`, decision produit
+Lot 7 `non_requis` a ce jour, aucun 7C
 
 4O.Z a deja audite la chaine causale Stimmung, Presence, final locks,
 JSON/streaming, persistance, capsule, manifest et projections. Le Lot Z ne
@@ -4823,8 +4828,9 @@ coherence finale.
 
 Le chantier est termine lorsque les acquis des Lots 0 a 4 restent vrais, les
 deux callers demandent un transport strict sur les branches compatibles, le
-Lot 6 et la latence ont une decision prouvee, toutes les surfaces racontent la
-meme architecture et aucune extension fonctionnelle n'a ete ajoutee.
+Lot 6 reste corrige, la decision produit Lot 7 `non_requis` reste distincte de
+la latence courante non mesuree, toutes les surfaces racontent la meme
+architecture et aucune extension fonctionnelle n'a ete ajoutee.
 
 ## Hors-scope
 
