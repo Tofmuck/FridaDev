@@ -839,6 +839,26 @@ def _load_strengthening_manifest(repo_root: Path) -> dict[str, Any]:
     return data
 
 
+def _require_strengthening_execution_sources(
+    repo_root: Path,
+    protocol: Mapping[str, Any],
+) -> None:
+    manifest = _load_strengthening_manifest(repo_root)
+    source_paths = {
+        "scorer_sha256": repo_root / "benchmark/suites/stimmung/dialogic_semantics.py",
+        "normalizer_sha256": repo_root / "app/core/stimmung_agent.py",
+        "aggregator_sha256": (
+            repo_root / "app/core/hermeneutic_node/inputs/stimmung_input.py"
+        ),
+    }
+    if any(
+        protocol.get(key) != manifest[key]
+        or _sha256_file(path) != manifest[key]
+        for key, path in source_paths.items()
+    ):
+        raise ValueError("strengthening_execution_sources_not_comparable")
+
+
 def build_strengthening_protocol(repo_root: Path, *, freeze_commit: str) -> dict[str, Any]:
     if _COMMIT_RE.fullmatch(str(freeze_commit)) is None:
         raise ValueError("invalid_freeze_commit")
@@ -1031,6 +1051,28 @@ def _load_final_strengthening_manifest(repo_root: Path) -> dict[str, Any]:
     }:
         raise ValueError("final_strengthening_candidate_not_distinct")
     return data
+
+
+def _require_final_strengthening_execution_sources(
+    repo_root: Path,
+    protocol: Mapping[str, Any],
+) -> None:
+    manifest = _load_final_strengthening_manifest(repo_root)
+    source_paths = {
+        "local_scorer_sha256": (
+            repo_root / "benchmark/suites/stimmung/causal_rescoring.py"
+        ),
+        "normalizer_sha256": repo_root / "app/core/stimmung_agent.py",
+        "aggregator_sha256": (
+            repo_root / "app/core/hermeneutic_node/inputs/stimmung_input.py"
+        ),
+    }
+    if any(
+        protocol.get(key) != manifest[key]
+        or _sha256_file(path) != manifest[key]
+        for key, path in source_paths.items()
+    ):
+        raise ValueError("final_strengthening_execution_sources_not_comparable")
 
 
 def build_final_strengthening_protocol(
@@ -2237,6 +2279,8 @@ def run_campaign(
     client: Any,
     progress: Any | None = None,
 ) -> list[dict[str, Any]]:
+    if protocol.get("protocol_version") == STRENGTHENING_PROTOCOL_VERSION:
+        _require_strengthening_execution_sources(repo_root, protocol)
     schedule = build_request_schedule(repo_root, protocol)
     candidate = protocol.get("protocol_version") == STRENGTHENING_PROTOCOL_VERSION
     corpus, _ = _load_inputs(
@@ -2510,6 +2554,7 @@ def run_final_strengthening_campaign(
     client: Any,
     progress: Any | None = None,
 ) -> list[dict[str, Any]]:
+    _require_final_strengthening_execution_sources(repo_root, protocol)
     from benchmark.suites.stimmung import causal_rescoring
 
     schedule = build_final_strengthening_request_schedule(repo_root, protocol)
@@ -4926,6 +4971,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     if args.output is None:
         raise SystemExit("--output is required for a live campaign")
+    if args.final_strengthening:
+        _require_final_strengthening_execution_sources(args.repo_root, protocol)
+    elif args.strengthening:
+        _require_strengthening_execution_sources(args.repo_root, protocol)
     client = OpenRouterClient.from_env(
         title=(
             "FridaDev/Lot4C2-Stimmung-Sonnet-Candidate"

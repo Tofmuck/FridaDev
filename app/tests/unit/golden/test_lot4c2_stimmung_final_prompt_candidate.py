@@ -7,6 +7,8 @@ import json
 import sys
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 
 def _repo_root() -> Path:
@@ -189,6 +191,54 @@ class Lot4C2StimmungFinalPromptCandidateTests(unittest.TestCase):
                 REPO_ROOT,
             )
 
+    def test_execution_refuses_source_drift_before_provider_or_progress(self) -> None:
+        class SentinelClient:
+            calls = 0
+
+            def chat_completion(self, *args, **kwargs):
+                self.calls += 1
+                raise AssertionError("provider boundary reached")
+
+        client = SentinelClient()
+        progress_events = []
+        with self.assertRaisesRegex(
+            ValueError,
+            "final_strengthening_execution_sources_not_comparable",
+        ):
+            dialogic_campaign.run_final_strengthening_campaign(
+                repo_root=REPO_ROOT,
+                protocol=self.protocol,
+                client=client,
+                progress=lambda *args: progress_events.append(args),
+            )
+        self.assertEqual(client.calls, 0)
+        self.assertEqual(progress_events, [])
+
+    def test_cli_refuses_source_drift_before_credentials_or_output(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output = Path(tmp) / "result.jsonl"
+            with patch.object(
+                dialogic_campaign.OpenRouterClient,
+                "from_env",
+                side_effect=AssertionError("credential boundary reached"),
+            ):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "final_strengthening_execution_sources_not_comparable",
+                ):
+                    dialogic_campaign.main(
+                        [
+                            "--repo-root",
+                            str(REPO_ROOT),
+                            "--freeze-commit",
+                            "f" * 40,
+                            "--final-strengthening",
+                            "--output",
+                            str(output),
+                        ]
+                    )
+            self.assertFalse(output.exists())
+
     def test_provider_visible_difference_is_only_the_single_prompt_rule(self) -> None:
         historical = dialogic_campaign.build_request_schedule(
             REPO_ROOT,
@@ -212,11 +262,15 @@ class Lot4C2StimmungFinalPromptCandidateTests(unittest.TestCase):
 
     def test_witness_run_uses_local_gate_and_reaches_eligible_primary(self) -> None:
         client = _WitnessClient(self.witness_by_dialogue, self.schedule)
-        records = dialogic_campaign.run_final_strengthening_campaign(
-            repo_root=REPO_ROOT,
-            protocol=self.protocol,
-            client=client,
-        )
+        with patch.object(
+            dialogic_campaign,
+            "_require_final_strengthening_execution_sources",
+        ):
+            records = dialogic_campaign.run_final_strengthening_campaign(
+                repo_root=REPO_ROOT,
+                protocol=self.protocol,
+                client=client,
+            )
         result = dialogic_campaign.validate_final_strengthening_artifact(
             records,
             REPO_ROOT,
@@ -240,11 +294,15 @@ class Lot4C2StimmungFinalPromptCandidateTests(unittest.TestCase):
             {"tone": "enthousiasme", "strength": 4}
         )
         client = _WitnessClient(witness, self.schedule)
-        records = dialogic_campaign.run_final_strengthening_campaign(
-            repo_root=REPO_ROOT,
-            protocol=self.protocol,
-            client=client,
-        )
+        with patch.object(
+            dialogic_campaign,
+            "_require_final_strengthening_execution_sources",
+        ):
+            records = dialogic_campaign.run_final_strengthening_campaign(
+                repo_root=REPO_ROOT,
+                protocol=self.protocol,
+                client=client,
+            )
         result = dialogic_campaign.validate_final_strengthening_artifact(
             records,
             REPO_ROOT,

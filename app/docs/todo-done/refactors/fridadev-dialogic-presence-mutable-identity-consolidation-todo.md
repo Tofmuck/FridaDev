@@ -4898,6 +4898,19 @@ erreur, skip ni expected failure. Le delta de `+28` depuis les `2860` du constat
 rouge correspond a `26` methodes auparavant bloquees par trois `setUpClass` et
 aux deux nouvelles preuves d'integrite; aucun test n'est masque ou retire.
 
+### Garde de reexecution Stimmung - 2 septembre 2026
+
+Deux clients sentinelles ont confirme qu'une reexecution `--strengthening` ou
+`--final-strengthening` pouvait encore atteindre la frontiere provider avec le
+normaliseur courant sous les empreintes historiques. Les deux frontieres
+d'execution verifient desormais, depuis leur manifest authentifie, le scorer,
+le normaliseur et l'agregateur avant credentials, appel, progression ou
+ecriture de resultat. Toute divergence est refusee explicitement; les loaders
+offline et la reconstruction des archives restent inchanges. Preuve hermetique:
+`30/30` tests cibles, incluant les deux appels directs, les deux raccords CLI,
+les archives intactes, le rejet d'un manifest altere et le protocole 4S.1 non
+concerne.
+
 ## Archivage
 
 - [x] deplacer ce fichier vers

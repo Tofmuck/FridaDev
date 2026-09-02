@@ -119,6 +119,54 @@ class Lot4C2StimmungSemanticStrengtheningTests(unittest.TestCase):
                         freeze_commit="f" * 40,
                     )
 
+    def test_execution_refuses_source_drift_before_provider_or_progress(self) -> None:
+        class SentinelClient:
+            calls = 0
+
+            def chat_completion(self, *args, **kwargs):
+                self.calls += 1
+                raise AssertionError("provider boundary reached")
+
+        client = SentinelClient()
+        progress_events = []
+        with self.assertRaisesRegex(
+            ValueError,
+            "strengthening_execution_sources_not_comparable",
+        ):
+            dialogic_campaign.run_campaign(
+                repo_root=REPO_ROOT,
+                protocol=self.protocol,
+                client=client,
+                progress=lambda *args: progress_events.append(args),
+            )
+        self.assertEqual(client.calls, 0)
+        self.assertEqual(progress_events, [])
+
+    def test_cli_refuses_source_drift_before_credentials_or_output(self) -> None:
+        with TemporaryDirectory() as tmp:
+            output = Path(tmp) / "result.jsonl"
+            with patch.object(
+                dialogic_campaign.OpenRouterClient,
+                "from_env",
+                side_effect=AssertionError("credential boundary reached"),
+            ):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "strengthening_execution_sources_not_comparable",
+                ):
+                    dialogic_campaign.main(
+                        [
+                            "--repo-root",
+                            str(REPO_ROOT),
+                            "--freeze-commit",
+                            "f" * 40,
+                            "--strengthening",
+                            "--output",
+                            str(output),
+                        ]
+                    )
+            self.assertFalse(output.exists())
+
     def test_candidate_changes_only_the_system_prompt_seen_by_the_provider(self) -> None:
         self.assertEqual(len(self.historical_schedule), 276)
         self.assertEqual(len(self.candidate_schedule), 276)
@@ -156,11 +204,15 @@ class Lot4C2StimmungSemanticStrengtheningTests(unittest.TestCase):
 
     def test_fake_run_reuses_normalizer_real_aggregator_and_strict_decision(self) -> None:
         client = _WitnessClient(self.witness_by_dialogue, self.candidate_schedule)
-        records = dialogic_campaign.run_campaign(
-            repo_root=REPO_ROOT,
-            protocol=self.protocol,
-            client=client,
-        )
+        with patch.object(
+            dialogic_campaign,
+            "_require_strengthening_execution_sources",
+        ):
+            records = dialogic_campaign.run_campaign(
+                repo_root=REPO_ROOT,
+                protocol=self.protocol,
+                client=client,
+            )
         validation = dialogic_campaign.validate_artifact(
             records,
             REPO_ROOT,
@@ -177,11 +229,15 @@ class Lot4C2StimmungSemanticStrengtheningTests(unittest.TestCase):
 
     def test_candidate_decision_rejects_one_failure_or_incomplete_result(self) -> None:
         client = _WitnessClient(self.witness_by_dialogue, self.candidate_schedule)
-        records = dialogic_campaign.run_campaign(
-            repo_root=REPO_ROOT,
-            protocol=self.protocol,
-            client=client,
-        )
+        with patch.object(
+            dialogic_campaign,
+            "_require_strengthening_execution_sources",
+        ):
+            records = dialogic_campaign.run_campaign(
+                repo_root=REPO_ROOT,
+                protocol=self.protocol,
+                client=client,
+            )
         scores = [record for record in records if record["record_type"] == "dialogue_score"]
 
         historical_records = dialogic_campaign.load_historical_provider_artifact(REPO_ROOT)
@@ -236,11 +292,18 @@ class Lot4C2StimmungSemanticStrengtheningTests(unittest.TestCase):
         )
 
     def test_candidate_artifact_rejects_raw_content_and_fingerprint_drift(self) -> None:
-        records = dialogic_campaign.run_campaign(
-            repo_root=REPO_ROOT,
-            protocol=self.protocol,
-            client=_WitnessClient(self.witness_by_dialogue, self.candidate_schedule),
-        )
+        with patch.object(
+            dialogic_campaign,
+            "_require_strengthening_execution_sources",
+        ):
+            records = dialogic_campaign.run_campaign(
+                repo_root=REPO_ROOT,
+                protocol=self.protocol,
+                client=_WitnessClient(
+                    self.witness_by_dialogue,
+                    self.candidate_schedule,
+                ),
+            )
 
         raw_mutant = copy.deepcopy(records)
         raw_mutant[0]["provider_output"] = "synthetic free text"
