@@ -579,7 +579,7 @@ Tests : `app/tests/unit/biblio/test_librarian_tools.py`,
   existants ; ne pas avancer au-delà de la coupe ni inventer une nouvelle ancre.
 - [x] Préserver page courte complète, sections multi-pages et extraction canonique
   segmentée déjà correcte. Ne pas relever globalement les plafonds.
-- [ ] Livrer la correction puis la preuve agentique bornée convenue ci-dessous,
+- [x] Livrer la correction puis la preuve agentique bornée convenue ci-dessous,
   mettre à jour contrat/observabilité affectés et fermer B1 seulement avec celle-ci.
 
 **Fermeture :** aucun « complet » trompeur ; le reste non lu reste identifiable.
