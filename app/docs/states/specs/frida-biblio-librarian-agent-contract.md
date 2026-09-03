@@ -1489,3 +1489,13 @@ La tentative live post-livraison du 3 septembre 2026 est tracee dans
 Deux plans agentiques reels ont ete observes, mais aucun n'a atteint la coupe
 intra-page avec des coordonnees de page. Elle atteste le chemin agentique et sa
 limite de coordonnees, pas le comportement produit B1 complet; B1 reste ouvert.
+
+La finalisation est tracee dans
+`app/docs/states/baselines/biblio-smokes/b1-section-truncation-live-20260903T123527Z.jsonl`.
+Le checker strict `section_integrity` exige ensemble bibliothecaire actif, plan
+`section_complete_extraction`, outils `agent_first`, `page_read` tronque,
+segment incomplet, rendu partiel, lock exact et etat sans ancre inventee. Le cas
+`section_integrity_continue` exige l'appel du bibliothecaire puis accepte le
+repli deterministe seulement s'il ne fait aucun GET, conserve la page incomplete
+et rend la clarification. Ces deux cas live sont `met`; B1 est ferme. Le reste
+intra-page reste signale mais non accessible progressivement sans offset.

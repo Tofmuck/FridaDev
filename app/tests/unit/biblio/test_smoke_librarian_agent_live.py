@@ -149,6 +149,10 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
         self.assertEqual(expectations["runtime_expectation_status"], "met")
         self.assertEqual(expectations["agent_expectation_status"], "met")
         self.assertEqual(expectations["product_expectation_status"], "met")
+        self.assertEqual(
+            smoke.smoke_exit_code([{**record, **expectations}]),
+            smoke.EXIT_OK,
+        )
         for mutation in (
             {"agent_executed_tool_names": ["resolve_section", "section_bounds"]},
             {"answer_range_complete": True},

@@ -726,6 +726,16 @@ Extraction de section complete budgetee BIB-23:
   explorees exposaient des unites `sections` non convertibles en pages. Aucun
   `page_read` tronque n'a donc ete exerce et cette tentative ne ferme pas B1.
 
+La preuve finale B1 est
+`app/docs/states/baselines/biblio-smokes/b1-section-truncation-live-20260903T123527Z.jsonl`.
+Une section publique deja employee par BIB-23, bornee en `pages`, y traverse le
+vrai chemin `section_complete_extraction`: `page_read` coupe une page de plus de
+2 500 caracteres, l'objet reste `section_segment` avec `range_complete=false`,
+le rendu est partiel et le final lock porte seulement sur l'extrait recu. Le
+tour « continue » conserve la page incomplete et clarifie sans GET ni saut a la
+page suivante. B1 est ferme; l'absence d'offset de `page_read` reste une limite
+explicite, pas une promesse de lecture progressive du reste.
+
 Correction transition agentique live 4E:
 
 - les familles canoniques live doivent etre exposees au bibliothecaire comme

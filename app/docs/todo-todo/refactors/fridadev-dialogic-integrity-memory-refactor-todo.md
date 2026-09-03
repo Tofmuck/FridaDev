@@ -2,9 +2,8 @@
 
 Date de cadrage : 2 septembre 2026.
 
-**Statut : roadmap ouverte ; I1, I2, M1, M2 et O1 fermés et livrés ; correctif
-B1 prouvé et livré, preuve produit agentique en attente ; B2 et les lots
-suivants non commencés.**
+**Statut : roadmap ouverte ; I1, I2, M1, M2, O1 et B1 fermés et livrés ; B2
+et les lots suivants non commencés.**
 
 ## 1. But et décision de périmètre
 
@@ -72,7 +71,7 @@ sans attendre O1.
 | 3 | M1 | Un résumé n'est acquis qu'après stockage confirmé | F03 | xhigh | fermé et livré |
 | 4 | M2 | La déduplication ne retire pas une formulation distincte avant jugement | F04 | xhigh | fermé et livré |
 | 5 | O1 | Les hints dialogiques sont comptés par leur vrai reader | F07 | high | fermé et livré |
-| 6 | B1 | Un extrait tronqué n'est jamais annoncé complet | F06 | xhigh | correctif prouvé et livré ; preuve agentique en attente |
+| 6 | B1 | Un extrait tronqué n'est jamais annoncé complet | F06 | xhigh | fermé et livré |
 | 7 | B2 | Une reprise appartient au document réellement ouvert | F11 | high | non commencé |
 | 8 | Z | Vérification finale limitée aux raccords modifiés | ci-dessus | high | non commencé |
 
@@ -82,7 +81,7 @@ sans attendre O1.
 - [x] M1 fermé avec preuves et livraison convenues.
 - [x] M2 fermé avec preuves et livraison convenues.
 - [x] O1 fermé avec preuves et livraison convenues.
-- [ ] B1 fermé avec preuve agentique requise.
+- [x] B1 fermé avec preuve agentique requise.
 - [ ] B2 fermé avec preuve agentique requise.
 - [ ] Z fermé ; roadmap archivée et liens actualisés.
 
@@ -658,6 +657,38 @@ Statut honnête: **correctif technique prouvé et livré, preuve produit en
 attente**. B1 reste ouvert et sa dernière case reste décochée. Le reste d'une
 page coupée est signalé comme non reçu et aucun saut n'est exécuté; il n'est pas
 accessible avec le `page_read` actuel dépourvu d'offset. B2 n'est pas commencé.
+
+### Finalisation de la preuve produit B1 — 3 septembre 2026
+
+- La cible a été établie avant tout nouvel appel modèle par `29` GET Catalogue:
+  document public déjà employé par BIB-23 (`88ab236b`), section n° 12 résolue
+  sans ambiguïté, bornes réelles `pages 10–10`. Son texte nettoyé compte
+  `4 654` caractères; le vrai `page_read` retourne le préfixe borné avec
+  `page_truncated=true`.
+- Le checker existant classe désormais explicitement `section_integrity` et
+  `section_integrity_continue`. Il exige le plan agentique, le `page_read`
+  réellement exécuté, la vérité segment/incomplétude, le rendu, le lock et
+  l'état; la reprise n'est verte que si le reste persiste et qu'aucun GET ou
+  ancre suivante ne saute la coupe. Les attentes P01–P18 ne changent pas.
+- Preuve live content-free:
+  `app/docs/states/baselines/biblio-smokes/b1-section-truncation-live-20260903T123527Z.jsonl`.
+  Le premier tour a exercé `section_complete_extraction` en `agent_first`, puis
+  lu et coupé la page 10: `section_segment`, `range_complete=false`, page 10
+  incomplète, annonce partielle, extrait exact rendu et final lock autorisé.
+- Le second tour « Continue. » a bien appelé le bibliothécaire. Son plan
+  `passage_continue_next_segment` proposait `page_read`, mais le garde-fou
+  déterministe l'a refusé avant Catalogue: `0` GET, clarification explicite,
+  page 10 toujours incomplète et aucune ancre page 11 inventée. Cette
+  clarification n'est pas présentée comme une décision sémantique du modèle.
+- Cette passe a consommé `33/60` GET, `2/3` tours et `2/3` tentatives provider,
+  sans fallback. Au tarif contrôlé de 1,75 USD/M tokens d'entrée et 14 USD/M
+  tokens de sortie, la borne pessimiste des deux appels est `1,848 USD`; le
+  coût facturé n'est pas exposé par le runner. Le troisième témoin court n'a
+  pas été rappelé, les contre-cas hermétiques le couvrant déjà.
+
+B1 est fermé. Sa garantie reste bornée: une coupe intra-page n'est plus annoncée
+complète et son reste n'est pas sauté, mais `page_read` sans offset ne rend pas
+ce reste progressivement accessible. B2 n'est pas commencé.
 
 ## 11. B2 — Garder les coordonnées dans leur document
 
