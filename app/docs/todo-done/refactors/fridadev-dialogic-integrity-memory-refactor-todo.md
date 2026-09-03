@@ -2,9 +2,9 @@
 
 Date de cadrage : 2 septembre 2026.
 
-**Statut : roadmap ouverte ; I2, M1, M2, O1, B1 et B2 restent fermés et
-livrés ; I1, livré le 2 septembre, est invalidé à sa frontière `choices=[]`
-par la vérification Z du 3 septembre ; Z est ouvert et sa fermeture refusée.**
+**Statut : roadmap fermée et archivée ; I1, I2, M1, M2, O1, B1 et B2 sont
+fermés et livrés ; la vérification Z est fermée après correction de la frontière
+`choices=[]` nue le 3 septembre 2026.**
 
 ## 1. But et décision de périmètre
 
@@ -22,7 +22,7 @@ Le présent GO autorise la création et la livraison Git de cette documentation,
 pas l'exécution des corrections. Chaque lot ci-dessous sera confié séparément,
 avec son périmètre et sa livraison explicites. Un lot ne lance pas le suivant.
 
-**Source :** [audit de recherche du 2 septembre](../audits/fridadev-research-feature-audit-2026-09-02.md),
+**Source :** [audit de recherche du 2 septembre](../../todo-todo/audits/fridadev-research-feature-audit-2026-09-02.md),
 commit `49ed4b3cb1e8b7e2e03c1ac59db0e7dd3572d881`.
 Les identifiants Fxx renvoient exclusivement à cet audit.
 
@@ -67,25 +67,25 @@ sans attendre O1.
 
 | Ordre | Lot | Résultat attendu | Finding | Réflexion conseillée | Statut |
 | --- | --- | --- | --- | --- | --- |
-| 1 | I1 | Une erreur de streaming reste une interruption | F01 | xhigh | livré, puis invalidé par Z sur `choices=[]` nu |
+| 1 | I1 | Une erreur de streaming reste une interruption | F01 | xhigh | fermé et livré, y compris `choices=[]` nu |
 | 2 | I2 | Une lecture Identity en panne ne permet aucun remplacement | F02 | xhigh | fermé et livré |
 | 3 | M1 | Un résumé n'est acquis qu'après stockage confirmé | F03 | xhigh | fermé et livré |
 | 4 | M2 | La déduplication ne retire pas une formulation distincte avant jugement | F04 | xhigh | fermé et livré |
 | 5 | O1 | Les hints dialogiques sont comptés par leur vrai reader | F07 | high | fermé et livré |
 | 6 | B1 | Un extrait tronqué n'est jamais annoncé complet | F06 | xhigh | fermé et livré |
 | 7 | B2 | Une reprise appartient au document réellement ouvert | F11 | high | fermé et livré avec preuve produit |
-| 8 | Z | Vérification finale limitée aux raccords modifiés | ci-dessus | high | fermeture refusée ; I1 à corriger |
+| 8 | Z | Vérification finale limitée aux raccords modifiés | ci-dessus | high | fermé ; roadmap archivée |
 
 - [x] Cadrage documentaire et limites de preuve consignés.
 - [x] I1 livré avec les preuves convenues au moment du lot.
-- [ ] I1 revalidé après correction du cas `choices=[]` nu découvert par Z.
+- [x] I1 revalidé après correction du cas `choices=[]` nu découvert par Z.
 - [x] I2 fermé avec preuves et livraison convenues.
 - [x] M1 fermé avec preuves et livraison convenues.
 - [x] M2 fermé avec preuves et livraison convenues.
 - [x] O1 fermé avec preuves et livraison convenues.
 - [x] B1 fermé avec preuve agentique requise.
 - [x] B2 fermé avec preuve agentique requise.
-- [ ] Z fermé ; roadmap archivée et liens actualisés.
+- [x] Z fermé ; roadmap archivée et liens actualisés.
 
 ## 4. Règles communes d'exécution
 
@@ -181,12 +181,13 @@ qualifiées explicitement, sans réécrire tout le protocole.
 - Sensibilité : le retrait temporaire de la reconnaissance des deux marqueurs
   provider remet la preuve centrale en échec même lorsque `[DONE]` suit la
   trame fautive ; sa restauration la remet au vert.
-- Qualification bornée : seul un objet `error` top-level ou
-  `finish_reason="error"` rejoint `upstream_error`. Une trame vide, de metadata,
-  d'usage ou portant une fin non-error n'est pas reclassée par I1. Un événement
+- Qualification bornée de la livraison initiale : un objet `error` top-level ou
+  `finish_reason="error"` rejoint `upstream_error`; une trame metadata/usage
+  reconnue ou portant une fin non-error n'est pas reclassée. Un événement
   `data:` non JSON ou un EOF sans `[DONE]` rejoint aussi l'interruption, faute de
-  preuve d'achèvement provider. Aucun contrat navigateur n'a changé ; aucune
-  batterie frontend n'est donc requise.
+  preuve d'achèvement provider. Le cas distinct `choices=[]` nu, découvert en Z,
+  est corrigé dans la section de fermeture finale. Aucun contrat navigateur n'a
+  changé.
 - Environnement : image locale existante, conteneur jetable, checkout monté
   read-only, `--network none`, `/tmp` en tmpfs, sans provider, secret, DB
   opérateur ni donnée live. Aucun tour de dialogue réel n'a été lancé.
@@ -838,18 +839,18 @@ uniquement pour obtenir un second rapport.
 
 ## 12. Z — Fermeture bornée, sans nouvel audit général
 
-- [ ] Vérifier les sept sorties I1/I2/M1/M2/O1/B1/B2, leurs contrats, preuves et
+- [x] Vérifier les sept sorties I1/I2/M1/M2/O1/B1/B2, leurs contrats, preuves et
   états de livraison ; conserver explicitement toute réserve réelle.
-- [ ] Exécuter une seule découverte Python hermétique de clôture, après les lots,
+- [x] Exécuter une découverte Python hermétique de clôture, après les lots,
   et les validations frontend des surfaces effectivement modifiées. Ne pas la
   refaire mécaniquement à chaque micro-correction.
-- [ ] Vérifier les frontières directement voisines : sauvegarde du tour,
+- [x] Vérifier les frontières directement voisines : sauvegarde du tour,
   dérivations, état résumé, staging mutable, payload de l'arbitre, rendu Biblio.
   Réutiliser les preuves acquises ; aucune campagne générale provider.
-- [ ] Vérifier Git propre/aligné, empreintes et health utiles, puis synchroniser
+- [x] Vérifier Git propre/aligné, empreintes et health utiles, puis synchroniser
   le statut global et le hub documentaire. Ne pas prétendre mesurer la latence
   courante ni la qualité sémantique globale de Frida.
-- [ ] Quand les lots sont clos ou explicitement requalifiés avec preuve/décision,
+- [x] Quand les lots sont clos ou explicitement requalifiés avec preuve/décision,
   archiver cette roadmap dans `todo-done/refactors/` et arrêter le chantier.
 
 Un finding hors périmètre découvert en Z est conservé dans l'audit avec sa
@@ -938,6 +939,44 @@ existants, sans seconde machine de finalisation ni élargissement du protocole.
 
 Décision: **Z reste ouvert, la roadmap n'est pas déplacée et aucun correctif
 runtime n'est engagé dans ce lot.**
+
+### Correction I1 et fermeture Z — 3 septembre 2026
+
+Le correctif borné demandé par le premier passage Z est livré. Le reader amont
+extrait d'abord les métadonnées provider canoniques puis refuse uniquement une
+liste `choices=[]` qui ne porte ni identifiant, ni modèle, ni provider, ni usage
+reconnus. Avant un fragment comme après un fragment, cette forme nue rejoint le
+chemin existant `upstream_error` : terminal d'erreur, assistant non canonisé et
+zéro effet post-persistance. Les trames metadata/usage reconnues à choix vide
+restent nominales ; aucune seconde machine de finalisation n'est créée.
+
+La fixture partagée emploie désormais les vrais extracteur et merger de
+métadonnées OpenRouter. Elle ne fabrique donc plus un modèle demandé pour toute
+trame et éprouve la même frontière que le produit. Les deux régressions ciblées
+échouaient avant le patch, puis les suites parser/flux/chat ont passé `54/54` et
+`63/63`. Après livraison, la sélection élargie exécutée directement depuis
+l'image a passé `90/90`.
+
+La découverte Python autoritative a été exécutée depuis un dépôt propre monté
+sous `/workspace`, avec réseau coupé, filesystem read-only et `/tmp` extérieur
+au dépôt : `2933/2933` tests passent en `731,529 s`, sans échec, erreur ni skip.
+Deux essais antérieurs ne constituent pas des résultats produit : le premier
+masquait `benchmark/`, le second faisait de `/` la racine du dépôt et activait
+correctement la garde `raw_packet_inside_repo_forbidden` sur `/tmp`. Ils sont
+conservés comme erreurs de runner et n'ont entraîné aucun patch de convenance.
+
+Commit applicatif et contrat :
+`cdfa3f91ea1a8d979ac63ca078698eb730b822e0`. Le seul service
+`platform-fridadev` a été reconstruit sans pull puis recréé sans dépendances.
+Image livrée :
+`sha256:9f28e2075b58841e5dc62c25cc2380575cd8f91204801d38d8a8d24023e44442` ;
+`StartedAt=2026-09-03T20:34:01.919612791Z`, HTTP interne `200`, healthy,
+restart `0`, OOM `false`. Les quatre empreintes checkout/conteneur coïncident
+et les 31 conteneurs voisins conservent leurs identifiants et `StartedAt`.
+
+Décision finale : **Z est fermé et cette roadmap est archivée.** Les réserves
+de la section 13 restent dans l'audit source ; cette fermeture ne les corrige,
+ne les invalide et ne les accepte pas tacitement.
 
 ## 13. Réserves hors périmètre, conservées dans l'audit
 
