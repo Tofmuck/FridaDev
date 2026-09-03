@@ -14,9 +14,9 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 
 ### Current-state
 
-- [Revue de recherche FridaDev, fonctionnalité par fonctionnalité — 2 septembre 2026](todo-todo/audits/fridadev-research-feature-audit-2026-09-02.md) : audit source conservé ; F01, F02, F03, F04 et F07 sont corrigés et livrés par I1, I2, M1, M2 et O1 ; F11 est techniquement corrigé et livré par B2, dont la preuve produit reste en attente ; les autres findings restent inchangés.
+- [Revue de recherche FridaDev, fonctionnalité par fonctionnalité — 2 septembre 2026](todo-todo/audits/fridadev-research-feature-audit-2026-09-02.md) : audit source conservé ; F01, F02, F03, F04, F07 et F11 sont corrigés, prouvés et livrés par I1, I2, M1, M2, O1 et B2 ; les autres findings restent inchangés.
 
-- [Roadmap intégrité et continuité de la mémoire dialogique](todo-todo/refactors/fridadev-dialogic-integrity-memory-refactor-todo.md) : correctifs séparés streaming/Identity, puis Memory, compteur des hints et lecture/reprise Biblio ; I1, I2, M1, M2, O1 et B1 sont fermés et livrés sur le runtime applicatif. B1 possède sa preuve produit agentique content-free ; le checker strict B2 est finalisé au commit `8d53207b`, mais B2 reste ouvert : la preuve agentique bornée du 3 septembre n'a pas ancré A (`not_found`), donc la porte inter-tours n'a appelé ni B ni la reprise. Z n'est pas commencé. Les autres findings restent dans l'audit source.
+- [Roadmap intégrité et continuité de la mémoire dialogique](todo-todo/refactors/fridadev-dialogic-integrity-memory-refactor-todo.md) : correctifs séparés streaming/Identity, puis Memory, compteur des hints et lecture/reprise Biblio ; I1, I2, M1, M2, O1, B1 et B2 sont fermés et livrés. B1 et B2 possèdent leurs preuves produit agentiques content-free ; B2 sépare explicitement l'échec visible d'un plan agent du succès du garde d'intégrité documentaire. Z n'est pas commencé. Les autres findings restent dans l'audit source.
 
 - Audit repo canonique: `todo-done/audits/fridadev_repo_audit.md`
 - Roadmap finale produit Frida 1.0: `todo-todo/product/fridadev-final-product-roadmap-todo.md`

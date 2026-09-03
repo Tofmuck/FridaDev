@@ -712,7 +712,7 @@ Tests : `app/tests/unit/biblio/test_conversation_state.py`,
   de document ; accepter les nouvelles coordonnées seulement avec leur provenance B.
 - [x] Prouver conservation de la reprise dans A inchangé, absence de coordonnées
   inventées dans B, acceptation d'une ancre valide B et reset explicite préservé.
-- [ ] Vérifier après sérialisation/réhydratation, projection et navigation réelles ;
+- [x] Vérifier après sérialisation/réhydratation, projection et navigation réelles ;
   documenter et livrer B2 avec la preuve agentique convenue.
 
 **Fermeture :** aucune ancre mixte A/B. Si le finding est déjà faux au HEAD,
@@ -786,6 +786,34 @@ Statut honnête: **correctif technique prouvé et livré, preuve produit en
 attente**. B2 reste ouvert: la nouvelle preuve n'a pas établi l'ancre A, donc
 n'a pu ni ouvrir réellement B ni atteindre la reprise depuis l'état B. Z n'est
 pas commencé.
+
+### Finalisation B2 — 3 septembre 2026
+
+- Le scénario final retire les recherches par titre sans rapport avec F11. Il
+  donne au bibliothécaire les deux identifiants canoniques publics et une page A
+  préalablement vérifiée: A est lu par `page_read` à la page 131, puis B est
+  ouvert par `document_open_summary` sans lecture de page.
+- Le checker accepte désormais une ancre B2 exacte issue d'une page même si le
+  runtime ne fabrique pas d'objet `passage`: document A, position A, lane
+  injectée et GET `page` suffisent. Cette correction ne relâche ni l'identité
+  canonique ni l'exigence d'une position réelle.
+- La preuve live content-free
+  `app/docs/states/baselines/biblio-smokes/b2-document-coordinate-provenance-live-20260903T184059Z.jsonl`
+  établit successivement A (`d1f49f74`, page 131), l'ouverture de B (`62db0e10`)
+  et l'invalidation complète des coordonnées A. Le tour « Continue. » conserve B,
+  n'envoie aucun GET Catalogue, n'invente aucune coordonnée et rend la
+  clarification bornée existante.
+- Le plan agent du troisième tour reste explicitement invalide avec
+  `biblio_librarian_agent_product_method_tool_mismatch`. Le checker conserve cet
+  échec sur l'axe agent mais ne le confond plus avec l'intégrité produit B2:
+  l'appel modèle a eu lieu, son plan n'a exécuté aucun outil et le garde
+  déterministe a protégé l'état. Aucun succès agent n'est fabriqué.
+- La campagne finale a utilisé `3/3` appels GPT-5.2 high, sans retry ni fallback,
+  et `4/20` GET Catalogue dont deux de reconnaissance. La borne pessimiste est
+  `2,772 USD`; aucun texte, prompt, paramètre d'outil ou contenu provider n'est
+  conservé. Les `92` tests ciblés état/navigation/agent/checker sont verts.
+
+B2 est fermé. Z reste non commencé.
 
 ### Preuve live Biblio : autorité et proportion
 

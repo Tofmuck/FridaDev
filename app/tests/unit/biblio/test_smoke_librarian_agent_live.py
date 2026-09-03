@@ -378,6 +378,64 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
         self.assertEqual(missing_model["agent_expectation_status"], "failed")
         self.assertEqual(missing_model["product_expectation_status"], "failed")
 
+    def test_b2_page_seed_accepts_exact_document_anchor_without_passage_object(self) -> None:
+        case = smoke.BiblioLibrarianProductSmokeCase(
+            "B2_A",
+            "state_seed",
+            RAW_QUERY,
+            "b2-sequence",
+            expected_document_id="a" * 64,
+        )
+        record = {
+            "case_id": "B2_A",
+            "query_kind": "agent_first",
+            "status": "agent_first_executed",
+            "endpoint_count": 1,
+            "endpoint_kinds": ["page"],
+            "lane_injected": True,
+            "passage_count": 0,
+            "b2_expected_document_id_present": True,
+            "b2_state_after_expected_document_match": True,
+            "b2_state_after_last_result_expected_document_match": True,
+            "state_after_page_no": 131,
+            "agent_mode": "active",
+            "agent_present": True,
+            "agent_model_called": True,
+            "agent_candidate_plan_present": True,
+            "agent_status": "evaluated",
+            "agent_plan_tool_names": ["page_read"],
+            "agent_executed_tool_names": ["page_read"],
+        }
+
+        evaluated = smoke._evaluate_expectations(case, record)
+
+        self.assertEqual(evaluated["runtime_expectation_status"], "met")
+        self.assertEqual(evaluated["product_expectation_status"], "met")
+
+    def test_b2_guarded_continue_keeps_invalid_agent_plan_visible_without_failing_product(self) -> None:
+        record = _document_switch_continue_record()
+
+        product_status, product_reason = smoke.expectations._combine_expectations(
+            "document_switch_continue",
+            record,
+            runtime_status="met",
+            runtime_reason="document_switch_continue_guarded_clarification",
+            agent_status="failed",
+            agent_reason="biblio_librarian_agent_product_method_tool_mismatch",
+        )
+        unrelated_status, _ = smoke.expectations._combine_expectations(
+            "document_switch_continue",
+            record,
+            runtime_status="met",
+            runtime_reason="document_switch_continue_guarded_clarification",
+            agent_status="failed",
+            agent_reason="agent_model_not_called",
+        )
+
+        self.assertEqual(product_status, "met")
+        self.assertEqual(product_reason, "document_switch_continue_invalid_agent_plan_guarded")
+        self.assertEqual(unrelated_status, "failed")
+
     def test_b2_switch_rejects_same_short_id_with_different_canonical_target(self) -> None:
         document_a_id = "a" * 64
         document_b_id = "b" * 64

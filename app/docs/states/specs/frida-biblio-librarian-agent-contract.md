@@ -272,6 +272,15 @@ partielle du meme document conserve en revanche ses references exploitables.
 Le plan agent ne peut donc pas utiliser l'identite de B avec une position ou un
 hash conserve de A; sans ancre B, le garde deterministe exige la clarification.
 
+La preuve live B2 du 3 septembre 2026 est conservee dans
+`app/docs/states/baselines/biblio-smokes/b2-document-coordinate-provenance-live-20260903T184059Z.jsonl`.
+Elle traverse une lecture exacte dans A, l'ouverture exacte de B puis
+« Continue. »: B remplace A sans reprendre sa page, et la reprise sans ancre B
+ne produit aucun GET ni coordonnee. Le plan agent invalide du dernier tour reste
+classe en echec sur l'axe agent; son rejet suivi de la clarification
+deterministe est en revanche un succes du mur produit. Les deux qualifications
+ne doivent pas etre fusionnees.
+
 ## 7. Sortie agent
 
 Le contrat agent courant est maintenant coupe en deux couches explicites.

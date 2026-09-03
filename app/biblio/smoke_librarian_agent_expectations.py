@@ -101,11 +101,19 @@ def _evaluate_runtime_expectation(case_kind: str, record: Mapping[str, Any]) -> 
             return "partial", "catalogue_listed_without_complete_total"
         return "failed", "catalogue_list_not_reached"
     if kind in {"range_extract", "state_seed"}:
-        if _to_bool(record.get("b2_expected_document_id_present")) and (
-            not _to_bool(record.get("b2_state_after_expected_document_match"))
-            or not _to_bool(record.get("b2_state_after_last_result_expected_document_match"))
-        ):
-            return "failed", "b2_source_document_mismatch"
+        if _to_bool(record.get("b2_expected_document_id_present")):
+            if (
+                not _to_bool(record.get("b2_state_after_expected_document_match"))
+                or not _to_bool(record.get("b2_state_after_last_result_expected_document_match"))
+            ):
+                return "failed", "b2_source_document_mismatch"
+            if endpoint_count > 0 and lane_injected and (
+                _to_int(record.get("state_after_page_no")) > 0
+                or _to_int(record.get("state_after_para_no")) > 0
+                or _to_int(record.get("state_after_paragraph_id")) > 0
+                or bool(_safe_token(record.get("state_after_passage_hash")))
+            ):
+                return "met", "b2_source_anchor_available"
         if passage_count > 0 and lane_injected:
             return "met", "passage_lane_available"
         if endpoint_count > 0:
@@ -427,6 +435,11 @@ def _combine_expectations(
         return "failed", consistency_reason
     if runtime_status == "met":
         if b2_proof_required and agent_status != "met":
+            if (
+                kind == "document_switch_continue"
+                and agent_reason == "biblio_librarian_agent_product_method_tool_mismatch"
+            ):
+                return "met", "document_switch_continue_invalid_agent_plan_guarded"
             return "failed", agent_reason
         return "met", runtime_reason
     if kind == "external_theme" and runtime_reason == "theme_search_not_found_without_context":
