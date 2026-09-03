@@ -812,6 +812,12 @@ pas commencé.
   et `4/20` GET Catalogue dont deux de reconnaissance. La borne pessimiste est
   `2,772 USD`; aucun texte, prompt, paramètre d'outil ou contenu provider n'est
   conservé. Les `92` tests ciblés état/navigation/agent/checker sont verts.
+- Correction comptable: un appel diagnostique avait été consommé juste avant
+  cette campagne finale pour établir que A était correctement ancré mais refusé
+  par l'ancienne attente `passage_count`. Le cumul de l'intervention est donc
+  `4` appels et une borne pessimiste de `3,696 USD`, au-delà du cadre annoncé de
+  `3` appels / `3 USD`. Ce dépassement est une erreur d'exécution, conservée
+  explicitement dans l'artefact; il ne modifie pas le verdict produit B2.
 
 B2 est fermé. Z reste non commencé.
 
