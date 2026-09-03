@@ -22,7 +22,7 @@ EXPECTATION_OUTPUT_KEYS = frozenset(
 
 def evaluate_expectations(case_kind: str, record: Mapping[str, Any]) -> dict[str, str]:
     runtime_status, runtime_reason = _evaluate_runtime_expectation(case_kind, record)
-    agent_status, agent_reason = _evaluate_agent_expectation(record)
+    agent_status, agent_reason = _evaluate_agent_expectation(record, case_kind=case_kind)
     product_status, product_reason = _combine_expectations(
         case_kind,
         record,
@@ -135,10 +135,18 @@ def _evaluate_runtime_expectation(case_kind: str, record: Mapping[str, Any]) -> 
         if query_kind in {"state_followup", "agent_first"} or lane_injected:
             return "partial", "origin_clarification_without_anchor"
         return "failed", "origin_check_not_reached"
+    if kind == "section_integrity":
+        return _evaluate_section_integrity(record)
+    if kind == "section_integrity_continue":
+        return _evaluate_section_integrity_continue(record)
     return "partial", "expectation_not_classified"
 
 
-def _evaluate_agent_expectation(record: Mapping[str, Any]) -> tuple[str, str]:
+def _evaluate_agent_expectation(
+    record: Mapping[str, Any],
+    *,
+    case_kind: str = "",
+) -> tuple[str, str]:
     mode = _safe_token(record.get("agent_mode"))
     if mode == agent_contract.MODE_OFF:
         return "met", "agent_off_explicit"
@@ -157,6 +165,14 @@ def _evaluate_agent_expectation(record: Mapping[str, Any]) -> tuple[str, str]:
     agent_status = _safe_token(record.get("agent_status"))
     plan_tools = _safe_token_list(record.get("agent_plan_tool_names"))
     executed_tools = _safe_token_list(record.get("agent_executed_tool_names"))
+    if _safe_token(case_kind) == "section_integrity_continue":
+        if _safe_token(record.get("agent_plan_product_method")) != _safe_token(
+            product_methods.PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT
+        ):
+            return "failed", "section_integrity_continue_agent_method_missing"
+        if "page_read" not in set(plan_tools):
+            return "failed", "section_integrity_continue_agent_page_read_plan_missing"
+        return "met", "section_integrity_continue_agent_plan_guarded"
     if agent_status == "fallback_deterministic":
         if executed_tools and _safe_token(record.get("agent_execution_scope")) == "agent_first":
             return "fallback_repaired", "agent_first_fallback_repaired"
@@ -166,6 +182,99 @@ def _evaluate_agent_expectation(record: Mapping[str, Any]) -> tuple[str, str]:
         reason = _safe_token(record.get("agent_reason_code")) or "agent_candidate_plan_without_tool"
         return "failed", reason
     return "met", "agent_active_plan_observed"
+
+
+def _evaluate_section_integrity(record: Mapping[str, Any]) -> tuple[str, str]:
+    if _safe_token(record.get("query_kind")) != "agent_first":
+        return "failed", "section_integrity_agent_first_not_reached"
+    if _safe_token(record.get("status")) != "agent_first_executed":
+        return "failed", "section_integrity_plan_not_executed"
+    expected_method = _safe_token(product_methods.PRODUCT_METHOD_SECTION_COMPLETE_EXTRACTION)
+    if _safe_token(record.get("agent_plan_product_method")) != expected_method:
+        return "failed", "section_integrity_agent_method_missing"
+    if _safe_token(record.get("agent_plan_answer_mode")) != "section_complete_budgeted":
+        return "failed", "section_integrity_answer_mode_missing"
+    if _safe_token(record.get("product_method_effective")) != expected_method:
+        return "failed", "section_integrity_product_method_missing"
+    executed_tools = set(_safe_token_list(record.get("agent_executed_tool_names")))
+    endpoints = set(_safe_token_list(record.get("endpoint_kinds")))
+    if "page_read" not in executed_tools or "page" not in endpoints:
+        return "failed", "section_integrity_truncated_page_not_read"
+    incomplete_pages = tuple(_to_int(page) for page in _sequence(record.get("answer_incomplete_pages")))
+    incomplete_page = _to_int(record.get("state_incomplete_page_no"))
+    if (
+        _safe_token(record.get("answer_status")) != "ready"
+        or _safe_token(record.get("answer_content_kind")) != "section_segment"
+        or _safe_token(record.get("answer_range_state")) != "segment"
+        or _to_bool(record.get("answer_range_complete"))
+        or not _to_bool(record.get("answer_page_truncated"))
+    ):
+        return "failed", "section_integrity_partial_answer_missing"
+    if incomplete_page < 1 or incomplete_page not in incomplete_pages:
+        return "failed", "section_integrity_incomplete_page_missing"
+    if _to_int(record.get("answer_page_end")) != incomplete_page:
+        return "failed", "section_integrity_incomplete_page_mismatch"
+    if (
+        _to_bool(record.get("answer_next_anchor_present"))
+        or _to_int(record.get("answer_next_anchor_page_no")) > 0
+        or _to_int(record.get("state_next_page_no")) > 0
+    ):
+        return "failed", "section_integrity_unjustified_next_page"
+    if (
+        not _to_bool(record.get("render_exact_text_rendered"))
+        or not _to_bool(record.get("render_section_segment_claim"))
+        or _to_bool(record.get("render_section_complete_claim"))
+    ):
+        return "failed", "section_integrity_render_not_honest"
+    if not _to_bool(record.get("final_lock_ok")):
+        return "failed", "section_integrity_exact_fragment_not_locked"
+    if not _to_bool(record.get("state_present_after")) or _safe_token(
+        record.get("state_interval_state")
+    ) != "segment":
+        return "failed", "section_integrity_state_missing"
+    return "met", "section_integrity_truncated_page_preserved"
+
+
+def _evaluate_section_integrity_continue(record: Mapping[str, Any]) -> tuple[str, str]:
+    endpoints = set(_safe_token_list(record.get("endpoint_kinds")))
+    executed_tools = set(_safe_token_list(record.get("agent_executed_tool_names")))
+    if (
+        _to_int(record.get("client_count")) > 0
+        or _to_int(record.get("endpoint_count")) > 0
+        or "page" in endpoints
+        or "page_read" in executed_tools
+    ):
+        return "failed", "section_integrity_continue_skipped_unread_remainder"
+    expected_reason = "biblio_dialogue_navigation_page_anchor_missing"
+    if (
+        _safe_token(record.get("status")) != "needs_clarification"
+        or _safe_token(record.get("reason_code")) != expected_reason
+        or _safe_token(record.get("dialogue_status")) != "needs_clarification"
+        or _safe_token(record.get("dialogue_reason_code")) != expected_reason
+        or not _to_bool(record.get("lane_injected"))
+    ):
+        return "failed", "section_integrity_continue_clarification_missing"
+    incomplete_page = _to_int(record.get("state_incomplete_page_no"))
+    if (
+        not _to_bool(record.get("state_present_after"))
+        or _safe_token(record.get("state_interval_state")) != "segment"
+        or incomplete_page < 1
+    ):
+        return "failed", "section_integrity_continue_remainder_missing"
+    if (
+        _to_bool(record.get("answer_next_anchor_present"))
+        or _to_int(record.get("answer_next_anchor_page_no")) > 0
+        or _to_int(record.get("state_next_page_no")) > 0
+    ):
+        return "failed", "section_integrity_continue_unjustified_anchor"
+    if (
+        _to_bool(record.get("render_exact_text_rendered"))
+        or _to_bool(record.get("render_section_complete_claim"))
+        or _to_bool(record.get("render_section_segment_claim"))
+        or _to_bool(record.get("final_lock_ok"))
+    ):
+        return "failed", "section_integrity_continue_false_extraction_surface"
+    return "met", "section_integrity_continue_guarded_clarification"
 
 
 def _combine_expectations(

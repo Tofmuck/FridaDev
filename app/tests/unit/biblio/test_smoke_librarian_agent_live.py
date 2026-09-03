@@ -140,6 +140,55 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
         self.assertNotIn(RAW_PASSAGE, encoded)
         self.assertNotIn(RAW_QUERY, encoded)
 
+    def test_section_integrity_expectation_requires_the_truncated_page_truth(self) -> None:
+        case = smoke.BiblioLibrarianProductSmokeCase("B1_PARTIAL", "section_integrity", RAW_QUERY)
+        record = _section_integrity_record()
+
+        expectations = smoke._evaluate_expectations(case, record)
+
+        self.assertEqual(expectations["runtime_expectation_status"], "met")
+        self.assertEqual(expectations["agent_expectation_status"], "met")
+        self.assertEqual(expectations["product_expectation_status"], "met")
+        for mutation in (
+            {"agent_executed_tool_names": ["resolve_section", "section_bounds"]},
+            {"answer_range_complete": True},
+            {"answer_incomplete_pages": []},
+            {"render_section_complete_claim": True},
+            {"state_incomplete_page_no": 0},
+            {"state_next_page_no": 13},
+        ):
+            with self.subTest(mutation=mutation):
+                mutated = {**record, **mutation}
+                failed = smoke._evaluate_expectations(case, mutated)
+                self.assertEqual(failed["runtime_expectation_status"], "failed")
+                self.assertNotEqual(failed["product_expectation_status"], "met")
+
+    def test_section_integrity_continue_accepts_the_guarded_clarification_without_get(self) -> None:
+        case = smoke.BiblioLibrarianProductSmokeCase(
+            "B1_CONTINUE",
+            "section_integrity_continue",
+            RAW_QUERY,
+        )
+        record = _section_integrity_continue_record()
+
+        expectations = smoke._evaluate_expectations(case, record)
+
+        self.assertEqual(expectations["runtime_expectation_status"], "met")
+        self.assertEqual(expectations["agent_expectation_status"], "met")
+        self.assertEqual(expectations["product_expectation_status"], "met")
+        for mutation in (
+            {"client_count": 1, "endpoint_count": 1, "endpoint_kinds": ["page"]},
+            {"agent_executed_tool_names": ["page_read"]},
+            {"state_incomplete_page_no": 0},
+            {"state_next_page_no": 13},
+            {"dialogue_status": "planned"},
+        ):
+            with self.subTest(mutation=mutation):
+                mutated = {**record, **mutation}
+                failed = smoke._evaluate_expectations(case, mutated)
+                self.assertEqual(failed["runtime_expectation_status"], "failed")
+                self.assertNotEqual(failed["product_expectation_status"], "met")
+
     def test_smoke_record_exposes_agent_plan_case_and_method_content_free(self) -> None:
         fake_result = _fake_turn_runner(
             {"biblio_enabled": True},
@@ -674,6 +723,87 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
 
         self.assertEqual([case.case_id for case in observed["cases"]], ["P03"])
         self.assertIn('"case_id": "P03"', stdout.getvalue())
+
+
+def _section_integrity_record() -> dict[str, object]:
+    return {
+        "query_kind": "agent_first",
+        "status": "agent_first_executed",
+        "endpoint_count": 4,
+        "client_count": 4,
+        "endpoint_kinds": ["catalog", "sections", "page"],
+        "agent_mode": "active",
+        "agent_present": True,
+        "agent_model_called": True,
+        "agent_candidate_plan_present": True,
+        "agent_status": "evaluated",
+        "agent_execution_scope": "agent_first",
+        "agent_tool_execution_status": "executed",
+        "agent_tool_call_event_count": 4,
+        "agent_used_for_response": True,
+        "agent_product_response_changed": True,
+        "agent_plan_product_method": "section_complete_extraction",
+        "agent_plan_answer_mode": "section_complete_budgeted",
+        "agent_plan_tool_names": ["resolve_work", "resolve_section", "section_bounds"],
+        "agent_executed_tool_names": ["resolve_work", "resolve_section", "section_bounds", "page_read"],
+        "product_method_effective": "section_complete_extraction",
+        "answer_status": "ready",
+        "answer_content_kind": "section_segment",
+        "answer_range_state": "segment",
+        "answer_range_complete": False,
+        "answer_page_truncated": True,
+        "answer_page_start": 12,
+        "answer_page_end": 12,
+        "answer_requested_page_end": 12,
+        "answer_incomplete_pages": [12],
+        "answer_next_anchor_present": False,
+        "answer_next_anchor_page_no": 0,
+        "render_exact_text_rendered": True,
+        "render_section_complete_claim": False,
+        "render_section_segment_claim": True,
+        "final_lock_ok": True,
+        "state_present_after": True,
+        "state_interval_state": "segment",
+        "state_incomplete_page_no": 12,
+        "state_next_page_no": 0,
+    }
+
+
+def _section_integrity_continue_record() -> dict[str, object]:
+    return {
+        "query_kind": "page_read",
+        "status": "needs_clarification",
+        "reason_code": "biblio_dialogue_navigation_page_anchor_missing",
+        "endpoint_count": 0,
+        "client_count": 0,
+        "endpoint_kinds": [],
+        "lane_injected": True,
+        "dialogue_status": "needs_clarification",
+        "dialogue_reason_code": "biblio_dialogue_navigation_page_anchor_missing",
+        "agent_mode": "active",
+        "agent_present": True,
+        "agent_model_called": True,
+        "agent_candidate_plan_present": True,
+        "agent_status": "fallback_deterministic",
+        "agent_execution_scope": "",
+        "agent_tool_execution_status": "not_executed",
+        "agent_tool_call_event_count": 0,
+        "agent_used_for_response": False,
+        "agent_product_response_changed": False,
+        "agent_plan_product_method": "passage_continue_next_segment",
+        "agent_plan_tool_names": ["page_read"],
+        "agent_executed_tool_names": [],
+        "answer_next_anchor_present": False,
+        "answer_next_anchor_page_no": 0,
+        "render_exact_text_rendered": False,
+        "render_section_complete_claim": False,
+        "render_section_segment_claim": False,
+        "final_lock_ok": False,
+        "state_present_after": True,
+        "state_interval_state": "segment",
+        "state_incomplete_page_no": 12,
+        "state_next_page_no": 0,
+    }
 
 
 def _fake_turn_runner(
