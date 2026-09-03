@@ -2,9 +2,9 @@
 
 Date de cadrage : 2 septembre 2026.
 
-**Statut : roadmap ouverte ; I1, I2, M1, M2, O1 et B1 fermés et livrés ; B2
-techniquement corrigé et livré, preuve produit encore en attente ; Z non
-commencé.**
+**Statut : roadmap ouverte ; I2, M1, M2, O1, B1 et B2 restent fermés et
+livrés ; I1, livré le 2 septembre, est invalidé à sa frontière `choices=[]`
+par la vérification Z du 3 septembre ; Z est ouvert et sa fermeture refusée.**
 
 ## 1. But et décision de périmètre
 
@@ -67,23 +67,24 @@ sans attendre O1.
 
 | Ordre | Lot | Résultat attendu | Finding | Réflexion conseillée | Statut |
 | --- | --- | --- | --- | --- | --- |
-| 1 | I1 | Une erreur de streaming reste une interruption | F01 | xhigh | fermé et livré |
+| 1 | I1 | Une erreur de streaming reste une interruption | F01 | xhigh | livré, puis invalidé par Z sur `choices=[]` nu |
 | 2 | I2 | Une lecture Identity en panne ne permet aucun remplacement | F02 | xhigh | fermé et livré |
 | 3 | M1 | Un résumé n'est acquis qu'après stockage confirmé | F03 | xhigh | fermé et livré |
 | 4 | M2 | La déduplication ne retire pas une formulation distincte avant jugement | F04 | xhigh | fermé et livré |
 | 5 | O1 | Les hints dialogiques sont comptés par leur vrai reader | F07 | high | fermé et livré |
 | 6 | B1 | Un extrait tronqué n'est jamais annoncé complet | F06 | xhigh | fermé et livré |
-| 7 | B2 | Une reprise appartient au document réellement ouvert | F11 | high | corrigé/livré, preuve produit en attente |
-| 8 | Z | Vérification finale limitée aux raccords modifiés | ci-dessus | high | non commencé |
+| 7 | B2 | Une reprise appartient au document réellement ouvert | F11 | high | fermé et livré avec preuve produit |
+| 8 | Z | Vérification finale limitée aux raccords modifiés | ci-dessus | high | fermeture refusée ; I1 à corriger |
 
 - [x] Cadrage documentaire et limites de preuve consignés.
-- [x] I1 fermé avec preuves et livraison convenues.
+- [x] I1 livré avec les preuves convenues au moment du lot.
+- [ ] I1 revalidé après correction du cas `choices=[]` nu découvert par Z.
 - [x] I2 fermé avec preuves et livraison convenues.
 - [x] M1 fermé avec preuves et livraison convenues.
 - [x] M2 fermé avec preuves et livraison convenues.
 - [x] O1 fermé avec preuves et livraison convenues.
 - [x] B1 fermé avec preuve agentique requise.
-- [ ] B2 fermé avec preuve agentique requise.
+- [x] B2 fermé avec preuve agentique requise.
 - [ ] Z fermé ; roadmap archivée et liens actualisés.
 
 ## 4. Règles communes d'exécution
@@ -855,6 +856,88 @@ Un finding hors périmètre découvert en Z est conservé dans l'audit avec sa
 preuve, pas transformé automatiquement en nouveau lot bloquant. Un défaut qui
 invalide directement une sortie de cette roadmap empêche en revanche sa fausse
 fermeture. Aucune boucle indéfinie de contre-audits.
+
+### Passage Z du 3 septembre 2026 — fermeture refusée
+
+La baseline attendue est retrouvée exactement avant vérification: branche
+`main`, HEAD local/upstream/distant
+`05bf4ccacb7590915aba05b7352facaa256aaa7b`, divergence `0/0`, worktree
+propre. Le runtime est seulement relu: image B2
+`sha256:48d846c3242de498ade21eb2eb0942892261ad34b041e2627b699a644fbd8d58`,
+`StartedAt=2026-09-03T13:16:00.461466831Z`, `running`, `healthy`, GET interne
+`/` sur 8089 = `200`, restart `0`, OOM `false`. Aucun rebuild, restart,
+déploiement, provider, dialogue réel ou accès PostgreSQL live n'a lieu.
+
+Matrice de clôture au HEAD initial Z:
+
+- **Z1 / I1 — invalidé.** Avec le vrai reader et le vrai coordinateur, la
+  séquence synthétique `data: {"choices":[]}` puis `data: [DONE]` produit un
+  terminal `done`, ne canonise aucun assistant mais persiste le tour utilisateur
+  et exécute les quatre effets post-persistance. Cette trame nue ne porte ni
+  metadata ni usage et contredit l'exigence Z1 selon laquelle `choices=[]` ne
+  peut pas devenir une réponse achevée. Les erreurs structurées, JSON invalide,
+  EOF sans `[DONE]` et les trames metadata/usage légitimes restent couvertes et
+  vertes, mais elles ne ferment pas ce trou.
+- **Z2 / I2 — prouvé.** La lecture mutante reste strictement distincte de la
+  lecture tolérante; une panne précède toute planification, écriture ou audit et
+  conserve le canon ainsi que la reprise bornée.
+- **Z3 / M1 — prouvé.** Le stockage texte doit confirmer son commit; le conflit
+  d'ID exige une ligne exactement identique. Embedding et rattachement restent
+  deux échecs distincts, et une panne texte laisse les paroles rééligibles.
+- **Z4 / M2 — prouvé.** Seuls le doublon textuel strict et la relation
+  trace/summary fusionnent. Provenance, `parent_summary` et coupe explicite à
+  huit restent conservés; cette coupe n'est pas un rappel universel.
+- **Z5 / O1 — prouvé.** `dialogue` reste local au reader d'evidence;
+  fragments, conflits et canons restent `user/llm`. Le `COUNT(*)` précède la
+  limite de page et les deux renderers affichent le total stocké.
+- **Z6 / B1 — prouvé.** Coupe, projection, rendu, final lock et reprise portent
+  la même incomplétude. Une coupe intra-page ne reçoit aucun faux offset ni saut;
+  l'absence d'offset reste une limite documentée.
+- **Z7 / B2 — prouvé.** Changement A vers B, conservation dans A, nouvelle
+  ancre B et reprise sans position sont couverts au niveau état, réhydratation et
+  navigation. L'artefact final content-free conserve le succès du garde produit
+  et l'échec du plan agent sans les confondre, ainsi que le cumul corrigé de
+  quatre appels, la borne pessimiste `3,696 USD` et le dépassement signalé.
+
+Preuves de clôture exécutées dans l'ordre prescrit:
+
+- ensemble ciblé explicite sur chat/stream, Identity mutable et staging,
+  Summary, panier pré-arbitre, hints/read-model et Biblio:
+  `458` tests, `OK` en `1,210 s`, checkout read-only, réseau coupé et `/tmp`
+  isolé;
+- frontend O1 seulement: trois `node --check`, puis un test Chromium exécuté et
+  vert sur `/identity` et `/hermeneutic-admin`; les quatorze autres cas du même
+  fichier sont filtrés par le motif, aucun skip n'est ajouté;
+- unique découverte Python complète: `2774` tests en `14,777 s`, avec
+  `3` échecs et `18` erreurs. Elle n'est pas relancée. Les trois échecs sont un
+  écart de configuration du runner créé par l'effacement du fallback DSN
+  synthétique; les trois cas repassent ensemble dans une preuve ciblée fraîche.
+  Dix-sept erreurs d'import viennent du montage `/app` trop étroit, qui masque
+  la racine du repo et `benchmark/`. La dernière révèle en plus un test
+  benchmark obsolète important `memory_identity_periodic_apply`, module legacy
+  volontairement supprimé; elle est hors des sept contrats actifs et n'est pas
+  réparée dans Z.
+
+Contre-audit borné: aucun test supprimé, skip/TODO/expected failure ajouté,
+route, vue ou capacité produit nouvelle dans les sept lots; aucun second reader
+ou mutateur actif trouvé. Les doubles de stockage restent explicitement des
+preuves applicatives et non PostgreSQL live. Stockage, sélection et injection,
+ainsi que succès du garde produit et succès du plan agent, restent séparés. Le
+JSONL B2 final contient `8` enregistrements et `8 946` octets; ses indicateurs
+de texte/prompt/dialogue bruts, fuite de marqueur, payload retenu et endpoint
+interdit restent tous négatifs. Aucun temporaire, `__pycache__`, `.pyc`,
+AppleDouble ou rapport n'est créé par cette passe.
+
+Correctif borné requis, non commencé: dans
+`app/core/chat_llm_provider_exchange.py`, distinguer le `choices=[]` nu des
+trames sans contenu portant une metadata/usage légitime, faire rejoindre le cas
+nu au chemin `upstream_error`, puis verrouiller avant/après fragment l'absence
+de canon assistant et d'effets post-persistance sans affaiblir les contre-cas
+metadata/usage. Le lot devra mettre à jour le contrat streaming et les tests
+existants, sans seconde machine de finalisation ni élargissement du protocole.
+
+Décision: **Z reste ouvert, la roadmap n'est pas déplacée et aucun correctif
+runtime n'est engagé dans ce lot.**
 
 ## 13. Réserves hors périmètre, conservées dans l'audit
 
