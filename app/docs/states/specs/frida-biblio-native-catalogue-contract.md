@@ -720,6 +720,11 @@ Extraction de section complete budgetee BIB-23:
   sauvegarde, meta Biblio presente et surface visible propre.
   Cet artefact historique prouve la segmentation par budget de pages; il ne
   prouve pas a lui seul l'integrite d'une coupe intra-page, couverte par B1.
+  La tentative B1 post-livraison est conservee dans
+  `app/docs/states/baselines/biblio-smokes/b1-section-truncation-live-20260903T115903Z.jsonl`:
+  les plans agentiques sont reels et content-free, mais les sections publiques
+  explorees exposaient des unites `sections` non convertibles en pages. Aucun
+  `page_read` tronque n'a donc ete exerce et cette tentative ne ferme pas B1.
 
 Correction transition agentique live 4E:
 

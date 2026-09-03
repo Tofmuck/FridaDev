@@ -1483,3 +1483,9 @@ integrale de leur texte:
 Cette correction ne releve aucun plafond, n'ajoute ni outil ni modele et ne
 garantit pas qu'un reste intra-page devienne accessible: sans coordonnee precise
 fournie par le Catalogue, il est signale comme non recu et non continuable.
+
+La tentative live post-livraison du 3 septembre 2026 est tracee dans
+`app/docs/states/baselines/biblio-smokes/b1-section-truncation-live-20260903T115903Z.jsonl`.
+Deux plans agentiques reels ont ete observes, mais aucun n'a atteint la coupe
+intra-page avec des coordonnees de page. Elle atteste le chemin agentique et sa
+limite de coordonnees, pas le comportement produit B1 complet; B1 reste ouvert.

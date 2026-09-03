@@ -3,8 +3,8 @@
 Date de cadrage : 2 septembre 2026.
 
 **Statut : roadmap ouverte ; I1, I2, M1, M2 et O1 fermés et livrés ; correctif
-B1 prouvé hermétiquement, livraison et preuve agentique en attente ; B2 et les
-lots suivants non commencés.**
+B1 prouvé et livré, preuve produit agentique en attente ; B2 et les lots
+suivants non commencés.**
 
 ## 1. But et décision de périmètre
 
@@ -72,7 +72,7 @@ sans attendre O1.
 | 3 | M1 | Un résumé n'est acquis qu'après stockage confirmé | F03 | xhigh | fermé et livré |
 | 4 | M2 | La déduplication ne retire pas une formulation distincte avant jugement | F04 | xhigh | fermé et livré |
 | 5 | O1 | Les hints dialogiques sont comptés par leur vrai reader | F07 | high | fermé et livré |
-| 6 | B1 | Un extrait tronqué n'est jamais annoncé complet | F06 | xhigh | correctif prouvé ; livraison et preuve agentique en attente |
+| 6 | B1 | Un extrait tronqué n'est jamais annoncé complet | F06 | xhigh | correctif prouvé et livré ; preuve agentique en attente |
 | 7 | B2 | Une reprise appartient au document réellement ouvert | F11 | high | non commencé |
 | 8 | Z | Vérification finale limitée aux raccords modifiés | ci-dessus | high | non commencé |
 
@@ -621,9 +621,43 @@ Le bibliothécaire LLM est conservé, pas remplacé par des règles de lecture.
   statuts, bornes, compteurs, hashes et décision de lock nécessaires; aucun
   texte, prompt ou payload provider n'est sérialisé.
 
-B1 reste ouvert à ce stade: la livraison ciblée et la preuve agentique live
-content-free autorisée ci-dessous doivent encore être acquises. B2 n'est pas
-commencé.
+À cette étape pré-livraison, B1 restait ouvert: la livraison ciblée et la preuve
+agentique live content-free autorisée ci-dessous devaient encore être acquises.
+
+### Livraison B1 et preuve agentique bornée — 3 septembre 2026
+
+- Le commit code/tests/contrats `2a063d27e3641eb4c1f78443761ed18f3c240b6a`
+  est poussé sur `main`. FridaDev seul a été rebuild sans pull ni dépendances,
+  puis recréé avec `--no-deps --force-recreate`.
+- Image live `sha256:c2457063ba88e74d3ff42f8f47fe8d2d594af25c2daefe8b7e9e677fc6200d07`,
+  `StartedAt=2026-09-03T11:52:14.178230702Z`, health déclaré `healthy`, GET
+  interne `/` sur 8089 = `200`, restart `0`, OOM `false`; les 10 empreintes
+  runtime concordent et l'unique conteneur voisin observé n'a pas été recréé.
+  L'image O1 `sha256:82605c7ed2c4806024f6e489a6dd1b7749a76725108a54f6f7d34a78fc620f8b`
+  reste disponible pour un retour applicatif ciblé.
+- Les mêmes `354` tests ciblés sont verts depuis l'image livrée, sans montage du
+  checkout et sans réseau.
+- Préflight agent: `openai/gpt-5.2`, reasoning `high`, 16 000 tokens de sortie,
+  5 outils et 1 appel modèle par tour, sans fallback. Au tarif public contrôlé
+  de 1,75 USD/M tokens d'entrée et 14 USD/M tokens de sortie, le maximum
+  pessimiste des deux tentatives effectuées est 1,848 USD; le coût réellement
+  facturé n'est pas exposé par le runner.
+- L'exploration et les deux canaris ont consommé 25 GET Catalogue, 2 tours et
+  2 tentatives provider. Le premier plan agentique de section complète est
+  resté ambigu sur le document. Le second a résolu le document public Kant et
+  la section 399, avec `section_complete_extraction`, mais n'a atteint aucun
+  `page_read`: le Catalogue décrit ses bornes 1818–1820 en unités `sections`,
+  que le runtime refuse à juste titre de convertir en pages.
+- Une unité interne de 17 469 caractères a bien été repérée, mais la coupure n'a
+  donc pas traversé le vrai chemin d'extraction agentique. Le troisième tour
+  autorisé n'a pas été appelé pour remplir le rapport: ni ce modèle ni un retry
+  ne pouvait créer la coordonnée absente. Artefact content-free:
+  `app/docs/states/baselines/biblio-smokes/b1-section-truncation-live-20260903T115903Z.jsonl`.
+
+Statut honnête: **correctif technique prouvé et livré, preuve produit en
+attente**. B1 reste ouvert et sa dernière case reste décochée. Le reste d'une
+page coupée est signalé comme non reçu et aucun saut n'est exécuté; il n'est pas
+accessible avec le `page_read` actuel dépourvu d'offset. B2 n'est pas commencé.
 
 ## 11. B2 — Garder les coordonnées dans leur document
 
