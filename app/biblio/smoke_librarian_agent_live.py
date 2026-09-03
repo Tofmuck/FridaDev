@@ -29,6 +29,7 @@ class BiblioLibrarianProductSmokeCase:
     case_kind: str
     message: str
     conversation_key: str = ""
+    expected_document_id: str = ""
 
 
 DEFAULT_SMOKE_CASES: tuple[BiblioLibrarianProductSmokeCase, ...] = (
@@ -158,6 +159,17 @@ _OUTPUT_KEYS = {
     "answer_status",
     "answer_next_anchor_page_no",
     "answer_next_anchor_present",
+    "b2_expected_document_id_present",
+    "b2_expected_document_id_short",
+    "b2_precondition_reason_code",
+    "b2_precondition_status",
+    "b2_previous_case_kind",
+    "b2_previous_product_expectation_status",
+    "b2_state_after_expected_document_match",
+    "b2_state_after_last_result_expected_document_match",
+    "b2_state_before_expected_document_match",
+    "b2_state_before_last_result_expected_document_match",
+    "b2_state_before_matches_previous_after",
     "case_id",
     "case_kind",
     "client_count",
@@ -241,10 +253,35 @@ def run_smokes(
     records: list[dict[str, Any]] = []
     states: dict[str, BiblioConversationState] = {}
     recent_dialogues: dict[str, list[dict[str, Any]]] = {}
+    previous_records: dict[str, dict[str, Any]] = {}
+    previous_states_after: dict[str, BiblioConversationState] = {}
     agent_config = _config_for_agent_mode(agent_mode, config_module=config_module)
     for case in cases:
         conversation_id = case.conversation_key or case.case_id
         state = states.get(conversation_id, BiblioConversationState.empty(conversation_id=conversation_id))
+        previous_record = previous_records.get(conversation_id)
+        previous_state_after = previous_states_after.get(conversation_id)
+        precondition_status, precondition_reason = _b2_interturn_precondition(
+            case,
+            state=state,
+            previous_record=previous_record,
+            previous_state_after=previous_state_after,
+        )
+        if precondition_status == "failed":
+            record = _b2_precondition_failure_record(
+                case,
+                state=state,
+                previous_record=previous_record,
+                previous_state_after=previous_state_after,
+                reason_code=precondition_reason,
+                agent_mode=agent_mode,
+                raw_markers=raw_markers,
+            )
+            records.append(record)
+            previous_records[conversation_id] = record
+            if on_record is not None:
+                on_record(record)
+            continue
         recent_dialogue = tuple(recent_dialogues.get(conversation_id, ()))
         dialogue = plan_biblio_dialogue(case.message, state=state, recent_dialogue=recent_dialogue)
         result = turn_runner(
@@ -259,11 +296,109 @@ def run_smokes(
         if result.biblio_state is not None:
             states[conversation_id] = result.biblio_state
         recent_dialogues.setdefault(conversation_id, []).append(_recent_turn_observation(case, result))
-        record = _record_for_result(case, result, dialogue, state_before=state, raw_markers=raw_markers)
+        record = _record_for_result(
+            case,
+            result,
+            dialogue,
+            state_before=state,
+            previous_record=previous_record,
+            previous_state_after=previous_state_after,
+            b2_precondition_status=precondition_status,
+            b2_precondition_reason_code=precondition_reason,
+            raw_markers=raw_markers,
+        )
         records.append(record)
+        previous_records[conversation_id] = record
+        if result.biblio_state is not None:
+            previous_states_after[conversation_id] = result.biblio_state
         if on_record is not None:
             on_record(record)
     return records
+
+
+def _b2_interturn_precondition(
+    case: BiblioLibrarianProductSmokeCase,
+    *,
+    state: BiblioConversationState,
+    previous_record: Mapping[str, Any] | None,
+    previous_state_after: BiblioConversationState | None,
+) -> tuple[str, str]:
+    kind = _safe_token(case.case_kind)
+    if kind not in {"document_switch", "document_switch_continue"}:
+        return "not_applicable", ""
+    expected_document_id = _canonical_document_id(getattr(case, "expected_document_id", ""))
+    if not expected_document_id:
+        return "failed", "b2_expected_document_id_missing"
+    previous = _mapping(previous_record)
+    if not _states_equal(state, previous_state_after):
+        return "failed", "b2_previous_state_mismatch"
+    if kind == "document_switch":
+        if (
+            _safe_token(previous.get("case_kind")) != "state_seed"
+            or _safe_token(previous.get("product_expectation_status")) != "met"
+            or not _to_bool(previous.get("b2_expected_document_id_present"))
+            or not _to_bool(previous.get("b2_state_after_expected_document_match"))
+        ):
+            return "failed", "b2_source_not_met"
+        if not _state_has_position(state):
+            return "failed", "b2_source_anchor_missing"
+        return "met", "b2_source_anchor_verified"
+    if (
+        _safe_token(previous.get("case_kind")) != "document_switch"
+        or _safe_token(previous.get("product_expectation_status")) != "met"
+    ):
+        return "failed", "b2_switch_not_met"
+    current_document_id, last_result_document_id = _canonical_state_document_ids(state)
+    if current_document_id != expected_document_id or last_result_document_id != expected_document_id:
+        return "failed", "b2_switch_target_mismatch"
+    if _state_has_position(state):
+        return "failed", "b2_switch_position_present"
+    return "met", "b2_switch_state_verified"
+
+
+def _b2_precondition_failure_record(
+    case: BiblioLibrarianProductSmokeCase,
+    *,
+    state: BiblioConversationState,
+    previous_record: Mapping[str, Any] | None,
+    previous_state_after: BiblioConversationState | None,
+    reason_code: str,
+    agent_mode: str,
+    raw_markers: Sequence[str],
+) -> dict[str, Any]:
+    state_coordinates = _state_coordinates(state)
+    base_record: dict[str, Any] = {
+        "case_id": case.case_id,
+        "case_kind": case.case_kind,
+        "status": "precondition_failed",
+        "reason_code": reason_code,
+        "query_kind": "not_run",
+        "client_count": 0,
+        "endpoint_count": 0,
+        "endpoint_kinds": [],
+        "lane_injected": False,
+        "agent_mode": _safe_token(agent_mode),
+        "agent_present": False,
+        "agent_model_called": False,
+        "agent_candidate_plan_present": False,
+        "agent_plan_tool_names": [],
+        "agent_executed_tool_names": [],
+        "agent_tool_execution_status": "not_executed",
+        "agent_tool_call_event_count": 0,
+        **{f"state_before_{key}": value for key, value in state_coordinates.items()},
+        **{f"state_after_{key}": value for key, value in state_coordinates.items()},
+        **_b2_sequence_projection(
+            case,
+            state_before=state,
+            state_after=state,
+            previous_record=previous_record,
+            previous_state_after=previous_state_after,
+            precondition_status="failed",
+            precondition_reason_code=reason_code,
+        ),
+    }
+    base_record.update(_evaluate_expectations(case, base_record))
+    return _finalize_record(base_record, raw_markers=raw_markers)
 
 
 def _record_for_result(
@@ -272,6 +407,10 @@ def _record_for_result(
     dialogue: BiblioDialoguePlanningResult,
     *,
     state_before: BiblioConversationState,
+    previous_record: Mapping[str, Any] | None = None,
+    previous_state_after: BiblioConversationState | None = None,
+    b2_precondition_status: str = "",
+    b2_precondition_reason_code: str = "",
     raw_markers: Sequence[str],
 ) -> dict[str, Any]:
     event = dict(result.observability_payload or {})
@@ -293,6 +432,15 @@ def _record_for_result(
     state_interval = _state_interval(result)
     before_state = _state_coordinates(state_before)
     after_state = _state_coordinates(result.biblio_state)
+    b2_projection = _b2_sequence_projection(
+        case,
+        state_before=state_before,
+        state_after=result.biblio_state,
+        previous_record=previous_record,
+        previous_state_after=previous_state_after,
+        precondition_status=b2_precondition_status,
+        precondition_reason_code=b2_precondition_reason_code,
+    )
     dialogue_intent = _mapping(dialogue_observation.get("intent"))
     dialogue_plan = _mapping(dialogue_observation.get("plan"))
     endpoint_kinds = _endpoint_kinds(client, context, passage_search)
@@ -395,6 +543,7 @@ def _record_for_result(
         "state_next_page_no": _to_int(state_interval.get("next_page_no")),
         **{f"state_before_{key}": value for key, value in before_state.items()},
         **{f"state_after_{key}": value for key, value in after_state.items()},
+        **b2_projection,
     }
     base_record.update(_evaluate_expectations(case, base_record))
     return _finalize_record(
@@ -551,6 +700,86 @@ def _state_coordinates(state: Any) -> dict[str, Any]:
         "paragraph_id": _to_int(getattr(state, "paragraph_id", None)),
         "passage_hash": _safe_token(getattr(state, "last_passage_hash", "")),
     }
+
+
+def _b2_sequence_projection(
+    case: BiblioLibrarianProductSmokeCase,
+    *,
+    state_before: Any,
+    state_after: Any,
+    previous_record: Mapping[str, Any] | None,
+    previous_state_after: Any,
+    precondition_status: str,
+    precondition_reason_code: str,
+) -> dict[str, Any]:
+    expected_document_id = _canonical_document_id(getattr(case, "expected_document_id", ""))
+    if _safe_token(case.case_kind) not in {"document_switch", "document_switch_continue"} and not expected_document_id:
+        return {}
+    before_document_id, before_result_document_id = _canonical_state_document_ids(state_before)
+    after_document_id, after_result_document_id = _canonical_state_document_ids(state_after)
+    previous = _mapping(previous_record)
+    return {
+        "b2_expected_document_id_present": bool(expected_document_id),
+        "b2_expected_document_id_short": expected_document_id[:8],
+        "b2_precondition_status": _safe_token(precondition_status),
+        "b2_precondition_reason_code": _safe_token(precondition_reason_code),
+        "b2_previous_case_kind": _safe_token(previous.get("case_kind")),
+        "b2_previous_product_expectation_status": _safe_token(previous.get("product_expectation_status")),
+        "b2_state_before_matches_previous_after": _states_equal(state_before, previous_state_after),
+        "b2_state_before_expected_document_match": bool(
+            expected_document_id and before_document_id == expected_document_id
+        ),
+        "b2_state_before_last_result_expected_document_match": bool(
+            expected_document_id and before_result_document_id == expected_document_id
+        ),
+        "b2_state_after_expected_document_match": bool(
+            expected_document_id and after_document_id == expected_document_id
+        ),
+        "b2_state_after_last_result_expected_document_match": bool(
+            expected_document_id and after_result_document_id == expected_document_id
+        ),
+    }
+
+
+def _canonical_state_document_ids(state: Any) -> tuple[str, str]:
+    if state is None:
+        return "", ""
+    current_document = _mapping(getattr(state, "current_document", None))
+    last_result = _mapping(getattr(state, "last_result", None))
+    return (
+        _canonical_document_id(current_document.get("document_id")),
+        _canonical_document_id(last_result.get("document_id")),
+    )
+
+
+def _canonical_document_id(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _state_has_position(state: Any) -> bool:
+    if state is None:
+        return False
+    last_result = _mapping(getattr(state, "last_result", None))
+    return bool(
+        _to_int(getattr(state, "page_no", None))
+        or _to_int(getattr(state, "para_no", None))
+        or _to_int(getattr(state, "paragraph_id", None))
+        or _safe_token(getattr(state, "last_passage_hash", ""))
+        or _to_int(last_result.get("page_no"))
+        or _to_int(last_result.get("para_no"))
+        or _to_int(last_result.get("paragraph_id"))
+        or _safe_token(last_result.get("passage_hash"))
+    )
+
+
+def _states_equal(left: Any, right: Any) -> bool:
+    if left is None or right is None:
+        return left is right
+    left_to_dict = getattr(left, "to_dict", None)
+    right_to_dict = getattr(right, "to_dict", None)
+    if callable(left_to_dict) and callable(right_to_dict):
+        return left_to_dict() == right_to_dict()
+    return left == right
 
 
 def _lane_observability(value: Any) -> dict[str, Any]:

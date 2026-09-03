@@ -16,6 +16,11 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from biblio import chat_runtime
+from biblio import conversation_state
+from biblio import librarian_agent
+from biblio import librarian_agent_contract as agent_contract
+from biblio import librarian_agent_openrouter as agent_openrouter
+from biblio import librarian_product_methods
 from biblio import observability
 from biblio import passage_extractor as extractor
 from biblio import prompt_lane
@@ -203,17 +208,28 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
         self.assertEqual(expectations["agent_expectation_status"], "met")
         self.assertEqual(expectations["product_expectation_status"], "met")
         for mutation in (
-            {"state_after_document_id_short": "doc-a"},
-            {"state_after_last_result_document_id_short": "doc-c"},
+            {"b2_expected_document_id_present": False},
+            {"b2_state_after_expected_document_match": False},
+            {"b2_state_after_last_result_expected_document_match": False},
+            {"b2_previous_case_kind": "work_lookup"},
+            {"b2_previous_product_expectation_status": "failed"},
+            {"b2_state_before_matches_previous_after": False},
             {"state_after_page_no": 12},
             {"state_after_passage_hash": "abcdef123456"},
             {"endpoint_kinds": ["catalog", "metadata", "page"]},
+            {"endpoint_kinds": ["catalog"]},
+            {"agent_executed_tool_names": ["search_document"]},
+            {"status": "not_found", "answer_status": "not_found"},
         ):
             with self.subTest(mutation=mutation):
                 mutated = {**record, **mutation}
                 failed = smoke._evaluate_expectations(case, mutated)
                 self.assertEqual(failed["runtime_expectation_status"], "failed")
                 self.assertNotEqual(failed["product_expectation_status"], "met")
+        failed = smoke._evaluate_expectations(case, {**record, "agent_model_called": False})
+        self.assertEqual(failed["runtime_expectation_status"], "met")
+        self.assertEqual(failed["agent_expectation_status"], "failed")
+        self.assertEqual(failed["product_expectation_status"], "failed")
 
     def test_document_switch_continue_rejects_any_request_or_invented_position(self) -> None:
         case = smoke.BiblioLibrarianProductSmokeCase(
@@ -229,11 +245,17 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
         self.assertEqual(expectations["agent_expectation_status"], "met")
         self.assertEqual(expectations["product_expectation_status"], "met")
         for mutation in (
+            {"b2_precondition_status": "failed"},
+            {"b2_state_before_expected_document_match": False},
+            {"b2_state_before_last_result_expected_document_match": False},
+            {"b2_state_after_expected_document_match": False},
+            {"b2_previous_case_kind": "state_seed"},
+            {"b2_previous_product_expectation_status": "failed"},
+            {"b2_state_before_matches_previous_after": False},
             {"client_count": 1, "endpoint_count": 1, "endpoint_kinds": ["page"]},
             {"agent_executed_tool_names": ["page_read"]},
             {"state_before_page_no": 12},
             {"state_after_passage_hash": "abcdef123456"},
-            {"state_after_document_id_short": "doc-a"},
             {"status": "agent_first_executed"},
         ):
             with self.subTest(mutation=mutation):
@@ -241,6 +263,188 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
                 failed = smoke._evaluate_expectations(case, mutated)
                 self.assertEqual(failed["runtime_expectation_status"], "failed")
                 self.assertNotEqual(failed["product_expectation_status"], "met")
+        failed = smoke._evaluate_expectations(case, {**record, "agent_model_called": False})
+        self.assertEqual(failed["runtime_expectation_status"], "met")
+        self.assertEqual(failed["agent_expectation_status"], "failed")
+        self.assertEqual(failed["product_expectation_status"], "failed")
+
+    def test_document_switch_continue_accepts_model_clarification_without_get(self) -> None:
+        document_id = "b" * 64
+        state = conversation_state.BiblioConversationState(
+            conversation_id="b2-sequence",
+            current_document={"document_id": document_id, "doc_id_short": document_id[:8]},
+            last_result={"document_id": document_id, "doc_id_short": document_id[:8]},
+            last_intent="document_resolution",
+        )
+        model = _FakeAgentModel(_clarification_agent_json())
+        case = smoke.BiblioLibrarianProductSmokeCase(
+            "B2_CONTINUE",
+            "document_switch_continue",
+            "Continue.",
+        )
+
+        result = chat_runtime.run_biblio_chat_turn(
+            {"biblio_enabled": True},
+            user_msg=case.message,
+            conversation_id=state.conversation_id,
+            conversation_state=state,
+            client_factory=_raising_client_factory,
+            config_module=_agent_config(),
+            librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(model),
+        )
+        dialogue = smoke.plan_biblio_dialogue(case.message, state=state)
+        record = smoke._record_for_result(
+            case,
+            result,
+            dialogue,
+            state_before=state,
+            raw_markers=(RAW_QUERY,),
+        )
+
+        self.assertEqual(model.calls, 1)
+        self.assertEqual(record["agent_plan_product_method"], "clarify_biblio_request")
+        self.assertEqual(record["agent_plan_tool_names"], [])
+        self.assertEqual(record["agent_executed_tool_names"], [])
+        self.assertEqual(record["endpoint_count"], 0)
+        self.assertEqual(record["agent_expectation_status"], "met")
+        self.assertNotEqual(record["product_expectation_status"], "met")
+
+    def test_document_switch_is_not_called_when_source_a_has_no_anchor(self) -> None:
+        cases = (
+            smoke.BiblioLibrarianProductSmokeCase(
+                "B2_A", "state_seed", RAW_QUERY, "b2-sequence", expected_document_id="a" * 64
+            ),
+            smoke.BiblioLibrarianProductSmokeCase(
+                "B2_SWITCH", "document_switch", RAW_QUERY, "b2-sequence", expected_document_id="b" * 64
+            ),
+            smoke.BiblioLibrarianProductSmokeCase(
+                "B2_CONTINUE",
+                "document_switch_continue",
+                "Continue.",
+                "b2-sequence",
+                expected_document_id="b" * 64,
+            ),
+        )
+        calls = 0
+
+        def turn_runner(*args, **kwargs):
+            nonlocal calls
+            calls += 1
+            return _fake_turn_runner(*args, **kwargs)
+
+        records = smoke.run_smokes(cases=cases, turn_runner=turn_runner)
+
+        self.assertEqual(calls, 1)
+        self.assertEqual(records[1]["b2_precondition_status"], "failed")
+        self.assertEqual(records[1]["b2_precondition_reason_code"], "b2_previous_state_mismatch")
+        self.assertFalse(records[1]["agent_model_called"])
+        self.assertEqual(smoke.smoke_exit_code(records), smoke.EXIT_VALIDATION_FAILURE)
+
+    def test_b2_sequence_accepts_exact_a_to_b_then_direct_model_clarification(self) -> None:
+        document_a_id = "deadbeef" + "a" * 56
+        document_b_id = "deadbeef" + "b" * 56
+        model = _FakeAgentModel(_clarification_agent_json())
+        cases = _b2_cases(document_a_id, document_b_id)
+
+        def turn_runner(data, *, user_msg, conversation_state, **kwargs):
+            if user_msg == "READ_A":
+                return _b2_agent_first_result(_b2_state(document_a_id, anchored=True), source=True)
+            if user_msg.startswith("OPEN_B"):
+                return _b2_agent_first_result(_b2_state(document_b_id), source=False)
+            return chat_runtime.run_biblio_chat_turn(
+                data,
+                user_msg=user_msg,
+                conversation_id="b2-sequence",
+                conversation_state=conversation_state,
+                client_factory=_raising_client_factory,
+                config_module=_agent_config(),
+                librarian_agent_factory=lambda: librarian_agent.BiblioLibrarianAgent(model),
+            )
+
+        records = smoke.run_smokes(cases=cases, turn_runner=turn_runner)
+
+        self.assertEqual(len(records), 3)
+        self.assertEqual([record["product_expectation_status"] for record in records], ["met", "met", "met"])
+        self.assertTrue(records[1]["b2_state_after_expected_document_match"])
+        self.assertTrue(records[2]["b2_state_before_matches_previous_after"])
+        self.assertTrue(records[2]["b2_state_before_expected_document_match"])
+        self.assertEqual(records[2]["agent_plan_product_method"], "clarify_biblio_request")
+        self.assertEqual(records[2]["endpoint_count"], 0)
+        encoded = json.dumps(records, sort_keys=True)
+        self.assertNotIn(document_a_id, encoded)
+        self.assertNotIn(document_b_id, encoded)
+        self.assertEqual(smoke.smoke_exit_code(records), smoke.EXIT_OK)
+        missing_model = smoke._evaluate_expectations(cases[0], {**records[0], "agent_model_called": False})
+        self.assertEqual(missing_model["agent_expectation_status"], "failed")
+        self.assertEqual(missing_model["product_expectation_status"], "failed")
+
+    def test_b2_switch_rejects_same_short_id_with_different_canonical_target(self) -> None:
+        document_a_id = "a" * 64
+        document_b_id = "b" * 64
+        document_c_id = "b" * 8 + "c" * 56
+
+        def turn_runner(_data, *, user_msg, **_kwargs):
+            if user_msg == "READ_A":
+                return _b2_agent_first_result(_b2_state(document_a_id, anchored=True), source=True)
+            return _b2_agent_first_result(_b2_state(document_c_id), source=False)
+
+        records = smoke.run_smokes(
+            cases=_b2_cases(document_a_id, document_b_id),
+            turn_runner=turn_runner,
+        )
+
+        self.assertEqual(records[1]["state_after_document_id_short"], document_b_id[:8])
+        self.assertFalse(records[1]["b2_state_after_expected_document_match"])
+        self.assertEqual(records[1]["product_expectation_status"], "failed")
+        self.assertEqual(records[2]["b2_precondition_reason_code"], "b2_switch_not_met")
+
+    def test_b2_sequence_does_not_call_continue_after_not_found_switch(self) -> None:
+        document_a_id = "a" * 64
+        document_b_id = "b" * 64
+        calls = 0
+
+        def turn_runner(_data, *, user_msg, **_kwargs):
+            nonlocal calls
+            calls += 1
+            if user_msg == "READ_A":
+                return _b2_agent_first_result(_b2_state(document_a_id, anchored=True), source=True)
+            return _b2_agent_first_result(
+                _b2_state(document_a_id, anchored=True),
+                source=False,
+                status="not_found",
+                answer_status="not_found",
+            )
+
+        records = smoke.run_smokes(
+            cases=_b2_cases(document_a_id, document_b_id),
+            turn_runner=turn_runner,
+        )
+
+        self.assertEqual(calls, 2)
+        self.assertEqual(records[1]["product_expectation_status"], "failed")
+        self.assertEqual(records[2]["b2_precondition_status"], "failed")
+        self.assertEqual(records[2]["b2_precondition_reason_code"], "b2_switch_not_met")
+        self.assertFalse(records[2]["agent_model_called"])
+
+    def test_b2_switch_is_not_called_when_a_has_no_position(self) -> None:
+        document_a_id = "a" * 64
+        document_b_id = "b" * 64
+        calls = 0
+
+        def turn_runner(_data, *, user_msg, **_kwargs):
+            nonlocal calls
+            calls += 1
+            return _b2_agent_first_result(_b2_state(document_a_id), source=True)
+
+        records = smoke.run_smokes(
+            cases=_b2_cases(document_a_id, document_b_id),
+            turn_runner=turn_runner,
+        )
+
+        self.assertEqual(calls, 1)
+        self.assertEqual(records[0]["product_expectation_status"], "met")
+        self.assertEqual(records[1]["b2_precondition_reason_code"], "b2_source_anchor_missing")
+        self.assertFalse(records[1]["agent_model_called"])
 
     def test_smoke_record_exposes_agent_plan_case_and_method_content_free(self) -> None:
         fake_result = _fake_turn_runner(
@@ -861,8 +1065,17 @@ def _section_integrity_continue_record() -> dict[str, object]:
 
 def _document_switch_record() -> dict[str, object]:
     return {
+        "b2_expected_document_id_present": True,
+        "b2_precondition_status": "met",
+        "b2_previous_case_kind": "state_seed",
+        "b2_previous_product_expectation_status": "met",
+        "b2_state_before_matches_previous_after": True,
+        "b2_state_before_expected_document_match": False,
+        "b2_state_after_expected_document_match": True,
+        "b2_state_after_last_result_expected_document_match": True,
         "query_kind": "agent_first",
         "status": "agent_first_executed",
+        "answer_status": "ready",
         "endpoint_count": 2,
         "client_count": 2,
         "endpoint_kinds": ["catalog", "metadata"],
@@ -896,6 +1109,15 @@ def _document_switch_record() -> dict[str, object]:
 
 def _document_switch_continue_record() -> dict[str, object]:
     return {
+        "b2_expected_document_id_present": True,
+        "b2_precondition_status": "met",
+        "b2_previous_case_kind": "document_switch",
+        "b2_previous_product_expectation_status": "met",
+        "b2_state_before_matches_previous_after": True,
+        "b2_state_before_expected_document_match": True,
+        "b2_state_before_last_result_expected_document_match": True,
+        "b2_state_after_expected_document_match": True,
+        "b2_state_after_last_result_expected_document_match": True,
         "query_kind": "page_read",
         "status": "needs_clarification",
         "reason_code": "biblio_dialogue_navigation_page_anchor_missing",
@@ -907,7 +1129,8 @@ def _document_switch_continue_record() -> dict[str, object]:
         "agent_present": True,
         "agent_model_called": True,
         "agent_candidate_plan_present": True,
-        "agent_status": "fallback_deterministic",
+        "agent_status": "evaluated",
+        "agent_reason_code": "biblio_librarian_agent_compared",
         "agent_execution_scope": "",
         "agent_tool_execution_status": "not_executed",
         "agent_tool_call_event_count": 0,
@@ -929,6 +1152,137 @@ def _document_switch_continue_record() -> dict[str, object]:
         "state_after_paragraph_id": 0,
         "state_after_passage_hash": "",
     }
+
+
+def _b2_cases(document_a_id: str, document_b_id: str):
+    return (
+        smoke.BiblioLibrarianProductSmokeCase(
+            "B2_A",
+            "state_seed",
+            "READ_A",
+            "b2-sequence",
+            expected_document_id=document_a_id,
+        ),
+        smoke.BiblioLibrarianProductSmokeCase(
+            "B2_SWITCH",
+            "document_switch",
+            f"OPEN_B {document_b_id}",
+            "b2-sequence",
+            expected_document_id=document_b_id,
+        ),
+        smoke.BiblioLibrarianProductSmokeCase(
+            "B2_CONTINUE",
+            "document_switch_continue",
+            "Continue.",
+            "b2-sequence",
+            expected_document_id=document_b_id,
+        ),
+    )
+
+
+def _b2_state(document_id: str, *, anchored: bool = False) -> conversation_state.BiblioConversationState:
+    anchor = {"document_id": document_id, "doc_id_short": document_id[:8]}
+    if anchored:
+        anchor.update({"page_no": 12, "para_no": 3, "paragraph_id": 99, "passage_hash": "a" * 12})
+    return conversation_state.BiblioConversationState(
+        conversation_id="b2-sequence",
+        current_document={"document_id": document_id, "doc_id_short": document_id[:8]},
+        page_no=12 if anchored else None,
+        para_no=3 if anchored else None,
+        paragraph_id=99 if anchored else None,
+        last_passage_hash="a" * 12 if anchored else "",
+        last_result=anchor,
+        last_intent="extract_passage" if anchored else "document_resolution",
+    )
+
+
+def _b2_agent_first_result(
+    state: conversation_state.BiblioConversationState,
+    *,
+    source: bool,
+    status: str = "agent_first_executed",
+    answer_status: str = "ready",
+) -> chat_runtime.BiblioChatResult:
+    tool_names = ["canonical_range_extract"] if source else ["document_open_summary"]
+    endpoint_kinds = ["canonical_range"] if source else ["metadata"]
+    product_method = "passage_extract_canonical_range" if source else "work_lookup"
+    agent_result = _fake_librarian_agent_result(
+        case_id="",
+        product_method=product_method,
+        answer_mode="tool",
+        tool_names=tool_names,
+    )
+    passage = _passage(RAW_PASSAGE)
+    lane = prompt_lane.build_biblio_prompt_lane([passage])
+    payload = {
+        "status": status,
+        "reason_code": "biblio_agent_first_plan_executed" if status == "agent_first_executed" else status,
+        "query_kind": "agent_first",
+        "client": {
+            "event_count": len(endpoint_kinds),
+            "items": [{"endpoint_kind": endpoint_kind} for endpoint_kind in endpoint_kinds],
+        },
+        "librarian_agent": agent_result.to_observability(),
+        "product_method": product_method,
+    }
+    return chat_runtime.BiblioChatResult(
+        enabled=True,
+        used=True,
+        reason_code=str(payload["reason_code"]),
+        query_kind="agent_first",
+        passage_result=passage if source else None,
+        prompt_lane=lane,
+        biblio_state=state,
+        librarian_agent_result=agent_result,
+        answer_object=SimpleNamespace(to_observability=lambda: {"status": answer_status}),
+        observability_payload=payload,
+    )
+
+
+class _FakeAgentModel:
+    def __init__(self, content: str) -> None:
+        self.content = content
+        self.calls = 0
+
+    def complete(self, _request, *, settings=None):
+        self.calls += 1
+        return agent_openrouter.BiblioLibrarianAgentModelResponse(
+            status=agent_openrouter.STATUS_OK,
+            reason_code=agent_openrouter.REASON_OK,
+            content=self.content,
+            finish_reason="stop",
+            attempt_count=1,
+            response_chars=len(self.content),
+        )
+
+
+def _clarification_agent_json() -> str:
+    return json.dumps(
+        {
+            "schema_version": agent_contract.SCHEMA_VERSION,
+            "case_id": "",
+            "intent": "clarify",
+            "product_method": librarian_product_methods.PRODUCT_METHOD_CLARIFY_BIBLIO_REQUEST,
+            "tool_calls": [],
+            "answer_mode": "clarify",
+            "risk_flags": [],
+            "fallback_reason": "model_requested_clarification",
+            "surface_intro": "",
+            "surface_outro": "",
+        }
+    )
+
+
+def _agent_config() -> SimpleNamespace:
+    return SimpleNamespace(
+        BIBLIO_LIBRARIAN_AGENT_MODE="active",
+        BIBLIO_LIBRARIAN_AGENT_MODEL="model/x",
+        BIBLIO_LIBRARIAN_AGENT_MAX_RECENT_TURNS=3,
+    )
+
+
+def _raising_client_factory(**_kwargs):
+    raise AssertionError("Catalogue client must not be built for direct clarification")
 
 
 def _fake_turn_runner(
@@ -983,18 +1337,26 @@ def _passage(passage: str) -> extractor.BiblioPassageResult:
     )
 
 
-def _fake_librarian_agent_result(*, case_id: str, product_method: str, answer_mode: str):
+def _fake_librarian_agent_result(
+    *,
+    case_id: str,
+    product_method: str,
+    answer_mode: str,
+    tool_names: list[str] | None = None,
+):
+    effective_tool_names = list(tool_names or ["catalog_search"])
+
     class _FakeInnerAgent:
         def __init__(self):
             self.validation_observation = {
-                "tool_call_count": 1,
-                "tool_names": ["catalog_search"],
+                "tool_call_count": len(effective_tool_names),
+                "tool_names": effective_tool_names,
                 "plan": {
                     "case_id": case_id,
                     "product_method": product_method,
                     "answer_mode": answer_mode,
-                    "tool_call_count": 1,
-                    "tool_names": ["catalog_search"],
+                    "tool_call_count": len(effective_tool_names),
+                    "tool_names": effective_tool_names,
                 },
             }
 
@@ -1013,7 +1375,7 @@ def _fake_librarian_agent_result(*, case_id: str, product_method: str, answer_mo
                 "used_for_response": True,
                 "product_response_changed": True,
                 "tool_execution_status": "executed",
-                "tool_call_event_count": 1,
+                "tool_call_event_count": len(effective_tool_names),
                 "execution_scope": "agent_first",
                 "agent": {
                     "validation": self.agent_result.validation_observation,
@@ -1021,8 +1383,8 @@ def _fake_librarian_agent_result(*, case_id: str, product_method: str, answer_mo
                 "tool_loop": {
                     "status": "tool_executed",
                     "reason_code": "biblio_librarian_tool_executed",
-                    "tool_call_count": 1,
-                    "tool_names": ["catalog_search"],
+                    "tool_call_count": len(effective_tool_names),
+                    "tool_names": effective_tool_names,
                 },
             }
 

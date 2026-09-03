@@ -101,6 +101,11 @@ def _evaluate_runtime_expectation(case_kind: str, record: Mapping[str, Any]) -> 
             return "partial", "catalogue_listed_without_complete_total"
         return "failed", "catalogue_list_not_reached"
     if kind in {"range_extract", "state_seed"}:
+        if _to_bool(record.get("b2_expected_document_id_present")) and (
+            not _to_bool(record.get("b2_state_after_expected_document_match"))
+            or not _to_bool(record.get("b2_state_after_last_result_expected_document_match"))
+        ):
+            return "failed", "b2_source_document_mismatch"
         if passage_count > 0 and lane_injected:
             return "met", "passage_lane_available"
         if endpoint_count > 0:
@@ -153,6 +158,8 @@ def _evaluate_agent_expectation(
 ) -> tuple[str, str]:
     mode = _safe_token(record.get("agent_mode"))
     if mode == agent_contract.MODE_OFF:
+        if _to_bool(record.get("b2_expected_document_id_present")):
+            return "failed", "b2_agent_model_required"
         return "met", "agent_off_explicit"
     if mode in {agent_contract.MODE_SHADOW, agent_contract.MODE_CANDIDATE}:
         return "failed", "agent_mode_dev_only_not_nominal"
@@ -169,14 +176,30 @@ def _evaluate_agent_expectation(
     agent_status = _safe_token(record.get("agent_status"))
     plan_tools = _safe_token_list(record.get("agent_plan_tool_names"))
     executed_tools = _safe_token_list(record.get("agent_executed_tool_names"))
-    if _safe_token(case_kind) in {"section_integrity_continue", "document_switch_continue"}:
+    if _safe_token(case_kind) == "section_integrity_continue":
         if _safe_token(record.get("agent_plan_product_method")) != _safe_token(
             product_methods.PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT
         ):
-            return "failed", f"{_safe_token(case_kind)}_agent_method_missing"
+            return "failed", "section_integrity_continue_agent_method_missing"
         if "page_read" not in set(plan_tools):
-            return "failed", f"{_safe_token(case_kind)}_agent_page_read_plan_missing"
-        return "met", f"{_safe_token(case_kind)}_agent_plan_guarded"
+            return "failed", "section_integrity_continue_agent_page_read_plan_missing"
+        return "met", "section_integrity_continue_agent_plan_guarded"
+    if _safe_token(case_kind) == "document_switch_continue":
+        product_method = _safe_token(record.get("agent_plan_product_method"))
+        if product_method == _safe_token(product_methods.PRODUCT_METHOD_CLARIFY_BIBLIO_REQUEST):
+            if (
+                plan_tools
+                or executed_tools
+                or _to_int(record.get("agent_tool_call_event_count")) > 0
+                or _safe_token(record.get("agent_tool_execution_status")) != "not_executed"
+            ):
+                return "failed", "document_switch_continue_agent_clarification_executed_tool"
+            return "met", "document_switch_continue_agent_clarification"
+        if product_method != _safe_token(product_methods.PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT):
+            return "failed", "document_switch_continue_agent_method_missing"
+        if "page_read" not in set(plan_tools):
+            return "failed", "document_switch_continue_agent_page_read_plan_missing"
+        return "met", "document_switch_continue_agent_plan_guarded"
     if agent_status == "fallback_deterministic":
         if executed_tools and _safe_token(record.get("agent_execution_scope")) == "agent_first":
             return "fallback_repaired", "agent_first_fallback_repaired"
@@ -282,10 +305,26 @@ def _evaluate_section_integrity_continue(record: Mapping[str, Any]) -> tuple[str
 
 
 def _evaluate_document_switch(record: Mapping[str, Any]) -> tuple[str, str]:
+    if _safe_token(record.get("b2_precondition_status")) != "met":
+        return "failed", _safe_token(record.get("b2_precondition_reason_code")) or "b2_source_precondition_missing"
+    if (
+        not _to_bool(record.get("b2_expected_document_id_present"))
+        or _to_bool(record.get("b2_state_before_expected_document_match"))
+        or _to_bool(record.get("b2_state_before_last_result_expected_document_match"))
+        or not _to_bool(record.get("b2_state_after_expected_document_match"))
+        or not _to_bool(record.get("b2_state_after_last_result_expected_document_match"))
+    ):
+        return "failed", "document_switch_canonical_target_mismatch"
+    if (
+        _safe_token(record.get("b2_previous_case_kind")) != "state_seed"
+        or _safe_token(record.get("b2_previous_product_expectation_status")) != "met"
+        or not _to_bool(record.get("b2_state_before_matches_previous_after"))
+    ):
+        return "failed", "document_switch_source_sequence_mismatch"
     before_document = _safe_token(record.get("state_before_document_id_short"))
     after_document = _safe_token(record.get("state_after_document_id_short"))
     after_result_document = _safe_token(record.get("state_after_last_result_document_id_short"))
-    if not before_document or not after_document or before_document == after_document:
+    if not before_document or not after_document:
         return "failed", "document_switch_not_observed"
     if after_result_document != after_document:
         return "failed", "document_switch_result_provenance_mismatch"
@@ -304,15 +343,39 @@ def _evaluate_document_switch(record: Mapping[str, Any]) -> tuple[str, str]:
         return "failed", "document_switch_old_coordinates_retained"
     if _to_int(record.get("endpoint_count")) < 1:
         return "failed", "document_switch_catalogue_not_reached"
-    if "page" in set(_safe_token_list(record.get("endpoint_kinds"))):
+    endpoints = set(_safe_token_list(record.get("endpoint_kinds")))
+    executed_tools = set(_safe_token_list(record.get("agent_executed_tool_names")))
+    if _safe_token(record.get("status")) != "agent_first_executed" or _safe_token(
+        record.get("answer_status")
+    ) == "not_found":
+        return "failed", "document_switch_open_not_successful"
+    if "document_open_summary" not in executed_tools or "metadata" not in endpoints:
+        return "failed", "document_switch_exact_open_not_observed"
+    if "page" in endpoints:
         return "failed", "document_switch_unexpected_page_read"
     return "met", "document_switch_coordinates_invalidated"
 
 
 def _evaluate_document_switch_continue(record: Mapping[str, Any]) -> tuple[str, str]:
+    if _safe_token(record.get("b2_precondition_status")) != "met":
+        return "failed", _safe_token(record.get("b2_precondition_reason_code")) or "b2_switch_precondition_missing"
+    if (
+        not _to_bool(record.get("b2_expected_document_id_present"))
+        or not _to_bool(record.get("b2_state_before_expected_document_match"))
+        or not _to_bool(record.get("b2_state_before_last_result_expected_document_match"))
+        or not _to_bool(record.get("b2_state_after_expected_document_match"))
+        or not _to_bool(record.get("b2_state_after_last_result_expected_document_match"))
+    ):
+        return "failed", "document_switch_continue_canonical_target_mismatch"
+    if (
+        _safe_token(record.get("b2_previous_case_kind")) != "document_switch"
+        or _safe_token(record.get("b2_previous_product_expectation_status")) != "met"
+        or not _to_bool(record.get("b2_state_before_matches_previous_after"))
+    ):
+        return "failed", "document_switch_continue_sequence_mismatch"
     before_document = _safe_token(record.get("state_before_document_id_short"))
     after_document = _safe_token(record.get("state_after_document_id_short"))
-    if not before_document or after_document != before_document:
+    if not before_document or not after_document:
         return "failed", "document_switch_continue_document_not_preserved"
     if any(
         (
@@ -355,12 +418,17 @@ def _combine_expectations(
     agent_status: str,
     agent_reason: str,
 ) -> tuple[str, str]:
+    kind = _safe_token(case_kind)
+    b2_proof_required = kind in {"document_switch", "document_switch_continue"} or _to_bool(
+        record.get("b2_expected_document_id_present")
+    )
     consistency_reason = _case_closure_consistency_reason(record)
     if consistency_reason:
         return "failed", consistency_reason
     if runtime_status == "met":
+        if b2_proof_required and agent_status != "met":
+            return "failed", agent_reason
         return "met", runtime_reason
-    kind = _safe_token(case_kind)
     if kind == "external_theme" and runtime_reason == "theme_search_not_found_without_context":
         return "failed", runtime_reason
     if kind == "origin_check":
@@ -399,6 +467,7 @@ def _agent_first_execution_allowed(record: Mapping[str, Any]) -> bool:
         "page_read",
         "locate",
         "passage_context",
+        "canonical_range_extract",
     }
     if not executed_tools.issubset(global_allowed_tools):
         return False
@@ -415,6 +484,7 @@ def _agent_first_execution_allowed(record: Mapping[str, Any]) -> bool:
         "locate",
         "context",
         "page",
+        "canonical_range",
     }
     endpoint_kinds = set(_safe_token_list(record.get("endpoint_kinds")))
     if endpoint_kinds and not endpoint_kinds.issubset(allowed_endpoints):
