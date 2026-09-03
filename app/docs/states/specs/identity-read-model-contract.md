@@ -23,6 +23,17 @@ Transition contexte dialogique 2026-08-20:
 - le reason code de succes du stage est porte explicitement dans son payload
   compact, comme les compteurs et le `prompt_kind`.
 
+Correction de fidelite du compteur 2026-09-03:
+- `list_identity_evidence()` admet `subject=dialogue` en plus des sujets
+  historiques `user/llm`; cette admission reste locale a la table
+  `identity_evidence` et n'ouvre ni `identities`, ni `identity_conflicts`, ni
+  aucune autorite canonique au sujet `dialogue`;
+- `dialogic_context.total_count` est le `COUNT(*)` filtre par sujet avant la
+  limite de page, alors que `items` reste borne par `limit`;
+- ce total mesure les hints effectivement stockes dans cette categorie. Il ne
+  mesure ni la selection du prochain prompt, ni la derniere activite, et un
+  zero administratif ne prouve jamais a lui seul une absence d'injection.
+
 ## But
 
 Ce contrat definit une lecture unifiee et honnete du systeme identity reel, y compris le regime periodique `staging -> agent -> canon`, sans rouvrir le canon injecte lui-meme.
@@ -102,6 +113,9 @@ Sa persistance compatible utilise `identity_evidence` avec `subject=dialogue`,
 sans migration; les items bruts restent minimises dans la projection. Les
 evidences historiques `subject=user` eligibles peuvent encore etre lues par le
 prompt jusqu'a leur expiration normale, sans reecriture ni autorite canonique.
+Son `total_count` porte le volume stocke sous `subject=dialogue`, independamment
+de la page `items`, de `latest_activity.persisted_count` et des limites de
+selection runtime.
 
 Chaque sujet expose exactement ces couches:
 - `static`

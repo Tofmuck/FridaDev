@@ -2523,6 +2523,8 @@ test('identity surfaces render authoritative active claim and finalization recov
     );
     assert.equal(text.includes('hints=2'), true, `backend hint count must render on ${surface}`);
     assert.equal(text.includes('persistes=2'), true, `backend persisted count must render on ${surface}`);
+    assert.equal(text.includes('stockes=3'), true, `stored total must render on ${surface}`);
+    assert.equal(text.includes('stockes=2'), false, `stored total must not reuse the latest activity on ${surface}`);
     assert.equal(
       text.includes('prompt=dialogic_context_hint_extractor_v1'),
       true,
@@ -2550,6 +2552,10 @@ test('identity surfaces render authoritative active claim and finalization recov
         () => assertDialogicContext(text.replace('persistes=2', 'persistes=0'), '/identity mutant'),
         /persisted count must render/,
       );
+      assert.throws(
+        () => assertDialogicContext(text.replace('stockes=3', 'stockes=0'), '/identity stored mutant'),
+        /stored total must render/,
+      );
     });
 
     await openBrowserPage({ pathSuffix: '/hermeneutic-admin.html', mockScript }, async (page) => {
@@ -2565,6 +2571,13 @@ test('identity surfaces render authoritative active claim and finalization recov
           '/hermeneutic-admin mutant',
         ),
         /persisted count must render/,
+      );
+      assert.throws(
+        () => assertDialogicContext(
+          text.replace('stockes=3', 'stockes=0'),
+          '/hermeneutic-admin stored mutant',
+        ),
+        /stored total must render/,
       );
     });
   }

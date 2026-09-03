@@ -8,8 +8,8 @@
   "active_caller": "dialogic_context_hint_extractor",
   "legacy_setting_slot": "identity_extractor_model",
   "stored": true,
-  "total_count": 2,
-  "limit": 20,
+  "total_count": 3,
+  "limit": 2,
   "items": [],
   "content_minimized": true,
   "latest_activity": {

@@ -14,6 +14,13 @@ def _canonical_subject(subject: str) -> str:
     return normalized
 
 
+def _canonical_evidence_subject(subject: str) -> str:
+    normalized = str(subject or '').strip().lower()
+    if normalized == 'dialogue':
+        return normalized
+    return _canonical_subject(normalized)
+
+
 def _normalize_limit(limit: int | None) -> int:
     if limit is None:
         return _DEFAULT_LIMIT
@@ -145,7 +152,7 @@ def list_identity_evidence(
     conn_factory: Callable[[], Any],
     logger: Any,
 ) -> dict[str, Any]:
-    canonical_subject = _canonical_subject(subject)
+    canonical_subject = _canonical_evidence_subject(subject)
     effective_limit = _normalize_limit(limit)
     if not canonical_subject:
         return {'total_count': 0, 'limit': effective_limit, 'items': []}

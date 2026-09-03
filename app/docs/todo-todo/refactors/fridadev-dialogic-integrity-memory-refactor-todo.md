@@ -2,8 +2,8 @@
 
 Date de cadrage : 2 septembre 2026.
 
-**Statut : roadmap ouverte ; I1, I2, M1 et M2 fermés et livrés ; lots suivants
-non commencés.**
+**Statut : roadmap ouverte ; I1, I2, M1 et M2 fermés et livrés ; correctif O1
+vérifié avant livraison runtime ; B1 et les lots suivants non commencés.**
 
 ## 1. But et décision de périmètre
 
@@ -70,7 +70,7 @@ sans attendre O1.
 | 2 | I2 | Une lecture Identity en panne ne permet aucun remplacement | F02 | xhigh | fermé et livré |
 | 3 | M1 | Un résumé n'est acquis qu'après stockage confirmé | F03 | xhigh | fermé et livré |
 | 4 | M2 | La déduplication ne retire pas une formulation distincte avant jugement | F04 | xhigh | fermé et livré |
-| 5 | O1 | Les hints dialogiques sont comptés par leur vrai reader | F07 | high | non commencé |
+| 5 | O1 | Les hints dialogiques sont comptés par leur vrai reader | F07 | high | corrigé et vérifié, livraison à faire |
 | 6 | B1 | Un extrait tronqué n'est jamais annoncé complet | F06 | xhigh | non commencé |
 | 7 | B2 | Une reprise appartient au document réellement ouvert | F11 | high | non commencé |
 | 8 | Z | Vérification finale limitée aux raccords modifiés | ci-dessus | high | non commencé |
@@ -485,19 +485,54 @@ Tests : `app/tests/unit/memory/test_identity_read_model_phase2.py`,
 `app/tests/test_server_admin_identity_read_model_phase2.py`,
 `app/tests/unit/identity/test_identity_read_model_projection_boundary.py`.
 
-- [ ] Reproduire dialogue → zéro avant SQL, puis composer le vrai writer,
+- [x] Reproduire dialogue → zéro avant SQL, puis composer le vrai writer,
   reader et read-model avec un stockage factice de lignes.
-- [ ] Admettre dialogue uniquement dans le reader d'evidence concerné ; ne pas
+- [x] Admettre dialogue uniquement dans le reader d'evidence concerné ; ne pas
   élargir l'allowlist commune des identities, conflits ou canons user/llm.
-- [ ] Prouver N evidences dialogue → N réellement stockées dans la projection,
+- [x] Prouver N evidences dialogue → N réellement stockées dans la projection,
   absence légitime → zéro, historique user/llm conservé, filtres/limites inchangés.
-- [ ] Suivre cette donnée jusqu'aux renderers existants ; ne pas confondre compteur
+- [x] Suivre cette donnée jusqu'aux renderers existants ; ne pas confondre compteur
   stocké, sélection pour injection et dernière activité. Modifier l'UI seulement
   si nécessaire à la fidélité du contrat, sans écran ni collecte supplémentaire.
 - [ ] Documenter et livrer O1 ; aucun retrait ni changement sémantique des hints.
 
 **Fermeture :** le compteur rend la catégorie réellement écrite et n'affirme pas
 une absence d'injection depuis un simple zéro administratif.
+
+### Preuves O1 avant livraison — 3 septembre 2026
+
+- F1, F2, F3 et F4 sont valides. Le writer et les deux services admin utilisent
+  bien `dialogue`; seul le reader d'evidence refusait ce sujet. La garde commune
+  reste inchangée pour les fragments et conflits. Les projections/renderers
+  consommaient déjà `total_count`; les anciennes fixtures injectaient directement
+  un snapshot correct et ne pouvaient donc pas détecter la rupture writer-reader.
+- La reproduction initiale avec connexion sentinelle rendait
+  `total_count=0` sans ouvrir la connexion. La preuve composée fait passer trois
+  hints synthétiques par le vrai writer, les façades `memory_store`, le vrai
+  reader et les deux services admin sur un stockage factice qui conserve les
+  paramètres des `INSERT` puis calcule ses lectures par sujet.
+- Avec `limit=2`, le read-model rend `total_count=3`, deux items minimisés et
+  `stored=true`; la représentation runtime rend le même total avec sa limite
+  existante de 20. Une evidence `user` et une `llm` restent lisibles chacune et
+  ne rejoignent pas le total `dialogue`.
+- Un sujet evidence invalide, ainsi que fragments et conflits `dialogue`, sont
+  toujours refusés avant SQL. Une table dialogue vide rend légitimement zéro.
+  Les requêtes paramétrées, l'ordre, les limites et la minimisation restent
+  inchangés; aucun contenu brut synthétique ne traverse les projections.
+- La fixture issue du vrai builder sépare `stockes=3`, activité
+  `persistes=2` et sélection `max_items=2`. Le test Chromium ciblé confirme ce
+  rendu sur `/identity` et `/hermeneutic-admin`, sans modification frontend.
+- Une mutation remettant le refus commun dans le reader fait échouer la preuve
+  composée avec `0 != 3`; le correctif restauré la remet au vert.
+- Batterie hermétique ciblée : 37 tests Python et un test Chromium, tous verts,
+  checkout read-only, réseau désactivé, temporaires isolés, sans installation,
+  provider, secret ni DB opérateur.
+- Le contre-audit local ne trouve ni admission de `dialogue` dans le canon, les
+  fragments ou les conflits, ni total dérivé de la page limitée, ni renderer
+  raccordé au mauvais compteur, ni second reader empilé.
+- Limite : ce stockage factice n'est pas une preuve PostgreSQL live. Le compteur
+  stocké ne garantit ni la sélection future d'un hint, ni son injection, et la
+  gestion générale des erreurs de lecture reste inchangée.
 
 ## 10. B1 — Distinguer section complète et fragment borné
 

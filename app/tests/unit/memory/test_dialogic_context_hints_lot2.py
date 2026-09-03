@@ -182,7 +182,7 @@ class DialogicContextHintsLot2Tests(unittest.TestCase):
         self.assertNotIn('payload_json', item)
 
         block = admin_identity_read_model_projection.build_dialogic_context_block(
-            evidence={'items': [], 'total_count': 2, 'limit': 20},
+            evidence={'items': [], 'total_count': 3, 'limit': 2},
             latest_activity=item,
             runtime={
                 'selection': {
@@ -212,7 +212,7 @@ class DialogicContextHintsLot2Tests(unittest.TestCase):
         }
         self.assertEqual(
             admin_identity_read_model_projection.build_dialogic_context_block(
-                evidence={'items': [], 'total_count': 2, 'limit': 20},
+                evidence={'items': [], 'total_count': 3, 'limit': 2},
                 latest_activity=conflicting_legacy_shape,
                 runtime=block['runtime'],
             ),
