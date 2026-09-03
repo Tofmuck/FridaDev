@@ -139,6 +139,10 @@ def _evaluate_runtime_expectation(case_kind: str, record: Mapping[str, Any]) -> 
         return _evaluate_section_integrity(record)
     if kind == "section_integrity_continue":
         return _evaluate_section_integrity_continue(record)
+    if kind == "document_switch":
+        return _evaluate_document_switch(record)
+    if kind == "document_switch_continue":
+        return _evaluate_document_switch_continue(record)
     return "partial", "expectation_not_classified"
 
 
@@ -165,14 +169,14 @@ def _evaluate_agent_expectation(
     agent_status = _safe_token(record.get("agent_status"))
     plan_tools = _safe_token_list(record.get("agent_plan_tool_names"))
     executed_tools = _safe_token_list(record.get("agent_executed_tool_names"))
-    if _safe_token(case_kind) == "section_integrity_continue":
+    if _safe_token(case_kind) in {"section_integrity_continue", "document_switch_continue"}:
         if _safe_token(record.get("agent_plan_product_method")) != _safe_token(
             product_methods.PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT
         ):
-            return "failed", "section_integrity_continue_agent_method_missing"
+            return "failed", f"{_safe_token(case_kind)}_agent_method_missing"
         if "page_read" not in set(plan_tools):
-            return "failed", "section_integrity_continue_agent_page_read_plan_missing"
-        return "met", "section_integrity_continue_agent_plan_guarded"
+            return "failed", f"{_safe_token(case_kind)}_agent_page_read_plan_missing"
+        return "met", f"{_safe_token(case_kind)}_agent_plan_guarded"
     if agent_status == "fallback_deterministic":
         if executed_tools and _safe_token(record.get("agent_execution_scope")) == "agent_first":
             return "fallback_repaired", "agent_first_fallback_repaired"
@@ -275,6 +279,71 @@ def _evaluate_section_integrity_continue(record: Mapping[str, Any]) -> tuple[str
     ):
         return "failed", "section_integrity_continue_false_extraction_surface"
     return "met", "section_integrity_continue_guarded_clarification"
+
+
+def _evaluate_document_switch(record: Mapping[str, Any]) -> tuple[str, str]:
+    before_document = _safe_token(record.get("state_before_document_id_short"))
+    after_document = _safe_token(record.get("state_after_document_id_short"))
+    after_result_document = _safe_token(record.get("state_after_last_result_document_id_short"))
+    if not before_document or not after_document or before_document == after_document:
+        return "failed", "document_switch_not_observed"
+    if after_result_document != after_document:
+        return "failed", "document_switch_result_provenance_mismatch"
+    if (
+        _to_int(record.get("state_before_page_no")) < 1
+        and not _safe_token(record.get("state_before_passage_hash"))
+    ):
+        return "failed", "document_switch_source_anchor_missing"
+    if any(
+        (
+            _to_int(record.get("state_after_page_no")),
+            _to_int(record.get("state_after_para_no")),
+            _to_int(record.get("state_after_paragraph_id")),
+        )
+    ) or _safe_token(record.get("state_after_passage_hash")):
+        return "failed", "document_switch_old_coordinates_retained"
+    if _to_int(record.get("endpoint_count")) < 1:
+        return "failed", "document_switch_catalogue_not_reached"
+    if "page" in set(_safe_token_list(record.get("endpoint_kinds"))):
+        return "failed", "document_switch_unexpected_page_read"
+    return "met", "document_switch_coordinates_invalidated"
+
+
+def _evaluate_document_switch_continue(record: Mapping[str, Any]) -> tuple[str, str]:
+    before_document = _safe_token(record.get("state_before_document_id_short"))
+    after_document = _safe_token(record.get("state_after_document_id_short"))
+    if not before_document or after_document != before_document:
+        return "failed", "document_switch_continue_document_not_preserved"
+    if any(
+        (
+            _to_int(record.get("state_before_page_no")),
+            _to_int(record.get("state_before_para_no")),
+            _to_int(record.get("state_before_paragraph_id")),
+            _to_int(record.get("state_after_page_no")),
+            _to_int(record.get("state_after_para_no")),
+            _to_int(record.get("state_after_paragraph_id")),
+        )
+    ) or _safe_token(record.get("state_before_passage_hash")) or _safe_token(
+        record.get("state_after_passage_hash")
+    ):
+        return "failed", "document_switch_continue_coordinates_invented"
+    endpoints = set(_safe_token_list(record.get("endpoint_kinds")))
+    executed_tools = set(_safe_token_list(record.get("agent_executed_tool_names")))
+    if (
+        _to_int(record.get("client_count")) > 0
+        or _to_int(record.get("endpoint_count")) > 0
+        or endpoints
+        or executed_tools
+    ):
+        return "failed", "document_switch_continue_catalogue_request_sent"
+    expected_reason = "biblio_dialogue_navigation_page_anchor_missing"
+    if (
+        _safe_token(record.get("status")) != "needs_clarification"
+        or _safe_token(record.get("reason_code")) != expected_reason
+        or not _to_bool(record.get("lane_injected"))
+    ):
+        return "failed", "document_switch_continue_clarification_missing"
+    return "met", "document_switch_continue_guarded_clarification"
 
 
 def _combine_expectations(

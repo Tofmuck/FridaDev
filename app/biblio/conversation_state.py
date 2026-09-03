@@ -234,6 +234,15 @@ def update_state_from_runtime(
 
     anchor = _anchor_from_runtime_result(runtime_result)
     if anchor:
+        previous_document_id = _safe_doc_id(before.current_document.get("document_id")) or _safe_doc_id(
+            before.last_result.get("document_id")
+        )
+        anchor_document_id = _safe_doc_id(anchor.get("document_id"))
+        if previous_document_id and anchor_document_id and anchor_document_id != previous_document_id:
+            page_no = None
+            para_no = None
+            paragraph_id = None
+            last_passage_hash = ""
         last_result = anchor
         current_document = _document_from_anchor(anchor) or current_document
         page_no = _optional_int(anchor.get("page_no")) or page_no

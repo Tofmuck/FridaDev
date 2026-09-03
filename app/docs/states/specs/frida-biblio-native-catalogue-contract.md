@@ -764,6 +764,15 @@ Provenance et ancre courante BIB-25/BIB-26:
   inventee;
 - apres lecture exacte, l'etat conversationnel Biblio conserve le document
   courant et la position exploitable comme ancre courante pour le tour suivant;
+- une position, un identifiant de paragraphe ou un hash reste attache au
+  `document_id` canonique qui l'a produit: lorsqu'une nouvelle ancre porte un
+  autre `document_id`, les references scalaires de l'ancien document sont
+  invalidees avant toute reprise; seules des coordonnees effectivement fournies
+  par la nouvelle ancre peuvent alors etre conservees;
+- une mise a jour partielle dans le meme document conserve l'ancre precedente;
+  l'absence de position dans un autre document conduit a la clarification
+  existante et ne permet jamais de composer l'identite nouvelle avec une page,
+  un paragraphe ou un hash ancien;
 - preuve live conversationnelle:
   `app/docs/states/baselines/biblio-smokes/bib25-bib26-real-conversation-20260604T195551Z.jsonl`;
   l'artefact reste content-free et ne contient ni prompt, ni dialogue brut, ni

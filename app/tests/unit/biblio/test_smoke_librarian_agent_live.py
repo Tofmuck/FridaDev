@@ -193,6 +193,55 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
                 self.assertEqual(failed["runtime_expectation_status"], "failed")
                 self.assertNotEqual(failed["product_expectation_status"], "met")
 
+    def test_document_switch_expectation_requires_new_identity_without_old_coordinates(self) -> None:
+        case = smoke.BiblioLibrarianProductSmokeCase("B2_SWITCH", "document_switch", RAW_QUERY)
+        record = _document_switch_record()
+
+        expectations = smoke._evaluate_expectations(case, record)
+
+        self.assertEqual(expectations["runtime_expectation_status"], "met")
+        self.assertEqual(expectations["agent_expectation_status"], "met")
+        self.assertEqual(expectations["product_expectation_status"], "met")
+        for mutation in (
+            {"state_after_document_id_short": "doc-a"},
+            {"state_after_last_result_document_id_short": "doc-c"},
+            {"state_after_page_no": 12},
+            {"state_after_passage_hash": "abcdef123456"},
+            {"endpoint_kinds": ["catalog", "metadata", "page"]},
+        ):
+            with self.subTest(mutation=mutation):
+                mutated = {**record, **mutation}
+                failed = smoke._evaluate_expectations(case, mutated)
+                self.assertEqual(failed["runtime_expectation_status"], "failed")
+                self.assertNotEqual(failed["product_expectation_status"], "met")
+
+    def test_document_switch_continue_rejects_any_request_or_invented_position(self) -> None:
+        case = smoke.BiblioLibrarianProductSmokeCase(
+            "B2_CONTINUE",
+            "document_switch_continue",
+            RAW_QUERY,
+        )
+        record = _document_switch_continue_record()
+
+        expectations = smoke._evaluate_expectations(case, record)
+
+        self.assertEqual(expectations["runtime_expectation_status"], "met")
+        self.assertEqual(expectations["agent_expectation_status"], "met")
+        self.assertEqual(expectations["product_expectation_status"], "met")
+        for mutation in (
+            {"client_count": 1, "endpoint_count": 1, "endpoint_kinds": ["page"]},
+            {"agent_executed_tool_names": ["page_read"]},
+            {"state_before_page_no": 12},
+            {"state_after_passage_hash": "abcdef123456"},
+            {"state_after_document_id_short": "doc-a"},
+            {"status": "agent_first_executed"},
+        ):
+            with self.subTest(mutation=mutation):
+                mutated = {**record, **mutation}
+                failed = smoke._evaluate_expectations(case, mutated)
+                self.assertEqual(failed["runtime_expectation_status"], "failed")
+                self.assertNotEqual(failed["product_expectation_status"], "met")
+
     def test_smoke_record_exposes_agent_plan_case_and_method_content_free(self) -> None:
         fake_result = _fake_turn_runner(
             {"biblio_enabled": True},
@@ -807,6 +856,78 @@ def _section_integrity_continue_record() -> dict[str, object]:
         "state_interval_state": "segment",
         "state_incomplete_page_no": 12,
         "state_next_page_no": 0,
+    }
+
+
+def _document_switch_record() -> dict[str, object]:
+    return {
+        "query_kind": "agent_first",
+        "status": "agent_first_executed",
+        "endpoint_count": 2,
+        "client_count": 2,
+        "endpoint_kinds": ["catalog", "metadata"],
+        "agent_mode": "active",
+        "agent_present": True,
+        "agent_model_called": True,
+        "agent_candidate_plan_present": True,
+        "agent_status": "evaluated",
+        "agent_execution_scope": "agent_first",
+        "agent_tool_execution_status": "executed",
+        "agent_tool_call_event_count": 2,
+        "agent_used_for_response": True,
+        "agent_product_response_changed": True,
+        "agent_plan_product_method": "work_lookup",
+        "agent_plan_tool_names": ["resolve_work", "document_open_summary"],
+        "agent_executed_tool_names": ["resolve_work", "document_open_summary"],
+        "state_before_document_id_short": "doc-a",
+        "state_before_last_result_document_id_short": "doc-a",
+        "state_before_page_no": 12,
+        "state_before_para_no": 3,
+        "state_before_paragraph_id": 99,
+        "state_before_passage_hash": "abcdef123456",
+        "state_after_document_id_short": "doc-b",
+        "state_after_last_result_document_id_short": "doc-b",
+        "state_after_page_no": 0,
+        "state_after_para_no": 0,
+        "state_after_paragraph_id": 0,
+        "state_after_passage_hash": "",
+    }
+
+
+def _document_switch_continue_record() -> dict[str, object]:
+    return {
+        "query_kind": "page_read",
+        "status": "needs_clarification",
+        "reason_code": "biblio_dialogue_navigation_page_anchor_missing",
+        "endpoint_count": 0,
+        "client_count": 0,
+        "endpoint_kinds": [],
+        "lane_injected": True,
+        "agent_mode": "active",
+        "agent_present": True,
+        "agent_model_called": True,
+        "agent_candidate_plan_present": True,
+        "agent_status": "fallback_deterministic",
+        "agent_execution_scope": "",
+        "agent_tool_execution_status": "not_executed",
+        "agent_tool_call_event_count": 0,
+        "agent_used_for_response": False,
+        "agent_product_response_changed": False,
+        "agent_plan_product_method": "passage_continue_next_segment",
+        "agent_plan_tool_names": ["page_read"],
+        "agent_executed_tool_names": [],
+        "state_before_document_id_short": "doc-b",
+        "state_before_last_result_document_id_short": "doc-b",
+        "state_before_page_no": 0,
+        "state_before_para_no": 0,
+        "state_before_paragraph_id": 0,
+        "state_before_passage_hash": "",
+        "state_after_document_id_short": "doc-b",
+        "state_after_last_result_document_id_short": "doc-b",
+        "state_after_page_no": 0,
+        "state_after_para_no": 0,
+        "state_after_paragraph_id": 0,
+        "state_after_passage_hash": "",
     }
 
 

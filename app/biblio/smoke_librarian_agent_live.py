@@ -202,6 +202,18 @@ _OUTPUT_KEYS = {
     "state_incomplete_page_no",
     "state_interval_state",
     "state_next_page_no",
+    "state_before_document_id_short",
+    "state_before_last_result_document_id_short",
+    "state_before_page_no",
+    "state_before_para_no",
+    "state_before_paragraph_id",
+    "state_before_passage_hash",
+    "state_after_document_id_short",
+    "state_after_last_result_document_id_short",
+    "state_after_page_no",
+    "state_after_para_no",
+    "state_after_paragraph_id",
+    "state_after_passage_hash",
     "truncated",
 } | expectations.EXPECTATION_OUTPUT_KEYS
 
@@ -247,7 +259,7 @@ def run_smokes(
         if result.biblio_state is not None:
             states[conversation_id] = result.biblio_state
         recent_dialogues.setdefault(conversation_id, []).append(_recent_turn_observation(case, result))
-        record = _record_for_result(case, result, dialogue, raw_markers=raw_markers)
+        record = _record_for_result(case, result, dialogue, state_before=state, raw_markers=raw_markers)
         records.append(record)
         if on_record is not None:
             on_record(record)
@@ -259,6 +271,7 @@ def _record_for_result(
     result: BiblioChatResult,
     dialogue: BiblioDialoguePlanningResult,
     *,
+    state_before: BiblioConversationState,
     raw_markers: Sequence[str],
 ) -> dict[str, Any]:
     event = dict(result.observability_payload or {})
@@ -278,6 +291,8 @@ def _record_for_result(
     rendered_content = str(getattr(result.rendered_answer, "content", "") or "")
     final_lock_observation = _final_lock_observation(result)
     state_interval = _state_interval(result)
+    before_state = _state_coordinates(state_before)
+    after_state = _state_coordinates(result.biblio_state)
     dialogue_intent = _mapping(dialogue_observation.get("intent"))
     dialogue_plan = _mapping(dialogue_observation.get("plan"))
     endpoint_kinds = _endpoint_kinds(client, context, passage_search)
@@ -378,6 +393,8 @@ def _record_for_result(
         "state_interval_state": _safe_token(state_interval.get("state")),
         "state_incomplete_page_no": _to_int(state_interval.get("incomplete_page_no")),
         "state_next_page_no": _to_int(state_interval.get("next_page_no")),
+        **{f"state_before_{key}": value for key, value in before_state.items()},
+        **{f"state_after_{key}": value for key, value in after_state.items()},
     }
     base_record.update(_evaluate_expectations(case, base_record))
     return _finalize_record(
@@ -519,6 +536,21 @@ def _state_interval(result: BiblioChatResult) -> Mapping[str, Any]:
     if not isinstance(last_result, Mapping):
         return {}
     return _mapping(last_result.get("interval_hint"))
+
+
+def _state_coordinates(state: Any) -> dict[str, Any]:
+    if state is None:
+        return {}
+    current_document = _mapping(getattr(state, "current_document", None))
+    last_result = _mapping(getattr(state, "last_result", None))
+    return {
+        "document_id_short": _safe_token(current_document.get("doc_id_short")),
+        "last_result_document_id_short": _safe_token(last_result.get("doc_id_short")),
+        "page_no": _to_int(getattr(state, "page_no", None)),
+        "para_no": _to_int(getattr(state, "para_no", None)),
+        "paragraph_id": _to_int(getattr(state, "paragraph_id", None)),
+        "passage_hash": _safe_token(getattr(state, "last_passage_hash", "")),
+    }
 
 
 def _lane_observability(value: Any) -> dict[str, Any]:

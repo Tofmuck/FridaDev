@@ -263,6 +263,15 @@ L'agent peut lire cet etat, mais il ne peut pas inventer une continuite. Si
 l'etat manque, est contradictoire ou ne porte pas les ancres necessaires, la
 sortie doit clarifier.
 
+La provenance documentaire borne aussi les mises a jour de cet etat. Un
+changement de `document_id` canonique invalide `page_no`, `para_no`,
+`paragraph_id` et `last_passage_hash` issus du document precedent avant
+l'application d'eventuelles coordonnees du nouveau document. `last_result` et
+son intervalle restent ceux de la nouvelle projection. Une mise a jour
+partielle du meme document conserve en revanche ses references exploitables.
+Le plan agent ne peut donc pas utiliser l'identite de B avec une position ou un
+hash conserve de A; sans ancre B, le garde deterministe exige la clarification.
+
 ## 7. Sortie agent
 
 Le contrat agent courant est maintenant coupe en deux couches explicites.

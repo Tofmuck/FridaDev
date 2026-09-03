@@ -14,7 +14,9 @@ if str(APP_DIR) not in sys.path:
 from biblio import conversation_followup
 from biblio import conversation_state
 from biblio import answer_object
+from biblio import catalogue_client as catalogue
 from biblio import document_resolver as resolver
+from biblio import librarian_dialogue_runtime
 from biblio import librarian_runtime_projection
 from biblio import librarian_tools as tools
 from biblio import passage_candidate_search as candidate_search
@@ -312,6 +314,99 @@ class BiblioConversationStateTests(unittest.TestCase):
         self.assertFalse(state.present)
         self.assertEqual(state.schema_version, conversation_state.SCHEMA_VERSION)
 
+    def test_document_change_drops_old_position_before_serialized_navigation(self) -> None:
+        state = _state_from_tool_result(
+            conversation_state.BiblioConversationState.empty(conversation_id="conv-b2"),
+            _tool_result(
+                tools.TOOL_PASSAGE_CONTEXT,
+                document_id="doc-a",
+                positions=({"page_no": 12, "para_no": 3, "paragraph_id": 99},),
+                context_text=RAW_PASSAGE,
+            ),
+        )
+        state = _state_from_tool_result(
+            state,
+            _tool_result(tools.TOOL_DOCUMENT_OPEN_SUMMARY, document_id="doc-b"),
+        )
+        rehydrated = conversation_state.BiblioConversationState.from_mapping(state.to_dict())
+        client = _RecordingPageClient()
+        factory_calls: list[object] = []
+
+        result = librarian_dialogue_runtime.run_navigation_dialogue_plan(
+            enabled=True,
+            user_msg="Continue.",
+            state=rehydrated,
+            recent_dialogue=(),
+            client_factory=lambda **kwargs: factory_calls.append(kwargs) or client,
+            config_module=object(),
+        )
+
+        self.assertIsNotNone(result)
+        self.assertEqual(client.calls, [])
+        self.assertEqual(factory_calls, [])
+        self.assertEqual(result.status, "needs_clarification")
+        self.assertEqual(result.reason_code, "biblio_dialogue_navigation_page_anchor_missing")
+        self.assertEqual(rehydrated.current_document["document_id"], "doc-b")
+        self.assertEqual(rehydrated.last_result["document_id"], "doc-b")
+        self.assertIsNone(rehydrated.page_no)
+        self.assertIsNone(rehydrated.para_no)
+        self.assertIsNone(rehydrated.paragraph_id)
+        self.assertEqual(rehydrated.last_passage_hash, "")
+        self.assertEqual(rehydrated.last_result.get("interval_hint"), {})
+
+    def test_same_document_partial_anchor_preserves_position_and_new_document_position_replaces_it(self) -> None:
+        initial = _state_from_tool_result(
+            conversation_state.BiblioConversationState.empty(conversation_id="conv-b2-positive"),
+            _tool_result(
+                tools.TOOL_PASSAGE_CONTEXT,
+                document_id="doc-a",
+                positions=({"page_no": 12, "para_no": 3, "paragraph_id": 99},),
+                context_text=RAW_PASSAGE,
+                interval={
+                    "kind": "range",
+                    "state": "segment",
+                    "next_page_no": 12,
+                    "next_para_no": 4,
+                },
+            ),
+        )
+        same_document = _state_from_tool_result(
+            initial,
+            _tool_result(tools.TOOL_DOCUMENT_OPEN_SUMMARY, document_id="doc-a"),
+        )
+        new_document = _state_from_tool_result(
+            same_document,
+            _tool_result(
+                tools.TOOL_PAGE_READ,
+                document_id="doc-b",
+                positions=({"page_no": 4},),
+            ),
+        )
+        rehydrated = conversation_state.BiblioConversationState.from_mapping(new_document.to_dict())
+        client = _RecordingPageClient()
+
+        result = librarian_dialogue_runtime.run_navigation_dialogue_plan(
+            enabled=True,
+            user_msg="Continue.",
+            state=rehydrated,
+            recent_dialogue=(),
+            client_factory=lambda **_kwargs: client,
+            config_module=object(),
+        )
+
+        self.assertEqual(same_document.page_no, 12)
+        self.assertEqual(same_document.para_no, 3)
+        self.assertEqual(same_document.paragraph_id, 99)
+        self.assertEqual(same_document.last_passage_hash, initial.last_passage_hash)
+        self.assertEqual(same_document.last_result.get("interval_hint"), {})
+        self.assertEqual(rehydrated.current_document["document_id"], "doc-b")
+        self.assertEqual(rehydrated.page_no, 4)
+        self.assertIsNone(rehydrated.para_no)
+        self.assertIsNone(rehydrated.paragraph_id)
+        self.assertEqual(rehydrated.last_passage_hash, "")
+        self.assertEqual(client.calls, [("page", "doc-b", 5)])
+        self.assertEqual(result.status, "navigation_executed")
+
     def test_followup_without_state_requires_clarification(self) -> None:
         followup = conversation_followup.detect_followup_request("continue")
         clarification = conversation_followup.clarification_for_followup(
@@ -451,6 +546,74 @@ class _RuntimeResult:
         self.passage_results = (passage_result,) if passage_result is not None else ()
         self.consultation_message = None
         self.answer_object = answer
+
+
+def _state_from_tool_result(
+    previous: conversation_state.BiblioConversationState,
+    tool_result: tools.BiblioLibrarianToolResult,
+) -> conversation_state.BiblioConversationState:
+    runtime = _RuntimeResult(status="agent_first_executed")
+    runtime.state_anchor = librarian_runtime_projection.state_anchor_from_tool_results(
+        (tool_result,),
+        status="agent_first_executed",
+        reason_code="biblio_agent_first_plan_executed",
+    )
+    state, _transition = conversation_state.update_state_from_runtime(
+        previous,
+        library_result=runtime,
+        conversation_id=previous.conversation_id,
+        now_iso="2026-09-03T13:00:00Z",
+    )
+    return state
+
+
+def _tool_result(
+    tool_name: str,
+    *,
+    document_id: str,
+    positions: tuple[dict[str, int], ...] = (),
+    context_text: str = "",
+    interval: dict[str, object] | None = None,
+) -> tools.BiblioLibrarianToolResult:
+    endpoint_kind = {
+        tools.TOOL_DOCUMENT_OPEN_SUMMARY: catalogue.ENDPOINT_METADATA,
+        tools.TOOL_PAGE_READ: catalogue.ENDPOINT_PAGE,
+        tools.TOOL_PASSAGE_CONTEXT: catalogue.ENDPOINT_CONTEXT,
+    }[tool_name]
+    return tools.BiblioLibrarianToolResult(
+        tool_name=tool_name,
+        status=tools.STATUS_OK,
+        reason_code=tools.REASON_OK,
+        endpoint_kind=endpoint_kind,
+        observation=tools.BiblioLibrarianToolObservation(
+            tool_name=tool_name,
+            endpoint_kind=endpoint_kind,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+        ),
+        document_id=document_id,
+        positions=positions,
+        interval=interval or {},
+        context_text=context_text,
+    )
+
+
+class _RecordingPageClient:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str, int]] = []
+
+    def page(self, doc_id: str, page_no: int) -> catalogue.CatalogueResponse:
+        self.calls.append(("page", doc_id, page_no))
+        raw_text = "SYNTHETIC PAGE"
+        return catalogue.CatalogueResponse(
+            endpoint_kind=catalogue.ENDPOINT_PAGE,
+            status_code=200,
+            payload={"document_id": doc_id, "page_no": page_no, "raw_text": raw_text},
+            duration_ms=1,
+            result_count=1,
+            doc_id_short=catalogue.short_doc_id(doc_id),
+            content_chars=len(raw_text),
+        )
 
 
 def _passage(passage: str) -> extractor.BiblioPassageResult:
