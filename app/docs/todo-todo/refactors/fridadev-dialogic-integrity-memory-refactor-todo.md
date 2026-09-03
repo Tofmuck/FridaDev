@@ -759,10 +759,33 @@ consigner l'invalidation prouvée sans fabriquer un patch ; pas de refonte d'ét
   `2,772 USD`; le coût facturé n'est pas exposé. La dernière tentative n'est pas
   utilisée isolément: elle ne peut pas réétablir honnêtement toute la séquence
   successive A -> B -> reprise.
+- Le checker strict B2 est finalisé et poussé au commit
+  `8d53207b496e7dbf81df50ad493309befdf5fce9`, sans modification du produit ni
+  de B1. Il accepte séparément la clarification directe du modèle et la
+  continuation refusée par le garde, vérifie les identifiants canoniques complets
+  et impose les préconditions successives A -> B -> reprise. Les `53` tests
+  état/smoke/B1 directement concernés sont verts, réseau coupé et checkout en
+  lecture seule; la mutation qui rétablit l'exigence exclusive de `page_read`
+  remet le témoin de clarification au rouge.
+- La nouvelle preuve bornée est conservée dans
+  `app/docs/states/baselines/biblio-smokes/b2-document-coordinate-provenance-live-20260903T145621Z.jsonl`.
+  Les metadata exactes confirment A (`d1f49f74`) et B (`62db0e10`), leur
+  distinction, le repère A exploitable et l'identifiant canonique complet de B
+  visible dans la demande. Au premier tour, le modèle a été appelé et a choisi
+  `passage_extract_canonical_range`, mais l'outil exécuté a terminé
+  `document_not_found`: aucun état ni ancre A n'a été produit. La porte stricte
+  a donc empêché l'appel des tours B et reprise, chacun avec `0` GET et sans
+  modèle; B n'a pas été silencieusement remplacé ni une continuation inventée.
+- Cette passe finale a consommé au total `10/20` GET Catalogue, `3/3` tours
+  synthétiques et `1/3` tentative provider, sans fallback. La borne pessimiste
+  de l'appel effectif est `0,924 USD` sur un plafond préflight de `2,772 USD`
+  pour trois appels; le coût facturé n'est pas exposé. Conformément au mandat,
+  les deux tentatives restantes ne sont pas utilisées en retry.
 
 Statut honnête: **correctif technique prouvé et livré, preuve produit en
-attente**. B2 reste ouvert; aucune ancre mixte n'a été observée en live parce que
-B n'a pas été résolu. Z n'est pas commencé.
+attente**. B2 reste ouvert: la nouvelle preuve n'a pas établi l'ancre A, donc
+n'a pu ni ouvrir réellement B ni atteindre la reprise depuis l'état B. Z n'est
+pas commencé.
 
 ### Preuve live Biblio : autorité et proportion
 
