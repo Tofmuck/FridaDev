@@ -11,6 +11,7 @@ from admin import runtime_settings
 from core import assistant_turn_state
 from core import chat_llm_flow
 from core import chat_stream_control
+from core import llm_client
 
 
 class SyntheticRequestException(Exception):
@@ -268,17 +269,12 @@ def exercise_chat_llm_surface(
         resolve_provider_title=lambda caller='llm': f'FridaDev/{caller}',
         build_payload=lambda *_args, **_kwargs: {'model': 'synthetic-main-model'},
         read_openrouter_response_payload=lambda response: response.json(),
-        extract_openrouter_provider_metadata=lambda _payload, *, requested_model=None: {
-            'provider_model': requested_model,
-        },
+        extract_openrouter_provider_metadata=llm_client.extract_openrouter_provider_metadata,
         build_provider_observability_fields=lambda *, caller, provider_metadata: {
             'provider_caller': caller,
             **dict(provider_metadata),
         },
-        merge_openrouter_provider_metadata=lambda current, _payload, *, requested_model=None: {
-            **dict(current or {}),
-            'provider_model': requested_model,
-        },
+        merge_openrouter_provider_metadata=llm_client.merge_openrouter_provider_metadata,
         log_provider_metadata=lambda *_args, **_kwargs: None,
         extract_openrouter_text=lambda payload: payload['choices'][0]['message']['content'],
         sanitize_provider_text=lambda text: text,

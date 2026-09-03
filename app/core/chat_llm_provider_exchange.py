@@ -171,6 +171,18 @@ def iter_stream_provider_content(
                 raise requests_module.exceptions.RequestException(
                     'provider stream error'
                 )
+            choices = chunk.get('choices')
+            chunk_provider_metadata = llm_module.extract_openrouter_provider_metadata(
+                chunk,
+            )
+            if (
+                isinstance(choices, list)
+                and not choices
+                and not any(value is not None for value in chunk_provider_metadata.values())
+            ):
+                raise requests_module.exceptions.RequestException(
+                    'provider stream error'
+                )
             state.provider_metadata = llm_module.merge_openrouter_provider_metadata(
                 state.provider_metadata,
                 chunk,
@@ -180,7 +192,6 @@ def iter_stream_provider_content(
                 raise requests_module.exceptions.RequestException(
                     'provider stream error'
                 )
-            choices = chunk.get('choices')
             choice = (
                 choices[0]
                 if isinstance(choices, list)

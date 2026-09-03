@@ -127,6 +127,23 @@ class ChatLlmFlowTests(unittest.TestCase):
         provider_error_message = 'Synthetic failure ' + _DANGEROUS_SENTINEL
         cases = (
             (
+                'bare_empty_choices_before_content',
+                (
+                    {'choices': []},
+                    '[DONE]',
+                ),
+                '',
+            ),
+            (
+                'bare_empty_choices_after_fragment',
+                (
+                    {'choices': [{'index': 0, 'delta': {'content': fragment}}]},
+                    {'choices': []},
+                    '[DONE]',
+                ),
+                fragment,
+            ),
+            (
                 'top_level_error_before_content',
                 (
                     {

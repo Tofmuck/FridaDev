@@ -129,6 +129,11 @@ Codes emis ou propages canoniquement dans le flux/backend:
   - sens: echec du provider LLM pendant la requete ou la lecture du stream amont;
   - inclut une trame SSE amont portant un objet `error` top-level ou un
     `finish_reason="error"`, meme sous HTTP 200 et avant tout contenu;
+  - inclut une trame SSE amont portant `choices=[]` sans metadata provider ni
+    usage reconnus: cette forme nue ne prouve ni progression ni achevement;
+  - une trame sans contenu portant un identifiant, un modele, un provider ou
+    des compteurs d'usage reconnus reste une metadata nominale et n'est pas
+    reclassifiee en erreur;
   - inclut aussi un evenement `data:` non JSON ou une fin amont sans marqueur
     `[DONE]`, qui ne prouvent pas l'achevement du stream provider;
   - le message et le payload bruts du provider ne sont ni exposes dans le
