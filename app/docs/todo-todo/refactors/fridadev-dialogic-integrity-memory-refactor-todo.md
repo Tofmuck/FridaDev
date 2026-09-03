@@ -3,7 +3,8 @@
 Date de cadrage : 2 septembre 2026.
 
 **Statut : roadmap ouverte ; I1, I2, M1, M2, O1 et B1 fermés et livrés ; B2
-et les lots suivants non commencés.**
+techniquement corrigé et livré, preuve produit encore en attente ; Z non
+commencé.**
 
 ## 1. But et décision de périmètre
 
@@ -72,7 +73,7 @@ sans attendre O1.
 | 4 | M2 | La déduplication ne retire pas une formulation distincte avant jugement | F04 | xhigh | fermé et livré |
 | 5 | O1 | Les hints dialogiques sont comptés par leur vrai reader | F07 | high | fermé et livré |
 | 6 | B1 | Un extrait tronqué n'est jamais annoncé complet | F06 | xhigh | fermé et livré |
-| 7 | B2 | Une reprise appartient au document réellement ouvert | F11 | high | non commencé |
+| 7 | B2 | Une reprise appartient au document réellement ouvert | F11 | high | corrigé/livré, preuve produit en attente |
 | 8 | Z | Vérification finale limitée aux raccords modifiés | ci-dessus | high | non commencé |
 
 - [x] Cadrage documentaire et limites de preuve consignés.
@@ -705,17 +706,63 @@ Tests : `app/tests/unit/biblio/test_conversation_state.py`,
 `app/tests/unit/biblio/test_librarian_navigation_runtime.py`,
 `app/tests/unit/biblio/test_librarian_agent_first.py`.
 
-- [ ] Confirmer ou invalider F11 : document A page 12, ouverture B sans nouvelle
+- [x] Confirmer ou invalider F11 : document A page 12, ouverture B sans nouvelle
   coordonnée, puis reprise ; inspecter l'état et la requête réellement construite.
-- [ ] Si confirmé, invalider les coordonnées/hash attachés à A lors du changement
+- [x] Si confirmé, invalider les coordonnées/hash attachés à A lors du changement
   de document ; accepter les nouvelles coordonnées seulement avec leur provenance B.
-- [ ] Prouver conservation de la reprise dans A inchangé, absence de coordonnées
+- [x] Prouver conservation de la reprise dans A inchangé, absence de coordonnées
   inventées dans B, acceptation d'une ancre valide B et reset explicite préservé.
 - [ ] Vérifier après sérialisation/réhydratation, projection et navigation réelles ;
   documenter et livrer B2 avec la preuve agentique convenue.
 
 **Fermeture :** aucune ancre mixte A/B. Si le finding est déjà faux au HEAD,
 consigner l'invalidation prouvée sans fabriquer un patch ; pas de refonte d'état.
+
+### Correction et livraison B2 — 3 septembre 2026
+
+- F11 est reproduit au raccord réel projection d'outil -> état ->
+  sérialisation/réhydratation -> navigation: après A page 12 puis une ancre B
+  sans position, l'ancien code exécutait `page_read(B, 13)`. La mutation qui
+  retire la correction reproduit exactement cette requête puis le code est
+  restauré vert.
+- `update_state_from_runtime()` invalide désormais `page_no`, `para_no`,
+  `paragraph_id` et `last_passage_hash` lorsqu'une nouvelle ancre porte un
+  `document_id` canonique différent. Les coordonnées présentes dans la nouvelle
+  ancre B sont ensuite appliquées normalement; une mise à jour partielle du même
+  document conserve son ancre. `last_result` et son intervalle étaient déjà
+  remplacés et ne nécessitent aucun second chemin.
+- `93` tests hermétiques ciblés sont verts avant livraison, réseau coupé et
+  checkout en lecture seule; ils couvrent état, sérialisation, vraie exécution
+  navigation, B1, planificateur et checker live. Après livraison, les `43` tests
+  état/checker embarqués sont verts.
+- Correctif/contrats/checker poussé au commit
+  `39acfa28797db949351a98750389c47730c866a1`. FridaDev seul a été rebuild sans
+  pull puis recréé avec `--no-deps`. Image live
+  `sha256:48d846c3242de498ade21eb2eb0942892261ad34b041e2627b699a644fbd8d58`,
+  `StartedAt=2026-09-03T13:16:00.461466831Z`, health déclaré `healthy`, GET
+  interne `/` sur 8089 = `200`, restart `0`, OOM `false`; les empreintes runtime
+  concernées concordent et les conteneurs voisins observés n'ont pas été
+  recréés. L'image B1 `sha256:c2457063ba88e74d3ff42f8f47fe8d2d594af25c2daefe8b7e9e677fc6200d07`
+  reste la référence de retour ciblé.
+- La preuve agentique partielle est conservée dans
+  `app/docs/states/baselines/biblio-smokes/b2-document-coordinate-provenance-live-20260903T131927Z.jsonl`.
+  A (`d1f49f74`) et B (`62db0e10`) sont deux documents publics distincts déjà
+  éprouvés par P04/P16 et vérifiés en metadata. Le tour A a établi une ancre
+  page/paragraphe/hash. Au tour B, le bibliothécaire a planifié
+  `search_document` puis `document_open_summary`, mais la résolution a rendu
+  `not_found`: B n'a pas été ouvert et l'état est légitimement resté sur A. Le
+  tour « Continue. » a donc continué A par `passage_context`; il ne constitue
+  pas la précondition B2 et le checker reste rouge.
+- La passe a consommé `13/40` GET Catalogue, `3/4` tours et `3/4` tentatives
+  provider, sans fallback. Au tarif contrôlé de 1,75 USD/M tokens d'entrée et
+  14 USD/M tokens de sortie, la borne pessimiste des trois appels est
+  `2,772 USD`; le coût facturé n'est pas exposé. La dernière tentative n'est pas
+  utilisée isolément: elle ne peut pas réétablir honnêtement toute la séquence
+  successive A -> B -> reprise.
+
+Statut honnête: **correctif technique prouvé et livré, preuve produit en
+attente**. B2 reste ouvert; aucune ancre mixte n'a été observée en live parce que
+B n'a pas été résolu. Z n'est pas commencé.
 
 ### Preuve live Biblio : autorité et proportion
 
