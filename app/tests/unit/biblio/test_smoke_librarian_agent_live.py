@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import contextlib
+from dataclasses import replace
 import io
 import json
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 
@@ -75,6 +77,68 @@ class BiblioLibrarianAgentSmokeLiveTests(unittest.TestCase):
         self.assertEqual(record["agent_plan_case_id"], "")
         self.assertEqual(record["agent_plan_product_method"], "")
         self.assertFalse(record["state_present_after"])
+
+    def test_smoke_record_exposes_section_integrity_without_raw_text(self) -> None:
+        base = _fake_turn_runner({"biblio_enabled": True}, user_msg=RAW_QUERY)
+        result = replace(
+            base,
+            answer_object=SimpleNamespace(
+                to_observability=lambda: {
+                    "status": "ready",
+                    "extraction": {
+                        "content_kind": "section_segment",
+                        "range_state": "segment",
+                        "range_complete": False,
+                        "page_truncated": True,
+                        "page_start": 12,
+                        "page_end": 12,
+                        "requested_page_end": 12,
+                        "incomplete_pages": [12],
+                        "next_anchor_present": False,
+                    },
+                }
+            ),
+            rendered_answer=SimpleNamespace(
+                content=f"Segment de section.\n{RAW_PASSAGE}",
+                to_observability=lambda: {"exact_text_rendered": True},
+            ),
+            final_response_lock=SimpleNamespace(
+                to_observability=lambda: {
+                    "status": "authorized",
+                    "reason_code": "biblio_final_response_authorized",
+                }
+            ),
+            biblio_state=SimpleNamespace(
+                present=True,
+                last_result={
+                    "interval_hint": {
+                        "state": "segment",
+                        "incomplete_page_no": 12,
+                    }
+                },
+            ),
+        )
+
+        record = smoke.run_smokes(
+            cases=(smoke.BiblioLibrarianProductSmokeCase("B1", "section_integrity", RAW_QUERY),),
+            turn_runner=lambda *_args, **_kwargs: result,
+            raw_markers=(RAW_PASSAGE, RAW_QUERY),
+        )[0]
+        encoded = json.dumps(record, ensure_ascii=False, sort_keys=True)
+
+        self.assertEqual(record["answer_content_kind"], "section_segment")
+        self.assertFalse(record["answer_range_complete"])
+        self.assertTrue(record["answer_page_truncated"])
+        self.assertEqual(record["answer_incomplete_pages"], [12])
+        self.assertFalse(record["answer_next_anchor_present"])
+        self.assertTrue(record["render_exact_text_rendered"])
+        self.assertFalse(record["render_section_complete_claim"])
+        self.assertTrue(record["render_section_segment_claim"])
+        self.assertTrue(record["final_lock_ok"])
+        self.assertEqual(record["state_incomplete_page_no"], 12)
+        self.assertFalse(record["raw_marker_leaks"])
+        self.assertNotIn(RAW_PASSAGE, encoded)
+        self.assertNotIn(RAW_QUERY, encoded)
 
     def test_smoke_record_exposes_agent_plan_case_and_method_content_free(self) -> None:
         fake_result = _fake_turn_runner(

@@ -684,7 +684,15 @@ Extraction de section complete budgetee BIB-23:
   exact vient uniquement de `page_read` effectivement execute sur les pages
   bornees;
 - si la section tient dans le budget outille, le rendu peut etre
-  `section_complete` avec `range_complete=true`;
+  `section_complete` avec `range_complete=true`, a condition que chaque texte
+  de page requis ait aussi ete recu entierement;
+- la coupe locale de `page_read` a 2 500 caracteres est decidee sur le texte
+  nettoye avant l'ajout du marqueur visible. Un depassement d'un caractere est
+  donc une coupe; le seul retrait d'espaces exterieurs ne l'est pas;
+- une page coupee rend la section `section_segment` avec
+  `range_complete=false`, `page_truncated=true` et la premiere page incomplete
+  dans `incomplete_pages`. Le runtime s'arrete a cette page au lieu de lire les
+  pages suivantes au-dela du reste non recu;
 - si la section est longue, le runtime rend un segment exact mecanique avec
   `range_complete=false`, une ancre de continuation et une surface visible qui
   dit clairement que ce n'est pas toute la section. Le segment ne doit jamais
@@ -692,6 +700,13 @@ Extraction de section complete budgetee BIB-23:
 - la continuation utilise l'etat courant et relit mecaniquement la suite par
   outil GET-only (`page_read` dans la preuve live actuelle), sans re-resoudre au
   hasard une nouvelle section;
+- pour une segmentation par budget de pages, `next_page_no` reste l'ancre de
+  continuation. Pour une coupe intra-page, l'etat conserve
+  `incomplete_page_no` mais aucune ancre `next_*`: les outils actuels ne portent
+  pas d'offset de reprise pour `page_read`. Une demande de suite clarifie alors
+  la limite au lieu de relire le meme prefixe ou de sauter a la page suivante;
+- le final lock reste autorise pour le fragment exact rendu: il certifie ce
+  fragment et ses ancres, jamais la completude de la section;
 - le message visible garde seulement provenance courte, statut de segment ou
   complet et texte exact. Les `document_id`, `unit_start`, `unit_end`,
   `boundary_state`, statuts machine, reason codes et hashes restent en
@@ -703,6 +718,8 @@ Extraction de section complete budgetee BIB-23:
   longue bornee, un premier segment exact, `range_complete=false`, ancre de
   continuation, continuation mecanique, final lock autorise, message assistant
   sauvegarde, meta Biblio presente et surface visible propre.
+  Cet artefact historique prouve la segmentation par budget de pages; il ne
+  prouve pas a lui seul l'integrite d'une coupe intra-page, couverte par B1.
 
 Correction transition agentique live 4E:
 

@@ -336,6 +336,8 @@ class BiblioLibrarianPlanner:
                 terminal_status = STATUS_BUDGET_EXHAUSTED
                 terminal_reason = REASON_BUDGET_EXHAUSTED
                 break
+            if _section_page_text_was_truncated(loop_request.plan, step):
+                break
             if step.status in _TERMINAL_STEP_STATUSES:
                 break
 
@@ -401,6 +403,20 @@ class BiblioLibrarianPlanner:
             tool_call=call,
             tool_result=result,
         )
+
+
+def _section_page_text_was_truncated(
+    plan: BiblioLibrarianPlan,
+    step: BiblioLibrarianStep,
+) -> bool:
+    return bool(
+        (
+            plan.product_method == product_methods.PRODUCT_METHOD_SECTION_COMPLETE_EXTRACTION
+            or product_methods.is_section_complete_extraction_answer_mode(plan.answer_mode)
+        )
+        and step.tool_name == tools.TOOL_PAGE_READ
+        and step.observation.get("page_truncated")
+    )
 
 
 def _coerce_request(

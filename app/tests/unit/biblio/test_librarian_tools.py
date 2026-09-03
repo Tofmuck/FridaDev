@@ -570,6 +570,35 @@ class BiblioLibrarianToolTests(unittest.TestCase):
         self.assertNotIn(RAW_TITLE, _json(observed))
         self.assertNotIn(RAW_CHAPTER, _json(observed))
 
+    def test_page_read_reports_only_an_effective_text_cut_as_truncated(self) -> None:
+        cases = (
+            ("x" * 2_500, False),
+            ("x" * 2_501, True),
+            ("x" * 2_500 + " \n", False),
+        )
+
+        for raw_text, expected_truncated in cases:
+            with self.subTest(source_chars=len(raw_text), truncated=expected_truncated):
+                fake = _FakeToolClient(
+                    page_payload={
+                        "document_id": "doc-1",
+                        "page_no": 28,
+                        "raw_text": raw_text,
+                    }
+                )
+
+                result = tools.build_librarian_tool_registry(fake).run(
+                    tools.TOOL_PAGE_READ,
+                    {"document_id": "doc-1", "page_no": 28},
+                )
+
+                self.assertEqual(bool(result.to_observability().get("page_truncated")), expected_truncated)
+                if expected_truncated:
+                    self.assertTrue(result.page_text.startswith("x" * 2_500))
+                    self.assertIn("[page bornee: suite masquee]", result.page_text)
+                else:
+                    self.assertEqual(result.page_text, "x" * 2_500)
+
     def test_locate_requires_document_and_locator_with_content_free_position(self) -> None:
         fake = _FakeToolClient(
             locate_payload={

@@ -45,6 +45,7 @@ _MECHANICAL_TEXT_PROJECTION_METHODS = frozenset(
 )
 _MAX_PAGE_BLOCKS = 3
 _MAX_EXACT_TEXT_CHARS = 8_000
+LIMIT_SECTION_PAGE_TEXT_TRUNCATED = "section_page_text_truncated"
 
 
 def build_extraction(
@@ -76,6 +77,7 @@ def build_extraction(
             "content_kind": _text(projection.get("content_kind")),
             "range_state": _text(projection.get("range_state")),
             "range_complete": bool(projection.get("range_complete")),
+            "page_truncated": True if projection.get("page_truncated") else None,
             "exact_text_present": (
                 bool(projection.get("exact_text_present"))
                 and _has_minimum_anchor(projection)
@@ -98,6 +100,7 @@ def build_extraction(
             "parent_section_id": _text(projection.get("parent_section_id")),
             "next_anchor": _mapping(projection.get("next_anchor")),
             "missing_pages": list(_sequence(projection.get("missing_pages"))),
+            "incomplete_pages": list(_sequence(projection.get("incomplete_pages"))),
             "candidate_count": len(candidates),
             "extraction_attempted": extraction_attempted,
             "reason_codes": list(
@@ -212,6 +215,8 @@ def _visible_limit(value: Any) -> str:
         return "suite non garantie"
     if text == "section_segment_partial":
         return "section affichee par segment"
+    if text == LIMIT_SECTION_PAGE_TEXT_TRUNCATED:
+        return "texte de page recu partiellement"
     if text == "section_continuation_anchor_present":
         return "suite disponible"
     if text == "section_continuation_anchor_missing":
@@ -238,6 +243,7 @@ def to_observability(payload: Mapping[str, Any]) -> dict[str, Any]:
             "content_kind": _text(payload.get("content_kind")),
             "range_state": _text(payload.get("range_state")),
             "range_complete": bool(payload.get("range_complete")),
+            "page_truncated": bool(payload.get("page_truncated")),
             "exact_text_present": bool(payload.get("exact_text_present")),
             "exact_text_chars": _int(payload.get("exact_text_chars")),
             "exact_text_hash": _text(payload.get("exact_text_hash")),
@@ -268,6 +274,11 @@ def to_observability(payload: Mapping[str, Any]) -> dict[str, Any]:
             "missing_pages": [
                 _int(page)
                 for page in _sequence(payload.get("missing_pages"))
+                if _int(page)
+            ],
+            "incomplete_pages": [
+                _int(page)
+                for page in _sequence(payload.get("incomplete_pages"))
                 if _int(page)
             ],
             "candidate_count": _int(payload.get("candidate_count")),
@@ -322,6 +333,7 @@ def _candidate_from_result(
     else:
         content_kind = "context"
     interval = _mapping(getattr(result, "interval", {}))
+    observed = result.to_observability()
     return _clean_candidate(
         {
             "source_tool_name": result.tool_name,
@@ -332,6 +344,9 @@ def _candidate_from_result(
             "range_state": _text(interval.get("state")),
             "range_complete": result.tool_name == librarian_tools.TOOL_CANONICAL_RANGE_EXTRACT
             and _text(interval.get("state")) != "segment",
+            "page_truncated": True
+            if result.tool_name == librarian_tools.TOOL_PAGE_READ and observed.get("page_truncated")
+            else None,
             "page_start": _int(interval.get("start_page_no")),
             "page_end": _int(interval.get("end_page_no")),
             "page_count": _int(interval.get("page_span")),
@@ -436,6 +451,11 @@ def _project_page_blocks(
     ordered_pages = tuple(sorted(by_page))
     ordered_source_blocks = tuple(by_page[page] for page in ordered_pages)
     ordered_blocks = tuple(_public_block(block) for block in ordered_source_blocks)
+    incomplete_pages = tuple(
+        page
+        for page, block in zip(ordered_pages, ordered_source_blocks)
+        if bool(block.get("page_truncated"))
+    )
     selected = dict(ordered_blocks[0]) if ordered_blocks else {}
     if len(ordered_pages) > _MAX_PAGE_BLOCKS:
         return {
@@ -463,7 +483,12 @@ def _project_page_blocks(
             "blocking_reason": librarian_tools.REASON_EXTRACTION_PAGE_RANGE_INCOMPLETE,
         }
     combined_text = "\n\n".join(_text(block.get("_exact_text")) for block in ordered_source_blocks)
-    section_projection = _section_projection(ordered_pages, ordered_blocks, section_interval or {})
+    section_projection = _section_projection(
+        ordered_pages,
+        ordered_blocks,
+        section_interval or {},
+        incomplete_pages=incomplete_pages,
+    )
     content_kind = _text(section_projection.get("content_kind")) or ("page_range" if len(ordered_blocks) > 1 else "page")
     if len(combined_text) > _MAX_EXACT_TEXT_CHARS:
         return {
@@ -594,6 +619,8 @@ def _section_projection(
     ordered_pages: Sequence[int],
     ordered_blocks: Sequence[Mapping[str, Any]],
     section_interval: Mapping[str, Any],
+    *,
+    incomplete_pages: Sequence[int] = (),
 ) -> dict[str, Any]:
     if not ordered_pages or not section_interval:
         return {}
@@ -606,6 +633,21 @@ def _section_projection(
     if ordered_pages[0] != start_page or requested_end < start_page:
         return {}
     page_end = ordered_pages[-1]
+    if incomplete_pages:
+        return {
+            "content_kind": "section_segment",
+            "range_state": "segment",
+            "range_complete": False,
+            "page_truncated": True,
+            "requested_page_end": requested_end,
+            "incomplete_pages": tuple(incomplete_pages),
+            **_section_identity_projection(section_interval),
+            "limits": (
+                "section_segment_partial",
+                LIMIT_SECTION_PAGE_TEXT_TRUNCATED,
+                "section_continuation_anchor_missing",
+            ),
+        }
     if page_end >= requested_end:
         return {
             "content_kind": "section_complete",

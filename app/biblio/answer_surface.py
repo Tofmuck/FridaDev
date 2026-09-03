@@ -141,6 +141,8 @@ def _visible_limit(value: Any) -> str:
         return "suite non garantie: ancre de continuation absente"
     if text == "section_segment_partial":
         return "section rendue par segment; la section complete n'est pas entierement affichee"
+    if text == "section_page_text_truncated":
+        return "texte de page recu partiellement"
     if text == "section_continuation_anchor_present":
         return "suite disponible depuis l'ancre de continuation"
     if text == "section_continuation_anchor_missing":

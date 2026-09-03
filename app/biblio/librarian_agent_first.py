@@ -64,6 +64,8 @@ def run_agent_first_plan(
     plan = _candidate_plan(comparison)
     if plan is None or not _is_active_comparison(comparison):
         return None
+    if _has_unaddressable_section_remainder(plan, conversation_state):
+        return None
 
     registry = librarian_tools.build_librarian_tool_registry(client)
     loop_result = librarian_planner.BiblioLibrarianPlanner(registry).run(
@@ -155,6 +157,29 @@ def _is_active_comparison(comparison: Any) -> bool:
         return False
     agent_result = getattr(comparison, "agent_result", None)
     return bool(agent_result and getattr(agent_result, "candidate_plan", None) is not None)
+
+
+def _has_unaddressable_section_remainder(
+    plan: librarian_planner.BiblioLibrarianPlan,
+    conversation_state: Any,
+) -> bool:
+    if _text(getattr(plan, "product_method", "")) != product_methods.PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT:
+        return False
+    last_result = getattr(conversation_state, "last_result", None)
+    if not isinstance(last_result, Mapping):
+        return False
+    interval = last_result.get("interval_hint")
+    if not isinstance(interval, Mapping):
+        return False
+    return bool(
+        _text(interval.get("kind")) == "section"
+        and _text(interval.get("state")) == "segment"
+        and _positive_int(interval.get("incomplete_page_no"))
+        and not any(
+            _positive_int(interval.get(key))
+            for key in ("next_page_no", "next_para_no", "next_paragraph_id")
+        )
+    )
 
 
 def _consultation_message(

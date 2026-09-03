@@ -290,7 +290,7 @@ class _BiblioLibrarianToolHandlers:
             return _error_result(tool, exc)
         if _string(response.payload.get("document_id")) != doc_id:
             return _incoherent_page_result(tool, response, doc_id)
-        page_text = _page_text(response.payload)
+        page_text, page_truncated = _page_text(response.payload)
         summary = _page_document_summary(response.payload, doc_id)
         chapter_hint = _chapter_hint(response.payload)
         return _ok_result(
@@ -309,10 +309,7 @@ class _BiblioLibrarianToolHandlers:
                 "current_chapter_unit_end": _raw_int(chapter_hint.get("unit_end")),
                 "next_chapter_no": _raw_int(chapter_hint.get("next_chapter_no")),
                 "chapter_source": _string(chapter_hint.get("source")),
-                "page_truncated": bool(
-                    isinstance(response.payload.get("raw_text"), str)
-                    and len(str(response.payload.get("raw_text") or "")) > len(page_text)
-                ),
+                "page_truncated": page_truncated,
             },
         )
 
@@ -1020,14 +1017,14 @@ def _context_text(payload: Mapping[str, Any]) -> str:
     return ""
 
 
-def _page_text(payload: Mapping[str, Any]) -> str:
+def _page_text(payload: Mapping[str, Any]) -> tuple[str, bool]:
     value = payload.get("raw_text")
     if not isinstance(value, str):
-        return ""
+        return "", False
     text = value.strip()
     if len(text) <= _PAGE_TEXT_MAX_CHARS:
-        return text
-    return text[:_PAGE_TEXT_MAX_CHARS].rstrip() + "\n[page bornee: suite masquee]"
+        return text, False
+    return text[:_PAGE_TEXT_MAX_CHARS].rstrip() + "\n[page bornee: suite masquee]", True
 
 
 def _items(payload: Mapping[str, Any], key: str) -> tuple[Any, ...]:

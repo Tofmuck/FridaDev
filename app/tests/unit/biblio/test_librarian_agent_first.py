@@ -14,8 +14,11 @@ if str(APP_DIR) not in sys.path:
 
 from biblio import catalogue_client as catalogue
 from biblio import answer_object
+from biblio import conversation_state
 from biblio import librarian_agent_contract as agent_contract
 from biblio import librarian_agent_first as agent_first
+from biblio import librarian_dialogue_planner as dialogue_planner
+from biblio import librarian_navigation_runtime as navigation_runtime
 from biblio import librarian_planner as planner
 from biblio import librarian_product_methods as product_methods
 from biblio import librarian_tools as tools
@@ -1327,6 +1330,201 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertNotIn(page_12, encoded)
         self.assertNotIn(page_13, encoded)
 
+    def test_section_complete_extraction_keeps_truncated_single_page_partial(self) -> None:
+        page_12 = "x" * 4_000
+        fake = _FakeAgentFirstClient(
+            chapters_payload=_section_chapters_payload(unit_no_by_chapter={3: 13}),
+            page_payloads={
+                12: {"document_id": "doc-1234", "raw_text": page_12, "paragraph_count": 4},
+            },
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="extraction",
+                    product_method=product_methods.PRODUCT_METHOD_SECTION_COMPLETE_EXTRACTION,
+                    case_id="",
+                    answer_mode="section_complete_budgeted",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_SECTION_BOUNDS,
+                            method="GET",
+                            params={"document_id": "doc-1234", "chapter_no": 2},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+            deterministic_plan=SimpleNamespace(intent="extract_passage"),
+        )
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertIsNotNone(result.answer_object)
+        self.assertIsNotNone(result.rendered_answer)
+        assert result.answer_object is not None
+        assert result.rendered_answer is not None
+        lock = answer_object.build_final_response_lock(result.answer_object, result.rendered_answer)
+        observed = result.answer_object.to_observability()
+
+        self.assertEqual(fake.calls, [("chapters", "doc-1234", 500, 0), ("page", "doc-1234", 12)])
+        self.assertEqual(result.answer_object.status, answer_object.STATUS_READY)
+        self.assertEqual(result.answer_object.extraction["content_kind"], "section_segment")
+        self.assertEqual(result.answer_object.extraction["range_state"], "segment")
+        self.assertFalse(result.answer_object.extraction["range_complete"])
+        self.assertEqual(result.answer_object.extraction["incomplete_pages"], [12])
+        self.assertTrue(result.answer_object.extraction["blocks"][0]["page_truncated"])
+        self.assertNotIn("next_anchor", result.answer_object.extraction)
+        self.assertIn("section_page_text_truncated", result.answer_object.extraction["limits"])
+        self.assertIn("section_continuation_anchor_missing", result.answer_object.extraction["limits"])
+        self.assertEqual(result.state_anchor["interval_hint"]["state"], "segment")
+        self.assertNotIn("next_page_no", result.state_anchor["interval_hint"])
+        self.assertTrue(result.rendered_answer.exact_text_rendered)
+        self.assertTrue(lock.ok)
+        self.assertIn("Segment de section.", result.rendered_answer.content)
+        self.assertIn("suite non garantie", result.rendered_answer.content)
+        self.assertNotIn("Section complete.", result.rendered_answer.content)
+        self.assertEqual(observed["extraction"]["incomplete_pages"], [12])
+        self.assertNotIn(page_12, json.dumps(observed, ensure_ascii=False, sort_keys=True))
+
+        state, _ = conversation_state.update_state_from_runtime(
+            conversation_state.BiblioConversationState.empty(conversation_id="conv-b1"),
+            library_result=result,
+            conversation_id="conv-b1",
+            now_iso="2026-09-03T12:00:00Z",
+        )
+        rehydrated = conversation_state.BiblioConversationState.from_mapping(state.to_dict())
+        continuation_client = _FakeAgentFirstClient()
+        blocked = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="navigate",
+                    product_method=product_methods.PRODUCT_METHOD_PASSAGE_CONTINUE_NEXT_SEGMENT,
+                    case_id="P14",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_PAGE_READ,
+                            method="GET",
+                            params={"document_id": "doc-1234", "page_no": 13},
+                        )
+                    ],
+                )
+            ),
+            client=continuation_client,
+            conversation_state=rehydrated,
+        )
+        clarification = dialogue_planner.plan_biblio_dialogue("Continue la section.", state=rehydrated)
+        next_page_clarification = dialogue_planner.plan_biblio_dialogue(
+            "Montre-moi la page suivante.",
+            state=rehydrated,
+        )
+
+        self.assertEqual(rehydrated.last_result["interval_hint"]["incomplete_page_no"], 12)
+        self.assertIsNone(blocked)
+        self.assertEqual(continuation_client.calls, [])
+        self.assertEqual(clarification.status, dialogue_planner.STATUS_NEEDS_CLARIFICATION)
+        self.assertEqual(clarification.reason_code, dialogue_planner.REASON_NAVIGATION_PAGE_ANCHOR_MISSING)
+        self.assertEqual(next_page_clarification.status, dialogue_planner.STATUS_NEEDS_CLARIFICATION)
+        self.assertEqual(
+            next_page_clarification.reason_code,
+            dialogue_planner.REASON_NAVIGATION_PAGE_ANCHOR_MISSING,
+        )
+
+    def test_section_complete_extraction_stops_preplanned_reads_after_truncated_page(self) -> None:
+        fake = _FakeAgentFirstClient(
+            chapters_payload=_section_chapters_payload(unit_no_by_chapter={3: 14}),
+            page_payloads={
+                12: {"document_id": "doc-1234", "raw_text": "z" * 4_000},
+                13: {"document_id": "doc-1234", "raw_text": "MUST NOT BE READ"},
+            },
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="extraction",
+                    product_method=product_methods.PRODUCT_METHOD_SECTION_COMPLETE_EXTRACTION,
+                    case_id="",
+                    answer_mode="section_complete_budgeted",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_SECTION_BOUNDS,
+                            method="GET",
+                            params={"document_id": "doc-1234", "chapter_no": 2},
+                        ),
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_PAGE_READ,
+                            method="GET",
+                            params={"document_id": "doc-1234", "page_no": 12},
+                        ),
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_PAGE_READ,
+                            method="GET",
+                            params={"document_id": "doc-1234", "page_no": 13},
+                        ),
+                    ],
+                )
+            ),
+            client=fake,
+        )
+
+        self.assertIsNotNone(result)
+        assert result is not None and result.answer_object is not None
+        self.assertEqual(
+            fake.calls,
+            [
+                ("chapters", "doc-1234", 500, 0),
+                ("page", "doc-1234", 12),
+            ],
+        )
+        self.assertEqual(result.answer_object.extraction["content_kind"], "section_segment")
+        self.assertEqual(result.answer_object.extraction["page_end"], 12)
+        self.assertEqual(result.answer_object.extraction["incomplete_pages"], [12])
+
+    def test_section_complete_extraction_stops_at_first_truncated_page(self) -> None:
+        fake = _FakeAgentFirstClient(
+            chapters_payload=_section_chapters_payload(unit_no_by_chapter={3: 15}),
+            page_payloads={
+                12: {"document_id": "doc-1234", "raw_text": "SHORT PAGE 12"},
+                13: {"document_id": "doc-1234", "raw_text": "y" * 4_000},
+                14: {"document_id": "doc-1234", "raw_text": "MUST NOT BE READ"},
+            },
+        )
+
+        result = agent_first.run_agent_first_plan(
+            comparison=_comparison(
+                _plan(
+                    intent="extraction",
+                    product_method=product_methods.PRODUCT_METHOD_SECTION_COMPLETE_EXTRACTION,
+                    case_id="",
+                    answer_mode="section_complete_budgeted",
+                    calls=[
+                        planner.BiblioLibrarianToolCall(
+                            tool_name=tools.TOOL_SECTION_BOUNDS,
+                            method="GET",
+                            params={"document_id": "doc-1234", "chapter_no": 2},
+                        )
+                    ],
+                )
+            ),
+            client=fake,
+        )
+
+        self.assertIsNotNone(result)
+        assert result is not None and result.answer_object is not None
+        self.assertEqual(
+            fake.calls,
+            [
+                ("chapters", "doc-1234", 500, 0),
+                ("page", "doc-1234", 12),
+                ("page", "doc-1234", 13),
+            ],
+        )
+        self.assertEqual(result.answer_object.extraction["content_kind"], "section_segment")
+        self.assertEqual(result.answer_object.extraction["incomplete_pages"], [13])
+        self.assertNotIn("next_anchor", result.answer_object.extraction)
+
     def test_section_complete_extraction_reads_segment_when_section_exceeds_page_budget(self) -> None:
         page_12 = "RAW SEGMENTED SECTION PAGE 12 MUST NOT LEAK"
         page_13 = "RAW SEGMENTED SECTION PAGE 13 MUST NOT LEAK"
@@ -1408,6 +1606,23 @@ class BiblioLibrarianAgentFirstTests(unittest.TestCase):
         self.assertNotIn(page_12, encoded)
         self.assertNotIn(page_13, encoded)
         self.assertNotIn(page_14, encoded)
+
+        state, _ = conversation_state.update_state_from_runtime(
+            conversation_state.BiblioConversationState.empty(conversation_id="conv-b1-budget"),
+            library_result=result,
+            conversation_id="conv-b1-budget",
+            now_iso="2026-09-03T12:00:00Z",
+        )
+        rehydrated = conversation_state.BiblioConversationState.from_mapping(state.to_dict())
+        continuation = dialogue_planner.plan_biblio_dialogue("Continue la section.", state=rehydrated)
+        continuation_client = _FakeAgentFirstClient(
+            page_payloads={15: {"document_id": "doc-1234", "raw_text": "SHORT CONTINUATION"}}
+        )
+        continued = navigation_runtime.run_biblio_navigation_plan(continuation_client, continuation)
+
+        self.assertEqual(continuation.plan.tool_calls[0].params, {"document_id": "doc-1234", "page_no": 15})
+        self.assertEqual(continuation_client.calls, [("page", "doc-1234", 15)])
+        self.assertEqual(continued.status, navigation_runtime.STATUS_NAVIGATION_EXECUTED)
 
     def test_canonical_range_runtime_extracts_complete_interval_without_context_shortcut(self) -> None:
         range_text = "RAW COMPLETE CANONICAL RANGE MUST ONLY APPEAR IN RENDERED CONTENT"

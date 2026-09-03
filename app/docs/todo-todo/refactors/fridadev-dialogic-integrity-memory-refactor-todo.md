@@ -2,7 +2,8 @@
 
 Date de cadrage : 2 septembre 2026.
 
-**Statut : roadmap ouverte ; I1, I2, M1, M2 et O1 fermés et livrés ; B1 et les
+**Statut : roadmap ouverte ; I1, I2, M1, M2 et O1 fermés et livrés ; correctif
+B1 prouvé hermétiquement, livraison et preuve agentique en attente ; B2 et les
 lots suivants non commencés.**
 
 ## 1. But et décision de périmètre
@@ -71,7 +72,7 @@ sans attendre O1.
 | 3 | M1 | Un résumé n'est acquis qu'après stockage confirmé | F03 | xhigh | fermé et livré |
 | 4 | M2 | La déduplication ne retire pas une formulation distincte avant jugement | F04 | xhigh | fermé et livré |
 | 5 | O1 | Les hints dialogiques sont comptés par leur vrai reader | F07 | high | fermé et livré |
-| 6 | B1 | Un extrait tronqué n'est jamais annoncé complet | F06 | xhigh | non commencé |
+| 6 | B1 | Un extrait tronqué n'est jamais annoncé complet | F06 | xhigh | correctif prouvé ; livraison et preuve agentique en attente |
 | 7 | B2 | Une reprise appartient au document réellement ouvert | F11 | high | non commencé |
 | 8 | Z | Vérification finale limitée aux raccords modifiés | ci-dessus | high | non commencé |
 
@@ -571,19 +572,58 @@ Tests : `app/tests/unit/biblio/test_librarian_tools.py`,
 `app/tests/unit/biblio/test_librarian_agent_first.py`,
 `app/tests/unit/biblio/test_librarian_method_boundaries.py`.
 
-- [ ] Rejouer la section d'une page dont le texte dépasse la borne actuelle,
+- [x] Rejouer la section d'une page dont le texte dépasse la borne actuelle,
   par le vrai chemin agent-first avec client Catalogue factice.
-- [ ] Propager l'incomplétude dans l'objet-réponse, le rendu et les conditions de
+- [x] Propager l'incomplétude dans l'objet-réponse, le rendu et les conditions de
   lock ; un hash de fragment n'est pas une preuve de section complète.
-- [ ] Conserver une reprise honnête sur la matière non lue, avec les mécanismes
+- [x] Conserver une reprise honnête sur la matière non lue, avec les mécanismes
   existants ; ne pas avancer au-delà de la coupe ni inventer une nouvelle ancre.
-- [ ] Préserver page courte complète, sections multi-pages et extraction canonique
+- [x] Préserver page courte complète, sections multi-pages et extraction canonique
   segmentée déjà correcte. Ne pas relever globalement les plafonds.
 - [ ] Livrer la correction puis la preuve agentique bornée convenue ci-dessous,
   mettre à jour contrat/observabilité affectés et fermer B1 seulement avec celle-ci.
 
 **Fermeture :** aucun « complet » trompeur ; le reste non lu reste identifiable.
 Le bibliothécaire LLM est conservé, pas remplacé par des règles de lecture.
+
+### Preuves B1 avant livraison — 3 septembre 2026
+
+- Hypothèses: H1 à H5 sont valides. `_page_text()` coupe après normalisation à
+  2 500 caractères; l'ancienne comparaison avec le texte décoré manquait une
+  petite coupe et confondait retrait d'espaces et troncature; le booléen était
+  perdu avant l'objet-réponse; la projection assimilait couverture des pages et
+  réception intégrale; rendu, lock et reprise ne partageaient donc pas la même
+  vérité structurée.
+- Reproduction rouge par le vrai builder agent-first et un Catalogue factice:
+  une section d'une page contenant 4 000 caractères était bornée mais projetée
+  `section_complete`, rendue « Section complete. » et mémorisée sans reste.
+- Correctif minimal: la décision de coupe est capturée avant ajout du marqueur,
+  propagée comme `page_truncated`/`incomplete_pages`, puis projetée en segment
+  exact. Le rendu annonce la réception partielle et le final lock reste autorisé
+  pour l'extrait exact reçu.
+- L'outil page n'expose aucun offset. Une coupe intra-page porte donc
+  `incomplete_page_no` sans fausse ancre suivante; une reprise qui sauterait à
+  la page suivante est refusée avant GET et rejoint la clarification existante.
+  Un segment dû au seul budget de pages conserve, lui, son vrai `next_page_no`.
+- Tests hermétiques ciblés: `354` tests verts avec réseau coupé, checkout en
+  lecture seule et `/tmp` isolé. Ils couvrent 2 500 caractères, dépassement d'un
+  caractère, espaces terminaux, pages courtes et multi-pages complètes, coupe
+  multi-page, budget de pages, sérialisation/réhydratation, véritable prochain
+  GET, extraction canonique et observabilité content-free.
+- Sensibilité: remettre temporairement la projection de page coupée dans le
+  chemin de complétude fait échouer la preuve centrale sur `section_complete`;
+  le code a été immédiatement restauré et la preuve est redevenue verte.
+- Contre-audit local unique: deux chemins de saut voisins ont été trouvés et
+  fermés. « Page suivante » rejoint la clarification lorsqu'une page reste
+  incomplète, et le planner interrompt aussi les `page_read` déjà fournis par le
+  plan agent après la première coupe; le compléteur ne les reprend pas ensuite.
+  Les ranges canoniques restent distincts. Le runner live expose seulement les
+  statuts, bornes, compteurs, hashes et décision de lock nécessaires; aucun
+  texte, prompt ou payload provider n'est sérialisé.
+
+B1 reste ouvert à ce stade: la livraison ciblée et la preuve agentique live
+content-free autorisée ci-dessous doivent encore être acquises. B2 n'est pas
+commencé.
 
 ## 11. B2 — Garder les coordonnées dans leur document
 

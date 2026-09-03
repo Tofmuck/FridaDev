@@ -129,6 +129,8 @@ _OUTPUT_KEYS = {
     "agent_candidate_plan_present",
     "agent_mode",
     "agent_model_called",
+    "agent_model_effective",
+    "agent_provider_attempt_count",
     "agent_present",
     "agent_product_response_changed",
     "agent_reason_code",
@@ -145,6 +147,17 @@ _OUTPUT_KEYS = {
     "agent_tool_execution_status",
     "agent_used_for_response",
     "candidate_count",
+    "answer_content_kind",
+    "answer_incomplete_pages",
+    "answer_page_end",
+    "answer_page_start",
+    "answer_page_truncated",
+    "answer_range_complete",
+    "answer_range_state",
+    "answer_requested_page_end",
+    "answer_status",
+    "answer_next_anchor_page_no",
+    "answer_next_anchor_present",
     "case_id",
     "case_kind",
     "client_count",
@@ -160,6 +173,8 @@ _OUTPUT_KEYS = {
     "endpoint_count",
     "endpoint_kinds",
     "forbidden_endpoint_used",
+    "final_lock_ok",
+    "final_lock_reason_code",
     "hashes",
     "lane_chars",
     "lane_injected",
@@ -173,6 +188,9 @@ _OUTPUT_KEYS = {
     "product_truth",
     "query_kind",
     "raw_marker_leaks",
+    "render_exact_text_rendered",
+    "render_section_complete_claim",
+    "render_section_segment_claim",
     "reason_code",
     "runtime_expectation_reason_code",
     "runtime_expectation_status",
@@ -181,6 +199,9 @@ _OUTPUT_KEYS = {
     "total_count",
     "displayed_count",
     "state_present_after",
+    "state_incomplete_page_no",
+    "state_interval_state",
+    "state_next_page_no",
     "truncated",
 } | expectations.EXPECTATION_OUTPUT_KEYS
 
@@ -248,7 +269,15 @@ def _record_for_result(
     counts = _mapping(event.get("counts"))
     passage_search = _mapping(event.get("passage_search"))
     agent = _mapping(event.get("librarian_agent"))
+    nested_agent = _mapping(agent.get("agent"))
+    agent_model = _mapping(nested_agent.get("model"))
     agent_validation_plan = _agent_validation_plan(result)
+    answer_observation = _answer_observation(result)
+    extraction = _mapping(answer_observation.get("extraction"))
+    rendered_observation = _rendered_observation(result)
+    rendered_content = str(getattr(result.rendered_answer, "content", "") or "")
+    final_lock_observation = _final_lock_observation(result)
+    state_interval = _state_interval(result)
     dialogue_intent = _mapping(dialogue_observation.get("intent"))
     dialogue_plan = _mapping(dialogue_observation.get("plan"))
     endpoint_kinds = _endpoint_kinds(client, context, passage_search)
@@ -308,6 +337,8 @@ def _record_for_result(
         "agent_reason_code": _safe_token(agent.get("reason_code")),
         "agent_mode": _safe_token(agent.get("mode")),
         "agent_model_called": _to_bool(agent.get("model_called")),
+        "agent_model_effective": _safe_token(agent_model.get("model_effective")),
+        "agent_provider_attempt_count": _to_int(agent_model.get("attempt_count")),
         "agent_candidate_plan_present": _to_bool(agent.get("candidate_plan_present")),
         "agent_plan_tool_call_count": _agent_plan_tool_call_count(agent),
         "agent_plan_tool_names": _agent_plan_tool_names(agent),
@@ -325,7 +356,28 @@ def _record_for_result(
         "agent_execution_scope": _safe_token(agent.get("execution_scope")),
         "agent_loop_status": _safe_token(_mapping(agent.get("tool_loop")).get("status")),
         "agent_loop_reason_code": _safe_token(_mapping(agent.get("tool_loop")).get("reason_code")),
+        "answer_status": _safe_token(answer_observation.get("status")),
+        "answer_content_kind": _safe_token(extraction.get("content_kind")),
+        "answer_range_state": _safe_token(extraction.get("range_state")),
+        "answer_range_complete": _to_bool(extraction.get("range_complete")),
+        "answer_page_truncated": _to_bool(extraction.get("page_truncated")),
+        "answer_page_start": _to_int(extraction.get("page_start")),
+        "answer_page_end": _to_int(extraction.get("page_end")),
+        "answer_requested_page_end": _to_int(extraction.get("requested_page_end")),
+        "answer_incomplete_pages": [
+            _to_int(page) for page in _sequence(extraction.get("incomplete_pages")) if _to_int(page)
+        ],
+        "answer_next_anchor_present": _to_bool(extraction.get("next_anchor_present")),
+        "answer_next_anchor_page_no": _to_int(extraction.get("next_anchor_page_no")),
+        "render_exact_text_rendered": _to_bool(rendered_observation.get("exact_text_rendered")),
+        "render_section_complete_claim": "Section complete." in rendered_content,
+        "render_section_segment_claim": "Segment de section." in rendered_content,
+        "final_lock_ok": _safe_token(final_lock_observation.get("status")) == "authorized",
+        "final_lock_reason_code": _safe_token(final_lock_observation.get("reason_code")),
         "state_present_after": bool(result.biblio_state and result.biblio_state.present),
+        "state_interval_state": _safe_token(state_interval.get("state")),
+        "state_incomplete_page_no": _to_int(state_interval.get("incomplete_page_no")),
+        "state_next_page_no": _to_int(state_interval.get("next_page_no")),
     }
     base_record.update(_evaluate_expectations(case, base_record))
     return _finalize_record(
@@ -439,6 +491,34 @@ def _agent_validation_plan(result: BiblioChatResult) -> Mapping[str, Any]:
         if isinstance(plan, Mapping):
             return plan
     return {}
+
+
+def _answer_observation(result: BiblioChatResult) -> Mapping[str, Any]:
+    answer = result.answer_object
+    observed = getattr(answer, "to_observability", lambda: {})()
+    return observed if isinstance(observed, Mapping) else {}
+
+
+def _rendered_observation(result: BiblioChatResult) -> Mapping[str, Any]:
+    rendered = result.rendered_answer
+    observed = getattr(rendered, "to_observability", lambda: {})()
+    return observed if isinstance(observed, Mapping) else {}
+
+
+def _final_lock_observation(result: BiblioChatResult) -> Mapping[str, Any]:
+    lock = result.final_response_lock
+    observed = getattr(lock, "to_observability", lambda: {})()
+    return observed if isinstance(observed, Mapping) else {}
+
+
+def _state_interval(result: BiblioChatResult) -> Mapping[str, Any]:
+    state = result.biblio_state
+    if state is None:
+        return {}
+    last_result = getattr(state, "last_result", None)
+    if not isinstance(last_result, Mapping):
+        return {}
+    return _mapping(last_result.get("interval_hint"))
 
 
 def _lane_observability(value: Any) -> dict[str, Any]:

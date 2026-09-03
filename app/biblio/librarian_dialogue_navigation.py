@@ -193,6 +193,14 @@ def page_numbers_for_navigation(kind: str, state: BiblioConversationState, folde
             return ()
         return tuple(range(start, end + 1))
     last = getattr(state, "last_result", {}) or {}
+    if kind in {NAVIGATION_CONTINUE, NAVIGATION_PAGE_NEXT} and isinstance(last, dict):
+        interval_hint = last.get("interval_hint")
+        if isinstance(interval_hint, dict) and interval_hint.get("kind") == "section":
+            next_page_no = interval_hint.get("next_page_no")
+            if kind == NAVIGATION_CONTINUE and type(next_page_no) is int and next_page_no >= 1:
+                return (next_page_no,)
+            if interval_hint.get("state") == "segment" and type(interval_hint.get("incomplete_page_no")) is int:
+                return ()
     anchor_page = _anchor_page_for_navigation(kind, state, last)
     if type(anchor_page) is not int or anchor_page < 1:
         return ()

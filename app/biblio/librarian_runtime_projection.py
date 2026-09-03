@@ -156,6 +156,7 @@ def _interval_hint_from_answer(answer: Any) -> dict[str, Any]:
             "next_page_no": _int(next_anchor.get("page_no")),
             "next_para_no": _int(next_anchor.get("para_no")),
             "next_paragraph_id": _int(next_anchor.get("paragraph_id")),
+            "incomplete_page_no": _first_int(extraction.get("incomplete_pages")),
             "page_span": _int(extraction.get("page_count")),
         }.items()
         if value not in ("", None)
@@ -217,4 +218,13 @@ def _int(value: Any) -> int | None:
         return value
     if isinstance(value, str) and value.isdecimal():
         return int(value)
+    return None
+
+
+def _first_int(value: Any) -> int | None:
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        for item in value:
+            parsed = _int(item)
+            if parsed is not None:
+                return parsed
     return None

@@ -452,6 +452,13 @@ def _complete_section_complete_extraction(
     end_page = _first_section_end_page(loop_result, document_id=doc_id)
     if start_page is None or end_page is None or end_page < start_page:
         return loop_result
+    if _has_truncated_page_read(
+        loop_result,
+        document_id=doc_id,
+        start_page=start_page,
+        end_page=end_page,
+    ):
+        return loop_result
     available = max(0, loop_result.options.max_tool_calls - loop_result.tool_call_count)
     if available <= 0:
         return loop_result
@@ -470,6 +477,8 @@ def _complete_section_complete_extraction(
             tool_name=librarian_tools.TOOL_PAGE_READ,
             params={"document_id": doc_id, "page_no": page_no},
         )
+        if _page_read_was_truncated(loop_result, document_id=doc_id, page_no=page_no):
+            break
     return loop_result
 
 
@@ -794,6 +803,45 @@ def _has_page_read(
         for position in result.positions:
             if _int(position.get("page_no")) == page_no:
                 return True
+    return False
+
+
+def _page_read_was_truncated(
+    loop_result: librarian_planner.BiblioLibrarianLoopResult,
+    *,
+    document_id: str,
+    page_no: int,
+) -> bool:
+    for step in reversed(loop_result.steps):
+        result = step.tool_result
+        if result is None or result.tool_name != librarian_tools.TOOL_PAGE_READ:
+            continue
+        if _text(getattr(result, "document_id", "")) != document_id:
+            continue
+        if not any(_int(position.get("page_no")) == page_no for position in result.positions):
+            continue
+        return bool(result.to_observability().get("page_truncated"))
+    return False
+
+
+def _has_truncated_page_read(
+    loop_result: librarian_planner.BiblioLibrarianLoopResult,
+    *,
+    document_id: str,
+    start_page: int,
+    end_page: int,
+) -> bool:
+    for step in loop_result.steps:
+        result = step.tool_result
+        if result is None or result.tool_name != librarian_tools.TOOL_PAGE_READ:
+            continue
+        if _text(getattr(result, "document_id", "")) != document_id:
+            continue
+        page_numbers = tuple(_int(position.get("page_no")) for position in result.positions)
+        if not any(start_page <= page_no <= end_page for page_no in page_numbers if page_no):
+            continue
+        if result.to_observability().get("page_truncated"):
+            return True
     return False
 
 

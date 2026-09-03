@@ -129,6 +129,7 @@ class BiblioConversationState:
             "last_result_interval_parent_section_id_present": bool(interval_hint.get("parent_section_id")),
             "last_result_interval_next_page_no": _optional_int(interval_hint.get("next_page_no")),
             "last_result_interval_next_para_no": _optional_int(interval_hint.get("next_para_no")),
+            "last_result_interval_incomplete_page_no": _optional_int(interval_hint.get("incomplete_page_no")),
             "last_candidate_count": len(self.last_candidates),
             "last_ambiguity_present": bool(self.last_ambiguity),
             "last_ambiguity_candidate_count": _optional_int(self.last_ambiguity.get("candidate_count")) or 0,
@@ -565,6 +566,7 @@ def _interval_hint_mapping(value: Any) -> dict[str, Any]:
         "next_page_no": _optional_int(item.get("next_page_no")),
         "next_para_no": _optional_int(item.get("next_para_no")),
         "next_paragraph_id": _optional_int(item.get("next_paragraph_id")),
+        "incomplete_page_no": _optional_int(item.get("incomplete_page_no")),
         "page_span": _optional_int(item.get("page_span")),
         "paragraph_span": _optional_int(item.get("paragraph_span")),
     }

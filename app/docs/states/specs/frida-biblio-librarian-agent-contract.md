@@ -1458,3 +1458,28 @@ Dettes a conserver jusqu'a cloture ou lot dedie:
 - OCR;
 - rebuild/restart;
 - declaration que l'agent produit est livre.
+
+## 26. Correction B1 — integrite d'une section bornee
+
+Le bibliothecaire conserve le choix du document, de la section et des outils.
+Le mur deterministe distingue desormais la couverture des pages de la reception
+integrale de leur texte:
+
+- `section_complete` et `range_complete=true` exigent les bornes couvertes et
+  aucune page `page_read` coupee;
+- une coupe intra-page produit un `section_segment` exact, un rendu qui annonce
+  la reception partielle, un final lock toujours autorisable sur ce fragment et
+  un etat content-free portant `incomplete_page_no`;
+- `page_read` ne sachant pas reprendre a un offset, aucun `next_page_no` n'est
+  invente pour ce cas. Un plan `passage_continue_next_segment` qui sauterait le
+  reste est refuse avant appel Catalogue et le repli de clarification existant
+  s'applique;
+- une section segmentee uniquement par le budget de pages conserve son ancre
+  `next_page_no` et sa continuation GET-only existante;
+- les projections de smoke peuvent exposer statuts, booleens, pages, compteurs,
+  hashes et decision du lock, jamais le texte extrait, le prompt ou le JSON
+  provider.
+
+Cette correction ne releve aucun plafond, n'ajoute ni outil ni modele et ne
+garantit pas qu'un reste intra-page devienne accessible: sans coordonnee precise
+fournie par le Catalogue, il est signale comme non recu et non continuable.
