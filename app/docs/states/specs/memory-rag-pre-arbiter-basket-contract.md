@@ -15,6 +15,16 @@ Mise a jour Lot 6 observabilite, 2026-05-14:
 - le runtime OVH courant contient des summaries avec embedding et le panier pre-arbitre peut recevoir des candidats `source_kind=summary`, `source_lane=summaries`;
 - `top_k_requested` reste la demande de retrieval trace, tandis que la lane summaries est additive dans le budget de panier cible.
 
+Mise a jour M2, 2026-09-03:
+- la deduplication textuelle sure exige maintenant un `content` strictement
+  identique; la normalisation lexicale reste disponible pour le slug lisible de
+  `dedup_key`, mais ne decide plus l'egalite;
+- les rapprochements `lexical_near_duplicate` et
+  `same_conversation_same_idea` ne sont plus executes avant l'arbitre; leurs
+  anciennes valeurs restent seulement des raisons historiques lisibles;
+- la collision structurelle `trace_summary_collision`, sa couverture de
+  fenetre et `parent_summary` sont conservees independamment de cette correction.
+
 ## 1. Objet
 
 Cette spec ferme la Phase 3 du chantier `memory-rag-relevance`.
@@ -232,6 +242,8 @@ Chaque candidat du panier pre-arbitre DOIT porter:
   - booleen
 - `dedup_key`
   - cle canonique de collision / regroupement avant arbitre
+  - son digest derive du `content` strict du representant avec son
+    `source_kind` et son `role`; le slug normalise est seulement lisible
 
 ## 7.2 Champs optionnels et bornes
 
@@ -246,7 +258,10 @@ Un candidat PEUT porter, pour diagnostic et pilotage local:
 - `conversation_rank`
   - rang du representant a l'interieur de sa conversation d'origine apres merge local
 - `dedup_reason_code`
-  - enum conseille: `none | exact_duplicate | lexical_near_duplicate | same_conversation_same_idea | trace_summary_collision`
+  - valeurs actives: `none | exact_duplicate | trace_summary_collision`
+  - `lexical_near_duplicate` et `same_conversation_same_idea` peuvent encore
+    etre rencontres dans des artefacts historiques, mais ne decrivent plus une
+    fusion executee par le panier courant
 
 Ces champs ne sont pas requis pour fermer la Phase 3, mais leur place est tranchee:
 - ils appartiennent au panier cible;
@@ -385,14 +400,17 @@ Raison:
 
 ## 11. Regle cible de dedup
 
-La dedup est une responsabilite du panier pre-arbitre.
-
-L'arbitre ne doit pas recevoir plusieurs slots qui racontent la meme chose sans gain net.
+La dedup sure est une responsabilite du panier pre-arbitre. Le panier ne doit
+pas pretendre comprendre qu'une formulation distincte « raconte la meme chose »:
+hors relation structurelle trace/summary, ce jugement appartient a l'arbitre.
 
 ## 11.1 Doublon exact
 
 Definition:
-- deux items sont en doublon exact si leur `content_norm` est identique apres normalisation canonique de texte.
+- deux items sont en doublon exact si leur chaine `content` est strictement
+  identique;
+- aucune normalisation lexicale, suppression de ponctuation, conversion de
+  nombre ou autre perte de signe ne peut etablir cette egalite.
 
 Traitement cible:
 - fusion OBLIGATOIRE en un seul slot pre-arbitre;
@@ -406,35 +424,24 @@ Resultat:
 - un seul slot arbitre;
 - les autres occurrences restent seulement tracees dans `source_candidate_ids`.
 
-## 11.2 Quasi-doublon lexical
+## 11.2 Formulations lexicalement proches
 
-Definition:
-- deux items sont en quasi-doublon lexical s'ils different legerement dans la formulation mais n'apportent pas de fait, nuance ou contrainte nouvelle.
+Deux `content` distincts restent deux candidats distincts tant qu'ils tiennent
+dans la limite de panier. Une difference de jour, date, quantite, negation,
+ponctuation ou formulation n'est jamais interpretee par une heuristique locale
+comme une equivalence sure.
 
-Traitement cible:
-- fusion si le second item n'ajoute aucun detail actionnable ou memorisable;
-- garder separes si la reformulation introduit une contrainte, une preference ou un fait distinct.
+Il n'existe donc plus de fusion active `lexical_near_duplicate`. Une eviction
+par la limite de section 13 reste une selection par classement, pas une
+deduplication ni une preuve d'equivalence.
 
-Preference de representant:
-- pour un fait utilisateur durable, preference a la formulation `user`;
-- pour une synthese vraiment plus dense qui subsume plusieurs traces, preference possible a `summary`, mais seulement selon la regle 11.4;
-- sinon, garder l'item au meilleur rapport `specificite utile / retrieval_score`.
+## 11.3 Traces d'une meme conversation
 
-Resultat:
-- pas plus d'un slot arbitre par quasi-meme idee.
-
-## 11.3 Collision meme conversation / meme idee
-
-Definition:
-- plusieurs traces de la meme conversation expriment la meme idee, souvent sous forme `user` puis paraphrase `assistant`, ou redites user successives.
-
-Traitement cible:
-- fusion par defaut en un seul slot;
-- preference a la trace `user` quand elle porte deja le fait ou la preference utile;
-- conserver une trace `assistant` seulement si elle ajoute une synthese operationnelle absente de la trace `user`.
-
-Regle normative:
-- une meme conversation ne doit pas occuper plusieurs slots arbitre pour une meme `dedup_key`.
+L'appartenance a une meme conversation, une inclusion textuelle ou l'ajout de
+quelques mots ne suffit plus a fusionner deux traces. Si leur `content` est
+strictement identique, la section 11.1 s'applique; sinon elles restent
+distinctes avant jugement. Il n'existe plus de fusion active
+`same_conversation_same_idea`.
 
 ## 11.4 Collision trace / summary
 
@@ -530,7 +537,10 @@ Justification:
   - assez borne pour ne pas demander un second passage de reranking.
 
 Regle normative:
-- ce `8` est un maximum apres merge et dedup, pas un quota par lane.
+- ce `8` est un maximum apres fusion des egalites strictes et collisions
+  structurelles trace/summary, pas un quota par lane;
+- la conservation des formulations distinctes n'ajoute aucun second budget et
+  ne contourne jamais ce classement ni cette limite.
 
 ## 14. Regle cible pour eviter l'injection double
 

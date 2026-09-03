@@ -260,7 +260,8 @@ Quand un candidat `summary` entre dans le panier pre-arbitre Phase 3, il DOIT et
 - `retrieval_score = retrieval_score`
 - `summary_id = summary_id`
 - `parent_summary_present = false`
-- `dedup_key` derive de la cle semantique retenue par le lot B
+- `dedup_key` derive du `source_kind`, du `role` et du `content` strict du
+  representant; son slug lexical n'etablit aucune equivalence textuelle
 
 Si un candidat `summary` absorbe ensuite des traces lors de la fusion, `source_candidate_ids` DOIT s'elargir pour inclure les `candidate_id` traces absorbes.
 

@@ -2,8 +2,8 @@
 
 Date de cadrage : 2 septembre 2026.
 
-**Statut : roadmap ouverte ; I1, I2 et M1 fermés et livrés ; lots suivants
-non commencés.**
+**Statut : roadmap ouverte ; I1, I2 et M1 fermés et livrés ; correctif M2
+vérifié, livraison en cours ; lots suivants non commencés.**
 
 ## 1. But et décision de périmètre
 
@@ -69,7 +69,7 @@ sans attendre O1.
 | 1 | I1 | Une erreur de streaming reste une interruption | F01 | xhigh | fermé et livré |
 | 2 | I2 | Une lecture Identity en panne ne permet aucun remplacement | F02 | xhigh | fermé et livré |
 | 3 | M1 | Un résumé n'est acquis qu'après stockage confirmé | F03 | xhigh | fermé et livré |
-| 4 | M2 | La déduplication ne retire pas une formulation distincte avant jugement | F04 | xhigh | non commencé |
+| 4 | M2 | La déduplication ne retire pas une formulation distincte avant jugement | F04 | xhigh | correctif vérifié ; livraison en cours |
 | 5 | O1 | Les hints dialogiques sont comptés par leur vrai reader | F07 | high | non commencé |
 | 6 | B1 | Un extrait tronqué n'est jamais annoncé complet | F06 | xhigh | non commencé |
 | 7 | B2 | Une reprise appartient au document réellement ouvert | F11 | high | non commencé |
@@ -391,15 +391,15 @@ dialogue ; le prétraitement ne décide pas à sa place qu'elles sont équivalen
 [contrat du panier](../../states/specs/memory-rag-pre-arbiter-basket-contract.md).
 Test principal : `app/tests/unit/memory/test_memory_pre_arbiter_basket_phase7b.py`.
 
-- [ ] Reproduire mardi/jeudi : ancienne trace mieux classée, nouvelle plus récente ;
+- [x] Reproduire mardi/jeudi : ancienne trace mieux classée, nouvelle plus récente ;
   observer le contenu transmis à l'arbitre, pas seulement les IDs fusionnés.
-- [ ] Retirer ou restreindre la fusion lexicale qui efface un texte distinct.
+- [x] Retirer ou restreindre la fusion lexicale qui efface un texte distinct.
   Préférer la conservation des formulations à un détecteur de correction ; les
   égalités réellement sûres gardent leur déduplication et leur provenance.
-- [ ] Prouver que date, quantité et négation différentes restent distinctes dans
+- [x] Prouver que date, quantité et négation différentes restent distinctes dans
   des candidats admis sous le budget, et que deux contenus strictement identiques
   ne sont pas inutilement dupliqués. Tester les vrais constructeurs jusqu'au prompt.
-- [ ] Maintenir les plafonds de candidats/tokens et le classement existants ; une
+- [x] Maintenir les plafonds de candidats/tokens et le classement existants ; une
   éviction par budget reste une sélection bornée, jamais une fausse équivalence.
 - [ ] Vérifier compteurs/raisons de déduplication réellement affectés, documenter
   et livrer M2 sans modifier modèle, prompt arbitre, embeddings ou reranker.
@@ -408,6 +408,44 @@ Test principal : `app/tests/unit/memory/test_memory_pre_arbiter_basket_phase7b.p
 jugement. Ne pas prétendre que le modèle choisira toujours la bonne correction :
 ce lot prouve l'accès à la matière, pas son efficacité sémantique universelle.
 Aucune regex sémantique, nouvelle taxonomie ou campagne de modèles.
+
+### Preuves M2 avant livraison — 3 septembre 2026
+
+- F1, F2 et F4 sont valides. F3 est valide pour l'égalité issue d'une
+  normalisation destructive, `same_conversation_same_idea`,
+  `lexical_near_duplicate` et leurs regroupements transitifs. F5 est partielle:
+  davantage de formulations peuvent entrer dans le classement, mais la coupe
+  existante à huit reste inchangée et ne garantit aucun rappel universel.
+- Le rouge canonique construit `memory_retrieved`, le vrai panier et appelle
+  `filter_traces_with_diagnostics()` avec un transport factice. Avec l'ancienne
+  fusion, le message arbitre ne contenait que la trace mieux classée « mardi »;
+  le texte « jeudi », son ID et son repère temporel avaient disparu.
+- La déduplication textuelle compare désormais le `content` strict. Les deux
+  heuristiques sémantiques locales sont retirées; date/jour, quantité, négation,
+  ponctuation et extension textuelle restent séparés sous budget. `dedup_key`
+  garde un slug lisible mais son digest dépend du texte strict.
+- Les contenus strictement identiques gardent un représentant choisi par
+  `_representative_rank`, tous leurs `source_candidate_ids` et leur liaison aux
+  décisions/injections. La relation structurelle trace/summary, sa couverture,
+  `parent_summary`, les modes shadow/enforced et la sélection après décision
+  restent inchangés.
+- La limite reste huit après déduplication/fusion structurelle et le classement
+  reste identique. Un candidat hors limite n'est ni absorbé dans une provenance
+  ni déclaré doublon.
+- Une mutation contrôlée réintroduisant le rapprochement lexical remet la
+  preuve du message mardi/jeudi en échec; sa restauration la remet au vert.
+- Batterie hermétique ciblée : 61 tests, `OK`, checkout read-only, réseau
+  désactivé, temporaires isolés, sans secret, provider ni DB opérateur. Le
+  transport HTTP arbitre est remplacé au bord exact où ses messages sont
+  capturés; aucun POST externe n'est émis.
+- Le contre-audit local ne trouve ni seconde fusion textuelle pré-arbitre, ni
+  perte de provenance, ni contournement de limite, ni ancien helper empilé. La
+  similarité lexicale aval contre le contexte récent s'exécute après le jugement
+  et ne recrée pas F04. La projection admin n'annonce plus les deux raisons de
+  fusion retirées comme contrat actif; les artefacts historiques restent lisibles.
+- Limite : le retrieval, le classement et la coupe à huit peuvent encore ne pas
+  sélectionner une formulation. M2 prouve que les formulations admises peuvent
+  être lues et jugées séparément, pas que l'arbitre choisira toujours la bonne.
 
 ## 9. O1 — Rendre le compteur des hints dialogiques fidèle
 

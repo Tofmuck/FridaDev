@@ -236,12 +236,7 @@ def _read_pre_arbiter_summary(
         'recent_activity_source_kind': 'historical_logs',
         'contract': {
             'basket_limit': memory_pre_arbiter_basket.PRE_ARBITER_MAX_CANDIDATES,
-            'dedup_reason_codes': [
-                'exact_duplicate',
-                'lexical_near_duplicate',
-                'same_conversation_same_idea',
-                'trace_summary_collision',
-            ],
+            'dedup_reason_codes': list(memory_pre_arbiter_basket.PRE_ARBITER_DEDUP_REASON_CODES),
             'contract_doc_path': 'app/docs/states/specs/memory-rag-pre-arbiter-basket-contract.md',
         },
         'recent_activity': {

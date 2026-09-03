@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from difflib import SequenceMatcher
 import hashlib
 import re
 from typing import Any, Mapping, Sequence
@@ -11,6 +10,10 @@ from memory import memory_traces_summaries
 
 
 PRE_ARBITER_MAX_CANDIDATES = 8
+PRE_ARBITER_DEDUP_REASON_CODES = (
+    'exact_duplicate',
+    'trace_summary_collision',
+)
 
 _ROLE_PRIORITY = {
     'user': 2,
@@ -19,12 +22,9 @@ _ROLE_PRIORITY = {
 }
 _DEDUP_REASON_PRIORITY = {
     'none': 0,
-    'lexical_near_duplicate': 1,
-    'same_conversation_same_idea': 2,
-    'trace_summary_collision': 3,
-    'exact_duplicate': 4,
+    'trace_summary_collision': 1,
+    'exact_duplicate': 2,
 }
-_TOKEN_RE = re.compile(r'[a-z0-9]+')
 
 
 @dataclass(frozen=True)
@@ -63,25 +63,6 @@ def _content_norm(text: Any) -> str:
     return re.sub(r'\s+', ' ', normalized).strip()
 
 
-def _token_set(text: Any) -> set[str]:
-    return {token for token in _TOKEN_RE.findall(_content_norm(text)) if token}
-
-
-def _sequence_ratio(left: str, right: str) -> float:
-    if not left or not right:
-        return 0.0
-    return SequenceMatcher(None, left, right).ratio()
-
-
-def _token_jaccard(left: set[str], right: set[str]) -> float:
-    if not left or not right:
-        return 0.0
-    union = left | right
-    if not union:
-        return 0.0
-    return len(left & right) / len(union)
-
-
 def _role_priority(role: Any) -> int:
     return _ROLE_PRIORITY.get(_optional_str(role) or '', -1)
 
@@ -95,11 +76,12 @@ def _representative_rank(item: Mapping[str, Any]) -> tuple[float, int, int, floa
     )
 
 
-def _dedup_key(source_kind: str, role: str | None, content_norm: str) -> str:
+def _dedup_key(source_kind: str, role: str | None, content: str) -> str:
+    content_norm = _content_norm(content)
     slug_tokens = content_norm.split()[:10]
     slug = '-'.join(slug_tokens)[:80] if slug_tokens else 'empty'
     digest = hashlib.sha1(
-        f'{source_kind}|{role or "unknown"}|{content_norm}'.encode('utf-8')
+        f'{source_kind}|{role or "unknown"}|{content}'.encode('utf-8')
     ).hexdigest()[:8]
     return f'{source_kind}:{role or "unknown"}:{slug}:{digest}'
 
@@ -163,68 +145,6 @@ def _trace_summary_collision(left: Mapping[str, Any], right: Mapping[str, Any]) 
     return _summary_covers_trace(summary, trace)
 
 
-def _same_conversation_same_idea(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
-    if _is_summary_candidate(left) or _is_summary_candidate(right):
-        return False
-    if _optional_str(left.get('conversation_id')) != _optional_str(right.get('conversation_id')):
-        return False
-    left_norm = str(left.get('_content_norm') or '')
-    right_norm = str(right.get('_content_norm') or '')
-    if not left_norm or not right_norm:
-        return False
-    left_tokens = set(left.get('_tokens') or ())
-    right_tokens = set(right.get('_tokens') or ())
-    if not left_tokens or not right_tokens:
-        return False
-    smaller_tokens, larger_tokens = (
-        (left_tokens, right_tokens)
-        if len(left_tokens) <= len(right_tokens)
-        else (right_tokens, left_tokens)
-    )
-    smaller_norm, larger_norm = (
-        (left_norm, right_norm)
-        if len(left_norm) <= len(right_norm)
-        else (right_norm, left_norm)
-    )
-    if len(smaller_tokens) < 3:
-        return False
-    extra_tokens = larger_tokens - smaller_tokens
-    if smaller_tokens <= larger_tokens and smaller_norm in larger_norm and len(extra_tokens) <= 2:
-        return True
-    return False
-
-
-def _lexical_near_duplicate(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
-    if _is_summary_candidate(left) or _is_summary_candidate(right):
-        return False
-    left_norm = str(left.get('_content_norm') or '')
-    right_norm = str(right.get('_content_norm') or '')
-    if not left_norm or not right_norm or left_norm == right_norm:
-        return False
-
-    same_role = _optional_str(left.get('role')) == _optional_str(right.get('role'))
-    same_conversation = _optional_str(left.get('conversation_id')) == _optional_str(right.get('conversation_id'))
-    if not same_role and not same_conversation:
-        return False
-
-    left_tokens = set(left.get('_tokens') or ())
-    right_tokens = set(right.get('_tokens') or ())
-    if min(len(left_tokens), len(right_tokens)) < 3:
-        return False
-
-    ratio = _sequence_ratio(left_norm, right_norm)
-    jaccard = _token_jaccard(left_tokens, right_tokens)
-    if ratio >= 0.96 and jaccard >= 0.70:
-        return True
-    if jaccard >= 0.85 and (
-        left_norm in right_norm
-        or right_norm in left_norm
-        or ratio >= 0.90
-    ):
-        return True
-    return False
-
-
 def _match_reason(candidate: Mapping[str, Any], group: Mapping[str, Any]) -> str | None:
     candidate_members = candidate.get('_members') if isinstance(candidate, Mapping) else None
     group_members = group.get('_members') if isinstance(group, Mapping) else None
@@ -243,20 +163,8 @@ def _match_reason(candidate: Mapping[str, Any], group: Mapping[str, Any]) -> str
         for right in group_members:
             if not isinstance(left, Mapping) or not isinstance(right, Mapping):
                 continue
-            if str(left.get('_content_norm') or '') == str(right.get('_content_norm') or ''):
+            if str(left.get('content') or '') == str(right.get('content') or ''):
                 return 'exact_duplicate'
-    for left in candidate_members:
-        for right in group_members:
-            if not isinstance(left, Mapping) or not isinstance(right, Mapping):
-                continue
-            if _same_conversation_same_idea(left, right):
-                return 'same_conversation_same_idea'
-    for left in candidate_members:
-        for right in group_members:
-            if not isinstance(left, Mapping) or not isinstance(right, Mapping):
-                continue
-            if _lexical_near_duplicate(left, right):
-                return 'lexical_near_duplicate'
     return None
 
 
@@ -337,7 +245,6 @@ def _build_source_item(
         'source_candidate_ids': [candidate_id],
         'prompt_candidate': prompt_candidate,
         '_content_norm': _content_norm(content),
-        '_tokens': _token_set(content),
     }
 
 
@@ -418,7 +325,7 @@ def _finalize_group(group: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str,
     dedup_key = _dedup_key(
         str(group.get('source_kind') or 'trace'),
         _optional_str(group.get('role')),
-        str(group.get('_content_norm') or ''),
+        str(group.get('content') or ''),
     )
     candidate = {
         'candidate_id': representative_id,

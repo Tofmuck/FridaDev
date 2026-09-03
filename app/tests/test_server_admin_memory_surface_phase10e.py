@@ -118,6 +118,43 @@ class ServerAdminMemorySurfacePhase10eTests(unittest.TestCase):
         self.assertTrue(observed["called"])
         self.assertEqual(response.get_json()["surface"]["name"], "Memory Admin")
 
+    def test_pre_arbiter_contract_lists_only_active_dedup_reasons(self) -> None:
+        class FakeCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def execute(self, _query, _params=None):
+                return None
+
+            def fetchone(self):
+                return (0, 0, None, None, None, None, None, None)
+
+            def fetchall(self):
+                return []
+
+        class FakeConn:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def cursor(self):
+                return FakeCursor()
+
+        payload = admin_memory_history_dashboard._read_pre_arbiter_summary(
+            conn_factory=lambda: FakeConn(),
+            window_days=7,
+        )
+
+        self.assertEqual(
+            payload['contract']['dedup_reason_codes'],
+            ['exact_duplicate', 'trace_summary_collision'],
+        )
+
     def test_read_recent_turns_keeps_stages_promised_by_memory_admin(self) -> None:
         rows = [
             (
