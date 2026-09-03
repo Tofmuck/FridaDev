@@ -2,8 +2,8 @@
 
 Date de cadrage : 2 septembre 2026.
 
-**Statut : roadmap ouverte ; I1, I2 et M1 fermés et livrés ; correctif M2
-vérifié, livraison en cours ; lots suivants non commencés.**
+**Statut : roadmap ouverte ; I1, I2, M1 et M2 fermés et livrés ; lots suivants
+non commencés.**
 
 ## 1. But et décision de périmètre
 
@@ -69,7 +69,7 @@ sans attendre O1.
 | 1 | I1 | Une erreur de streaming reste une interruption | F01 | xhigh | fermé et livré |
 | 2 | I2 | Une lecture Identity en panne ne permet aucun remplacement | F02 | xhigh | fermé et livré |
 | 3 | M1 | Un résumé n'est acquis qu'après stockage confirmé | F03 | xhigh | fermé et livré |
-| 4 | M2 | La déduplication ne retire pas une formulation distincte avant jugement | F04 | xhigh | correctif vérifié ; livraison en cours |
+| 4 | M2 | La déduplication ne retire pas une formulation distincte avant jugement | F04 | xhigh | fermé et livré |
 | 5 | O1 | Les hints dialogiques sont comptés par leur vrai reader | F07 | high | non commencé |
 | 6 | B1 | Un extrait tronqué n'est jamais annoncé complet | F06 | xhigh | non commencé |
 | 7 | B2 | Une reprise appartient au document réellement ouvert | F11 | high | non commencé |
@@ -79,7 +79,7 @@ sans attendre O1.
 - [x] I1 fermé avec preuves et livraison convenues.
 - [x] I2 fermé avec preuves et livraison convenues.
 - [x] M1 fermé avec preuves et livraison convenues.
-- [ ] M2 fermé avec preuves et livraison convenues.
+- [x] M2 fermé avec preuves et livraison convenues.
 - [ ] O1 fermé avec preuves et livraison convenues.
 - [ ] B1 fermé avec preuve agentique requise.
 - [ ] B2 fermé avec preuve agentique requise.
@@ -401,7 +401,7 @@ Test principal : `app/tests/unit/memory/test_memory_pre_arbiter_basket_phase7b.p
   ne sont pas inutilement dupliqués. Tester les vrais constructeurs jusqu'au prompt.
 - [x] Maintenir les plafonds de candidats/tokens et le classement existants ; une
   éviction par budget reste une sélection bornée, jamais une fausse équivalence.
-- [ ] Vérifier compteurs/raisons de déduplication réellement affectés, documenter
+- [x] Vérifier compteurs/raisons de déduplication réellement affectés, documenter
   et livrer M2 sans modifier modèle, prompt arbitre, embeddings ou reranker.
 
 **Fermeture :** la variation n'est plus détruite par la déduplication avant le
@@ -446,6 +446,29 @@ Aucune regex sémantique, nouvelle taxonomie ou campagne de modèles.
 - Limite : le retrieval, le classement et la coupe à huit peuvent encore ne pas
   sélectionner une formulation. M2 prouve que les formulations admises peuvent
   être lues et jugées séparément, pas que l'arbitre choisira toujours la bonne.
+
+### Livraison M2 effective — 3 septembre 2026
+
+- Commit code/tests/contrats
+  `6dd346c0614e5ca78dd09cff57c78440cc65405e` poussé sur `main`, puis
+  rebuild sans pull et recréation du seul service `fridadev` avec
+  `--no-deps --force-recreate`.
+- Image livrée :
+  `sha256:847d05eb84c3d544bcd13e15327ddd2c51e505ebdc160e6a36cc6f82aa9ae67b` ;
+  conteneur `4ae0300f1bf978bdeb095d068208af095c5ac94d7557eebf35c87ff5a4859b5a`,
+  `StartedAt=2026-09-03T09:33:43.004995607Z`, running, healthy, restart `0`,
+  OOM `false`.
+- Le healthcheck déclaré sur `http://127.0.0.1:8089/` retourne `200` depuis
+  le conteneur; aucune route `/health` ni appel modèle n'a été utilisé.
+- Les SHA-256 des deux fichiers runtime M2 modifiés sont identiques entre
+  checkout et conteneur. Les 61 tests ciblés sont aussi verts depuis l'image
+  livrée, sans montage du checkout ni réseau.
+- Les 31 conteneurs voisins conservent exactement leurs IDs, images et
+  `StartedAt`; PostgreSQL, Caddy et les autres services n'ont pas été recréés.
+- L'image précédente
+  `sha256:c489455303fd234866de25ea473d1e197b27dcea8b96135cf89d1c8010a79734`
+  reste disponible comme référence de retour applicatif ciblé. O1 et les lots
+  suivants restent non commencés.
 
 ## 9. O1 — Rendre le compteur des hints dialogiques fidèle
 
