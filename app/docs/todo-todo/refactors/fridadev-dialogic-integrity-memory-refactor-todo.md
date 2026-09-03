@@ -2,8 +2,8 @@
 
 Date de cadrage : 2 septembre 2026.
 
-**Statut : roadmap ouverte ; I1, I2, M1 et M2 fermés et livrés ; correctif O1
-vérifié avant livraison runtime ; B1 et les lots suivants non commencés.**
+**Statut : roadmap ouverte ; I1, I2, M1, M2 et O1 fermés et livrés ; B1 et les
+lots suivants non commencés.**
 
 ## 1. But et décision de périmètre
 
@@ -70,7 +70,7 @@ sans attendre O1.
 | 2 | I2 | Une lecture Identity en panne ne permet aucun remplacement | F02 | xhigh | fermé et livré |
 | 3 | M1 | Un résumé n'est acquis qu'après stockage confirmé | F03 | xhigh | fermé et livré |
 | 4 | M2 | La déduplication ne retire pas une formulation distincte avant jugement | F04 | xhigh | fermé et livré |
-| 5 | O1 | Les hints dialogiques sont comptés par leur vrai reader | F07 | high | corrigé et vérifié, livraison à faire |
+| 5 | O1 | Les hints dialogiques sont comptés par leur vrai reader | F07 | high | fermé et livré |
 | 6 | B1 | Un extrait tronqué n'est jamais annoncé complet | F06 | xhigh | non commencé |
 | 7 | B2 | Une reprise appartient au document réellement ouvert | F11 | high | non commencé |
 | 8 | Z | Vérification finale limitée aux raccords modifiés | ci-dessus | high | non commencé |
@@ -80,7 +80,7 @@ sans attendre O1.
 - [x] I2 fermé avec preuves et livraison convenues.
 - [x] M1 fermé avec preuves et livraison convenues.
 - [x] M2 fermé avec preuves et livraison convenues.
-- [ ] O1 fermé avec preuves et livraison convenues.
+- [x] O1 fermé avec preuves et livraison convenues.
 - [ ] B1 fermé avec preuve agentique requise.
 - [ ] B2 fermé avec preuve agentique requise.
 - [ ] Z fermé ; roadmap archivée et liens actualisés.
@@ -494,7 +494,7 @@ Tests : `app/tests/unit/memory/test_identity_read_model_phase2.py`,
 - [x] Suivre cette donnée jusqu'aux renderers existants ; ne pas confondre compteur
   stocké, sélection pour injection et dernière activité. Modifier l'UI seulement
   si nécessaire à la fidélité du contrat, sans écran ni collecte supplémentaire.
-- [ ] Documenter et livrer O1 ; aucun retrait ni changement sémantique des hints.
+- [x] Documenter et livrer O1 ; aucun retrait ni changement sémantique des hints.
 
 **Fermeture :** le compteur rend la catégorie réellement écrite et n'affirme pas
 une absence d'injection depuis un simple zéro administratif.
@@ -533,6 +533,31 @@ une absence d'injection depuis un simple zéro administratif.
 - Limite : ce stockage factice n'est pas une preuve PostgreSQL live. Le compteur
   stocké ne garantit ni la sélection future d'un hint, ni son injection, et la
   gestion générale des erreurs de lecture reste inchangée.
+
+### Livraison O1 effective — 3 septembre 2026
+
+- Commit code/tests/contrats
+  `035c286cc5f9abe531747f5e35e50efb9cf8fb69` poussé sur `main`, puis rebuild
+  sans pull et recréation du seul service `fridadev` avec
+  `--no-deps --force-recreate`.
+- Image livrée :
+  `sha256:82605c7ed2c4806024f6e489a6dd1b7749a76725108a54f6f7d34a78fc620f8b` ;
+  conteneur `5c3f897ae4c6455732c9fd4f0d79abba9c080eff17abb1fa142535283fc4a97c`,
+  `StartedAt=2026-09-03T10:04:06.672384901Z`, running, healthy, restart `0`,
+  OOM `false`.
+- Le healthcheck déclaré sur `http://127.0.0.1:8089/` et le GET interne
+  retournent `200`. Le SHA-256 du reader modifié est identique entre checkout
+  et conteneur.
+- Les 37 tests Python ciblés sont verts depuis l'image livrée, sans montage du
+  checkout ni réseau. Le smoke Chromium ciblé avait vérifié les deux renderers
+  hermétiquement avant le build; aucun appel modèle ou donnée opérateur n'a été
+  utilisé.
+- Les 31 conteneurs voisins conservent exactement leurs IDs, images et
+  `StartedAt`; PostgreSQL, Caddy et les autres services n'ont pas été recréés.
+- L'image précédente
+  `sha256:847d05eb84c3d544bcd13e15327ddd2c51e505ebdc160e6a36cc6f82aa9ae67b`
+  reste disponible comme référence de retour applicatif ciblé. B1 et les lots
+  suivants restent non commencés.
 
 ## 10. B1 — Distinguer section complète et fragment borné
 
