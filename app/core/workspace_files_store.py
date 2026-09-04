@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-import os
+import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -119,10 +119,25 @@ def workspace_file_path(storage_root: Path, storage_key: str) -> Path:
 def write_file_bytes(storage_root: Path, storage_key: str, content: bytes) -> Path:
     path = workspace_file_path(storage_root, storage_key)
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-    tmp.write_bytes(bytes(content or b""))
-    tmp.replace(path)
-    return path
+    tmp: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            tmp = Path(handle.name)
+            handle.write(bytes(content or b""))
+        tmp.replace(path)
+        return path
+    finally:
+        if tmp is not None:
+            try:
+                tmp.unlink()
+            except FileNotFoundError:
+                pass
 
 
 def delete_file_bytes(storage_root: Path, storage_key: str) -> bool:
@@ -435,37 +450,37 @@ def delete_workspace_file(
                       AND workspace_folder_id = %s::uuid
                       AND deleted_at IS NULL
                     LIMIT 1
+                    FOR UPDATE
                     """,
                     (normalized_file, normalized_folder),
                 )
                 row = cur.fetchone()
-        if not row:
-            log_content_free_event(
-                logger,
-                "delete_missing",
-                level="warning",
-                folder_id=normalized_folder,
-                file_id=normalized_file,
-                reason_code="workspace_file_missing",
-            )
-            return None
-        raw_storage_key = row.get("storage_key") if isinstance(row, Mapping) else row[2]
-        storage_key = str(raw_storage_key or "")
-        delete_file_bytes(storage_root, storage_key)
-    except Exception as exc:
-        log_content_free_event(
-            logger,
-            "delete_failed",
-            level="warning",
-            folder_id=normalized_folder,
-            file_id=normalized_file,
-            reason_code=REASON_WORKSPACE_FILE_DISK_MISSING,
-            error_type=type(exc).__name__,
-        )
-        return None
-
-    try:
-        with db_conn_func() as conn:
+            if not row:
+                log_content_free_event(
+                    logger,
+                    "delete_missing",
+                    level="warning",
+                    folder_id=normalized_folder,
+                    file_id=normalized_file,
+                    reason_code="workspace_file_missing",
+                )
+                return None
+            raw_storage_key = row.get("storage_key") if isinstance(row, Mapping) else row[2]
+            storage_key = str(raw_storage_key or "")
+            try:
+                delete_file_bytes(storage_root, storage_key)
+            except Exception as exc:
+                conn.rollback()
+                log_content_free_event(
+                    logger,
+                    "delete_failed",
+                    level="warning",
+                    folder_id=normalized_folder,
+                    file_id=normalized_file,
+                    reason_code=REASON_WORKSPACE_FILE_DISK_MISSING,
+                    error_type=type(exc).__name__,
+                )
+                return None
             with _cursor(conn) as cur:
                 cur.execute(
                     """

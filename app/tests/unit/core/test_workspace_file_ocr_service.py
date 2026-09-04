@@ -96,6 +96,48 @@ class WorkspaceFileOcrServiceTest(unittest.TestCase):
         self.assertEqual(payload["file"]["media_kind"], "text")
         self.assertEqual(payload["file"]["mime_type"], "text/markdown")
 
+    def test_reocr_of_existing_derivative_uses_atomic_text_update_boundary(self) -> None:
+        files = _FakeWorkspaceFiles(
+            _source_row(
+                display_name="scan.pdf",
+                mime_type="application/pdf",
+                source_extension=".pdf",
+                status="ocr_required",
+            ),
+            source_bytes=b"%PDF source",
+        )
+        files.rows[DERIVED_ID] = _source_row(
+            file_id=DERIVED_ID,
+            display_name="scan.ocr.md",
+            mime_type="text/markdown",
+            source_extension=".md",
+            source_kind="ocr_derived",
+            source_file_id=SOURCE_ID,
+        )
+        files.bytes[DERIVED_ID] = b"# OCR\n\ncorrection humaine precedente"
+        extractor = _FakeExtractor(
+            [
+                _extraction(text=OCR_TEXT, filename="scan.pdf", media_type="application/pdf"),
+                _extraction(text=f"# OCR\n\n{OCR_TEXT}", filename="scan.ocr.md", media_type="text/markdown"),
+            ]
+        )
+
+        payload, status = workspace_file_ocr_service.ocr_workspace_file_response(
+            FOLDER_ID,
+            SOURCE_ID,
+            workspace_folders_module=_FakeFolders(),
+            workspace_files_module=files,
+            extractor_module=extractor,
+            ocr_module=_FakeOcr(),
+        )
+
+        self.assertEqual(status, 200)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(len(files.update_calls), 1)
+        self.assertEqual(files.update_calls[0]["file_id"], DERIVED_ID)
+        self.assertEqual(files.store_calls, [])
+        self.assertIn(OCR_TEXT, files.bytes[DERIVED_ID].decode("utf-8"))
+
     def test_ocr_refuses_unsupported_workspace_file_type(self) -> None:
         files = _FakeWorkspaceFiles(
             _source_row(display_name="note.txt", mime_type="text/plain", source_extension=".txt"),
@@ -150,6 +192,8 @@ class WorkspaceFileOcrServiceTest(unittest.TestCase):
         self.assertEqual(updated_status, 200)
         self.assertEqual(updated_payload["file"]["id"], DERIVED_ID)
         self.assertEqual(files.bytes[DERIVED_ID], "# OCR\n\ntexte corrigé".encode("utf-8"))
+        self.assertEqual(len(files.update_calls), 1)
+        self.assertEqual(files.update_calls[0]["file_id"], DERIVED_ID)
         logged = "\n".join(files.logs)
         self.assertIn("workspace_files_ocr_markdown_edit_ok", logged)
         self.assertNotIn("texte corrigé", logged)
@@ -178,6 +222,8 @@ class _FakeWorkspaceFiles:
         self.rows = {source_row["id"]: dict(source_row)}
         self.bytes = {source_row["id"]: bytes(source_bytes)}
         self.logs: list[str] = []
+        self.store_calls: list[dict[str, object]] = []
+        self.update_calls: list[dict[str, object]] = []
 
     def normalize_workspace_file_id(self, value):
         raw = str(value or "")
@@ -205,6 +251,14 @@ class _FakeWorkspaceFiles:
         return None
 
     def store_uploaded_file(self, folder_id, *, original_filename, content, metadata):
+        self.store_calls.append(
+            {
+                "folder_id": folder_id,
+                "original_filename": original_filename,
+                "content": bytes(content),
+                "metadata": dict(metadata),
+            }
+        )
         row = {
             **_source_row(
                 file_id=DERIVED_ID,
@@ -225,6 +279,14 @@ class _FakeWorkspaceFiles:
         return self._public(row)
 
     def update_workspace_text_file(self, folder_id, file_id, *, content, metadata):
+        self.update_calls.append(
+            {
+                "folder_id": folder_id,
+                "file_id": file_id,
+                "content": bytes(content),
+                "metadata": dict(metadata),
+            }
+        )
         row = self.rows.get(file_id)
         if not row or row["workspace_folder_id"] != folder_id:
             return None

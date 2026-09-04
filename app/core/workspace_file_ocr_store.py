@@ -95,88 +95,129 @@ def update_workspace_text_file(
     digest = workspace_files_store._sha256_hex(data)
     storage_key = ""
     old_content: bytes | None = None
+    candidate_written = False
     try:
         with db_conn_func() as conn:
-            with workspace_files_store._cursor(conn) as cur:
-                cur.execute(
-                    """
-                    SELECT storage_key
-                    FROM workspace_files
-                    WHERE id = %s::uuid
-                      AND workspace_folder_id = %s::uuid
-                      AND deleted_at IS NULL
-                    LIMIT 1
-                    """,
-                    (normalized_file, normalized_folder),
-                )
-                row = cur.fetchone()
-        if not row:
-            workspace_files_store.log_content_free_event(
-                logger,
-                "edit_missing",
-                level="warning",
-                folder_id=normalized_folder,
-                file_id=normalized_file,
-                reason_code="workspace_file_missing",
-            )
-            return None
-        raw_storage_key = row.get("storage_key") if isinstance(row, Mapping) else row[0]
-        storage_key = str(raw_storage_key or "")
-        try:
-            old_content = read_file_bytes(storage_root, storage_key)
-        except Exception:
-            old_content = None
-        workspace_files_store.write_file_bytes(storage_root, storage_key, data)
-    except Exception as exc:
-        workspace_files_store.log_content_free_event(
-            logger,
-            "edit_failed",
-            level="warning",
-            folder_id=normalized_folder,
-            file_id=normalized_file,
-            byte_size=len(data),
-            reason_code=workspace_files_store.REASON_WORKSPACE_FILE_DISK_MISSING,
-            error_type=type(exc).__name__,
-        )
-        return None
+            try:
+                with workspace_files_store._cursor(conn) as cur:
+                    cur.execute(
+                        """
+                        SELECT storage_key
+                        FROM workspace_files
+                        WHERE id = %s::uuid
+                          AND workspace_folder_id = %s::uuid
+                          AND deleted_at IS NULL
+                        LIMIT 1
+                        FOR UPDATE
+                        """,
+                        (normalized_file, normalized_folder),
+                    )
+                    row = cur.fetchone()
+                if not row:
+                    workspace_files_store.log_content_free_event(
+                        logger,
+                        "edit_missing",
+                        level="warning",
+                        folder_id=normalized_folder,
+                        file_id=normalized_file,
+                        reason_code="workspace_file_missing",
+                    )
+                    return None
 
-    try:
-        with db_conn_func() as conn:
-            with workspace_files_store._cursor(conn) as cur:
-                cur.execute(
-                    """
-                    UPDATE workspace_files
-                    SET byte_size = %s,
-                        sha256 = %s,
-                        sha256_12 = %s,
-                        text_chars = %s,
-                        text_sha256_12 = %s,
-                        status = %s,
-                        reason_code = %s,
-                        updated_at = now()
-                    WHERE id = %s::uuid
-                      AND workspace_folder_id = %s::uuid
-                      AND deleted_at IS NULL
-                    RETURNING
-                        id, workspace_folder_id, display_name, original_filename, storage_key,
-                        content_kind, media_kind, mime_type, source_extension, byte_size,
-                        sha256, sha256_12, text_chars, text_sha256_12, image_width, image_height,
-                        status, reason_code, source_kind, source_file_id, created_at, updated_at, deleted_at
-                    """,
-                    (
-                        len(data),
-                        digest,
-                        digest[:12],
-                        workspace_files_store._safe_int(metadata.get("text_chars")),
-                        workspace_files_store._safe_text(metadata.get("text_sha256_12"), 12),
-                        workspace_files_store._safe_text(metadata.get("status") or workspace_files_store.STATUS_ACTIVE, 40),
-                        workspace_files_store._safe_text(metadata.get("reason_code"), 80),
-                        normalized_file,
-                        normalized_folder,
-                    ),
+                raw_storage_key = row.get("storage_key") if isinstance(row, Mapping) else row[0]
+                storage_key = str(raw_storage_key or "")
+                try:
+                    old_content = read_file_bytes(storage_root, storage_key)
+                except Exception as exc:
+                    conn.rollback()
+                    workspace_files_store.log_content_free_event(
+                        logger,
+                        "edit_failed",
+                        level="warning",
+                        folder_id=normalized_folder,
+                        file_id=normalized_file,
+                        byte_size=len(data),
+                        reason_code=workspace_files_store.REASON_WORKSPACE_FILE_DISK_MISSING,
+                        error_type=type(exc).__name__,
+                    )
+                    return None
+
+                try:
+                    workspace_files_store.write_file_bytes(storage_root, storage_key, data)
+                except Exception as exc:
+                    conn.rollback()
+                    workspace_files_store.log_content_free_event(
+                        logger,
+                        "edit_failed",
+                        level="warning",
+                        folder_id=normalized_folder,
+                        file_id=normalized_file,
+                        byte_size=len(data),
+                        reason_code=workspace_files_store.REASON_WORKSPACE_FILE_DISK_MISSING,
+                        error_type=type(exc).__name__,
+                    )
+                    return None
+                candidate_written = True
+                with workspace_files_store._cursor(conn) as cur:
+                    cur.execute(
+                        """
+                        UPDATE workspace_files
+                        SET byte_size = %s,
+                            sha256 = %s,
+                            sha256_12 = %s,
+                            text_chars = %s,
+                            text_sha256_12 = %s,
+                            status = %s,
+                            reason_code = %s,
+                            updated_at = now()
+                        WHERE id = %s::uuid
+                          AND workspace_folder_id = %s::uuid
+                          AND deleted_at IS NULL
+                        RETURNING
+                            id, workspace_folder_id, display_name, original_filename, storage_key,
+                            content_kind, media_kind, mime_type, source_extension, byte_size,
+                            sha256, sha256_12, text_chars, text_sha256_12, image_width, image_height,
+                            status, reason_code, source_kind, source_file_id, created_at, updated_at, deleted_at
+                        """,
+                        (
+                            len(data),
+                            digest,
+                            digest[:12],
+                            workspace_files_store._safe_int(metadata.get("text_chars")),
+                            workspace_files_store._safe_text(metadata.get("text_sha256_12"), 12),
+                            workspace_files_store._safe_text(metadata.get("status") or workspace_files_store.STATUS_ACTIVE, 40),
+                            workspace_files_store._safe_text(metadata.get("reason_code"), 80),
+                            normalized_file,
+                            normalized_folder,
+                        ),
+                    )
+                    row = cur.fetchone()
+                if not row:
+                    raise RuntimeError("workspace_file_update_missing")
+                conn.commit()
+            except Exception as exc:
+                if candidate_written and old_content is not None and storage_key:
+                    try:
+                        current_content = read_file_bytes(storage_root, storage_key)
+                        if current_content == data:
+                            workspace_files_store.write_file_bytes(storage_root, storage_key, old_content)
+                    except Exception:
+                        pass
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                workspace_files_store.log_content_free_event(
+                    logger,
+                    "edit_failed",
+                    level="warning",
+                    folder_id=normalized_folder,
+                    file_id=normalized_file,
+                    byte_size=len(data),
+                    reason_code=workspace_files_store.REASON_WORKSPACE_FILE_DB_MISSING,
+                    error_type=type(exc).__name__,
                 )
-                row = cur.fetchone()
-            conn.commit()
+                return None
         item = workspace_files_store.serialize_workspace_file_row(row, storage_root=storage_root, include_disk_status=True)
         if item is not None:
             workspace_files_store.log_content_free_event(
@@ -194,11 +235,6 @@ def update_workspace_text_file(
             )
         return item
     except Exception as exc:
-        if old_content is not None and storage_key:
-            try:
-                workspace_files_store.write_file_bytes(storage_root, storage_key, old_content)
-            except Exception:
-                pass
         workspace_files_store.log_content_free_event(
             logger,
             "edit_failed",

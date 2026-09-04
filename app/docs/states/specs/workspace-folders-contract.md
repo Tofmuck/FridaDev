@@ -287,6 +287,29 @@ Implementation Lot 4 livree:
 - suppression du fichier source ne supprime pas automatiquement le derive: le Markdown OCR reste un fichier durable distinct avec provenance tombstonee/content-free;
 - observabilite content-free pour succes/echec OCR et edition, sans texte OCR brut, bytes, chemin disque, `storage_key`, base64, prompt, memoire, identity, summary, Biblio ou RAG.
 
+Correction d'integrite L5.1 livree le 4 septembre 2026:
+
+- la mise a jour d'un derive OCR existant verrouille sa ligne
+  `workspace_files` avec `SELECT ... FOR UPDATE` avant de lire les octets
+  precedents;
+- la lecture de V0, le remplacement par la candidate, l'UPDATE des metadata et
+  du SHA-256, puis le commit ou la compensation restent dans une transaction
+  unique; la suppression de la meme cible prend le meme verrou avant
+  l'effacement;
+- chaque tentative ecrit un temporaire unique dans le repertoire de la cible,
+  utilise un remplacement atomique puis nettoie toujours ce temporaire;
+- apres echec SQL, V0 n'est restauree que si le fichier courant contient encore
+  exactement la candidate de l'operation fautive; une V0 absente ou illisible
+  interdit le remplacement et toute compensation non prouvee reste un echec;
+- les cibles distinctes ne partagent pas de verrou global, et re-OCR comme
+  correction humaine reutilisent cette meme frontiere de sauvegarde.
+
+Cette garantie porte sur les issues applicatives gerees. Elle ne constitue pas
+une transaction distribuee filesystem/PostgreSQL: un crash brutal entre le
+remplacement et le commit ou la compensation peut laisser un etat a reconcilier.
+Aucun journal, versionnage persistant, retry ou mecanisme de recuperation
+supplementaire n'est introduit par L5.1.
+
 ## 10. Contrat suppression
 
 Suppression utilisateur d'un fichier:

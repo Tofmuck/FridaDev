@@ -2,7 +2,7 @@
 
 Date de cadrage : 4 septembre 2026.
 
-**Statut : roadmap ouverte ; L1 à L4 fermés ; L5 à L7 et Z non commencés.**
+**Statut : roadmap ouverte ; L1 à L4 et L5.1 fermés ; L5.2, L5.3, L6, L7 et Z non commencés.**
 
 ## 1. But, source et règle de vérité
 
@@ -72,7 +72,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 | 2 | L2 | Intégrité du canon conversationnel | F09 | xhigh | fermé — F09 corrigé |
 | 3 | L3 | Compensation Nextcloud possédée | F08 | xhigh | fermé — F08 corrigé |
 | 4 | L4 | Conservation de la projection analytics | F21 | high | fermé — F21 corrigé |
-| 5 | L5 | Atomicité des écritures Workspace | F13b, F14a, F19b | xhigh par sous-lot | non commencé |
+| 5 | L5 | Atomicité des écritures Workspace | F13b, F14a, F19b | xhigh par sous-lot | en cours — L5.1 fermé ; L5.2 et L5.3 non commencés |
 | 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | non commencé |
 | 7 | L7 | Vérité d'API, observabilité et outils historiques | F16–F18, F20, F22, F24 et dette documentaire | high | non commencé |
 | 8 | Z | Réconciliation finale avec le grand audit | tous les Fxx et réserves non numérotées | xhigh | non commencé |
@@ -82,7 +82,8 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 - [x] L2 fermé.
 - [x] L3 fermé.
 - [x] L4 fermé.
-- [ ] L5.1, L5.2 et L5.3 fermés.
+- [x] L5.1 fermé.
+- [ ] L5.2 et L5.3 fermés.
 - [ ] L6 et ses décisions conditionnelles fermés.
 - [ ] L7 et ses décisions conditionnelles fermés.
 - [ ] Z réconcilie chaque finding et archive la roadmap.
@@ -381,6 +382,47 @@ cohérence entre état local, fichier distant et metadata, mais ne doivent pas
 le hash DB et le dérivé en désaccord. Revalider l'ordre fichier/SQL, le temporaire
 commun par PID et le rollback. Correction attendue : sérialisation par cible,
 temporaire unique et compensation conditionnelle ; aucun verrou global.
+
+**Revalidation et fermeture du 4 septembre 2026 :**
+
+- F1 à F5 confirmés : le store fermait sa première transaction après lecture de
+  la cible, remplaçait le fichier avant l'UPDATE SQL, puis restaurait V0 sans
+  condition si cette seconde transaction échouait. Deux sauvegardes recouvrantes
+  pouvaient donc laisser la ligne et son hash sur V2 tout en remettant V0 sur
+  disque ;
+- F6 confirmée : le re-OCR d'un dérivé existant et la correction humaine passent
+  tous deux par `update_workspace_text_file()` ; la création initiale conserve
+  son chemin distinct à identifiant neuf ;
+- F7 confirmée : un `SELECT ... FOR UPDATE` sur la ligne `workspace_files`
+  sérialise la cible exacte avant lecture de V0 et reste dans l'unique transaction
+  jusqu'au commit ou à la fin de la compensation. La suppression de ce même
+  fichier prend le même verrou avant l'effacement. Deux lignes distinctes restent
+  indépendantes ; aucun verrou global ni registre process-local n'est ajouté ;
+- F8 confirmée : chaque écriture utilise un temporaire unique créé dans le
+  répertoire de la cible, puis un remplacement atomique et un nettoyage
+  systématique ;
+- F9 confirmée : après échec SQL, V0 n'est restaurée que si les octets courants
+  égalent encore exactement la candidate écrite par l'opération fautive. Une V0
+  absente ou illisible arrête la sauvegarde avant remplacement ; une compensation
+  impossible ne produit jamais de faux succès ;
+- F10 confirmée : aucune migration, table, route, vue, queue, retry, journal,
+  version persistante ou capacité OCR supplémentaire n'est nécessaire.
+
+La fake SQL transactionnelle et le stockage temporaire hermétique orchestrent
+sans `sleep` A en attente d'échec, B sur la même cible, deux cibles distinctes,
+un writer déjà committé, une suppression concurrente et les branches de panne.
+Ils inspectent les octets finaux ainsi que taille, SHA-256 complet/court et
+metadata SQL. Une mutation retirant `FOR UPDATE` remet la preuve centrale en
+échec parce que B n'attend plus A ; sa restauration exacte la rend verte.
+
+Cette cohérence applicative n'est pas une transaction distribuée entre le
+filesystem et PostgreSQL : un arrêt brutal du processus, du conteneur ou de
+l'hôte entre le remplacement du fichier et le commit/rollback SQL peut encore
+laisser un état à réconcilier. L5.1 n'ajoute volontairement ni journal durable ni
+versionnage pour couvrir ce cas de crash.
+
+**Fermeture :** F13b est corrigé et prouvé. L5.1 est fermé. L5.2 et L5.3 ne sont
+pas commencés.
 
 ### L5.2 — Renommage de dossier : commit local et MOVE distant cohérents
 
