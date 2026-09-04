@@ -136,9 +136,32 @@ def rename_workspace_folder_nextcloud_first(
 
     try:
         nextcloud = _client(client)
+    except nextcloud_client.NextcloudFolderClientError as exc:
+        return _nextcloud_error(exc, operation="rename")
+    if moved:
+        try:
+            pending = nextcloud_links.mark_link_rename_pending(
+                workspace_folder_id=normalized,
+                expected_nextcloud_folder_ref=str(
+                    existing_folder.get("nextcloud_folder_ref") or ""
+                ),
+                expected_nextcloud_name_hash=str(
+                    existing_folder.get("nextcloud_name_hash") or ""
+                ),
+                db_conn_func=db_conn_func,
+                logger=logger,
+            )
+        except nextcloud_links.WorkspaceFolderNextcloudLinkPersistenceError:
+            return _local_persistence_error(nextcloud_client.REASON_ROLLBACK_OK)
+        if pending is None:
+            return _local_persistence_error(nextcloud_client.REASON_ROLLBACK_OK)
+
+    try:
         if moved:
             nextcloud.move_folder(old_target_name, new_target_name)
     except nextcloud_client.NextcloudFolderClientError as exc:
+        if moved and exc.http_status > 0:
+            _restore_old_link(normalized, old_target_name, db_conn_func=db_conn_func, logger=logger)
         return _nextcloud_error(exc, operation="rename")
 
     try:
@@ -152,7 +175,8 @@ def rename_workspace_folder_nextcloud_first(
         )
     except nextcloud_links.WorkspaceFolderNextcloudLinkPersistenceError:
         rollback = _rollback_renamed_folder(nextcloud, new_target_name, old_target_name, moved=moved, logger=logger)
-        _restore_old_link(normalized, old_target_name, db_conn_func=db_conn_func, logger=logger)
+        if rollback == nextcloud_client.REASON_ROLLBACK_OK:
+            _restore_old_link(normalized, old_target_name, db_conn_func=db_conn_func, logger=logger)
         return _local_persistence_error(rollback)
 
     fields: dict[str, Any] = {"display_name": str(validation["display_name"])}
@@ -171,7 +195,8 @@ def rename_workspace_folder_nextcloud_first(
     )
     if updated is None:
         rollback = _rollback_renamed_folder(nextcloud, new_target_name, old_target_name, moved=moved, logger=logger)
-        _restore_old_link(normalized, old_target_name, db_conn_func=db_conn_func, logger=logger)
+        if rollback == nextcloud_client.REASON_ROLLBACK_OK:
+            _restore_old_link(normalized, old_target_name, db_conn_func=db_conn_func, logger=logger)
         return _local_persistence_error(rollback)
     return {"ok": True, "folder": updated, "reason_code": nextcloud_client.REASON_RENAME_OK}
 

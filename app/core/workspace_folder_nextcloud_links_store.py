@@ -327,6 +327,67 @@ def mark_link_deleted_in_cursor(cur: Any, folder_id: str) -> None:
     )
 
 
+def mark_link_rename_pending(
+    *,
+    workspace_folder_id: str,
+    expected_nextcloud_folder_ref: str,
+    expected_nextcloud_name_hash: str,
+    db_conn_func: Callable[[], Any],
+    logger: Any,
+) -> Optional[dict[str, Any]]:
+    folder_id = normalize_workspace_folder_id(workspace_folder_id)
+    folder_ref = normalize_folder_ref(expected_nextcloud_folder_ref)
+    name_hash = normalize_name_hash(expected_nextcloud_name_hash)
+    if not folder_id or not folder_ref or not name_hash:
+        return None
+    try:
+        with db_conn_func() as conn:
+            with _cursor(conn) as cur:
+                cur.execute(
+                    """
+                    UPDATE workspace_folder_nextcloud_links
+                    SET nextcloud_sync_state = 'sync_pending',
+                        last_sync_at = now(),
+                        last_sync_reason_code = %s,
+                        last_sync_operation = 'rename',
+                        updated_at = now()
+                    WHERE workspace_folder_id = %s::uuid
+                      AND nextcloud_sync_state = 'linked'
+                      AND nextcloud_folder_ref = %s
+                      AND nextcloud_name_hash = %s
+                    RETURNING
+                        workspace_folder_id AS link_workspace_folder_id,
+                        nextcloud_sync_state AS link_nextcloud_sync_state,
+                        nextcloud_folder_ref AS link_nextcloud_folder_ref,
+                        nextcloud_name_hash AS link_nextcloud_name_hash,
+                        last_sync_at AS link_last_sync_at,
+                        last_sync_reason_code AS link_last_sync_reason_code,
+                        last_sync_operation AS link_last_sync_operation,
+                        nextcloud_share_state AS link_nextcloud_share_state,
+                        created_at AS link_created_at,
+                        updated_at AS link_updated_at
+                    """,
+                    (
+                        REASON_FOLDER_SYNC_PENDING,
+                        folder_id,
+                        folder_ref,
+                        name_hash,
+                    ),
+                )
+                row = cur.fetchone()
+            conn.commit()
+        return serialize_link_row(row)
+    except Exception:
+        logger.warning(
+            "workspace_folder_nextcloud_link_rename_pending_failed id=%s reason_code=%s",
+            folder_id,
+            REASON_NEXTCLOUD_ERROR_REDACTED,
+        )
+        raise WorkspaceFolderNextcloudLinkPersistenceError(
+            REASON_NEXTCLOUD_ERROR_REDACTED
+        ) from None
+
+
 def upsert_link(
     *,
     workspace_folder_id: str,

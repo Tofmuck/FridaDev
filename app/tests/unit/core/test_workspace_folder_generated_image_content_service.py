@@ -13,11 +13,15 @@ if str(APP_DIR) not in sys.path:
 from core import workspace_folder_generated_image_content_service
 from core import workspace_folder_generated_image_nextcloud_client
 from core import workspace_folder_generated_images
+from core import workspace_folder_nextcloud_projection
 
 
 FOLDER_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
 IMAGE_ID = "11111111-2222-4333-8444-555555555555"
 TARGET_NAME = "generated-image-11111111-2222-4333-8444-555555555555.png"
+PARENT_TARGET = "Dossier-Images"
+PARENT_NAME_HASH = workspace_folder_nextcloud_projection.hash12(PARENT_TARGET.casefold())
+PARENT_FOLDER_REF = f"workspace-folder:aaaaaaaa:{PARENT_NAME_HASH}"
 _DEFAULT_IMAGE = object()
 
 
@@ -41,14 +45,23 @@ def _jpeg_bytes(width: int = 48, height: int = 40) -> bytes:
     )
 
 
-def _folder(*, linked: bool = True, deleted: bool = False) -> dict[str, Any]:
-    return {
+def _folder(
+    *,
+    linked: bool = True,
+    deleted: bool = False,
+    **overrides: Any,
+) -> dict[str, Any]:
+    payload = {
         "id": FOLDER_ID,
         "display_name": "Dossier Images",
-        "nextcloud_target_name": "Dossier-Images",
+        "nextcloud_target_name": PARENT_TARGET,
+        "nextcloud_folder_ref": PARENT_FOLDER_REF,
+        "nextcloud_name_hash": PARENT_NAME_HASH,
         "nextcloud_sync_state": "linked" if linked else "local_only",
         "deleted_at": "2026-06-20T10:00:00Z" if deleted else None,
     }
+    payload.update(overrides)
+    return payload
 
 
 def _image(**overrides: Any) -> dict[str, Any]:
@@ -121,6 +134,8 @@ class _FakeImages:
         expected_workspace_folder_id: str,
         expected_target_name_internal: str,
         expected_target_ref: str,
+        expected_parent_folder_ref: str,
+        expected_parent_name_hash: str,
         reason_code: str = "",
     ):
         self.tombstones.append(
@@ -129,6 +144,8 @@ class _FakeImages:
                 "workspace_folder_id": expected_workspace_folder_id,
                 "target_name_internal": expected_target_name_internal,
                 "target_ref": expected_target_ref,
+                "parent_folder_ref": expected_parent_folder_ref,
+                "parent_name_hash": expected_parent_name_hash,
                 "reason_code": reason_code,
             }
         )
@@ -255,6 +272,8 @@ class WorkspaceFolderGeneratedImageContentServiceTests(unittest.TestCase):
             images.tombstones[0]["target_ref"],
             workspace_folder_generated_images.target_ref_for_target(TARGET_NAME),
         )
+        self.assertEqual(images.tombstones[0]["parent_folder_ref"], PARENT_FOLDER_REF)
+        self.assertEqual(images.tombstones[0]["parent_name_hash"], PARENT_NAME_HASH)
         self.assertEqual(payload["generated_image_delete"]["delete_state"], "deleted")
         self.assertEqual(payload["reason_code"], "folder_generated_image_delete_ok")
 
@@ -306,6 +325,29 @@ class WorkspaceFolderGeneratedImageContentServiceTests(unittest.TestCase):
                 self.assertFalse(nextcloud.delete_calls)
                 self.assertNotIn("remote.php", str(result.payload))
                 self.assertNotIn("Secret", str(result.payload))
+
+    def test_delete_refuses_invalid_parent_coordinate_before_webdav(self) -> None:
+        folders = (
+            _folder(nextcloud_folder_ref="", nextcloud_name_hash=""),
+            _folder(nextcloud_name_hash="abc123def456"),
+        )
+        for folder in folders:
+            with self.subTest(parent_hash=folder.get("nextcloud_name_hash")):
+                images = _FakeImages()
+                nextcloud = _FakeNextcloud()
+
+                payload, status = workspace_folder_generated_image_content_service.delete_workspace_folder_generated_image_response(
+                    FOLDER_ID,
+                    IMAGE_ID,
+                    workspace_folders_module=_FakeFolders(folder),
+                    generated_images_module=images,
+                    nextcloud=nextcloud,
+                )
+
+                self.assertEqual(status, 409)
+                self.assertFalse(payload["ok"])
+                self.assertFalse(nextcloud.delete_calls)
+                self.assertFalse(images.tombstones)
 
     def test_remote_read_too_large_invalid_bytes_and_mime_mismatch_fail_closed(self) -> None:
         too_large = _FakeNextcloud(

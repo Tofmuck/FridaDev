@@ -41,16 +41,31 @@ class _CaptureLogger:
 
 
 class _StatefulNextcloud:
-    def __init__(self, *, fail_move_calls: set[int] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        fail_move_calls: set[int] | None = None,
+        fail_move_http_status: int = 409,
+        before_move=None,
+    ) -> None:
         self.folders = {OLD_TARGET}
         self.moves: list[tuple[str, str]] = []
         self.fail_move_calls = set(fail_move_calls or ())
+        self.fail_move_http_status = fail_move_http_status
+        self.before_move = before_move
 
     def move_folder(self, source: str, target: str):
         self.moves.append((source, target))
+        if self.before_move is not None:
+            self.before_move(source, target)
         if len(self.moves) in self.fail_move_calls:
             raise workspace_folder_nextcloud_client.NextcloudFolderClientError(
-                workspace_folder_nextcloud_client.REASON_UNAVAILABLE,
+                (
+                    workspace_folder_nextcloud_client.REASON_CONFLICT
+                    if self.fail_move_http_status
+                    else workspace_folder_nextcloud_client.REASON_UNAVAILABLE
+                ),
+                http_status=self.fail_move_http_status,
             )
         if source not in self.folders or target in self.folders:
             raise workspace_folder_nextcloud_client.NextcloudFolderClientError(
@@ -168,6 +183,9 @@ class _RelationalCursor:
     def execute(self, sql, params=None) -> None:
         normalized_sql = " ".join(str(sql).split()).lower()
         params = tuple(params or ())
+        if "update workspace_folder_nextcloud_links" in normalized_sql:
+            self._mark_link_rename_pending(params)
+            return
         if "insert into workspace_folder_nextcloud_links" in normalized_sql:
             self._upsert_link(params)
             return
@@ -178,6 +196,39 @@ class _RelationalCursor:
             self._select_folders(normalized_sql)
             return
         raise AssertionError(f"unexpected SQL family: {normalized_sql[:80]}")
+
+    def _mark_link_rename_pending(self, params: tuple) -> None:
+        self.connection.database.link_upsert_attempts += 1
+        if self.connection.database.fail_link_upserts > 0:
+            self.connection.database.fail_link_upserts -= 1
+            raise RuntimeError("link_pending_failed")
+        self.connection.operation = "link_pending"
+        expected_folder_id = str(params[1])
+        expected_ref = str(params[2])
+        expected_hash = str(params[3])
+        matches = (
+            str(self.connection.link.get("workspace_folder_id")) == expected_folder_id
+            and self.connection.link.get("nextcloud_sync_state") == "linked"
+            and str(self.connection.link.get("nextcloud_folder_ref")) == expected_ref
+            and str(self.connection.link.get("nextcloud_name_hash")) == expected_hash
+        )
+        if not matches:
+            self.row = None
+            return
+        self.connection.dirty_link = True
+        self.connection.link.update(
+            {
+                "nextcloud_sync_state": "sync_pending",
+                "last_sync_at": "2026-06-16T00:00:30Z",
+                "last_sync_reason_code": params[0],
+                "last_sync_operation": "rename",
+                "updated_at": "2026-06-16T00:00:30Z",
+            }
+        )
+        self.row = {
+            f"link_{key}": value
+            for key, value in self.connection.link.items()
+        }
 
     def _upsert_link(self, params: tuple) -> None:
         self.connection.database.link_upsert_attempts += 1
@@ -347,9 +398,15 @@ class WorkspaceFolderRenameCommitProjectionTests(unittest.TestCase):
         self.assertIn("folder_commit_failed", database.events)
         self.assertNotIn("folder_update", database.commits)
 
-    def test_initial_move_failure_performs_no_local_mutation(self) -> None:
+    def test_explicit_initial_move_failure_restores_link_and_skips_folder_mutation(self) -> None:
         database = _RelationalDatabase()
-        nextcloud = _StatefulNextcloud(fail_move_calls={1})
+        state_during_move: list[str] = []
+        nextcloud = _StatefulNextcloud(
+            fail_move_calls={1},
+            before_move=lambda _source, _target: state_during_move.append(
+                str(database.link["nextcloud_sync_state"])
+            ),
+        )
 
         result = workspace_folder_nextcloud_runtime.rename_workspace_folder_nextcloud_first(
             FOLDER_ID,
@@ -362,11 +419,13 @@ class WorkspaceFolderRenameCommitProjectionTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertEqual(database.folder["display_name"], OLD_DISPLAY_NAME)
         self.assertEqual(database.link["nextcloud_name_hash"], _hash12(OLD_TARGET.casefold()))
+        self.assertEqual(database.link["nextcloud_sync_state"], "linked")
         self.assertEqual(nextcloud.folders, {OLD_TARGET})
-        self.assertEqual(database.link_upsert_attempts, 0)
+        self.assertEqual(state_during_move, ["sync_pending"])
+        self.assertEqual(database.link_upsert_attempts, 2)
         self.assertEqual(database.folder_update_attempts, 0)
 
-    def test_link_upsert_failure_preserves_existing_compensation(self) -> None:
+    def test_pending_barrier_failure_prevents_move_and_local_folder_mutation(self) -> None:
         database = _RelationalDatabase(fail_link_upserts=1)
         nextcloud = _StatefulNextcloud()
 
@@ -382,8 +441,66 @@ class WorkspaceFolderRenameCommitProjectionTests(unittest.TestCase):
         self.assertEqual(database.folder["display_name"], OLD_DISPLAY_NAME)
         self.assertEqual(database.link["nextcloud_name_hash"], _hash12(OLD_TARGET.casefold()))
         self.assertEqual(nextcloud.folders, {OLD_TARGET})
+        self.assertEqual(nextcloud.moves, [])
         self.assertEqual(database.folder_update_attempts, 0)
-        self.assertEqual(database.link_upsert_attempts, 2)
+        self.assertEqual(database.link_upsert_attempts, 1)
+
+    def test_stale_link_identity_cannot_acquire_pending_barrier_or_move(self) -> None:
+        database = _RelationalDatabase()
+        nextcloud = _StatefulNextcloud()
+        list_folders = workspace_folders_store.list_workspace_folders
+
+        def list_then_change_link(**kwargs):
+            folders = list_folders(**kwargs)
+            database.link.update(
+                {
+                    "nextcloud_folder_ref": _folder_ref(NEW_TARGET),
+                    "nextcloud_name_hash": _hash12(NEW_TARGET.casefold()),
+                }
+            )
+            return folders
+
+        with mock.patch.object(
+            workspace_folders_store,
+            "list_workspace_folders",
+            side_effect=list_then_change_link,
+        ):
+            result = workspace_folder_nextcloud_runtime.rename_workspace_folder_nextcloud_first(
+                FOLDER_ID,
+                display_name=NEW_DISPLAY_NAME,
+                db_conn_func=database.connect,
+                logger=_CaptureLogger(),
+                client=nextcloud,
+            )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(nextcloud.moves, [])
+        self.assertEqual(database.folder["display_name"], OLD_DISPLAY_NAME)
+        self.assertEqual(database.link["nextcloud_sync_state"], "linked")
+        self.assertEqual(database.link_upsert_attempts, 1)
+        self.assertEqual(database.folder_update_attempts, 0)
+
+    def test_ambiguous_move_transport_failure_leaves_pending_visible(self) -> None:
+        database = _RelationalDatabase()
+        nextcloud = _StatefulNextcloud(
+            fail_move_calls={1},
+            fail_move_http_status=0,
+        )
+
+        result = workspace_folder_nextcloud_runtime.rename_workspace_folder_nextcloud_first(
+            FOLDER_ID,
+            display_name=NEW_DISPLAY_NAME,
+            db_conn_func=database.connect,
+            logger=_CaptureLogger(),
+            client=nextcloud,
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(database.folder["display_name"], OLD_DISPLAY_NAME)
+        self.assertEqual(database.link["nextcloud_sync_state"], "sync_pending")
+        self.assertEqual(database.link["nextcloud_name_hash"], _hash12(OLD_TARGET.casefold()))
+        self.assertEqual(database.link_upsert_attempts, 1)
+        self.assertEqual(database.folder_update_attempts, 0)
 
     def test_local_metadata_update_returns_complete_existing_link_projection(self) -> None:
         database = _RelationalDatabase()

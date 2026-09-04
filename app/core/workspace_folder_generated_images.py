@@ -288,6 +288,8 @@ def tombstone_generated_image(
     expected_workspace_folder_id: str,
     expected_target_name_internal: str,
     expected_target_ref: str,
+    expected_parent_folder_ref: str,
+    expected_parent_name_hash: str,
     reason_code: str = REASON_DELETED,
 ) -> Optional[dict[str, Any]]:
     from . import workspace_folder_generated_images_store
@@ -297,6 +299,8 @@ def tombstone_generated_image(
         expected_workspace_folder_id=expected_workspace_folder_id,
         expected_target_name_internal=expected_target_name_internal,
         expected_target_ref=expected_target_ref,
+        expected_parent_folder_ref=expected_parent_folder_ref,
+        expected_parent_name_hash=expected_parent_name_hash,
         reason_code=reason_code,
         db_conn_func=db_conn,
         logger=logger,

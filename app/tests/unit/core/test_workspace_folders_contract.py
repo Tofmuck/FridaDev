@@ -981,20 +981,30 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
 
         with mock.patch.object(workspace_folders_store, "get_workspace_folder", return_value=existing_folder):
             with mock.patch.object(workspace_folders_store, "list_workspace_folders", return_value=[existing_folder]):
-                with mock.patch.object(workspace_folder_nextcloud_links_store, "upsert_link") as upsert:
-                    with mock.patch.object(workspace_folders_store, "update_workspace_folder", return_value=renamed_folder):
-                        result = workspace_folder_nextcloud_runtime.rename_workspace_folder_nextcloud_first(
-                            folder_id,
-                            display_name="Projet Renomme",
-                            db_conn_func=lambda: None,
-                            logger=_CaptureLogger(),
-                            client=fake_client,
-                        )
+                with mock.patch.object(
+                    workspace_folder_nextcloud_links_store,
+                    "mark_link_rename_pending",
+                    return_value={"nextcloud_sync_state": "sync_pending"},
+                ) as pending:
+                    with mock.patch.object(workspace_folder_nextcloud_links_store, "upsert_link") as upsert:
+                        with mock.patch.object(workspace_folders_store, "update_workspace_folder", return_value=renamed_folder):
+                            result = workspace_folder_nextcloud_runtime.rename_workspace_folder_nextcloud_first(
+                                folder_id,
+                                display_name="Projet Renomme",
+                                db_conn_func=lambda: None,
+                                logger=_CaptureLogger(),
+                                client=fake_client,
+                            )
 
         self.assertTrue(result["ok"])
         self.assertEqual(fake_client.moved, [("Projet-Live", "Projet-Renomme")])
         self.assertEqual(result["folder"]["display_name"], "Projet Renomme")
+        pending.assert_called_once()
         upsert.assert_called_once()
+        self.assertEqual(
+            upsert.call_args.kwargs["nextcloud_sync_state"],
+            "linked",
+        )
 
     def test_nextcloud_first_rename_rolls_back_move_when_local_update_fails(self) -> None:
         folder_id = "11111111-2222-4333-8444-555555555555"
@@ -1021,15 +1031,20 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
 
         with mock.patch.object(workspace_folders_store, "get_workspace_folder", return_value=existing_folder):
             with mock.patch.object(workspace_folders_store, "list_workspace_folders", return_value=[existing_folder]):
-                with mock.patch.object(workspace_folder_nextcloud_links_store, "upsert_link"):
-                    with mock.patch.object(workspace_folders_store, "update_workspace_folder", return_value=None):
-                        result = workspace_folder_nextcloud_runtime.rename_workspace_folder_nextcloud_first(
-                            folder_id,
-                            display_name="Projet Renomme",
-                            db_conn_func=lambda: None,
-                            logger=_CaptureLogger(),
-                            client=fake_client,
-                        )
+                with mock.patch.object(
+                    workspace_folder_nextcloud_links_store,
+                    "mark_link_rename_pending",
+                    return_value={"nextcloud_sync_state": "sync_pending"},
+                ):
+                    with mock.patch.object(workspace_folder_nextcloud_links_store, "upsert_link"):
+                        with mock.patch.object(workspace_folders_store, "update_workspace_folder", return_value=None):
+                            result = workspace_folder_nextcloud_runtime.rename_workspace_folder_nextcloud_first(
+                                folder_id,
+                                display_name="Projet Renomme",
+                                db_conn_func=lambda: None,
+                                logger=_CaptureLogger(),
+                                client=fake_client,
+                            )
 
         self.assertFalse(result["ok"])
         self.assertEqual(result["reason_code"], "workspace_folder_local_persistence_failed")

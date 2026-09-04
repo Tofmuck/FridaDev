@@ -146,8 +146,9 @@ Durcissement Lot 2.1:
 - `tombstone_generated_image()` ne masque pas les pannes DB: il leve une erreur
   content-free dediee, sans cause brute chainee;
 - la suppression conditionne le tombstone a l'identite durable encore active
-  de l'image, du dossier, de la cible interne et de sa `target_ref`; une
-  precondition non satisfaite ne produit ni tombstone ni succes;
+  de l'image, du dossier, de la cible interne et de sa `target_ref`, ainsi qu'au
+  lien Nextcloud parent encore `linked` avec ses ref/hash observes avant le
+  DELETE; une precondition non satisfaite ne produit ni tombstone ni succes;
 - le schema applicatif impose le format serveur-owned
   `generated-image-<uuid>.(png|jpg|webp)` pour `target_name_internal` et la
   forme `generated-image-target:<hash12>` pour `target_ref`.
@@ -487,8 +488,10 @@ Regles:
 - timeout, panne transport, 401, 403, 5xx ou statut ambigu n'autorisent jamais
   le tombstone;
 - le tombstone verifie atomiquement l'image, le dossier, la cible interne,
-  `target_ref`, `deleted_at IS NULL`, l'etat local `available` et l'etat distant
-  `linked`; zero ligne retournee est un echec content-free;
+  `target_ref`, `deleted_at IS NULL`, l'etat local `available`, l'etat distant
+  image `linked`, puis la liaison parent encore `linked` avec exactement les
+  `nextcloud_folder_ref` et `nextcloud_name_hash` captures avant le DELETE;
+  zero ligne retournee est un echec content-free;
 - succes distant puis echec tombstone local = divergence explicite
   content-free;
 - cleanup synthetique de smokes autorise avec cible exacte.
@@ -506,13 +509,23 @@ Durcissement L5.3 du 4 septembre 2026:
   `folder_generated_image_remote_already_missing` le chemin 404 deja absent;
 - la ligne deja tombstonee est refusee avant WebDAV et ne declenche aucun
   DELETE supplementaire;
+- le correctif residuel revalide aussi la coordonnee distante du dossier parent:
+  un renommage acquiert `sync_pending` seulement si le lien est encore `linked`
+  avec les ref/hash observes, puis effectue son MOVE; le tombstone refuse aussi
+  bien une liaison finale differente qu'un MOVE encore en cours;
+- le MOVE n'est jamais lance si la barriere `sync_pending` n'est pas commitee;
+  un echec HTTP restaure l'ancien lien `linked`, tandis qu'une panne transport
+  d'issue indeterminable laisse la barriere visible plutot que de fabriquer un
+  etat stable;
 - aucun GET, PROPFIND, listing, retry automatique, verrou SQL pendant le reseau
   ou nouvelle persistance n'est ajoute.
 
 Cette sequence n'est pas une transaction distribuee entre Nextcloud et SQL.
 Un arret brutal entre le DELETE et le tombstone peut laisser la ligne active;
 le retry exact referme cette fenetre lorsque l'absence distante est prouvee,
-sans supprimer logiquement une identite locale devenue differente.
+sans supprimer logiquement une identite locale ou une coordonnee parent devenue
+differente. Une panne transport pendant MOVE reste elle aussi indeterminable
+sans journal ou protocole distribue; `sync_pending` rend cette limite visible.
 
 ## 15. Reuse, chat et thumbnail
 

@@ -479,7 +479,7 @@ commencé.
 pouvoir terminer le tombstone lorsque l'absence de la cible enregistrée est
 confirmée. Ne pas confondre 404 prouvé, panne de transport et cible différente.
 
-**Revalidation et fermeture du 4 septembre 2026 :**
+**Revalidation initiale et correction du 4 septembre 2026 :**
 
 - F1 et F2 confirmés : le chemin nominal supprimait d'abord la cible distante,
   puis tentait le tombstone ; un 2xx suivi d'un échec SQL laissait la ligne
@@ -492,9 +492,10 @@ confirmée. Ne pas confondre 404 prouvé, panne de transport et cible différent
 - F5 confirmée : l'identifiant, le dossier, la cible interne et `target_ref`
   proviennent de la ligne durable et passent les validateurs Generated Images ;
 - F6 confirmée : l'ancien `UPDATE` ne portait que l'identifiant de l'image ;
-- F7 confirmée : le tombstone vérifie désormais dans son `WHERE` l'image, le
-  dossier, la cible interne, `target_ref`, l'absence de tombstone et les états
-  encore `available` / `linked`, sans verrou SQL conservé pendant WebDAV ;
+- F7 partiellement confirmée par le premier correctif : le tombstone vérifiait
+  l'image, le dossier, la cible interne, `target_ref`, l'absence de tombstone et
+  les états encore `available` / `linked`, mais pas encore la coordonnée
+  distante durable du dossier parent ;
 - F8 confirmée : le chemin 2xx conserve l'état `deleted` et le reason code
   nominal, tandis que le 404 exact produit l'état
   `remote_already_missing` et le reason code fermé
@@ -512,15 +513,40 @@ relance pas WebDAV. Une mutation rétablissant temporairement
 `missing_ok=False` remet le retry central en échec 502 ; sa restauration exacte
 rend de nouveau la preuve verte.
 
-Le 404 prouve uniquement l'absence de la cible exacte au moment du DELETE, pas
-la date ni l'auteur de cette absence. Cette séquence ne constitue pas une
-transaction distribuée : un crash brutal entre DELETE et tombstone peut encore
-laisser une divergence, refermable par le retry borné si l'identité durable n'a
-pas changé.
+**Contre-audit résiduel et refermeture du 4 septembre 2026 :**
 
-**Fermeture de L5 :** F19b est corrigé et prouvé. L5.3 et L5 sont fermés. Chaque
-sous-lot possède sa preuve rouge/verte, sa livraison et son statut. Aucun
-protocole générique de transaction externe n'est ajouté. L6 n'est pas commencé.
+- C1 à C4 confirmées : le DELETE combine la cible du dossier parent et celle de
+  l'image ; le premier `WHERE` ignorait le lien parent et un MOVE pouvait déjà
+  avoir déplacé l'image alors que l'ancienne liaison restait `linked` ;
+- C5 et C6 confirmées : l'état existant `sync_pending` sert de barrière durable
+  avant MOVE ; son acquisition est conditionnée au lien encore `linked` et aux
+  ref/hash observés. Le tombstone exige dans la même transaction un lien parent
+  encore `linked` avec les mêmes `nextcloud_folder_ref` et
+  `nextcloud_name_hash`, sans verrou SQL pendant WebDAV ;
+- C7 confirmée : sans renommage, le retry `204`, échec SQL, puis `404` conserve
+  le tombstone légitime ;
+- le MOVE n'est lancé qu'après commit de la barrière. Une réponse HTTP d'échec
+  du MOVE restaure l'ancien lien `linked`; une panne transport d'issue ambiguë
+  conserve honnêtement `sync_pending` plutôt que d'affirmer un ancien état
+  stable ;
+- les fenêtres « renommage déjà durable en B » et « MOVE effectué avant liaison
+  finale B » retournent toutes deux un échec borné, sans tombstone ni succès.
+
+La preuve relationnelle stateful interprète réellement le `EXISTS` parent du
+SQL et conserve séparément la cible distante. La mutation qui retire seulement
+cette précondition rétablit le faux HTTP 200 sur la course centrale ; la
+restauration exacte du `WHERE` rend la preuve verte.
+
+Le 404 prouve uniquement l'absence de la coordonnée distante complète au moment
+du DELETE, pas la date ni l'auteur de cette absence. Cette séquence ne constitue
+pas une transaction distribuée : un crash brutal entre DELETE et tombstone peut
+encore laisser une divergence, refermable par le retry borné si les identités
+durables de l'image et du parent n'ont pas changé.
+
+**Fermeture de L5 :** F19b, y compris sa coordonnée distante parent, est corrigé
+et prouvé. L5.3 est refermé et L5 reste fermé. Chaque sous-lot possède sa preuve
+rouge/verte, sa livraison et son statut. Aucun protocole générique de transaction
+externe n'est ajouté. L6 n'est pas commencé.
 
 ## 9. L6 — Justesse produit directement perceptible
 

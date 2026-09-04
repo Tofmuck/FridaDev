@@ -4,6 +4,7 @@ from typing import Any, Callable, Mapping, Optional
 
 from . import workspace_folder_generated_images
 from . import workspace_folder_generated_images_schema
+from . import workspace_folder_nextcloud_links_store
 from . import workspace_folder_nextcloud_projection
 
 try:  # pragma: no cover - local test hosts may stub psycopg.
@@ -431,6 +432,8 @@ def tombstone_generated_image(
     expected_workspace_folder_id: str,
     expected_target_name_internal: str,
     expected_target_ref: str,
+    expected_parent_folder_ref: str,
+    expected_parent_name_hash: str,
     reason_code: str = workspace_folder_generated_images.REASON_DELETED,
     db_conn_func: Callable[[], Any],
     logger: Any,
@@ -445,12 +448,22 @@ def tombstone_generated_image(
         expected_target_name_internal
     )
     target_ref = workspace_folder_generated_images.safe_target_ref(expected_target_ref)
+    parent_folder_ref = workspace_folder_nextcloud_links_store.normalize_folder_ref(
+        expected_parent_folder_ref
+    )
+    parent_name_hash = workspace_folder_nextcloud_links_store.normalize_name_hash(
+        expected_parent_name_hash
+    )
     if (
         not normalized
         or not folder_id
         or not target_name
         or not target_ref
+        or not parent_folder_ref
+        or not parent_name_hash
         or workspace_folder_generated_images.target_ref_for_target(target_name) != target_ref
+        or parent_folder_ref
+        != f"workspace-folder:{folder_id[:8]}:{parent_name_hash}"
     ):
         return None
     try:
@@ -458,7 +471,7 @@ def tombstone_generated_image(
             with _cursor(conn) as cur:
                 cur.execute(
                     """
-                    UPDATE workspace_folder_generated_images
+                    UPDATE workspace_folder_generated_images AS images
                     SET local_state = 'deleted',
                         nextcloud_sync_state = 'deleted',
                         last_reason_code = %s,
@@ -471,6 +484,14 @@ def tombstone_generated_image(
                       AND deleted_at IS NULL
                       AND local_state = 'available'
                       AND nextcloud_sync_state = 'linked'
+                      AND EXISTS (
+                          SELECT 1
+                          FROM workspace_folder_nextcloud_links AS parent_links
+                          WHERE parent_links.workspace_folder_id = images.workspace_folder_id
+                            AND parent_links.nextcloud_sync_state = 'linked'
+                            AND parent_links.nextcloud_folder_ref = %s
+                            AND parent_links.nextcloud_name_hash = %s
+                      )
                     RETURNING id, workspace_folder_id, display_name, display_name_hash,
                               target_name_internal, target_ref, mime_type, image_format,
                               byte_size, width, height, content_hash, content_hash_short,
@@ -488,6 +509,8 @@ def tombstone_generated_image(
                         folder_id,
                         target_name,
                         target_ref,
+                        parent_folder_ref,
+                        parent_name_hash,
                     ),
                 )
                 row = serialize_generated_image_row(cur.fetchone())

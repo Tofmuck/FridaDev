@@ -14,6 +14,7 @@ from core import workspace_folder_generated_image_content_service
 from core import workspace_folder_generated_image_nextcloud_client
 from core import workspace_folder_generated_images
 from core import workspace_folder_generated_images_store
+from core import workspace_folder_nextcloud_projection
 
 
 FOLDER_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
@@ -24,14 +25,26 @@ OTHER_TARGET_NAME = "generated-image-22222222-3333-4444-8555-666666666666.png"
 OTHER_TARGET_REF = workspace_folder_generated_images.target_ref_for_target(OTHER_TARGET_NAME)
 OTHER_FOLDER_ID = "bbbbbbbb-cccc-4ddd-8eee-ffffffffffff"
 OTHER_IMAGE_ID = "33333333-4444-4555-8666-777777777777"
+PARENT_TARGET_A = "Synthetic-Folder-A"
+PARENT_TARGET_B = "Synthetic-Folder-B"
 
 
-def _folder() -> dict[str, Any]:
+def _parent_hash(target: str) -> str:
+    return workspace_folder_nextcloud_projection.hash12(target.casefold())
+
+
+def _parent_ref(target: str) -> str:
+    return f"workspace-folder:aaaaaaaa:{_parent_hash(target)}"
+
+
+def _folder(*, parent_target: str = PARENT_TARGET_A, sync_state: str = "linked") -> dict[str, Any]:
     return {
         "id": FOLDER_ID,
         "display_name": "Synthetic folder",
-        "nextcloud_target_name": "Synthetic-Folder",
-        "nextcloud_sync_state": "linked",
+        "nextcloud_target_name": parent_target,
+        "nextcloud_sync_state": sync_state,
+        "nextcloud_folder_ref": _parent_ref(parent_target),
+        "nextcloud_name_hash": _parent_hash(parent_target),
         "deleted_at": None,
     }
 
@@ -73,6 +86,13 @@ def _image_row(**overrides: Any) -> dict[str, Any]:
 class _StatefulDatabase:
     def __init__(self, *, fail_tombstones: int = 0) -> None:
         self.row = _image_row()
+        self.parent_target = PARENT_TARGET_A
+        self.link = {
+            "workspace_folder_id": FOLDER_ID,
+            "nextcloud_sync_state": "linked",
+            "nextcloud_folder_ref": _parent_ref(PARENT_TARGET_A),
+            "nextcloud_name_hash": _parent_hash(PARENT_TARGET_A),
+        }
         self.fail_tombstones = fail_tombstones
         self.tombstone_attempts = 0
         self.commits = 0
@@ -132,6 +152,9 @@ class _StatefulCursor:
         expected_folder_id = str(values[2]) if len(values) > 2 else ""
         expected_target_name = str(values[3]) if len(values) > 3 else ""
         expected_target_ref = str(values[4]) if len(values) > 4 else ""
+        parent_guard_present = "workspace_folder_nextcloud_links" in normalized_sql
+        expected_parent_ref = str(values[5]) if len(values) > 5 else ""
+        expected_parent_hash = str(values[6]) if len(values) > 6 else ""
         row = self.database.row
         matches = (
             str(row.get("id")) == expected_image_id
@@ -142,6 +165,14 @@ class _StatefulCursor:
             and row.get("local_state") == "available"
             and row.get("nextcloud_sync_state") == "linked"
         )
+        if parent_guard_present:
+            link = self.database.link
+            matches = matches and (
+                str(link.get("workspace_folder_id")) == expected_folder_id
+                and link.get("nextcloud_sync_state") == "linked"
+                and str(link.get("nextcloud_folder_ref")) == expected_parent_ref
+                and str(link.get("nextcloud_name_hash")) == expected_parent_hash
+            )
         if not matches:
             self.result = None
             return
@@ -202,11 +233,19 @@ class _StatefulImages:
 
 
 class _StatefulFolders:
+    def __init__(self, database: _StatefulDatabase | None = None) -> None:
+        self.database = database
+
     def normalize_workspace_folder_id(self, value: Any) -> str:
         return workspace_folder_generated_images.normalize_workspace_folder_id(value)
 
     def get_workspace_folder(self, folder_id: str, include_deleted: bool = False):
-        return _folder()
+        if self.database is None:
+            return _folder()
+        return _folder(
+            parent_target=self.database.parent_target,
+            sync_state=str(self.database.link["nextcloud_sync_state"]),
+        )
 
 
 class _StatefulNextcloud(
@@ -216,20 +255,42 @@ class _StatefulNextcloud(
         self,
         *,
         remote_present: bool,
+        remote_coordinates: set[tuple[str, str, str]] | None = None,
+        events: list[str] | None = None,
+        before_delete: Callable[[], None] | None = None,
         after_delete: Callable[[int], None] | None = None,
     ) -> None:
-        self.remote_present = remote_present
+        self.remote_coordinates = (
+            remote_coordinates
+            if remote_coordinates is not None
+            else ({(PARENT_TARGET_A, "Images", TARGET_NAME)} if remote_present else set())
+        )
+        self.events = events
+        self.before_delete = before_delete
         self.after_delete = after_delete
         self.statuses: list[int] = []
+        self.requested_coordinate: tuple[str, str, str] | None = None
+
+    @property
+    def remote_present(self) -> bool:
+        return bool(self.remote_coordinates)
 
     def _url(self, *segments: str) -> str:
+        if len(segments) != 3:
+            raise AssertionError("exact parent/subfolder/image coordinate required")
+        self.requested_coordinate = (segments[0], segments[1], segments[2])
         return "synthetic-exact-target"
 
     def _request_status(self, method: str, url: str, *, data=None, headers=None):
         if method != "DELETE" or url != "synthetic-exact-target":
             raise AssertionError("only the exact synthetic DELETE is allowed")
-        status = 204 if self.remote_present else 404
-        self.remote_present = False
+        if self.before_delete is not None:
+            self.before_delete()
+        if self.events is not None:
+            self.events.append("delete_exact_coordinate")
+        status = 204 if self.requested_coordinate in self.remote_coordinates else 404
+        if self.requested_coordinate is not None:
+            self.remote_coordinates.discard(self.requested_coordinate)
         self.statuses.append(status)
         if self.after_delete is not None:
             self.after_delete(status)
@@ -237,6 +298,15 @@ class _StatefulNextcloud(
 
 
 class WorkspaceFolderGeneratedImageDeleteRetryTests(unittest.TestCase):
+    def _expected_identity(self) -> dict[str, str]:
+        return {
+            "expected_workspace_folder_id": FOLDER_ID,
+            "expected_target_name_internal": TARGET_NAME,
+            "expected_target_ref": TARGET_REF,
+            "expected_parent_folder_ref": _parent_ref(PARENT_TARGET_A),
+            "expected_parent_name_hash": _parent_hash(PARENT_TARGET_A),
+        }
+
     def test_store_tombstones_only_the_expected_active_identity(self) -> None:
         success_database = _StatefulDatabase()
 
@@ -245,6 +315,8 @@ class WorkspaceFolderGeneratedImageDeleteRetryTests(unittest.TestCase):
             expected_workspace_folder_id=FOLDER_ID,
             expected_target_name_internal=TARGET_NAME,
             expected_target_ref=TARGET_REF,
+            expected_parent_folder_ref=_parent_ref(PARENT_TARGET_A),
+            expected_parent_name_hash=_parent_hash(PARENT_TARGET_A),
             reason_code=workspace_folder_generated_images.REASON_DELETE_OK,
             db_conn_func=success_database.connect,
             logger=None,
@@ -276,9 +348,7 @@ class WorkspaceFolderGeneratedImageDeleteRetryTests(unittest.TestCase):
                 row_before = dict(database.row)
                 expected = {
                     "generated_image_id": IMAGE_ID,
-                    "expected_workspace_folder_id": FOLDER_ID,
-                    "expected_target_name_internal": TARGET_NAME,
-                    "expected_target_ref": TARGET_REF,
+                    **self._expected_identity(),
                 }
                 expected.update(expected_overrides)
 
@@ -291,6 +361,123 @@ class WorkspaceFolderGeneratedImageDeleteRetryTests(unittest.TestCase):
 
                 self.assertIsNone(refused)
                 self.assertEqual(database.row, row_before)
+
+    def test_parent_link_identity_and_state_are_part_of_the_tombstone_precondition(self) -> None:
+        cases = (
+            ("pending", {"nextcloud_sync_state": "sync_pending"}),
+            ("other_ref", {"nextcloud_folder_ref": _parent_ref(PARENT_TARGET_B)}),
+            ("other_hash", {"nextcloud_name_hash": _parent_hash(PARENT_TARGET_B)}),
+            ("other_folder", {"workspace_folder_id": OTHER_FOLDER_ID}),
+        )
+        for name, link_overrides in cases:
+            with self.subTest(case=name):
+                database = _StatefulDatabase()
+                database.link.update(link_overrides)
+                row_before = dict(database.row)
+
+                refused = workspace_folder_generated_images_store.tombstone_generated_image(
+                    IMAGE_ID,
+                    reason_code=workspace_folder_generated_images.REASON_DELETE_OK,
+                    db_conn_func=database.connect,
+                    logger=None,
+                    **self._expected_identity(),
+                )
+
+                self.assertIsNone(refused)
+                self.assertEqual(database.row, row_before)
+
+    def test_move_in_progress_before_delete_404_cannot_tombstone_old_parent_coordinate(self) -> None:
+        database = _StatefulDatabase()
+        images = _StatefulImages(database)
+        remote = {(PARENT_TARGET_A, "Images", TARGET_NAME)}
+        events: list[str] = []
+
+        def begin_rename_and_move() -> None:
+            database.link["nextcloud_sync_state"] = "sync_pending"
+            events.append("pending_committed")
+            remote.remove((PARENT_TARGET_A, "Images", TARGET_NAME))
+            remote.add((PARENT_TARGET_B, "Images", TARGET_NAME))
+            events.append("move_completed")
+
+        nextcloud = _StatefulNextcloud(
+            remote_present=False,
+            remote_coordinates=remote,
+            events=events,
+            before_delete=begin_rename_and_move,
+        )
+
+        payload, status = workspace_folder_generated_image_content_service.delete_workspace_folder_generated_image_response(
+            FOLDER_ID,
+            IMAGE_ID,
+            workspace_folders_module=_StatefulFolders(database),
+            generated_images_module=images,
+            nextcloud=nextcloud,
+        )
+
+        self.assertEqual(status, 503)
+        self.assertFalse(payload["ok"])
+        self.assertIn((PARENT_TARGET_B, "Images", TARGET_NAME), remote)
+        self.assertEqual(
+            events,
+            ["pending_committed", "move_completed", "delete_exact_coordinate"],
+        )
+        self.assertEqual(database.tombstone_attempts, 1)
+        self.assertEqual(database.row["local_state"], "available")
+        self.assertIsNone(database.row["deleted_at"])
+
+    def test_durable_parent_rename_before_tombstone_refuses_stale_delete_coordinate(self) -> None:
+        database = _StatefulDatabase()
+        images = _StatefulImages(database)
+        remote = {(PARENT_TARGET_B, "Images", TARGET_NAME)}
+
+        def finish_parent_rename() -> None:
+            database.parent_target = PARENT_TARGET_B
+            database.link.update(
+                {
+                    "nextcloud_sync_state": "linked",
+                    "nextcloud_folder_ref": _parent_ref(PARENT_TARGET_B),
+                    "nextcloud_name_hash": _parent_hash(PARENT_TARGET_B),
+                }
+            )
+
+        payload, status = workspace_folder_generated_image_content_service.delete_workspace_folder_generated_image_response(
+            FOLDER_ID,
+            IMAGE_ID,
+            workspace_folders_module=_StatefulFolders(database),
+            generated_images_module=images,
+            nextcloud=_StatefulNextcloud(
+                remote_present=False,
+                remote_coordinates=remote,
+                before_delete=finish_parent_rename,
+            ),
+        )
+
+        self.assertEqual(status, 503)
+        self.assertFalse(payload["ok"])
+        self.assertIn((PARENT_TARGET_B, "Images", TARGET_NAME), remote)
+        self.assertEqual(database.row["local_state"], "available")
+
+    def test_delete_2xx_then_parent_rename_start_refuses_tombstone(self) -> None:
+        database = _StatefulDatabase()
+        images = _StatefulImages(database)
+
+        def begin_rename_after_delete(_status: int) -> None:
+            database.link["nextcloud_sync_state"] = "sync_pending"
+
+        payload, status = workspace_folder_generated_image_content_service.delete_workspace_folder_generated_image_response(
+            FOLDER_ID,
+            IMAGE_ID,
+            workspace_folders_module=_StatefulFolders(database),
+            generated_images_module=images,
+            nextcloud=_StatefulNextcloud(
+                remote_present=True,
+                after_delete=begin_rename_after_delete,
+            ),
+        )
+
+        self.assertEqual(status, 503)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(database.row["local_state"], "available")
 
     def test_retry_after_remote_delete_and_failed_tombstone_finishes_on_exact_404(self) -> None:
         database = _StatefulDatabase(fail_tombstones=1)

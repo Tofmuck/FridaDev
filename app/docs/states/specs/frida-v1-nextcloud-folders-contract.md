@@ -409,6 +409,16 @@ lecture ne peut donc plus transformer le commit B en echec ni declencher le
 liaison persistante complete; l'absence reelle de liaison reste seule projetee
 en `local_only`.
 
+Invariant post-correctif residuel L5.3: un renommage qui change la cible inscrit
+et committe d'abord l'ancienne identite de liaison en `sync_pending`, par un
+UPDATE conditionne au lien encore `linked` et aux ref/hash observes, puis lance
+le MOVE. Apres succes, la nouvelle ref/hash passe en `linked` avant la mutation
+du nom local. Un consommateur d'artefact peut ainsi refuser atomiquement aussi
+bien une ancienne coordonnee apres renommage qu'une coordonnee dont le MOVE est
+en cours. Un echec HTTP du MOVE restaure l'ancien lien `linked`; une panne
+transport sans issue certaine laisse `sync_pending` visible. Aucun verrou SQL
+n'est conserve pendant WebDAV.
+
 Compatibilite: le payload fake/local Lot 3 peut encore exposer des etats
 historiques comme `pending` ou `error`. Le Lot 8B devra mapper ou migrer ces
 etats vers le vocabulaire runtime cible sans casser les clients existants.
@@ -428,8 +438,8 @@ Decision Lot 8B:
   `app/core/workspace_folder_nextcloud_runtime.py`;
 - creation: `MKCOL` Nextcloud puis creation locale puis liaison
   `workspace_folder_nextcloud_links` en `linked`;
-- renommage: `MOVE` Nextcloud puis mise a jour de la liaison puis mutation
-  locale;
+- renommage: barriere durable de liaison `sync_pending`, puis `MOVE` Nextcloud,
+  nouvelle liaison `linked`, puis mutation locale;
 - compensation creation: si la persistance locale echoue apres `MKCOL`, le
   parent distant est conserve, car ni la reponse MKCOL ni le status Depth 0 ne
   prouvent qu'aucun descendant concurrent n'existe ; la reponse signale

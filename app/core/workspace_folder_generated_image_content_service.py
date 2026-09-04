@@ -8,6 +8,7 @@ from . import workspace_folder_generated_image_nextcloud_client as image_client
 from . import workspace_folder_generated_image_projection as image_projection
 from . import workspace_folder_generated_image_validation
 from . import workspace_folder_generated_images
+from . import workspace_folder_nextcloud_links_store as folder_links
 from . import workspace_folder_nextcloud_projection as folder_projection
 
 
@@ -127,9 +128,27 @@ def delete_workspace_folder_generated_image_response(
     image_id = workspace_folder_generated_images.normalize_generated_image_id(image.get("id"))
     target_name = _target_name(image)
     target_ref = _target_ref(image)
+    parent_target_name = _target_folder_name(folder)
+    parent_name_hash = folder_links.normalize_name_hash(folder.get("nextcloud_name_hash"))
+    parent_folder_ref = folder_links.normalize_folder_ref(folder.get("nextcloud_folder_ref"))
+    expected_parent_hash = folder_projection.hash12(parent_target_name.casefold())
+    expected_parent_ref = f"workspace-folder:{folder_id[:8]}:{expected_parent_hash}"
+    if (
+        not parent_target_name
+        or parent_name_hash != expected_parent_hash
+        or parent_folder_ref != expected_parent_ref
+    ):
+        payload = _error(
+            workspace_folder_generated_images.REASON_FOLDER_NOT_LINKED,
+            status=409,
+            folder_id=folder_id,
+            image_id=image_id,
+            target_ref=target_ref,
+        ).payload
+        return dict(payload or {}), 409
     try:
         delete = _client(nextcloud).delete_image(
-            _target_folder_name(folder),
+            parent_target_name,
             target_name,
             missing_ok=True,
         )
@@ -165,6 +184,8 @@ def delete_workspace_folder_generated_image_response(
             expected_workspace_folder_id=folder_id,
             expected_target_name_internal=target_name,
             expected_target_ref=target_ref,
+            expected_parent_folder_ref=parent_folder_ref,
+            expected_parent_name_hash=parent_name_hash,
             reason_code=success_reason,
         )
         if not tombstone:

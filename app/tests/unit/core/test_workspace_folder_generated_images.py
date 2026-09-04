@@ -486,6 +486,8 @@ class WorkspaceFolderGeneratedImagesTests(unittest.TestCase):
                 expected_target_ref=workspace_folder_generated_images.target_ref_for_target(
                     TARGET_NAME
                 ),
+                expected_parent_folder_ref="workspace-folder:aaaaaaaa:abc123def456",
+                expected_parent_name_hash="abc123def456",
                 db_conn_func=lambda: _FailingConnection(),
                 logger=logger,
             )
