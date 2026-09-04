@@ -263,6 +263,42 @@ class _FakeImagesModule:
 
 
 class WorkspaceFolderGeneratedImageValidationAndRuntimeTests(unittest.TestCase):
+    def test_exact_delete_distinguishes_deleted_from_already_missing(self) -> None:
+        class _DeleteClient(
+            workspace_folder_generated_image_nextcloud_client.NextcloudGeneratedImageClient
+        ):
+            def __init__(self, status: int) -> None:
+                self.status = status
+
+            def _url(self, *segments):
+                return "redacted"
+
+            def _request_status(self, method, url, *, data=None, headers=None):
+                return self.status, ""
+
+        deleted = _DeleteClient(204).delete_image("Folder", "sample.png")
+        self.assertEqual(deleted.http_status, 204)
+        self.assertEqual(
+            deleted.reason_code,
+            workspace_folder_generated_images.REASON_REMOTE_COMPENSATION_OK,
+        )
+
+        already_missing = _DeleteClient(404).delete_image(
+            "Folder",
+            "sample.png",
+            missing_ok=True,
+        )
+        self.assertEqual(already_missing.http_status, 404)
+        self.assertEqual(
+            already_missing.reason_code,
+            "folder_generated_image_remote_already_missing",
+        )
+
+        with self.assertRaises(
+            workspace_folder_generated_image_nextcloud_client.NextcloudGeneratedImageClientError
+        ):
+            _DeleteClient(404).delete_image("Folder", "sample.png")
+
     def test_image_compensation_client_uses_if_match_and_distinguishes_outcomes(self) -> None:
         class _ConditionalClient(
             workspace_folder_generated_image_nextcloud_client.NextcloudGeneratedImageClient

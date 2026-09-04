@@ -14,9 +14,9 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 
 ### Current-state
 
-- [Roadmap de consolidation résiduelle du grand audit de recherche](todo-todo/refactors/fridadev-research-audit-residual-consolidation-todo.md) : sept étapes ordonnées, exécutées uniquement par micro-lots séparés, pour revalider et traiter F05, F08–F10 et F12–F24. L1 à L4 ainsi que L5.1 et L5.2 sont fermés ; L5.3 n'est pas commencé. Le grand audit reste la source historique ; la clôture Z doit réconcilier chaque finding comme corrigé, invalidé, différé avec condition ou encore ouvert.
+- [Roadmap de consolidation résiduelle du grand audit de recherche](todo-todo/refactors/fridadev-research-audit-residual-consolidation-todo.md) : sept étapes ordonnées, exécutées uniquement par micro-lots séparés, pour revalider et traiter F05, F08–F10 et F12–F24. L1 à L5 sont fermés ; L6 n'est pas commencé. Le grand audit reste la source historique ; la clôture Z doit réconcilier chaque finding comme corrigé, invalidé, différé avec condition ou encore ouvert.
 
-- [Revue de recherche FridaDev, fonctionnalité par fonctionnalité — 2 septembre 2026](todo-todo/audits/fridadev-research-feature-audit-2026-09-02.md) : audit source conservé ; F01, F02, F03, F04, F06, F07 et F11 sont corrigés, prouvés et livrés par I1, I2, M1, M2, B1, O1 et B2 ; F23, F09, F08, F21, F13b et F14a sont corrigés et prouvés par L1 à L5.2. Les autres findings restent inchangés et ouverts.
+- [Revue de recherche FridaDev, fonctionnalité par fonctionnalité — 2 septembre 2026](todo-todo/audits/fridadev-research-feature-audit-2026-09-02.md) : audit source conservé ; F01, F02, F03, F04, F06, F07 et F11 sont corrigés, prouvés et livrés par I1, I2, M1, M2, B1, O1 et B2 ; F23, F09, F08, F21, F13b, F14a et F19b sont corrigés et prouvés par L1 à L5.3. Les autres findings restent inchangés et ouverts.
 
 - [Archive intégrité et continuité de la mémoire dialogique](todo-done/refactors/fridadev-dialogic-integrity-memory-refactor-todo.md) : correctifs streaming/Identity, Memory, compteur des hints et lecture/reprise Biblio fermés et livrés. Le cas `choices=[]` nu découvert par Z rejoint désormais `upstream_error` sans casser les trames metadata/usage ; la découverte Python autoritative passe `2933/2933`. La roadmap est archivée, tandis que les autres findings restent dans l'audit source.
 

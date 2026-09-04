@@ -124,12 +124,14 @@ def delete_workspace_folder_generated_image_response(
     if error is not None:
         return dict(error.payload or {}), error.status
 
+    image_id = workspace_folder_generated_images.normalize_generated_image_id(image.get("id"))
+    target_name = _target_name(image)
     target_ref = _target_ref(image)
     try:
         delete = _client(nextcloud).delete_image(
             _target_folder_name(folder),
-            _target_name(image),
-            missing_ok=False,
+            target_name,
+            missing_ok=True,
         )
     except image_client.NextcloudGeneratedImageClientError as exc:
         payload = _error(
@@ -138,7 +140,7 @@ def delete_workspace_folder_generated_image_response(
                 workspace_folder_generated_images.REASON_DELETE_FAILED_REDACTED
             ),
             folder_id=folder_id,
-            image_id=image.get("id"),
+            image_id=image_id,
             target_ref=target_ref,
             http_status_class=exc.status_class,
         ).payload
@@ -146,18 +148,34 @@ def delete_workspace_folder_generated_image_response(
             workspace_folder_generated_images.REASON_DELETE_FAILED_REDACTED
         )
 
+    remote_already_missing = delete.http_status == 404
+    success_reason = (
+        workspace_folder_generated_images.REASON_REMOTE_ALREADY_MISSING
+        if remote_already_missing
+        else workspace_folder_generated_images.REASON_DELETE_OK
+    )
+    failure_state = (
+        "remote_already_missing_local_tombstone_failed"
+        if remote_already_missing
+        else "remote_deleted_local_tombstone_failed"
+    )
     try:
         tombstone = generated_images_module.tombstone_generated_image(
-            workspace_folder_generated_images.normalize_generated_image_id(image.get("id")),
-            reason_code=workspace_folder_generated_images.REASON_DELETE_OK,
+            image_id,
+            expected_workspace_folder_id=folder_id,
+            expected_target_name_internal=target_name,
+            expected_target_ref=target_ref,
+            reason_code=success_reason,
         )
+        if not tombstone:
+            raise LookupError("generated_image_tombstone_precondition_failed")
     except Exception:
         _log_event(
             generated_images_module,
             "delete_tombstone_failed",
             level="warning",
             folder_id=folder_id,
-            image_id=image.get("id"),
+            image_id=image_id,
             reason_code=workspace_folder_generated_images.REASON_LOCAL_PERSISTENCE_FAILED,
             target_ref=target_ref,
             http_status_class=delete.status_class,
@@ -166,13 +184,13 @@ def delete_workspace_folder_generated_image_response(
             workspace_folder_generated_images.REASON_LOCAL_PERSISTENCE_FAILED,
             status=503,
             folder_id=folder_id,
-            image_id=image.get("id"),
+            image_id=image_id,
             target_ref=target_ref,
             http_status_class=delete.status_class,
         ).payload
         result = dict(payload or {})
         result["generated_image_delete"] = {
-            "delete_state": "remote_deleted_local_tombstone_failed",
+            "delete_state": failure_state,
             "reason_code": workspace_folder_generated_images.REASON_LOCAL_PERSISTENCE_FAILED,
             "target_ref": target_ref,
             "http_status_class": delete.status_class,
@@ -183,8 +201,8 @@ def delete_workspace_folder_generated_image_response(
         generated_images_module,
         "delete_ok",
         folder_id=folder_id,
-        image_id=image.get("id"),
-        reason_code=workspace_folder_generated_images.REASON_DELETE_OK,
+        image_id=image_id,
+        reason_code=success_reason,
         target_ref=target_ref,
         http_status_class=delete.status_class,
     )
@@ -198,12 +216,12 @@ def delete_workspace_folder_generated_image_response(
         "workspace_folder_id": folder_id,
         "generated_image": projected,
         "generated_image_delete": {
-            "delete_state": "deleted",
-            "reason_code": workspace_folder_generated_images.REASON_DELETE_OK,
+            "delete_state": "remote_already_missing" if remote_already_missing else "deleted",
+            "reason_code": success_reason,
             "target_ref": target_ref,
             "http_status_class": delete.status_class,
         },
-        "reason_code": workspace_folder_generated_images.REASON_DELETE_OK,
+        "reason_code": success_reason,
     }, 200
 
 

@@ -145,6 +145,9 @@ Durcissement Lot 2.1:
   expose une ref vide/redacted et jamais la valeur brute;
 - `tombstone_generated_image()` ne masque pas les pannes DB: il leve une erreur
   content-free dediee, sans cause brute chainee;
+- la suppression conditionne le tombstone a l'identite durable encore active
+  de l'image, du dossier, de la cible interne et de sa `target_ref`; une
+  precondition non satisfaite ne produit ni tombstone ni succes;
 - le schema applicatif impose le format serveur-owned
   `generated-image-<uuid>.(png|jpg|webp)` pour `target_name_internal` et la
   forme `generated-image-target:<hash12>` pour `target_ref`.
@@ -468,7 +471,8 @@ Ordre obligatoire:
 
 1. verifier dossier, image, appartenance, etat actif et `linked`;
 2. DELETE distant exact de `target_name_internal`;
-3. tombstone local seulement apres succes distant.
+3. tombstone local conditionnel seulement apres reponse distante 2xx ou 404
+   de ce DELETE exact.
 
 Regles:
 
@@ -476,6 +480,15 @@ Regles:
 - pas de suppression recursive;
 - pas de listing Nextcloud;
 - echec distant = fail-closed, pas de tombstone local mensonger;
+- un 2xx signifie que la suppression distante a ete effectuee;
+- un 404 provenant du meme DELETE exact signifie seulement que cette cible est
+  deja absente; il permet de terminer le tombstone, sans pretendre a une
+  nouvelle suppression distante;
+- timeout, panne transport, 401, 403, 5xx ou statut ambigu n'autorisent jamais
+  le tombstone;
+- le tombstone verifie atomiquement l'image, le dossier, la cible interne,
+  `target_ref`, `deleted_at IS NULL`, l'etat local `available` et l'etat distant
+  `linked`; zero ligne retournee est un echec content-free;
 - succes distant puis echec tombstone local = divergence explicite
   content-free;
 - cleanup synthetique de smokes autorise avec cible exacte.
@@ -484,6 +497,22 @@ Lot 5 livre la suppression remote-first sous
 `DELETE /api/workspace-folders/<folder_id>/generated-images/<image_id>`:
 aucun prefix delete, aucun listing Nextcloud et aucune suppression hors cible
 exacte persistée.
+
+Durcissement L5.3 du 4 septembre 2026:
+
+- le retry apres un DELETE 2xx suivi d'un echec SQL accepte uniquement le 404
+  du DELETE exact reconstruit depuis la ligne durable encore active;
+- `folder_generated_image_delete_ok` decrit le chemin 2xx et
+  `folder_generated_image_remote_already_missing` le chemin 404 deja absent;
+- la ligne deja tombstonee est refusee avant WebDAV et ne declenche aucun
+  DELETE supplementaire;
+- aucun GET, PROPFIND, listing, retry automatique, verrou SQL pendant le reseau
+  ou nouvelle persistance n'est ajoute.
+
+Cette sequence n'est pas une transaction distribuee entre Nextcloud et SQL.
+Un arret brutal entre le DELETE et le tombstone peut laisser la ligne active;
+le retry exact referme cette fenetre lorsque l'absence distante est prouvee,
+sans supprimer logiquement une identite locale devenue differente.
 
 ## 15. Reuse, chat et thumbnail
 
@@ -611,6 +640,7 @@ Catalogue V1:
 - `folder_generated_image_local_persistence_failed`;
 - `folder_generated_image_remote_compensation_ok`;
 - `folder_generated_image_remote_compensation_missing`;
+- `folder_generated_image_remote_already_missing`;
 - `folder_generated_image_remote_compensation_precondition_failed`;
 - `folder_generated_image_remote_compensation_ownership_unverified`;
 - `folder_generated_image_remote_compensation_failed`;

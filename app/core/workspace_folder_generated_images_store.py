@@ -428,6 +428,9 @@ def upsert_generated_image(
 def tombstone_generated_image(
     generated_image_id: str,
     *,
+    expected_workspace_folder_id: str,
+    expected_target_name_internal: str,
+    expected_target_ref: str,
     reason_code: str = workspace_folder_generated_images.REASON_DELETED,
     db_conn_func: Callable[[], Any],
     logger: Any,
@@ -435,7 +438,20 @@ def tombstone_generated_image(
     normalized = workspace_folder_generated_images.normalize_generated_image_id(
         generated_image_id
     )
-    if not normalized:
+    folder_id = workspace_folder_generated_images.normalize_workspace_folder_id(
+        expected_workspace_folder_id
+    )
+    target_name = workspace_folder_generated_images.safe_target_name(
+        expected_target_name_internal
+    )
+    target_ref = workspace_folder_generated_images.safe_target_ref(expected_target_ref)
+    if (
+        not normalized
+        or not folder_id
+        or not target_name
+        or not target_ref
+        or workspace_folder_generated_images.target_ref_for_target(target_name) != target_ref
+    ):
         return None
     try:
         with db_conn_func() as conn:
@@ -449,6 +465,12 @@ def tombstone_generated_image(
                         updated_at = now(),
                         deleted_at = COALESCE(deleted_at, now())
                     WHERE id = %s::uuid
+                      AND workspace_folder_id = %s::uuid
+                      AND target_name_internal = %s
+                      AND target_ref = %s
+                      AND deleted_at IS NULL
+                      AND local_state = 'available'
+                      AND nextcloud_sync_state = 'linked'
                     RETURNING id, workspace_folder_id, display_name, display_name_hash,
                               target_name_internal, target_ref, mime_type, image_format,
                               byte_size, width, height, content_hash, content_hash_short,
@@ -463,6 +485,9 @@ def tombstone_generated_image(
                             workspace_folder_generated_images.REASON_DELETED,
                         ),
                         normalized,
+                        folder_id,
+                        target_name,
+                        target_ref,
                     ),
                 )
                 row = serialize_generated_image_row(cur.fetchone())

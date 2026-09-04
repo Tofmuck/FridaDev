@@ -37,6 +37,7 @@ REASON_STORE_FAILED_REDACTED = "folder_generated_image_store_failed_redacted"
 REASON_LOCAL_PERSISTENCE_FAILED = "folder_generated_image_local_persistence_failed"
 REASON_REMOTE_COMPENSATION_OK = "folder_generated_image_remote_compensation_ok"
 REASON_REMOTE_COMPENSATION_MISSING = "folder_generated_image_remote_compensation_missing"
+REASON_REMOTE_ALREADY_MISSING = "folder_generated_image_remote_already_missing"
 REASON_REMOTE_COMPENSATION_PRECONDITION_FAILED = (
     "folder_generated_image_remote_compensation_precondition_failed"
 )
@@ -92,6 +93,7 @@ REASON_CODE_CATALOG = frozenset(
         REASON_LOCAL_PERSISTENCE_FAILED,
         REASON_REMOTE_COMPENSATION_OK,
         REASON_REMOTE_COMPENSATION_MISSING,
+        REASON_REMOTE_ALREADY_MISSING,
         REASON_REMOTE_COMPENSATION_PRECONDITION_FAILED,
         REASON_REMOTE_COMPENSATION_OWNERSHIP_UNVERIFIED,
         REASON_REMOTE_COMPENSATION_FAILED,

@@ -114,8 +114,24 @@ class _FakeImages:
             raise RuntimeError("raw image db failure prompt remote.php")
         return self.image
 
-    def tombstone_generated_image(self, image_id: str, *, reason_code: str = ""):
-        self.tombstones.append({"image_id": image_id, "reason_code": reason_code})
+    def tombstone_generated_image(
+        self,
+        image_id: str,
+        *,
+        expected_workspace_folder_id: str,
+        expected_target_name_internal: str,
+        expected_target_ref: str,
+        reason_code: str = "",
+    ):
+        self.tombstones.append(
+            {
+                "image_id": image_id,
+                "workspace_folder_id": expected_workspace_folder_id,
+                "target_name_internal": expected_target_name_internal,
+                "target_ref": expected_target_ref,
+                "reason_code": reason_code,
+            }
+        )
         if self.fail_tombstone:
             raise RuntimeError("raw tombstone db failure secret target")
         return _image(
@@ -231,8 +247,15 @@ class WorkspaceFolderGeneratedImageContentServiceTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertTrue(payload["ok"])
         self.assertEqual(nextcloud.delete_calls[0]["image_name"], TARGET_NAME)
-        self.assertFalse(nextcloud.delete_calls[0]["missing_ok"])
+        self.assertTrue(nextcloud.delete_calls[0]["missing_ok"])
         self.assertEqual(images.tombstones[0]["image_id"], IMAGE_ID)
+        self.assertEqual(images.tombstones[0]["workspace_folder_id"], FOLDER_ID)
+        self.assertEqual(images.tombstones[0]["target_name_internal"], TARGET_NAME)
+        self.assertEqual(
+            images.tombstones[0]["target_ref"],
+            workspace_folder_generated_images.target_ref_for_target(TARGET_NAME),
+        )
+        self.assertEqual(payload["generated_image_delete"]["delete_state"], "deleted")
         self.assertEqual(payload["reason_code"], "folder_generated_image_delete_ok")
 
     def test_local_failures_refuse_before_any_webdav(self) -> None:
@@ -322,25 +345,27 @@ class WorkspaceFolderGeneratedImageContentServiceTests(unittest.TestCase):
         self.assertEqual(mismatch.reason_code, "folder_generated_image_mime_invalid")
 
     def test_delete_remote_failure_does_not_tombstone_and_tombstone_failure_is_partial(self) -> None:
-        images = _FakeImages()
-        remote_failure = _FakeNextcloud(
-            delete_error=workspace_folder_generated_image_nextcloud_client.NextcloudGeneratedImageClientError(
-                workspace_folder_generated_images.REASON_REMOTE_COMPENSATION_FAILED,
-                http_status=500,
-            )
-        )
+        for remote_status in (0, 401, 403, 500):
+            with self.subTest(remote_status=remote_status):
+                images = _FakeImages()
+                remote_failure = _FakeNextcloud(
+                    delete_error=workspace_folder_generated_image_nextcloud_client.NextcloudGeneratedImageClientError(
+                        workspace_folder_generated_images.REASON_REMOTE_COMPENSATION_FAILED,
+                        http_status=remote_status,
+                    )
+                )
 
-        payload, status = workspace_folder_generated_image_content_service.delete_workspace_folder_generated_image_response(
-            FOLDER_ID,
-            IMAGE_ID,
-            workspace_folders_module=_FakeFolders(),
-            generated_images_module=images,
-            nextcloud=remote_failure,
-        )
+                payload, status = workspace_folder_generated_image_content_service.delete_workspace_folder_generated_image_response(
+                    FOLDER_ID,
+                    IMAGE_ID,
+                    workspace_folders_module=_FakeFolders(),
+                    generated_images_module=images,
+                    nextcloud=remote_failure,
+                )
 
-        self.assertFalse(payload["ok"])
-        self.assertEqual(status, 502)
-        self.assertFalse(images.tombstones)
+                self.assertFalse(payload["ok"])
+                self.assertEqual(status, 502)
+                self.assertFalse(images.tombstones)
 
         tombstone_failure_images = _FakeImages(fail_tombstone=True)
         partial, partial_status = workspace_folder_generated_image_content_service.delete_workspace_folder_generated_image_response(
@@ -359,6 +384,30 @@ class WorkspaceFolderGeneratedImageContentServiceTests(unittest.TestCase):
         )
         self.assertNotIn("raw tombstone", str(partial))
         self.assertNotIn(TARGET_NAME, str(partial))
+
+    def test_tombstone_precondition_miss_is_never_reported_as_success(self) -> None:
+        class _PreconditionMissImages(_FakeImages):
+            def tombstone_generated_image(self, image_id: str, **kwargs: Any):
+                self.tombstones.append({"image_id": image_id, **kwargs})
+                return None
+
+        images = _PreconditionMissImages()
+
+        payload, status = workspace_folder_generated_image_content_service.delete_workspace_folder_generated_image_response(
+            FOLDER_ID,
+            IMAGE_ID,
+            workspace_folders_module=_FakeFolders(),
+            generated_images_module=images,
+            nextcloud=_FakeNextcloud(),
+        )
+
+        self.assertEqual(status, 503)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(
+            payload["generated_image_delete"]["delete_state"],
+            "remote_deleted_local_tombstone_failed",
+        )
+        self.assertNotIn(TARGET_NAME, str(payload))
 
 
 if __name__ == "__main__":  # pragma: no cover

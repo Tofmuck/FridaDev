@@ -2,7 +2,7 @@
 
 Date de cadrage : 4 septembre 2026.
 
-**Statut : roadmap ouverte ; L1 à L4 et L5.1 fermés ; L5.2, L5.3, L6, L7 et Z non commencés.**
+**Statut : roadmap ouverte ; L1 à L5 fermés ; L6, L7 et Z non commencés.**
 
 ## 1. But, source et règle de vérité
 
@@ -72,7 +72,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 | 2 | L2 | Intégrité du canon conversationnel | F09 | xhigh | fermé — F09 corrigé |
 | 3 | L3 | Compensation Nextcloud possédée | F08 | xhigh | fermé — F08 corrigé |
 | 4 | L4 | Conservation de la projection analytics | F21 | high | fermé — F21 corrigé |
-| 5 | L5 | Atomicité des écritures Workspace | F13b, F14a, F19b | xhigh par sous-lot | en cours — L5.1 fermé ; L5.2 et L5.3 non commencés |
+| 5 | L5 | Atomicité des écritures Workspace | F13b, F14a, F19b | xhigh par sous-lot | fermé — F13b, F14a et F19b corrigés |
 | 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | non commencé |
 | 7 | L7 | Vérité d'API, observabilité et outils historiques | F16–F18, F20, F22, F24 et dette documentaire | high | non commencé |
 | 8 | Z | Réconciliation finale avec le grand audit | tous les Fxx et réserves non numérotées | xhigh | non commencé |
@@ -83,7 +83,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 - [x] L3 fermé.
 - [x] L4 fermé.
 - [x] L5.1 fermé.
-- [ ] L5.2 et L5.3 fermés.
+- [x] L5.2 et L5.3 fermés.
 - [ ] L6 et ses décisions conditionnelles fermés.
 - [ ] L7 et ses décisions conditionnelles fermés.
 - [ ] Z réconcilie chaque finding et archive la roadmap.
@@ -479,8 +479,48 @@ commencé.
 pouvoir terminer le tombstone lorsque l'absence de la cible enregistrée est
 confirmée. Ne pas confondre 404 prouvé, panne de transport et cible différente.
 
-**Fermeture de L5 :** chaque sous-lot possède sa preuve rouge/verte, sa livraison
-et son statut. Aucun protocole générique de transaction externe n'est ajouté.
+**Revalidation et fermeture du 4 septembre 2026 :**
+
+- F1 et F2 confirmés : le chemin nominal supprimait d'abord la cible distante,
+  puis tentait le tombstone ; un 2xx suivi d'un échec SQL laissait la ligne
+  locale active alors que la cible était absente ;
+- F3 confirmée : au retry, le service relisait la même cible durable mais
+  imposait `missing_ok=False`, de sorte que le 404 interrompait le flux avant
+  toute nouvelle tentative de tombstone ;
+- F4 confirmée : le client conserve le statut HTTP exact du DELETE et distingue
+  cette réponse d'une panne transport sans requête supplémentaire ;
+- F5 confirmée : l'identifiant, le dossier, la cible interne et `target_ref`
+  proviennent de la ligne durable et passent les validateurs Generated Images ;
+- F6 confirmée : l'ancien `UPDATE` ne portait que l'identifiant de l'image ;
+- F7 confirmée : le tombstone vérifie désormais dans son `WHERE` l'image, le
+  dossier, la cible interne, `target_ref`, l'absence de tombstone et les états
+  encore `available` / `linked`, sans verrou SQL conservé pendant WebDAV ;
+- F8 confirmée : le chemin 2xx conserve l'état `deleted` et le reason code
+  nominal, tandis que le 404 exact produit l'état
+  `remote_already_missing` et le reason code fermé
+  `folder_generated_image_remote_already_missing`, puis emprunte le même
+  tombstone conditionnel ;
+- F9 confirmée : aucun schéma, migration, route, vue, GET/PROPFIND, listing,
+  retry automatique, journal, queue ou accès Nextcloud réel n'est ajouté.
+
+La preuve stateful hermétique traverse le service, le client DELETE réel et le
+store SQL avec une fake relationnelle. Elle observe successivement le 204, la
+panne du premier tombstone, le 404 au retry, puis la ligne locale `deleted`.
+Elle vérifie aussi qu'une cible changée entre le 404 et l'UPDATE retourne zéro
+ligne et aucun succès, et qu'un troisième appel sur la ligne tombstonee ne
+relance pas WebDAV. Une mutation rétablissant temporairement
+`missing_ok=False` remet le retry central en échec 502 ; sa restauration exacte
+rend de nouveau la preuve verte.
+
+Le 404 prouve uniquement l'absence de la cible exacte au moment du DELETE, pas
+la date ni l'auteur de cette absence. Cette séquence ne constitue pas une
+transaction distribuée : un crash brutal entre DELETE et tombstone peut encore
+laisser une divergence, refermable par le retry borné si l'identité durable n'a
+pas changé.
+
+**Fermeture de L5 :** F19b est corrigé et prouvé. L5.3 et L5 sont fermés. Chaque
+sous-lot possède sa preuve rouge/verte, sa livraison et son statut. Aucun
+protocole générique de transaction externe n'est ajouté. L6 n'est pas commencé.
 
 ## 9. L6 — Justesse produit directement perceptible
 

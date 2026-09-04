@@ -481,6 +481,11 @@ class WorkspaceFolderGeneratedImagesTests(unittest.TestCase):
         ) as ctx:
             workspace_folder_generated_images_store.tombstone_generated_image(
                 IMAGE_ID,
+                expected_workspace_folder_id=FOLDER_ID,
+                expected_target_name_internal=TARGET_NAME,
+                expected_target_ref=workspace_folder_generated_images.target_ref_for_target(
+                    TARGET_NAME
+                ),
                 db_conn_func=lambda: _FailingConnection(),
                 logger=logger,
             )

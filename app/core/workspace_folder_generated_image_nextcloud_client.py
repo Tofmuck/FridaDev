@@ -127,16 +127,22 @@ class NextcloudGeneratedImageClient:
         folder_name: str,
         image_name: str,
         *,
-        missing_ok: bool = True,
+        missing_ok: bool = False,
     ) -> NextcloudGeneratedImageResponse:
         status, _etag = self._request_status(
             "DELETE",
             self._url(folder_name, IMAGES_SUBFOLDER, image_name),
         )
-        if status in {200, 202, 204} or (missing_ok and status == 404):
+        if status in {200, 202, 204}:
             return NextcloudGeneratedImageResponse(
                 True,
                 workspace_folder_generated_images.REASON_REMOTE_COMPENSATION_OK,
+                status,
+            )
+        if missing_ok and status == 404:
+            return NextcloudGeneratedImageResponse(
+                True,
+                workspace_folder_generated_images.REASON_REMOTE_ALREADY_MISSING,
                 status,
             )
         raise NextcloudGeneratedImageClientError(

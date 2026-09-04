@@ -285,12 +285,18 @@ def upsert_generated_image(**fields: Any) -> dict[str, Any]:
 def tombstone_generated_image(
     generated_image_id: str,
     *,
+    expected_workspace_folder_id: str,
+    expected_target_name_internal: str,
+    expected_target_ref: str,
     reason_code: str = REASON_DELETED,
 ) -> Optional[dict[str, Any]]:
     from . import workspace_folder_generated_images_store
 
     return workspace_folder_generated_images_store.tombstone_generated_image(
         generated_image_id,
+        expected_workspace_folder_id=expected_workspace_folder_id,
+        expected_target_name_internal=expected_target_name_internal,
+        expected_target_ref=expected_target_ref,
         reason_code=reason_code,
         db_conn_func=db_conn,
         logger=logger,
