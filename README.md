@@ -197,9 +197,12 @@ cp app/.env.example app/.env
 ./stack.sh health
 ```
 
-Le service local écoute sur `http://127.0.0.1:8093/`. `./stack.sh down` arrête
-la stack locale. Ces commandes ne décrivent pas la procédure de déploiement de
-l'OVH de production.
+Le Compose fourni lie le port publié à l'IPv4 loopback de l'hôte ; le service
+local écoute donc sur `http://127.0.0.1:8093/`. Ce chemin ne reproduit pas
+l'authentification publique Caddy/Authelia de l'OVH et ne doit pas être
+transformé en publication réseau sans protection adaptée. `./stack.sh down`
+arrête la stack locale. Ces commandes ne décrivent pas la procédure de
+déploiement de l'OVH de production.
 
 ## Tests
 

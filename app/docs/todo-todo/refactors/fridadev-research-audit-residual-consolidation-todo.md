@@ -2,7 +2,7 @@
 
 Date de cadrage : 4 septembre 2026.
 
-**Statut : roadmap ouverte ; L1 à L7 et Z non commencés.**
+**Statut : roadmap ouverte ; L1 fermé ; L2 à L7 et Z non commencés.**
 
 ## 1. But, source et règle de vérité
 
@@ -68,7 +68,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 
 | Ordre | Lot | Objet | Findings | Réflexion conseillée | Statut |
 | --- | --- | --- | --- | --- | --- |
-| 1 | L1 | Frontière réseau du clone public | F23 | high | non commencé |
+| 1 | L1 | Frontière réseau du clone public | F23 | high | fermé — F23 corrigé |
 | 2 | L2 | Intégrité du canon conversationnel | F09 | xhigh | non commencé |
 | 3 | L3 | Compensation Nextcloud possédée | F08 | xhigh | non commencé |
 | 4 | L4 | Conservation de la projection analytics | F21 | high | non commencé |
@@ -78,7 +78,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 | 8 | Z | Réconciliation finale avec le grand audit | tous les Fxx et réserves non numérotées | xhigh | non commencé |
 
 - [x] Source, périmètre, ordre et règles de preuve consignés.
-- [ ] L1 fermé.
+- [x] L1 fermé.
 - [ ] L2 fermé.
 - [ ] L3 fermé.
 - [ ] L4 fermé.
@@ -105,8 +105,42 @@ FridaDev sur toutes les interfaces de l'hôte.
 Ne pas modifier la sous-stack OVH, Caddy, Authelia, Docker hôte ou les gardes
 admin applicatives. Ne pas réintroduire `FRIDA_ADMIN_TOKEN`.
 
-**Fermeture :** configuration rendue et documentation concordantes ; aucune
-prétention d'audit réseau de l'OVH.
+**Revalidation au HEAD `2a15190889e297d9068fa2d3d00fc17d36094ba7` :**
+
+- H1 confirmée avant correction : `docker-compose.yml` publiait
+  `8093:8089` sans IP hôte ;
+- H2 confirmée : le rendu Compose omettait `host_ip` et la
+  [spécification Docker Compose](https://docs.docker.com/reference/compose-file/services/#ports)
+  lie dans ce cas le port à toutes les interfaces (`0.0.0.0`) ;
+- H3 confirmée : le README et `stack.sh` annonçaient déjà
+  `http://127.0.0.1:8093/` ;
+- H4 confirmée : ce Compose ne définit que le service `fridadev`, sans service
+  proxy ni authentification Caddy/Authelia ;
+- H5 confirmée : ajouter l'IP hôte à l'unique mapping suffit à obtenir
+  `host_ip=127.0.0.1`, `published=8093` et `target=8089`, sans changement
+  applicatif.
+
+**Décision et correctif :** aucun plan plus simple ou plus sûr n'offre moins
+d'effets de bord. Le mapping devient `127.0.0.1:8093:8089` et le README rend
+explicites la liaison au loopback IPv4 hôte, l'absence de l'authentification
+publique OVH et l'interdiction d'une publication réseau sans protection
+adaptée. Aucun token, proxy, garde ou mécanisme générique n'est ajouté.
+
+**Preuves de fermeture :** la CLI Compose est disponible, mais le clone ne
+contient volontairement pas `app/.env`. Pour ne créer ni lire de secret, les
+commandes `config --quiet` et `config --format json` ont donc reçu sur stdin un
+override limité remplaçant seulement `env_file` par `/dev/null`. Le fichier
+Compose exact reste parsé ; la projection JSON est consommée directement par
+`jq` sans afficher la configuration. Les verdicts prouvent l'unique mapping
+`host_ip=127.0.0.1`, `published=8093`, `target=8089`, ainsi que l'écoute
+conteneur `0.0.0.0:8089` et le healthcheck interne
+`http://127.0.0.1:8089/` inchangés. Le README conserve l'URL locale correcte et
+porte les trois avertissements attendus. `git diff --check` et la preuve Git de
+livraison complètent le lot avant push.
+
+**Fermeture :** F23 est corrigé dans le Compose du clone public ; configuration
+rendue et documentation concordent. Aucun audit réseau de l'OVH, déploiement,
+rebuild ou restart n'est revendiqué. L2 n'est pas commencé.
 
 ## 5. L2 — Empêcher un snapshot ancien d'écraser un dialogue récent
 
