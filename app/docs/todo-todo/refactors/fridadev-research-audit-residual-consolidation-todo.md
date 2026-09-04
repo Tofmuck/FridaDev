@@ -327,7 +327,7 @@ clients réels avec transport synthétique ; une mutation permissive laissant
 passer `*` remet la preuve de refus en échec et la restauration exacte la rend
 verte.
 
-**Fermeture :** F08 est corrigé et prouvé. L4 n'est pas commencé.
+**Fermeture :** F08 est corrigé et prouvé. L4 est fermé. L5 n'est pas commencé.
 
 ## 7. L4 — Conserver les analytics dérivées si leur source est illisible
 
