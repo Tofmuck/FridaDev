@@ -220,9 +220,19 @@ def reconcile_conversation_snapshot(
     reconciled: list[dict[str, Any]] = []
     for index, canonical in enumerate(canonical_messages):
         incoming = incoming_messages[index]
+        canonical_role = str(canonical.get("role") or "")
+        incoming_role = str(incoming.get("role") or "")
+        is_dynamic_system_projection = (
+            index == 0
+            and canonical_role == "system"
+            and incoming_role == "system"
+        )
         same_identity = (
-            str(canonical.get("role") or "") == str(incoming.get("role") or "")
-            and str(canonical.get("content") or "") == str(incoming.get("content") or "")
+            canonical_role == incoming_role
+            and (
+                is_dynamic_system_projection
+                or str(canonical.get("content") or "") == str(incoming.get("content") or "")
+            )
             and parse_iso_to_dt_func(str(canonical.get("timestamp") or ""))
             == parse_iso_to_dt_func(str(incoming.get("timestamp") or ""))
         )

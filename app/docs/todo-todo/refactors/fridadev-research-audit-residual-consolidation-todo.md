@@ -185,14 +185,19 @@ et lui ajouter une précondition canonique. L'upsert du catalogue sérialise la
 conversation par le verrou de ligne transactionnel, puis le writer lit les
 messages par `seq` sous verrou et n'accepte que le même ordre exact ou une
 extension dont le canon est un préfixe prouvé. Rôle, contenu et timestamp sont
-comparés à chaque position ; aucun ordre n'est inféré des timestamps ou du seul
-compteur. Les marqueurs monotones sont conservés ou enrichis :
+comparés à chaque position dialogique ; aucun ordre n'est inféré des timestamps
+ou du seul compteur. Les marqueurs monotones sont conservés ou enrichis :
 `summarized_by` ne peut pas changer d'identité, `embedded` ne revient pas à
 `false`, et `meta` accepte seulement des ajouts récursifs non conflictuels. Un
 snapshot plus court, divergent ou porteur d'une metadata incompatible provoque
 le rollback du catalogue et est refusé avec le reason code fermé
 `conversation_snapshot_conflict`. L'écriture catalog/messages reste atomique :
 aucune mutation du catalogue n'est committée quand les messages sont refusés.
+Le contenu du premier message `system` est une projection volatile : lorsque le
+canon et le snapshot portent tous deux ce rôle à l'index `0`, le writer accepte
+son actualisation tout en maintenant l'égalité stricte de son rôle et de son
+timestamp. Tous les messages suivants, y compris un éventuel autre `system`,
+restent comparés strictement par rôle, contenu et timestamp.
 
 Le renommage conserve uniquement son `UPDATE conversations SET title` : aucun
 chargement ou writer de messages, et les dates de création, soft delete,
@@ -220,6 +225,40 @@ sont hermétiques, sans provider, DB opérateur ni dialogue réel. F10, F17 et l
 findings suivants restent hors lot.
 
 **Fermeture :** F09 est corrigé et prouvé. L3 n'est pas commencé.
+
+**Réouverture corrective bornée du 4 septembre 2026, HEAD de départ
+`8b5137625c675cb6ae51bfe1314f4bacdf72524d` :**
+
+- C1 confirmée : `resolve_chat_session()` crée puis sauvegarde la conversation
+  avec le prompt système de base ; le tour ajoute ensuite le message utilisateur,
+  construit le système augmenté et `apply_augmented_system()` remplace le contenu
+  du premier message avant la sauvegarde finale ;
+- C2 confirmée : `build_augmented_system()` incorpore le bloc temporel construit
+  depuis le `now_iso` du tour et le bloc renvoyé par l'Identity courante ; ces deux
+  entrées peuvent donc changer entre deux tours ;
+- C3 confirmée et reproduite rouge : la précondition L2 comparait strictement le
+  contenu du système stocké au système augmenté et refusait le premier tour avec
+  `conversation_snapshot_conflict` avant toute réécriture ;
+- C4 confirmée : les preuves transactionnelles L2 utilisaient toutes le contenu
+  système constant `SYSTEM` et ne traversaient ni `build_augmented_system()` ni
+  `apply_augmented_system()` ;
+- C5 confirmée : longueur, rôle, contenu, timestamp, ordre et métadonnées des
+  messages dialogiques doivent rester protégés dans la transaction existante ;
+- C6 confirmée : le renommage reste un `UPDATE` catalogue ciblé et la garde
+  `chatRequestInFlight` précède toujours toute lecture ou suppression du brouillon,
+  avec libération dans `finally`. Aucun de ces chemins n'est modifié.
+
+Le correctif minimal traite uniquement le contenu de l'index `0` lorsque les
+deux rôles sont `system`. Il ne crée ni seconde persistance, ni normalisation
+parallèle du prompt, ni version de snapshot. La preuve produit réutilise la DB
+factice transactionnelle et les vraies fonctions de création, de construction
+et d'application du système : prompt de base, premier tour augmenté, second
+`NOW` et Identity différents, conservation du dialogue et des métadonnées,
+refus atomique d'un snapshot court, refus d'une ancienne parole modifiée et
+absence d'exemption pour un `system` ultérieur. Les 85 tests ciblés passent.
+Une mutation rétablissant temporairement l'égalité stricte du contenu système
+remet la preuve centrale en échec ; le fichier restauré retrouve exactement son
+empreinte. F09 est de nouveau corrigé et prouvé ; L3 n'est pas commencé.
 
 ## 6. L3 — Ne compenser que la version Nextcloud encore possédée
 

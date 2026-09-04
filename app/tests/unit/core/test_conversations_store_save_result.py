@@ -5,6 +5,7 @@ import sys
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 
 def _resolve_app_dir() -> Path:
@@ -19,6 +20,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from core import assistant_turn_state
+from core import chat_prompt_context
 from core import conversations_store
 
 
@@ -407,6 +409,164 @@ class ConversationsStoreSaveResultTests(unittest.TestCase):
                 for message in messages
             ],
         )
+
+    def _apply_product_augmented_system(
+        self,
+        conversation: dict,
+        *,
+        now_iso: str,
+        identity_block: str,
+    ) -> str:
+        augmented_system, _identity_ids = chat_prompt_context.build_augmented_system(
+            system_prompt='BASE SYSTEM',
+            hermeneutical_prompt='HERMENEUTICAL SYSTEM',
+            config_module=SimpleNamespace(FRIDA_TIMEZONE='Europe/Paris'),
+            identity_module=SimpleNamespace(
+                build_identity_block=lambda: (identity_block, ['synthetic-identity']),
+            ),
+            now_iso=now_iso,
+        )
+        chat_prompt_context.apply_augmented_system(conversation, augmented_system)
+        return augmented_system
+
+    def test_atomic_save_accepts_dynamic_first_system_without_weakening_dialogue_canon(self) -> None:
+        conversation = conversations_store.new_conversation(
+            'BASE SYSTEM',
+            conversation_id='11111111-1111-4111-8111-111111111111',
+            now_iso_func=lambda: '2026-09-04T14:00:00Z',
+            safe_title_func=conversations_store.safe_title,
+        )
+        database = TransactionalConversationDb(catalog={}, messages=[])
+
+        initial, conversation = self._save_atomic_snapshot(
+            database,
+            conversation['messages'],
+            updated_at='2026-09-04T14:00:00Z',
+        )
+        self.assertTrue(initial.ok)
+        self.assertEqual(database.messages[0]['content'], 'BASE SYSTEM')
+
+        first_system = self._apply_product_augmented_system(
+            conversation,
+            now_iso='2026-09-04T14:01:00Z',
+            identity_block='[IDENTITY V1]',
+        )
+        conversations_store.append_message(
+            conversation,
+            'user',
+            'premier tour',
+            timestamp='2026-09-04T14:01:00Z',
+            now_iso_func=lambda: self.fail('explicit timestamp must not use now'),
+        )
+        conversations_store.append_message(
+            conversation,
+            'assistant',
+            'première réponse',
+            timestamp='2026-09-04T14:02:00Z',
+            now_iso_func=lambda: self.fail('explicit timestamp must not use now'),
+        )
+        first_turn, conversation = self._save_atomic_snapshot(
+            database,
+            conversation['messages'],
+            updated_at='2026-09-04T14:02:00Z',
+        )
+
+        self.assertTrue(first_turn.ok)
+        self.assertEqual(database.messages[0]['content'], first_system)
+        first_dialogue = [(row['role'], row['content']) for row in database.messages[1:]]
+
+        database.messages[1]['summarized_by'] = 'summary-existing'
+        database.messages[1]['embedded'] = True
+        database.messages[1]['meta'] = {'input_mode': 'keyboard'}
+        second_system = self._apply_product_augmented_system(
+            conversation,
+            now_iso='2026-09-04T15:01:00Z',
+            identity_block='[IDENTITY V2]',
+        )
+        self.assertNotEqual(second_system, first_system)
+        conversations_store.append_message(
+            conversation,
+            'user',
+            'deuxième tour',
+            timestamp='2026-09-04T15:01:00Z',
+            now_iso_func=lambda: self.fail('explicit timestamp must not use now'),
+        )
+        conversations_store.append_message(
+            conversation,
+            'assistant',
+            'deuxième réponse',
+            timestamp='2026-09-04T15:02:00Z',
+            now_iso_func=lambda: self.fail('explicit timestamp must not use now'),
+        )
+        second_turn, conversation = self._save_atomic_snapshot(
+            database,
+            conversation['messages'],
+            updated_at='2026-09-04T15:02:00Z',
+        )
+
+        self.assertTrue(second_turn.ok)
+        self.assertEqual(database.messages[0]['content'], second_system)
+        self.assertEqual(
+            [(row['role'], row['content']) for row in database.messages[1:3]],
+            first_dialogue,
+        )
+        self.assertEqual(database.messages[1]['summarized_by'], 'summary-existing')
+        self.assertTrue(database.messages[1]['embedded'])
+        self.assertEqual(database.messages[1]['meta'], {'input_mode': 'keyboard'})
+
+        canonical_catalog = copy.deepcopy(database.catalog)
+        canonical_messages = copy.deepcopy(database.messages)
+        stale = copy.deepcopy(conversation)
+        stale['messages'] = stale['messages'][:-2]
+        self._apply_product_augmented_system(
+            stale,
+            now_iso='2026-09-04T16:01:00Z',
+            identity_block='[IDENTITY V3]',
+        )
+        stale_result, _stale = self._save_atomic_snapshot(
+            database,
+            stale['messages'],
+            updated_at='2026-09-04T16:01:00Z',
+        )
+
+        self.assertFalse(stale_result.ok)
+        self.assertEqual(stale_result.reason, 'conversation_snapshot_conflict')
+        self.assertEqual(database.catalog, canonical_catalog)
+        self.assertEqual(database.messages, canonical_messages)
+
+        divergent = copy.deepcopy(conversation)
+        self._apply_product_augmented_system(
+            divergent,
+            now_iso='2026-09-04T16:02:00Z',
+            identity_block='[IDENTITY V3]',
+        )
+        divergent['messages'][1]['content'] = 'premier tour remplacé'
+        divergent_result, _divergent = self._save_atomic_snapshot(
+            database,
+            divergent['messages'],
+            updated_at='2026-09-04T16:02:00Z',
+        )
+
+        self.assertFalse(divergent_result.ok)
+        self.assertEqual(divergent_result.reason, 'conversation_snapshot_conflict')
+        self.assertEqual(database.catalog, canonical_catalog)
+        self.assertEqual(database.messages, canonical_messages)
+
+    def test_reconcile_does_not_exempt_later_system_messages(self) -> None:
+        canonical = [
+            {'role': 'system', 'content': 'dynamic v1', 'timestamp': '2026-09-04T17:00:00Z'},
+            {'role': 'system', 'content': 'dialogue system', 'timestamp': '2026-09-04T17:01:00Z'},
+        ]
+        incoming = copy.deepcopy(canonical)
+        incoming[0]['content'] = 'dynamic v2'
+        incoming[1]['content'] = 'dialogue system replaced'
+
+        with self.assertRaises(conversations_store.ConversationSnapshotConflictError):
+            conversations_store.reconcile_conversation_snapshot(
+                canonical,
+                incoming,
+                parse_iso_to_dt_func=conversations_store.parse_iso_to_dt,
+            )
 
     def test_atomic_save_rejects_stale_prefix_without_removing_committed_suffix(self) -> None:
         common = [

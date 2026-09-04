@@ -301,9 +301,15 @@ deux terminaux.
 Dans la transaction du writer, l'upsert catalogue sérialise la conversation
 par son verrou de ligne, puis les messages canoniques sont relus par `seq` sous
 verrou. Un snapshot est accepté seulement si le canon est son préfixe exact par
-rôle, contenu et timestamp. Les enrichissements monotones de `summarized_by`,
-`embedded` et `meta` sont conservés ; une suppression, une divergence de
-contenu/ordre ou une metadata incompatible déclenche le rollback du catalogue avec
+rôle, contenu et timestamp. La seule exception de contenu est la projection
+volatile placée au premier message : quand le canon et le snapshot portent tous
+deux le rôle `system` à l'index `0`, son contenu augmenté (`NOW`, identité et
+gardes du tour) peut être remplacé, tandis que son rôle, son timestamp et ses
+métadonnées restent contrôlés selon leurs règles propres. Aucun autre message
+`system` n'est exempté. Les
+enrichissements monotones de `summarized_by`, `embedded` et `meta` sont
+conservés ; une suppression, une divergence de contenu/ordre ou une metadata
+incompatible déclenche le rollback du catalogue avec
 `conversation_snapshot_conflict`. Aucune mutation catalog/messages n'est alors
 committée. Le writer ne fusionne jamais deux branches dont l'ordre relatif
 n'est pas prouvé.
