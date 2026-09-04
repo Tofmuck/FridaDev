@@ -415,9 +415,14 @@ UPDATE conditionne au lien encore `linked` et aux ref/hash observes, puis lance
 le MOVE. Apres succes, la nouvelle ref/hash passe en `linked` avant la mutation
 du nom local. Un consommateur d'artefact peut ainsi refuser atomiquement aussi
 bien une ancienne coordonnee apres renommage qu'une coordonnee dont le MOVE est
-en cours. Un echec HTTP du MOVE restaure l'ancien lien `linked`; une panne
-transport sans issue certaine laisse `sync_pending` visible. Aucun verrou SQL
-n'est conserve pendant WebDAV.
+en cours. Un echec HTTP certain du MOVE initial tente de faire evoluer par CAS
+la meme identite `sync_pending` vers `sync_error`; si cette transition locale
+echoue, ou si la panne transport ne donne aucune issue certaine,
+`sync_pending` reste visible. Aucun de ces chemins ne reaffirme l'ancienne
+coordonnee `linked` sans preuve. Seul un MOVE inverse effectivement
+reussi autorise la restauration `linked`, par CAS sur l'etat, la ref et le hash
+encore attendus, sans ecraser une liaison concurrente. Aucun verrou SQL n'est
+conserve pendant WebDAV.
 
 Compatibilite: le payload fake/local Lot 3 peut encore exposer des etats
 historiques comme `pending` ou `error`. Le Lot 8B devra mapper ou migrer ces

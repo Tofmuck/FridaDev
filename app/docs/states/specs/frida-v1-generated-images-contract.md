@@ -514,9 +514,14 @@ Durcissement L5.3 du 4 septembre 2026:
   avec les ref/hash observes, puis effectue son MOVE; le tombstone refuse aussi
   bien une liaison finale differente qu'un MOVE encore en cours;
 - le MOVE n'est jamais lance si la barriere `sync_pending` n'est pas commitee;
-  un echec HTTP restaure l'ancien lien `linked`, tandis qu'une panne transport
-  d'issue indeterminable laisse la barriere visible plutot que de fabriquer un
-  etat stable;
+  un echec HTTP certain du MOVE initial tente seulement de faire passer par CAS
+  la meme identite `sync_pending` a `sync_error`; si la transition locale
+  echoue, ou si la panne transport laisse l'issue distante indeterminable,
+  `sync_pending` reste la position sure. Aucun de ces chemins ne fabrique un
+  ancien lien `linked`;
+- une restauration `linked` reste permise apres succes prouve du MOVE inverse,
+  mais seulement par CAS sur l'etat, la ref et le hash encore attendus; une
+  liaison plus recente ou concurrente n'est jamais remplacee;
 - aucun GET, PROPFIND, listing, retry automatique, verrou SQL pendant le reseau
   ou nouvelle persistance n'est ajoute.
 

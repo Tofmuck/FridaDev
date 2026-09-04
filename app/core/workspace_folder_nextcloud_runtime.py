@@ -161,7 +161,14 @@ def rename_workspace_folder_nextcloud_first(
             nextcloud.move_folder(old_target_name, new_target_name)
     except nextcloud_client.NextcloudFolderClientError as exc:
         if moved and exc.http_status > 0:
-            _restore_old_link(normalized, old_target_name, db_conn_func=db_conn_func, logger=logger)
+            _mark_link_rename_failed(
+                normalized,
+                expected_folder_ref=str(existing_folder.get("nextcloud_folder_ref") or ""),
+                expected_name_hash=str(existing_folder.get("nextcloud_name_hash") or ""),
+                reason_code=exc.reason_code,
+                db_conn_func=db_conn_func,
+                logger=logger,
+            )
         return _nextcloud_error(exc, operation="rename")
 
     try:
@@ -176,7 +183,14 @@ def rename_workspace_folder_nextcloud_first(
     except nextcloud_links.WorkspaceFolderNextcloudLinkPersistenceError:
         rollback = _rollback_renamed_folder(nextcloud, new_target_name, old_target_name, moved=moved, logger=logger)
         if rollback == nextcloud_client.REASON_ROLLBACK_OK:
-            _restore_old_link(normalized, old_target_name, db_conn_func=db_conn_func, logger=logger)
+            _restore_old_link(
+                normalized,
+                old_target_name,
+                expected_target_name=old_target_name,
+                expected_sync_state=nextcloud_links.NEXTCLOUD_SYNC_PENDING,
+                db_conn_func=db_conn_func,
+                logger=logger,
+            )
         return _local_persistence_error(rollback)
 
     fields: dict[str, Any] = {"display_name": str(validation["display_name"])}
@@ -196,7 +210,14 @@ def rename_workspace_folder_nextcloud_first(
     if updated is None:
         rollback = _rollback_renamed_folder(nextcloud, new_target_name, old_target_name, moved=moved, logger=logger)
         if rollback == nextcloud_client.REASON_ROLLBACK_OK:
-            _restore_old_link(normalized, old_target_name, db_conn_func=db_conn_func, logger=logger)
+            _restore_old_link(
+                normalized,
+                old_target_name,
+                expected_target_name=new_target_name,
+                expected_sync_state=nextcloud_links.NEXTCLOUD_SYNC_LINKED,
+                db_conn_func=db_conn_func,
+                logger=logger,
+            )
         return _local_persistence_error(rollback)
     return {"ok": True, "folder": updated, "reason_code": nextcloud_client.REASON_RENAME_OK}
 
@@ -218,10 +239,10 @@ def _upsert_link(
     db_conn_func: Callable[[], Any],
     logger: Any,
 ) -> None:
-    target_key = target_name.casefold()
-    name_hash = nextcloud_projection.hash12(target_key)
-    folder_uuid = workspace_folders_store.normalize_workspace_folder_id(workspace_folder_id) or str(workspace_folder_id)
-    folder_ref = f"workspace-folder:{folder_uuid[:8]}:{name_hash or 'invalid'}"
+    folder_uuid, folder_ref, name_hash = _link_identity(
+        workspace_folder_id,
+        target_name,
+    )
     nextcloud_links.upsert_link(
         workspace_folder_id=folder_uuid,
         nextcloud_sync_state=nextcloud_links.NEXTCLOUD_SYNC_LINKED,
@@ -235,22 +256,74 @@ def _upsert_link(
     )
 
 
-def _restore_old_link(
+def _link_identity(workspace_folder_id: str, target_name: str) -> tuple[str, str, str]:
+    target_key = target_name.casefold()
+    name_hash = nextcloud_projection.hash12(target_key)
+    folder_uuid = workspace_folders_store.normalize_workspace_folder_id(workspace_folder_id) or str(workspace_folder_id)
+    folder_ref = f"workspace-folder:{folder_uuid[:8]}:{name_hash or 'invalid'}"
+    return folder_uuid, folder_ref, name_hash
+
+
+def _mark_link_rename_failed(
     folder_id: str,
-    old_target_name: str,
     *,
+    expected_folder_ref: str,
+    expected_name_hash: str,
+    reason_code: str,
     db_conn_func: Callable[[], Any],
     logger: Any,
 ) -> None:
     try:
-        _upsert_link(
+        nextcloud_links.mark_link_rename_failed(
             workspace_folder_id=folder_id,
-            target_name=old_target_name,
-            reason_code=nextcloud_client.REASON_ROLLBACK_OK,
-            operation="rename",
+            expected_nextcloud_folder_ref=expected_folder_ref,
+            expected_nextcloud_name_hash=expected_name_hash,
+            reason_code=reason_code,
             db_conn_func=db_conn_func,
             logger=logger,
         )
+    except nextcloud_links.WorkspaceFolderNextcloudLinkPersistenceError:
+        logger.warning(
+            "workspace_folder_nextcloud_link_rename_failure_not_persisted id=%s reason_code=%s",
+            folder_id,
+            nextcloud_client.REASON_LOCAL_PERSISTENCE_FAILED,
+        )
+
+
+def _restore_old_link(
+    folder_id: str,
+    old_target_name: str,
+    *,
+    expected_target_name: str,
+    expected_sync_state: str,
+    db_conn_func: Callable[[], Any],
+    logger: Any,
+) -> None:
+    folder_uuid, restored_ref, restored_hash = _link_identity(
+        folder_id,
+        old_target_name,
+    )
+    _expected_uuid, expected_ref, expected_hash = _link_identity(
+        folder_id,
+        expected_target_name,
+    )
+    try:
+        restored = nextcloud_links.restore_link_after_rename_rollback(
+            workspace_folder_id=folder_uuid,
+            restored_nextcloud_folder_ref=restored_ref,
+            restored_nextcloud_name_hash=restored_hash,
+            expected_nextcloud_sync_state=expected_sync_state,
+            expected_nextcloud_folder_ref=expected_ref,
+            expected_nextcloud_name_hash=expected_hash,
+            db_conn_func=db_conn_func,
+            logger=logger,
+        )
+        if restored is None:
+            logger.warning(
+                "workspace_folder_nextcloud_link_restore_refused id=%s reason_code=%s",
+                folder_id,
+                nextcloud_client.REASON_ROLLBACK_OWNERSHIP_UNVERIFIED,
+            )
     except nextcloud_links.WorkspaceFolderNextcloudLinkPersistenceError:
         logger.warning(
             "workspace_folder_nextcloud_link_restore_failed id=%s reason_code=%s",

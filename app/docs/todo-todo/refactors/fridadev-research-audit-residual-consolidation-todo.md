@@ -525,17 +525,26 @@ rend de nouveau la preuve verte.
   `nextcloud_name_hash`, sans verrou SQL pendant WebDAV ;
 - C7 confirmée : sans renommage, le retry `204`, échec SQL, puis `404` conserve
   le tombstone légitime ;
-- le MOVE n'est lancé qu'après commit de la barrière. Une réponse HTTP d'échec
-  du MOVE restaure l'ancien lien `linked`; une panne transport d'issue ambiguë
-  conserve honnêtement `sync_pending` plutôt que d'affirmer un ancien état
-  stable ;
+- le MOVE n'est lancé qu'après commit de la barrière. Une réponse HTTP certaine
+  du MOVE initial tente seulement le CAS de la même identité `sync_pending` vers
+  `sync_error`; si cette transition locale échoue, `sync_pending` reste la
+  position sûre. Une panne transport d'issue ambiguë conserve elle aussi
+  honnêtement `sync_pending`. Aucun de ces chemins ne réaffirme l'ancienne
+  coordonnée `linked` sans preuve positive ;
+- seule la réussite effective du MOVE inverse autorise la restauration
+  `linked`, elle-même conditionnée à l'état, à la ref et au hash encore attendus,
+  afin de ne pas écraser une liaison concurrente ;
 - les fenêtres « renommage déjà durable en B » et « MOVE effectué avant liaison
   finale B » retournent toutes deux un échec borné, sans tombstone ni succès.
 
 La preuve relationnelle stateful interprète réellement le `EXISTS` parent du
 SQL et conserve séparément la cible distante. La mutation qui retire seulement
 cette précondition rétablit le faux HTTP 200 sur la course centrale ; la
-restauration exacte du `WHERE` rend la preuve verte.
+restauration exacte du `WHERE` rend la preuve verte. La preuve résiduelle de
+renommage place déjà la cible sous B, reçoit 404 sur le MOVE A vers B, puis
+vérifie que A n'est jamais réinscrit `linked` et que l'image sous B ne peut pas
+être tombstonée via A. Réintroduire l'ancien upsert de restauration rend cette
+preuve rouge.
 
 Le 404 prouve uniquement l'absence de la coordonnée distante complète au moment
 du DELETE, pas la date ni l'auteur de cette absence. Cette séquence ne constitue

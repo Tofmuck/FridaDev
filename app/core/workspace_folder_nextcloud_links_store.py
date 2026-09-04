@@ -388,6 +388,153 @@ def mark_link_rename_pending(
         ) from None
 
 
+def mark_link_rename_failed(
+    *,
+    workspace_folder_id: str,
+    expected_nextcloud_folder_ref: str,
+    expected_nextcloud_name_hash: str,
+    reason_code: str,
+    db_conn_func: Callable[[], Any],
+    logger: Any,
+) -> Optional[dict[str, Any]]:
+    folder_id = normalize_workspace_folder_id(workspace_folder_id)
+    folder_ref = normalize_folder_ref(expected_nextcloud_folder_ref)
+    name_hash = normalize_name_hash(expected_nextcloud_name_hash)
+    normalized_reason = normalize_reason_code(
+        reason_code,
+        sync_state=NEXTCLOUD_SYNC_ERROR,
+    )
+    if not folder_id or not folder_ref or not name_hash:
+        return None
+    try:
+        with db_conn_func() as conn:
+            with _cursor(conn) as cur:
+                cur.execute(
+                    """
+                    UPDATE workspace_folder_nextcloud_links
+                    SET nextcloud_sync_state = 'sync_error',
+                        last_sync_at = now(),
+                        last_sync_reason_code = %s,
+                        last_sync_operation = 'rename',
+                        nextcloud_share_state = 'error',
+                        updated_at = now()
+                    WHERE workspace_folder_id = %s::uuid
+                      AND nextcloud_sync_state = 'sync_pending'
+                      AND nextcloud_folder_ref = %s
+                      AND nextcloud_name_hash = %s
+                    RETURNING
+                        workspace_folder_id AS link_workspace_folder_id,
+                        nextcloud_sync_state AS link_nextcloud_sync_state,
+                        nextcloud_folder_ref AS link_nextcloud_folder_ref,
+                        nextcloud_name_hash AS link_nextcloud_name_hash,
+                        last_sync_at AS link_last_sync_at,
+                        last_sync_reason_code AS link_last_sync_reason_code,
+                        last_sync_operation AS link_last_sync_operation,
+                        nextcloud_share_state AS link_nextcloud_share_state,
+                        created_at AS link_created_at,
+                        updated_at AS link_updated_at
+                    """,
+                    (
+                        normalized_reason,
+                        folder_id,
+                        folder_ref,
+                        name_hash,
+                    ),
+                )
+                row = cur.fetchone()
+            conn.commit()
+        return serialize_link_row(row)
+    except Exception:
+        logger.warning(
+            "workspace_folder_nextcloud_link_rename_failed_transition_failed id=%s reason_code=%s",
+            folder_id,
+            REASON_NEXTCLOUD_ERROR_REDACTED,
+        )
+        raise WorkspaceFolderNextcloudLinkPersistenceError(
+            REASON_NEXTCLOUD_ERROR_REDACTED
+        ) from None
+
+
+def restore_link_after_rename_rollback(
+    *,
+    workspace_folder_id: str,
+    restored_nextcloud_folder_ref: str,
+    restored_nextcloud_name_hash: str,
+    expected_nextcloud_sync_state: str,
+    expected_nextcloud_folder_ref: str,
+    expected_nextcloud_name_hash: str,
+    db_conn_func: Callable[[], Any],
+    logger: Any,
+) -> Optional[dict[str, Any]]:
+    folder_id = normalize_workspace_folder_id(workspace_folder_id)
+    restored_ref = normalize_folder_ref(restored_nextcloud_folder_ref)
+    restored_hash = normalize_name_hash(restored_nextcloud_name_hash)
+    expected_state = normalize_sync_state(expected_nextcloud_sync_state)
+    expected_ref = normalize_folder_ref(expected_nextcloud_folder_ref)
+    expected_hash = normalize_name_hash(expected_nextcloud_name_hash)
+    if (
+        not folder_id
+        or not restored_ref
+        or not restored_hash
+        or expected_state not in {NEXTCLOUD_SYNC_PENDING, NEXTCLOUD_SYNC_LINKED}
+        or not expected_ref
+        or not expected_hash
+    ):
+        return None
+    try:
+        with db_conn_func() as conn:
+            with _cursor(conn) as cur:
+                cur.execute(
+                    """
+                    UPDATE workspace_folder_nextcloud_links
+                    SET nextcloud_sync_state = 'linked',
+                        nextcloud_folder_ref = %s,
+                        nextcloud_name_hash = %s,
+                        last_sync_at = now(),
+                        last_sync_reason_code = %s,
+                        last_sync_operation = 'rename',
+                        nextcloud_share_state = 'expected',
+                        updated_at = now()
+                    WHERE workspace_folder_id = %s::uuid
+                      AND nextcloud_sync_state = %s
+                      AND nextcloud_folder_ref = %s
+                      AND nextcloud_name_hash = %s
+                    RETURNING
+                        workspace_folder_id AS link_workspace_folder_id,
+                        nextcloud_sync_state AS link_nextcloud_sync_state,
+                        nextcloud_folder_ref AS link_nextcloud_folder_ref,
+                        nextcloud_name_hash AS link_nextcloud_name_hash,
+                        last_sync_at AS link_last_sync_at,
+                        last_sync_reason_code AS link_last_sync_reason_code,
+                        last_sync_operation AS link_last_sync_operation,
+                        nextcloud_share_state AS link_nextcloud_share_state,
+                        created_at AS link_created_at,
+                        updated_at AS link_updated_at
+                    """,
+                    (
+                        restored_ref,
+                        restored_hash,
+                        "workspace_folder_nextcloud_rollback_ok",
+                        folder_id,
+                        expected_state,
+                        expected_ref,
+                        expected_hash,
+                    ),
+                )
+                row = cur.fetchone()
+            conn.commit()
+        return serialize_link_row(row)
+    except Exception:
+        logger.warning(
+            "workspace_folder_nextcloud_link_rollback_restore_failed id=%s reason_code=%s",
+            folder_id,
+            REASON_NEXTCLOUD_ERROR_REDACTED,
+        )
+        raise WorkspaceFolderNextcloudLinkPersistenceError(
+            REASON_NEXTCLOUD_ERROR_REDACTED
+        ) from None
+
+
 def upsert_link(
     *,
     workspace_folder_id: str,
