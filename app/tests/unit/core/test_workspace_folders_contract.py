@@ -421,9 +421,9 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertNotIn("storage_key", encoded)
         self.assertNotIn("Authorization", encoded)
 
-    def test_workspace_folder_update_refetches_persisted_nextcloud_link(self) -> None:
+    def test_workspace_folder_update_serializes_joined_link_before_commit(self) -> None:
         folder_id = "11111111-2222-4333-8444-555555555555"
-        base_row = {
+        joined_row = {
             "id": folder_id,
             "display_name": "Projet Renomme",
             "icon_key": "spark",
@@ -432,20 +432,15 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
             "created_at": "2026-06-16T00:00:00Z",
             "updated_at": "2026-06-16T00:04:00Z",
             "deleted_at": None,
+            "link_workspace_folder_id": folder_id,
+            "link_nextcloud_sync_state": "linked",
+            "link_nextcloud_folder_ref": "workspace-folder:11111111:abc123def456",
+            "link_nextcloud_name_hash": "abc123def456",
+            "link_last_sync_at": "2026-06-16T00:03:00Z",
+            "link_last_sync_reason_code": "workspace_folder_sync_linked",
+            "link_last_sync_operation": "observe",
+            "link_nextcloud_share_state": "confirmed",
         }
-        linked_payload = workspace_folders_store.serialize_workspace_folder_row(
-            {
-                **base_row,
-                "link_workspace_folder_id": folder_id,
-                "link_nextcloud_sync_state": "linked",
-                "link_nextcloud_folder_ref": "workspace-folder:11111111:abc123def456",
-                "link_nextcloud_name_hash": "abc123def456",
-                "link_last_sync_at": "2026-06-16T00:03:00Z",
-                "link_last_sync_reason_code": "workspace_folder_sync_linked",
-                "link_last_sync_operation": "observe",
-                "link_nextcloud_share_state": "confirmed",
-            }
-        )
 
         class _UpdateCursor:
             def __enter__(self):
@@ -458,7 +453,7 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
                 return None
 
             def fetchone(self):
-                return dict(base_row)
+                return dict(joined_row)
 
         class _UpdateConn:
             def __init__(self):
@@ -481,7 +476,7 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
             with mock.patch.object(
                 workspace_folders_store,
                 "get_workspace_folder",
-                return_value=linked_payload,
+                side_effect=AssertionError("post-commit projection read is forbidden"),
             ) as refetch:
                 result = workspace_folders_store.update_workspace_folder(
                     folder_id,
@@ -493,7 +488,7 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertEqual(result["nextcloud_sync_state"], "linked")
         self.assertEqual(result["nextcloud_share_state"], "confirmed")
         self.assertEqual(result["nextcloud_reason_code"], "workspace_folder_sync_linked")
-        refetch.assert_called_once_with(folder_id, db_conn_func=mock.ANY, logger=mock.ANY)
+        refetch.assert_not_called()
         self.assertEqual(conn.commits, 1)
 
     def test_workspace_folder_nextcloud_link_upsert_fail_closed_on_persistence_error(self) -> None:
@@ -525,18 +520,8 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertNotIn("Projet Tulu", encoded_logs)
         self.assertNotIn("should not leak", encoded_logs)
 
-    def test_workspace_folder_update_fails_closed_when_refetch_fails(self) -> None:
+    def test_workspace_folder_update_rolls_back_when_projection_is_absent(self) -> None:
         folder_id = "11111111-2222-4333-8444-555555555555"
-        base_row = {
-            "id": folder_id,
-            "display_name": "Projet Renomme",
-            "icon_key": "spark",
-            "description": "UI only",
-            "sort_order": 1000,
-            "created_at": "2026-06-16T00:00:00Z",
-            "updated_at": "2026-06-16T00:04:00Z",
-            "deleted_at": None,
-        }
 
         class _UpdateCursor:
             def __enter__(self):
@@ -549,11 +534,12 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
                 return None
 
             def fetchone(self):
-                return dict(base_row)
+                return None
 
         class _UpdateConn:
             def __init__(self):
                 self.commits = 0
+                self.rollbacks = 0
 
             def __enter__(self):
                 return self
@@ -567,21 +553,29 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
             def commit(self):
                 self.commits += 1
 
+            def rollback(self):
+                self.rollbacks += 1
+
         logger = _CaptureLogger()
+        conn = _UpdateConn()
         with mock.patch.object(workspace_folders_store, "list_workspace_folders", return_value=[]):
-            with mock.patch.object(workspace_folders_store, "get_workspace_folder", return_value=None):
+            with mock.patch.object(
+                workspace_folders_store,
+                "get_workspace_folder",
+                side_effect=AssertionError("post-commit projection read is forbidden"),
+            ) as refetch:
                 result = workspace_folders_store.update_workspace_folder(
                     folder_id,
                     display_name="Projet Renomme",
-                    db_conn_func=lambda: _UpdateConn(),
+                    db_conn_func=lambda: conn,
                     logger=logger,
                 )
 
         self.assertIsNone(result)
-        encoded_logs = "\n".join(logger.lines)
-        self.assertIn("workspace_folder_update_refetch_failed", encoded_logs)
-        self.assertIn("workspace_folder_nextcloud_error_redacted", encoded_logs)
-        self.assertNotIn("local_only", encoded_logs)
+        self.assertEqual(conn.commits, 0)
+        self.assertEqual(conn.rollbacks, 1)
+        refetch.assert_not_called()
+        self.assertEqual(logger.lines, [])
 
     def test_nextcloud_first_create_persists_linked_state_after_mkcol(self) -> None:
         folder_id = "11111111-2222-4333-8444-555555555555"

@@ -427,27 +427,33 @@ def update_workspace_folder(
             with _cursor(conn) as cur:
                 cur.execute(
                     f"""
-                    UPDATE workspace_folders
-                    SET {", ".join(assignments)}
-                    WHERE id = %s::uuid
-                      AND deleted_at IS NULL
-                    RETURNING id, display_name, icon_key, description, sort_order, created_at, updated_at, deleted_at
+                    WITH updated_folder AS (
+                        UPDATE workspace_folders
+                        SET {", ".join(assignments)}
+                        WHERE id = %s::uuid
+                          AND deleted_at IS NULL
+                        RETURNING
+                            id, display_name, icon_key, description, sort_order,
+                            created_at, updated_at, deleted_at
+                    )
+                    SELECT {_workspace_folder_select_columns()}
+                    FROM updated_folder folders
+                    LEFT JOIN workspace_folder_nextcloud_links links
+                      ON links.workspace_folder_id = folders.id
                     """,
                     tuple(params),
                 )
                 row = cur.fetchone()
+                try:
+                    projection = serialize_workspace_folder_row(row)
+                except Exception:
+                    conn.rollback()
+                    raise
+                if projection is None:
+                    conn.rollback()
+                    return None
             conn.commit()
-        if row is None:
-            return None
-        refreshed = get_workspace_folder(normalized, db_conn_func=db_conn_func, logger=logger)
-        if refreshed is None:
-            logger.warning(
-                "workspace_folder_update_refetch_failed id=%s reason_code=%s",
-                normalized,
-                nextcloud_links.REASON_NEXTCLOUD_ERROR_REDACTED,
-            )
-            return None
-        return refreshed
+        return projection
     except Exception as exc:
         logger.warning("workspace_folder_update_failed id=%s err=%s", normalized, exc)
         return None

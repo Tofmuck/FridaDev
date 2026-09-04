@@ -430,6 +430,49 @@ pas commencés.
 Après commit local B, une erreur de GET ne doit pas remettre le distant en A et
 laisser les deux autorités divergentes.
 
+**Décision et clôture L5.2 :** la mutation locale est devenue auto-suffisante.
+Le `UPDATE ... RETURNING` est encapsulé dans une CTE qui joint la liaison
+Nextcloud dans la même transaction. La projection complète est sérialisée et
+validée avant `commit()` ; après retour normal du commit, elle est retournée
+directement, sans second GET.
+
+- F1 confirmée : le `RETURNING` fournissait déjà la ligne dossier mutée avant
+  commit ;
+- F2 confirmée : l'ancien chemin committait avant d'ouvrir une seconde connexion
+  de relecture ;
+- F3 confirmée : une panne de ce GET retournait le même `None` qu'un échec
+  antérieur au commit ;
+- F4 confirmée : le runtime de renommage interprétait ce `None` comme un échec
+  local et exécutait le MOVE inverse puis la restauration de la liaison ;
+- F5 confirmée et reproduite : la ligne dossier restait en B alors que la
+  liaison et la cible distante revenaient en A ;
+- F6 confirmée : la CTE transactionnelle fournit la ligne dossier et sa liaison
+  à la sérialisation avant commit ;
+- F7 confirmée : les updates locaux d'icône, description et ordre conservent la
+  liaison persistante complète et ne fabriquent pas un état `local_only` ;
+- F8 confirmée : échec d'UPDATE, projection absente/invalide ou échec de commit
+  ne produisent aucun succès et conservent la compensation distante existante ;
+- F9 confirmée : aucun schéma, migration, route, écran, retry, journal, queue ou
+  accès Nextcloud réel n'est ajouté.
+
+La preuve relationnelle hermétique traverse le store et l'orchestrateur réels
+avec un client distant stateful. Sous l'ancien code, elle observe après le
+commit B le triplet incohérent ligne B / liaison A / distant A. Le correctif
+conserve ligne B / liaison B / distant B et n'exécute aucun MOVE inverse. Les
+contre-cas couvrent les échecs d'UPDATE et de commit avant confirmation, le MOVE
+initial, l'upsert de liaison, les updates locaux liés, la projection invalide et
+le dossier supprimé. Une mutation réintroduisant le GET post-commit remet
+exactement la preuve centrale en échec ; la restauration du correctif la rend
+verte.
+
+Ce correctif ne constitue pas une transaction distribuée avec Nextcloud. Une
+perte de connexion pendant `COMMIT` laisse une ambiguïté incompressible entre
+commit refusé et commit accepté dont l'accusé de réception est perdu. La lever
+exigerait un état durable ou un protocole explicitement hors du périmètre L5.2.
+
+**Fermeture :** F14a est corrigé et prouvé. L5.2 est fermé. L5.3 n'est pas
+commencé.
+
 ### L5.3 — Image supprimée : terminer le tombstone après DELETE réussi
 
 **Finding : F19b.** Après DELETE distant confirmé puis échec DB, un retry doit

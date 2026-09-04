@@ -394,10 +394,20 @@ fail-closed: rollback si possible, sinon erreur explicite content-free; jamais
 un succes silencieux.
 
 Invariant post-correctif Lot 8A.2: une erreur redacted de persistance ne doit
-pas chainer de cause brute exploitable par traceback. Si le refetch
-post-update local ne peut pas reconstruire la projection persistante, l'update
-retourne une erreur content-free au lieu d'exposer un fallback `local_only`
-potentiellement faux.
+pas chainer de cause brute exploitable par traceback. Historiquement, une
+relecture post-update reconstruisait la projection persistante et refusait le
+fallback `local_only` potentiellement faux.
+
+Invariant post-correctif L5.2: cette relecture post-commit est supprimee. La
+mutation locale utilise un `UPDATE ... RETURNING` dans une CTE, joint dans la
+meme transaction la ligne `workspace_folder_nextcloud_links`, puis serialise
+et valide la projection complete avant `commit()`. Une ligne ou projection
+absente/invalide provoque le rollback local. Apres retour normal de `commit()`,
+la projection deja construite est retournee sans nouveau GET: une panne de
+lecture ne peut donc plus transformer le commit B en echec ni declencher le
+`MOVE` inverse. Les updates locaux d'icone, description ou ordre conservent la
+liaison persistante complete; l'absence reelle de liaison reste seule projetee
+en `local_only`.
 
 Compatibilite: le payload fake/local Lot 3 peut encore exposer des etats
 historiques comme `pending` ou `error`. Le Lot 8B devra mapper ou migrer ces
@@ -428,9 +438,10 @@ Decision Lot 8B:
   reponse doit signaler `local_compensation_status=failed` et
   `workspace_folder_local_compensation_failed` sans pretendre que la divergence
   locale est resolue;
-- compensation renommage: si la persistance locale echoue apres `MOVE`,
-  rollback `MOVE` strict vers l'ancien nom et restauration de la liaison si
-  possible;
+- compensation renommage: si la persistance locale echoue avant un commit
+  confirme apres `MOVE`, rollback `MOVE` strict vers l'ancien nom et
+  restauration de la liaison si possible; apres retour normal du commit local,
+  aucune indisponibilite de projection ne peut lancer cette compensation;
 - client/secret Nextcloud indisponible: retour runtime content-free
   `workspace_folder_nextcloud_unavailable`, sans traceback utilisateur ni chemin
   secret brut;
@@ -438,6 +449,13 @@ Decision Lot 8B:
   suppression recursive du dossier Nextcloud reel;
 - `nextcloud_share_state` reste `expected` car le Lot 8B ne prouve pas le login
   DAV `tof`; le partage global a ete prouve par Sauron en Lot 2.
+
+Limite transactionnelle L5.2: ce contrat n'est pas une transaction distribuee
+avec Nextcloud. Une perte de connexion pendant `COMMIT` peut rendre son issue
+indeterminable pour le client; sans journal durable ni protocole en deux phases,
+le runtime ne peut pas distinguer avec certitude un commit refuse d'un commit
+accepte dont l'accuse de reception a ete perdu. L5.2 n'ajoute volontairement ni
+retry, ni journal, ni reconciliation automatique pour cette fenetre de crash.
 
 Reason codes runtime Lot 8B:
 
