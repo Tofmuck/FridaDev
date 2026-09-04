@@ -9,6 +9,7 @@ from urllib.request import Request, urlopen
 
 from . import workspace_folder_exports
 from . import workspace_folder_nextcloud_client as folder_client
+from .workspace_nextcloud_etag import validated_strong_etag
 
 
 EXPORTS_SUBFOLDER = "Exports"
@@ -107,7 +108,7 @@ class NextcloudExportClient:
                 True,
                 workspace_folder_exports.REASON_STORE_OK,
                 status,
-                etag_value=_safe_etag(etag),
+                etag_value=validated_strong_etag(etag),
             )
         if status in {200, 204}:
             raise NextcloudExportClientError(
@@ -176,8 +177,8 @@ class NextcloudExportClient:
         *,
         etag_value: str,
     ) -> NextcloudExportResponse:
-        etag = _safe_etag(etag_value)
-        if not etag or etag != str(etag_value or "").strip():
+        etag = validated_strong_etag(etag_value)
+        if not etag:
             raise NextcloudExportClientError(
                 workspace_folder_exports.REASON_REMOTE_COMPENSATION_OWNERSHIP_UNVERIFIED
             )
@@ -362,8 +363,3 @@ def _safe_media_type(value: Any) -> str:
     if "/" in text and all(ch.isalnum() or ch in "!#$&^_.+-/;= " for ch in text):
         return text[:120]
     return "application/octet-stream"
-
-
-def _safe_etag(value: Any) -> str:
-    text = str(value or "").strip()
-    return text if text and len(text) <= 512 else ""

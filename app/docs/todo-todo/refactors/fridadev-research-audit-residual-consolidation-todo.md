@@ -313,6 +313,20 @@ remplaçant temporairement le DELETE conditionnel Documents par l'ancien DELETE
 générique remet la preuve V2 en échec ; la restauration exacte la rend de
 nouveau verte.
 
+**Correction résiduelle du 4 septembre 2026 :** la garde initiale bornait la
+valeur à 512 caractères sans valider la grammaire de l'entity-tag. Elle laissait
+donc `*`, un ETag faible, une liste ou une valeur non citée atteindre
+`If-Match`, ce qui ne prouvait pas la propriété de la version créée. Les quatre
+clients exigent désormais positivement un unique ETag fort : guillemets doubles
+exacts, seuls caractères `etagc` HTTP autorisés, longueur totale maximale 512,
+valeur conservée octet pour octet. Toute autre forme devient
+`ownership_unverified` avant transport, sans fallback vers le DELETE générique.
+Les classifications `404`, `412` et transport, ainsi que les suppressions
+utilisateur séparées, restent inchangées. La matrice dédiée traverse les quatre
+clients réels avec transport synthétique ; une mutation permissive laissant
+passer `*` remet la preuve de refus en échec et la restauration exacte la rend
+verte.
+
 **Fermeture :** F08 est corrigé et prouvé. L4 n'est pas commencé.
 
 ## 7. L4 — Conserver les analytics dérivées si leur source est illisible

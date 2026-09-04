@@ -414,8 +414,10 @@ Regles runtime:
   `workspace_file`;
 - si l'ecriture Nextcloud reussit mais que la persistence locale ou la
   persistence du lien echoue, le runtime ne tente le `DELETE` du fichier cree
-  que sous `If-Match` avec l'ETag exact renvoye par ce PUT ; sans ETag ou si la
-  precondition est refusee, la cible est conservee et le reliquat est signale ;
+  que sous `If-Match` avec l'unique ETag fort, syntaxiquement valide et conserve
+  exactement, renvoye par ce PUT ; wildcard `*`, ETag faible, liste, valeur non
+  citee, malformee ou hors borne valent propriete non prouvee, sans DELETE ; si
+  la precondition est refusee, la cible est conservee et le reliquat est signale ;
   l'artefact local cree dans le meme flux est nettoye si necessaire;
 - la compensation ne touche jamais un fichier historique ou utilisateur
   preexistant;
@@ -599,9 +601,10 @@ Regles runtime:
   est persiste en `linked`, operation `reconcile`, reason code
   `folder_document_existing_copy_ok`;
 - si la persistance du lien echoue apres creation distante, Frida tente le
-  DELETE uniquement sous `If-Match` avec l'ETag de cette creation ; une version
-  non prouvee ou une precondition refusee reste distante et visible comme
-  reliquat content-free;
+  DELETE uniquement sous `If-Match` avec l'unique ETag fort, syntaxiquement
+  valide et conserve exactement, de cette creation ; toute autre forme vaut
+  propriete non prouvee et reste, comme une precondition refusee, distante et
+  visible comme reliquat content-free;
 - la source locale n'est jamais supprimee par Lot 7;
 - les preuves Lot 7 restent content-free: compteurs, refs/hashs courts, status
   classes, reason codes et flags seulement.

@@ -603,9 +603,11 @@ Mise en oeuvre Lot 5:
 - les champs locaux persistants sont des metadonnees, refs content-free,
   tailles, hash/ref, ETag interne optionnel et reason codes;
 - si la persistance locale echoue apres creation distante, le runtime ne tente
-  le DELETE que sous `If-Match` avec l'ETag exact renvoye par ce PUT ; cible
-  absente, precondition refusee, propriete non prouvee et transport en echec
-  restent des etats content-free distincts ;
+  le DELETE que sous `If-Match` avec l'unique ETag fort, syntaxiquement valide
+  et conserve exactement, renvoye par ce PUT ; wildcard `*`, ETag faible,
+  liste, valeur non citee, malformee ou hors borne valent propriete non prouvee
+  sans DELETE ; cible absente, precondition refusee, propriete non prouvee et
+  transport en echec restent des etats content-free distincts ;
 - aucune divergence local/distant n'est masquee comme succes.
 
 ## 8. API et surfaces UI autorisees

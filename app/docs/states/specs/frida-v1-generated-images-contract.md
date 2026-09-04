@@ -357,10 +357,12 @@ Ecriture distante:
 
 Si l'ecriture distante reussit puis la persistance locale echoue:
 
-- tenter la suppression exacte uniquement sous `If-Match` avec l'ETag renvoye
-  par cette creation;
-- sans ETag, sur refus de precondition ou resultat ambigu, conserver la cible
-  et signaler le reliquat content-free;
+- tenter la suppression exacte uniquement sous `If-Match` avec l'unique ETag
+  fort, syntaxiquement valide et conserve exactement, renvoye par cette
+  creation;
+- wildcard `*`, ETag faible, liste, valeur non citee, malformee ou hors borne
+  valent propriete non prouvee sans DELETE; sans ETag, sur refus de precondition
+  ou resultat ambigu, conserver la cible et signaler le reliquat content-free;
 - ne jamais supprimer large ni retenter par un DELETE inconditionnel;
 - si compensation distante reussit, retourner un echec content-free explicite;
 - si compensation distante echoue, retourner un echec partiel content-free;

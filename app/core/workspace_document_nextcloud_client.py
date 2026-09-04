@@ -9,6 +9,7 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 from . import workspace_folder_nextcloud_client as folder_client
+from .workspace_nextcloud_etag import validated_strong_etag
 
 
 DOCUMENTS_SUBFOLDER = "Documents"
@@ -127,7 +128,7 @@ class NextcloudDocumentClient:
                 True,
                 REASON_UPLOAD_OK,
                 status,
-                etag_value=_safe_etag(etag),
+                etag_value=validated_strong_etag(etag),
             )
         if status in {200, 204}:
             raise NextcloudDocumentClientError(REASON_NAME_CONFLICT, http_status=status)
@@ -168,8 +169,8 @@ class NextcloudDocumentClient:
         *,
         etag_value: str,
     ) -> NextcloudDocumentResponse:
-        etag = _safe_etag(etag_value)
-        if not etag or etag != str(etag_value or "").strip():
+        etag = validated_strong_etag(etag_value)
+        if not etag:
             raise NextcloudDocumentClientError(
                 REASON_REMOTE_COMPENSATION_OWNERSHIP_UNVERIFIED
             )
@@ -289,8 +290,3 @@ def _safe_media_type(value: Any) -> str:
         return text[:120]
     guessed = mimetypes.types_map.get(text)
     return guessed or "application/octet-stream"
-
-
-def _safe_etag(value: Any) -> str:
-    text = str(value or "").strip()
-    return text if text and len(text) <= 512 else ""

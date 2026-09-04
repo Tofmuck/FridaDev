@@ -9,6 +9,7 @@ from urllib.request import Request, urlopen
 
 from . import workspace_folder_nextcloud_client as folder_client
 from . import workspace_folder_notes
+from .workspace_nextcloud_etag import validated_strong_etag
 
 
 NOTES_SUBFOLDER = "Notes"
@@ -99,7 +100,7 @@ class NextcloudNoteClient:
                 True,
                 workspace_folder_notes.REASON_CREATE_OK,
                 status,
-                etag_value=_safe_etag(etag),
+                etag_value=validated_strong_etag(etag),
             )
         if status in {200, 204}:
             raise NextcloudNoteClientError(
@@ -207,8 +208,8 @@ class NextcloudNoteClient:
         *,
         etag_value: str,
     ) -> NextcloudNoteResponse:
-        etag = _safe_etag(etag_value)
-        if not etag or etag != str(etag_value or "").strip():
+        etag = validated_strong_etag(etag_value)
+        if not etag:
             raise NextcloudNoteClientError(
                 workspace_folder_notes.REASON_REMOTE_COMPENSATION_OWNERSHIP_UNVERIFIED
             )
