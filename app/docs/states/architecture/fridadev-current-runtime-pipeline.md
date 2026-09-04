@@ -2,7 +2,7 @@
 
 Statut : **référence d'architecture active**
 
-Dernière revalidation structurelle : **19 août 2026**
+Dernière revalidation structurelle : **4 septembre 2026**
 
 Portée : pipeline chat, composition du payload principal, final locks,
 persistance canonique et surfaces qui en dépendent.
@@ -298,6 +298,19 @@ deux terminaux.
 - un échec de persistance finale produit `conversation_persist_failed` sans
   faux `updated_at`, retry caché ou second assistant.
 
+Dans la transaction du writer, l'upsert catalogue sérialise la conversation
+par son verrou de ligne, puis les messages canoniques sont relus par `seq` sous
+verrou. Un snapshot est accepté seulement si le canon est son préfixe exact par
+rôle, contenu et timestamp. Les enrichissements monotones de `summarized_by`,
+`embedded` et `meta` sont conservés ; une suppression, une divergence de
+contenu/ordre ou une metadata incompatible déclenche le rollback du catalogue avec
+`conversation_snapshot_conflict`. Aucune mutation catalog/messages n'est alors
+committée. Le writer ne fusionne jamais deux branches dont l'ordre relatif
+n'est pas prouvé.
+
+Le renommage d'une conversation est une mutation ciblée du catalogue : il ne
+charge ni ne réécrit les messages.
+
 La sauvegarde canonique positive est la barrière commune aux dérivations : log
 `AssistantText`, traces Memory, écritures Identity, réactivations et projections.
 Chaque effet est tenté une fois et isolé. Sa panne après sauvegarde ne révoque
@@ -314,6 +327,10 @@ Le frontend n'infère la persistance que depuis un `updated_at` terminal prouvé
 En son absence, il réhydrate la conversation au lieu de prétendre qu'un texte
 partiel est canonique. Les documents actifs et artefacts workspace sont relus
 depuis leurs états serveur propres.
+
+Le navigateur n'autorise qu'une soumission chat en vol. Un second submit est
+ignoré avant lecture ou effacement du brouillon ; la fin nominale ou en erreur
+libère le garde pour une nouvelle soumission.
 
 Les surfaces opérateur lisent le runtime et ses dérivations ; elles ne forment
 pas des pipelines concurrents :

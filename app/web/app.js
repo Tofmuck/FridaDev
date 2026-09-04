@@ -490,6 +490,7 @@
   // ---- Envoi
   ask.addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (chatRequestInFlight) return;
     const text = (message.value || "").trim();
     if (!text) return;
     const inputMode = currentDraftInputMode;

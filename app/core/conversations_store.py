@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,6 +15,7 @@ from psycopg.types.json import Json
 TITLE_MAX_CHARS = 120
 PREVIEW_MAX_CHARS = 180
 DEFAULT_TITLE = "Nouvelle conversation"
+CONVERSATION_SNAPSHOT_CONFLICT_REASON = "conversation_snapshot_conflict"
 
 
 @dataclass(frozen=True)
@@ -37,6 +39,10 @@ def conversation_save_failure_reason(*, catalog_saved: bool, messages_saved: boo
 
 
 class InvalidTimestampError(ValueError):
+    pass
+
+
+class ConversationSnapshotConflictError(ValueError):
     pass
 
 
@@ -156,6 +162,76 @@ def conversation_message_insert_rows(
             )
         )
     return rows
+
+
+def _merge_canonical_json_value(canonical: Any, incoming: Any) -> Any:
+    if isinstance(canonical, Mapping) and isinstance(incoming, Mapping):
+        merged = dict(canonical)
+        for key, incoming_value in incoming.items():
+            if key in merged:
+                merged[key] = _merge_canonical_json_value(merged[key], incoming_value)
+            else:
+                merged[key] = incoming_value
+        return merged
+    if canonical == incoming:
+        return canonical
+    raise ConversationSnapshotConflictError(CONVERSATION_SNAPSHOT_CONFLICT_REASON)
+
+
+def _merge_canonical_message_metadata(
+    canonical: dict[str, Any],
+    incoming: dict[str, Any],
+) -> dict[str, Any]:
+    merged = dict(incoming)
+
+    canonical_summary = str(canonical.get("summarized_by") or "").strip()
+    incoming_summary = str(incoming.get("summarized_by") or "").strip()
+    if canonical_summary and incoming_summary and canonical_summary != incoming_summary:
+        raise ConversationSnapshotConflictError(CONVERSATION_SNAPSHOT_CONFLICT_REASON)
+    summary = canonical_summary or incoming_summary
+    if summary:
+        merged["summarized_by"] = summary
+    else:
+        merged.pop("summarized_by", None)
+
+    merged["embedded"] = bool(canonical.get("embedded")) or bool(incoming.get("embedded"))
+
+    canonical_meta = canonical.get("meta")
+    incoming_meta = incoming.get("meta")
+    if canonical_meta is not None and incoming_meta is not None:
+        merged["meta"] = _merge_canonical_json_value(canonical_meta, incoming_meta)
+    elif canonical_meta is not None:
+        merged["meta"] = canonical_meta
+    elif incoming_meta is None:
+        merged.pop("meta", None)
+
+    return merged
+
+
+def reconcile_conversation_snapshot(
+    canonical_messages: list[dict[str, Any]],
+    incoming_messages: list[dict[str, Any]],
+    *,
+    parse_iso_to_dt_func: Callable[[str], datetime],
+) -> list[dict[str, Any]]:
+    if len(incoming_messages) < len(canonical_messages):
+        raise ConversationSnapshotConflictError(CONVERSATION_SNAPSHOT_CONFLICT_REASON)
+
+    reconciled: list[dict[str, Any]] = []
+    for index, canonical in enumerate(canonical_messages):
+        incoming = incoming_messages[index]
+        same_identity = (
+            str(canonical.get("role") or "") == str(incoming.get("role") or "")
+            and str(canonical.get("content") or "") == str(incoming.get("content") or "")
+            and parse_iso_to_dt_func(str(canonical.get("timestamp") or ""))
+            == parse_iso_to_dt_func(str(incoming.get("timestamp") or ""))
+        )
+        if not same_identity:
+            raise ConversationSnapshotConflictError(CONVERSATION_SNAPSHOT_CONFLICT_REASON)
+        reconciled.append(_merge_canonical_message_metadata(canonical, incoming))
+
+    reconciled.extend(dict(message) for message in incoming_messages[len(canonical_messages) :])
+    return reconciled
 
 
 def find_system_message(messages: Iterable[dict[str, Any]]) -> Optional[dict[str, Any]]:
@@ -606,6 +682,25 @@ def save_conversation_catalog_and_messages_atomic(
                 if cur.fetchone() is None:
                     raise RuntimeError("catalog_write_returned_no_row")
 
+                stage = "precondition"
+                cur.execute(
+                    """
+                    SELECT role, content, timestamp, summarized_by, embedded, meta
+                    FROM conversation_messages
+                    WHERE conversation_id = %s::uuid
+                    ORDER BY seq ASC
+                    FOR UPDATE
+                    """,
+                    (conv_id,),
+                )
+                canonical_messages = list(cur.fetchall())
+                messages = reconcile_conversation_snapshot(
+                    canonical_messages,
+                    messages,
+                    parse_iso_to_dt_func=parse_iso_to_dt_func,
+                )
+                conversation["messages"] = messages
+
             stage = "messages"
             with conn.cursor() as cur:
                 cur.execute(
@@ -635,6 +730,13 @@ def save_conversation_catalog_and_messages_atomic(
                     )
             conn.commit()
         return True, True, None
+    except ConversationSnapshotConflictError:
+        logger.warning(
+            "conv_save_atomic_failed id=%s stage=precondition reason=%s",
+            conv_id,
+            CONVERSATION_SNAPSHOT_CONFLICT_REASON,
+        )
+        return False, False, CONVERSATION_SNAPSHOT_CONFLICT_REASON
     except Exception as exc:
         reason = "messages_write_failed" if stage == "messages" else "catalog_write_failed"
         logger.warning(
@@ -894,14 +996,6 @@ def rename_conversation(
     safe = safe_title_func(title, "")
     if not safe:
         return None
-
-    existing = get_conversation_summary_func(conv_id)
-    preserve_deleted = bool(existing and existing.get("deleted_at"))
-
-    conversation = read_conversation_func(conv_id, "")
-    if conversation:
-        conversation["title"] = safe
-        save_conversation_func(conversation, now_iso_func(), preserve_deleted)
 
     try:
         with db_conn_func() as conn:

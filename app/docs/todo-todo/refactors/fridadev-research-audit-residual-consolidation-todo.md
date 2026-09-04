@@ -2,7 +2,7 @@
 
 Date de cadrage : 4 septembre 2026.
 
-**Statut : roadmap ouverte ; L1 fermé ; L2 à L7 et Z non commencés.**
+**Statut : roadmap ouverte ; L1 et L2 fermés ; L3 à L7 et Z non commencés.**
 
 ## 1. But, source et règle de vérité
 
@@ -69,7 +69,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 | Ordre | Lot | Objet | Findings | Réflexion conseillée | Statut |
 | --- | --- | --- | --- | --- | --- |
 | 1 | L1 | Frontière réseau du clone public | F23 | high | fermé — F23 corrigé |
-| 2 | L2 | Intégrité du canon conversationnel | F09 | xhigh | non commencé |
+| 2 | L2 | Intégrité du canon conversationnel | F09 | xhigh | fermé — F09 corrigé |
 | 3 | L3 | Compensation Nextcloud possédée | F08 | xhigh | non commencé |
 | 4 | L4 | Conservation de la projection analytics | F21 | high | non commencé |
 | 5 | L5 | Atomicité des écritures Workspace | F13b, F14a, F19b | xhigh par sous-lot | non commencé |
@@ -79,7 +79,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 
 - [x] Source, périmètre, ordre et règles de preuve consignés.
 - [x] L1 fermé.
-- [ ] L2 fermé.
+- [x] L2 fermé.
 - [ ] L3 fermé.
 - [ ] L4 fermé.
 - [ ] L5.1, L5.2 et L5.3 fermés.
@@ -140,7 +140,8 @@ livraison complètent le lot avant push.
 
 **Fermeture :** F23 est corrigé dans le Compose du clone public ; configuration
 rendue et documentation concordent. Aucun audit réseau de l'OVH, déploiement,
-rebuild ou restart n'est revendiqué. L2 n'est pas commencé.
+rebuild ou restart n'est revendiqué. L2 n'était pas commencé lors de cette
+fermeture.
 
 ## 5. L2 — Empêcher un snapshot ancien d'écraser un dialogue récent
 
@@ -162,6 +163,63 @@ générique, système multi-utilisateur ou nouvelle API.
 **Preuve attendue :** une écriture plus ancienne ne retire jamais un tour déjà
 committé ; le renommage ne réécrit pas le dialogue ; l'ordre légitime et les
 erreurs de sauvegarde restent visibles.
+
+**Revalidation au HEAD `fe7cfe74e11de52e0c1de99035c7f3ae957c4df3` :**
+
+- F1 confirmée : le writer atomique supprimait toutes les lignes puis
+  réinsérait le snapshot reçu ;
+- F2 confirmée : `GREATEST(updated_at, ...)` protégeait seulement la date du
+  catalogue, pas le suffixe de messages ;
+- F3 confirmée : un snapshot ancien et une branche divergente de même taille
+  étaient tous deux acceptés et remplaçaient le canon ;
+- F4 et F5 confirmées : le renommage chargeait résumé et messages, appelait la
+  sauvegarde complète, puis exécutait tout de même son `UPDATE` de titre ;
+- F6 confirmée : `chatRequestInFlight` existait, mais aucun garde ne précédait
+  la lecture, l'effacement du brouillon et l'appel réseau ;
+- F7 confirmée : la réinsertion naïve pouvait perdre ou ressusciter
+  `summarized_by`, `embedded` et `meta`.
+
+**Décision et architecture :** il existe un plan plus simple et plus sûr que
+du versionnage ou une fusion de branches : conserver la transaction existante
+et lui ajouter une précondition canonique. L'upsert du catalogue sérialise la
+conversation par le verrou de ligne transactionnel, puis le writer lit les
+messages par `seq` sous verrou et n'accepte que le même ordre exact ou une
+extension dont le canon est un préfixe prouvé. Rôle, contenu et timestamp sont
+comparés à chaque position ; aucun ordre n'est inféré des timestamps ou du seul
+compteur. Les marqueurs monotones sont conservés ou enrichis :
+`summarized_by` ne peut pas changer d'identité, `embedded` ne revient pas à
+`false`, et `meta` accepte seulement des ajouts récursifs non conflictuels. Un
+snapshot plus court, divergent ou porteur d'une metadata incompatible provoque
+le rollback du catalogue et est refusé avec le reason code fermé
+`conversation_snapshot_conflict`. L'écriture catalog/messages reste atomique :
+aucune mutation du catalogue n'est committée quand les messages sont refusés.
+
+Le renommage conserve uniquement son `UPDATE conversations SET title` : aucun
+chargement ou writer de messages, et les dates de création, soft delete,
+dossier workspace et autres metadata restent ceux de la ligne. Le submit
+navigateur refuse immédiatement un second événement pendant le premier flux,
+avant de lire ou vider le brouillon ; le `finally` existant libère le garde sur
+succès comme sur erreur.
+
+**Preuves rouges puis vertes :** une DB factice transactionnelle conserve les
+lignes réellement committées et prouve R1 (snapshot ancien), R2 (branches de
+même longueur), R3 (renommage ciblé) et les contre-cas metadata. Les parcours
+Chromium prouvent R4 sur terminal nominal et terminal d'erreur : un seul appel
+réseau, second brouillon intact, aucune bulle fantôme, reprise possible après
+libération du garde. Avant correction, les quatre familles échouaient pour les
+causes attendues. Après correction passent les `16` tests du store, `50` tests
+chat/session/routes ciblés et `25` tests navigateur/dictée ciblés. Une mutation
+de sensibilité rétablissant temporairement le remplacement destructif remet R1
+en échec ; le fichier restauré retrouve exactement son empreinte préalable.
+
+**Limites :** aucune fusion de branches divergentes n'est inventée ; le client
+reçoit l'erreur de persistance publique existante et le reason code précis
+reste observable côté serveur. Aucun schéma, migration, verrou distribué,
+queue, nouvelle API ou mécanisme multi-utilisateur n'est ajouté. Les preuves
+sont hermétiques, sans provider, DB opérateur ni dialogue réel. F10, F17 et les
+findings suivants restent hors lot.
+
+**Fermeture :** F09 est corrigé et prouvé. L3 n'est pas commencé.
 
 ## 6. L3 — Ne compenser que la version Nextcloud encore possédée
 

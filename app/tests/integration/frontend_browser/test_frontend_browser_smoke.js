@@ -12,7 +12,7 @@ const {
 
 const STREAM_CONTROL_PREFIX = '\x1e';
 
-function chatMockScript({ streamMode, imageMode = 'success' }) {
+function chatMockScript({ streamMode, imageMode = 'success', chatDelayMs = 0 }) {
   const nominalTerminal = `${STREAM_CONTROL_PREFIX}${JSON.stringify({
     kind: 'frida-stream-control',
     event: 'done',
@@ -39,7 +39,10 @@ function chatMockScript({ streamMode, imageMode = 'success' }) {
       const encoder = new TextEncoder();
       const state = {
         streamMode: ${JSON.stringify(streamMode)},
+        chatDelayMs: ${JSON.stringify(chatDelayMs)},
         chatSubmitted: false,
+        chatRequests: 0,
+        chatMessages: [],
         updatedAt: "2026-05-03T09:00:00Z",
         lastUserMessage: "",
         clipboardWrites: [],
@@ -172,11 +175,16 @@ function chatMockScript({ streamMode, imageMode = 'success' }) {
         }
 
         if (url.pathname === "/api/chat" && method === "POST") {
+          state.chatRequests += 1;
           state.chatSubmitted = true;
           try {
             state.lastUserMessage = String(JSON.parse(init.body || "{}").message || "");
           } catch {
             state.lastUserMessage = "";
+          }
+          state.chatMessages.push(state.lastUserMessage);
+          if (state.chatDelayMs > 0) {
+            await new Promise((resolve) => setTimeout(resolve, state.chatDelayMs));
           }
           if (state.streamMode !== "error") {
             state.updatedAt = "2026-05-03T10:00:00Z";
@@ -389,6 +397,47 @@ test('chat stream nominal handles done terminal, assistant bubble, timestamp and
   });
 });
 
+test('chat submit keeps the second draft while one request is in flight and accepts it after completion', async () => {
+  await openBrowserPage({ mockScript: chatMockScript({ streamMode: 'done', chatDelayMs: 120 }) }, async (page) => {
+    await page.waitForSelector('#message:not([disabled])');
+    await page.fill('#message', 'Premier envoi');
+    await page.click('#ask button[type="submit"]');
+    await page.waitForFunction(() => window.__fridaBrowserState.chatRequests === 1);
+
+    await page.fill('#message', 'Brouillon conservé');
+    await page.click('#ask button[type="submit"]');
+    await page.waitForTimeout(30);
+
+    let state = await page.evaluate(() => ({
+      chatRequests: window.__fridaBrowserState.chatRequests,
+      chatMessages: [...window.__fridaBrowserState.chatMessages],
+    }));
+    assert.equal(state.chatRequests, 1, 'a concurrent submit must not start a second chat request');
+    assert.deepEqual(state.chatMessages, ['Premier envoi']);
+    assert.equal(await page.locator('#message').inputValue(), 'Brouillon conservé');
+    assert.deepEqual(
+      await page.locator('.msg-wrapper.me .msg').evaluateAll((nodes) => nodes.map((node) => node.textContent.trim())),
+      ['Premier envoi'],
+    );
+
+    await page.waitForFunction(() => window.__fridaBrowserState.conversationFetches >= 2);
+    await page.click('#ask button[type="submit"]');
+    await page.waitForFunction(() => window.__fridaBrowserState.chatRequests === 2);
+
+    state = await page.evaluate(() => ({
+      chatRequests: window.__fridaBrowserState.chatRequests,
+      chatMessages: [...window.__fridaBrowserState.chatMessages],
+    }));
+    assert.equal(state.chatRequests, 2, 'the in-flight guard must be released after the first terminal');
+    assert.deepEqual(state.chatMessages, ['Premier envoi', 'Brouillon conservé']);
+    assert.equal(await page.locator('#message').inputValue(), '');
+    assert.deepEqual(
+      await page.locator('.msg-wrapper.me .msg').evaluateAll((nodes) => nodes.map((node) => node.textContent.trim())),
+      ['Premier envoi', 'Brouillon conservé'],
+    );
+  });
+});
+
 test('chat composer keeps desktop textarea and action row from overlapping controls', async () => {
   await openBrowserPage({
     mockScript: chatMockScript({ streamMode: 'done' }),
@@ -518,10 +567,21 @@ test('chat reasoning shortcut stays compact on desktop and mobile', async () => 
 });
 
 test('chat stream error without updated_at rehydrates and avoids canonical optimistic assistant', async () => {
-  await openBrowserPage({ mockScript: chatMockScript({ streamMode: 'error' }) }, async (page) => {
+  await openBrowserPage({ mockScript: chatMockScript({ streamMode: 'error', chatDelayMs: 120 }) }, async (page) => {
     await page.waitForSelector('#message:not([disabled])');
     await page.fill('#message', 'Bonjour erreur');
     await page.click('#ask button[type="submit"]');
+    await page.waitForFunction(() => window.__fridaBrowserState.chatRequests === 1);
+
+    await page.fill('#message', 'Reprise après erreur');
+    await page.click('#ask button[type="submit"]');
+    await page.waitForTimeout(30);
+    assert.equal(
+      await page.evaluate(() => window.__fridaBrowserState.chatRequests),
+      1,
+      'the in-flight guard must also reject a concurrent submit on an error path',
+    );
+    assert.equal(await page.locator('#message').inputValue(), 'Reprise après erreur');
 
     await page.waitForFunction(() =>
       Array.from(document.querySelectorAll('.msg-wrapper:not(.me) .msg-stream-status'))
@@ -542,6 +602,15 @@ test('chat stream error without updated_at rehydrates and avoids canonical optim
     );
     assert.ok(fetchCalls.filter((call) => call.method === 'GET' && call.path === '/api/conversations').length >= 2);
     assert.equal(visibleAssistantTexts.some((text) => text.includes('Réponse partielle non persistée')), false);
+
+    await page.click('#ask button[type="submit"]');
+    await page.waitForFunction(() => window.__fridaBrowserState.chatRequests === 2);
+    await page.waitForFunction(() => window.__fridaBrowserState.conversationFetches >= 3);
+    assert.deepEqual(
+      await page.evaluate(() => window.__fridaBrowserState.chatMessages),
+      ['Bonjour erreur', 'Reprise après erreur'],
+      'the guard must be released after the error terminal',
+    );
   });
 });
 

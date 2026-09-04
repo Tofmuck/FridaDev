@@ -214,6 +214,11 @@ La persistance canonique se fait en amont dans `chat_llm_flow.py`, puis le wrapp
 
 Le frontend navigateur DOIT:
 - appeler `/api/chat` avec `stream: true`;
+- n'avoir qu'une soumission chat en vol; un second submit pendant ce flux ne
+  doit ni lancer un appel réseau, ni effacer le brouillon, ni ajouter un message
+  optimiste;
+- libérer cette garde après tout chemin terminal, succès ou erreur, afin de
+  permettre une reprise de saisie et une nouvelle soumission;
 - lire la reponse `text/plain` comme un `ReadableStream` UTF-8;
 - parser le terminal via `createStreamControlParser()`;
 - rendre les chunks `content` sans jamais afficher le terminal de controle;
