@@ -283,6 +283,7 @@ def _copy_existing_file(
             client,
             target_folder_name=target_folder_name,
             target_name=target_name,
+            etag_value=put_result.etag_value,
         )
         event = _copy_event(
             folder_ref,
@@ -356,20 +357,49 @@ def _persist_link(
     }
 
 
-def _rollback_remote_created(client: Any, *, target_folder_name: str, target_name: str) -> dict[str, Any]:
-    try:
-        result = client.delete_document(target_folder_name, target_name, missing_ok=True)
-        return {
-            "ok": True,
-            "reason_code": document_client.REASON_REMOTE_COMPENSATION_OK,
-            "http_status_class": result.status_class,
-        }
-    except document_client.NextcloudDocumentClientError as exc:
-        return {
-            "ok": False,
-            "reason_code": document_client.REASON_REMOTE_COMPENSATION_FAILED,
-            "http_status_class": exc.status_class,
-        }
+def _rollback_remote_created(
+    client: Any,
+    *,
+    target_folder_name: str,
+    target_name: str,
+    etag_value: str,
+) -> dict[str, Any]:
+    if not str(etag_value or "").strip():
+        reason_code = document_client.REASON_REMOTE_COMPENSATION_OWNERSHIP_UNVERIFIED
+        http_status_class = "none"
+        ok = False
+    else:
+        try:
+            result = client.delete_created_document_if_match(
+                target_folder_name,
+                target_name,
+                etag_value=etag_value,
+            )
+            reason_code = result.reason_code
+            http_status_class = result.status_class
+            ok = reason_code in {
+                document_client.REASON_REMOTE_COMPENSATION_OK,
+                document_client.REASON_REMOTE_COMPENSATION_MISSING,
+            }
+        except document_client.NextcloudDocumentClientError as exc:
+            reason_code = (
+                exc.reason_code
+                if exc.reason_code
+                in {
+                    document_client.REASON_REMOTE_COMPENSATION_PRECONDITION_FAILED,
+                    document_client.REASON_REMOTE_COMPENSATION_OWNERSHIP_UNVERIFIED,
+                    document_client.REASON_REMOTE_COMPENSATION_FAILED,
+                }
+                else document_client.REASON_REMOTE_COMPENSATION_FAILED
+            )
+            http_status_class = exc.status_class
+            ok = False
+    return {
+        "ok": ok,
+        "reason_code": reason_code,
+        "http_status_class": http_status_class,
+        "state": document_runtime._remote_compensation_state(reason_code),
+    }
 
 
 def _get_link(workspace_files_module: Any, file_id: str) -> dict[str, Any]:

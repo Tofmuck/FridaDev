@@ -200,6 +200,51 @@ class NextcloudNoteClient:
             http_status=status,
         )
 
+    def delete_created_note_if_match(
+        self,
+        folder_name: str,
+        note_name: str,
+        *,
+        etag_value: str,
+    ) -> NextcloudNoteResponse:
+        etag = _safe_etag(etag_value)
+        if not etag or etag != str(etag_value or "").strip():
+            raise NextcloudNoteClientError(
+                workspace_folder_notes.REASON_REMOTE_COMPENSATION_OWNERSHIP_UNVERIFIED
+            )
+        try:
+            status, _response_etag = self._request_status(
+                "DELETE",
+                self._url(folder_name, NOTES_SUBFOLDER, note_name),
+                headers={"If-Match": etag},
+            )
+        except NextcloudNoteClientError as exc:
+            raise NextcloudNoteClientError(
+                workspace_folder_notes.REASON_REMOTE_COMPENSATION_FAILED,
+                http_status=exc.http_status,
+            ) from None
+        if status in {200, 202, 204}:
+            return NextcloudNoteResponse(
+                True,
+                workspace_folder_notes.REASON_REMOTE_COMPENSATION_OK,
+                status,
+            )
+        if status == 404:
+            return NextcloudNoteResponse(
+                True,
+                workspace_folder_notes.REASON_REMOTE_COMPENSATION_MISSING,
+                status,
+            )
+        if status == 412:
+            raise NextcloudNoteClientError(
+                workspace_folder_notes.REASON_REMOTE_COMPENSATION_PRECONDITION_FAILED,
+                http_status=status,
+            )
+        raise NextcloudNoteClientError(
+            workspace_folder_notes.REASON_REMOTE_COMPENSATION_FAILED,
+            http_status=status,
+        )
+
     def _url(self, *segments: str) -> str:
         parts = [self.config.root_name, *[segment for segment in segments if segment]]
         encoded = "/".join(quote(part.strip("/"), safe="") for part in parts)
@@ -327,4 +372,4 @@ def _note_append_write_reason(status: int) -> str:
 
 def _safe_etag(value: Any) -> str:
     text = str(value or "").strip()
-    return text[:512] if text else ""
+    return text if text and len(text) <= 512 else ""

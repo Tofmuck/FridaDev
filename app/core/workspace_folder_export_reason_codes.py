@@ -37,6 +37,13 @@ REASON_DOWNLOAD_OK = "folder_export_download_ok"
 REASON_REUSE_OK = "folder_export_reuse_ok"
 REASON_LOCAL_PERSISTENCE_FAILED = "folder_export_local_persistence_failed"
 REASON_REMOTE_COMPENSATION_OK = "folder_export_remote_compensation_ok"
+REASON_REMOTE_COMPENSATION_MISSING = "folder_export_remote_compensation_missing"
+REASON_REMOTE_COMPENSATION_PRECONDITION_FAILED = (
+    "folder_export_remote_compensation_precondition_failed"
+)
+REASON_REMOTE_COMPENSATION_OWNERSHIP_UNVERIFIED = (
+    "folder_export_remote_compensation_ownership_unverified"
+)
 REASON_REMOTE_COMPENSATION_FAILED = "folder_export_remote_compensation_failed"
 REASON_NEXTCLOUD_ERROR_REDACTED = "folder_export_nextcloud_error_redacted"
 
@@ -76,6 +83,9 @@ REASON_CODE_CATALOG = frozenset(
         REASON_REUSE_OK,
         REASON_LOCAL_PERSISTENCE_FAILED,
         REASON_REMOTE_COMPENSATION_OK,
+        REASON_REMOTE_COMPENSATION_MISSING,
+        REASON_REMOTE_COMPENSATION_PRECONDITION_FAILED,
+        REASON_REMOTE_COMPENSATION_OWNERSHIP_UNVERIFIED,
         REASON_REMOTE_COMPENSATION_FAILED,
         REASON_NEXTCLOUD_ERROR_REDACTED,
     }

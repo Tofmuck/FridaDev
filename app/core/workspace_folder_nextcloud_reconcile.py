@@ -403,15 +403,10 @@ def _upsert_state(
 
 
 def _rollback_created_target(nextcloud: Any, target_name: str, *, logger: Any) -> str:
-    try:
-        nextcloud.delete_folder(target_name, missing_ok=True)
-        return nextcloud_client.REASON_ROLLBACK_OK
-    except nextcloud_client.NextcloudFolderClientError:
-        logger.warning(
-            "workspace_folder_reconcile_rollback_failed reason_code=%s",
-            nextcloud_client.REASON_ROLLBACK_FAILED,
-        )
-        return nextcloud_client.REASON_ROLLBACK_FAILED
+    # Reconciliation cannot prove that the collection subtree is still the
+    # one created by this attempt, so automatic recursive deletion is unsafe.
+    _ = (nextcloud, target_name, logger)
+    return nextcloud_client.REASON_ROLLBACK_OWNERSHIP_UNVERIFIED
 
 
 def _client(client: Any | None) -> Any:

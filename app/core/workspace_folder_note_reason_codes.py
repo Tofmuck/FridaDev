@@ -26,6 +26,13 @@ REASON_REMOTE_READ_FAILED = "folder_note_remote_read_failed"
 REASON_REMOTE_WRITE_FAILED = "folder_note_remote_write_failed"
 REASON_LOCAL_PERSISTENCE_FAILED = "folder_note_local_persistence_failed"
 REASON_REMOTE_COMPENSATION_OK = "folder_note_remote_compensation_ok"
+REASON_REMOTE_COMPENSATION_MISSING = "folder_note_remote_compensation_missing"
+REASON_REMOTE_COMPENSATION_PRECONDITION_FAILED = (
+    "folder_note_remote_compensation_precondition_failed"
+)
+REASON_REMOTE_COMPENSATION_OWNERSHIP_UNVERIFIED = (
+    "folder_note_remote_compensation_ownership_unverified"
+)
 REASON_REMOTE_COMPENSATION_FAILED = "folder_note_remote_compensation_failed"
 REASON_NEXTCLOUD_ERROR_REDACTED = "folder_note_nextcloud_error_redacted"
 REASON_TURN_LIMIT_EXCEEDED = "folder_note_turn_limit_exceeded"
@@ -55,6 +62,9 @@ REASON_CODE_CATALOG = frozenset(
         REASON_REMOTE_WRITE_FAILED,
         REASON_LOCAL_PERSISTENCE_FAILED,
         REASON_REMOTE_COMPENSATION_OK,
+        REASON_REMOTE_COMPENSATION_MISSING,
+        REASON_REMOTE_COMPENSATION_PRECONDITION_FAILED,
+        REASON_REMOTE_COMPENSATION_OWNERSHIP_UNVERIFIED,
         REASON_REMOTE_COMPENSATION_FAILED,
         REASON_NEXTCLOUD_ERROR_REDACTED,
         REASON_TURN_LIMIT_EXCEEDED,

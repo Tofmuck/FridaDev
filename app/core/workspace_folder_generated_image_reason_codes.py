@@ -36,6 +36,13 @@ REASON_STORE_OK = "folder_generated_image_store_ok"
 REASON_STORE_FAILED_REDACTED = "folder_generated_image_store_failed_redacted"
 REASON_LOCAL_PERSISTENCE_FAILED = "folder_generated_image_local_persistence_failed"
 REASON_REMOTE_COMPENSATION_OK = "folder_generated_image_remote_compensation_ok"
+REASON_REMOTE_COMPENSATION_MISSING = "folder_generated_image_remote_compensation_missing"
+REASON_REMOTE_COMPENSATION_PRECONDITION_FAILED = (
+    "folder_generated_image_remote_compensation_precondition_failed"
+)
+REASON_REMOTE_COMPENSATION_OWNERSHIP_UNVERIFIED = (
+    "folder_generated_image_remote_compensation_ownership_unverified"
+)
 REASON_REMOTE_COMPENSATION_FAILED = "folder_generated_image_remote_compensation_failed"
 REASON_LIST_OK = "folder_generated_image_list_ok"
 REASON_LOOKUP_OK = "folder_generated_image_lookup_ok"
@@ -84,6 +91,9 @@ REASON_CODE_CATALOG = frozenset(
         REASON_STORE_FAILED_REDACTED,
         REASON_LOCAL_PERSISTENCE_FAILED,
         REASON_REMOTE_COMPENSATION_OK,
+        REASON_REMOTE_COMPENSATION_MISSING,
+        REASON_REMOTE_COMPENSATION_PRECONDITION_FAILED,
+        REASON_REMOTE_COMPENSATION_OWNERSHIP_UNVERIFIED,
         REASON_REMOTE_COMPENSATION_FAILED,
         REASON_LIST_OK,
         REASON_LOOKUP_OK,

@@ -602,10 +602,10 @@ Mise en oeuvre Lot 5:
   persistes dans `workspace_folder_exports`;
 - les champs locaux persistants sont des metadonnees, refs content-free,
   tailles, hash/ref, ETag interne optionnel et reason codes;
-- si la persistance locale echoue apres creation distante, le runtime tente un
-  DELETE strictement borne a la cible creee par ce flux, puis remonte soit
-  `folder_export_remote_compensation_ok`, soit
-  `folder_export_remote_compensation_failed`;
+- si la persistance locale echoue apres creation distante, le runtime ne tente
+  le DELETE que sous `If-Match` avec l'ETag exact renvoye par ce PUT ; cible
+  absente, precondition refusee, propriete non prouvee et transport en echec
+  restent des etats content-free distincts ;
 - aucune divergence local/distant n'est masquee comme succes.
 
 ## 8. API et surfaces UI autorisees
@@ -814,6 +814,9 @@ Catalogue initial content-free:
 - `folder_export_reuse_ok`;
 - `folder_export_local_persistence_failed`;
 - `folder_export_remote_compensation_ok`;
+- `folder_export_remote_compensation_missing`;
+- `folder_export_remote_compensation_precondition_failed`;
+- `folder_export_remote_compensation_ownership_unverified`;
 - `folder_export_remote_compensation_failed`;
 - `folder_export_nextcloud_error_redacted`.
 

@@ -101,6 +101,7 @@ def create_workspace_note_nextcloud_first(
             client,
             target_folder_name=target_folder_name,
             target_name=target_name,
+            etag_value=put_result.etag_value,
             notes_module=notes_module,
             folder_id=folder_id,
         )
@@ -167,18 +168,40 @@ def _rollback_remote_created_note(
     *,
     target_folder_name: str,
     target_name: str,
+    etag_value: str,
     notes_module: Any,
     folder_id: str,
 ) -> dict[str, Any]:
-    try:
-        result = client.delete_note(target_folder_name, target_name, missing_ok=True)
-        reason_code = result.reason_code
-        http_status_class = result.status_class
-        ok = True
-    except note_client.NextcloudNoteClientError as exc:
-        reason_code = exc.reason_code
-        http_status_class = exc.status_class
+    if not str(etag_value or "").strip():
+        reason_code = workspace_folder_notes.REASON_REMOTE_COMPENSATION_OWNERSHIP_UNVERIFIED
+        http_status_class = "none"
         ok = False
+    else:
+        try:
+            result = client.delete_created_note_if_match(
+                target_folder_name,
+                target_name,
+                etag_value=etag_value,
+            )
+            reason_code = result.reason_code
+            http_status_class = result.status_class
+            ok = reason_code in {
+                workspace_folder_notes.REASON_REMOTE_COMPENSATION_OK,
+                workspace_folder_notes.REASON_REMOTE_COMPENSATION_MISSING,
+            }
+        except note_client.NextcloudNoteClientError as exc:
+            reason_code = (
+                exc.reason_code
+                if exc.reason_code
+                in {
+                    workspace_folder_notes.REASON_REMOTE_COMPENSATION_PRECONDITION_FAILED,
+                    workspace_folder_notes.REASON_REMOTE_COMPENSATION_OWNERSHIP_UNVERIFIED,
+                    workspace_folder_notes.REASON_REMOTE_COMPENSATION_FAILED,
+                }
+                else workspace_folder_notes.REASON_REMOTE_COMPENSATION_FAILED
+            )
+            http_status_class = exc.status_class
+            ok = False
     _log_event(
         notes_module,
         "notes_v1_create_compensation",
@@ -192,7 +215,17 @@ def _rollback_remote_created_note(
         "ok": ok,
         "reason_code": reason_code,
         "http_status_class": http_status_class,
+        "state": _remote_compensation_state(reason_code),
     }
+
+
+def _remote_compensation_state(reason_code: str) -> str:
+    return {
+        workspace_folder_notes.REASON_REMOTE_COMPENSATION_OK: "deleted",
+        workspace_folder_notes.REASON_REMOTE_COMPENSATION_MISSING: "missing",
+        workspace_folder_notes.REASON_REMOTE_COMPENSATION_PRECONDITION_FAILED: "precondition_failed",
+        workspace_folder_notes.REASON_REMOTE_COMPENSATION_OWNERSHIP_UNVERIFIED: "ownership_unverified",
+    }.get(reason_code, "failed")
 
 
 def _failure(

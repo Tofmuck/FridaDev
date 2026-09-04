@@ -55,9 +55,10 @@ reelle n'est effectuee par ce lot.
 
 Depuis le Lot 8B, les routes existantes `/api/workspace-folders*` creent et
 renomment les dossiers Nextcloud avant la mutation locale. Le transport WebDAV
-est borne aux dossiers: `MKCOL` pour creation, `MOVE` pour renommage,
-`PROPFIND` status-only et `DELETE` uniquement comme rollback/cleanup strict
-d'une cible synthetique ou creee par le flot. L'artefact live content-free est
+est borne aux dossiers: `MKCOL` pour creation, `MOVE` pour renommage et
+`PROPFIND` status-only. La compensation automatique d'un `MKCOL` ne fait plus
+de `DELETE`, faute de preuve sur l'absence de descendants concurrents.
+L'artefact live content-free est
 `app/docs/states/baselines/nextcloud-folder-smokes/frida-v1-nextcloud-folders-lot8b-live-runtime-20260616T201404Z.jsonl`.
 L'injection runtime du secret est documentee sans valeur dans
 `/opt/platform/_codex_reports/frida-v1-nextcloud-folders-lot8b-secret-injection-20260616T200809Z.md`.
@@ -419,9 +420,11 @@ Decision Lot 8B:
   `workspace_folder_nextcloud_links` en `linked`;
 - renommage: `MOVE` Nextcloud puis mise a jour de la liaison puis mutation
   locale;
-- compensation creation: si la persistance locale echoue apres `MKCOL`,
-  rollback `DELETE` strict de la cible creee par ce flot et tombstone local si
-  necessaire; depuis le correctif Lot 8B.1, si ce tombstone local echoue, la
+- compensation creation: si la persistance locale echoue apres `MKCOL`, le
+  parent distant est conserve, car ni la reponse MKCOL ni le status Depth 0 ne
+  prouvent qu'aucun descendant concurrent n'existe ; la reponse signale
+  `workspace_folder_nextcloud_rollback_ownership_unverified`, et le tombstone
+  local reste tente si necessaire; depuis le correctif Lot 8B.1, si ce tombstone local echoue, la
   reponse doit signaler `local_compensation_status=failed` et
   `workspace_folder_local_compensation_failed` sans pretendre que la divergence
   locale est resolue;
@@ -446,6 +449,7 @@ Reason codes runtime Lot 8B:
 - `workspace_folder_nextcloud_target_missing`;
 - `workspace_folder_nextcloud_rollback_ok`;
 - `workspace_folder_nextcloud_rollback_failed`;
+- `workspace_folder_nextcloud_rollback_ownership_unverified`;
 - `workspace_folder_local_persistence_failed`;
 - `workspace_folder_local_compensation_failed`;
 - `workspace_folder_nextcloud_error_redacted`.
@@ -1260,8 +1264,9 @@ Creation d'un nouveau dossier Frida:
 - verifier/creer les quatre sous-dossiers standards;
 - creer le dossier local seulement si le parent et les sous-dossiers standards
   reussissent;
-- si un sous-dossier standard echoue, rollback strict du dossier parent cree par
-  ce flux, sans toucher a un dossier preexistant.
+- si un sous-dossier standard echoue, conserver le parent et les descendants
+  deja crees : leur propriete exclusive n'est pas prouvee et aucun DELETE
+  recursif automatique n'est autorise.
 
 Dossiers existants:
 

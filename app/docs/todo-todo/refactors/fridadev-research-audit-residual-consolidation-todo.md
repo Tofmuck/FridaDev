@@ -2,7 +2,7 @@
 
 Date de cadrage : 4 septembre 2026.
 
-**Statut : roadmap ouverte ; L1 et L2 fermés ; L3 à L7 et Z non commencés.**
+**Statut : roadmap ouverte ; L1 à L3 fermés ; L4 à L7 et Z non commencés.**
 
 ## 1. But, source et règle de vérité
 
@@ -70,7 +70,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 | --- | --- | --- | --- | --- | --- |
 | 1 | L1 | Frontière réseau du clone public | F23 | high | fermé — F23 corrigé |
 | 2 | L2 | Intégrité du canon conversationnel | F09 | xhigh | fermé — F09 corrigé |
-| 3 | L3 | Compensation Nextcloud possédée | F08 | xhigh | non commencé |
+| 3 | L3 | Compensation Nextcloud possédée | F08 | xhigh | fermé — F08 corrigé |
 | 4 | L4 | Conservation de la projection analytics | F21 | high | non commencé |
 | 5 | L5 | Atomicité des écritures Workspace | F13b, F14a, F19b | xhigh par sous-lot | non commencé |
 | 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | non commencé |
@@ -80,7 +80,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 - [x] Source, périmètre, ordre et règles de preuve consignés.
 - [x] L1 fermé.
 - [x] L2 fermé.
-- [ ] L3 fermé.
+- [x] L3 fermé.
 - [ ] L4 fermé.
 - [ ] L5.1, L5.2 et L5.3 fermés.
 - [ ] L6 et ses décisions conditionnelles fermés.
@@ -224,7 +224,8 @@ queue, nouvelle API ou mécanisme multi-utilisateur n'est ajouté. Les preuves
 sont hermétiques, sans provider, DB opérateur ni dialogue réel. F10, F17 et les
 findings suivants restent hors lot.
 
-**Fermeture :** F09 est corrigé et prouvé. L3 n'est pas commencé.
+**Fermeture initiale :** F09 est corrigé et prouvé. À cet instant, L3 n'avait
+pas commencé.
 
 **Réouverture corrective bornée du 4 septembre 2026, HEAD de départ
 `8b5137625c675cb6ae51bfe1314f4bacdf72524d` :**
@@ -258,7 +259,7 @@ refus atomique d'un snapshot court, refus d'une ancienne parole modifiée et
 absence d'exemption pour un `system` ultérieur. Les 85 tests ciblés passent.
 Une mutation rétablissant temporairement l'égalité stricte du contenu système
 remet la preuve centrale en échec ; le fichier restauré retrouve exactement son
-empreinte. F09 est de nouveau corrigé et prouvé ; L3 n'est pas commencé.
+empreinte. F09 est de nouveau corrigé et prouvé ; L3 a été traité séparément.
 
 ## 6. L3 — Ne compenser que la version Nextcloud encore possédée
 
@@ -278,6 +279,41 @@ nominale de la version encore possédée reste fonctionnelle.
 
 **Hors périmètre :** synchronisation générale Nextcloud, audit de récupération,
 nouveau journal distribué ou mutation d'un espace opérateur réel.
+
+**Revalidation et fermeture du 4 septembre 2026 :**
+
+- F1 à F4 confirmés : Documents, Notes créées, Exports et Images générées
+  utilisaient une création anti-écrasement suivie, en cas d'échec local, d'un
+  DELETE compensatoire sans précondition de version ; le chemin de copie des
+  Documents existants possédait le même défaut ;
+- F5 et F6 confirmés : Notes, Exports et Images transportaient déjà l'ETag du
+  PUT ; Documents le perdait à la frontière client. Sa propagation en mémoire
+  et un DELETE `If-Match` réutilisent le contrat de concurrence déjà établi par
+  l'append Notes, sans nouveau stockage durable ;
+- F7 confirmée : la compensation distingue désormais `deleted`, `missing`,
+  `precondition_failed`, `ownership_unverified` et `failed`. Un `412` qualifie
+  uniquement le refus de précondition, sans attribuer de cause à la divergence ;
+- F8 confirmée : les validations, la création nominale et les suppressions
+  utilisateur explicites restent inchangées ;
+- F9 confirmée : ni la réponse MKCOL ni un PROPFIND Depth 0 ne prouvent
+  l'intégrité des descendants. Les créations et réconciliations de collections
+  conservent donc prudemment le parent et signalent
+  `workspace_folder_nextcloud_rollback_ownership_unverified` au lieu d'un
+  DELETE récursif ;
+- F10 confirmée : aucune migration, queue, retry, listing, GET de preuve,
+  journal externe ou synchronisation générale n'est nécessaire.
+
+Les fakes stateful traversent les runtimes réels et conservent la représentation
+distante : version créée encore courante supprimée conditionnellement, version
+différente préservée, ETag absent ou hors borne sans DELETE, `404` distingué,
+transport ambigu sans faux succès, chemin Documents existants protégé et
+collections MKCOL conservées. Les 191 tests ciblés et contrats serveur passent,
+dont l'append Notes voisin et les suppressions utilisateur. Une mutation
+remplaçant temporairement le DELETE conditionnel Documents par l'ancien DELETE
+générique remet la preuve V2 en échec ; la restauration exacte la rend de
+nouveau verte.
+
+**Fermeture :** F08 est corrigé et prouvé. L4 n'est pas commencé.
 
 ## 7. L4 — Conserver les analytics dérivées si leur source est illisible
 

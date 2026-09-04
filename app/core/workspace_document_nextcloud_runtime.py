@@ -100,6 +100,7 @@ def store_workspace_document_nextcloud_first(
                 client,
                 target_folder_name=target_folder_name,
                 target_name=target_name,
+                etag_value=put_result.etag_value,
                 workspace_files_module=workspace_files_module,
                 folder_id=folder_id,
             )
@@ -158,6 +159,7 @@ def store_workspace_document_nextcloud_first(
         client,
         target_folder_name=target_folder_name,
         target_name=target_name,
+        etag_value=put_result.etag_value,
         workspace_files_module=workspace_files_module,
         folder_id=folder_id,
     )
@@ -325,18 +327,40 @@ def _rollback_remote_created_document(
     *,
     target_folder_name: str,
     target_name: str,
+    etag_value: str,
     workspace_files_module: Any,
     folder_id: str,
 ) -> dict[str, Any]:
-    try:
-        result = client.delete_document(target_folder_name, target_name, missing_ok=True)
-        reason_code = result.reason_code
-        http_status_class = result.status_class
-        ok = True
-    except document_client.NextcloudDocumentClientError as exc:
-        reason_code = exc.reason_code
-        http_status_class = exc.status_class
+    if not str(etag_value or "").strip():
+        reason_code = document_client.REASON_REMOTE_COMPENSATION_OWNERSHIP_UNVERIFIED
+        http_status_class = "none"
         ok = False
+    else:
+        try:
+            result = client.delete_created_document_if_match(
+                target_folder_name,
+                target_name,
+                etag_value=etag_value,
+            )
+            reason_code = result.reason_code
+            http_status_class = result.status_class
+            ok = reason_code in {
+                document_client.REASON_REMOTE_COMPENSATION_OK,
+                document_client.REASON_REMOTE_COMPENSATION_MISSING,
+            }
+        except document_client.NextcloudDocumentClientError as exc:
+            reason_code = (
+                exc.reason_code
+                if exc.reason_code
+                in {
+                    document_client.REASON_REMOTE_COMPENSATION_PRECONDITION_FAILED,
+                    document_client.REASON_REMOTE_COMPENSATION_OWNERSHIP_UNVERIFIED,
+                    document_client.REASON_REMOTE_COMPENSATION_FAILED,
+                }
+                else document_client.REASON_REMOTE_COMPENSATION_FAILED
+            )
+            http_status_class = exc.status_class
+            ok = False
     _log_event(
         workspace_files_module,
         "documents_v1_upload_compensation",
@@ -350,7 +374,17 @@ def _rollback_remote_created_document(
         "ok": ok,
         "reason_code": reason_code,
         "http_status_class": http_status_class,
+        "state": _remote_compensation_state(reason_code),
     }
+
+
+def _remote_compensation_state(reason_code: str) -> str:
+    return {
+        document_client.REASON_REMOTE_COMPENSATION_OK: "deleted",
+        document_client.REASON_REMOTE_COMPENSATION_MISSING: "missing",
+        document_client.REASON_REMOTE_COMPENSATION_PRECONDITION_FAILED: "precondition_failed",
+        document_client.REASON_REMOTE_COMPENSATION_OWNERSHIP_UNVERIFIED: "ownership_unverified",
+    }.get(reason_code, "failed")
 
 
 def _client(nextcloud: Any | None) -> Any:

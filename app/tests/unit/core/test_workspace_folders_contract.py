@@ -803,7 +803,7 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertNotIn("/Frida", encoded)
         self.assertNotIn("Authorization", encoded)
 
-    def test_nextcloud_first_create_rolls_back_mkcol_when_local_persistence_fails(self) -> None:
+    def test_nextcloud_first_create_retains_mkcol_when_local_persistence_fails(self) -> None:
         fake_client = _FakeNextcloudFolderClient()
 
         with mock.patch.object(workspace_folders_store, "list_workspace_folders", return_value=[]):
@@ -821,12 +821,15 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
 
         self.assertFalse(result["ok"])
         self.assertEqual(result["reason_code"], "workspace_folder_local_persistence_failed")
-        self.assertEqual(result["rollback_reason_code"], "workspace_folder_nextcloud_rollback_ok")
+        self.assertEqual(
+            result["rollback_reason_code"],
+            "workspace_folder_nextcloud_rollback_ownership_unverified",
+        )
         self.assertEqual(fake_client.created, ["Projet-Rollback"])
         self.assertEqual(len(fake_client.created_paths), 4)
-        self.assertEqual(fake_client.deleted, [("Projet-Rollback", True)])
+        self.assertEqual(fake_client.deleted, [])
 
-    def test_nextcloud_first_create_rolls_back_parent_when_standard_subfolder_fails(self) -> None:
+    def test_nextcloud_first_create_retains_parent_when_standard_subfolder_fails(self) -> None:
         fake_client = _FakeNextcloudFolderClient()
         fake_client.path_statuses[("Projet-Standards", "Documents")] = 409
 
@@ -845,9 +848,12 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
 
         self.assertFalse(result["ok"])
         self.assertEqual(result["reason_code"], "workspace_folder_standard_subfolder_conflict")
-        self.assertEqual(result["rollback_reason_code"], "workspace_folder_nextcloud_rollback_ok")
+        self.assertEqual(
+            result["rollback_reason_code"],
+            "workspace_folder_nextcloud_rollback_ownership_unverified",
+        )
         self.assertEqual(fake_client.created, ["Projet-Standards"])
-        self.assertEqual(fake_client.deleted, [("Projet-Standards", True)])
+        self.assertEqual(fake_client.deleted, [])
         local_create.assert_not_called()
 
     def test_nextcloud_first_create_returns_redacted_error_when_client_unavailable(self) -> None:
@@ -903,11 +909,14 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
 
         self.assertFalse(result["ok"])
         self.assertEqual(result["reason_code"], "workspace_folder_local_persistence_failed")
-        self.assertEqual(result["rollback_reason_code"], "workspace_folder_nextcloud_rollback_ok")
+        self.assertEqual(
+            result["rollback_reason_code"],
+            "workspace_folder_nextcloud_rollback_ownership_unverified",
+        )
         self.assertEqual(result["local_compensation_status"], "failed")
         self.assertEqual(result["local_compensation_reason_code"], "workspace_folder_local_compensation_failed")
         self.assertEqual(fake_client.created, ["Projet-Divergent"])
-        self.assertEqual(fake_client.deleted, [("Projet-Divergent", True)])
+        self.assertEqual(fake_client.deleted, [])
         encoded = str(result)
         self.assertNotIn("Projet Divergent", encoded)
         self.assertNotIn("/Frida", encoded)
@@ -941,11 +950,14 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
 
         self.assertFalse(result["ok"])
         self.assertEqual(result["reason_code"], "workspace_folder_local_persistence_failed")
-        self.assertEqual(result["rollback_reason_code"], "workspace_folder_nextcloud_rollback_ok")
+        self.assertEqual(
+            result["rollback_reason_code"],
+            "workspace_folder_nextcloud_rollback_ownership_unverified",
+        )
         self.assertEqual(result["local_compensation_status"], "done")
         self.assertNotIn("local_compensation_reason_code", result)
         self.assertEqual(fake_client.created, ["Projet-Compense"])
-        self.assertEqual(fake_client.deleted, [("Projet-Compense", True)])
+        self.assertEqual(fake_client.deleted, [])
 
     def test_nextcloud_first_rename_moves_then_updates_local_linked_folder(self) -> None:
         folder_id = "11111111-2222-4333-8444-555555555555"
@@ -1289,7 +1301,7 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         )
         self.assertIn("LOT9_CREATE_MISSING_TARGET", str(result))
 
-    def test_nextcloud_reconcile_rolls_back_created_target_when_link_fails(self) -> None:
+    def test_nextcloud_reconcile_retains_created_target_when_link_fails(self) -> None:
         folder_id = "11111111-2222-4333-8444-555555555555"
         folder = workspace_folders_store.serialize_workspace_folder_row(
             {
@@ -1318,10 +1330,10 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
 
         self.assertFalse(result["ok"])
         self.assertEqual(fake_client.created, ["Projet-Rollback"])
-        self.assertEqual(fake_client.deleted, [("Projet-Rollback", True)])
+        self.assertEqual(fake_client.deleted, [])
         encoded = str(result)
         self.assertIn("LOT9_CREATE_LINK_FAILED_ROLLBACK", encoded)
-        self.assertIn("workspace_folder_nextcloud_rollback_ok", encoded)
+        self.assertIn("workspace_folder_nextcloud_rollback_ownership_unverified", encoded)
         self.assertNotIn("Projet Rollback", encoded)
 
     def test_nextcloud_reconcile_linked_missing_target_is_no_go_without_create(self) -> None:

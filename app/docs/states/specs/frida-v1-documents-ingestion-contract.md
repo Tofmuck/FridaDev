@@ -413,9 +413,10 @@ Regles runtime:
 - la persistence du lien Nextcloud a lieu juste apres la persistence locale du
   `workspace_file`;
 - si l'ecriture Nextcloud reussit mais que la persistence locale ou la
-  persistence du lien echoue, le runtime tente une compensation `DELETE`
-  strictement bornee au fichier cree dans ce flux et nettoie l'artefact local
-  cree dans le meme flux si necessaire;
+  persistence du lien echoue, le runtime ne tente le `DELETE` du fichier cree
+  que sous `If-Match` avec l'ETag exact renvoye par ce PUT ; sans ETag ou si la
+  precondition est refusee, la cible est conservee et le reliquat est signale ;
+  l'artefact local cree dans le meme flux est nettoye si necessaire;
 - la compensation ne touche jamais un fichier historique ou utilisateur
   preexistant;
 - la suppression explicite d'un document Documents V1 lie utilise le lien
@@ -597,8 +598,10 @@ Regles runtime:
 - apres creation distante, le lien technique `workspace_file_nextcloud_links`
   est persiste en `linked`, operation `reconcile`, reason code
   `folder_document_existing_copy_ok`;
-- si la persistance du lien echoue apres creation distante, Frida tente un
-  rollback DELETE strict sur la cible creee par ce flux uniquement;
+- si la persistance du lien echoue apres creation distante, Frida tente le
+  DELETE uniquement sous `If-Match` avec l'ETag de cette creation ; une version
+  non prouvee ou une precondition refusee reste distante et visible comme
+  reliquat content-free;
 - la source locale n'est jamais supprimee par Lot 7;
 - les preuves Lot 7 restent content-free: compteurs, refs/hashs courts, status
   classes, reason codes et flags seulement.
@@ -656,6 +659,9 @@ Catalogue initial obligatoire:
 - `folder_document_remote_delete_failed`;
 - `folder_document_local_delete_failed`;
 - `folder_document_remote_compensation_ok`;
+- `folder_document_remote_compensation_missing`;
+- `folder_document_remote_compensation_precondition_failed`;
+- `folder_document_remote_compensation_ownership_unverified`;
 - `folder_document_remote_compensation_failed`;
 - `folder_document_content_redacted`;
 - `folder_document_existing_copy_required`;

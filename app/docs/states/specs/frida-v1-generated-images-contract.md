@@ -357,8 +357,11 @@ Ecriture distante:
 
 Si l'ecriture distante reussit puis la persistance locale echoue:
 
-- tenter une suppression distante stricte de la cible creee par ce flux;
-- ne jamais supprimer large;
+- tenter la suppression exacte uniquement sous `If-Match` avec l'ETag renvoye
+  par cette creation;
+- sans ETag, sur refus de precondition ou resultat ambigu, conserver la cible
+  et signaler le reliquat content-free;
+- ne jamais supprimer large ni retenter par un DELETE inconditionnel;
 - si compensation distante reussit, retourner un echec content-free explicite;
 - si compensation distante echoue, retourner un echec partiel content-free;
 - ne jamais masquer une divergence local/distant.
@@ -605,6 +608,9 @@ Catalogue V1:
 - `folder_generated_image_store_failed_redacted`;
 - `folder_generated_image_local_persistence_failed`;
 - `folder_generated_image_remote_compensation_ok`;
+- `folder_generated_image_remote_compensation_missing`;
+- `folder_generated_image_remote_compensation_precondition_failed`;
+- `folder_generated_image_remote_compensation_ownership_unverified`;
 - `folder_generated_image_remote_compensation_failed`;
 - `folder_generated_image_list_ok`;
 - `folder_generated_image_lookup_ok`;

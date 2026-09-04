@@ -96,13 +96,20 @@ class _FakeNextcloud:
         status_reason: str = "",
         put_status: int = 201,
         delete_fails: bool = False,
+        etag: str = '"created-version"',
+        remote_version_after_put: str = "",
     ) -> None:
         self.status_reason = status_reason
         self.put_status = put_status
         self.delete_fails = delete_fails
+        self.etag = etag
+        self.remote_version_after_put = remote_version_after_put
         self.status_calls: list[str] = []
         self.put_calls: list[dict[str, Any]] = []
         self.delete_calls: list[dict[str, Any]] = []
+        self.conditional_delete_calls: list[dict[str, Any]] = []
+        self.remote_present = False
+        self.remote_version = ""
 
     def images_status(self, folder_name: str):
         self.status_calls.append(folder_name)
@@ -127,11 +134,13 @@ class _FakeNextcloud:
             }
         )
         if self.put_status == 201:
+            self.remote_present = True
+            self.remote_version = self.remote_version_after_put or self.etag
             return workspace_folder_generated_image_nextcloud_client.NextcloudGeneratedImageResponse(
                 True,
                 workspace_folder_generated_images.REASON_STORE_OK,
                 201,
-                etag_value='"hidden-etag"',
+                etag_value=self.etag,
             )
         reason = (
             workspace_folder_generated_images.REASON_NAME_CONFLICT
@@ -152,6 +161,35 @@ class _FakeNextcloud:
                 workspace_folder_generated_images.REASON_REMOTE_COMPENSATION_FAILED,
                 http_status=500,
             )
+        self.remote_present = False
+        return workspace_folder_generated_image_nextcloud_client.NextcloudGeneratedImageResponse(
+            True,
+            workspace_folder_generated_images.REASON_REMOTE_COMPENSATION_OK,
+            204,
+        )
+
+    def delete_created_image_if_match(self, folder_name: str, image_name: str, *, etag_value: str):
+        self.conditional_delete_calls.append(
+            {"folder_name": folder_name, "image_name": image_name, "etag_value": etag_value}
+        )
+        if self.delete_fails:
+            raise workspace_folder_generated_image_nextcloud_client.NextcloudGeneratedImageClientError(
+                workspace_folder_generated_images.REASON_REMOTE_COMPENSATION_FAILED,
+                http_status=500,
+            )
+        if not etag_value:
+            raise workspace_folder_generated_image_nextcloud_client.NextcloudGeneratedImageClientError(
+                "folder_generated_image_remote_compensation_ownership_unverified"
+            )
+        if self.remote_version != etag_value:
+            raise workspace_folder_generated_image_nextcloud_client.NextcloudGeneratedImageClientError(
+                "folder_generated_image_remote_compensation_precondition_failed",
+                http_status=412,
+            )
+        self.remote_present = False
+        self.delete_calls.append(
+            {"folder_name": folder_name, "image_name": image_name, "missing_ok": True}
+        )
         return workspace_folder_generated_image_nextcloud_client.NextcloudGeneratedImageResponse(
             True,
             workspace_folder_generated_images.REASON_REMOTE_COMPENSATION_OK,
@@ -225,6 +263,83 @@ class _FakeImagesModule:
 
 
 class WorkspaceFolderGeneratedImageValidationAndRuntimeTests(unittest.TestCase):
+    def test_image_compensation_client_uses_if_match_and_distinguishes_outcomes(self) -> None:
+        class _ConditionalClient(
+            workspace_folder_generated_image_nextcloud_client.NextcloudGeneratedImageClient
+        ):
+            def __init__(self, status, *, response_etag=""):
+                self.status = status
+                self.response_etag = response_etag
+                self.headers = None
+
+            def _url(self, *segments):
+                return "redacted"
+
+            def _request_status(self, method, url, *, data=None, headers=None):
+                self.headers = dict(headers or {})
+                return self.status, self.response_etag
+
+        success = _ConditionalClient(204)
+        delete_if_match = getattr(success, "delete_created_image_if_match", None)
+        self.assertTrue(callable(delete_if_match))
+        deleted = delete_if_match("Folder", "sample.png", etag_value='"created-version"')
+        self.assertEqual(deleted.reason_code, "folder_generated_image_remote_compensation_ok")
+        self.assertEqual(success.headers, {"If-Match": '"created-version"'})
+
+        missing = _ConditionalClient(404).delete_created_image_if_match(
+            "Folder",
+            "sample.png",
+            etag_value='"created-version"',
+        )
+        self.assertEqual(missing.reason_code, "folder_generated_image_remote_compensation_missing")
+
+        with self.assertRaises(
+            workspace_folder_generated_image_nextcloud_client.NextcloudGeneratedImageClientError
+        ) as refused:
+            _ConditionalClient(412).delete_created_image_if_match(
+                "Folder",
+                "sample.png",
+                etag_value='"created-version"',
+            )
+        self.assertEqual(
+            refused.exception.reason_code,
+            "folder_generated_image_remote_compensation_precondition_failed",
+        )
+
+        no_version = _ConditionalClient(204)
+        with self.assertRaises(
+            workspace_folder_generated_image_nextcloud_client.NextcloudGeneratedImageClientError
+        ) as unverified:
+            no_version.delete_created_image_if_match("Folder", "sample.png", etag_value="")
+        self.assertEqual(
+            unverified.exception.reason_code,
+            "folder_generated_image_remote_compensation_ownership_unverified",
+        )
+        self.assertIsNone(no_version.headers)
+
+        oversized = _ConditionalClient(201, response_etag='"' + ("x" * 600) + '"')
+        created = oversized.put_image(
+            "Folder",
+            "sample.png",
+            b"synthetic",
+            media_type="image/png",
+        )
+        self.assertEqual(created.etag_value, "")
+        oversized.headers = None
+        with self.assertRaises(
+            workspace_folder_generated_image_nextcloud_client.NextcloudGeneratedImageClientError
+        ) as oversized_unverified:
+            oversized.delete_created_image_if_match(
+                "Folder",
+                "sample.png",
+                etag_value=created.etag_value,
+            )
+        self.assertEqual(
+            oversized_unverified.exception.reason_code,
+            "folder_generated_image_remote_compensation_ownership_unverified",
+        )
+        self.assertIsNone(oversized.headers)
+
     def test_nextcloud_read_refuses_oversized_content_without_truncation(self) -> None:
         client = workspace_folder_generated_image_nextcloud_client.NextcloudGeneratedImageClient(
             workspace_folder_nextcloud_client.NextcloudFolderClientConfig(
@@ -471,26 +586,77 @@ class WorkspaceFolderGeneratedImageValidationAndRuntimeTests(unittest.TestCase):
         self.assertEqual(result["reason_code"], "folder_generated_image_local_persistence_failed")
         self.assertEqual(len(nextcloud.put_calls), 1)
         self.assertEqual(len(nextcloud.delete_calls), 1)
+        self.assertEqual(len(nextcloud.conditional_delete_calls), 1)
+        self.assertFalse(nextcloud.remote_present)
         self.assertEqual(nextcloud.delete_calls[0]["image_name"], nextcloud.put_calls[0]["image_name"])
         self.assertTrue(result["generated_image_nextcloud"]["rollback"]["ok"])
+        self.assertEqual(result["generated_image_nextcloud"]["rollback"]["state"], "deleted")
         self.assertNotIn("raw db failure", str(result))
 
     def test_rollback_failure_is_explicit_content_free(self) -> None:
+        nextcloud = _FakeNextcloud(delete_fails=True)
         result = workspace_folder_generated_image_nextcloud_runtime.store_workspace_folder_generated_image_nextcloud_first(
             folder=_folder(),
             request={"prompt": "x"},
             provider_module=_FakeProvider(),
             images_module=_FakeImagesModule(fail_upsert=True),
-            nextcloud=_FakeNextcloud(delete_fails=True),
+            nextcloud=nextcloud,
         )
 
         self.assertFalse(result["ok"])
         rollback = result["generated_image_nextcloud"]["rollback"]
         self.assertFalse(rollback["ok"])
+        self.assertEqual(rollback["state"], "failed")
         self.assertEqual(
             rollback["reason_code"],
             "folder_generated_image_remote_compensation_failed",
         )
+        self.assertTrue(nextcloud.remote_present)
+        self.assertEqual(nextcloud.remote_version, '"created-version"')
+        self.assertEqual(len(nextcloud.conditional_delete_calls), 1)
+        self.assertEqual(nextcloud.delete_calls, [])
+
+    def test_local_failure_preserves_changed_remote_image_version(self) -> None:
+        nextcloud = _FakeNextcloud(remote_version_after_put='"changed-version"')
+
+        result = workspace_folder_generated_image_nextcloud_runtime.store_workspace_folder_generated_image_nextcloud_first(
+            folder=_folder(),
+            request={"prompt": "x"},
+            provider_module=_FakeProvider(),
+            images_module=_FakeImagesModule(fail_upsert=True),
+            nextcloud=nextcloud,
+        )
+
+        self.assertTrue(nextcloud.remote_present)
+        self.assertEqual(nextcloud.remote_version, '"changed-version"')
+        rollback = result["generated_image_nextcloud"]["rollback"]
+        self.assertEqual(
+            rollback["reason_code"],
+            "folder_generated_image_remote_compensation_precondition_failed",
+        )
+        self.assertEqual(rollback["state"], "precondition_failed")
+        self.assertEqual(nextcloud.delete_calls, [])
+
+    def test_local_failure_without_creation_version_retains_remote_image(self) -> None:
+        nextcloud = _FakeNextcloud(etag="", remote_version_after_put='"unproven-version"')
+
+        result = workspace_folder_generated_image_nextcloud_runtime.store_workspace_folder_generated_image_nextcloud_first(
+            folder=_folder(),
+            request={"prompt": "x"},
+            provider_module=_FakeProvider(),
+            images_module=_FakeImagesModule(fail_upsert=True),
+            nextcloud=nextcloud,
+        )
+
+        self.assertTrue(nextcloud.remote_present)
+        self.assertEqual(nextcloud.remote_version, '"unproven-version"')
+        rollback = result["generated_image_nextcloud"]["rollback"]
+        self.assertEqual(
+            rollback["reason_code"],
+            "folder_generated_image_remote_compensation_ownership_unverified",
+        )
+        self.assertEqual(nextcloud.conditional_delete_calls, [])
+        self.assertEqual(nextcloud.delete_calls, [])
 
 
 if __name__ == "__main__":  # pragma: no cover

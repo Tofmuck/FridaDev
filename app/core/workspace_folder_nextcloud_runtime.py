@@ -235,15 +235,10 @@ def _restore_old_link(
 
 
 def _rollback_created_folder(nextcloud: Any, target_name: str, *, logger: Any) -> str:
-    try:
-        nextcloud.delete_folder(target_name, missing_ok=True)
-        return nextcloud_client.REASON_ROLLBACK_OK
-    except nextcloud_client.NextcloudFolderClientError:
-        logger.warning(
-            "workspace_folder_nextcloud_create_rollback_failed reason_code=%s",
-            nextcloud_client.REASON_ROLLBACK_FAILED,
-        )
-        return nextcloud_client.REASON_ROLLBACK_FAILED
+    # A collection can already contain descendants. Depth-0 status and the
+    # MKCOL response do not prove exclusive ownership of the whole subtree.
+    _ = (nextcloud, target_name, logger)
+    return nextcloud_client.REASON_ROLLBACK_OWNERSHIP_UNVERIFIED
 
 
 def _tombstone_created_folder(

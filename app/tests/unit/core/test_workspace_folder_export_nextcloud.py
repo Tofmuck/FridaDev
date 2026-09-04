@@ -58,14 +58,26 @@ class _FakeExportsModule:
 
 
 class _FakeNextcloudExports:
-    def __init__(self, *, status_reason="", put_reason="", delete_reason="", etag='"etag-secret"'):
+    def __init__(
+        self,
+        *,
+        status_reason="",
+        put_reason="",
+        delete_reason="",
+        etag='"etag-secret"',
+        remote_version_after_put="",
+    ):
         self.status_reason = status_reason
         self.put_reason = put_reason
         self.delete_reason = delete_reason
         self.etag = etag
+        self.remote_version_after_put = remote_version_after_put
         self.status_calls = []
         self.put_calls = []
         self.deleted = []
+        self.conditional_delete_calls = []
+        self.remote_present = False
+        self.remote_version = ""
 
     def exports_status(self, folder_name):
         self.status_calls.append(folder_name)
@@ -94,6 +106,8 @@ class _FakeNextcloudExports:
                 self.put_reason,
                 http_status=409 if "conflict" in self.put_reason else 503,
             )
+        self.remote_present = True
+        self.remote_version = self.remote_version_after_put or self.etag
         return workspace_folder_export_nextcloud_client.NextcloudExportResponse(
             True,
             workspace_folder_exports.REASON_STORE_OK,
@@ -108,6 +122,31 @@ class _FakeNextcloudExports:
                 self.delete_reason,
                 http_status=503,
             )
+        self.remote_present = False
+        return workspace_folder_export_nextcloud_client.NextcloudExportResponse(
+            True,
+            workspace_folder_exports.REASON_REMOTE_COMPENSATION_OK,
+            204,
+        )
+
+    def delete_created_export_if_match(self, folder_name, export_name, *, etag_value):
+        self.conditional_delete_calls.append((folder_name, export_name, etag_value))
+        if self.delete_reason:
+            raise workspace_folder_export_nextcloud_client.NextcloudExportClientError(
+                self.delete_reason,
+                http_status=503,
+            )
+        if not etag_value:
+            raise workspace_folder_export_nextcloud_client.NextcloudExportClientError(
+                "folder_export_remote_compensation_ownership_unverified"
+            )
+        if self.remote_version != etag_value:
+            raise workspace_folder_export_nextcloud_client.NextcloudExportClientError(
+                "folder_export_remote_compensation_precondition_failed",
+                http_status=412,
+            )
+        self.remote_present = False
+        self.deleted.append((folder_name, export_name, True))
         return workspace_folder_export_nextcloud_client.NextcloudExportResponse(
             True,
             workspace_folder_exports.REASON_REMOTE_COMPENSATION_OK,
@@ -116,7 +155,7 @@ class _FakeNextcloudExports:
 
 
 class _StatusOnlyExportClient(workspace_folder_export_nextcloud_client.NextcloudExportClient):
-    def __init__(self, status):
+    def __init__(self, status, *, response_etag='"etag-secret"'):
         super().__init__(
             workspace_folder_nextcloud_client.NextcloudFolderClientConfig(
                 base_url="http://nextcloud.invalid",
@@ -125,9 +164,11 @@ class _StatusOnlyExportClient(workspace_folder_export_nextcloud_client.Nextcloud
             )
         )
         self.status = status
+        self.response_etag = response_etag
 
     def _request_status(self, method, url, *, data=None, headers=None):
-        return self.status, '"etag-secret"'
+        self.last_headers = dict(headers or {})
+        return self.status, self.response_etag
 
 
 class _ContentOnlyExportClient(workspace_folder_export_nextcloud_client.NextcloudExportClient):
@@ -384,6 +425,61 @@ class WorkspaceFolderExportNextcloudTests(unittest.TestCase):
                 _StatusOnlyExportClient(status).put_export("Projet", "Export.txt", b"")
             self.assertEqual(ctx.exception.reason_code, "folder_export_name_conflict")
 
+    def test_export_compensation_client_uses_if_match_and_distinguishes_outcomes(self) -> None:
+        success = _StatusOnlyExportClient(204)
+        success.last_headers = None
+        delete_if_match = getattr(success, "delete_created_export_if_match", None)
+        self.assertTrue(callable(delete_if_match))
+        deleted = delete_if_match("Folder", "sample.txt", etag_value='"created-version"')
+        self.assertEqual(deleted.reason_code, "folder_export_remote_compensation_ok")
+        self.assertEqual(success.last_headers, {"If-Match": '"created-version"'})
+
+        missing = _StatusOnlyExportClient(404).delete_created_export_if_match(
+            "Folder",
+            "sample.txt",
+            etag_value='"created-version"',
+        )
+        self.assertEqual(missing.reason_code, "folder_export_remote_compensation_missing")
+
+        with self.assertRaises(workspace_folder_export_nextcloud_client.NextcloudExportClientError) as refused:
+            _StatusOnlyExportClient(412).delete_created_export_if_match(
+                "Folder",
+                "sample.txt",
+                etag_value='"created-version"',
+            )
+        self.assertEqual(
+            refused.exception.reason_code,
+            "folder_export_remote_compensation_precondition_failed",
+        )
+
+        no_version = _StatusOnlyExportClient(204)
+        no_version.last_headers = None
+        with self.assertRaises(workspace_folder_export_nextcloud_client.NextcloudExportClientError) as unverified:
+            no_version.delete_created_export_if_match("Folder", "sample.txt", etag_value="")
+        self.assertEqual(
+            unverified.exception.reason_code,
+            "folder_export_remote_compensation_ownership_unverified",
+        )
+        self.assertIsNone(no_version.last_headers)
+
+        oversized = _StatusOnlyExportClient(201, response_etag='"' + ("x" * 600) + '"')
+        created = oversized.put_export("Folder", "sample.txt", b"synthetic")
+        self.assertEqual(created.etag_value, "")
+        oversized.last_headers = None
+        with self.assertRaises(
+            workspace_folder_export_nextcloud_client.NextcloudExportClientError
+        ) as oversized_unverified:
+            oversized.delete_created_export_if_match(
+                "Folder",
+                "sample.txt",
+                etag_value=created.etag_value,
+            )
+        self.assertEqual(
+            oversized_unverified.exception.reason_code,
+            "folder_export_remote_compensation_ownership_unverified",
+        )
+        self.assertIsNone(oversized.last_headers)
+
     def test_export_client_reads_exact_target_without_listing(self) -> None:
         client = _ContentOnlyExportClient(200, b"contenu export")
 
@@ -428,28 +524,75 @@ class WorkspaceFolderExportNextcloudTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertEqual(result["reason_code"], "folder_export_local_persistence_failed")
         self.assertTrue(result["export_nextcloud"]["rollback"]["ok"])
+        self.assertEqual(result["export_nextcloud"]["rollback"]["state"], "deleted")
+        self.assertEqual(len(nextcloud.conditional_delete_calls), 1)
+        self.assertFalse(nextcloud.remote_present)
         self.assertEqual(nextcloud.deleted[0], ("Projet-Tulu", "Synthese-sensible.txt", True))
         self.assertNotIn("Synthese sensible", str(result["export_nextcloud"]))
         self.assertNotIn("Contenu synthetique source", str(result["export_nextcloud"]))
 
     def test_store_export_reports_content_free_when_remote_rollback_fails(self) -> None:
+        nextcloud = _FakeNextcloudExports(
+            delete_reason=workspace_folder_exports.REASON_REMOTE_COMPENSATION_FAILED
+        )
         result = workspace_folder_export_nextcloud_runtime.store_workspace_folder_export_nextcloud_first(
             folder=_folder(linked=True),
             request=_request(),
             exports_module=_FakeExportsModule(fail_upsert=True),
-            nextcloud=_FakeNextcloudExports(
-                delete_reason=workspace_folder_exports.REASON_REMOTE_COMPENSATION_FAILED
-            ),
+            nextcloud=nextcloud,
         )
 
         self.assertFalse(result["ok"])
         self.assertFalse(result["export_nextcloud"]["rollback"]["ok"])
+        self.assertEqual(result["export_nextcloud"]["rollback"]["state"], "failed")
         self.assertEqual(
             result["export_nextcloud"]["rollback"]["reason_code"],
             "folder_export_remote_compensation_failed",
         )
+        self.assertTrue(nextcloud.remote_present)
+        self.assertEqual(nextcloud.remote_version, '"etag-secret"')
+        self.assertEqual(len(nextcloud.conditional_delete_calls), 1)
+        self.assertEqual(nextcloud.deleted, [])
         self.assertNotIn("Synthese sensible", str(result["export_nextcloud"]))
         self.assertNotIn("Contenu synthetique source", str(result["export_nextcloud"]))
+
+    def test_store_export_preserves_changed_remote_version_after_local_failure(self) -> None:
+        nextcloud = _FakeNextcloudExports(remote_version_after_put='"changed-version"')
+
+        result = workspace_folder_export_nextcloud_runtime.store_workspace_folder_export_nextcloud_first(
+            folder=_folder(linked=True),
+            request=_request(),
+            exports_module=_FakeExportsModule(fail_upsert=True),
+            nextcloud=nextcloud,
+        )
+
+        self.assertTrue(nextcloud.remote_present)
+        self.assertEqual(nextcloud.remote_version, '"changed-version"')
+        self.assertEqual(
+            result["export_nextcloud"]["rollback"]["reason_code"],
+            "folder_export_remote_compensation_precondition_failed",
+        )
+        self.assertEqual(result["export_nextcloud"]["rollback"]["state"], "precondition_failed")
+        self.assertEqual(nextcloud.deleted, [])
+
+    def test_store_export_without_creation_version_retains_remote_object(self) -> None:
+        nextcloud = _FakeNextcloudExports(etag="", remote_version_after_put='"unproven-version"')
+
+        result = workspace_folder_export_nextcloud_runtime.store_workspace_folder_export_nextcloud_first(
+            folder=_folder(linked=True),
+            request=_request(),
+            exports_module=_FakeExportsModule(fail_upsert=True),
+            nextcloud=nextcloud,
+        )
+
+        self.assertTrue(nextcloud.remote_present)
+        self.assertEqual(nextcloud.remote_version, '"unproven-version"')
+        self.assertEqual(
+            result["export_nextcloud"]["rollback"]["reason_code"],
+            "folder_export_remote_compensation_ownership_unverified",
+        )
+        self.assertEqual(nextcloud.conditional_delete_calls, [])
+        self.assertEqual(nextcloud.deleted, [])
 
     def test_service_response_uses_route_folder_and_exposes_projection_without_raw_target(self) -> None:
         runtime = _FakeRuntime(

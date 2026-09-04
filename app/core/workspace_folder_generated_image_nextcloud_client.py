@@ -143,6 +143,51 @@ class NextcloudGeneratedImageClient:
             http_status=status,
         )
 
+    def delete_created_image_if_match(
+        self,
+        folder_name: str,
+        image_name: str,
+        *,
+        etag_value: str,
+    ) -> NextcloudGeneratedImageResponse:
+        etag = _safe_etag(etag_value)
+        if not etag or etag != str(etag_value or "").strip():
+            raise NextcloudGeneratedImageClientError(
+                workspace_folder_generated_images.REASON_REMOTE_COMPENSATION_OWNERSHIP_UNVERIFIED
+            )
+        try:
+            status, _response_etag = self._request_status(
+                "DELETE",
+                self._url(folder_name, IMAGES_SUBFOLDER, image_name),
+                headers={"If-Match": etag},
+            )
+        except NextcloudGeneratedImageClientError as exc:
+            raise NextcloudGeneratedImageClientError(
+                workspace_folder_generated_images.REASON_REMOTE_COMPENSATION_FAILED,
+                http_status=exc.http_status,
+            ) from None
+        if status in {200, 202, 204}:
+            return NextcloudGeneratedImageResponse(
+                True,
+                workspace_folder_generated_images.REASON_REMOTE_COMPENSATION_OK,
+                status,
+            )
+        if status == 404:
+            return NextcloudGeneratedImageResponse(
+                True,
+                workspace_folder_generated_images.REASON_REMOTE_COMPENSATION_MISSING,
+                status,
+            )
+        if status == 412:
+            raise NextcloudGeneratedImageClientError(
+                workspace_folder_generated_images.REASON_REMOTE_COMPENSATION_PRECONDITION_FAILED,
+                http_status=status,
+            )
+        raise NextcloudGeneratedImageClientError(
+            workspace_folder_generated_images.REASON_REMOTE_COMPENSATION_FAILED,
+            http_status=status,
+        )
+
     def read_image(
         self,
         folder_name: str,
@@ -315,4 +360,4 @@ def _safe_media_type(value: Any) -> str:
 
 def _safe_etag(value: Any) -> str:
     text = str(value or "").strip()
-    return text[:512] if text else ""
+    return text if text and len(text) <= 512 else ""

@@ -84,14 +84,26 @@ class _FakeNotesModule:
 
 
 class _FakeNextcloudNotes:
-    def __init__(self, *, status_reason="", put_reason="", delete_reason="", etag='"etag-secret"'):
+    def __init__(
+        self,
+        *,
+        status_reason="",
+        put_reason="",
+        delete_reason="",
+        etag='"etag-secret"',
+        remote_version_after_put="",
+    ):
         self.status_reason = status_reason
         self.put_reason = put_reason
         self.delete_reason = delete_reason
         self.etag = etag
+        self.remote_version_after_put = remote_version_after_put
         self.status_calls = []
         self.put_calls = []
         self.deleted = []
+        self.conditional_delete_calls = []
+        self.remote_present = False
+        self.remote_version = ""
 
     def notes_status(self, folder_name):
         self.status_calls.append(folder_name)
@@ -113,6 +125,8 @@ class _FakeNextcloudNotes:
                 self.put_reason,
                 http_status=409 if "conflict" in self.put_reason else 503,
             )
+        self.remote_present = True
+        self.remote_version = self.remote_version_after_put or self.etag
         return workspace_folder_note_nextcloud_client.NextcloudNoteResponse(
             True,
             workspace_folder_notes.REASON_CREATE_OK,
@@ -127,6 +141,31 @@ class _FakeNextcloudNotes:
                 self.delete_reason,
                 http_status=503,
             )
+        self.remote_present = False
+        return workspace_folder_note_nextcloud_client.NextcloudNoteResponse(
+            True,
+            workspace_folder_notes.REASON_REMOTE_COMPENSATION_OK,
+            204,
+        )
+
+    def delete_created_note_if_match(self, folder_name, note_name, *, etag_value):
+        self.conditional_delete_calls.append((folder_name, note_name, etag_value))
+        if self.delete_reason:
+            raise workspace_folder_note_nextcloud_client.NextcloudNoteClientError(
+                self.delete_reason,
+                http_status=503,
+            )
+        if not etag_value:
+            raise workspace_folder_note_nextcloud_client.NextcloudNoteClientError(
+                "folder_note_remote_compensation_ownership_unverified"
+            )
+        if self.remote_version != etag_value:
+            raise workspace_folder_note_nextcloud_client.NextcloudNoteClientError(
+                "folder_note_remote_compensation_precondition_failed",
+                http_status=412,
+            )
+        self.remote_present = False
+        self.deleted.append((folder_name, note_name, True))
         return workspace_folder_note_nextcloud_client.NextcloudNoteResponse(
             True,
             workspace_folder_notes.REASON_REMOTE_COMPENSATION_OK,
@@ -135,7 +174,7 @@ class _FakeNextcloudNotes:
 
 
 class _StatusOnlyNoteClient(workspace_folder_note_nextcloud_client.NextcloudNoteClient):
-    def __init__(self, status):
+    def __init__(self, status, *, response_etag='"etag-secret"'):
         super().__init__(
             workspace_folder_nextcloud_client.NextcloudFolderClientConfig(
                 base_url="http://nextcloud.invalid",
@@ -144,9 +183,11 @@ class _StatusOnlyNoteClient(workspace_folder_note_nextcloud_client.NextcloudNote
             )
         )
         self.status = status
+        self.response_etag = response_etag
 
     def _request_status(self, method, url, *, data=None, headers=None):
-        return self.status, '"etag-secret"'
+        self.last_headers = dict(headers or {})
+        return self.status, self.response_etag
 
 
 def _note(**overrides):
@@ -458,6 +499,61 @@ class WorkspaceFolderNotesTests(unittest.TestCase):
                 _StatusOnlyNoteClient(status).put_note("Projet", "Carnet.md", b"")
             self.assertEqual(ctx.exception.reason_code, "folder_note_name_conflict")
 
+    def test_note_compensation_client_uses_if_match_and_distinguishes_outcomes(self) -> None:
+        success = _StatusOnlyNoteClient(204)
+        success.last_headers = None
+        delete_if_match = getattr(success, "delete_created_note_if_match", None)
+        self.assertTrue(callable(delete_if_match))
+        deleted = delete_if_match("Folder", "sample.md", etag_value='"created-version"')
+        self.assertEqual(deleted.reason_code, "folder_note_remote_compensation_ok")
+        self.assertEqual(success.last_headers, {"If-Match": '"created-version"'})
+
+        missing = _StatusOnlyNoteClient(404).delete_created_note_if_match(
+            "Folder",
+            "sample.md",
+            etag_value='"created-version"',
+        )
+        self.assertEqual(missing.reason_code, "folder_note_remote_compensation_missing")
+
+        with self.assertRaises(workspace_folder_note_nextcloud_client.NextcloudNoteClientError) as refused:
+            _StatusOnlyNoteClient(412).delete_created_note_if_match(
+                "Folder",
+                "sample.md",
+                etag_value='"created-version"',
+            )
+        self.assertEqual(
+            refused.exception.reason_code,
+            "folder_note_remote_compensation_precondition_failed",
+        )
+
+        no_version = _StatusOnlyNoteClient(204)
+        no_version.last_headers = None
+        with self.assertRaises(workspace_folder_note_nextcloud_client.NextcloudNoteClientError) as unverified:
+            no_version.delete_created_note_if_match("Folder", "sample.md", etag_value="")
+        self.assertEqual(
+            unverified.exception.reason_code,
+            "folder_note_remote_compensation_ownership_unverified",
+        )
+        self.assertIsNone(no_version.last_headers)
+
+        oversized = _StatusOnlyNoteClient(201, response_etag='"' + ("x" * 600) + '"')
+        created = oversized.put_note("Folder", "sample.md", b"synthetic")
+        self.assertEqual(created.etag_value, "")
+        oversized.last_headers = None
+        with self.assertRaises(
+            workspace_folder_note_nextcloud_client.NextcloudNoteClientError
+        ) as oversized_unverified:
+            oversized.delete_created_note_if_match(
+                "Folder",
+                "sample.md",
+                etag_value=created.etag_value,
+            )
+        self.assertEqual(
+            oversized_unverified.exception.reason_code,
+            "folder_note_remote_compensation_ownership_unverified",
+        )
+        self.assertIsNone(oversized.last_headers)
+
     def test_create_note_rolls_back_remote_if_local_persistence_fails(self) -> None:
         nextcloud = _FakeNextcloudNotes()
         result = workspace_folder_note_nextcloud_runtime.create_workspace_note_nextcloud_first(
@@ -471,29 +567,78 @@ class WorkspaceFolderNotesTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertEqual(result["reason_code"], "folder_note_local_persistence_failed")
         self.assertTrue(result["note_nextcloud"]["rollback"]["ok"])
+        self.assertEqual(result["note_nextcloud"]["rollback"]["state"], "deleted")
+        self.assertEqual(len(nextcloud.conditional_delete_calls), 1)
+        self.assertFalse(nextcloud.remote_present)
         self.assertEqual(nextcloud.deleted[0], ("Projet-Tulu", "Carnet-sensible.md", True))
         self.assertNotIn("Carnet sensible", str(result["note_nextcloud"]))
         self.assertNotIn("secret local only", str(result["note_nextcloud"]))
 
     def test_create_note_reports_content_free_when_remote_rollback_fails(self) -> None:
+        nextcloud = _FakeNextcloudNotes(
+            delete_reason=workspace_folder_notes.REASON_REMOTE_COMPENSATION_FAILED
+        )
         result = workspace_folder_note_nextcloud_runtime.create_workspace_note_nextcloud_first(
             folder=_folder(linked=True),
             title="Carnet sensible",
             markdown="secret local only",
             notes_module=_FakeNotesModule(fail_upsert=True),
-            nextcloud=_FakeNextcloudNotes(
-                delete_reason=workspace_folder_notes.REASON_REMOTE_COMPENSATION_FAILED
-            ),
+            nextcloud=nextcloud,
         )
 
         self.assertFalse(result["ok"])
         self.assertFalse(result["note_nextcloud"]["rollback"]["ok"])
+        self.assertEqual(result["note_nextcloud"]["rollback"]["state"], "failed")
         self.assertEqual(
             result["note_nextcloud"]["rollback"]["reason_code"],
             "folder_note_remote_compensation_failed",
         )
+        self.assertTrue(nextcloud.remote_present)
+        self.assertEqual(nextcloud.remote_version, '"etag-secret"')
+        self.assertEqual(len(nextcloud.conditional_delete_calls), 1)
+        self.assertEqual(nextcloud.deleted, [])
         self.assertNotIn("Carnet sensible", str(result["note_nextcloud"]))
         self.assertNotIn("secret local only", str(result["note_nextcloud"]))
+
+    def test_create_note_preserves_changed_remote_version_after_local_failure(self) -> None:
+        nextcloud = _FakeNextcloudNotes(remote_version_after_put='"changed-version"')
+
+        result = workspace_folder_note_nextcloud_runtime.create_workspace_note_nextcloud_first(
+            folder=_folder(linked=True),
+            title="Sample",
+            markdown="synthetic",
+            notes_module=_FakeNotesModule(fail_upsert=True),
+            nextcloud=nextcloud,
+        )
+
+        self.assertTrue(nextcloud.remote_present)
+        self.assertEqual(nextcloud.remote_version, '"changed-version"')
+        self.assertEqual(
+            result["note_nextcloud"]["rollback"]["reason_code"],
+            "folder_note_remote_compensation_precondition_failed",
+        )
+        self.assertEqual(result["note_nextcloud"]["rollback"]["state"], "precondition_failed")
+        self.assertEqual(nextcloud.deleted, [])
+
+    def test_create_note_without_creation_version_retains_remote_object(self) -> None:
+        nextcloud = _FakeNextcloudNotes(etag="", remote_version_after_put='"unproven-version"')
+
+        result = workspace_folder_note_nextcloud_runtime.create_workspace_note_nextcloud_first(
+            folder=_folder(linked=True),
+            title="Sample",
+            markdown="synthetic",
+            notes_module=_FakeNotesModule(fail_upsert=True),
+            nextcloud=nextcloud,
+        )
+
+        self.assertTrue(nextcloud.remote_present)
+        self.assertEqual(nextcloud.remote_version, '"unproven-version"')
+        self.assertEqual(
+            result["note_nextcloud"]["rollback"]["reason_code"],
+            "folder_note_remote_compensation_ownership_unverified",
+        )
+        self.assertEqual(nextcloud.conditional_delete_calls, [])
+        self.assertEqual(nextcloud.deleted, [])
 
 
 if __name__ == "__main__":

@@ -32,6 +32,13 @@ REASON_DELETE_OK = "folder_document_delete_ok"
 REASON_REMOTE_DELETE_FAILED = "folder_document_remote_delete_failed"
 REASON_LOCAL_DELETE_FAILED = "folder_document_local_delete_failed"
 REASON_REMOTE_COMPENSATION_OK = "folder_document_remote_compensation_ok"
+REASON_REMOTE_COMPENSATION_MISSING = "folder_document_remote_compensation_missing"
+REASON_REMOTE_COMPENSATION_PRECONDITION_FAILED = (
+    "folder_document_remote_compensation_precondition_failed"
+)
+REASON_REMOTE_COMPENSATION_OWNERSHIP_UNVERIFIED = (
+    "folder_document_remote_compensation_ownership_unverified"
+)
 REASON_REMOTE_COMPENSATION_FAILED = "folder_document_remote_compensation_failed"
 REASON_EXISTING_COPY_REQUIRED = "folder_document_existing_copy_required"
 REASON_EXISTING_COPY_OK = "folder_document_existing_copy_ok"
@@ -46,6 +53,7 @@ class NextcloudDocumentResponse:
     ok: bool
     reason_code: str
     http_status: int = 0
+    etag_value: str = ""
 
     @property
     def status_class(self) -> str:
@@ -105,7 +113,7 @@ class NextcloudDocumentClient:
         *,
         media_type: str = "",
     ) -> NextcloudDocumentResponse:
-        status = self._request_status(
+        status, etag = self._request_status(
             "PUT",
             self._url(folder_name, DOCUMENTS_SUBFOLDER, document_name),
             data=bytes(content or b""),
@@ -115,13 +123,18 @@ class NextcloudDocumentClient:
             },
         )
         if status == 201:
-            return NextcloudDocumentResponse(True, REASON_UPLOAD_OK, status)
+            return NextcloudDocumentResponse(
+                True,
+                REASON_UPLOAD_OK,
+                status,
+                etag_value=_safe_etag(etag),
+            )
         if status in {200, 204}:
             raise NextcloudDocumentClientError(REASON_NAME_CONFLICT, http_status=status)
         raise NextcloudDocumentClientError(_document_write_reason(status), http_status=status)
 
     def document_status(self, folder_name: str, document_name: str) -> NextcloudDocumentResponse:
-        status = self._request_status(
+        status, _etag = self._request_status(
             "PROPFIND",
             self._url(folder_name, DOCUMENTS_SUBFOLDER, document_name),
             headers={"Depth": "0"},
@@ -137,7 +150,7 @@ class NextcloudDocumentClient:
         *,
         missing_ok: bool = True,
     ) -> NextcloudDocumentResponse:
-        status = self._request_status(
+        status, _etag = self._request_status(
             "DELETE",
             self._url(folder_name, DOCUMENTS_SUBFOLDER, document_name),
         )
@@ -145,6 +158,51 @@ class NextcloudDocumentClient:
             return NextcloudDocumentResponse(True, REASON_DELETE_OK, status)
         raise NextcloudDocumentClientError(
             REASON_REMOTE_DELETE_FAILED,
+            http_status=status,
+        )
+
+    def delete_created_document_if_match(
+        self,
+        folder_name: str,
+        document_name: str,
+        *,
+        etag_value: str,
+    ) -> NextcloudDocumentResponse:
+        etag = _safe_etag(etag_value)
+        if not etag or etag != str(etag_value or "").strip():
+            raise NextcloudDocumentClientError(
+                REASON_REMOTE_COMPENSATION_OWNERSHIP_UNVERIFIED
+            )
+        try:
+            status, _response_etag = self._request_status(
+                "DELETE",
+                self._url(folder_name, DOCUMENTS_SUBFOLDER, document_name),
+                headers={"If-Match": etag},
+            )
+        except NextcloudDocumentClientError as exc:
+            raise NextcloudDocumentClientError(
+                REASON_REMOTE_COMPENSATION_FAILED,
+                http_status=exc.http_status,
+            ) from None
+        if status in {200, 202, 204}:
+            return NextcloudDocumentResponse(
+                True,
+                REASON_REMOTE_COMPENSATION_OK,
+                status,
+            )
+        if status == 404:
+            return NextcloudDocumentResponse(
+                True,
+                REASON_REMOTE_COMPENSATION_MISSING,
+                status,
+            )
+        if status == 412:
+            raise NextcloudDocumentClientError(
+                REASON_REMOTE_COMPENSATION_PRECONDITION_FAILED,
+                http_status=status,
+            )
+        raise NextcloudDocumentClientError(
+            REASON_REMOTE_COMPENSATION_FAILED,
             http_status=status,
         )
 
@@ -177,16 +235,16 @@ class NextcloudDocumentClient:
         *,
         data: bytes | None = None,
         headers: dict[str, str] | None = None,
-    ) -> int:
+    ) -> tuple[int, str]:
         request = Request(url, data=data, method=method)
         request.add_header("Authorization", self._authorization_header())
         for key, value in (headers or {}).items():
             request.add_header(key, value)
         try:
             with urlopen(request, timeout=12) as response:
-                return int(response.status)
+                return int(response.status), str(response.headers.get("ETag") or "")
         except HTTPError as exc:
-            return int(exc.code or 0)
+            return int(exc.code or 0), ""
         except (OSError, URLError):
             raise NextcloudDocumentClientError(REASON_DOCUMENTS_TARGET_UNAVAILABLE) from None
 
@@ -231,3 +289,8 @@ def _safe_media_type(value: Any) -> str:
         return text[:120]
     guessed = mimetypes.types_map.get(text)
     return guessed or "application/octet-stream"
+
+
+def _safe_etag(value: Any) -> str:
+    text = str(value or "").strip()
+    return text if text and len(text) <= 512 else ""

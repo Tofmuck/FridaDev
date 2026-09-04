@@ -247,16 +247,23 @@ class _FakeNextcloud:
         put_status=201,
         delete_reason="",
         existing_targets=None,
+        etag='"created-version"',
+        remote_version_after_put="",
     ):
         self.status_reason = status_reason
         self.put_reason = put_reason
         self.put_status = put_status
         self.delete_reason = delete_reason
+        self.etag = etag
+        self.remote_version_after_put = remote_version_after_put
         self.existing_targets = set(existing_targets or set())
         self.status_calls = []
         self.document_status_calls = []
         self.put_calls = []
         self.deleted = []
+        self.conditional_delete_calls = []
+        self.remote_present = False
+        self.remote_version = ""
 
     def documents_status(self, folder_name):
         self.status_calls.append(folder_name)
@@ -293,10 +300,14 @@ class _FakeNextcloud:
                 self.put_reason,
                 http_status=412,
             )
-        return workspace_document_nextcloud_client.NextcloudDocumentResponse(
-            True,
-            workspace_document_nextcloud_client.REASON_UPLOAD_OK,
-            self.put_status,
+        self.remote_present = True
+        self.remote_version = self.remote_version_after_put or self.etag
+        return SimpleNamespace(
+            ok=True,
+            reason_code=workspace_document_nextcloud_client.REASON_UPLOAD_OK,
+            http_status=self.put_status,
+            etag_value=self.etag,
+            status_class=f"{self.put_status // 100}xx",
         )
 
     def delete_document(self, folder_name, document_name, *, missing_ok=True):
@@ -306,9 +317,34 @@ class _FakeNextcloud:
                 self.delete_reason,
                 http_status=503,
             )
+        self.remote_present = False
         return workspace_document_nextcloud_client.NextcloudDocumentResponse(
             True,
             workspace_document_nextcloud_client.REASON_DELETE_OK,
+            204,
+        )
+
+    def delete_created_document_if_match(self, folder_name, document_name, *, etag_value):
+        self.conditional_delete_calls.append((folder_name, document_name, etag_value))
+        if self.delete_reason:
+            raise workspace_document_nextcloud_client.NextcloudDocumentClientError(
+                self.delete_reason,
+                http_status=503,
+            )
+        if not etag_value:
+            raise workspace_document_nextcloud_client.NextcloudDocumentClientError(
+                "folder_document_remote_compensation_ownership_unverified"
+            )
+        if self.remote_version != etag_value:
+            raise workspace_document_nextcloud_client.NextcloudDocumentClientError(
+                "folder_document_remote_compensation_precondition_failed",
+                http_status=412,
+            )
+        self.remote_present = False
+        self.deleted.append((folder_name, document_name, True))
+        return workspace_document_nextcloud_client.NextcloudDocumentResponse(
+            True,
+            workspace_document_nextcloud_client.REASON_REMOTE_COMPENSATION_OK,
             204,
         )
 
@@ -518,8 +554,155 @@ class DocumentsV1IngestionTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertEqual(result["reason_code"], "folder_document_local_persistence_failed")
         self.assertTrue(result["document_nextcloud"]["rollback"]["ok"])
+        self.assertEqual(result["document_nextcloud"]["rollback"]["state"], "deleted")
+        self.assertEqual(len(nextcloud.conditional_delete_calls), 1)
+        self.assertFalse(nextcloud.remote_present)
         self.assertEqual(nextcloud.deleted[0][0], "Projet")
         self.assertNotIn("note.txt", str(result["document_nextcloud"]))
+
+    def test_remote_created_file_preserves_changed_version_after_local_failure(self) -> None:
+        nextcloud = _FakeNextcloud(remote_version_after_put='"changed-version"')
+
+        result = workspace_document_nextcloud_runtime.store_workspace_document_nextcloud_first(
+            folder=_FakeFolders(linked=True).folder,
+            content=b"synthetic",
+            original_filename="sample.txt",
+            metadata={
+                "display_name": "sample.txt",
+                "mime_type": "text/plain",
+                "source_extension": ".txt",
+                "status": "active",
+            },
+            workspace_files_module=_FakeWorkspaceFiles(fail_store=True),
+            nextcloud=nextcloud,
+        )
+
+        self.assertTrue(nextcloud.remote_present)
+        self.assertEqual(nextcloud.remote_version, '"changed-version"')
+        self.assertEqual(
+            result["document_nextcloud"]["rollback"]["reason_code"],
+            "folder_document_remote_compensation_precondition_failed",
+        )
+        self.assertEqual(result["document_nextcloud"]["rollback"]["state"], "precondition_failed")
+        self.assertEqual(nextcloud.deleted, [])
+
+    def test_remote_created_file_without_creation_version_is_retained(self) -> None:
+        nextcloud = _FakeNextcloud(etag="", remote_version_after_put='"unproven-version"')
+
+        result = workspace_document_nextcloud_runtime.store_workspace_document_nextcloud_first(
+            folder=_FakeFolders(linked=True).folder,
+            content=b"synthetic",
+            original_filename="sample.txt",
+            metadata={
+                "display_name": "sample.txt",
+                "mime_type": "text/plain",
+                "source_extension": ".txt",
+                "status": "active",
+            },
+            workspace_files_module=_FakeWorkspaceFiles(fail_store=True),
+            nextcloud=nextcloud,
+        )
+
+        self.assertTrue(nextcloud.remote_present)
+        self.assertEqual(nextcloud.remote_version, '"unproven-version"')
+        self.assertEqual(
+            result["document_nextcloud"]["rollback"]["reason_code"],
+            "folder_document_remote_compensation_ownership_unverified",
+        )
+        self.assertEqual(nextcloud.conditional_delete_calls, [])
+        self.assertEqual(nextcloud.deleted, [])
+
+    def test_document_compensation_client_uses_if_match_and_distinguishes_outcomes(self) -> None:
+        class _ConditionalClient(workspace_document_nextcloud_client.NextcloudDocumentClient):
+            def __init__(self, status, *, response_etag=""):
+                self.status = status
+                self.response_etag = response_etag
+                self.headers = None
+
+            def _url(self, *segments):
+                return "redacted"
+
+            def _request_status(self, method, url, *, data=None, headers=None):
+                self.headers = dict(headers or {})
+                return self.status, self.response_etag
+
+        success = _ConditionalClient(204)
+        delete_if_match = getattr(success, "delete_created_document_if_match", None)
+        self.assertTrue(callable(delete_if_match))
+        deleted = delete_if_match("Folder", "sample.txt", etag_value='"created-version"')
+        self.assertEqual(deleted.reason_code, "folder_document_remote_compensation_ok")
+        self.assertEqual(success.headers, {"If-Match": '"created-version"'})
+
+        missing = _ConditionalClient(404).delete_created_document_if_match(
+            "Folder",
+            "sample.txt",
+            etag_value='"created-version"',
+        )
+        self.assertEqual(missing.reason_code, "folder_document_remote_compensation_missing")
+
+        with self.assertRaises(workspace_document_nextcloud_client.NextcloudDocumentClientError) as refused:
+            _ConditionalClient(412).delete_created_document_if_match(
+                "Folder",
+                "sample.txt",
+                etag_value='"created-version"',
+            )
+        self.assertEqual(
+            refused.exception.reason_code,
+            "folder_document_remote_compensation_precondition_failed",
+        )
+
+        no_version = _ConditionalClient(204)
+        with self.assertRaises(workspace_document_nextcloud_client.NextcloudDocumentClientError) as unverified:
+            no_version.delete_created_document_if_match("Folder", "sample.txt", etag_value="")
+        self.assertEqual(
+            unverified.exception.reason_code,
+            "folder_document_remote_compensation_ownership_unverified",
+        )
+        self.assertIsNone(no_version.headers)
+
+        oversized = _ConditionalClient(201, response_etag='"' + ("x" * 600) + '"')
+        created = oversized.put_document("Folder", "sample.txt", b"synthetic")
+        self.assertEqual(created.etag_value, "")
+        oversized.headers = None
+        with self.assertRaises(
+            workspace_document_nextcloud_client.NextcloudDocumentClientError
+        ) as oversized_unverified:
+            oversized.delete_created_document_if_match(
+                "Folder",
+                "sample.txt",
+                etag_value=created.etag_value,
+            )
+        self.assertEqual(
+            oversized_unverified.exception.reason_code,
+            "folder_document_remote_compensation_ownership_unverified",
+        )
+        self.assertIsNone(oversized.headers)
+
+    def test_document_compensation_transport_failure_is_not_success(self) -> None:
+        nextcloud = _FakeNextcloud(
+            delete_reason=workspace_document_nextcloud_client.REASON_REMOTE_COMPENSATION_FAILED
+        )
+
+        result = workspace_document_nextcloud_runtime.store_workspace_document_nextcloud_first(
+            folder=_FakeFolders(linked=True).folder,
+            content=b"synthetic",
+            original_filename="sample.txt",
+            metadata={
+                "display_name": "sample.txt",
+                "mime_type": "text/plain",
+                "source_extension": ".txt",
+                "status": "active",
+            },
+            workspace_files_module=_FakeWorkspaceFiles(fail_store=True),
+            nextcloud=nextcloud,
+        )
+
+        rollback = result["document_nextcloud"]["rollback"]
+        self.assertFalse(rollback["ok"])
+        self.assertEqual(rollback["state"], "failed")
+        self.assertTrue(nextcloud.remote_present)
+        self.assertEqual(nextcloud.remote_version, '"created-version"')
+        self.assertEqual(nextcloud.deleted, [])
 
     def test_link_persistence_failure_rolls_back_remote_and_local_file(self) -> None:
         nextcloud = _FakeNextcloud()
@@ -541,6 +724,8 @@ class DocumentsV1IngestionTests(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertEqual(result["reason_code"], "folder_document_link_persistence_failed")
         self.assertTrue(result["document_nextcloud"]["rollback"]["remote"]["ok"])
+        self.assertEqual(result["document_nextcloud"]["rollback"]["remote"]["state"], "deleted")
+        self.assertEqual(len(nextcloud.conditional_delete_calls), 1)
         self.assertTrue(result["document_nextcloud"]["rollback"]["local"]["ok"])
         self.assertEqual(len(files.deleted), 1)
         self.assertEqual(nextcloud.deleted[0][0], "Projet")
@@ -761,7 +946,7 @@ class DocumentsV1IngestionTests(unittest.TestCase):
                 return "redacted"
 
             def _request_status(self, method, url, *, data=None, headers=None):
-                return self._status
+                return self._status, ""
 
         for status in (200, 204):
             with self.assertRaises(workspace_document_nextcloud_client.NextcloudDocumentClientError) as ctx:
@@ -904,11 +1089,45 @@ class DocumentsV1IngestionTests(unittest.TestCase):
         self.assertEqual(result["verdict"], "failed")
         self.assertEqual(result["summary"]["error_files"], 1)
         self.assertEqual(result["summary"]["rollback_ok"], 1)
+        self.assertEqual(len(nextcloud.conditional_delete_calls), 1)
         self.assertEqual(nextcloud.deleted, [("Projet", "legacy.txt", True)])
         self.assertEqual(files.deleted, [])
         self.assertEqual(result["events"][0]["reason_code"], "folder_document_link_persistence_failed")
         self.assertTrue(result["events"][0]["rollback"]["ok"])
+        self.assertEqual(result["events"][0]["rollback"]["state"], "deleted")
         self.assertNotIn("legacy.txt", str(result["events"][0]))
+
+    def test_existing_file_link_failure_preserves_changed_remote_version(self) -> None:
+        files = _FakeWorkspaceFiles(
+            existing=[
+                {
+                    "id": FILE_ID,
+                    "workspace_folder_id": FOLDER_ID,
+                    "display_name": "sample.txt",
+                    "source_extension": ".txt",
+                    "mime_type": "text/plain",
+                    "status": "active",
+                    "deleted_at": None,
+                }
+            ],
+            fail_link=True,
+        )
+        nextcloud = _FakeNextcloud(remote_version_after_put='"changed-version"')
+
+        result = workspace_document_existing_files.reconcile_existing_workspace_documents(
+            workspace_folders_module=_FakeFolders(linked=True),
+            workspace_files_module=files,
+            nextcloud=nextcloud,
+        )
+
+        self.assertTrue(nextcloud.remote_present)
+        self.assertEqual(nextcloud.remote_version, '"changed-version"')
+        self.assertEqual(result["summary"]["rollback_failed"], 1)
+        self.assertEqual(
+            result["events"][0]["rollback"]["reason_code"],
+            "folder_document_remote_compensation_precondition_failed",
+        )
+        self.assertEqual(nextcloud.deleted, [])
 
     def test_existing_already_linked_file_is_inventory_only(self) -> None:
         files = _FakeWorkspaceFiles(

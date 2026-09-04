@@ -53,8 +53,10 @@ Depuis le Lot 3, la creation de note Markdown est livree par:
 
 Le Lot 3 verifie reellement `Notes` par `PROPFIND Depth: 0` et confirmation
 `collection`, ecrit avec `PUT + If-None-Match: *`, n'accepte que `201` comme
-creation sure, persiste ensuite dans `workspace_folder_notes`, et compense par
-DELETE distant exact si la persistance locale echoue. La preuve live synthetique
+creation sure, persiste ensuite dans `workspace_folder_notes`, et ne compense
+par DELETE qu'avec `If-Match` sur l'ETag renvoye par cette creation. Sans ETag
+ou si la precondition est refusee, la note distante est conservee et le reliquat
+est signale content-free. La preuve live synthetique
 content-free est:
 `app/docs/states/baselines/notes-smokes/frida-v1-notes-lot3-create-live-20260618T095734Z.jsonl`.
 
@@ -372,8 +374,10 @@ Etat Lot 3 livre:
 - `Notes` absent, non-collection ou inaccessible: refus content-free;
 - `PUT` anti-ecrasement: seul `201` est accepte comme creation sure;
 - `200` / `204` / statut overwrite-like: conflit content-free;
-- succes distant puis persistance locale echouee: rollback distant exact;
-- rollback distant echoue: etat content-free explicite;
+- succes distant puis persistance locale echouee: DELETE conditionnel sur
+  l'ETag exact de la creation;
+- cible absente, precondition refusee, propriete non prouvee et transport en
+  echec restent des etats content-free distincts;
 - corps Markdown jamais persiste localement;
 - titre brut, corps Markdown, ETag brut, cible distante brute, URL DAV, chemin
   DAV, XML, payload WebDAV et secret interdits dans les surfaces techniques.
@@ -718,6 +722,9 @@ Catalogue initial:
 - `folder_note_version_conflict`;
 - `folder_note_local_persistence_failed`;
 - `folder_note_remote_compensation_ok`;
+- `folder_note_remote_compensation_missing`;
+- `folder_note_remote_compensation_precondition_failed`;
+- `folder_note_remote_compensation_ownership_unverified`;
 - `folder_note_remote_compensation_failed`;
 - `folder_note_nextcloud_error_redacted`;
 - `folder_note_turn_limit_exceeded`.
