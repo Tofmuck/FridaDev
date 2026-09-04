@@ -340,6 +340,15 @@ Tous les cas de cette table sont des chaînes statiques, sauf F21. Confiance for
 
 Sonde : un fait dans la fenêtre et un dehors ; première lecture RuntimeError synthétique, seconde connexion saine → 2 faits deviennent1, celui de la fenêtre disparaît, celui de dehors est préservé, statut error et un commit. Les événements sources ne sont pas supprimés ; c'est la projection dérivée disponible qui est perdue. Le statut d'erreur est honnête mais ne compense pas cette destruction. Correction minimale : enregistrer l'échec sans remplacer les faits/buckets tant que la lecture source n'a pas réussi.
 
+**Correction L4 livrée le 4 septembre 2026 : F21 corrigé.** L'upsert de statut
+existant est partagé entre la transaction nominale et une transaction
+status-only utilisée après échec de lecture source. Aucun SQL mutateur ne touche
+alors facts, summaries ou buckets ; un échec de l'upsert ne déclenche aucune
+mutation analytics et ne transforme pas l'échec source en succès. Une lecture
+saine vide reste nominale, et une lecture saine ultérieure reconstruit la fenêtre
+par le chemin existant. La preuve relationnelle, sa mutation contrôlée et les
+tests runtime/read-model voisins sont consignés dans la section L4 de la roadmap.
+
 ### F22 — Deux bancs Identity historiques ne mesurent plus leur responsabilité annoncée — P3
 
 **Incohérence d'outillage statique, pas échec de modèle.** `benchmark/suites/identity_extractor/adapter.py:20-21` utilise le prompt courant de hints mais `benchmark/suites/identity_extractor/scorer.py:26-28` attend les anciennes entrées user/llm ; sa simulation fabrique ce vieux format (`benchmark/suites/identity_extractor/campaign.py:275-304`). `benchmark/suites/identity_periodic/campaign.py:16` importe l'ancien apply retiré ; `benchmark/run_benchmark.py:274-281` expose encore cette suite. Un smoke distinct du juge mutable v2 existe dans `app/scripts/smoke_mutable_identity_judge_llm.py` ; son existence ne signifie pas qu'il a été exécuté.

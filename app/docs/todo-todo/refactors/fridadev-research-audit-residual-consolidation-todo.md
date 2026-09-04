@@ -2,7 +2,7 @@
 
 Date de cadrage : 4 septembre 2026.
 
-**Statut : roadmap ouverte ; L1 à L3 fermés ; L4 à L7 et Z non commencés.**
+**Statut : roadmap ouverte ; L1 à L4 fermés ; L5 à L7 et Z non commencés.**
 
 ## 1. But, source et règle de vérité
 
@@ -71,7 +71,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 | 1 | L1 | Frontière réseau du clone public | F23 | high | fermé — F23 corrigé |
 | 2 | L2 | Intégrité du canon conversationnel | F09 | xhigh | fermé — F09 corrigé |
 | 3 | L3 | Compensation Nextcloud possédée | F08 | xhigh | fermé — F08 corrigé |
-| 4 | L4 | Conservation de la projection analytics | F21 | high | non commencé |
+| 4 | L4 | Conservation de la projection analytics | F21 | high | fermé — F21 corrigé |
 | 5 | L5 | Atomicité des écritures Workspace | F13b, F14a, F19b | xhigh par sous-lot | non commencé |
 | 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | non commencé |
 | 7 | L7 | Vérité d'API, observabilité et outils historiques | F16–F18, F20, F22, F24 et dette documentaire | high | non commencé |
@@ -81,7 +81,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 - [x] L1 fermé.
 - [x] L2 fermé.
 - [x] L3 fermé.
-- [ ] L4 fermé.
+- [x] L4 fermé.
 - [ ] L5.1, L5.2 et L5.3 fermés.
 - [ ] L6 et ses décisions conditionnelles fermés.
 - [ ] L7 et ses décisions conditionnelles fermés.
@@ -341,6 +341,33 @@ par des faits vides.
 aucun DELETE ni remplacement des faits/buckets ; statut d'échec conservé.
 Lecture suivante saine : reconstruction nominale possible. Aucun événement
 source, métrique ou surface supplémentaire.
+
+**Revalidation et fermeture du 4 septembre 2026 :**
+
+- F1 à F5 confirmés : la lecture de `chat_log_events` précède et reste distincte
+  des lectures de facts persistés ; son exception construisait trois listes
+  vides puis appelait le writer nominal, qui supprimait le fact dans la fenêtre,
+  sa synthèse et les buckets affectés avant de committer un statut `error`, alors
+  que le fact hors fenêtre survivait ;
+- F6 confirmée : l'upsert déjà présent de
+  `dashboard_materialization_status` est extrait une seule fois et réutilisé
+  dans une transaction status-only, sans nouvelle table ni second pipeline ;
+- F7 confirmée : runtime et read-models conservent leur contrat ; le runtime ne
+  consomme que le statut retourné et les surfaces lisent facts, summaries et
+  buckets persistés séparément ;
+- F8 confirmée : la lecture saine suivante réutilise le writer nominal, remplace
+  la fenêtre et restaure un statut sain sans migration ni rattrapage spécial.
+
+La fake relationnelle suit désormais l'état committé des facts, summaries,
+buckets et du statut. Elle prouve sur échec source l'absence de tout SQL mutateur
+sur les trois tables analytics, la préservation des états dans et hors fenêtre,
+et l'upsert content-free du seul statut. Elle couvre aussi l'échec de cet upsert
+sans faux succès ni mutation analytics, la reprise saine, et la lecture saine à
+zéro ligne qui conserve le remplacement nominal. Une mutation rétablissant
+temporairement le passage de l'objet vide au writer destructif remet la preuve
+centrale en échec ; la restauration exacte la rend verte.
+
+**Fermeture :** F21 est corrigé et prouvé. L5 n'est pas commencé.
 
 ## 8. L5 — Atomicité des écritures Workspace
 

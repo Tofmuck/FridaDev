@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import sys
 import unittest
@@ -256,11 +257,20 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
         state: dict[tuple[str, str], dict[str, Any]],
         observed: dict[str, Any],
         event_rows: list[tuple[Any, ...]] | None = None,
+        summaries: dict[str, Any] | None = None,
+        buckets: dict[tuple[str, str, str], Any] | None = None,
+        materialization_status: dict[str, Any] | None = None,
+        source_control: dict[str, Any] | None = None,
     ):
         test = self
+        summary_state = summaries if summaries is not None else {}
+        bucket_state = buckets if buckets is not None else {}
+        status_state = materialization_status if materialization_status is not None else {}
+        control = source_control if source_control is not None else {}
 
         class FakeCursor:
-            def __init__(self) -> None:
+            def __init__(self, conn: 'FakeConn') -> None:
+                self._conn = conn
                 self._rows: list[tuple[Any, ...]] = []
 
             def __enter__(self) -> 'FakeCursor':
@@ -275,7 +285,10 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
                 compact_query = ' '.join(query.split())
 
                 if 'FROM observability.chat_log_events AS events' in query:
-                    self._rows = list(event_rows or [])
+                    source_error = control.get('error')
+                    if isinstance(source_error, Exception):
+                        raise source_error
+                    self._rows = list(control.get('rows', event_rows or []))
                     return
 
                 if compact_query.startswith('SELECT DISTINCT conversation_id FROM observability.dashboard_turn_facts'):
@@ -284,7 +297,7 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
                     self._rows = sorted(
                         {
                             (fact['conversation_id'],)
-                            for fact in state.values()
+                            for fact in self._conn.facts.values()
                             if start <= test._latest_ts(fact) < end
                         }
                     )
@@ -293,15 +306,15 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
                 if compact_query.startswith('DELETE FROM observability.dashboard_turn_facts'):
                     start = datetime.fromisoformat(str(params[0]))
                     end = datetime.fromisoformat(str(params[1]))
-                    for key, fact in list(state.items()):
+                    for key, fact in list(self._conn.facts.items()):
                         if start <= test._latest_ts(fact) < end:
-                            del state[key]
+                            del self._conn.facts[key]
                     self._rows = []
                     return
 
                 if compact_query.startswith('INSERT INTO observability.dashboard_turn_facts'):
                     fact = test._fact_from_insert_params(params or ())
-                    state[(str(fact['conversation_id']), str(fact['turn_id']))] = fact
+                    self._conn.facts[(str(fact['conversation_id']), str(fact['turn_id']))] = fact
                     self._rows = []
                     return
 
@@ -309,7 +322,7 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
                     ids = set(params[0] or [])
                     self._rows = [
                         test._fact_to_persisted_row(fact)
-                        for fact in sorted(state.values(), key=lambda item: str(item['latest_ts']))
+                        for fact in sorted(self._conn.facts.values(), key=lambda item: str(item['latest_ts']))
                         if fact['conversation_id'] in ids
                     ]
                     return
@@ -319,18 +332,62 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
                     end = datetime.fromisoformat(str(params[1]))
                     self._rows = [
                         test._fact_to_persisted_row(fact)
-                        for fact in sorted(state.values(), key=lambda item: str(item['latest_ts']))
+                        for fact in sorted(self._conn.facts.values(), key=lambda item: str(item['latest_ts']))
                         if start <= test._latest_ts(fact) < end
                     ]
                     return
 
+                if compact_query.startswith('DELETE FROM observability.dashboard_conversation_summaries'):
+                    for conversation_id in params[0] or []:
+                        self._conn.summaries.pop(str(conversation_id), None)
+                    self._rows = []
+                    return
+
                 if compact_query.startswith('INSERT INTO observability.dashboard_conversation_summaries'):
                     observed.setdefault('summary_params', []).append(params)
+                    self._conn.summaries[str(params[0])] = tuple(params or ())
+                    self._rows = []
+                    return
+
+                if compact_query.startswith('DELETE FROM observability.dashboard_metric_buckets'):
+                    granularity = str(params[0])
+                    bucket_start = str(params[1])
+                    for key in list(self._conn.buckets):
+                        if key[0] == granularity and key[1] == bucket_start:
+                            del self._conn.buckets[key]
                     self._rows = []
                     return
 
                 if compact_query.startswith('INSERT INTO observability.dashboard_metric_buckets'):
                     observed.setdefault('bucket_params', []).append(params)
+                    key = (str(params[0]), str(params[1]), str(params[3]))
+                    self._conn.buckets[key] = tuple(params or ())
+                    self._rows = []
+                    return
+
+                if compact_query.startswith('INSERT INTO observability.dashboard_materialization_status'):
+                    status_error = control.get('status_upsert_error')
+                    if isinstance(status_error, Exception):
+                        raise status_error
+                    observed.setdefault('status_params', []).append(params)
+                    self._conn.materialization_status.update(
+                        {
+                            'materializer_key': params[0],
+                            'calculation_version': params[1],
+                            'status': params[2],
+                            'window_start': params[3],
+                            'window_end': params[4],
+                            'source_events_count': params[8],
+                            'turns_materialized_count': params[12],
+                            'conversations_materialized_count': params[13],
+                            'buckets_materialized_count': params[14],
+                            'error_count': params[15],
+                            'last_error_code': params[16],
+                            'last_error_chars': params[17],
+                            'last_error_sha256_12': params[18],
+                            'backfill_status': params[19],
+                        }
+                    )
                     self._rows = []
                     return
 
@@ -340,6 +397,12 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
                 return self._rows
 
         class FakeConn:
+            def __init__(self) -> None:
+                self.facts = copy.deepcopy(state)
+                self.summaries = copy.deepcopy(summary_state)
+                self.buckets = copy.deepcopy(bucket_state)
+                self.materialization_status = copy.deepcopy(status_state)
+
             def __enter__(self) -> 'FakeConn':
                 return self
 
@@ -347,12 +410,88 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
                 return False
 
             def cursor(self) -> FakeCursor:
-                return FakeCursor()
+                return FakeCursor(self)
 
             def commit(self) -> None:
+                state.clear()
+                state.update(copy.deepcopy(self.facts))
+                summary_state.clear()
+                summary_state.update(copy.deepcopy(self.summaries))
+                bucket_state.clear()
+                bucket_state.update(copy.deepcopy(self.buckets))
+                status_state.clear()
+                status_state.update(copy.deepcopy(self.materialization_status))
                 observed['commits'] = int(observed.get('commits') or 0) + 1
 
         return FakeConn
+
+    def _preexisting_materialized_state(self) -> tuple[
+        dict[tuple[str, str], dict[str, Any]],
+        dict[str, Any],
+        dict[tuple[str, str, str], Any],
+    ]:
+        analytics = dashboard_analytics.build_dashboard_analytics(
+            [
+                *self._complete_turn(
+                    conversation_id='conv-inside',
+                    turn_id='turn-inside',
+                    base_ts='2026-05-14T12:15:00+00:00',
+                ),
+                *self._complete_turn(
+                    conversation_id='conv-outside',
+                    turn_id='turn-outside',
+                    base_ts='2026-05-13T11:15:00+00:00',
+                ),
+            ],
+            now=datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
+        )
+        facts = {
+            (str(fact['conversation_id']), str(fact['turn_id'])): dict(fact)
+            for fact in analytics['turn_facts']
+        }
+        summaries = {
+            str(summary['conversation_id']): dict(summary)
+            for summary in analytics['conversation_summaries']
+        }
+        buckets = {
+            (
+                str(bucket['granularity']),
+                str(bucket['bucket_start']),
+                str(bucket['module_key']),
+            ): dict(bucket)
+            for bucket in analytics['metric_buckets']
+        }
+        return facts, summaries, buckets
+
+    def _event_rows(self, events: list[dict[str, Any]]) -> list[tuple[Any, ...]]:
+        return [
+            (
+                event['event_id'],
+                event['conversation_id'],
+                event['turn_id'],
+                datetime.fromisoformat(str(event['ts'])),
+                event['stage'],
+                event['status'],
+                event['duration_ms'],
+                event['payload_json'],
+            )
+            for event in events
+        ]
+
+    def _analytics_mutation_queries(self, queries: list[str]) -> list[str]:
+        analytics_tables = (
+            'observability.dashboard_turn_facts',
+            'observability.dashboard_conversation_summaries',
+            'observability.dashboard_metric_buckets',
+        )
+        mutations: list[str] = []
+        for query in queries:
+            compact = ' '.join(query.split())
+            if compact.startswith(('DELETE ', 'INSERT ', 'UPDATE ')) and any(
+                table in compact for table in analytics_tables
+            ):
+                mutations.append(compact)
+        return mutations
 
     def test_build_dashboard_analytics_is_idempotent_and_content_free(self) -> None:
         now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
@@ -1479,6 +1618,193 @@ class DashboardAnalyticsLot2Tests(unittest.TestCase):
             now=now,
         )
         self.assertEqual(analytics['materialization_status']['lag_seconds'], 30)
+
+    def test_source_read_failure_preserves_all_persisted_analytics_and_only_upserts_status(self) -> None:
+        now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
+        facts, summaries, buckets = self._preexisting_materialized_state()
+        initial_facts = copy.deepcopy(facts)
+        initial_summaries = copy.deepcopy(summaries)
+        initial_buckets = copy.deepcopy(buckets)
+        status_state: dict[str, Any] = {'status': 'ok'}
+        observed: dict[str, Any] = {'queries': [], 'params': [], 'commits': 0}
+        sensitive_error = 'SENSITIVE SOURCE FAILURE MUST NOT LEAK'
+        source_control = {'error': RuntimeError(sensitive_error)}
+        FakeConn = self._window_state_fake_conn(
+            state=facts,
+            summaries=summaries,
+            buckets=buckets,
+            materialization_status=status_state,
+            observed=observed,
+            source_control=source_control,
+        )
+
+        analytics = dashboard_analytics.materialize_dashboard_analytics_window(
+            ts_from='2026-05-14T12:00:00Z',
+            ts_to='2026-05-14T13:00:00Z',
+            now=now,
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+        )
+
+        self.assertEqual(facts, initial_facts)
+        self.assertEqual(summaries, initial_summaries)
+        self.assertEqual(buckets, initial_buckets)
+        self.assertIn(('conv-inside', 'turn-inside'), facts)
+        self.assertIn(('conv-outside', 'turn-outside'), facts)
+        self.assertIn('conv-inside', summaries)
+        self.assertTrue(
+            any(key[:2] == ('hour', '2026-05-14T12:00:00+00:00') for key in buckets)
+        )
+        self.assertEqual(self._analytics_mutation_queries(observed['queries']), [])
+        self.assertEqual(status_state['status'], 'error')
+        self.assertEqual(status_state['last_error_code'], 'RuntimeError')
+        self.assertEqual(status_state['last_error_chars'], len(sensitive_error))
+        self.assertEqual(len(status_state['last_error_sha256_12']), 12)
+        self.assertEqual(analytics['materialization_status']['status'], 'error')
+        self.assertEqual(analytics['turn_facts'], [])
+        self.assertEqual(analytics['conversation_summaries'], [])
+        self.assertEqual(analytics['metric_buckets'], [])
+        self.assertEqual(observed['commits'], 1)
+        self.assertIn('observability.dashboard_materialization_status', '\n'.join(observed['queries']))
+        self.assertNotIn(
+            sensitive_error,
+            json.dumps(
+                {
+                    'analytics': analytics,
+                    'status': status_state,
+                    'params': observed['params'],
+                },
+                default=str,
+                sort_keys=True,
+            ),
+        )
+
+    def test_source_read_failure_with_status_upsert_failure_never_mutates_analytics(self) -> None:
+        now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
+        facts, summaries, buckets = self._preexisting_materialized_state()
+        initial_facts = copy.deepcopy(facts)
+        initial_summaries = copy.deepcopy(summaries)
+        initial_buckets = copy.deepcopy(buckets)
+        status_state: dict[str, Any] = {'status': 'ok'}
+        observed: dict[str, Any] = {'queries': [], 'params': [], 'commits': 0}
+        source_control = {
+            'error': RuntimeError('synthetic source read failure'),
+            'status_upsert_error': ValueError('synthetic status write failure'),
+        }
+        FakeConn = self._window_state_fake_conn(
+            state=facts,
+            summaries=summaries,
+            buckets=buckets,
+            materialization_status=status_state,
+            observed=observed,
+            source_control=source_control,
+        )
+
+        analytics = dashboard_analytics.materialize_dashboard_analytics_window(
+            ts_from='2026-05-14T12:00:00Z',
+            ts_to='2026-05-14T13:00:00Z',
+            now=now,
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+        )
+
+        self.assertEqual(analytics['materialization_status']['status'], 'error')
+        self.assertEqual(analytics['materialization_status']['last_error_code'], 'RuntimeError')
+        self.assertNotIn('persist', analytics)
+        self.assertEqual(facts, initial_facts)
+        self.assertEqual(summaries, initial_summaries)
+        self.assertEqual(buckets, initial_buckets)
+        self.assertEqual(status_state, {'status': 'ok'})
+        self.assertEqual(self._analytics_mutation_queries(observed['queries']), [])
+        self.assertEqual(observed['commits'], 0)
+
+    def test_healthy_read_after_source_failure_rebuilds_window_and_restores_status(self) -> None:
+        now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
+        facts, summaries, buckets = self._preexisting_materialized_state()
+        status_state: dict[str, Any] = {'status': 'ok'}
+        observed: dict[str, Any] = {'queries': [], 'params': [], 'commits': 0}
+        source_control: dict[str, Any] = {'error': RuntimeError('synthetic source read failure')}
+        FakeConn = self._window_state_fake_conn(
+            state=facts,
+            summaries=summaries,
+            buckets=buckets,
+            materialization_status=status_state,
+            observed=observed,
+            source_control=source_control,
+        )
+
+        failed = dashboard_analytics.materialize_dashboard_analytics_window(
+            ts_from='2026-05-14T12:00:00Z',
+            ts_to='2026-05-14T13:00:00Z',
+            now=now,
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+        )
+        source_control['error'] = None
+        source_control['rows'] = self._event_rows(
+            self._complete_turn(
+                conversation_id='conv-recovered',
+                turn_id='turn-recovered',
+                base_ts='2026-05-14T12:30:00+00:00',
+            )
+        )
+        recovered = dashboard_analytics.materialize_dashboard_analytics_window(
+            ts_from='2026-05-14T12:00:00Z',
+            ts_to='2026-05-14T13:00:00Z',
+            now=now,
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+        )
+
+        self.assertEqual(failed['materialization_status']['status'], 'error')
+        self.assertEqual(recovered['materialization_status']['status'], 'ok')
+        self.assertTrue(recovered['persist']['ok'])
+        self.assertNotIn(('conv-inside', 'turn-inside'), facts)
+        self.assertIn(('conv-outside', 'turn-outside'), facts)
+        self.assertIn(('conv-recovered', 'turn-recovered'), facts)
+        self.assertIn('conv-recovered', summaries)
+        self.assertTrue(
+            any(key[:2] == ('hour', '2026-05-14T12:00:00+00:00') for key in buckets)
+        )
+        self.assertEqual(status_state['status'], 'ok')
+        self.assertEqual(status_state['error_count'], 0)
+        self.assertEqual(observed['commits'], 2)
+        self.assertTrue(self._analytics_mutation_queries(observed['queries']))
+
+    def test_successful_empty_source_read_uses_nominal_window_replacement(self) -> None:
+        now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
+        facts, summaries, buckets = self._preexisting_materialized_state()
+        status_state: dict[str, Any] = {'status': 'ok'}
+        observed: dict[str, Any] = {'queries': [], 'params': [], 'commits': 0}
+        source_control: dict[str, Any] = {'rows': []}
+        FakeConn = self._window_state_fake_conn(
+            state=facts,
+            summaries=summaries,
+            buckets=buckets,
+            materialization_status=status_state,
+            observed=observed,
+            source_control=source_control,
+        )
+
+        analytics = dashboard_analytics.materialize_dashboard_analytics_window(
+            ts_from='2026-05-14T12:00:00Z',
+            ts_to='2026-05-14T13:00:00Z',
+            now=now,
+            conn_factory=lambda: FakeConn(),
+            logger_instance=_NoopLogger(),
+        )
+
+        self.assertEqual(analytics['materialization_status']['status'], 'empty')
+        self.assertTrue(analytics['persist']['ok'])
+        self.assertNotIn(('conv-inside', 'turn-inside'), facts)
+        self.assertIn(('conv-outside', 'turn-outside'), facts)
+        self.assertNotIn('conv-inside', summaries)
+        self.assertFalse(
+            any(key[:2] == ('hour', '2026-05-14T12:00:00+00:00') for key in buckets)
+        )
+        self.assertEqual(status_state['status'], 'empty')
+        self.assertEqual(observed['commits'], 1)
+        self.assertTrue(self._analytics_mutation_queries(observed['queries']))
 
     def test_materialize_dashboard_analytics_window_reads_without_event_limit_and_upserts(self) -> None:
         now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)

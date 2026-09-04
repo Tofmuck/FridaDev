@@ -337,6 +337,13 @@ Ces tables sont un socle analytique, pas une nouvelle source de contenu complet.
 Doctrine de materialisation v1:
 
 - une fenetre de materialisation selectionne les tours touches, puis relit tous les events de ces tours afin de ne pas remplacer un fact complet par un fact tronque;
+- si la lecture de `observability.chat_log_events` echoue, seuls les champs
+  content-free de `dashboard_materialization_status` sont mis a jour; les
+  `dashboard_turn_facts`, `dashboard_conversation_summaries` et
+  `dashboard_metric_buckets` deja persistes restent integralement inchanges;
+- une lecture source reussie qui retourne zero evenement reste une fenetre vide
+  nominale et peut remplacer les projections de cette fenetre; une lecture
+  saine ulterieure reprend le meme chemin nominal de reconstruction;
 - les `dashboard_turn_facts` peuvent etre mis a jour pour une fenetre arbitraire;
 - les `dashboard_conversation_summaries` ne sont jamais reconstruites depuis la seule petite fenetre courante: elles sont regenerees depuis les facts deja persistants des conversations touchees;
 - les `dashboard_metric_buckets` ne sont jamais remplaces par les seuls facts d'une sous-fenetre: les buckets affectes sont regenerees depuis tous les facts persistants du bucket complet;

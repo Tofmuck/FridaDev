@@ -567,6 +567,103 @@ def init_dashboard_analytics_storage(
         )
 
 
+def _upsert_dashboard_materialization_status(
+    cur: Any,
+    status: Mapping[str, Any],
+) -> None:
+    cur.execute(
+        '''
+        INSERT INTO observability.dashboard_materialization_status (
+            materializer_key, calculation_version, status,
+            window_start, window_end, retention_days, recent_granularity_days,
+            old_granularity, source_events_count, source_events_truncated,
+            event_limit_dependency, last_event_id, last_event_ts, lag_seconds,
+            turns_materialized_count, conversations_materialized_count,
+            buckets_materialized_count, error_count, last_error_code,
+            last_error_chars, last_error_sha256_12, backfill_status,
+            status_json, updated_ts
+        )
+        VALUES (
+            %s, %s, %s,
+            %s::timestamptz, %s::timestamptz, %s, %s,
+            %s, %s, false,
+            false, %s, %s::timestamptz, %s,
+            %s, %s,
+            %s, %s, %s,
+            %s, %s, %s,
+            %s::jsonb, %s::timestamptz
+        )
+        ON CONFLICT (materializer_key) DO UPDATE SET
+            calculation_version = EXCLUDED.calculation_version,
+            status = EXCLUDED.status,
+            window_start = EXCLUDED.window_start,
+            window_end = EXCLUDED.window_end,
+            retention_days = EXCLUDED.retention_days,
+            recent_granularity_days = EXCLUDED.recent_granularity_days,
+            old_granularity = EXCLUDED.old_granularity,
+            source_events_count = EXCLUDED.source_events_count,
+            source_events_truncated = false,
+            event_limit_dependency = false,
+            last_event_id = EXCLUDED.last_event_id,
+            last_event_ts = EXCLUDED.last_event_ts,
+            lag_seconds = EXCLUDED.lag_seconds,
+            turns_materialized_count = EXCLUDED.turns_materialized_count,
+            conversations_materialized_count = EXCLUDED.conversations_materialized_count,
+            buckets_materialized_count = EXCLUDED.buckets_materialized_count,
+            error_count = EXCLUDED.error_count,
+            last_error_code = EXCLUDED.last_error_code,
+            last_error_chars = EXCLUDED.last_error_chars,
+            last_error_sha256_12 = EXCLUDED.last_error_sha256_12,
+            backfill_status = EXCLUDED.backfill_status,
+            status_json = EXCLUDED.status_json,
+            updated_ts = EXCLUDED.updated_ts
+        ''',
+        (
+            status.get('materializer_key') or 'dashboard_long_term_observability',
+            status.get('calculation_version') or CALCULATION_VERSION,
+            status.get('status') or 'unknown',
+            status.get('window_start'),
+            status.get('window_end'),
+            _to_int(status.get('retention_days')) or RETENTION_DAYS,
+            _to_int(status.get('recent_granularity_days')) or RECENT_GRANULARITY_DAYS,
+            status.get('old_granularity') or 'day',
+            _to_int(status.get('source_events_count')),
+            status.get('last_event_id'),
+            status.get('last_event_ts'),
+            status.get('lag_seconds'),
+            _to_int(status.get('turns_materialized_count')),
+            _to_int(status.get('conversations_materialized_count')),
+            _to_int(status.get('buckets_materialized_count')),
+            _to_int(status.get('error_count')),
+            status.get('last_error_code'),
+            _to_int(status.get('last_error_chars')),
+            status.get('last_error_sha256_12'),
+            status.get('backfill_status') or 'unknown',
+            _json(status),
+            status.get('updated_ts'),
+        ),
+    )
+
+
+def _persist_dashboard_materialization_status(
+    status: Mapping[str, Any],
+    *,
+    conn_factory: Callable[[], Any],
+    logger_instance: Any,
+) -> None:
+    try:
+        with conn_factory() as conn:
+            with conn.cursor() as cur:
+                _upsert_dashboard_materialization_status(cur, status)
+            conn.commit()
+    except Exception as exc:
+        logger_instance.error(
+            'dashboard_analytics_persist_failed reason=dashboard_analytics_persist_exception err_class=%s',
+            exc.__class__.__name__,
+        )
+        raise
+
+
 def persist_dashboard_analytics(
     analytics: Mapping[str, Any],
     *,
@@ -710,78 +807,7 @@ def persist_dashboard_analytics(
                 status_for_persist['conversations_materialized_count'] = len(rebuilt_conversation_summaries)
                 status_for_persist['buckets_materialized_count'] = len(rebuilt_metric_buckets)
 
-                cur.execute(
-                    '''
-                    INSERT INTO observability.dashboard_materialization_status (
-                        materializer_key, calculation_version, status,
-                        window_start, window_end, retention_days, recent_granularity_days,
-                        old_granularity, source_events_count, source_events_truncated,
-                        event_limit_dependency, last_event_id, last_event_ts, lag_seconds,
-                        turns_materialized_count, conversations_materialized_count,
-                        buckets_materialized_count, error_count, last_error_code,
-                        last_error_chars, last_error_sha256_12, backfill_status,
-                        status_json, updated_ts
-                    )
-                    VALUES (
-                        %s, %s, %s,
-                        %s::timestamptz, %s::timestamptz, %s, %s,
-                        %s, %s, false,
-                        false, %s, %s::timestamptz, %s,
-                        %s, %s,
-                        %s, %s, %s,
-                        %s, %s, %s,
-                        %s::jsonb, %s::timestamptz
-                    )
-                    ON CONFLICT (materializer_key) DO UPDATE SET
-                        calculation_version = EXCLUDED.calculation_version,
-                        status = EXCLUDED.status,
-                        window_start = EXCLUDED.window_start,
-                        window_end = EXCLUDED.window_end,
-                        retention_days = EXCLUDED.retention_days,
-                        recent_granularity_days = EXCLUDED.recent_granularity_days,
-                        old_granularity = EXCLUDED.old_granularity,
-                        source_events_count = EXCLUDED.source_events_count,
-                        source_events_truncated = false,
-                        event_limit_dependency = false,
-                        last_event_id = EXCLUDED.last_event_id,
-                        last_event_ts = EXCLUDED.last_event_ts,
-                        lag_seconds = EXCLUDED.lag_seconds,
-                        turns_materialized_count = EXCLUDED.turns_materialized_count,
-                        conversations_materialized_count = EXCLUDED.conversations_materialized_count,
-                        buckets_materialized_count = EXCLUDED.buckets_materialized_count,
-                        error_count = EXCLUDED.error_count,
-                        last_error_code = EXCLUDED.last_error_code,
-                        last_error_chars = EXCLUDED.last_error_chars,
-                        last_error_sha256_12 = EXCLUDED.last_error_sha256_12,
-                        backfill_status = EXCLUDED.backfill_status,
-                        status_json = EXCLUDED.status_json,
-                        updated_ts = EXCLUDED.updated_ts
-                    ''',
-                    (
-                        status_for_persist.get('materializer_key') or 'dashboard_long_term_observability',
-                        status_for_persist.get('calculation_version') or CALCULATION_VERSION,
-                        status_for_persist.get('status') or 'unknown',
-                        status_for_persist.get('window_start'),
-                        status_for_persist.get('window_end'),
-                        _to_int(status_for_persist.get('retention_days')) or RETENTION_DAYS,
-                        _to_int(status_for_persist.get('recent_granularity_days')) or RECENT_GRANULARITY_DAYS,
-                        status_for_persist.get('old_granularity') or 'day',
-                        _to_int(status_for_persist.get('source_events_count')),
-                        status_for_persist.get('last_event_id'),
-                        status_for_persist.get('last_event_ts'),
-                        status_for_persist.get('lag_seconds'),
-                        _to_int(status_for_persist.get('turns_materialized_count')),
-                        _to_int(status_for_persist.get('conversations_materialized_count')),
-                        _to_int(status_for_persist.get('buckets_materialized_count')),
-                        _to_int(status_for_persist.get('error_count')),
-                        status_for_persist.get('last_error_code'),
-                        _to_int(status_for_persist.get('last_error_chars')),
-                        status_for_persist.get('last_error_sha256_12'),
-                        status_for_persist.get('backfill_status') or 'unknown',
-                        _json(status_for_persist),
-                        status_for_persist.get('updated_ts'),
-                    ),
-                )
+                _upsert_dashboard_materialization_status(cur, status_for_persist)
             conn.commit()
     except Exception as exc:
         logger_instance.error(
@@ -905,8 +931,8 @@ def materialize_dashboard_analytics_window(
             },
         }
         try:
-            persist_dashboard_analytics(
-                analytics,
+            _persist_dashboard_materialization_status(
+                status,
                 conn_factory=conn_factory,
                 logger_instance=logger_instance,
             )
