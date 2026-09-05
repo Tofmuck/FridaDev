@@ -23,9 +23,17 @@ function chatMockScript({ streamMode, imageMode = 'success', chatDelayMs = 0 }) 
     event: 'error',
     error_code: 'conversation_persist_failed',
   })}\n`;
+  const emptyFinalTerminal = `${STREAM_CONTROL_PREFIX}${JSON.stringify({
+    kind: 'frida-stream-control',
+    event: 'done',
+    updated_at: '2026-05-03T10:00:00Z',
+    final_text: '',
+  })}\n`;
   const streamBody = streamMode === 'error'
     ? `Réponse partielle non persistée${errorTerminal}`
-    : `Réponse nominale${nominalTerminal}`;
+    : (streamMode === 'empty_final'
+      ? `Brouillon visible${emptyFinalTerminal}`
+      : `Réponse nominale${nominalTerminal}`);
   const messagesAfterError = [
     {
       role: 'user',
@@ -102,12 +110,12 @@ function chatMockScript({ streamMode, imageMode = 'success', chatDelayMs = 0 }) 
                 timestamp: "2026-05-03T09:59:00Z",
                 conversation_id: "conv-browser",
               },
-              {
+              ...(state.streamMode === "empty_final" ? [] : [{
                 role: "assistant",
                 content: "Réponse nominale",
                 timestamp: "2026-05-03T10:00:00Z",
                 meta: { hash: "abc123" },
-              },
+              }]),
             ];
           }
           return new Response(JSON.stringify({ ok: true, messages }), {
@@ -394,6 +402,35 @@ test('chat stream nominal handles done terminal, assistant bubble, timestamp and
     assert.ok(chatPost, 'chat POST should be called');
     assert.equal(JSON.parse(chatPost.body).stream, true);
     assert.ok(fetchCalls.filter((call) => call.method === 'GET' && call.path === '/api/conversations').length >= 2);
+  });
+});
+
+test('chat submit honors an explicit empty terminal without caching a phantom assistant', async () => {
+  await openBrowserPage({ mockScript: chatMockScript({ streamMode: 'empty_final' }) }, async (page) => {
+    await page.waitForSelector('#message:not([disabled])');
+    await page.fill('#message', 'Demande synthétique');
+    await page.click('#ask button[type="submit"]');
+    await page.waitForFunction(() => window.__fridaBrowserState.conversationFetches >= 2);
+
+    const assistantBubble = page.locator('.msg-wrapper:not(.me) .msg').last();
+    assert.equal(await assistantBubble.textContent(), '(vide)');
+
+    await page.click('#threads li.active');
+    await page.waitForFunction(() => document.querySelectorAll('.msg-wrapper:not(.me)').length === 0);
+    assert.equal(await page.locator('.msg-wrapper:not(.me)').count(), 0);
+
+    const downloadPromise = page.waitForEvent('download');
+    await page.click('#btnExportConversation');
+    const markdown = await readDownloadText(await downloadPromise);
+    assert.equal(markdown.includes('Brouillon visible'), false);
+    assert.equal(markdown.includes('(vide)'), false);
+    assert.ok(
+      await page.evaluate(() => window.__fridaBrowserState.messageFetches >= 2),
+      'export must force canonical server rehydration after the cache check',
+    );
+    await page.click('#threads li.active');
+    await page.waitForFunction(() => document.querySelectorAll('.msg-wrapper:not(.me)').length === 0);
+    assert.equal(await page.locator('.msg-wrapper:not(.me)').count(), 0);
   });
 });
 

@@ -2,7 +2,8 @@
 
 Date de cadrage : 4 septembre 2026.
 
-**Statut : roadmap ouverte ; L1 à L5 fermés ; L6, L7 et Z non commencés.**
+**Statut : roadmap ouverte ; L1 à L5 et L6.1 fermés ; L6 en cours ; L6.2,
+L7 et Z non commencés.**
 
 ## 1. But, source et règle de vérité
 
@@ -73,7 +74,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 | 3 | L3 | Compensation Nextcloud possédée | F08 | xhigh | fermé — F08 corrigé |
 | 4 | L4 | Conservation de la projection analytics | F21 | high | fermé — F21 corrigé |
 | 5 | L5 | Atomicité des écritures Workspace | F13b, F14a, F19b | xhigh par sous-lot | fermé — F13b, F14a et F19b corrigés |
-| 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | non commencé |
+| 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | en cours — L6.1/F05 corrigé ; L6.2 non commencé |
 | 7 | L7 | Vérité d'API, observabilité et outils historiques | F16–F18, F20, F22, F24 et dette documentaire | high | non commencé |
 | 8 | Z | Réconciliation finale avec le grand audit | tous les Fxx et réserves non numérotées | xhigh | non commencé |
 
@@ -84,6 +85,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 - [x] L4 fermé.
 - [x] L5.1 fermé.
 - [x] L5.2 et L5.3 fermés.
+- [x] L6.1 fermé ; F05 corrigé et cas terminal vide corrigé après reproduction.
 - [ ] L6 et ses décisions conditionnelles fermés.
 - [ ] L7 et ses décisions conditionnelles fermés.
 - [ ] Z réconcilie chaque finding et archive la roadmap.
@@ -568,6 +570,57 @@ Préserver exactement le corps des fences autorisées (`_`, `*` et autres
 caractères légitimes) sans relâcher la doctrine générale de forme. Vérifier
 séparément le cas secondaire du terminal serveur vide et du fallback UI
 `reply || assistantText` ; ne le corriger que s'il est reproduit.
+
+**Statut : fermé — F05 corrigé et raccord frontend secondaire corrigé après
+reproduction.** Le plan de référence est resté le plus simple et le plus sûr :
+suivre l'entrée et la sortie de fence avec la longueur de son délimiteur, rendre
+opaques les seules lignes de corps lorsque `allow_code=True`, et conserver les
+traitements existants sur les fences et la prose extérieure. Aucun changement
+de doctrine, prompt, modèle, provider, schéma, route, store ou protocole n'a été
+nécessaire.
+
+**Revalidation H1–H7.** H1 est confirmé : chaque ligne du corps autorisé passait
+dans `_strip_inline_markdown()` et perdait notamment `_`, `*` et `__name__`.
+H2 est confirmé : le seul témoin autorisé `print("hello")` ne sollicitait aucun
+caractère destructible, aucune indentation ni prose mixte. H3 est confirmé : la
+frontière correcte est le corps entre délimitations, tandis que titres,
+blockquote, règle, gras et italique extérieurs conservent leur normalisation.
+H4 est confirmé et préservé : sans autorisation, délimitations et corps restent
+retirés, y compris blocs vides, multiples et non fermés ; le stream structuré
+emprunte lui aussi cette normalisation finale. Détection de demande et garde
+système sont inchangées. H5 est confirmé comme exigence, avec un écart stream
+additionnel revalidé : `allow_code=True` désactivait le buffer existant et
+contournait ainsi la normalisation finale de la prose. Tous les streams texte
+brut sont désormais bufferisés par le mécanisme existant ; JSON, texte terminal,
+message persistant et dérivation post-save partagent le même canon. H6 est
+confirmé en Chromium : le parser et `sendToServer()` respectaient bien
+`final_text: ""`, puis le submit rétablissait le brouillon avec `reply ||
+assistantText`. Le submit consomme maintenant la chaîne retournée telle quelle,
+affiche `"(vide)"` sans fabriquer de canon et, comme le serveur réel, ne met
+aucun message assistant vide en cache. H7 est confirmé.
+
+**Rouge, correction et mutation.** Avant patch, le témoin central produisait
+`foobarbaz = a  b  c` et `return name, ...`; la traversée route échouait en JSON
+sur ce canon altéré et en stream sur la prose Markdown non normalisée. Le
+scénario navigateur `brouillon non vide -> done(final_text="")` conservait
+`Brouillon visible`. La correction conserve les lignes de code et leurs lignes
+vides, exige une fermeture au moins aussi longue que l'ouverture, limite la
+compression des blancs à la prose, et préserve la normalisation CRLF existante
+par retrait des `\r`. Une mutation contrôlée réappliquant temporairement
+`_strip_inline_markdown()` au corps autorisé a remis le témoin central au rouge ;
+sa restauration exacte l'a remis au vert.
+
+**Preuves.** Les tests ciblés couvrent le corps Python demandé, indentation,
+prose avant/après, CRLF, fences vides/non fermées/multiples, imbriquées ou
+indentées, fausses fermetures contenant du texte, retrait strict des blocs
+interdits même en stream structuré, segmentation de chunks, routes JSON et
+stream, terminal, persistance et dérivations. Le voisinage passe avec `68`
+tests Python, `15` tests Node du
+parser/état streaming et `17` scénarios Chromium, sans provider, DB opérateur ni
+réseau. Presence, final lock, interruptions et échecs de persistance restent
+verts. Limite honnête : ces preuves synthétiques établissent
+le contrat applicatif et non la fréquence de sorties concernées chez un
+provider réel. L6 reste ouvert et L6.2 n'est pas commencé.
 
 ### L6.2 — Réponses asynchrones rattachées à leur sélection — F10
 

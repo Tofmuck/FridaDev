@@ -94,6 +94,92 @@ class AssistantOutputContractTests(unittest.TestCase):
         self.assertIn('```python', normalized)
         self.assertIn('print("hello")', normalized)
 
+    def test_normalize_assistant_output_preserves_authorized_code_body_and_normalizes_outer_prose(self) -> None:
+        text = (
+            '## **Exemple**\n\n'
+            '> _Avant._\n\n'
+            '```python\n'
+            'foo_bar_baz = a * b * c\n'
+            'def f(*args, **kwargs):\n'
+            '    return __name__, args, kwargs\n'
+            '\n'
+            '\n'
+            '```\n\n'
+            '---\n'
+            '**Après.**'
+        )
+        policy = assistant_output_contract.AssistantOutputPolicy(allow_code=True)
+
+        normalized = assistant_output_contract.normalize_assistant_output(text, policy)
+
+        self.assertEqual(
+            normalized,
+            'Exemple\n\n'
+            'Avant.\n\n'
+            '```python\n'
+            'foo_bar_baz = a * b * c\n'
+            'def f(*args, **kwargs):\n'
+            '    return __name__, args, kwargs\n'
+            '\n'
+            '\n'
+            '```\n\n'
+            'Après.',
+        )
+
+    def test_normalize_assistant_output_handles_empty_unclosed_and_multiple_authorized_fences(self) -> None:
+        policy = assistant_output_contract.AssistantOutputPolicy(allow_code=True)
+        cases = (
+            ('empty', 'Avant.\n```python\n```\nAprès.'),
+            (
+                'unclosed',
+                'Avant.\n```python\n  foo_bar = a * b\n\n',
+            ),
+            (
+                'multiple',
+                '```python\nfoo_bar = a * b\n```\nEntre **les blocs**.\n```bash\nprintf "%s\\n" "$HOME"\n```',
+            ),
+            (
+                'shorter_nested_fence',
+                '````python\nfirst_body = ok\n```\nfoo_bar_baz = a * b * c\n````',
+            ),
+            (
+                'indented_non_closing_fence',
+                '```python\n    ```not-a-close\nfoo_bar_baz = a * b * c\n```',
+            ),
+            (
+                'indented_opening_fence',
+                'Avant.\n    ```python\n  foo_bar = a * b\n    ```\nAprès.',
+            ),
+        )
+
+        for name, text in cases:
+            with self.subTest(name=name):
+                expected = text.replace('**les blocs**', 'les blocs')
+                self.assertEqual(
+                    assistant_output_contract.normalize_assistant_output(text, policy),
+                    expected,
+                )
+
+    def test_normalize_assistant_output_normalizes_crlf_without_changing_authorized_code(self) -> None:
+        text = (
+            '**Avant.**\r\n'
+            '```python\r\n'
+            '  foo_bar = a * b\r\n'
+            '\r\n'
+            '```\r\n'
+            '_Après._'
+        )
+
+        normalized = assistant_output_contract.normalize_assistant_output(
+            text,
+            assistant_output_contract.AssistantOutputPolicy(allow_code=True),
+        )
+
+        self.assertEqual(
+            normalized,
+            'Avant.\n```python\n  foo_bar = a * b\n\n```\nAprès.',
+        )
+
     def test_normalize_assistant_output_removes_fenced_code_block_body_when_code_is_not_allowed(self) -> None:
         text = 'Avant.\n\n```json\n{\n  "nom": "Dupont"\n}\n```\n\nAprès.'
 
@@ -105,6 +191,32 @@ class AssistantOutputContractTests(unittest.TestCase):
         self.assertEqual(normalized, 'Avant.\n\nAprès.')
         self.assertNotIn('```', normalized)
         self.assertNotIn('"nom"', normalized)
+
+    def test_normalize_assistant_output_never_leaks_empty_unclosed_or_multiple_forbidden_fences(self) -> None:
+        cases = (
+            ('empty', 'Avant.\n```python\n```\nAprès.', 'Avant.\nAprès.'),
+            ('unclosed', 'Avant.\n```python\nsecret_value = a * b\nAprès.', 'Avant.'),
+            (
+                'multiple',
+                'Avant.\n```python\nfirst_secret = 1\n```\nEntre.\n```bash\nsecond_secret=2\n```\nAprès.',
+                'Avant.\nEntre.\nAprès.',
+            ),
+            (
+                'indented',
+                'Avant.\n    ```python\nsecret_value = 1\n    ```\nAprès.',
+                'Avant.\nAprès.',
+            ),
+        )
+
+        for name, text, expected in cases:
+            with self.subTest(name=name):
+                normalized = assistant_output_contract.normalize_assistant_output(
+                    text,
+                    assistant_output_contract.AssistantOutputPolicy(),
+                )
+                self.assertEqual(normalized, expected)
+                self.assertNotIn('secret', normalized)
+                self.assertNotIn('```', normalized)
 
 
 if __name__ == '__main__':

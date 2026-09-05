@@ -34,7 +34,8 @@ _EXPLICIT_CODE_REQUEST_PATTERNS = (
 _HEADER_RE = re.compile(r'^(\s*)#{1,6}\s+')
 _BLOCKQUOTE_RE = re.compile(r'^(\s*)>\s*')
 _HORIZONTAL_RULE_RE = re.compile(r'^\s*(?:-{3,}|\*{3,}|_{3,})\s*$')
-_CODE_FENCE_RE = re.compile(r'^\s*```')
+_CODE_FENCE_OPEN_RE = re.compile(r'^\s*(`{3,})[^`]*$')
+_CODE_FENCE_CLOSE_RE = re.compile(r'^\s*(`{3,})\s*$')
 _BOLD_RE = re.compile(r'\*\*(.+?)\*\*|__(.+?)__')
 _ITALIC_STAR_RE = re.compile(r'(?<!\*)\*([^*\n]+)\*(?!\*)')
 _ITALIC_UNDERSCORE_RE = re.compile(r'(?<!_)_([^_\n]+)_(?!_)')
@@ -85,8 +86,7 @@ def build_plain_text_guard_block(policy: AssistantOutputPolicy) -> str:
 
 
 def should_buffer_plain_text_stream(policy: AssistantOutputPolicy | None) -> bool:
-    current = policy or AssistantOutputPolicy()
-    return not current.allow_structure and not current.allow_code
+    return True
 
 
 def _strip_inline_markdown(text: str) -> str:
@@ -111,17 +111,42 @@ def _normalize_line(line: str, policy: AssistantOutputPolicy) -> str:
 def normalize_assistant_output(text: str, policy: AssistantOutputPolicy | None) -> str:
     current = policy or AssistantOutputPolicy()
     raw = str(text or '').replace('\r', '')
-    normalized_lines: list[str] = []
-    in_fenced_code_block = False
+    normalized_lines: list[tuple[str, bool]] = []
+    fenced_code_delimiter_length: int | None = None
 
     for line in raw.split('\n'):
-        if not current.allow_code and _CODE_FENCE_RE.match(line):
-            in_fenced_code_block = not in_fenced_code_block
+        if fenced_code_delimiter_length is None:
+            opening_fence = _CODE_FENCE_OPEN_RE.match(line)
+            if opening_fence is None:
+                normalized_line = _normalize_line(line, current)
+                if (
+                    not normalized_line
+                    and normalized_lines
+                    and not normalized_lines[-1][0]
+                    and not normalized_lines[-1][1]
+                ):
+                    continue
+                normalized_lines.append((normalized_line, False))
+                continue
+            fenced_code_delimiter_length = len(opening_fence.group(1))
+            if not current.allow_code:
+                continue
+            normalized_lines.append((_normalize_line(line, current), False))
             continue
-        if in_fenced_code_block and not current.allow_code:
-            continue
-        normalized_lines.append(_normalize_line(line, current))
 
-    normalized = '\n'.join(normalized_lines)
-    normalized = re.sub(r'\n{3,}', '\n\n', normalized)
+        closing_fence = _CODE_FENCE_CLOSE_RE.match(line)
+        if (
+            closing_fence is not None
+            and len(closing_fence.group(1)) >= fenced_code_delimiter_length
+        ):
+            fenced_code_delimiter_length = None
+            if current.allow_code:
+                normalized_lines.append((_normalize_line(line, current), False))
+            continue
+        if current.allow_code:
+            normalized_lines.append((line, True))
+
+    normalized = '\n'.join(line for line, _is_code_body in normalized_lines)
+    if normalized_lines and normalized_lines[-1][1]:
+        return normalized.lstrip()
     return normalized.strip()

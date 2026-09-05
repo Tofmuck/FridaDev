@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -192,6 +193,8 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
 
             def iter_lines(self, decode_unicode=True, delimiter='\n'):
                 yield 'data: {"choices":[{"delta":{"content":"1) Comprendre\\n"}}]}'
+                yield 'data: {"choices":[{"delta":{"content":"```python\\n"}}]}'
+                yield 'data: {"choices":[{"delta":{"content":"secret_value = 1\\n```\\n"}}]}'
                 yield 'data: {"choices":[{"delta":{"content":"2) Structurer"}}]}'
                 yield 'data: [DONE]'
 
@@ -216,6 +219,8 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
         self.assertIsNone(response.headers.get('X-Conversation-Updated-At'))
         self.assertIn('1) Comprendre', text)
         self.assertIn('2) Structurer', text)
+        self.assertNotIn('```', text)
+        self.assertNotIn('secret_value', text)
         self.assertEqual(
             terminal,
             {'event': 'done', 'updated_at': conversation['messages'][-1]['timestamp']},
@@ -223,6 +228,146 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
         self.assertEqual(conversation['messages'][-1]['content'], text)
         self.assertNotIn('assistant_turn', conversation['messages'][-1].get('meta') or {})
         self.assertEqual(observed_state['save_calls'][-1]['kwargs'].get('updated_at'), conversation['messages'][-1]['timestamp'])
+
+    def test_api_chat_json_and_stream_preserve_authorized_code_as_the_same_canonical_text(self) -> None:
+        raw_text = (
+            '## Exemple\n\n'
+            '**Avant.**\n\n'
+            '```python\n'
+            'foo_bar_baz = a * b * c\n'
+            'def f(*args, **kwargs):\n'
+            '    return __name__, args, kwargs\n'
+            '```\n\n'
+            '> _Après._'
+        )
+        expected = (
+            'Exemple\n\n'
+            'Avant.\n\n'
+            '```python\n'
+            'foo_bar_baz = a * b * c\n'
+            'def f(*args, **kwargs):\n'
+            '    return __name__, args, kwargs\n'
+            '```\n\n'
+            'Après.'
+        )
+        stream_chunks = (
+            '## Exemple\n\n**Avant.**\n\n```python\nfoo_',
+            'bar_baz = a * b * c\ndef f(*args, **kwargs):\n',
+            '    return __name__, args, kwargs\n```\n\n> _Après._',
+        )
+
+        for stream_req in (False, True):
+            with self.subTest(stream=stream_req):
+                conversation = {
+                    'id': f'conv-authorized-code-{stream_req}',
+                    'created_at': '2026-09-05T14:00:00Z',
+                    'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+                }
+
+                class FakeResponse:
+                    encoding = None
+
+                    def __enter__(self):
+                        return self
+
+                    def __exit__(self, exc_type, exc, tb):
+                        return False
+
+                    def raise_for_status(self):
+                        return None
+
+                    def json(self):
+                        return {'choices': [{'message': {'content': raw_text}}]}
+
+                    def iter_lines(self, decode_unicode=True, delimiter='\n'):
+                        for chunk in stream_chunks:
+                            yield f'data: {json.dumps({"choices": [{"delta": {"content": chunk}}]})}'
+                        yield 'data: [DONE]'
+
+                observed_state, restore = self._patch_chat_pipeline(
+                    conversation=conversation,
+                    requests_post=lambda *_args, **_kwargs: FakeResponse(),
+                )
+                try:
+                    response = self.client.post(
+                        '/api/chat',
+                        json={
+                            'message': 'Montre-moi un exemple de code Python.',
+                            'stream': stream_req,
+                        },
+                        buffered=True,
+                    )
+                finally:
+                    restore()
+
+                self.assertEqual(response.status_code, 200)
+                if stream_req:
+                    visible_text, terminal = self._split_stream_body(response)
+                    final_text = terminal.get('final_text', visible_text)
+                    self.assertEqual(visible_text, expected)
+                    self.assertEqual(final_text, expected)
+                    self.assertEqual(terminal['event'], 'done')
+                else:
+                    final_text = response.get_json()['text']
+                    self.assertEqual(final_text, expected)
+                self.assertEqual(conversation['messages'][-1]['content'], expected)
+                self.assertEqual(
+                    observed_state['save_new_traces_calls'][-1][-1]['content'],
+                    expected,
+                )
+
+    def test_api_chat_stream_empty_canonical_text_persists_no_assistant_message(self) -> None:
+        conversation = {
+            'id': 'conv-empty-canonical-stream',
+            'created_at': '2026-09-05T14:00:00Z',
+            'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+        }
+
+        class FakeResponse:
+            encoding = None
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def raise_for_status(self):
+                return None
+
+            def iter_lines(self, decode_unicode=True, delimiter='\n'):
+                yield 'data: {"choices":[{"delta":{"content":"_"}}]}'
+                yield 'data: {"choices":[{"delta":{"content":"__"}}]}'
+                yield 'data: [DONE]'
+
+        observed_state, restore = self._patch_chat_pipeline(
+            conversation=conversation,
+            requests_post=lambda *_args, **_kwargs: FakeResponse(),
+        )
+        try:
+            response = self.client.post(
+                '/api/chat',
+                json={'message': 'Bonjour', 'stream': True},
+                buffered=True,
+            )
+        finally:
+            restore()
+
+        draft, terminal = self._split_stream_body(response)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(draft, '_')
+        self.assertEqual(terminal['event'], 'done')
+        self.assertEqual(terminal['final_text'], '')
+        self.assertTrue(terminal.get('updated_at'))
+        self.assertEqual(conversation['messages'][-1]['role'], 'user')
+        self.assertFalse(any(message.get('role') == 'assistant' for message in conversation['messages']))
+        self.assertFalse(
+            any(
+                message.get('role') == 'assistant'
+                for snapshot in observed_state['save_new_traces_calls']
+                for message in snapshot
+            )
+        )
 
     def test_api_chat_stream_removes_unrequested_fenced_code_blocks_for_first_party_surface(self) -> None:
         conversation = {

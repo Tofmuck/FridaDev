@@ -531,18 +531,20 @@
       const hasReplyUpdatedAt = hasTerminalUpdatedAt(replyTerminal);
       const shouldStickToBottom = isChatNearBottom();
 
-      assistantText = reply || assistantText;
+      assistantText = reply;
       setAssistantLoader(assistantNode, false);
       assistantNode.bubble.textContent = assistantText || "(vide)";
       if (hasReplyUpdatedAt) {
         setMessageNodeTimestamp(assistantNode, "assistant", replyTerminal.updated_at);
       }
-      appendMessageToThread(
-        requestThreadId,
-        "assistant",
-        assistantNode.bubble.textContent,
-        hasReplyUpdatedAt ? replyTerminal.updated_at : null,
-      );
+      if (assistantText) {
+        appendMessageToThread(
+          requestThreadId,
+          "assistant",
+          assistantText,
+          hasReplyUpdatedAt ? replyTerminal.updated_at : null,
+        );
+      }
       applyConversationTerminalMeta(requestThreadId, replyTerminal);
       if (!hasReplyUpdatedAt && requestThreadId) {
         await hydrateThreadMessages(requestThreadId, { force: true });
