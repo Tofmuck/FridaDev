@@ -558,6 +558,23 @@ Etat livre Lot 5A:
 - Lot 5A.3 impose que `read_today` et `read_tomorrow` utilisent exactement la
   fenetre canonique disponible, cote `time_scope` et `event_query_range`; une
   fenetre UTC brute incompatible est rejetee avant lecture;
+- la consolidation L6.3 derive desormais, pour chaque methode read-only, les
+  outils de lecture requis. Une methode de fenetre exige
+  `event_query_range`; `calendar_list` seul ne prouve jamais une fenetre vide;
+- une absence d'evenement n'est rendue qu'apres une observation de lecture
+  reussie dont la fenetre normalisee correspond au `time_scope` du plan et
+  dont au moins un calendrier a ete resolu. L'absence de calendrier et
+  l'echec de lecture restent deux erreurs distinctes, jamais des resultats
+  vides;
+- la frontiere CalDAV normalise les timeouts et erreurs `requests`, ainsi que
+  le XML invalide de `PROPFIND` ou `REPORT`, vers les reason codes fermes
+  `caldav_timeout`, `caldav_request_error` et `caldav_xml_invalid`. Ces erreurs
+  suivent le chemin Agenda et son final lock d'erreur existants; elles ne
+  deviennent ni fausse absence, ni echec global du chat;
+- cette normalisation capture seulement les exceptions ordinaires reconnues;
+  `KeyboardInterrupt` et `SystemExit` traversent toujours la frontiere. Les
+  observations ne portent ni texte brut d'exception, ni XML, credential,
+  header d'autorisation ou URL CalDAV sensible;
 - `current_week` canonique reste hors scope du micro-correctif 5A.3 et devra
   etre tranche avec la politique de lecture semaine/disponibilites;
 - Lot 5 complet reste ouvert jusqu'a une configuration Sauron redacted et une
@@ -1347,6 +1364,23 @@ Preuve Lot 5B relance:
 - aucun titre, lieu, description, invite, UID, ETag, raw ICS, URL/path CalDAV,
   Authorization, cookie, token, app-password, prompt brut ou dialogue brut
   n'est stocke dans l'artefact.
+
+Preuve de consolidation L6.3 locale:
+
+- un plan de lecture de semaine limite a `calendar_list` est refuse avant
+  acces au client, tandis qu'un `REPORT` reussi et vide sur la fenetre demandee
+  conserve la reponse d'absence honnete;
+- une liste de calendriers vide produit
+  `agenda_readonly_no_calendar_resolved`; une lecture planifiee sans l'outil
+  requis ou sans observation concordante produit une erreur bornee;
+- timeout, `RequestException` et XML invalide traversent le vrai
+  transport/client injecte puis le raccord `/api/chat`: le statut HTTP reste
+  `200`, le final lock d'erreur Agenda est persiste et le pipeline principal
+  n'est pas appele;
+- les preuves sont hermetiques, sans provider, CalDAV ou DB operateur, et
+  verifient absence de mutation et observabilite content-free. Une mutation
+  controlee de la garde d'absence puis de la normalisation transport remet les
+  regressions centrales au rouge; la restauration exacte les remet au vert.
 
 Preuve content-free minimale:
 

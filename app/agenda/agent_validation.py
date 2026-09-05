@@ -208,6 +208,10 @@ def validate_agent_payload(
     tool_calls = _validate_tool_calls(payload.get('tool_calls'), product_method, settings)
     if isinstance(tool_calls, str):
         return _rejected(tool_calls, '')
+    required_tools = product_methods.required_tools_for_method(product_method)
+    planned_tools = {call.tool_name for call in tool_calls}
+    if not required_tools.issubset(planned_tools):
+        return _rejected(contract.REASON_TOOL_NOT_EXECUTABLE, '')
     window_reason = _validate_canonical_time_window(
         product_method=product_method,
         time_scope=time_scope,

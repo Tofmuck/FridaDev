@@ -2,8 +2,8 @@
 
 Date de cadrage : 4 septembre 2026.
 
-**Statut : roadmap ouverte ; L1 à L5, L6.1 et L6.2 fermés ; L6 en cours ;
-L6.3, L7 et Z non commencés.**
+**Statut : roadmap ouverte ; L1 à L5 et L6.1 à L6.3 fermés ; L6 en cours ;
+L6.4, L7 et Z non commencés.**
 
 ## 1. But, source et règle de vérité
 
@@ -74,7 +74,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 | 3 | L3 | Compensation Nextcloud possédée | F08 | xhigh | fermé — F08 corrigé |
 | 4 | L4 | Conservation de la projection analytics | F21 | high | fermé — F21 corrigé |
 | 5 | L5 | Atomicité des écritures Workspace | F13b, F14a, F19b | xhigh par sous-lot | fermé — F13b, F14a et F19b corrigés |
-| 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | en cours — L6.1/F05 et L6.2/F10 corrigés ; L6.3 non commencé |
+| 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | en cours — L6.1/F05, L6.2/F10 et L6.3/F12a-F12b corrigés ; L6.4 non commencé |
 | 7 | L7 | Vérité d'API, observabilité et outils historiques | F16–F18, F20, F22, F24 et dette documentaire | high | non commencé |
 | 8 | Z | Réconciliation finale avec le grand audit | tous les Fxx et réserves non numérotées | xhigh | non commencé |
 
@@ -87,6 +87,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 - [x] L5.2 et L5.3 fermés.
 - [x] L6.1 fermé ; F05 corrigé et cas terminal vide corrigé après reproduction.
 - [x] L6.2 fermé ; F10 corrigé sur les quatre familles frontend confirmées.
+- [x] L6.3 fermé ; F12a et F12b corrigés sans commencer F12c/L6.4.
 - [ ] L6 et ses décisions conditionnelles fermés.
 - [ ] L7 et ses décisions conditionnelles fermés.
 - [ ] Z réconcilie chaque finding et archive la roadmap.
@@ -700,6 +701,38 @@ Exiger la lecture requise par la méthode avant de rendre une absence d'événem
 Normaliser timeouts, erreurs requests et XML invalide à la frontière Agenda
 existante afin qu'une panne de lane ne devienne pas un échec global du chat.
 Ne pas masquer une absence de REPORT et ne pas ajouter de regex d'intention.
+
+**Revalidation au HEAD `28bb7b7afb1c000c727123c061f63822e7808f73`.**
+F12a est confirmé : la validation exigeait seulement un outil allowlisté ; un
+plan de fenêtre limité à `calendar_list` pouvait donc finir avec `status=ok`,
+`events=()` et produire une réponse d'absence sans `REPORT`. Une résolution de
+calendriers vide suivait le même chemin trompeur. F12b est confirmé :
+`requests.exceptions.Timeout`, les autres `RequestException` et
+`ElementTree.ParseError` sortaient du transport/client, au-delà des exceptions
+bornées par l'exécuteur Agenda, et pouvaient faire échouer le chat entier.
+
+**Décision et correctif.** Le plan le plus simple et le plus sûr reste dans les
+frontières existantes : déclarer les outils requis avec la méthode produit,
+les contrôler dans la validation et l'exécution, puis autoriser un résultat
+vide seulement si une observation de lecture réussie correspond exactement au
+`time_scope` normalisé et porte au moins un calendrier résolu. L'absence de
+calendrier devient `agenda_readonly_no_calendar_resolved`; une preuve manquante
+reste une erreur bornée. Le transport normalise timeout et erreur `requests` et
+le client normalise le XML invalide avec des reason codes fermés et
+content-free. Le raccord et les final locks Agenda existants restent l'unique
+pipeline. `KeyboardInterrupt` et `SystemExit` ne sont pas capturés.
+
+**Preuves et limites.** Le rouge initial reproduit l'acceptation
+`calendar_list` seule, la fausse absence sans calendrier et la fuite des trois
+familles d'exception. Les tests ciblés prouvent le refus avant client, le
+contre-cas `REPORT` vide honnête, les trois erreurs au vrai transport/client et
+au raccord `/api/chat`, la survie HTTP du chat, le final lock d'erreur, le
+succès nominal, les final locks voisins, l'absence de mutation et
+l'observabilité content-free. Deux mutations contrôlées, sur la garde centrale
+d'absence puis sur la normalisation transport, remettent les preuves au rouge;
+leur restauration exacte les remet au vert. Les preuves restent synthétiques
+et hermétiques : aucun provider, CalDAV réel, DB opérateur, JavaScript ou
+Chromium n'a été sollicité. F12c et L6.4 ne sont pas commencés.
 
 ### L6.4 — Agenda : récurrences extrêmes — F12c, diagnostic préalable
 

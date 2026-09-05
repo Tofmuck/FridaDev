@@ -98,7 +98,7 @@ _GENERAL_SCALAR_KEYS = set(
     stimmung_temperature_sent stimmung_temperature_effective stimmung_top_p_sent stimmung_top_p_effective
     stimmung_provider_routing_sent stimmung_provider_fallbacks_allowed stimmung_provider_require_parameters
     stimmung_response_format_sent stimmung_json_schema_strict stimmung_json_schema_additional_properties
-    confidence content_free conversation_saved current_embedding_blocked current_embedding_calls
+    confidence content_free conversation_saved current_embedding_blocked current_embedding_calls empty_result_proven
     current_embedding_reused dimensions draft_description_present draft_present draft_private embedding_calls_total fallback family_calendar
     has_in_progress_turn legacy_writer_disabled messages_saved mutable_len nextcloud_access now_iso_present
     node_state_read_present node_state_read_valid node_state_write_attempted node_state_write_changed

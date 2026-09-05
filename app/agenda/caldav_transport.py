@@ -4,7 +4,7 @@ import base64
 from typing import Any
 
 from agenda import runtime_config
-from agenda.caldav_models import CalDavRequest, CalDavResponse, CalDavTransportUnavailable
+from agenda.caldav_models import CalDavReadError, CalDavRequest, CalDavResponse, CalDavTransportUnavailable
 from agenda.caldav_read_client import CalDavReadClient
 
 
@@ -34,13 +34,24 @@ class CalDavHttpTransport:
             raise CalDavTransportUnavailable('requests module does not expose request()')
         headers = dict(request.headers or {})
         headers['Authorization'] = _basic_auth_header(self._account, self._app_password)
-        response = request_func(
-            request.method,
-            request.url,
-            headers=headers,
-            data=request.body.encode('utf-8') if request.body else b'',
-            timeout=self._timeout_s,
-        )
+        try:
+            response = request_func(
+                request.method,
+                request.url,
+                headers=headers,
+                data=request.body.encode('utf-8') if request.body else b'',
+                timeout=self._timeout_s,
+            )
+        except Exception as exc:
+            reason_code = _requests_error_reason(self._requests, exc)
+            if not reason_code:
+                raise
+            raise CalDavReadError(
+                method=request.method,
+                kind=request.kind,
+                status_code=0,
+                reason_code=reason_code,
+            ) from None
         return CalDavResponse(
             status_code=int(getattr(response, 'status_code', 0) or 0),
             text=str(getattr(response, 'text', '') or ''),
@@ -80,3 +91,14 @@ def _caldav_base_url(config_module: Any) -> str:
 def _basic_auth_header(account: str, app_password: str) -> str:
     raw = f'{account}:{app_password}'.encode('utf-8')
     return 'Basic ' + base64.b64encode(raw).decode('ascii')
+
+
+def _requests_error_reason(requests_module: Any, exc: Exception) -> str:
+    exceptions = getattr(requests_module, 'exceptions', None)
+    timeout_type = getattr(exceptions, 'Timeout', None)
+    request_error_type = getattr(exceptions, 'RequestException', None)
+    if isinstance(timeout_type, type) and isinstance(exc, timeout_type):
+        return 'caldav_timeout'
+    if isinstance(request_error_type, type) and isinstance(exc, request_error_type):
+        return 'caldav_request_error'
+    return ''

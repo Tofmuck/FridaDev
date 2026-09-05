@@ -66,6 +66,9 @@ def build_final_response_lock(
                 observability=observability,
             )
         return None
+    events = tuple(getattr(execution_result, 'events', ()) or ())
+    if not events and not bool(getattr(execution_result, 'empty_result_proven', False)):
+        return None
     content = render_readonly_answer(plan=plan, execution_result=execution_result)
     if not content:
         return None

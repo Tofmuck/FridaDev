@@ -49,6 +49,7 @@ class AgendaProductMethod:
     family: str
     mutation_kind: str = 'none'
     allowed_tools: frozenset[str] = frozenset()
+    required_tools: frozenset[str] = frozenset()
 
     @property
     def is_mutation(self) -> bool:
@@ -60,31 +61,37 @@ _METHODS = {
         METHOD_READ_TODAY,
         FAMILY_READ,
         allowed_tools=frozenset({TOOL_CALENDAR_LIST, TOOL_EVENT_QUERY_RANGE}),
+        required_tools=frozenset({TOOL_EVENT_QUERY_RANGE}),
     ),
     METHOD_READ_TOMORROW: AgendaProductMethod(
         METHOD_READ_TOMORROW,
         FAMILY_READ,
         allowed_tools=frozenset({TOOL_CALENDAR_LIST, TOOL_EVENT_QUERY_RANGE}),
+        required_tools=frozenset({TOOL_EVENT_QUERY_RANGE}),
     ),
     METHOD_READ_EXPLICIT_DATE: AgendaProductMethod(
         METHOD_READ_EXPLICIT_DATE,
         FAMILY_READ,
         allowed_tools=frozenset({TOOL_CALENDAR_LIST, TOOL_EVENT_QUERY_RANGE}),
+        required_tools=frozenset({TOOL_EVENT_QUERY_RANGE}),
     ),
     METHOD_READ_WEEK: AgendaProductMethod(
         METHOD_READ_WEEK,
         FAMILY_READ,
         allowed_tools=frozenset({TOOL_CALENDAR_LIST, TOOL_EVENT_QUERY_RANGE}),
+        required_tools=frozenset({TOOL_EVENT_QUERY_RANGE}),
     ),
     METHOD_SEARCH_EVENTS: AgendaProductMethod(
         METHOD_SEARCH_EVENTS,
         FAMILY_READ,
         allowed_tools=frozenset({TOOL_EVENT_QUERY_RANGE, TOOL_EVENT_SEARCH}),
+        required_tools=frozenset({TOOL_EVENT_SEARCH}),
     ),
     METHOD_FIND_NEXT_MATCHING_EVENT: AgendaProductMethod(
         METHOD_FIND_NEXT_MATCHING_EVENT,
         FAMILY_READ,
         allowed_tools=frozenset({TOOL_EVENT_QUERY_RANGE, TOOL_EVENT_SEARCH}),
+        required_tools=frozenset({TOOL_EVENT_SEARCH}),
     ),
     METHOD_EVENT_DETAILS: AgendaProductMethod(
         METHOD_EVENT_DETAILS,
@@ -95,11 +102,13 @@ _METHODS = {
         METHOD_SUMMARIZE_DAY,
         FAMILY_READ,
         allowed_tools=frozenset({TOOL_CALENDAR_LIST, TOOL_EVENT_QUERY_RANGE}),
+        required_tools=frozenset({TOOL_EVENT_QUERY_RANGE}),
     ),
     METHOD_FIND_AVAILABILITY: AgendaProductMethod(
         METHOD_FIND_AVAILABILITY,
         FAMILY_READ,
         allowed_tools=frozenset({TOOL_CALENDAR_LIST, TOOL_EVENT_QUERY_RANGE}),
+        required_tools=frozenset({TOOL_EVENT_QUERY_RANGE}),
     ),
     METHOD_CLARIFY_AGENDA_REQUEST: AgendaProductMethod(METHOD_CLARIFY_AGENDA_REQUEST, FAMILY_CLARIFY),
     METHOD_DESCRIBE_AGENDA_CAPABILITIES: AgendaProductMethod(METHOD_DESCRIBE_AGENDA_CAPABILITIES, FAMILY_CONTEXT),
@@ -151,3 +160,8 @@ def get_method(name: str) -> AgendaProductMethod | None:
 def allowed_tools_for_method(name: str) -> frozenset[str]:
     method = get_method(name)
     return method.allowed_tools if method is not None else frozenset()
+
+
+def required_tools_for_method(name: str) -> frozenset[str]:
+    method = get_method(name)
+    return method.required_tools if method is not None else frozenset()

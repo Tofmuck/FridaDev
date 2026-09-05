@@ -7,6 +7,8 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
+import requests
+
 
 APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
@@ -26,7 +28,13 @@ except ModuleNotFoundError:  # pragma: no cover - local host may not have repo d
     sys.modules['psycopg.types.json'] = json_module
 
 from tests.support import server_chat_pipeline
+from tests.support.agenda_runtime_golden import (
+    FakeAgendaModelClient,
+    SecretCountingRuntimeSettings,
+    read_today_payload,
+)
 from tests.support.server_test_bootstrap import load_server_module_for_tests
+from agenda import agent_contract, product_methods
 
 
 class _FakeResponse:
@@ -294,6 +302,104 @@ class ServerChatAgendaContractTests(unittest.TestCase):
         )
         self.assertNotIn('Lis mon agenda aujourd hui', json.dumps(events, sort_keys=True))
 
+    def test_caldav_failures_stay_inside_agenda_through_the_real_chat_connector(self) -> None:
+        cases = (
+            (
+                'timeout',
+                _TransportFailureRequests(requests.exceptions.Timeout('RAW TIMEOUT MUST NOT LEAK')),
+                'caldav_timeout',
+                'RAW TIMEOUT MUST NOT LEAK',
+            ),
+            (
+                'request_error',
+                _TransportFailureRequests(requests.exceptions.RequestException('RAW REQUEST MUST NOT LEAK')),
+                'caldav_request_error',
+                'RAW REQUEST MUST NOT LEAK',
+            ),
+            (
+                'invalid_xml',
+                _TransportFailureRequests(
+                    response_text='<invalid RAW XML MUST NOT LEAK',
+                    propfind_text=_CALENDAR_LIST_XML,
+                ),
+                'caldav_xml_invalid',
+                'RAW XML MUST NOT LEAK',
+            ),
+        )
+        for label, requests_module, expected_reason, forbidden_text in cases:
+            with self.subTest(label=label):
+                conversation = {
+                    'id': f'conv-agenda-caldav-{label}',
+                    'created_at': '2026-06-08T00:00:00Z',
+                    'messages': [{'role': 'system', 'content': 'BACKEND SYSTEM PROMPT'}],
+                }
+                observed_state, restore = self._patch_chat_pipeline(conversation=conversation)
+                original_agenda_turn = self.server.chat_service.agenda_chat_runtime.run_agenda_chat_turn
+                original_emit = self.server.chat_service.chat_turn_logger.emit
+                events = []
+
+                def run_real_agenda_turn(*args, **kwargs):
+                    kwargs.update(
+                        settings_override=agent_contract.AgendaAgentSettings(
+                            mode=agent_contract.MODE_ACTIVE,
+                            caldav_secret_configured=True,
+                        ),
+                        agent_model_client=FakeAgendaModelClient(_agenda_read_payload()),
+                        runtime_settings_module=SecretCountingRuntimeSettings(),
+                        requests_module=requests_module,
+                    )
+                    return original_agenda_turn(*args, **kwargs)
+
+                self.server.chat_service.agenda_chat_runtime.run_agenda_chat_turn = run_real_agenda_turn
+                self.server.chat_service.chat_turn_logger.emit = (
+                    lambda event, **kwargs: events.append((event, kwargs))
+                )
+                try:
+                    response = self.client.post(
+                        '/api/chat',
+                        json={
+                            'message': 'Lis mon agenda pour la fixture',
+                            'agenda_enabled': True,
+                            'web_search': False,
+                        },
+                    )
+                finally:
+                    self.server.chat_service.agenda_chat_runtime.run_agenda_chat_turn = original_agenda_turn
+                    self.server.chat_service.chat_turn_logger.emit = original_emit
+                    restore()
+
+                self.assertEqual(response.status_code, 200)
+                payload = response.get_json()
+                self.assertTrue(payload['ok'])
+                self.assertEqual(payload['text'], 'SYNTHETIC-AGENDA-ERROR')
+                self.assertNotIn('Je ne vois rien', payload['text'])
+                self.assertNotIn('payload_messages', observed_state)
+                assistant_messages = [
+                    message for message in conversation['messages'] if message.get('role') == 'assistant'
+                ]
+                self.assertEqual(len(assistant_messages), 1)
+                self.assertEqual(assistant_messages[0]['content'], payload['text'])
+                self.assertEqual(
+                    assistant_messages[0]['meta']['agenda_read_execution_reason_code'],
+                    expected_reason,
+                )
+                self.assertFalse(assistant_messages[0]['meta']['agenda_mutation_attempted'])
+                agenda_events = [item for event, item in events if event == 'agenda']
+                self.assertEqual(len(agenda_events), 1)
+                self.assertEqual(agenda_events[0]['status'], 'error')
+                self.assertEqual(
+                    agenda_events[0]['payload']['read_execution_reason_code'],
+                    expected_reason,
+                )
+                encoded = json.dumps(
+                    {'events': events, 'meta': assistant_messages[0]['meta']},
+                    sort_keys=True,
+                )
+                self.assertNotIn(forbidden_text, encoded)
+                self.assertNotIn('fixture-secret-value', encoded)
+                self.assertNotIn('Authorization', encoded)
+                self.assertNotIn('/remote.php/dav', encoded)
+
     def test_agenda_final_response_override_persists_as_normal_assistant_message(self) -> None:
         conversation = {
             'id': 'conv-agenda-final',
@@ -417,6 +523,51 @@ class _FakeAgendaFinalLock:
             'content_hash': 'contenthash12',
             'content_free': True,
         }
+
+
+class _TransportFailureRequests:
+    exceptions = requests.exceptions
+
+    def __init__(
+        self,
+        exception: Exception | None = None,
+        *,
+        response_text: str = '',
+        propfind_text: str = '',
+    ) -> None:
+        self._exception = exception
+        self._response_text = response_text
+        self._propfind_text = propfind_text
+
+    def request(self, method, url, *, headers, data, timeout):
+        del url, headers, data, timeout
+        if self._exception is not None:
+            raise self._exception
+        if method == 'PROPFIND' and self._propfind_text:
+            return SimpleNamespace(status_code=207, text=self._propfind_text)
+        return SimpleNamespace(status_code=207, text=self._response_text)
+
+
+_CALENDAR_LIST_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<d:multistatus xmlns:d="DAV:">
+  <d:response>
+    <d:href>/remote.php/dav/calendars/tof/fixture-primary/</d:href>
+    <d:propstat><d:prop>
+      <d:displayname>Fixture Primary Calendar</d:displayname>
+      <d:current-user-privilege-set><d:privilege><d:read/></d:privilege></d:current-user-privilege-set>
+    </d:prop></d:propstat>
+  </d:response>
+</d:multistatus>
+"""
+
+
+def _agenda_read_payload() -> dict:
+    payload = read_today_payload()
+    payload['product_method'] = product_methods.METHOD_READ_WEEK
+    payload['time_scope']['kind'] = 'week'
+    payload['calendar_scope']['calendar_ids'] = []
+    payload['tool_calls'][0]['params'].pop('calendar_id')
+    return payload
 
 
 if __name__ == '__main__':

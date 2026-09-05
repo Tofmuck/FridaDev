@@ -6,10 +6,13 @@ import unittest
 from datetime import datetime
 from types import SimpleNamespace
 
+import requests
+
 from agenda import (
     agent_contract,
     agent_openrouter,
     agent_runtime,
+    caldav_transport,
     caldav_write_client,
     chat_runtime,
     pending_store,
@@ -19,7 +22,7 @@ from agenda import (
     response_rendering,
     write_execution,
 )
-from agenda.caldav_models import CalendarEvent, CalendarSummary
+from agenda.caldav_models import CalDavRequest, CalendarEvent, CalendarSummary
 from observability.observability_payload_guard import guard_payload
 
 
@@ -149,6 +152,261 @@ class AgendaChatRuntimeLot1Tests(unittest.TestCase):
         self.assertNotIn('Fixture Focus Block', encoded_payload)
         self.assertNotIn('fixture-event-001', encoded_payload)
         self.assertNotIn('/remote.php/dav', encoded_payload)
+
+    def test_window_read_rejects_calendar_list_only_before_rendering_false_absence(self) -> None:
+        fake_model = _FakeModelClient(
+            _valid_payload(
+                product_method=product_methods.METHOD_READ_WEEK,
+                time_scope={
+                    'kind': 'week',
+                    'start': '2026-06-08T00:00:00Z',
+                    'end': '2026-06-15T00:00:00Z',
+                    'timezone': 'Europe/Paris',
+                    'ambiguity': 'none',
+                },
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_CALENDAR_LIST,
+                        'method': 'GET',
+                        'params': {},
+                        'call_id': 'calendar-list-only',
+                    }
+                ],
+            )
+        )
+        read_client = _EmptyReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Lis ma semaine',
+            now_iso='2026-06-08T00:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+        )
+
+        self.assertEqual(result.status, agent_runtime.STATUS_FALLBACK)
+        self.assertEqual(result.reason_code, agent_contract.REASON_TOOL_NOT_EXECUTABLE)
+        self.assertFalse(result.used)
+        self.assertIsNone(result.final_response_lock)
+        self.assertIsNone(result.read_execution_result)
+        self.assertEqual(read_client.calls, [])
+        self.assertNotIn('Je ne vois rien', json.dumps(result.observability_payload, sort_keys=True))
+
+    def test_empty_window_is_rendered_only_after_successful_range_read(self) -> None:
+        fake_model = _FakeModelClient(
+            _valid_payload(
+                product_method=product_methods.METHOD_READ_WEEK,
+                time_scope={
+                    'kind': 'week',
+                    'start': '2026-06-08T00:00:00Z',
+                    'end': '2026-06-15T00:00:00Z',
+                    'timezone': 'Europe/Paris',
+                    'ambiguity': 'none',
+                },
+                tool_calls=[
+                    {
+                        'tool_name': product_methods.TOOL_EVENT_QUERY_RANGE,
+                        'method': 'GET',
+                        'params': {
+                            'calendar_id': 'primary',
+                            'start': '2026-06-08T00:00:00Z',
+                            'end': '2026-06-15T00:00:00Z',
+                            'timezone': 'Europe/Paris',
+                        },
+                        'call_id': 'week-range',
+                    }
+                ],
+            )
+        )
+        read_client = _EmptyReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Lis ma semaine',
+            now_iso='2026-06-08T00:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+        )
+
+        self.assertTrue(result.used)
+        self.assertEqual(result.read_execution_result.status, read_execution.STATUS_OK)
+        self.assertEqual(read_client.calls, ['list_calendars', 'query_calendar_events'])
+        self.assertIn("Je ne vois rien dans cette fenetre d'agenda.", result.final_response_lock.content)
+
+    def test_final_lock_refuses_an_unproven_empty_execution_result(self) -> None:
+        validation = agent_contract.validate_agent_payload(
+            _valid_payload(
+                product_method=product_methods.METHOD_READ_WEEK,
+                time_scope={
+                    'kind': 'week',
+                    'start': '2026-06-08T00:00:00Z',
+                    'end': '2026-06-15T00:00:00Z',
+                    'timezone': 'Europe/Paris',
+                    'ambiguity': 'none',
+                },
+            )
+        )
+        self.assertEqual(validation.status, agent_contract.STATUS_VALIDATED)
+        execution = read_execution.AgendaReadExecutionResult(
+            status=read_execution.STATUS_OK,
+            reason_code=read_execution.REASON_EXECUTED,
+            product_method=product_methods.METHOD_READ_WEEK,
+            events=(),
+            empty_result_proven=False,
+        )
+
+        lock = response_rendering.build_final_response_lock(
+            plan=validation.plan,
+            execution_result=execution,
+        )
+
+        self.assertIsNone(lock)
+
+    def test_empty_range_observation_must_match_the_plan_time_scope(self) -> None:
+        fake_model = _FakeModelClient(
+            _valid_payload(
+                product_method=product_methods.METHOD_READ_WEEK,
+                time_scope={
+                    'kind': 'week',
+                    'start': '2026-06-08T00:00:00Z',
+                    'end': '2026-06-15T00:00:00Z',
+                    'timezone': 'Europe/Paris',
+                    'ambiguity': 'none',
+                },
+            )
+        )
+        read_client = _EmptyReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Lis ma semaine',
+            now_iso='2026-06-08T00:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+        )
+
+        self.assertFalse(result.used)
+        self.assertEqual(result.read_execution_result.status, read_execution.STATUS_ERROR)
+        self.assertEqual(
+            result.read_execution_result.reason_code,
+            read_execution.REASON_REQUIRED_READ_NOT_PROVEN,
+        )
+        self.assertEqual(read_client.calls, ['list_calendars', 'query_calendar_events'])
+        self.assertIsNone(result.final_response_lock)
+
+    def test_window_read_without_resolved_calendar_is_an_error_not_an_empty_window(self) -> None:
+        fake_model = _FakeModelClient(_valid_payload(calendar_scope={
+            'calendar_ids': [],
+            'family_calendar': False,
+            'ambiguity': 'none',
+        }))
+        read_client = _NoCalendarsReadClient()
+
+        result = chat_runtime.run_agenda_chat_turn(
+            {'agenda_enabled': True},
+            user_msg='Lis mon agenda',
+            now_iso='2026-06-08T00:00:00Z',
+            settings_override=agent_contract.AgendaAgentSettings(
+                mode=agent_contract.MODE_ACTIVE,
+                caldav_secret_configured=True,
+            ),
+            agent_model_client=fake_model,
+            read_client=read_client,
+        )
+
+        self.assertFalse(result.used)
+        self.assertEqual(result.read_execution_result.status, read_execution.STATUS_ERROR)
+        self.assertEqual(
+            result.read_execution_result.reason_code,
+            read_execution.REASON_NO_CALENDAR_RESOLVED,
+        )
+        self.assertEqual(read_client.calls, ['list_calendars'])
+        self.assertIsNone(result.final_response_lock)
+        self.assertNotIn('Je ne vois rien', json.dumps(result.observability_payload, sort_keys=True))
+
+    def test_live_transport_failures_become_bounded_agenda_errors(self) -> None:
+        cases = (
+            (
+                'timeout',
+                _FailingRequestsModule(requests.exceptions.Timeout('RAW TIMEOUT MUST NOT LEAK')),
+                'caldav_timeout',
+                'RAW TIMEOUT MUST NOT LEAK',
+            ),
+            (
+                'request_error',
+                _FailingRequestsModule(requests.exceptions.RequestException('RAW REQUEST ERROR MUST NOT LEAK')),
+                'caldav_request_error',
+                'RAW REQUEST ERROR MUST NOT LEAK',
+            ),
+            (
+                'invalid_xml',
+                _FailingRequestsModule(response_text='<invalid RAW XML MUST NOT LEAK'),
+                'caldav_xml_invalid',
+                'RAW XML MUST NOT LEAK',
+            ),
+        )
+        for label, requests_module, expected_reason, forbidden_text in cases:
+            with self.subTest(label=label):
+                try:
+                    result = chat_runtime.run_agenda_chat_turn(
+                        {'agenda_enabled': True},
+                        user_msg='Lis mon agenda',
+                        now_iso='2026-06-08T00:00:00Z',
+                        settings_override=agent_contract.AgendaAgentSettings(
+                            mode=agent_contract.MODE_ACTIVE,
+                            caldav_secret_configured=True,
+                        ),
+                        runtime_settings_module=_SecretCountingRuntimeSettings(value='fixture-secret-value'),
+                        agent_model_client=_FakeModelClient(_valid_payload()),
+                        requests_module=requests_module,
+                    )
+                except Exception as exc:  # pragma: no cover - regression assertion
+                    self.fail(f'{label} escaped the Agenda chat boundary as {exc.__class__.__name__}')
+
+                self.assertTrue(result.used)
+                self.assertEqual(result.read_execution_result.status, read_execution.STATUS_ERROR)
+                self.assertEqual(result.read_execution_result.reason_code, expected_reason)
+                self.assertEqual(result.read_execution_result.events, ())
+                self.assertEqual(result.observability_payload['read_event_count'], 0)
+                self.assertEqual(result.observability_payload['error_class'], 'CalDavReadError')
+                self.assertTrue(result.observability_payload['caldav_access'])
+                self.assertTrue(result.observability_payload['final_response_override'])
+                self.assertNotIn('Je ne vois rien', result.final_response_lock.content)
+                encoded = json.dumps(result.observability_payload, sort_keys=True)
+                self.assertNotIn(forbidden_text, encoded)
+                self.assertNotIn('fixture-secret-value', encoded)
+                self.assertNotIn('Authorization', encoded)
+                self.assertNotIn('/remote.php/dav', encoded)
+
+    def test_live_transport_does_not_capture_process_control_exceptions(self) -> None:
+        request = CalDavRequest(
+            method='PROPFIND',
+            url='https://caldav.invalid/fixture',
+            headers={},
+            body='',
+            kind='calendar_list',
+        )
+        for exception in (KeyboardInterrupt(), SystemExit()):
+            with self.subTest(exception=exception.__class__.__name__):
+                transport = caldav_transport.CalDavHttpTransport(
+                    account='fixture',
+                    app_password='fixture-secret',
+                    requests_module=_FailingRequestsModule(exception),
+                )
+                with self.assertRaises(exception.__class__):
+                    transport(request)
 
     def test_active_runtime_rejects_raw_utc_day_when_frida_timezone_requires_canonical_window(self) -> None:
         fake_model = _FakeModelClient(_valid_payload(intent='RAW INTENT MUST NOT LEAK'))
@@ -3457,6 +3715,18 @@ class _EmptyReadClient(_FakeReadClient):
         return ()
 
 
+class _NoCalendarsReadClient:
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    def list_calendars(self):
+        self.calls.append('list_calendars')
+        return ()
+
+    def query_calendar_events(self, *_args, **_kwargs):
+        raise AssertionError('REPORT must not run without a resolved calendar')
+
+
 class _NextMatchingReadClient:
     def __init__(self, *, event: CalendarEvent | None = None) -> None:
         self.calls: list[str] = []
@@ -3619,6 +3889,20 @@ class _UnauthorizedRequestsModule:
     def request(self, method, url, *, headers, data, timeout):
         del url, headers, data, timeout
         return _FakeHttpResponse(status_code=401, text='RAW BODY MUST NOT LEAK')
+
+
+class _FailingRequestsModule:
+    exceptions = requests.exceptions
+
+    def __init__(self, exception: BaseException | None = None, *, response_text: str = '') -> None:
+        self._exception = exception
+        self._response_text = response_text
+
+    def request(self, method, url, *, headers, data, timeout):
+        del method, url, headers, data, timeout
+        if self._exception is not None:
+            raise self._exception
+        return _FakeHttpResponse(status_code=207, text=self._response_text)
 
 
 _CALENDAR_PROPFIND_XML = """<?xml version="1.0" encoding="UTF-8"?>

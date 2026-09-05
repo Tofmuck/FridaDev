@@ -33,6 +33,9 @@ REASON_CLIENT_RESOLUTION_ERROR = 'agenda_readonly_client_resolution_error'
 REASON_TOOL_ERROR = 'agenda_readonly_tool_error'
 REASON_TOOL_UNSUPPORTED = 'agenda_readonly_tool_unsupported'
 REASON_CALENDAR_SCOPE_UNRESOLVED = 'agenda_readonly_calendar_scope_unresolved'
+REASON_REQUIRED_READ_MISSING = 'agenda_readonly_required_read_missing'
+REASON_REQUIRED_READ_NOT_PROVEN = 'agenda_readonly_required_read_not_proven'
+REASON_NO_CALENDAR_RESOLVED = 'agenda_readonly_no_calendar_resolved'
 
 
 def plan_needs_read_client(plan: agent_contract.AgendaAgentPlan) -> bool:
@@ -53,6 +56,7 @@ class AgendaReadExecutionResult:
     mutation_attempted: bool = False
     error_class: str = ''
     attempted_tool_names: tuple[str, ...] = ()
+    empty_result_proven: bool = False
 
     @property
     def observation(self) -> dict[str, Any]:
@@ -80,6 +84,7 @@ class AgendaReadExecutionResult:
             'nextcloud_access': bool(self.nextcloud_access),
             'mutation_attempted': bool(self.mutation_attempted),
             'error_class': self.error_class,
+            'empty_result_proven': bool(self.empty_result_proven),
             'content_free': True,
             'redacted': True,
         }
@@ -111,6 +116,15 @@ def execute_readonly_plan(
             reason_code=REASON_CLIENT_UNAVAILABLE,
             product_method=str(plan.product_method or ''),
         )
+    required_tools = product_methods.required_tools_for_method(plan.product_method)
+    planned_tools = {str(call.tool_name or '') for call in plan.tool_calls}
+    if not required_tools.issubset(planned_tools):
+        return AgendaReadExecutionResult(
+            status=STATUS_ERROR,
+            reason_code=REASON_REQUIRED_READ_MISSING,
+            product_method=str(plan.product_method or ''),
+            attempted_tool_names=tuple(str(call.tool_name or '') for call in plan.tool_calls),
+        )
 
     state = AgendaReadState()
     observations: list[Mapping[str, Any]] = []
@@ -125,8 +139,10 @@ def execute_readonly_plan(
             ]
             query = next_matching_search.query_from_tool_calls(plan.tool_calls)
             calendar_id = next_matching_search.calendar_id_from_tool_calls(plan.tool_calls)
+            _ensure_calendars(client, state)
+            if not state.calendars:
+                raise _read_tool_validation_error(REASON_NO_CALENDAR_RESOLVED)
             if _plan_has_explicit_calendar_scope(plan):
-                _ensure_calendars(client, state)
                 if not _calendar_id_allowed_by_plan_scope(plan, calendar_id=calendar_id, state=state):
                     raise _read_tool_validation_error(REASON_CALENDAR_SCOPE_UNRESOLVED)
             start_iso = str(now_iso or plan.time_scope.get('start') or '')
@@ -152,10 +168,20 @@ def execute_readonly_plan(
                 nextcloud_access=bool(live_caldav),
                 mutation_attempted=False,
                 attempted_tool_names=tuple(attempted_tool_names),
+                empty_result_proven=(
+                    not selected_events
+                    and _empty_result_is_proven(plan, observations=observations)
+                ),
             )
         for call in plan.tool_calls:
             attempted_tool_names.append(str(call.tool_name or ''))
-            result = _execute_tool_call(call, client=client, state=state, plan=plan)
+            result = _execute_tool_call(
+                call,
+                client=client,
+                state=state,
+                plan=plan,
+                observations=observations,
+            )
             observations.append(dict(result.observation))
             if str(call.tool_name or '') == product_methods.TOOL_EVENT_SEARCH:
                 selected_events = tuple(item for item in result.items if isinstance(item, CalendarEvent))
@@ -164,6 +190,12 @@ def execute_readonly_plan(
                 selected_events = tuple(item for item in result.items if isinstance(item, CalendarEvent))
         if not selected_events and not selected_events_locked:
             selected_events = tuple(sorted(state.events.values(), key=lambda event: (event.start_iso, event.end_iso)))
+        empty_result_proven = (
+            not selected_events
+            and _empty_result_is_proven(plan, observations=observations)
+        )
+        if not selected_events and not empty_result_proven:
+            raise _read_tool_validation_error(REASON_REQUIRED_READ_NOT_PROVEN)
         calendars = tuple(sorted(state.calendars.values(), key=lambda calendar: calendar.local_id))
         return AgendaReadExecutionResult(
             status=STATUS_OK,
@@ -176,6 +208,7 @@ def execute_readonly_plan(
             nextcloud_access=bool(live_caldav),
             mutation_attempted=False,
             attempted_tool_names=tuple(attempted_tool_names),
+            empty_result_proven=empty_result_proven,
         )
     except (ReadToolValidationError, CalDavReadError, CalDavTransportUnavailable) as exc:
         return AgendaReadExecutionResult(
@@ -216,6 +249,7 @@ def _execute_tool_call(
     client: CalDavReadClient,
     state: AgendaReadState,
     plan: agent_contract.AgendaAgentPlan,
+    observations: list[Mapping[str, Any]],
 ):
     tool_name = str(call.tool_name or '')
     params = dict(call.params or {})
@@ -225,7 +259,9 @@ def _execute_tool_call(
         _ensure_calendars(client, state)
         return _query_range_for_call(client, state=state, params=params, plan=plan)
     if tool_name == product_methods.TOOL_EVENT_SEARCH:
-        _ensure_search_pool(client, state=state, params=params, plan=plan)
+        range_result = _ensure_search_pool(client, state=state, params=params, plan=plan)
+        if range_result is not None:
+            observations.append(dict(range_result.observation))
         return read_tools.event_search(
             state=state,
             query=str(params.get('query') or ''),
@@ -254,6 +290,8 @@ def _query_range_for_call(
     params: Mapping[str, Any],
     plan: agent_contract.AgendaAgentPlan,
 ):
+    if not state.calendars:
+        raise _read_tool_validation_error(REASON_NO_CALENDAR_RESOLVED)
     start = str(params.get('start') or plan.time_scope.get('start') or '')
     end = str(params.get('end') or plan.time_scope.get('end') or '')
     timezone_name = str(params.get('timezone') or plan.time_scope.get('timezone') or 'UTC')
@@ -320,16 +358,16 @@ def _ensure_search_pool(
     state: AgendaReadState,
     params: Mapping[str, Any],
     plan: agent_contract.AgendaAgentPlan,
-) -> None:
+) -> Any:
     if state.events:
-        return
+        return None
     _ensure_calendars(client, state)
     start = str(plan.time_scope.get('start') or '')
     end = str(plan.time_scope.get('end') or '')
     if not start or not end:
-        return
+        return None
     calendar_id = str(params.get('calendar_id') or '').strip()
-    _query_range_for_call(
+    return _query_range_for_call(
         client,
         state=state,
         params={
@@ -370,11 +408,17 @@ def _merge_observations(tool_name: str, observations: list[Mapping[str, Any]]) -
     event_hashes: list[str] = []
     family_calendar_present = False
     readonly = True
+    window_starts: set[str] = set()
+    window_ends: set[str] = set()
+    timezones: set[str] = set()
     for observation in observations:
         calendar_hashes.extend(str(item) for item in observation.get('calendar_id_hashes') or [])
         event_hashes.extend(str(item) for item in observation.get('event_id_hashes') or [])
         family_calendar_present = family_calendar_present or bool(observation.get('family_calendar_present'))
         readonly = readonly and bool(observation.get('readonly', True))
+        window_starts.add(str(observation.get('window_start') or ''))
+        window_ends.add(str(observation.get('window_end') or ''))
+        timezones.add(str(observation.get('timezone') or ''))
     return {
         'schema_version': 'frida_agenda_read_tools_observation_v1',
         'tool_name': tool_name,
@@ -385,6 +429,9 @@ def _merge_observations(tool_name: str, observations: list[Mapping[str, Any]]) -
         'event_count': len(set(event_hashes)),
         'event_id_hashes': sorted(set(event_hashes)),
         'family_calendar_present': family_calendar_present,
+        'window_start': window_starts.pop() if len(window_starts) == 1 else '',
+        'window_end': window_ends.pop() if len(window_ends) == 1 else '',
+        'timezone': timezones.pop() if len(timezones) == 1 else '',
         'readonly': readonly,
         'caldav_access': False,
         'nextcloud_access': False,
@@ -398,3 +445,54 @@ def _read_tool_validation_error(reason_code: str) -> ReadToolValidationError:
     error = ReadToolValidationError(str(reason_code or REASON_TOOL_ERROR))
     error.reason_code = str(reason_code or REASON_TOOL_ERROR)
     return error
+
+
+def _empty_result_is_proven(
+    plan: agent_contract.AgendaAgentPlan,
+    *,
+    observations: list[Mapping[str, Any]],
+) -> bool:
+    if plan.product_method == product_methods.METHOD_FIND_NEXT_MATCHING_EVENT:
+        return any(
+            str(observation.get('tool_name') or '') == 'find_next_matching_event'
+            and str(observation.get('status') or '') == STATUS_OK
+            and int(observation.get('windows_read') or 0) > 0
+            for observation in observations
+        )
+    range_observations = tuple(
+        observation
+        for observation in observations
+        if str(observation.get('tool_name') or '') == product_methods.TOOL_EVENT_QUERY_RANGE
+        and str(observation.get('status') or '') == STATUS_OK
+    )
+    if not range_observations:
+        return False
+    scope_start = _normalized_utc_iso(
+        str(plan.time_scope.get('start') or ''),
+        timezone_name=str(plan.time_scope.get('timezone') or 'UTC'),
+    )
+    scope_end = _normalized_utc_iso(
+        str(plan.time_scope.get('end') or ''),
+        timezone_name=str(plan.time_scope.get('timezone') or 'UTC'),
+    )
+    if not scope_start or not scope_end:
+        return False
+    return any(
+        str(observation.get('window_start') or '') == scope_start
+        and str(observation.get('window_end') or '') == scope_end
+        and int(observation.get('calendar_count') or 0) > 0
+        for observation in range_observations
+    )
+
+
+def _normalized_utc_iso(value: str, *, timezone_name: str) -> str:
+    aware = _timezone_aware_iso(value, timezone_name=timezone_name)
+    if not aware:
+        return ''
+    try:
+        parsed = datetime.fromisoformat(aware.replace('Z', '+00:00'))
+    except ValueError:
+        return ''
+    if parsed.tzinfo is None:
+        return ''
+    return parsed.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')

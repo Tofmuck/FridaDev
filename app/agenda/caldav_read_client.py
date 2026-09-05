@@ -55,7 +55,10 @@ class CalDavReadClient:
             ),
             expected_statuses=(207,),
         )
-        return parse_calendar_propfind(response.text)
+        try:
+            return parse_calendar_propfind(response.text)
+        except ElementTree.ParseError:
+            raise _invalid_xml_error(method='PROPFIND', kind='calendar_list', status_code=response.status_code) from None
 
     def query_calendar_events(
         self,
@@ -75,13 +78,20 @@ class CalDavReadClient:
             ),
             expected_statuses=(207,),
         )
-        return parse_event_report(
-            response.text,
-            calendar=calendar,
-            timezone_name=timezone_name,
-            window_start_iso=start_iso,
-            window_end_iso=end_iso,
-        )
+        try:
+            return parse_event_report(
+                response.text,
+                calendar=calendar,
+                timezone_name=timezone_name,
+                window_start_iso=start_iso,
+                window_end_iso=end_iso,
+            )
+        except ElementTree.ParseError:
+            raise _invalid_xml_error(
+                method='REPORT',
+                kind='event_query_range',
+                status_code=response.status_code,
+            ) from None
 
     def get_event(self, event: CalendarEvent) -> CalendarEvent:
         response = self._send(
@@ -257,3 +267,12 @@ def _status_reason(status_code: int) -> str:
     if status_code >= 500:
         return 'caldav_server_error'
     return 'caldav_unexpected_status'
+
+
+def _invalid_xml_error(*, method: str, kind: str, status_code: int) -> CalDavReadError:
+    return CalDavReadError(
+        method=method,
+        kind=kind,
+        status_code=int(status_code),
+        reason_code='caldav_xml_invalid',
+    )
