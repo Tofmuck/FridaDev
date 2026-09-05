@@ -2,8 +2,8 @@
 
 Date de cadrage : 4 septembre 2026.
 
-**Statut : roadmap ouverte ; L1 à L5 et L6.1 à L6.3 fermés ; L6 en cours ;
-L6.4, L7 et Z non commencés.**
+**Statut : roadmap ouverte ; L1 à L5 et L6.1 à L6.4 fermés ; L6 en cours ;
+L6.5, L7 et Z non commencés.**
 
 ## 1. But, source et règle de vérité
 
@@ -74,7 +74,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 | 3 | L3 | Compensation Nextcloud possédée | F08 | xhigh | fermé — F08 corrigé |
 | 4 | L4 | Conservation de la projection analytics | F21 | high | fermé — F21 corrigé |
 | 5 | L5 | Atomicité des écritures Workspace | F13b, F14a, F19b | xhigh par sous-lot | fermé — F13b, F14a et F19b corrigés |
-| 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | en cours — L6.1/F05, L6.2/F10 et L6.3/F12a-F12b corrigés ; L6.4 non commencé |
+| 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | en cours — L6.1/F05, L6.2/F10, L6.3/F12a-F12b et L6.4/F12c corrigés ; L6.5 non commencé |
 | 7 | L7 | Vérité d'API, observabilité et outils historiques | F16–F18, F20, F22, F24 et dette documentaire | high | non commencé |
 | 8 | Z | Réconciliation finale avec le grand audit | tous les Fxx et réserves non numérotées | xhigh | non commencé |
 
@@ -88,6 +88,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 - [x] L6.1 fermé ; F05 corrigé et cas terminal vide corrigé après reproduction.
 - [x] L6.2 fermé ; F10 corrigé sur les quatre familles frontend confirmées.
 - [x] L6.3 fermé ; F12a et F12b corrigés sans commencer F12c/L6.4.
+- [x] L6.4 fermé ; F12c corrigé sans commencer L6.5.
 - [ ] L6 et ses décisions conditionnelles fermés.
 - [ ] L7 et ses décisions conditionnelles fermés.
 - [ ] Z réconcilie chaque finding et archive la roadmap.
@@ -740,6 +741,47 @@ Reproduire ou invalider le dépassement YEARLY/INTERVAL avant tout patch. Si le
 mécanisme est confirmé, borner l'expansion par COUNT et fenêtre demandée sans
 ajouter de famille de récurrence. Si aucun contre-exemple contractuel n'existe,
 fermer comme invalidé avec la preuve.
+
+**Statut : fermé — F12c corrigé.**
+
+**Revalidation au HEAD `3cccab294f665e5cb7beaa8899cde8f537936f2a`.**
+F1 est confirmée : `_period_starts()` matérialisait entièrement une liste avant
+que sa boucle appelante ne voie une période. F2 est confirmée : `COUNT=1`,
+`UNTIL` limité à la première occurrence et une fenêtre d'un jour provoquaient
+chacun la préparation préalable. F3 est confirmée :
+`FREQ=YEARLY;COUNT=1;INTERVAL=2`, à partir de 2026, atteignait l'année 10000 et
+levait une `ValueError` avant de rendre l'occurrence initiale. F4 est confirmée
+par le chemin `CalDavReadClient -> parse_event_report() -> parse_ics_events()
+-> expand_recurrence_starts()` réellement exécuté par `event_query_range`.
+F5 est confirmée : rendre `_period_starts()` paresseux suffit, sans modifier le
+parseur ni les familles RRULE. F6 est confirmée : `COUNT` doit continuer de
+compter les candidats conformes après filtres, y compris lorsque des périodes
+n'en produisent aucun ou en produisent plusieurs. F7 est confirmée : la limite
+de 512 occurrences reste la garde contre une fenêtre produisant trop de
+résultats, distincte de la borne interne de périodes.
+
+**Décision et correctif.** Le plus petit correctif conserve la frontière et la
+borne existantes : `_period_starts()` devient un itérateur, avance seulement
+lorsque le consommateur demande une période suivante, et traduit une sortie du
+domaine `datetime` en `IcsRecurrenceUnsupportedError` content-free. La boucle
+existante arrête alors l'itération dès que `COUNT`, `UNTIL`, la fin de fenêtre
+ou le plafond d'occurrences le permet. `read_execution` classe l'erreur fermée
+dans le reason code existant `agenda_readonly_tool_error`; aucun nouveau statut,
+outil, pipeline, cache, dépendance ou support RRULE n'est ajouté.
+
+**Preuves et limites.** La reproduction hermétique comptait 3 987 avancées
+avant la `ValueError` du cas YEARLY extrême, et 6 144 avancées pour chacun des
+contre-cas sûrs `COUNT`, `UNTIL`, fenêtre courte et `COUNT` épuisé avant la
+fenêtre. Après correction, le premier cas rend l'occurrence initiale sans
+avancement ; `UNTIL` s'arrête sans avancement, la fenêtre quotidienne après un
+avancement et `COUNT=2` épuisé avant la fenêtre après un avancement avec `[]`.
+Les tests couvrent aussi les filtres `BY*`, les périodes vides du 29 février,
+les candidats multiples, les overrides ICS, le plafond de 512 et la
+classification d'erreur Agenda. Une mutation contrôlée rematérialisant les
+périodes remet la preuve YEARLY centrale au rouge ; l'empreinte identique avant
+et après restauration prouve le retour exact au correctif. Les preuves restent
+synthétiques et sans provider, CalDAV réel, DB opérateur, JavaScript ou
+Chromium. L6.5 n'est pas commencé.
 
 ### L6.5 — Web : requête pertinente et source réellement officielle — F15a/F15b
 

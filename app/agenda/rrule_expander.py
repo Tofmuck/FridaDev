@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import calendar
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
@@ -110,13 +111,14 @@ def _parse_rrule(value: str) -> dict[str, str]:
     return rule
 
 
-def _period_starts(*, start_dt: datetime, freq: str, interval: int, hard_limit: int) -> list[datetime]:
-    starts: list[datetime] = []
+def _period_starts(*, start_dt: datetime, freq: str, interval: int, hard_limit: int) -> Iterator[datetime]:
     cursor = start_dt
     for _index in range(max(hard_limit * 12, 512)):
-        starts.append(cursor)
-        cursor = _add_interval(cursor, freq=freq, interval=interval)
-    return starts
+        yield cursor
+        try:
+            cursor = _add_interval(cursor, freq=freq, interval=interval)
+        except (OverflowError, ValueError):
+            raise IcsRecurrenceUnsupportedError('recurrence expansion exceeds the calendar domain') from None
 
 
 def _period_candidates(
@@ -312,7 +314,11 @@ def _candidate_overlaps(
 ) -> bool:
     if window_start is None or window_end is None:
         return True
-    return candidate < window_end and candidate + duration > window_start
+    try:
+        candidate_end = candidate + duration
+    except (OverflowError, ValueError):
+        raise IcsRecurrenceUnsupportedError('recurrence expansion exceeds the calendar domain') from None
+    return candidate < window_end and candidate_end > window_start
 
 
 def _period_can_stop(
@@ -328,7 +334,10 @@ def _period_can_stop(
     boundary = until or window_end
     if boundary is None:
         return False
-    return period_start >= _period_boundary(boundary, freq=freq)
+    try:
+        return period_start >= _period_boundary(boundary, freq=freq)
+    except (OverflowError, ValueError):
+        raise IcsRecurrenceUnsupportedError('recurrence expansion exceeds the calendar domain') from None
 
 
 def _period_boundary(value: datetime, *, freq: str) -> datetime:

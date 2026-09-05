@@ -350,6 +350,15 @@ Etat livre Lot 3.2:
   de l'UID brut en observabilite;
 - les parties RRULE non supportees continuent de produire une erreur locale
   content-free au lieu d'une lecture silencieusement fausse;
+- la consolidation L6.4 remplace la liste preconstruite de periodes par une
+  iteration paresseuse, sans changer les familles RRULE supportees: `COUNT`
+  compte les occurrences conformes apres filtres, tandis que `UNTIL`, la fin
+  de fenetre et la limite de 512 occurrences interrompent l'expansion des que
+  leur contrat le permet;
+- la borne interne de periodes reste active pour les filtres qui ne produisent
+  jamais de candidat. Une sortie du domaine `datetime` devient
+  `IcsRecurrenceUnsupportedError`, puis `agenda_readonly_tool_error` dans
+  l'execution Agenda, jamais une exception Python brute hors de la lane;
 - les limites restantes avant live sont documentees: pas de prise en charge
   complete RFC 5545, pas de `VTIMEZONE` avance, support `TZID` simple complete
   en Lot 5A.2, pas de validation live Nextcloud/macOS tant qu'un probe
@@ -1381,6 +1390,22 @@ Preuve de consolidation L6.3 locale:
   verifient absence de mutation et observabilite content-free. Une mutation
   controlee de la garde d'absence puis de la normalisation transport remet les
   regressions centrales au rouge; la restauration exacte les remet au vert.
+
+Preuve de consolidation L6.4 locale:
+
+- `FREQ=YEARLY;COUNT=1;INTERVAL=2` rend sa premiere occurrence sans calculer
+  une periode suivante, meme avec une fenetre d'un jour;
+- `COUNT`, `UNTIL` et fin de fenetre interrompent separement l'iteration, et un
+  `COUNT` epuise avant la fenetre rend une liste vide sans parcourir celle-ci;
+- les filtres `BYDAY`, `BYMONTHDAY`, `BYSETPOS`, `BYMONTH`, les periodes vides
+  du jour bissextile, les candidats multiples, `EXDATE`, `RECURRENCE-ID` et les
+  frequences deja supportees gardent leur resultat et leur ordre;
+- la limite de 512 occurrences et son erreur restent actives; une sortie du
+  domaine calendaire garde la classe fermee `IcsRecurrenceUnsupportedError` et
+  devient `agenda_readonly_tool_error` dans le chemin Agenda;
+- une mutation unique rematerialisant avidement les periodes remet le cas
+  YEARLY extreme au rouge, puis la restauration byte-identique le remet au
+  vert. Les preuves sont synthetiques, hermetiques et sans acces reseau.
 
 Preuve content-free minimale:
 

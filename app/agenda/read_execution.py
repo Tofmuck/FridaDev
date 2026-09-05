@@ -19,6 +19,7 @@ from agenda.caldav_models import (
 )
 from agenda.caldav_read_client import CalDavReadClient
 from agenda.observability import sha256_12
+from agenda.rrule_expander import IcsRecurrenceUnsupportedError
 
 
 STATUS_OK = 'ok'
@@ -210,7 +211,12 @@ def execute_readonly_plan(
             attempted_tool_names=tuple(attempted_tool_names),
             empty_result_proven=empty_result_proven,
         )
-    except (ReadToolValidationError, CalDavReadError, CalDavTransportUnavailable) as exc:
+    except (
+        ReadToolValidationError,
+        CalDavReadError,
+        CalDavTransportUnavailable,
+        IcsRecurrenceUnsupportedError,
+    ) as exc:
         return AgendaReadExecutionResult(
             status=STATUS_ERROR,
             reason_code=getattr(exc, 'reason_code', REASON_TOOL_ERROR),
