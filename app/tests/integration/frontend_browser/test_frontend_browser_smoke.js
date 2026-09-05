@@ -1479,15 +1479,16 @@ function logsSelectionRaceMockScript() {
         }
         if (url.pathname === "/api/admin/logs/chat") {
           const stage = url.searchParams.get("stage") || "all";
+          const offset = Number(url.searchParams.get("offset") || 0);
           return defer("logs:" + stage, () => json({
             ok: true,
             count: 1,
-            total: 1,
-            next_offset: null,
+            total: 2,
+            next_offset: offset === 0 ? 100 : null,
             items: [{
-              event_id: "event-" + stage,
+              event_id: "event-" + stage + "-" + offset,
               conversation_id: url.searchParams.get("conversation_id") || "all",
-              turn_id: "turn-" + stage,
+              turn_id: "turn-" + stage + "-" + offset,
               stage,
               status: "ok",
               ts: "2026-09-05T10:00:00Z",
@@ -1549,6 +1550,13 @@ test('logs keep the latest filters, metadata and visible data after stale succes
     await assertTextContains(page.locator('#logTurns'), 'conv-b');
     assert.equal((await page.locator('#logTurns').textContent()).includes('conv-a'), false);
     assert.equal((await page.locator('#logStatusBanner').textContent()).includes('Erreur'), false);
+
+    await page.click('#logNextPage');
+    await page.waitForFunction(() => document.querySelector('#logPageChip')?.textContent.includes('offset 100'));
+    await assertTextContains(page.locator('#logGroups'), 'turn-llm_call-100');
+    await page.click('#logPrevPage');
+    await page.waitForFunction(() => document.querySelector('#logPageChip')?.textContent.includes('offset 0'));
+    await assertTextContains(page.locator('#logGroups'), 'turn-llm_call-0');
   });
 });
 
