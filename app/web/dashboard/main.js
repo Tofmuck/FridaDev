@@ -58,6 +58,9 @@
     selectedConversation: null,
     selectedTurn: null,
   };
+  let dashboardLoadEpoch = 0;
+  let conversationLoadEpoch = 0;
+  let inspectionLoadEpoch = 0;
 
   const WINDOW_LABELS = Object.freeze({
     "24h": "24 h",
@@ -1019,6 +1022,12 @@
   };
 
   const loadTurnInspection = async ({ conversationId, turnId }) => {
+    const requestEpoch = ++inspectionLoadEpoch;
+    const isCurrentRequest = () => (
+      requestEpoch === inspectionLoadEpoch
+      && state.selectedConversation === conversationId
+      && state.selectedTurn === turnId
+    );
     state.selectedTurn = turnId;
     elements.inspectionStatus.textContent = "Chargement";
     elements.inspectionEmpty.hidden = false;
@@ -1028,8 +1037,10 @@
     renderTurns({ items: state.lastTurns, total: state.lastTurns.length });
     try {
       const payload = await fetchTurnInspection({ conversationId, turnId });
+      if (!isCurrentRequest()) return;
       renderStory(payload);
     } catch (error) {
+      if (!isCurrentRequest()) return;
       elements.inspectionStatus.textContent = "Erreur";
       elements.inspectionEmpty.hidden = false;
       elements.inspectionEmpty.textContent = error instanceof Error ? error.message : "Inspection indisponible.";
@@ -1037,6 +1048,12 @@
   };
 
   const loadConversation = async (conversationId) => {
+    const requestEpoch = ++conversationLoadEpoch;
+    inspectionLoadEpoch += 1;
+    const isCurrentRequest = () => (
+      requestEpoch === conversationLoadEpoch
+      && state.selectedConversation === conversationId
+    );
     state.selectedConversation = conversationId;
     state.selectedTurn = null;
     elements.drilldownStatus.textContent = "Chargement";
@@ -1052,9 +1069,11 @@
     clearNode(elements.inspectionBody);
     try {
       const payload = await fetchConversationTurns(conversationId);
+      if (!isCurrentRequest()) return;
       renderTurns(payload);
       elements.drilldownStatus.textContent = "Conversation ouverte";
     } catch (error) {
+      if (!isCurrentRequest()) return;
       elements.drilldownStatus.textContent = "Erreur";
       elements.turnsCount.textContent = "Erreur";
       const empty = document.createElement("p");
@@ -1107,12 +1126,21 @@
   };
 
   const loadDashboard = async () => {
+    const requestEpoch = ++dashboardLoadEpoch;
+    const requestedWindow = state.window;
+    conversationLoadEpoch += 1;
+    inspectionLoadEpoch += 1;
+    const isCurrentRequest = () => (
+      requestEpoch === dashboardLoadEpoch && state.window === requestedWindow
+    );
     try {
       resetDrilldown();
       setStatusBanner("Chargement des agregats persistants...", "");
       const payloads = await fetchDashboardPayloads();
+      if (!isCurrentRequest()) return;
       renderDashboard(payloads);
     } catch (error) {
+      if (!isCurrentRequest()) return;
       renderEmptyOverview();
       renderConversations({ items: [], total: 0 });
       elements.sourceChip.textContent = "Lecture impossible";

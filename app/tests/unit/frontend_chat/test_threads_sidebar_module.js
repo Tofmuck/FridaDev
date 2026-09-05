@@ -108,6 +108,16 @@ function response(status, payload) {
   };
 }
 
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
 function buildSidebarWithFetch(fetchFn) {
   installDom();
   const wrapper = makeElement("div");
@@ -235,6 +245,127 @@ test("normalizeThreadItem keeps nullable workspace folder assignments", () => {
 
 test("normalizeThreadItem rejects malformed conversation identifiers", () => {
   assert.equal(normalizeThreadItem({ title: "sans id" }), null);
+});
+
+test("thread loading keeps a late conversation response out of the current conversation view", async () => {
+  installDom();
+  const wrapper = makeElement("div");
+  const threadsUl = makeElement("ul");
+  wrapper.appendChild(threadsUl);
+  const logEl = makeElement("div");
+  const rendered = [];
+  const slowMessages = deferred();
+  const slowStarted = deferred();
+  let slowMessageFetches = 0;
+  const sidebar = createChatThreadsSidebar({
+    threadsUl,
+    logEl,
+    fetchFn: async (url) => {
+      const path = String(url || "");
+      if (path === "/api/conversations/conv-a/messages") {
+        slowMessageFetches += 1;
+        slowStarted.resolve();
+        return slowMessages.promise;
+      }
+      if (path === "/api/conversations/conv-b/messages") {
+        return response(200, { ok: true, title: "B", messages: [{ role: "assistant", content: "message-b" }] });
+      }
+      if (path.endsWith("/workspace-file-selections")) {
+        return response(200, { ok: true, selections: [] });
+      }
+      throw new Error(`unexpected test url ${path}`);
+    },
+    setHero: async () => {},
+    closeSidebar: () => {},
+    renderConversationMessage: (message) => rendered.push(message.content),
+    scrollToBottom: () => {},
+    notesModeController: {},
+    consoleObj: { warn() {} },
+  });
+  sidebar.saveThreads([
+    normalizeThreadItem({ id: "conv-a", title: "A" }),
+    normalizeThreadItem({ id: "conv-b", title: "B" }),
+  ]);
+
+  sidebar.setCurrentId("conv-a");
+  const loadA = sidebar.loadThread("conv-a");
+  await slowStarted.promise;
+  sidebar.setCurrentId("conv-b");
+  await sidebar.loadThread("conv-b");
+  slowMessages.resolve(response(200, {
+    ok: true,
+    title: "A",
+    messages: [{ role: "assistant", content: "message-a" }],
+  }));
+  await loadA;
+
+  assert.equal(sidebar.getCurrentId(), "conv-b");
+  assert.deepEqual(rendered, ["message-b"]);
+
+  rendered.length = 0;
+  sidebar.setCurrentId("conv-a");
+  await sidebar.loadThread("conv-a");
+  assert.deepEqual(rendered, ["message-a"]);
+  assert.equal(slowMessageFetches, 1, "the stale response may safely populate only A's indexed cache");
+});
+
+test("thread loading ignores a late stale error but keeps a current error visible", async () => {
+  installDom();
+  const wrapper = makeElement("div");
+  const threadsUl = makeElement("ul");
+  wrapper.appendChild(threadsUl);
+  const logEl = makeElement("div");
+  const staleFailure = deferred();
+  const staleStarted = deferred();
+  const sidebar = createChatThreadsSidebar({
+    threadsUl,
+    logEl,
+    fetchFn: async (url) => {
+      const path = String(url || "");
+      if (path === "/api/conversations/conv-a/messages") {
+        staleStarted.resolve();
+        return staleFailure.promise;
+      }
+      if (path === "/api/conversations/conv-b/messages") {
+        return response(200, { ok: true, messages: [{ role: "assistant", content: "message-b" }] });
+      }
+      if (path === "/api/conversations/conv-c/messages") {
+        throw new Error("current failure");
+      }
+      if (path.endsWith("/workspace-file-selections")) {
+        return response(200, { ok: true, selections: [] });
+      }
+      throw new Error(`unexpected test url ${path}`);
+    },
+    setHero: async () => {},
+    closeSidebar: () => {},
+    renderConversationMessage: () => {},
+    scrollToBottom: () => {},
+    notesModeController: {},
+    consoleObj: { warn() {} },
+  });
+  sidebar.saveThreads([
+    normalizeThreadItem({ id: "conv-a", title: "A" }),
+    normalizeThreadItem({ id: "conv-b", title: "B" }),
+    normalizeThreadItem({ id: "conv-c", title: "C" }),
+  ]);
+
+  sidebar.setCurrentId("conv-a");
+  const loadA = sidebar.loadThread("conv-a");
+  await staleStarted.promise;
+  sidebar.setCurrentId("conv-b");
+  await sidebar.loadThread("conv-b");
+  staleFailure.reject(new Error("stale failure"));
+  await loadA;
+
+  const threadStatus = wrapper.children[0];
+  assert.equal(threadStatus.textContent, "");
+  assert.equal(threadStatus.style.display, "none");
+
+  sidebar.setCurrentId("conv-c");
+  await sidebar.loadThread("conv-c");
+  assert.equal(threadStatus.textContent, "Impossible de charger cette conversation.");
+  assert.equal(threadStatus.style.display, "block");
 });
 
 test("threads sidebar keeps exports and images API errors distinct from empty lists", async () => {

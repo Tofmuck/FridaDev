@@ -1402,6 +1402,156 @@ test('logs cockpit renders compact empty and truncated metric states', async () 
   });
 });
 
+function logsSelectionRaceMockScript() {
+  return `
+    (() => {
+      const deferredKeys = new Set();
+      const pending = new Map();
+      const state = { calls: [] };
+      const json = (payload, status = 200) => new Response(JSON.stringify(payload), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      });
+      const defer = (key, responseFactory) => {
+        if (!deferredKeys.delete(key)) return responseFactory();
+        return new Promise((resolve, reject) => {
+          pending.set(key, { resolve: () => resolve(responseFactory()), reject });
+        });
+      };
+      window.__fridaBrowserState = state;
+      window.__fridaRace = {
+        deferNext(key) { deferredKeys.add(key); },
+        hasPending(key) { return pending.has(key); },
+        resolve(key) {
+          const entry = pending.get(key);
+          if (!entry) throw new Error("missing pending " + key);
+          pending.delete(key);
+          entry.resolve();
+        },
+        reject(key) {
+          const entry = pending.get(key);
+          if (!entry) throw new Error("missing pending " + key);
+          pending.delete(key);
+          entry.reject(new Error("synthetic stale failure"));
+        },
+      };
+      window.fetch = async (input, init = {}) => {
+        const url = new URL(typeof input === "string" ? input : input.url, window.location.origin);
+        const method = String(init.method || "GET").toUpperCase();
+        state.calls.push({ method, path: url.pathname, search: url.search });
+        if (method !== "GET") throw new Error("unexpected method " + method);
+
+        if (url.pathname === "/api/admin/logs/chat/metadata") {
+          const conversationId = url.searchParams.get("conversation_id") || "";
+          const key = "metadata:" + conversationId;
+          return defer(key, () => json({
+            ok: true,
+            selected_conversation_id: conversationId,
+            conversations: [
+              { conversation_id: "conv-a", events_count: 1 },
+              { conversation_id: "conv-b", events_count: 1 },
+            ],
+            turns: conversationId ? [{ turn_id: "turn-" + conversationId, events_count: 1 }] : [],
+          }));
+        }
+        if (url.pathname === "/api/admin/logs/chat/metrics") {
+          return defer("metrics", () => json({
+            ok: true,
+            turns_observed_count: 1,
+            checklist: { classification_counts: { complete: 1 } },
+            source: { events_total: 1, events_read: 1, events_truncated: false },
+          }));
+        }
+        if (url.pathname === "/api/admin/logs/chat/turns") {
+          const stage = url.searchParams.get("stage") || "all";
+          return defer("turns:" + stage, () => json({
+            ok: true,
+            count: 1,
+            total: 1,
+            source: { turns_truncated: false },
+            items: [{
+              conversation_id: url.searchParams.get("conversation_id") || "all",
+              turn_id: "turn-" + stage,
+              classification: "complete",
+              persistence: {}, providers: {}, rag: {}, identity: {}, hermeneutic: {}, web: {}, errors: {}, flags: {},
+            }],
+          }));
+        }
+        if (url.pathname === "/api/admin/logs/chat") {
+          const stage = url.searchParams.get("stage") || "all";
+          return defer("logs:" + stage, () => json({
+            ok: true,
+            count: 1,
+            total: 1,
+            next_offset: null,
+            items: [{
+              event_id: "event-" + stage,
+              conversation_id: url.searchParams.get("conversation_id") || "all",
+              turn_id: "turn-" + stage,
+              stage,
+              status: "ok",
+              ts: "2026-09-05T10:00:00Z",
+              payload: { reason_code: "synthetic_ok" },
+            }],
+          }));
+        }
+        throw new Error("unexpected logs request " + url.pathname);
+      };
+    })();
+  `;
+}
+
+test('logs keep the latest filters, metadata and visible data after stale success or error', async () => {
+  await openBrowserPage({
+    pathSuffix: '/log.html',
+    mockScript: logsSelectionRaceMockScript(),
+  }, async (page) => {
+    await page.waitForFunction(() => document.querySelector('#logStatusBanner')?.textContent.includes('Lecture ok'));
+
+    await page.evaluate(() => {
+      window.__fridaRace.deferNext('logs:turn_start');
+      window.__fridaRace.deferNext('metrics');
+    });
+    await page.selectOption('#logStage', 'turn_start');
+    await page.click('#logFiltersForm button[type="submit"]');
+    await page.waitForFunction(() =>
+      window.__fridaRace.hasPending('logs:turn_start')
+      && window.__fridaRace.hasPending('metrics'));
+
+    await page.selectOption('#logStage', 'llm_call');
+    await page.click('#logFiltersForm button[type="submit"]');
+    await page.waitForFunction(() =>
+      document.querySelector('#logGroups')?.textContent.includes('llm_call'));
+
+    await page.evaluate(async () => {
+      window.__fridaRace.reject('logs:turn_start');
+      window.__fridaRace.reject('metrics');
+      await new Promise(requestAnimationFrame);
+      await new Promise(requestAnimationFrame);
+    });
+    await assertTextContains(page.locator('#logStatusBanner'), 'Lecture ok');
+    await assertTextContains(page.locator('#logGroups'), 'llm_call');
+    await assertTextContains(page.locator('#logCockpitSourceChip'), 'source complete');
+
+    await page.evaluate(() => window.__fridaRace.deferNext('metadata:conv-a'));
+    await page.selectOption('#logConversationId', 'conv-a');
+    await page.waitForFunction(() => window.__fridaRace.hasPending('metadata:conv-a'));
+    await page.selectOption('#logConversationId', 'conv-b');
+    await page.waitForFunction(() => document.querySelector('#logConversationId')?.value === 'conv-b');
+    await page.evaluate(async () => {
+      window.__fridaRace.resolve('metadata:conv-a');
+      await new Promise(requestAnimationFrame);
+      await new Promise(requestAnimationFrame);
+    });
+
+    assert.equal(await page.locator('#logConversationId').inputValue(), 'conv-b');
+    await assertTextContains(page.locator('#logGroups'), 'conv-b');
+    await assertTextContains(page.locator('#logTurns'), 'conv-b');
+    assert.equal((await page.locator('#logTurns').textContent()).includes('conv-a'), false);
+    assert.equal((await page.locator('#logStatusBanner').textContent()).includes('Erreur'), false);
+  });
+});
+
 function dashboardMockScript({ mode = 'nominal' } = {}) {
   return `
     (() => {
@@ -1894,6 +2044,172 @@ test('dashboard overview renders pulse and conversations from aggregate endpoint
     await page.setViewportSize({ width: 390, height: 760 });
     const shellBox = await page.locator('.admin-shell').boundingBox();
     assert.ok(shellBox && shellBox.width <= 390, 'dashboard shell should fit mobile viewport');
+  });
+});
+
+function dashboardSelectionRaceMockScript() {
+  return `
+    (() => {
+      const deferredKeys = new Set();
+      const pending = new Map();
+      const state = { calls: [] };
+      const json = (payload) => new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+      const defer = (key, responseFactory) => {
+        if (!deferredKeys.delete(key)) return responseFactory();
+        return new Promise((resolve, reject) => {
+          pending.set(key, { resolve: () => resolve(responseFactory()), reject });
+        });
+      };
+      const overview = (windowKey) => ({
+        ok: true,
+        window: { key: windowKey, label_fr: "Fenetre " + windowKey },
+        pulse: {}, module_totals: {}, metric_buckets: [], latency: {}, summaries_health: {},
+        source: {
+          status: "ok",
+          coverage: { status: "complete", materialized_window_start: "", materialized_window_end: "" },
+        },
+      });
+      const conversations = (windowKey) => ({
+        ok: true,
+        window: { key: windowKey },
+        count: 2,
+        total: 2,
+        items: [
+          { conversation_id: "conv-a", display_label: "Conversation A " + windowKey, classification_counts: { complete: 1 } },
+          { conversation_id: "conv-b", display_label: "Conversation B " + windowKey, classification_counts: { complete: 1 } },
+        ],
+      });
+      const turns = (conversationId) => ({
+        ok: true,
+        conversation_id: conversationId,
+        count: 2,
+        total: 2,
+        items: [1, 2].map((number) => ({
+          conversation_id: conversationId,
+          turn_id: "turn-" + conversationId + "-" + number,
+          classification: "complete",
+          source_event_count: number,
+          rag: {}, web: {}, errors: {},
+        })),
+      });
+      const inspection = (conversationId, turnId) => ({
+        ok: true,
+        conversation_id: conversationId,
+        turn_id: turnId,
+        item: { conversation_id: conversationId, turn_id: turnId },
+        story: { title_fr: "Inspection " + turnId, summary_fr: "Selection courante", sections: [], debug_links: [] },
+        modules: [],
+        content_gate: { action_available: false },
+      });
+      window.__fridaBrowserState = state;
+      window.__fridaRace = {
+        deferNext(key) { deferredKeys.add(key); },
+        hasPending(key) { return pending.has(key); },
+        resolve(key) {
+          const entry = pending.get(key);
+          if (!entry) throw new Error("missing pending " + key);
+          pending.delete(key);
+          entry.resolve();
+        },
+        reject(key) {
+          const entry = pending.get(key);
+          if (!entry) throw new Error("missing pending " + key);
+          pending.delete(key);
+          entry.reject(new Error("synthetic stale failure"));
+        },
+      };
+      window.fetch = async (input, init = {}) => {
+        const url = new URL(typeof input === "string" ? input : input.url, window.location.origin);
+        const method = String(init.method || "GET").toUpperCase();
+        state.calls.push({ method, path: url.pathname, search: url.search });
+        if (method !== "GET") throw new Error("unexpected method " + method);
+        const windowKey = url.searchParams.get("window") || "custom";
+        if (url.pathname === "/api/admin/dashboard/overview") {
+          return defer("overview:" + windowKey, () => json(overview(windowKey)));
+        }
+        if (url.pathname === "/api/admin/dashboard/conversations") {
+          return defer("conversations:" + windowKey, () => json(conversations(windowKey)));
+        }
+        const turnsMatch = url.pathname.match(/^\\/api\\/admin\\/dashboard\\/conversations\\/([^/]+)\\/turns$/);
+        if (turnsMatch) {
+          const conversationId = decodeURIComponent(turnsMatch[1]);
+          return defer("turns:" + conversationId, () => json(turns(conversationId)));
+        }
+        const inspectionMatch = url.pathname.match(/^\\/api\\/admin\\/dashboard\\/turns\\/([^/]+)\\/inspection$/);
+        if (inspectionMatch) {
+          const turnId = decodeURIComponent(inspectionMatch[1]);
+          const conversationId = url.searchParams.get("conversation_id") || "";
+          return defer("inspection:" + turnId, () => json(inspection(conversationId, turnId)));
+        }
+        throw new Error("unexpected dashboard request " + url.pathname);
+      };
+    })();
+  `;
+}
+
+test('dashboard keeps the latest period, conversation and turn after stale success or error', async () => {
+  await openBrowserPage({
+    pathSuffix: '/dashboard.html',
+    mockScript: dashboardSelectionRaceMockScript(),
+  }, async (page) => {
+    await page.waitForFunction(() => document.querySelector('#dashboardWindowChip')?.textContent.includes('24h'));
+
+    await page.evaluate(() => {
+      window.__fridaRace.deferNext('overview:7d');
+      window.__fridaRace.deferNext('conversations:7d');
+    });
+    await page.click('[data-window="7d"]');
+    await page.waitForFunction(() =>
+      window.__fridaRace.hasPending('overview:7d')
+      && window.__fridaRace.hasPending('conversations:7d'));
+    await page.click('[data-window="30d"]');
+    await page.waitForFunction(() =>
+      document.querySelector('#dashboardWindowChip')?.textContent.includes('30d')
+      && document.querySelector('#dashboardConversationsBody')?.textContent.includes('Conversation B 30d'));
+    await page.evaluate(async () => {
+      window.__fridaRace.reject('overview:7d');
+      window.__fridaRace.resolve('conversations:7d');
+      await new Promise(requestAnimationFrame);
+      await new Promise(requestAnimationFrame);
+    });
+    await assertTextContains(page.locator('#dashboardWindowChip'), '30d');
+    await assertTextContains(page.locator('#dashboardConversationsBody'), 'Conversation B 30d');
+    assert.equal((await page.locator('#dashboardSourceChip').textContent()).includes('Lecture impossible'), false);
+
+    await page.evaluate(() => window.__fridaRace.deferNext('turns:conv-a'));
+    await page.click('[data-conversation-id="conv-a"]');
+    await page.waitForFunction(() => window.__fridaRace.hasPending('turns:conv-a'));
+    await page.click('[data-conversation-id="conv-b"]');
+    await page.waitForSelector('#dashboardTurnsList [data-turn-id="turn-conv-b-2"]');
+    await page.evaluate(async () => {
+      window.__fridaRace.resolve('turns:conv-a');
+      await new Promise(requestAnimationFrame);
+      await new Promise(requestAnimationFrame);
+    });
+    await assertTextContains(page.locator('#dashboardSelectedConversation'), 'Conversation B 30d');
+    assert.equal(await page.locator('#dashboardTurnsList [data-conversation-id="conv-b"]').count(), 2);
+    assert.equal(await page.locator('#dashboardTurnsList [data-conversation-id="conv-a"]').count(), 0);
+
+    await page.evaluate(() => window.__fridaRace.deferNext('inspection:turn-conv-b-1'));
+    await page.click('[data-turn-id="turn-conv-b-1"]');
+    await page.waitForFunction(() => window.__fridaRace.hasPending('inspection:turn-conv-b-1'));
+    await page.click('[data-turn-id="turn-conv-b-2"]');
+    await page.waitForFunction(() => document.querySelector('#dashboardInspectionBody')?.textContent.includes('Inspection turn-conv-b-2'));
+    await page.evaluate(async () => {
+      window.__fridaRace.reject('inspection:turn-conv-b-1');
+      await new Promise(requestAnimationFrame);
+      await new Promise(requestAnimationFrame);
+    });
+    await assertTextContains(page.locator('#dashboardInspectionStatus'), 'Tour ouvert');
+    await assertTextContains(page.locator('#dashboardInspectionBody'), 'Inspection turn-conv-b-2');
+
+    await page.click('[data-conversation-id="conv-b"]');
+    await page.waitForSelector('#dashboardTurnsList [data-turn-id="turn-conv-b-2"]');
+    await page.click('[data-turn-id="turn-conv-b-2"]');
+    await page.waitForFunction(() => document.querySelector('#dashboardInspectionBody')?.textContent.includes('Inspection turn-conv-b-2'));
   });
 });
 

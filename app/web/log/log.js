@@ -43,6 +43,10 @@
     count: 0,
     nextOffset: null,
   };
+  let metadataLoadEpoch = 0;
+  let metricsLoadEpoch = 0;
+  let turnPipelineLoadEpoch = 0;
+  let logsLoadEpoch = 0;
   const LOG_METADATA_ENDPOINT = "/api/admin/logs/chat/metadata";
   const LOG_METRICS_ENDPOINT = "/api/admin/logs/chat/metrics";
   const LOG_TURNS_ENDPOINT = "/api/admin/logs/chat/turns";
@@ -1018,6 +1022,8 @@
   };
 
   const loadMetadata = async ({ conversationId, turnId, preserveTurnSelection = false } = {}) => {
+    const requestEpoch = ++metadataLoadEpoch;
+    const isCurrentRequest = () => requestEpoch === metadataLoadEpoch;
     const requestedConversationId = toText(
       conversationId == null ? elements.conversationId.value : conversationId
     );
@@ -1029,7 +1035,9 @@
 
     try {
       const response = await adminApi.fetchAdmin(`${LOG_METADATA_ENDPOINT}${suffix}`);
+      if (!isCurrentRequest()) return;
       const data = await response.json();
+      if (!isCurrentRequest()) return;
       if (!response.ok || !data.ok) {
         setStatusBanner(adminApi.errorMessage(data, `Echec metadata logs (${response.status}).`), "error");
         renderConversationOptions([], "");
@@ -1045,6 +1053,7 @@
       renderTurnOptions(turns, requestedTurnId, elements.conversationId.value);
       syncScopeButtons();
     } catch (error) {
+      if (!isCurrentRequest()) return;
       setStatusBanner(`Erreur metadata logs: ${error?.message || error}`, "error");
       renderConversationOptions([], "");
       renderTurnOptions([], "", "");
@@ -1053,9 +1062,13 @@
   };
 
   const loadCockpitMetrics = async () => {
+    const requestEpoch = ++metricsLoadEpoch;
+    const isCurrentRequest = () => requestEpoch === metricsLoadEpoch;
     try {
       const response = await adminApi.fetchAdmin(`${LOG_METRICS_ENDPOINT}?${buildMetricsQuery()}`);
+      if (!isCurrentRequest()) return;
       const data = await response.json();
+      if (!isCurrentRequest()) return;
       if (!response.ok || !data.ok) {
         elements.cockpitSourceChip.textContent = "metrics indisponibles";
         elements.cockpitSourceChip.dataset.status = "error";
@@ -1064,6 +1077,7 @@
       }
       renderCockpit(data);
     } catch (error) {
+      if (!isCurrentRequest()) return;
       elements.cockpitSourceChip.textContent = "metrics erreur";
       elements.cockpitSourceChip.dataset.status = "error";
       renderCockpitEmpty(`Erreur metrics: ${error?.message || error}`, "error");
@@ -1071,10 +1085,14 @@
   };
 
   const loadTurnPipeline = async () => {
+    const requestEpoch = ++turnPipelineLoadEpoch;
+    const isCurrentRequest = () => requestEpoch === turnPipelineLoadEpoch;
     const filters = readFilters();
     try {
       const response = await adminApi.fetchAdmin(`${LOG_TURNS_ENDPOINT}?${buildTurnsQuery(filters)}`);
+      if (!isCurrentRequest()) return;
       const data = await response.json();
+      if (!isCurrentRequest()) return;
       if (!response.ok || !data.ok) {
         elements.turnCountChip.textContent = "0 tour";
         elements.turnSourceChip.textContent = "turns indisponibles";
@@ -1088,6 +1106,7 @@
       elements.turnSourceChip.dataset.status = data?.source?.turns_truncated ? "degraded" : "ok";
       renderTurnRows(items);
     } catch (error) {
+      if (!isCurrentRequest()) return;
       elements.turnCountChip.textContent = "0 tour";
       elements.turnSourceChip.textContent = "turns erreur";
       elements.turnSourceChip.dataset.status = "error";
@@ -1100,6 +1119,8 @@
   };
 
   const loadLogs = async () => {
+    const requestEpoch = ++logsLoadEpoch;
+    const isCurrentRequest = () => requestEpoch === logsLoadEpoch;
     const filters = readFilters();
     state.limit = filters.limit;
     state.offset = filters.offset;
@@ -1107,7 +1128,9 @@
 
     try {
       const response = await adminApi.fetchAdmin(`/api/admin/logs/chat?${buildReadQuery(filters)}`);
+      if (!isCurrentRequest()) return;
       const data = await response.json();
+      if (!isCurrentRequest()) return;
       if (!response.ok || !data.ok) {
         setStatusBanner(adminApi.errorMessage(data, `Echec lecture logs (${response.status}).`), "error");
         renderEmpty("Lecture indisponible.");
@@ -1130,6 +1153,7 @@
         setStatusBanner(`Lecture ok (${state.count} evenement${state.count > 1 ? "s" : ""}).`, "ok");
       }
     } catch (error) {
+      if (!isCurrentRequest()) return;
       setStatusBanner(`Erreur reseau logs: ${error?.message || error}`, "error");
       renderEmpty("Lecture indisponible.");
       state.count = 0;

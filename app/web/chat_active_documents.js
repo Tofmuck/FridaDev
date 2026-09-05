@@ -25,6 +25,7 @@ function createActiveDocumentController({
     status: '',
     isError: false,
   };
+  let refreshEpoch = 0;
 
   const endpoint = () => {
     const conversationId = String(typeof getConversationId === 'function' ? getConversationId() || '' : '').trim();
@@ -106,7 +107,9 @@ function createActiveDocumentController({
 
   const refresh = async ({ quiet = true } = {}) => {
     if (!httpFetch) return;
+    const requestEpoch = ++refreshEpoch;
     const url = endpoint();
+    const isCurrentRequest = () => requestEpoch === refreshEpoch && endpoint() === url;
     if (!url) {
       state.items = [];
       if (!quiet) setStatus('Conversation indisponible.', true);
@@ -115,7 +118,9 @@ function createActiveDocumentController({
     }
     try {
       const response = await httpFetch(url);
+      if (!isCurrentRequest()) return;
       const data = await parseJsonResponse(response);
+      if (!isCurrentRequest()) return;
       state.items = Array.isArray(data.items) ? data.items : [];
       if (!state.items.length && quiet) {
         state.status = '';
@@ -123,6 +128,7 @@ function createActiveDocumentController({
       }
       render();
     } catch (err) {
+      if (!isCurrentRequest()) return;
       logger.warn('Chargement des documents actifs échoué', err);
       state.items = [];
       if (!quiet) setStatus('Documents actifs indisponibles.', true);

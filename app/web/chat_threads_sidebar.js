@@ -86,6 +86,7 @@ function createChatThreadsSidebar({
   let workspaceNotesStatusState = new Map();
   let workspaceFileSelectionsState = new Map();
   let currentThreadId = null;
+  let threadLoadEpoch = 0;
   const messageCache = new Map();
 
   const threadStatus = document.createElement("div");
@@ -1103,21 +1104,28 @@ function createChatThreadsSidebar({
   };
 
   const loadThread = async (id) => {
+    const requestEpoch = ++threadLoadEpoch;
+    const isCurrentRequest = () => requestEpoch === threadLoadEpoch && getCurrentId() === id;
     const t = getThreadById(id);
     logEl.innerHTML = "";
     await setHero();
+    if (!isCurrentRequest()) return;
     if (!t) return;
 
     try {
       await hydrateThreadMessages(id);
+      if (!isCurrentRequest()) return;
       await refreshWorkspaceFileSelections(id);
+      if (!isCurrentRequest()) return;
       setThreadStatus("");
     } catch (err) {
+      if (!isCurrentRequest()) return;
       logger.warn("Chargement conversation échoué", err);
       setThreadStatus("Impossible de charger cette conversation.", true);
       return;
     }
 
+    if (!isCurrentRequest()) return;
     const refreshed = getThreadById(id);
     (refreshed?.messages || []).forEach((m) => {
       if (m.role !== "user" && m.role !== "assistant") return;

@@ -2,8 +2,8 @@
 
 Date de cadrage : 4 septembre 2026.
 
-**Statut : roadmap ouverte ; L1 à L5 et L6.1 fermés ; L6 en cours ; L6.2,
-L7 et Z non commencés.**
+**Statut : roadmap ouverte ; L1 à L5, L6.1 et L6.2 fermés ; L6 en cours ;
+L6.3, L7 et Z non commencés.**
 
 ## 1. But, source et règle de vérité
 
@@ -74,7 +74,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 | 3 | L3 | Compensation Nextcloud possédée | F08 | xhigh | fermé — F08 corrigé |
 | 4 | L4 | Conservation de la projection analytics | F21 | high | fermé — F21 corrigé |
 | 5 | L5 | Atomicité des écritures Workspace | F13b, F14a, F19b | xhigh par sous-lot | fermé — F13b, F14a et F19b corrigés |
-| 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | en cours — L6.1/F05 corrigé ; L6.2 non commencé |
+| 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | en cours — L6.1/F05 et L6.2/F10 corrigés ; L6.3 non commencé |
 | 7 | L7 | Vérité d'API, observabilité et outils historiques | F16–F18, F20, F22, F24 et dette documentaire | high | non commencé |
 | 8 | Z | Réconciliation finale avec le grand audit | tous les Fxx et réserves non numérotées | xhigh | non commencé |
 
@@ -86,6 +86,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 - [x] L5.1 fermé.
 - [x] L5.2 et L5.3 fermés.
 - [x] L6.1 fermé ; F05 corrigé et cas terminal vide corrigé après reproduction.
+- [x] L6.2 fermé ; F10 corrigé sur les quatre familles frontend confirmées.
 - [ ] L6 et ses décisions conditionnelles fermés.
 - [ ] L7 et ses décisions conditionnelles fermés.
 - [ ] Z réconcilie chaque finding et archive la roadmap.
@@ -620,13 +621,57 @@ parser/état streaming et `17` scénarios Chromium, sans provider, DB opérateur
 réseau. Presence, final lock, interruptions et échecs de persistance restent
 verts. Limite honnête : ces preuves synthétiques établissent
 le contrat applicatif et non la fréquence de sorties concernées chez un
-provider réel. L6 reste ouvert et L6.2 n'est pas commencé.
+provider réel. Lors de cette fermeture, L6 restait ouvert et L6.2 n'était pas
+commencé.
 
 ### L6.2 — Réponses asynchrones rattachées à leur sélection — F10
 
 Après un `await`, revalider l'identité ou l'époque de la requête avant d'appliquer
 la réponse. Couvrir chat threads, documents actifs, dashboard et logs avec le
 plus petit helper déjà compatible ; aucun nouveau store frontend.
+
+**Statut : fermé — F10 corrigé sur les quatre familles confirmées.** Aucun plan
+plus simple et plus sûr ne fournit la même garantie : chaque contrôleur conserve
+un compteur monotone local par famille indépendante, capture l'identité ou la
+fenêtre demandée, puis refuse succès et erreur si une requête plus récente ou
+une autre sélection l'a remplacée. Les requêtes ne sont pas annulées et aucun
+store, helper transversal, `AbortController`, endpoint, payload ou état produit
+n'est ajouté.
+
+**Revalidation F1–F7.** F1 est confirmée : une hydratation lente du fil A
+rendait ses messages après le fil B. F2 est confirmée avec sa nuance : le cache
+indexé par conversation peut recevoir A, mais seul le fil encore sélectionné
+peut rendre ou changer son statut. F3 est confirmée : un `refresh()` tardif de
+documents actifs remplaçait ou vidait la liste de B. F4 est confirmée pour les
+trois étages dashboard : période, conversation et inspection de tour. F5 est
+confirmée pour les familles indépendantes metadata, métriques, tours et
+événements des logs. F6 est confirmée : les `catch` tardifs pouvaient effacer
+une vue valide ou afficher un faux échec. F7 est confirmée : des gardes locales
+suffisent, sans backend, API, schéma ni persistance.
+
+**Rouge et correction.** Des promesses différées contrôlées ont imposé, sans
+temporisation arbitraire, la séquence A démarré, B sélectionné et résolu, puis A
+résolu ou rejeté. Avant correctif, le chat rendait successivement `message-b`
+puis `message-a` et l'erreur A remplaçait le statut de B ; les documents de A
+remplaçaient ceux de B ou une erreur A vidait B ; le dashboard ancien vidait la
+période courante ; les logs anciens remplaçaient statut et données visibles.
+Les gardes sont présentes après chaque attente qui précède une mutation, dans
+les branches de succès et d'erreur. Le chat combine époque et conversation
+courante ; les documents combinent époque et endpoint dérivé de la conversation
+courante ; le dashboard sépare chargement global, conversation et inspection ;
+les logs séparent metadata, métriques, tours et événements afin qu'une famille
+n'invalide pas les autres.
+
+**Preuves et limites.** Les tests réels des contrôleurs couvrent succès et erreur
+périmés, erreur courante, deux chargements normaux successifs d'une même
+sélection et cache de fil indexé par conversation. Les scénarios Chromium
+couvrent période/conversation/tour du dashboard, filtres/metadata/données des
+logs, pagination nominale, chat nominal et documents actifs rendus. Une mutation
+contrôlée neutralisant la garde du fil remet les deux scénarios A/B au rouge ;
+la restauration exacte les remet au vert. Les suites ciblées passent avec `24`
+tests Node et `6` scénarios Chromium, plus `node --check` sur chaque JavaScript
+modifié. La preuve est synthétique et déterministe ; elle n'évalue pas la
+fréquence des courses en usage réel. L6 reste ouvert et L6.3 n'est pas commencé.
 
 ### L6.3 — Agenda : preuve de lecture et erreurs bornées — F12a/F12b
 
