@@ -1,4 +1,17 @@
 (() => {
+  const logFiltersSignature = (filters = {}) => JSON.stringify([
+    String(filters.conversation_id || ""),
+    String(filters.turn_id || ""),
+    String(filters.stage || ""),
+    String(filters.status || ""),
+    Number(filters.limit || 0),
+    Number(filters.offset || 0),
+  ]);
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = { logFiltersSignature };
+    return;
+  }
   const adminApi = window.FridaAdminApi;
   if (!adminApi) {
     throw new Error("admin_api.js must be loaded before log/log.js");
@@ -267,20 +280,23 @@
     return leftId.localeCompare(rightId);
   };
 
+  const filtersFromElements = () => ({
+    conversation_id: toText(elements.conversationId.value),
+    turn_id: toText(elements.turnId.value),
+    stage: toText(elements.stage.value),
+    status: toText(elements.status.value).toLowerCase(),
+    limit: toBoundedInt(elements.limit.value, 100, 1, 500),
+    offset: toBoundedInt(elements.offset.value, 0, 0, 1000000),
+  });
+
   const readFilters = () => {
-    const limit = toBoundedInt(elements.limit.value, 100, 1, 500);
-    const offset = toBoundedInt(elements.offset.value, 0, 0, 1000000);
-    elements.limit.value = String(limit);
-    elements.offset.value = String(offset);
-    return {
-      conversation_id: toText(elements.conversationId.value),
-      turn_id: toText(elements.turnId.value),
-      stage: toText(elements.stage.value),
-      status: toText(elements.status.value).toLowerCase(),
-      limit,
-      offset,
-    };
+    const filters = filtersFromElements();
+    elements.limit.value = String(filters.limit);
+    elements.offset.value = String(filters.offset);
+    return filters;
   };
+
+  const visibleFiltersSignature = () => logFiltersSignature(filtersFromElements());
 
   const buildReadQuery = (filters) => {
     const query = new URLSearchParams();
@@ -1063,7 +1079,11 @@
 
   const loadCockpitMetrics = async () => {
     const requestEpoch = ++metricsLoadEpoch;
-    const isCurrentRequest = () => requestEpoch === metricsLoadEpoch;
+    const requestFiltersSignature = visibleFiltersSignature();
+    const isCurrentRequest = () => (
+      requestEpoch === metricsLoadEpoch
+      && visibleFiltersSignature() === requestFiltersSignature
+    );
     try {
       const response = await adminApi.fetchAdmin(`${LOG_METRICS_ENDPOINT}?${buildMetricsQuery()}`);
       if (!isCurrentRequest()) return;
@@ -1086,8 +1106,12 @@
 
   const loadTurnPipeline = async () => {
     const requestEpoch = ++turnPipelineLoadEpoch;
-    const isCurrentRequest = () => requestEpoch === turnPipelineLoadEpoch;
     const filters = readFilters();
+    const requestFiltersSignature = logFiltersSignature(filters);
+    const isCurrentRequest = () => (
+      requestEpoch === turnPipelineLoadEpoch
+      && visibleFiltersSignature() === requestFiltersSignature
+    );
     try {
       const response = await adminApi.fetchAdmin(`${LOG_TURNS_ENDPOINT}?${buildTurnsQuery(filters)}`);
       if (!isCurrentRequest()) return;
@@ -1120,8 +1144,12 @@
 
   const loadLogs = async () => {
     const requestEpoch = ++logsLoadEpoch;
-    const isCurrentRequest = () => requestEpoch === logsLoadEpoch;
     const filters = readFilters();
+    const requestFiltersSignature = logFiltersSignature(filters);
+    const isCurrentRequest = () => (
+      requestEpoch === logsLoadEpoch
+      && visibleFiltersSignature() === requestFiltersSignature
+    );
     state.limit = filters.limit;
     state.offset = filters.offset;
     setStatusBanner("Chargement des logs...", "");

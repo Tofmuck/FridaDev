@@ -1408,6 +1408,7 @@ function logsSelectionRaceMockScript() {
       const deferredKeys = new Set();
       const pending = new Map();
       const state = { calls: [] };
+      const responseVersions = { metrics: 0, turns: 0 };
       const json = (payload, status = 200) => new Response(JSON.stringify(payload), {
         status,
         headers: { "Content-Type": "application/json" },
@@ -1455,27 +1456,33 @@ function logsSelectionRaceMockScript() {
           }));
         }
         if (url.pathname === "/api/admin/logs/chat/metrics") {
-          return defer("metrics", () => json({
-            ok: true,
-            turns_observed_count: 1,
-            checklist: { classification_counts: { complete: 1 } },
-            source: { events_total: 1, events_read: 1, events_truncated: false },
-          }));
+          return defer("metrics", () => {
+            responseVersions.metrics += 1;
+            return json({
+              ok: true,
+              turns_observed_count: responseVersions.metrics,
+              checklist: { classification_counts: { complete: responseVersions.metrics } },
+              source: { events_total: responseVersions.metrics, events_read: responseVersions.metrics, events_truncated: false },
+            });
+          });
         }
         if (url.pathname === "/api/admin/logs/chat/turns") {
-          const stage = url.searchParams.get("stage") || "all";
-          return defer("turns:" + stage, () => json({
-            ok: true,
-            count: 1,
-            total: 1,
-            source: { turns_truncated: false },
-            items: [{
-              conversation_id: url.searchParams.get("conversation_id") || "all",
-              turn_id: "turn-" + stage,
-              classification: "complete",
-              persistence: {}, providers: {}, rag: {}, identity: {}, hermeneutic: {}, web: {}, errors: {}, flags: {},
-            }],
-          }));
+          const conversationId = url.searchParams.get("conversation_id") || "all";
+          return defer("turns:" + conversationId, () => {
+            responseVersions.turns += 1;
+            return json({
+              ok: true,
+              count: 1,
+              total: 1,
+              source: { turns_truncated: false },
+              items: [{
+                conversation_id: conversationId,
+                turn_id: "turn-" + conversationId + "-" + responseVersions.turns,
+                classification: "complete",
+                persistence: {}, providers: {}, rag: {}, identity: {}, hermeneutic: {}, web: {}, errors: {}, flags: {},
+              }],
+            });
+          });
         }
         if (url.pathname === "/api/admin/logs/chat") {
           const stage = url.searchParams.get("stage") || "all";
@@ -1509,41 +1516,97 @@ test('logs keep the latest filters, metadata and visible data after stale succes
   }, async (page) => {
     await page.waitForFunction(() => document.querySelector('#logStatusBanner')?.textContent.includes('Lecture ok'));
 
+    await page.selectOption('#logConversationId', 'conv-a');
+    await page.waitForFunction(() =>
+      document.querySelector('#logGroups')?.textContent.includes('conv-a'));
     await page.evaluate(() => {
       window.__fridaRace.deferNext('logs:turn_start');
       window.__fridaRace.deferNext('metrics');
+      window.__fridaRace.deferNext('turns:conv-a');
+      window.__fridaRace.deferNext('metadata:conv-b');
     });
     await page.selectOption('#logStage', 'turn_start');
     await page.click('#logFiltersForm button[type="submit"]');
     await page.waitForFunction(() =>
       window.__fridaRace.hasPending('logs:turn_start')
-      && window.__fridaRace.hasPending('metrics'));
+      && window.__fridaRace.hasPending('metrics')
+      && window.__fridaRace.hasPending('turns:conv-a'));
 
+    await page.selectOption('#logConversationId', 'conv-b');
+    await page.waitForFunction(() => window.__fridaRace.hasPending('metadata:conv-b'));
+    const beforeStaleSuccess = await page.evaluate(() => ({
+      status: document.querySelector('#logStatusBanner')?.textContent,
+      groups: document.querySelector('#logGroups')?.textContent,
+      cockpit: document.querySelector('#logCockpitCards')?.textContent,
+      turns: document.querySelector('#logTurns')?.textContent,
+      count: document.querySelector('#logCountChip')?.textContent,
+      page: document.querySelector('#logPageChip')?.textContent,
+    }));
+
+    await page.evaluate(async () => {
+      window.__fridaRace.resolve('logs:turn_start');
+      window.__fridaRace.resolve('metrics');
+      window.__fridaRace.resolve('turns:conv-a');
+      await new Promise(requestAnimationFrame);
+      await new Promise(requestAnimationFrame);
+    });
+    const afterStaleSuccess = await page.evaluate(() => ({
+      status: document.querySelector('#logStatusBanner')?.textContent,
+      groups: document.querySelector('#logGroups')?.textContent,
+      cockpit: document.querySelector('#logCockpitCards')?.textContent,
+      turns: document.querySelector('#logTurns')?.textContent,
+      count: document.querySelector('#logCountChip')?.textContent,
+      page: document.querySelector('#logPageChip')?.textContent,
+    }));
+    assert.deepEqual(afterStaleSuccess, beforeStaleSuccess);
+    await page.evaluate(() => window.__fridaRace.resolve('metadata:conv-b'));
+    await page.waitForFunction(() =>
+      document.querySelector('#logGroups')?.textContent.includes('conv-b'));
+
+    await page.selectOption('#logConversationId', 'conv-a');
+    await page.waitForFunction(() =>
+      document.querySelector('#logGroups')?.textContent.includes('conv-a'));
     await page.selectOption('#logStage', 'llm_call');
+    await page.evaluate(() => {
+      window.__fridaRace.deferNext('logs:llm_call');
+      window.__fridaRace.deferNext('metrics');
+      window.__fridaRace.deferNext('turns:conv-a');
+      window.__fridaRace.deferNext('metadata:conv-b');
+    });
     await page.click('#logFiltersForm button[type="submit"]');
     await page.waitForFunction(() =>
-      document.querySelector('#logGroups')?.textContent.includes('llm_call'));
-
-    await page.evaluate(async () => {
-      window.__fridaRace.reject('logs:turn_start');
-      window.__fridaRace.reject('metrics');
-      await new Promise(requestAnimationFrame);
-      await new Promise(requestAnimationFrame);
-    });
-    await assertTextContains(page.locator('#logStatusBanner'), 'Lecture ok');
-    await assertTextContains(page.locator('#logGroups'), 'llm_call');
-    await assertTextContains(page.locator('#logCockpitSourceChip'), 'source complete');
-
-    await page.evaluate(() => window.__fridaRace.deferNext('metadata:conv-a'));
-    await page.selectOption('#logConversationId', 'conv-a');
-    await page.waitForFunction(() => window.__fridaRace.hasPending('metadata:conv-a'));
+      window.__fridaRace.hasPending('logs:llm_call')
+      && window.__fridaRace.hasPending('metrics')
+      && window.__fridaRace.hasPending('turns:conv-a'));
     await page.selectOption('#logConversationId', 'conv-b');
-    await page.waitForFunction(() => document.querySelector('#logConversationId')?.value === 'conv-b');
+    await page.waitForFunction(() => window.__fridaRace.hasPending('metadata:conv-b'));
+    const beforeStaleError = await page.evaluate(() => ({
+      status: document.querySelector('#logStatusBanner')?.textContent,
+      groups: document.querySelector('#logGroups')?.textContent,
+      cockpit: document.querySelector('#logCockpitCards')?.textContent,
+      turns: document.querySelector('#logTurns')?.textContent,
+      count: document.querySelector('#logCountChip')?.textContent,
+      page: document.querySelector('#logPageChip')?.textContent,
+    }));
     await page.evaluate(async () => {
-      window.__fridaRace.resolve('metadata:conv-a');
+      window.__fridaRace.reject('logs:llm_call');
+      window.__fridaRace.reject('metrics');
+      window.__fridaRace.reject('turns:conv-a');
       await new Promise(requestAnimationFrame);
       await new Promise(requestAnimationFrame);
     });
+    const afterStaleError = await page.evaluate(() => ({
+      status: document.querySelector('#logStatusBanner')?.textContent,
+      groups: document.querySelector('#logGroups')?.textContent,
+      cockpit: document.querySelector('#logCockpitCards')?.textContent,
+      turns: document.querySelector('#logTurns')?.textContent,
+      count: document.querySelector('#logCountChip')?.textContent,
+      page: document.querySelector('#logPageChip')?.textContent,
+    }));
+    assert.deepEqual(afterStaleError, beforeStaleError);
+    await page.evaluate(() => window.__fridaRace.resolve('metadata:conv-b'));
+    await page.waitForFunction(() =>
+      document.querySelector('#logGroups')?.textContent.includes('conv-b'));
 
     assert.equal(await page.locator('#logConversationId').inputValue(), 'conv-b');
     await assertTextContains(page.locator('#logGroups'), 'conv-b');
@@ -1557,6 +1620,13 @@ test('logs keep the latest filters, metadata and visible data after stale succes
     await page.click('#logPrevPage');
     await page.waitForFunction(() => document.querySelector('#logPageChip')?.textContent.includes('offset 0'));
     await assertTextContains(page.locator('#logGroups'), 'turn-llm_call-0');
+
+    await page.click('#logRefresh');
+    await page.waitForFunction(() =>
+      document.querySelector('#logStatusBanner')?.textContent.includes('Lecture ok'));
+    assert.equal(await page.locator('#logConversationId').inputValue(), 'conv-b');
+    await assertTextContains(page.locator('#logGroups'), 'conv-b');
+    await assertTextContains(page.locator('#logTurns'), 'conv-b');
   });
 });
 

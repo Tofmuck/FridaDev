@@ -630,13 +630,15 @@ Après un `await`, revalider l'identité ou l'époque de la requête avant d'app
 la réponse. Couvrir chat threads, documents actifs, dashboard et logs avec le
 plus petit helper déjà compatible ; aucun nouveau store frontend.
 
-**Statut : fermé — F10 corrigé sur les quatre familles confirmées.** Aucun plan
-plus simple et plus sûr ne fournit la même garantie : chaque contrôleur conserve
-un compteur monotone local par famille indépendante, capture l'identité ou la
-fenêtre demandée, puis refuse succès et erreur si une requête plus récente ou
-une autre sélection l'a remplacée. Les requêtes ne sont pas annulées et aucun
-store, helper transversal, `AbortController`, endpoint, payload ou état produit
-n'est ajouté.
+**Statut : définitivement refermé — F10 corrigé sur les quatre familles
+confirmées, y compris la fenêtre résiduelle Logs.** Aucun plan plus simple et
+plus sûr ne fournit la même garantie : chaque contrôleur conserve un compteur
+monotone local par famille indépendante et refuse succès et erreur si une
+requête plus récente ou une autre sélection l'a remplacée. Pour les trois
+loaders Logs dépendant des filtres visibles, cette identité est désormais la
+signature normalisée exacte de conversation, tour, stage, statut, limite et
+offset. Les requêtes ne sont pas annulées et aucun store, helper transversal,
+`AbortController`, endpoint, payload ou état produit n'est ajouté.
 
 **Revalidation F1–F7.** F1 est confirmée : une hydratation lente du fil A
 rendait ses messages après le fil B. F2 est confirmée avec sa nuance : le cache
@@ -672,6 +674,25 @@ la restauration exacte les remet au vert. Les suites ciblées passent avec `24`
 tests Node et `6` scénarios Chromium, plus `node --check` sur chaque JavaScript
 modifié. La preuve est synthétique et déterministe ; elle n'évalue pas la
 fréquence des courses en usage réel. L6 reste ouvert et L6.3 n'est pas commencé.
+
+**Réouverture et preuve résiduelle au HEAD
+`5896de156fb516f66973a1df93be1f60458d837e`.** La première fermeture laissait
+une fenêtre confirmée dans les logs : après sélection de B, le handler attendait
+`loadMetadata(B)` avant de démarrer les loaders B ; pendant cette attente,
+l'epoch des requêtes A restait courant et leur réponse pouvait encore modifier
+la vue. Une reproduction Chromium sans temporisation arbitraire maintient la
+metadata B en attente, puis résout ou rejette A avant tout chargement B. Avant
+correction, le succès A remplaçait le statut et les événements visibles.
+
+Le correctif local combine désormais epoch de famille et signature des filtres
+ayant produit la requête dans `loadLogs()`, `loadCockpitMetrics()` et
+`loadTurnPipeline()`, après chaque attente et dans chaque `catch`. La preuve
+compare DOM, statut et compteurs avant/après les succès et erreurs A, puis
+vérifie B, le rafraîchissement et la pagination avant/arrière. Le test Node
+prouve que les six champs participent à une signature stable. Une mutation
+retirant seulement la signature de `loadLogs()` remet la preuve centrale au
+rouge ; sa restauration exacte la remet au vert. Aucun autre contrôleur, contrat
+ou statut global ne change. L6.3 reste non commencé.
 
 ### L6.3 — Agenda : preuve de lecture et erreurs bornées — F12a/F12b
 
