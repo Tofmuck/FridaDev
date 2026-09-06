@@ -1207,8 +1207,32 @@ n'est pas commencé.
 
 ### L7.4 — Réglages Identity historiques — F18
 
-Corriger classification et aide des knobs legacy sans les réactiver. Prouver
-la politique réellement lue par le juge courant.
+**Fermé le 6 septembre 2026.** F18 restait partiellement vivant: six seuils
+du writer fragmentaire historique etaient encore classes comme sous-pipeline
+actif et editables, alors que le chemin chat courant passe par
+`memory_identity_periodic_agent -> mutable_identity_runtime ->
+mutable_identity_judge_v2 / mutable_identity_apply` sans les lire.
+
+La gouvernance separe maintenant les dix cles dont la valeur reste lue depuis
+`runtime_settings.identity_governance` des quatre cles reellement modifiables
+par son API. Les six seuils historiques restent donc visibles avec leur valeur
+persistee mais sont readonly. Les quatre `CONTEXT_HINTS_*` restent des
+auxiliaires actifs editables; `identity_extractor_max_tokens` est un auxiliaire
+actif readonly sur cette surface; les budgets `3000/3300` sont les deux seuls
+items directement raccordes au juge V2; `IDENTITY_DECAY_FACTOR` est une
+compatibilite encore executee a la creation d'une conversation, bornee a la
+decroissance de `identities.weight`; `IDENTITY_TOP_N` et
+`IDENTITY_MAX_TOKENS` restent legacy inactifs.
+
+Le read-model, ses compteurs, les labels et l'aide frontend racontent cette
+meme taxonomie. La route dediee refuse les six seuils historiques avec
+`governance_key_readonly`, et aucune route generique `/api/admin/settings/*`
+n'expose `identity_governance` en mutation. Les tests ciblent la matrice
+autoritative, la conservation des valeurs runtime-backed, l'allowlist d'edition,
+le rendu Node et un scenario Chromium unique. La mutation controlee de la
+classification centrale remet le test de matrice au rouge puis le correctif
+exact est restaure. Aucun seuil, jugement, injection, writer ou contenu
+Identity n'est modifie. L7.5 n'est pas commence.
 
 ### L7.5 — Bancs Identity obsolètes — F22
 

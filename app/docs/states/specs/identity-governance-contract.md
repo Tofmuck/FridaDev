@@ -27,11 +27,12 @@ Ces routes sont:
 
 ## Source de verite
 
-Le backing store editable retenu est:
+Le backing store retenu est:
 - `runtime_settings.identity_governance`
 
 Cette section runtime ne remplace pas le contrat read-model:
-- elle porte seulement les knobs operator-gouvernables;
+- elle conserve dix valeurs runtime-backed, dont six seuils historiques readonly;
+- seules les quatre cles `CONTEXT_HINTS_*` sont operator-gouvernables depuis cette API;
 - l'edition operateur reste exposee dans `/hermeneutic-admin`, pas dans `/admin` generique;
 - `/api/admin/settings` peut la montrer comme section runtime existante, mais la surface produit de gouvernance identity reste la section `Gouvernance identity`.
 
@@ -48,10 +49,9 @@ Top-level:
   "editable_count": 0,
   "readonly_count": 0,
   "legacy_inactive_count": 0,
-  "doctrine_locked_count": 0,
-  "active_readonly_count": 0,
-  "active_runtime_count": 0,
-  "active_subpipeline_count": 0,
+  "active_judge_v2_count": 0,
+  "active_auxiliary_count": 0,
+  "active_legacy_compatibility_count": 0,
   "regime_active_readonly_count": 0,
   "regime_doctrine_locked_count": 0,
   "regime_legacy_inactive_count": 0,
@@ -80,7 +80,7 @@ Chaque item expose au minimum:
 - `validation`
 - `operator_note`
 
-Pour les knobs runtime-backed editables, l'item expose aussi:
+Pour tous les knobs runtime-backed, editables ou historiques readonly, l'item expose aussi:
 - `source_state`
 - `source_reason`
 
@@ -98,10 +98,10 @@ Chaque `regime_section` expose au minimum:
 ## Taxonomie retenue
 
 Categories utilisees:
-- `active_runtime_editable`
-- `active_subpipeline_editable`
-- `doctrine_locked_readonly`
-- `active_subpipeline_readonly`
+- `active_judge_v2_readonly`
+- `active_auxiliary_editable`
+- `active_auxiliary_readonly`
+- `active_legacy_compatibility_readonly`
 - `legacy_inactive_readonly`
 
 Classifications utilisees pour `regime_sections`:
@@ -110,14 +110,14 @@ Classifications utilisees pour `regime_sections`:
 - `legacy_inactive`
 
 Semantique:
-- `active_runtime_*`: agit encore sur le runtime actif `static + mutable narrative`
-- `active_subpipeline_*`: agit encore sur un sous-pipeline identity reel sans piloter directement l'injection active
-- `doctrine_locked_readonly`: agit reellement mais reste verrouille par doctrine deja fermee
-- `legacy_inactive_readonly`: survivance de code legacy visible mais non branchée sur le chemin actif
+- `active_judge_v2_readonly`: valeur lue par le juge mutable V2 courant ou sa garde d'apply;
+- `active_auxiliary_*`: valeur lue par un auxiliaire runtime actif, sans autorite sur le juge V2;
+- `active_legacy_compatibility_readonly`: traitement legacy encore execute mais sans autorite sur le canon ni le juge V2;
+- `legacy_inactive_readonly`: valeur historique visible, sans consommateur dans le chemin chat courant.
 
 ## Inventaire minimal ferme en Lot 5
 
-### Editables
+### Runtime-backed historiques readonly
 
 - `IDENTITY_MIN_CONFIDENCE`
 - `IDENTITY_DEFER_MIN_CONFIDENCE`
@@ -125,16 +125,31 @@ Semantique:
 - `IDENTITY_RECURRENCE_WINDOW_DAYS`
 - `IDENTITY_PROMOTION_MIN_DISTINCT_CONVERSATIONS`
 - `IDENTITY_PROMOTION_MIN_TIME_GAP_HOURS`
+
+Ces six valeurs restent lues depuis leur ligne `runtime_settings` pour que la
+surface expose la valeur persistee. Elles ne sont plus dans `EDITABLE_KEYS`:
+leurs seuls consommateurs metier appartiennent a
+`preview_identity_entries` / `persist_identity_entries`, writer fragmentaire
+retire du chemin chat courant. Elles n'atteignent ni le juge V2, ni son apply.
+
+### Auxiliaires actifs editables
+
 - `CONTEXT_HINTS_MAX_ITEMS`
 - `CONTEXT_HINTS_MAX_TOKENS`
 - `CONTEXT_HINTS_MAX_AGE_DAYS`
 - `CONTEXT_HINTS_MIN_CONFIDENCE`
 
-### Read-only doctrinaux ou actifs non rouverts
+### Juge V2 actif readonly
 
 - `IDENTITY_MUTABLE_TARGET_CHARS`
 - `IDENTITY_MUTABLE_MAX_CHARS`
+
+### Auxiliaire actif readonly
+
 - `identity_extractor_max_tokens`
+
+### Compatibilite legacy encore executee readonly
+
 - `IDENTITY_DECAY_FACTOR`
 
 ### Legacy inactifs visibles seulement
@@ -146,9 +161,10 @@ Important:
 - `IDENTITY_TOP_N` et `IDENTITY_MAX_TOKENS` restent exposes pour dire vrai sur les survivances legacy;
 - ils ne doivent pas etre requalifies comme knobs actifs ni redevenir editables;
 - `identity_extractor_max_tokens` est une lecture readonly de `identity_extractor_model.max_tokens`; l'edition reste dans les runtime settings du caller;
+- `IDENTITY_DECAY_FACTOR` est lu a la creation d'une nouvelle conversation et multiplie seulement `identities.weight`; la table legacy n'alimente plus le canon actif;
 - le statique n'introduit pas de cap caracteres Lot 5 distinct;
 - la mutable garde sa doctrine `3000 / 3300`, visible mais verrouillee;
-- ces caps ne racontent pas a eux seuls tout le regime runtime expose avant refonte: la gouvernance expose aussi des sections readonly pour la fenetre technique de 5 paires et les coutures legacy desactivees comme writer canonique.
+- ces caps ne racontent pas a eux seuls tout le regime runtime: la gouvernance distingue juge V2, hints actifs, compatibilite legacy executee et valeurs legacy inactives.
 - transition 2026-05-25: ces sections pre-refonte restent des lectures du runtime livre, mais ne sont plus doctrine cible du writer mutable. Le contrat cible est `mutable-identity-judge-contract.md`.
 
 ## Sections readonly du regime actif
@@ -178,21 +194,23 @@ Regles:
 - `updates` requis
 - `reason` requis
 - `reason` max: `240` caracteres
-- seules les cles editables sont acceptees
+- seules `CONTEXT_HINTS_MAX_ITEMS`, `CONTEXT_HINTS_MAX_TOKENS`, `CONTEXT_HINTS_MAX_AGE_DAYS` et `CONTEXT_HINTS_MIN_CONFIDENCE` sont acceptees;
+- les six seuils historiques runtime-backed sont refuses avec `governance_key_readonly`;
+- aucune route `/api/admin/settings/*` n'expose la section `identity_governance` en PATCH; seule la route dediee applique l'allowlist `EDITABLE_KEYS`;
 - aucune mutation partielle ambigue
 - validation fail-closed avant ecriture
 
 ## Invariants minimums
 
-- `IDENTITY_DEFER_MIN_CONFIDENCE <= IDENTITY_MIN_CONFIDENCE`
-- `IDENTITY_MIN_RECURRENCE_FOR_DURABLE >= IDENTITY_PROMOTION_MIN_DISTINCT_CONVERSATIONS`
-- `IDENTITY_PROMOTION_MIN_DISTINCT_CONVERSATIONS >= 1`
-- `IDENTITY_PROMOTION_MIN_TIME_GAP_HOURS >= 1`
 - `CONTEXT_HINTS_MAX_ITEMS >= 1`
 - `CONTEXT_HINTS_MAX_TOKENS >= 1`
 - `CONTEXT_HINTS_MAX_TOKENS <= config.MAX_TOKENS`
 - `CONTEXT_HINTS_MAX_AGE_DAYS >= 1`
 - tous les ratios restent dans `[0.0, 1.0]`
+
+Le validateur de la section conserve les controles historiques des six valeurs
+stockees afin de ne pas modifier le contrat de stockage. Ces controles ne les
+rendent ni actives ni editables.
 
 ## Reponse compacte d'update
 
@@ -247,7 +265,8 @@ Cet event alimente aussi `Corrections recentes` via:
 - montrer la classification de chaque knob;
 - montrer aussi les sections readonly du regime actif, distinctes des simples knobs;
 - rappeler que `3000 / 3300` borne seulement la mutable canonique et non tout le regime identity;
-- rendre editable uniquement le sous-ensemble runtime-safe retenu;
+- afficher des groupes distincts `juge V2`, `auxiliaire actif`, `compatibilite legacy active` et `legacy inactif`;
+- rendre editables uniquement les quatre cles de hints;
 - rester distincte du read-model et des editeurs static/mutable.
 
 L'editeur mutable:

@@ -141,7 +141,10 @@ class ServerAdminIdentityGovernancePhase5Tests(unittest.TestCase):
         self.assertFalse(sections_by_key['active_canon_contract']['details']['staging_included_in_active_canon'])
         self.assertEqual(sections_by_key['mutable_budget_contract']['classification'], 'doctrine_locked')
         self.assertEqual(sections_by_key['legacy_identity_contract']['classification'], 'legacy_inactive')
-        self.assertGreaterEqual(read_payload['doctrine_locked_count'], 1)
+        self.assertEqual(read_payload['active_judge_v2_count'], 2)
+        self.assertEqual(read_payload['active_auxiliary_count'], 5)
+        self.assertEqual(read_payload['active_legacy_compatibility_count'], 1)
+        self.assertEqual(read_payload['legacy_inactive_count'], 8)
         self.assertEqual(read_payload['regime_section_count'], 6)
         self.assertEqual(write_response.status_code, 200)
         write_payload = write_response.get_json()
@@ -168,6 +171,17 @@ class ServerAdminIdentityGovernancePhase5Tests(unittest.TestCase):
         payload = response.get_json()
         self.assertFalse(payload['ok'])
         self.assertEqual(payload['validation_error'], 'governance_key_readonly')
+
+    def test_generic_admin_settings_routes_do_not_expose_identity_governance_mutation(self) -> None:
+        mutation_routes = {
+            rule.rule
+            for rule in self.server.app.url_map.iter_rules()
+            if rule.rule.startswith('/api/admin/settings')
+            and ({'PATCH', 'POST'} & set(rule.methods))
+        }
+
+        self.assertNotIn('/api/admin/settings/identity-governance', mutation_routes)
+        self.assertNotIn('/api/admin/settings/identity_governance', mutation_routes)
 
     def test_identity_governance_route_maps_store_unavailable_to_http_500(self) -> None:
         current_payload = self._governance_view({'CONTEXT_HINTS_MAX_ITEMS': 2})

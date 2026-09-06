@@ -20,6 +20,7 @@ if str(APP_DIR) not in sys.path:
 
 from admin import admin_identity_governance_service
 from admin import runtime_settings
+from identity import identity_governance
 
 
 class _FakeRuntimeSettings:
@@ -143,7 +144,7 @@ class IdentityGovernanceServicePhase5Tests(unittest.TestCase):
             line_count = sum(1 for _ in handle)
         self.assertLess(line_count, 500)
 
-    def test_inventory_response_classifies_editable_readonly_and_legacy_items_honestly(self) -> None:
+    def test_inventory_response_exposes_authoritative_runtime_classification_matrix(self) -> None:
         runtime_module = _FakeRuntimeSettings(
             {
                 'IDENTITY_MIN_CONFIDENCE': 0.81,
@@ -164,11 +165,65 @@ class IdentityGovernanceServicePhase5Tests(unittest.TestCase):
         self.assertEqual(payload['identity_input_schema_version'], 'v2')
         items_by_key = {item['key']: item for item in payload['items']}
         sections_by_key = {section['key']: section for section in payload['regime_sections']}
-        self.assertTrue(items_by_key['IDENTITY_MIN_CONFIDENCE']['editable'])
-        self.assertEqual(items_by_key['IDENTITY_MIN_CONFIDENCE']['category'], 'active_subpipeline_editable')
-        self.assertEqual(items_by_key['CONTEXT_HINTS_MAX_ITEMS']['category'], 'active_runtime_editable')
+        expected_categories = {
+            'IDENTITY_MIN_CONFIDENCE': 'legacy_inactive_readonly',
+            'IDENTITY_DEFER_MIN_CONFIDENCE': 'legacy_inactive_readonly',
+            'IDENTITY_MIN_RECURRENCE_FOR_DURABLE': 'legacy_inactive_readonly',
+            'IDENTITY_RECURRENCE_WINDOW_DAYS': 'legacy_inactive_readonly',
+            'IDENTITY_PROMOTION_MIN_DISTINCT_CONVERSATIONS': 'legacy_inactive_readonly',
+            'IDENTITY_PROMOTION_MIN_TIME_GAP_HOURS': 'legacy_inactive_readonly',
+            'CONTEXT_HINTS_MAX_ITEMS': 'active_auxiliary_editable',
+            'CONTEXT_HINTS_MAX_TOKENS': 'active_auxiliary_editable',
+            'CONTEXT_HINTS_MAX_AGE_DAYS': 'active_auxiliary_editable',
+            'CONTEXT_HINTS_MIN_CONFIDENCE': 'active_auxiliary_editable',
+            'IDENTITY_MUTABLE_TARGET_CHARS': 'active_judge_v2_readonly',
+            'IDENTITY_MUTABLE_MAX_CHARS': 'active_judge_v2_readonly',
+            'identity_extractor_max_tokens': 'active_auxiliary_readonly',
+            'IDENTITY_DECAY_FACTOR': 'active_legacy_compatibility_readonly',
+            'IDENTITY_TOP_N': 'legacy_inactive_readonly',
+            'IDENTITY_MAX_TOKENS': 'legacy_inactive_readonly',
+        }
+        self.assertEqual(
+            {key: item['category'] for key, item in items_by_key.items()},
+            expected_categories,
+        )
+        self.assertEqual(
+            identity_governance.RUNTIME_SETTING_KEYS,
+            (
+                'IDENTITY_MIN_CONFIDENCE',
+                'IDENTITY_DEFER_MIN_CONFIDENCE',
+                'IDENTITY_MIN_RECURRENCE_FOR_DURABLE',
+                'IDENTITY_RECURRENCE_WINDOW_DAYS',
+                'IDENTITY_PROMOTION_MIN_DISTINCT_CONVERSATIONS',
+                'IDENTITY_PROMOTION_MIN_TIME_GAP_HOURS',
+                'CONTEXT_HINTS_MAX_ITEMS',
+                'CONTEXT_HINTS_MAX_TOKENS',
+                'CONTEXT_HINTS_MAX_AGE_DAYS',
+                'CONTEXT_HINTS_MIN_CONFIDENCE',
+            ),
+        )
+        self.assertEqual(
+            identity_governance.EDITABLE_KEYS,
+            (
+                'CONTEXT_HINTS_MAX_ITEMS',
+                'CONTEXT_HINTS_MAX_TOKENS',
+                'CONTEXT_HINTS_MAX_AGE_DAYS',
+                'CONTEXT_HINTS_MIN_CONFIDENCE',
+            ),
+        )
+        self.assertFalse(items_by_key['IDENTITY_MIN_CONFIDENCE']['editable'])
+        self.assertEqual(items_by_key['IDENTITY_MIN_CONFIDENCE']['current_value'], 0.81)
+        self.assertEqual(items_by_key['IDENTITY_MIN_CONFIDENCE']['source_state'], 'db')
+        self.assertEqual(
+            identity_governance.governed_value_for_runtime(
+                'IDENTITY_MIN_CONFIDENCE',
+                runtime_settings_module=runtime_module,
+            ),
+            0.81,
+        )
+        self.assertEqual(items_by_key['CONTEXT_HINTS_MAX_ITEMS']['category'], 'active_auxiliary_editable')
         self.assertFalse(items_by_key['IDENTITY_MUTABLE_TARGET_CHARS']['editable'])
-        self.assertEqual(items_by_key['IDENTITY_MUTABLE_TARGET_CHARS']['category'], 'doctrine_locked_readonly')
+        self.assertEqual(items_by_key['IDENTITY_MUTABLE_TARGET_CHARS']['active_scope'], 'mutable_identity_judge_v2_add_only')
         self.assertEqual(items_by_key['identity_extractor_max_tokens']['source_kind'], 'runtime_settings')
         self.assertEqual(items_by_key['identity_extractor_max_tokens']['source_ref'], 'identity_extractor_model.max_tokens')
         self.assertEqual(items_by_key['identity_extractor_max_tokens']['label'], 'Dialogic context extractor max tokens')
@@ -180,6 +235,9 @@ class IdentityGovernanceServicePhase5Tests(unittest.TestCase):
         self.assertNotIn('extracteur identity', items_by_key['identity_extractor_max_tokens']['operator_note'])
         self.assertEqual(items_by_key['IDENTITY_TOP_N']['category'], 'legacy_inactive_readonly')
         self.assertEqual(items_by_key['IDENTITY_MAX_TOKENS']['category'], 'legacy_inactive_readonly')
+        self.assertEqual(items_by_key['IDENTITY_DECAY_FACTOR']['active_scope'], 'legacy_identity_weight_decay')
+        self.assertIn('nouvelle conversation', items_by_key['IDENTITY_DECAY_FACTOR']['operator_note'])
+        self.assertIn('juge V2', items_by_key['IDENTITY_DECAY_FACTOR']['operator_note'])
         self.assertEqual(sections_by_key['staging_contract']['classification'], 'active_readonly')
         self.assertEqual(sections_by_key['staging_contract']['active_scope'], 'mutable_identity_judge_v2_add_only')
         self.assertEqual(sections_by_key['staging_contract']['details']['pipeline'], 'mutable_identity_judge_v2_add_only')
@@ -219,10 +277,12 @@ class IdentityGovernanceServicePhase5Tests(unittest.TestCase):
         self.assertFalse(sections_by_key['legacy_identity_contract']['details']['actively_injected'])
         self.assertGreater(payload['editable_count'], 0)
         self.assertGreater(payload['readonly_count'], 0)
-        self.assertGreater(payload['doctrine_locked_count'], 0)
-        self.assertGreaterEqual(payload['legacy_inactive_count'], 2)
-        self.assertGreater(payload['active_runtime_count'], 0)
-        self.assertGreater(payload['active_subpipeline_count'], 0)
+        self.assertEqual(payload['editable_count'], 4)
+        self.assertEqual(payload['readonly_count'], 12)
+        self.assertEqual(payload['legacy_inactive_count'], 8)
+        self.assertEqual(payload['active_judge_v2_count'], 2)
+        self.assertEqual(payload['active_auxiliary_count'], 5)
+        self.assertEqual(payload['active_legacy_compatibility_count'], 1)
         self.assertEqual(payload['regime_section_count'], 6)
         self.assertGreater(payload['regime_active_readonly_count'], 0)
         self.assertGreater(payload['regime_doctrine_locked_count'], 0)
@@ -256,7 +316,7 @@ class IdentityGovernanceServicePhase5Tests(unittest.TestCase):
         self.assertNotIn('content', event_payload)
         self.assertNotIn('reason', event_payload)
 
-    def test_update_response_rejects_invariant_violation_fail_closed(self) -> None:
+    def test_update_response_rejects_historical_runtime_backed_key_as_readonly(self) -> None:
         runtime_module = _FakeRuntimeSettings({'IDENTITY_MIN_CONFIDENCE': 0.72})
         observed_logs: list[tuple[str, dict[str, Any]]] = []
 
@@ -272,12 +332,12 @@ class IdentityGovernanceServicePhase5Tests(unittest.TestCase):
 
         self.assertEqual(status, 400)
         self.assertFalse(payload['ok'])
-        self.assertEqual(payload['validation_error'], 'IDENTITY_DEFER_MIN_CONFIDENCE')
+        self.assertEqual(payload['validation_error'], 'governance_key_readonly')
         self.assertEqual(
             runtime_module.get_identity_governance_settings().payload['IDENTITY_DEFER_MIN_CONFIDENCE']['value'],
             0.58,
         )
-        self.assertEqual(observed_logs[0][1]['validation_error'], 'IDENTITY_DEFER_MIN_CONFIDENCE')
+        self.assertEqual(observed_logs[0][1]['validation_error'], 'governance_key_readonly')
 
     def test_update_response_rejects_readonly_or_legacy_key(self) -> None:
         runtime_module = _FakeRuntimeSettings()

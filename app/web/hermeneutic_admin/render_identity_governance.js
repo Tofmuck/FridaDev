@@ -8,19 +8,17 @@
 
   const toText = (value) => String(value == null ? "" : value).trim();
   const ITEM_CATEGORY_LABELS = Object.freeze({
-    active_runtime_editable: "Runtime editable",
-    active_subpipeline_editable: "Sous-pipeline editable",
-    doctrine_locked_readonly: "Doctrine verrouillee",
-    active_runtime_readonly: "Readonly runtime actif",
-    active_subpipeline_readonly: "Readonly actif",
+    active_judge_v2_readonly: "Juge mutable V2 actif",
+    active_auxiliary_editable: "Auxiliaire runtime actif editable",
+    active_auxiliary_readonly: "Auxiliaire runtime actif readonly",
+    active_legacy_compatibility_readonly: "Compatibilite legacy active",
     legacy_inactive_readonly: "Legacy inactif",
   });
   const ITEM_CATEGORY_ORDER = Object.freeze([
-    "active_runtime_editable",
-    "active_subpipeline_editable",
-    "doctrine_locked_readonly",
-    "active_runtime_readonly",
-    "active_subpipeline_readonly",
+    "active_judge_v2_readonly",
+    "active_auxiliary_editable",
+    "active_auxiliary_readonly",
+    "active_legacy_compatibility_readonly",
     "legacy_inactive_readonly",
   ]);
   const REGIME_CLASSIFICATION_LABELS = Object.freeze({
@@ -287,10 +285,14 @@
       renderGroupTitle(
         target,
         ITEM_CATEGORY_LABELS[category] || category,
-        category === "doctrine_locked_readonly"
-          ? "Caps visibles mais non reouverts a l edition."
+        category === "active_judge_v2_readonly"
+          ? "Reglages effectivement lus par le juge mutable V2, visibles mais verrouilles."
+          : category.startsWith("active_auxiliary")
+            ? "Reglages d un auxiliaire runtime actif, sans autorite sur le juge mutable V2."
+            : category === "active_legacy_compatibility_readonly"
+              ? "Traitement legacy encore execute, sans autorite sur le canon ni sur le juge mutable V2."
           : category === "legacy_inactive_readonly"
-            ? "Survivances legacy relisibles sans role actif dans le regime runtime."
+            ? "Valeurs historiques relisibles sans consommateur dans le chemin chat courant."
             : "",
       );
       groupItems.forEach((item) => renderItem(target, item));
@@ -340,10 +342,10 @@
       metaTarget.appendChild(createChip(`version=${toText(safePayload.governance_version) || "n/a"}`));
       metaTarget.appendChild(createChip(`editable=${Number(safePayload.editable_count) || 0}`));
       metaTarget.appendChild(createChip(`readonly=${Number(safePayload.readonly_count) || 0}`));
-      metaTarget.appendChild(createChip(`doctrine_locked=${Number(safePayload.doctrine_locked_count) || 0}`));
       metaTarget.appendChild(createChip(`legacy=${Number(safePayload.legacy_inactive_count) || 0}`));
-      metaTarget.appendChild(createChip(`active_runtime=${Number(safePayload.active_runtime_count) || 0}`));
-      metaTarget.appendChild(createChip(`active_subpipeline=${Number(safePayload.active_subpipeline_count) || 0}`));
+      metaTarget.appendChild(createChip(`judge_v2=${Number(safePayload.active_judge_v2_count) || 0}`));
+      metaTarget.appendChild(createChip(`auxiliary=${Number(safePayload.active_auxiliary_count) || 0}`));
+      metaTarget.appendChild(createChip(`legacy_compatibility=${Number(safePayload.active_legacy_compatibility_count) || 0}`));
       metaTarget.appendChild(createChip(`regime_sections=${Number(safePayload.regime_section_count) || 0}`));
     }
 
@@ -352,7 +354,7 @@
         const note = document.createElement("p");
         note.className = "admin-section-note admin-section-note-left";
         note.textContent =
-          "La gouvernance identity ne se limite pas aux caps 3000/3300: elle distingue les knobs editables, le regime actif readonly, la doctrine verrouillee et le legacy inactif.";
+          "La gouvernance identity distingue les reglages du juge mutable V2, les auxiliaires actifs, la compatibilite legacy encore executee et le legacy inactif.";
         return note;
       })(),
     );

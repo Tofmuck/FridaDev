@@ -34,146 +34,146 @@ class GovernanceItemSpec:
     operator_note: str
 
 
-_EDITABLE_ITEM_SPECS: tuple[GovernanceItemSpec, ...] = (
+_RUNTIME_SETTING_ITEM_SPECS: tuple[GovernanceItemSpec, ...] = (
     GovernanceItemSpec(
         key='IDENTITY_MIN_CONFIDENCE',
         label='Minimum confidence',
-        category='active_subpipeline_editable',
+        category='legacy_inactive_readonly',
         value_type='float',
         unit='ratio',
         source_kind='runtime_settings',
         source_ref='identity_governance.IDENTITY_MIN_CONFIDENCE',
-        active_scope='identity_dynamics',
-        editable=True,
-        editable_via=UPDATE_ROUTE,
-        validation={'min': 0.0, 'max': 1.0},
-        operator_note='Seuil de promotion/acceptation du pipeline identity dynamics.',
+        active_scope='inactive_legacy',
+        editable=False,
+        editable_via=None,
+        validation=None,
+        operator_note='Seuil historique du writer de fragments retire du chemin chat; sans autorite sur le juge V2.',
     ),
     GovernanceItemSpec(
         key='IDENTITY_DEFER_MIN_CONFIDENCE',
         label='Defer minimum confidence',
-        category='active_subpipeline_editable',
+        category='legacy_inactive_readonly',
         value_type='float',
         unit='ratio',
         source_kind='runtime_settings',
         source_ref='identity_governance.IDENTITY_DEFER_MIN_CONFIDENCE',
-        active_scope='identity_dynamics',
-        editable=True,
-        editable_via=UPDATE_ROUTE,
-        validation={'min': 0.0, 'max': 1.0, 'lte_key': 'IDENTITY_MIN_CONFIDENCE'},
-        operator_note='Seuil bas du statut deferred; doit rester <= au seuil accepted.',
+        active_scope='inactive_legacy',
+        editable=False,
+        editable_via=None,
+        validation=None,
+        operator_note='Seuil deferred historique du writer de fragments retire; sans autorite sur le juge V2.',
     ),
     GovernanceItemSpec(
         key='IDENTITY_MIN_RECURRENCE_FOR_DURABLE',
         label='Minimum recurrence for durable',
-        category='active_subpipeline_editable',
+        category='legacy_inactive_readonly',
         value_type='int',
         unit='events',
         source_kind='runtime_settings',
         source_ref='identity_governance.IDENTITY_MIN_RECURRENCE_FOR_DURABLE',
-        active_scope='identity_dynamics',
-        editable=True,
-        editable_via=UPDATE_ROUTE,
-        validation={'min': 1, 'max': 10, 'gte_key': 'IDENTITY_PROMOTION_MIN_DISTINCT_CONVERSATIONS'},
-        operator_note='Nombre minimal d\'occurrences avant promotion durable.',
+        active_scope='inactive_legacy',
+        editable=False,
+        editable_via=None,
+        validation=None,
+        operator_note='Seuil de recurrence historique; aucune promotion durable n est executee par le juge V2.',
     ),
     GovernanceItemSpec(
         key='IDENTITY_RECURRENCE_WINDOW_DAYS',
         label='Recurrence window',
-        category='active_subpipeline_editable',
+        category='legacy_inactive_readonly',
         value_type='int',
         unit='days',
         source_kind='runtime_settings',
         source_ref='identity_governance.IDENTITY_RECURRENCE_WINDOW_DAYS',
-        active_scope='identity_dynamics',
-        editable=True,
-        editable_via=UPDATE_ROUTE,
-        validation={'min': 1, 'max': 365},
-        operator_note='Fenetre d\'observation des recurrences pour durable/deferred.',
+        active_scope='inactive_legacy',
+        editable=False,
+        editable_via=None,
+        validation=None,
+        operator_note='Fenetre historique de recurrence/defer du writer de fragments retire du chemin chat.',
     ),
     GovernanceItemSpec(
         key='IDENTITY_PROMOTION_MIN_DISTINCT_CONVERSATIONS',
         label='Promotion distinct conversations',
-        category='active_subpipeline_editable',
+        category='legacy_inactive_readonly',
         value_type='int',
         unit='conversations',
         source_kind='runtime_settings',
         source_ref='identity_governance.IDENTITY_PROMOTION_MIN_DISTINCT_CONVERSATIONS',
-        active_scope='identity_dynamics',
-        editable=True,
-        editable_via=UPDATE_ROUTE,
-        validation={'min': 1, 'max': 10, 'lte_key': 'IDENTITY_MIN_RECURRENCE_FOR_DURABLE'},
-        operator_note='Nombre minimal de conversations distinctes pour promotion durable.',
+        active_scope='inactive_legacy',
+        editable=False,
+        editable_via=None,
+        validation=None,
+        operator_note='Seuil historique de promotion; le juge V2 ne promeut pas la mutable vers le statique.',
     ),
     GovernanceItemSpec(
         key='IDENTITY_PROMOTION_MIN_TIME_GAP_HOURS',
         label='Promotion minimum time gap',
-        category='active_subpipeline_editable',
+        category='legacy_inactive_readonly',
         value_type='int',
         unit='hours',
         source_kind='runtime_settings',
         source_ref='identity_governance.IDENTITY_PROMOTION_MIN_TIME_GAP_HOURS',
-        active_scope='identity_dynamics',
-        editable=True,
-        editable_via=UPDATE_ROUTE,
-        validation={'min': 1, 'max': 168},
-        operator_note='Distance minimale entre occurrences pour compter une recurrence.',
+        active_scope='inactive_legacy',
+        editable=False,
+        editable_via=None,
+        validation=None,
+        operator_note='Espacement historique des recurrences du writer de fragments retire du chemin chat.',
     ),
     GovernanceItemSpec(
         key='CONTEXT_HINTS_MAX_ITEMS',
         label='Context hints max items',
-        category='active_runtime_editable',
+        category='active_auxiliary_editable',
         value_type='int',
         unit='items',
         source_kind='runtime_settings',
         source_ref='identity_governance.CONTEXT_HINTS_MAX_ITEMS',
-        active_scope='active_prompt_runtime',
+        active_scope='dialogic_context_hints',
         editable=True,
         editable_via=UPDATE_ROUTE,
         validation={'min': 1, 'max': 10},
-        operator_note='Nombre maximal d\'indices contextuels injectes dans le prompt actif.',
+        operator_note='Nombre maximal de hints dialogiques injectes; auxiliaire actif sans autorite sur le juge V2.',
     ),
     GovernanceItemSpec(
         key='CONTEXT_HINTS_MAX_TOKENS',
         label='Context hints max tokens',
-        category='active_runtime_editable',
+        category='active_auxiliary_editable',
         value_type='int',
         unit='tokens',
         source_kind='runtime_settings',
         source_ref='identity_governance.CONTEXT_HINTS_MAX_TOKENS',
-        active_scope='active_prompt_runtime',
+        active_scope='dialogic_context_hints',
         editable=True,
         editable_via=UPDATE_ROUTE,
         validation={'min': 1, 'max_ref': 'config.MAX_TOKENS'},
-        operator_note='Budget prompt des indices contextuels injectes activement.',
+        operator_note='Budget d injection des hints dialogiques; auxiliaire actif sans autorite sur le juge V2.',
     ),
     GovernanceItemSpec(
         key='CONTEXT_HINTS_MAX_AGE_DAYS',
         label='Context hints max age',
-        category='active_runtime_editable',
+        category='active_auxiliary_editable',
         value_type='int',
         unit='days',
         source_kind='runtime_settings',
         source_ref='identity_governance.CONTEXT_HINTS_MAX_AGE_DAYS',
-        active_scope='active_prompt_runtime',
+        active_scope='dialogic_context_hints',
         editable=True,
         editable_via=UPDATE_ROUTE,
         validation={'min': 1, 'max': 365},
-        operator_note='Age maximal des indices contextuels retenus avant injection.',
+        operator_note='Age maximal des hints dialogiques retenus; auxiliaire actif sans autorite sur le juge V2.',
     ),
     GovernanceItemSpec(
         key='CONTEXT_HINTS_MIN_CONFIDENCE',
         label='Context hints minimum confidence',
-        category='active_runtime_editable',
+        category='active_auxiliary_editable',
         value_type='float',
         unit='ratio',
         source_kind='runtime_settings',
         source_ref='identity_governance.CONTEXT_HINTS_MIN_CONFIDENCE',
-        active_scope='active_prompt_runtime',
+        active_scope='dialogic_context_hints',
         editable=True,
         editable_via=UPDATE_ROUTE,
         validation={'min': 0.0, 'max': 1.0},
-        operator_note='Seuil minimal de confiance pour les indices contextuels injectes.',
+        operator_note='Confiance minimale des hints dialogiques; auxiliaire actif sans autorite sur le juge V2.',
     ),
 )
 
@@ -181,7 +181,7 @@ _READONLY_ITEM_SPECS: tuple[GovernanceItemSpec, ...] = (
     GovernanceItemSpec(
         key='IDENTITY_MUTABLE_TARGET_CHARS',
         label='Mutable target chars',
-        category='doctrine_locked_readonly',
+        category='active_judge_v2_readonly',
         value_type='int',
         unit='chars',
         source_kind='config_py',
@@ -195,7 +195,7 @@ _READONLY_ITEM_SPECS: tuple[GovernanceItemSpec, ...] = (
     GovernanceItemSpec(
         key='IDENTITY_MUTABLE_MAX_CHARS',
         label='Mutable max chars',
-        category='doctrine_locked_readonly',
+        category='active_judge_v2_readonly',
         value_type='int',
         unit='chars',
         source_kind='config_py',
@@ -209,7 +209,7 @@ _READONLY_ITEM_SPECS: tuple[GovernanceItemSpec, ...] = (
     GovernanceItemSpec(
         key='identity_extractor_max_tokens',
         label='Dialogic context extractor max tokens',
-        category='active_subpipeline_readonly',
+        category='active_auxiliary_readonly',
         value_type='int',
         unit='tokens',
         source_kind='runtime_settings',
@@ -219,23 +219,26 @@ _READONLY_ITEM_SPECS: tuple[GovernanceItemSpec, ...] = (
         editable_via=None,
         validation={'min': 1},
         operator_note=(
-            'Budget effectif de l extracteur de contexte dialogique, edite depuis le slot de compatibilite '
-            'admin identity_extractor_model.'
+            'Budget effectif de l extracteur de contexte dialogique (hints), edite depuis le slot de compatibilite '
+            'admin identity_extractor_model; cet auxiliaire n a aucune autorite sur le juge V2.'
         ),
     ),
     GovernanceItemSpec(
         key='IDENTITY_DECAY_FACTOR',
         label='Identity decay factor',
-        category='active_subpipeline_readonly',
+        category='active_legacy_compatibility_readonly',
         value_type='float',
         unit='ratio',
         source_kind='config_py',
         source_ref='config.IDENTITY_DECAY_FACTOR',
-        active_scope='legacy_fragment_weights',
+        active_scope='legacy_identity_weight_decay',
         editable=False,
         editable_via=None,
         validation={'min': 0.0, 'max': 1.0},
-        operator_note='Agit encore sur la table legacy identities, mais reste read-only en Lot 5.',
+        operator_note=(
+            'A la creation d une nouvelle conversation, multiplie encore identities.weight par ce facteur. '
+            'Cette compatibilite legacy n agit ni sur le canon actif ni sur le juge V2.'
+        ),
     ),
     GovernanceItemSpec(
         key='IDENTITY_TOP_N',
@@ -267,8 +270,9 @@ _READONLY_ITEM_SPECS: tuple[GovernanceItemSpec, ...] = (
     ),
 )
 
-ITEM_SPECS: tuple[GovernanceItemSpec, ...] = _EDITABLE_ITEM_SPECS + _READONLY_ITEM_SPECS
-EDITABLE_KEYS: tuple[str, ...] = tuple(item.key for item in _EDITABLE_ITEM_SPECS)
+ITEM_SPECS: tuple[GovernanceItemSpec, ...] = _RUNTIME_SETTING_ITEM_SPECS + _READONLY_ITEM_SPECS
+RUNTIME_SETTING_KEYS: tuple[str, ...] = tuple(item.key for item in _RUNTIME_SETTING_ITEM_SPECS)
+EDITABLE_KEYS: tuple[str, ...] = tuple(item.key for item in ITEM_SPECS if item.editable)
 
 _HARDCODED_VALUES: dict[str, Any] = {}
 
@@ -321,14 +325,19 @@ def editable_runtime_values(
     return editable_values_from_view(view)
 
 
-def editable_values_from_view(view: Any) -> dict[str, Any]:
+def runtime_setting_values_from_view(view: Any) -> dict[str, Any]:
     values: dict[str, Any] = {}
-    spec_by_key = {item.key: item for item in _EDITABLE_ITEM_SPECS}
-    for key in EDITABLE_KEYS:
+    spec_by_key = {item.key: item for item in _RUNTIME_SETTING_ITEM_SPECS}
+    for key in RUNTIME_SETTING_KEYS:
         raw_payload = view.payload.get(key) or {}
         raw_value = raw_payload.get('value', _config_value(key))
         values[key] = _coerce_value(spec_by_key[key], raw_value)
     return values
+
+
+def editable_values_from_view(view: Any) -> dict[str, Any]:
+    runtime_values = runtime_setting_values_from_view(view)
+    return {key: runtime_values[key] for key in EDITABLE_KEYS}
 
 
 def governed_value_for_runtime(
@@ -339,12 +348,13 @@ def governed_value_for_runtime(
 ) -> Any:
     if key == 'identity_extractor_max_tokens':
         return _identity_extractor_max_tokens_value(runtime_settings_module=runtime_settings_module)
-    if key not in EDITABLE_KEYS:
+    if key not in RUNTIME_SETTING_KEYS:
         return getattr(config_module, key)
     if config_module is not config:
         return getattr(config_module, key)
     try:
-        return editable_runtime_values(runtime_settings_module=runtime_settings_module)[key]
+        view = _runtime_section_view(runtime_settings_module=runtime_settings_module)
+        return runtime_setting_values_from_view(view)[key]
     except Exception:
         return getattr(config_module, key)
 
@@ -516,11 +526,9 @@ def item_value(
     runtime_settings_module: Any = None,
     fetcher: Any = None,
 ) -> Any:
-    if key in EDITABLE_KEYS:
-        return editable_runtime_values(
-            runtime_settings_module=runtime_settings_module,
-            fetcher=fetcher,
-        )[key]
+    if key in RUNTIME_SETTING_KEYS:
+        view = _runtime_section_view(runtime_settings_module=runtime_settings_module, fetcher=fetcher)
+        return runtime_setting_values_from_view(view)[key]
     if key == 'identity_extractor_max_tokens':
         return _identity_extractor_max_tokens_value(
             runtime_settings_module=runtime_settings_module,
@@ -535,7 +543,7 @@ def build_item_payloads(
     fetcher: Any = None,
 ) -> list[dict[str, Any]]:
     view = _runtime_section_view(runtime_settings_module=runtime_settings_module, fetcher=fetcher)
-    runtime_values = editable_values_from_view(view)
+    runtime_values = runtime_setting_values_from_view(view)
     items: list[dict[str, Any]] = []
     for spec in ITEM_SPECS:
         if spec.key in runtime_values:
@@ -575,14 +583,17 @@ def summarize_items(items: list[Mapping[str, Any]]) -> dict[str, Any]:
         'editable_count': sum(1 for item in safe_items if bool(item.get('editable'))),
         'readonly_count': sum(1 for item in safe_items if not bool(item.get('editable'))),
         'legacy_inactive_count': sum(1 for item in safe_items if str(item.get('category') or '') == 'legacy_inactive_readonly'),
-        'doctrine_locked_count': sum(1 for item in safe_items if str(item.get('category') or '') == 'doctrine_locked_readonly'),
-        'active_readonly_count': sum(
+        'active_judge_v2_count': sum(
+            1 for item in safe_items if str(item.get('category') or '').startswith('active_judge_v2')
+        ),
+        'active_auxiliary_count': sum(
+            1 for item in safe_items if str(item.get('category') or '').startswith('active_auxiliary')
+        ),
+        'active_legacy_compatibility_count': sum(
             1
             for item in safe_items
-            if str(item.get('category') or '') in {'active_subpipeline_readonly', 'active_runtime_readonly'}
+            if str(item.get('category') or '').startswith('active_legacy_compatibility')
         ),
-        'active_runtime_count': sum(1 for item in safe_items if str(item.get('category') or '').startswith('active_runtime')),
-        'active_subpipeline_count': sum(1 for item in safe_items if str(item.get('category') or '').startswith('active_subpipeline')),
     }
 
 
