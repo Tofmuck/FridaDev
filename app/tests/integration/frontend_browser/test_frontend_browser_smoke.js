@@ -2212,10 +2212,15 @@ test('dashboard overview renders pulse and conversations from aggregate endpoint
 
     calls = await page.evaluate(() => window.__fridaBrowserState.calls);
     assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/overview' && call.search.includes('window=24h')));
-    assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/conversations' && call.search.includes('window=24h')));
-    assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/conversations/conv-browser-1/turns' && call.search.includes('window=24h')));
-    assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/turns/turn-browser-1/inspection' && call.search.includes('conversation_id=conv-browser-1')));
-    assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/turns/turn-browser-1/content' && call.search.includes('conversation_id=conv-browser-1')));
+    const usesResolvedWindow = (call) => {
+      const params = new URLSearchParams(call.search);
+      return params.get('ts_from') === '2026-05-14T12:00:00+00:00'
+        && params.get('ts_to') === '2026-05-15T12:00:00+00:00';
+    };
+    assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/conversations' && usesResolvedWindow(call)));
+    assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/conversations/conv-browser-1/turns' && usesResolvedWindow(call)));
+    assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/turns/turn-browser-1/inspection' && call.search.includes('conversation_id=conv-browser-1') && usesResolvedWindow(call)));
+    assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/turns/turn-browser-1/content' && call.search.includes('conversation_id=conv-browser-1') && usesResolvedWindow(call)));
     assert.ok(calls.some((call) => call.path === '/api/admin/dashboard/overview' && call.search.includes('window=30d')));
     assert.equal(calls.some((call) => call.path.startsWith('/api/admin/logs')), false);
 
@@ -2231,6 +2236,11 @@ function dashboardSelectionRaceMockScript() {
       const deferredKeys = new Set();
       const pending = new Map();
       const state = { calls: [] };
+      const windowBounds = {
+        "24h": ["2026-05-14T12:00:00+00:00", "2026-05-15T12:00:00+00:00"],
+        "7d": ["2026-05-08T12:00:00+00:00", "2026-05-15T12:00:00+00:00"],
+        "30d": ["2026-04-15T12:00:00+00:00", "2026-05-15T12:00:00+00:00"],
+      };
       const json = (payload) => new Response(JSON.stringify(payload), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -2243,7 +2253,12 @@ function dashboardSelectionRaceMockScript() {
       };
       const overview = (windowKey) => ({
         ok: true,
-        window: { key: windowKey, label_fr: "Fenetre " + windowKey },
+        window: {
+          key: windowKey,
+          label_fr: "Fenetre " + windowKey,
+          start: windowBounds[windowKey][0],
+          end: windowBounds[windowKey][1],
+        },
         pulse: {}, module_totals: {}, metric_buckets: [], latency: {}, summaries_health: {},
         source: {
           status: "ok",
@@ -2304,7 +2319,10 @@ function dashboardSelectionRaceMockScript() {
         const method = String(init.method || "GET").toUpperCase();
         state.calls.push({ method, path: url.pathname, search: url.search });
         if (method !== "GET") throw new Error("unexpected method " + method);
-        const windowKey = url.searchParams.get("window") || "custom";
+        const resolvedStart = url.searchParams.get("ts_from");
+        const windowKey = url.searchParams.get("window")
+          || Object.keys(windowBounds).find((key) => windowBounds[key][0] === resolvedStart)
+          || "custom";
         if (url.pathname === "/api/admin/dashboard/overview") {
           return defer("overview:" + windowKey, () => json(overview(windowKey)));
         }
@@ -2336,20 +2354,17 @@ test('dashboard keeps the latest period, conversation and turn after stale succe
     await page.waitForFunction(() => document.querySelector('#dashboardWindowChip')?.textContent.includes('24h'));
 
     await page.evaluate(() => {
-      window.__fridaRace.deferNext('overview:7d');
       window.__fridaRace.deferNext('conversations:7d');
     });
     await page.click('[data-window="7d"]');
     await page.waitForFunction(() =>
-      window.__fridaRace.hasPending('overview:7d')
-      && window.__fridaRace.hasPending('conversations:7d'));
+      window.__fridaRace.hasPending('conversations:7d'));
     await page.click('[data-window="30d"]');
     await page.waitForFunction(() =>
       document.querySelector('#dashboardWindowChip')?.textContent.includes('30d')
       && document.querySelector('#dashboardConversationsBody')?.textContent.includes('Conversation B 30d'));
     await page.evaluate(async () => {
-      window.__fridaRace.reject('overview:7d');
-      window.__fridaRace.resolve('conversations:7d');
+      window.__fridaRace.reject('conversations:7d');
       await new Promise(requestAnimationFrame);
       await new Promise(requestAnimationFrame);
     });

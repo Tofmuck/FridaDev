@@ -66,7 +66,7 @@ class FrontendDashboardLot6Tests(unittest.TestCase):
         self.assertIn("dashboardInspectionBody", source)
         self.assertIn("source.coverage", source)
         self.assertIn("metric_buckets", source)
-        self.assertIn("agregats persistants", source)
+        self.assertIn("faits analytics persistants", source)
         self.assertIn("Tours reussis", source)
         self.assertIn("Reponses degradees", source)
         self.assertIn("Problemes rencontres", source)

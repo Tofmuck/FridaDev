@@ -186,6 +186,24 @@
     return query;
   };
 
+  const resolvedWindowQuery = (windowValue) => {
+    const windowPayload = mapping(windowValue);
+    const start = toText(windowPayload.start);
+    const end = toText(windowPayload.end);
+    if (!start || !end) {
+      throw new Error("La periode effectivement mesuree est indisponible.");
+    }
+    const query = new URLSearchParams();
+    query.set("ts_from", start);
+    query.set("ts_to", end);
+    return query;
+  };
+
+  const activeWindowQuery = () => {
+    const resolvedWindow = mapping(state.lastOverview).window;
+    return resolvedWindow ? resolvedWindowQuery(resolvedWindow) : buildQuery();
+  };
+
   const readJson = async (response, fallbackMessage) => {
     let payload = {};
     try {
@@ -202,24 +220,20 @@
   const fetchDashboardPayloads = async () => {
     const query = buildQuery();
     const overviewUrl = `${DASHBOARD_OVERVIEW_ENDPOINT}?${query.toString()}`;
-    const conversationsQuery = new URLSearchParams(query);
+    const overviewResponse = await adminApi.fetchAdmin(overviewUrl);
+    const overview = await readJson(overviewResponse, "Lecture du pouls impossible.");
+
+    const conversationsQuery = resolvedWindowQuery(overview.window);
     conversationsQuery.set("limit", String(CONVERSATION_LIMIT));
     conversationsQuery.set("offset", "0");
     const conversationsUrl = `${DASHBOARD_CONVERSATIONS_ENDPOINT}?${conversationsQuery.toString()}`;
-
-    const [overviewResponse, conversationsResponse] = await Promise.all([
-      adminApi.fetchAdmin(overviewUrl),
-      adminApi.fetchAdmin(conversationsUrl),
-    ]);
-    const [overview, conversations] = await Promise.all([
-      readJson(overviewResponse, "Lecture du pouls impossible."),
-      readJson(conversationsResponse, "Lecture des conversations impossible."),
-    ]);
+    const conversationsResponse = await adminApi.fetchAdmin(conversationsUrl);
+    const conversations = await readJson(conversationsResponse, "Lecture des conversations impossible.");
     return { overview, conversations };
   };
 
   const fetchConversationTurns = async (conversationId) => {
-    const query = buildQuery();
+    const query = activeWindowQuery();
     query.set("limit", String(TURN_LIMIT));
     query.set("offset", "0");
     const url = `${DASHBOARD_CONVERSATIONS_ENDPOINT}/${encodeURIComponent(conversationId)}/turns?${query.toString()}`;
@@ -228,7 +242,7 @@
   };
 
   const fetchTurnInspection = async ({ conversationId, turnId }) => {
-    const query = buildQuery();
+    const query = activeWindowQuery();
     query.set("conversation_id", conversationId);
     const url = `/api/admin/dashboard/turns/${encodeURIComponent(turnId)}/inspection?${query.toString()}`;
     const response = await adminApi.fetchAdmin(url);
@@ -236,7 +250,7 @@
   };
 
   const fetchTurnContent = async ({ conversationId, turnId }) => {
-    const query = buildQuery();
+    const query = activeWindowQuery();
     query.set("conversation_id", conversationId);
     const url = `/api/admin/dashboard/turns/${encodeURIComponent(turnId)}/content?${query.toString()}`;
     const response = await adminApi.fetchAdmin(url);
@@ -604,7 +618,7 @@
     elements.sourceChip.dataset.status = severity === "ok" ? "present" : "degraded";
     elements.coverageText.textContent =
       severity === "ok"
-        ? `${WINDOW_LABELS[windowPayload.key] || "Periode"} couverte par les agregats persistants.`
+        ? `${WINDOW_LABELS[windowPayload.key] || "Periode"} couverte par les faits analytics persistants.`
         : `${label}: les chiffres doivent etre lus avec prudence.`;
     const materializedStart = formatDateTime(coverage.materialized_window_start);
     const materializedEnd = formatDateTime(coverage.materialized_window_end);
@@ -1143,7 +1157,7 @@
     );
     try {
       resetDrilldown();
-      setStatusBanner("Chargement des agregats persistants...", "");
+      setStatusBanner("Chargement des faits analytics persistants...", "");
       const payloads = await fetchDashboardPayloads();
       if (!isCurrentRequest()) return;
       renderDashboard(payloads);

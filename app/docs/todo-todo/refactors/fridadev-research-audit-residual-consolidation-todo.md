@@ -1046,7 +1046,7 @@ Traiter séparément les cinq mécanismes :
 1. sources Web et blocs injectés ne sont pas la même unité — **L7.3.1 fermé** ;
 2. fenêtre durable et compteurs process-local doivent être nommés sans ambiguïté — **L7.3.2 fermé** ;
 3. `failed` doit suivre le compteur canonique du pipeline — **L7.3.3 fermé** ;
-4. buckets et conversations doivent employer la même borne temporelle ;
+4. buckets et conversations doivent employer la même borne temporelle — **L7.3.4 fermé** ;
 5. réception du callback de log ne doit pas devenir `audit.stored=true` si
    l'écriture fichier a échoué.
 
@@ -1136,8 +1136,39 @@ un zéro canonique contredisant ses composants, un payload legacy, et les cas
 échoue sur l'ancien calcul, passe après raccord, puis redevient rouge pendant
 la mutation contrôlée qui réintroduit `error_count + fallback_count`; le
 correctif exact est ensuite restauré. Les voisins Python confirment le compteur
-canonique et la projection content-free. L7.3 reste ouvert; L7.3.4 n'est pas
-commencé.
+canonique et la projection content-free. L7.3 reste ouvert.
+
+#### L7.3.4 — Bornes temporelles communes du dashboard
+
+**Fermé le 6 septembre 2026.** La revalidation au HEAD initial
+`e2db300f9b36f1b82b6678e814abee83413588ad` confirme que les conversations,
+tours, inspections et content gates filtraient les facts par
+`latest_ts >= start AND latest_ts < end`, tandis que l'overview sélectionnait
+les buckets par `bucket_start >= start AND bucket_start < end`. Pour une
+fenêtre commençant à `12:30`, un tour à `12:45` apparaissait donc dans sa
+conversation alors que son bucket `12:00` était absent. Inclure le bucket
+chevauchant aurait inversement ajouté ses faits antérieurs à `12:30`.
+
+`resolve_dashboard_window()` reste l'autorité unique et publie maintenant la
+sémantique machine-lisible `timestamp_field=latest_ts` et
+`interval=[start,end)`. Une fenêtre alignée conserve la lecture des buckets
+persistés. Une fenêtre non alignée réduit les mêmes turn facts persistés,
+filtrés exactement sur cet intervalle, avec des buckets de bord bornés à
+`start` et `end`; aucun événement extérieur n'est ainsi absorbé. Le frontend
+résout d'abord l'overview, puis réutilise ses timestamps exacts pour les
+conversations, tours, inspections et ouvertures du content gate. Il ne publie
+toujours aucun état partiel si la lecture des conversations échoue.
+
+La fake relationnelle prouve la fenêtre glissante `12:30`, une custom
+historique à fin non alignée, l'inclusion exacte de `start`, l'exclusion exacte
+de `end`, l'absence de fuite par bucket chevauchant et les cinq surfaces avec
+la même fenêtre. Elle verrouille aussi le chemin préagrégé des fenêtres déjà
+alignées. La mutation contrôlée force le retour aux deux prédicats divergents
+et remet le tour `12:45` au rouge, puis le correctif exact est restauré. Les
+tests ciblés couvrent en outre couverture, pagination, erreurs, content gate,
+matérialisation, rendu et absence de contenu brut. Aucune table, collecte,
+route, métrique source ou granularité n'est ajoutée. L7.3 reste ouvert;
+L7.3.5 n'est pas commencé.
 
 ### L7.4 — Réglages Identity historiques — F18
 

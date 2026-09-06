@@ -138,6 +138,8 @@ def resolve_dashboard_window(
         'label_fr': label_fr,
         'start': start.isoformat(),
         'end': end.isoformat(),
+        'timestamp_field': 'latest_ts',
+        'interval': '[start,end)',
         'granularity': granularity,
         'retention_days': RETENTION_DAYS,
         'recent_granularity_days': RECENT_GRANULARITY_DAYS,
@@ -372,7 +374,58 @@ def _bucket_row(row: Sequence[Any]) -> dict[str, Any]:
     }
 
 
+def _is_bucket_boundary(value: datetime, granularity: str) -> bool:
+    if granularity == 'day':
+        return value == value.replace(hour=0, minute=0, second=0, microsecond=0)
+    return value == value.replace(minute=0, second=0, microsecond=0)
+
+
+def _window_is_bucket_aligned(window: Mapping[str, Any]) -> bool:
+    start = _parse_ts(window.get('start'), field_name='window.start')
+    end = _parse_ts(window.get('end'), field_name='window.end')
+    granularity = str(window.get('granularity') or '')
+    return _is_bucket_boundary(start, granularity) and _is_bucket_boundary(end, granularity)
+
+
+def _clip_bucket_to_window(
+    bucket: Mapping[str, Any],
+    *,
+    start: datetime,
+    end: datetime,
+) -> dict[str, Any]:
+    clipped = dict(bucket)
+    bucket_start = _parse_ts(bucket.get('bucket_start'), field_name='bucket_start')
+    bucket_end = _parse_ts(bucket.get('bucket_end'), field_name='bucket_end')
+    clipped['bucket_start'] = _iso(max(start, bucket_start))
+    clipped['bucket_end'] = _iso(min(end, bucket_end))
+    return clipped
+
+
 def _read_metric_buckets(cur: Any, window: Mapping[str, Any]) -> list[dict[str, Any]]:
+    if not _window_is_bucket_aligned(window):
+        cur.execute(
+            _turn_fact_select_sql()
+            + '''
+            WHERE latest_ts >= %s::timestamptz
+              AND latest_ts < %s::timestamptz
+            ORDER BY latest_ts ASC, conversation_id ASC, turn_id ASC
+            ''',
+            (window['start'], window['end']),
+        )
+        facts = [_turn_fact_row(row) for row in cur.fetchall()]
+        start = _parse_ts(window.get('start'), field_name='window.start')
+        end = _parse_ts(window.get('end'), field_name='window.end')
+        granularity = str(window.get('granularity') or '')
+        return [
+            _clip_bucket_to_window(bucket, start=start, end=end)
+            for bucket in dashboard_analytics.build_dashboard_metric_buckets(
+                facts,
+                now=end,
+                recent_granularity_days=RECENT_GRANULARITY_DAYS,
+            )
+            if bucket.get('granularity') == granularity
+        ]
+
     cur.execute(
         '''
         SELECT
