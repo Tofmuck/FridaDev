@@ -387,6 +387,10 @@ def _window_is_bucket_aligned(window: Mapping[str, Any]) -> bool:
     return _is_bucket_boundary(start, granularity) and _is_bucket_boundary(end, granularity)
 
 
+def _window_can_use_persisted_buckets(window: Mapping[str, Any]) -> bool:
+    return str(window.get('key') or '') != 'custom' and _window_is_bucket_aligned(window)
+
+
 def _clip_bucket_to_window(
     bucket: Mapping[str, Any],
     *,
@@ -402,7 +406,7 @@ def _clip_bucket_to_window(
 
 
 def _read_metric_buckets(cur: Any, window: Mapping[str, Any]) -> list[dict[str, Any]]:
-    if not _window_is_bucket_aligned(window):
+    if not _window_can_use_persisted_buckets(window):
         cur.execute(
             _turn_fact_select_sql()
             + '''

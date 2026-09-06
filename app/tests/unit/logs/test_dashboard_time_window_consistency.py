@@ -331,9 +331,49 @@ class DashboardTimeWindowConsistencyTests(unittest.TestCase):
         for payload in calls:
             self.assert_content_free(payload)
 
-    def test_aligned_window_keeps_the_persisted_bucket_path(self) -> None:
-        start = datetime(2026, 8, 10, 12, 0, tzinfo=UTC)
+    def test_old_aligned_custom_window_uses_exact_facts(self) -> None:
+        now = datetime(2026, 9, 6, 12, 0, tzinfo=UTC)
+        start = datetime(2026, 7, 20, 12, 0, tzinfo=UTC)
+        inside = datetime(2026, 7, 20, 12, 30, tzinfo=UTC)
+        end = datetime(2026, 7, 20, 13, 0, tzinfo=UTC)
+        database = _FakeRelational(
+            [
+                _fact_row(
+                    conversation_id='conv-before',
+                    turn_id='turn-before',
+                    latest_ts=start.replace(hour=11, minute=59),
+                ),
+                _fact_row(conversation_id='conv-window', turn_id='turn-inside', latest_ts=inside),
+                _fact_row(conversation_id='conv-end', turn_id='turn-end', latest_ts=end),
+            ]
+        )
+        params = {'ts_from': start.isoformat(), 'ts_to': end.isoformat()}
+
+        overview = dashboard_read_model.read_dashboard_overview(
+            params,
+            conn_factory=database.connect,
+            logger_instance=_NoopLogger(),
+            now=now,
+        )
+        conversations = dashboard_read_model.read_dashboard_conversations(
+            params,
+            conn_factory=database.connect,
+            logger_instance=_NoopLogger(),
+            now=now,
+        )
+
+        self.assertEqual(overview['pulse']['turns_observed'], 1)
+        self.assertEqual(conversations['total'], 1)
+        self.assertEqual(conversations['items'][0]['turns_count'], 1)
+        self.assertEqual(conversations['items'][0]['conversation_id'], 'conv-window')
+        self.assertTrue(any('dashboard_turn_facts' in query for query, _ in database.queries))
+        self.assertFalse(any('dashboard_metric_buckets' in query for query, _ in database.queries))
+        self.assert_content_free(overview)
+        self.assert_content_free(conversations)
+
+    def test_aligned_predefined_window_keeps_the_persisted_bucket_path(self) -> None:
         end = datetime(2026, 8, 10, 13, 0, tzinfo=UTC)
+        start = datetime(2026, 8, 9, 13, 0, tzinfo=UTC)
         database = _FakeRelational(
             [],
             bucket_rows=[
@@ -352,7 +392,7 @@ class DashboardTimeWindowConsistencyTests(unittest.TestCase):
         )
 
         overview = dashboard_read_model.read_dashboard_overview(
-            {'ts_from': start.isoformat(), 'ts_to': end.isoformat()},
+            {'window': '24h'},
             conn_factory=database.connect,
             logger_instance=_NoopLogger(),
             now=end,

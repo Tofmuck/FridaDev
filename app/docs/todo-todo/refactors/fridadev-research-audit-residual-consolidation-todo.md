@@ -1140,7 +1140,7 @@ canonique et la projection content-free. L7.3 reste ouvert.
 
 #### L7.3.4 — Bornes temporelles communes du dashboard
 
-**Fermé le 6 septembre 2026.** La revalidation au HEAD initial
+**Définitivement refermé le 6 septembre 2026.** La revalidation au HEAD initial
 `e2db300f9b36f1b82b6678e814abee83413588ad` confirme que les conversations,
 tours, inspections et content gates filtraient les facts par
 `latest_ts >= start AND latest_ts < end`, tandis que l'overview sélectionnait
@@ -1151,21 +1151,28 @@ chevauchant aurait inversement ajouté ses faits antérieurs à `12:30`.
 
 `resolve_dashboard_window()` reste l'autorité unique et publie maintenant la
 sémantique machine-lisible `timestamp_field=latest_ts` et
-`interval=[start,end)`. Une fenêtre alignée conserve la lecture des buckets
-persistés. Une fenêtre non alignée réduit les mêmes turn facts persistés,
-filtrés exactement sur cet intervalle, avec des buckets de bord bornés à
-`start` et `end`; aucun événement extérieur n'est ainsi absorbé. Le frontend
-résout d'abord l'overview, puis réutilise ses timestamps exacts pour les
-conversations, tours, inspections et ouvertures du content gate. Il ne publie
-toujours aucun état partiel si la lecture des conversations échoue.
+`interval=[start,end)`. La fermeture initiale a été rouverte après reproduction
+dans l'image livrée d'une custom alignée historique : les buckets horaires ne
+sont garantis que sur les 30 derniers jours, donc l'alignement géométrique ne
+prouve pas leur existence. Toute fenêtre `custom`, alignée ou non, réduit
+désormais les mêmes turn facts persistés, filtrés exactement sur cet intervalle,
+avec des buckets de bord bornés à `start` et `end`. Seules les fenêtres
+prédéfinies alignées conservent la lecture des buckets persistés; aucun événement
+extérieur n'est ainsi absorbé. Le frontend résout d'abord l'overview, puis
+réutilise ses timestamps exacts pour les conversations, tours, inspections et
+ouvertures du content gate. Il ne publie toujours aucun état partiel si la
+lecture des conversations échoue.
 
 La fake relationnelle prouve la fenêtre glissante `12:30`, une custom
-historique à fin non alignée, l'inclusion exacte de `start`, l'exclusion exacte
-de `end`, l'absence de fuite par bucket chevauchant et les cinq surfaces avec
-la même fenêtre. Elle verrouille aussi le chemin préagrégé des fenêtres déjà
-alignées. La mutation contrôlée force le retour aux deux prédicats divergents
-et remet le tour `12:45` au rouge, puis le correctif exact est restauré. Les
-tests ciblés couvrent en outre couverture, pagination, erreurs, content gate,
+historique à fin non alignée, puis la réouverture avec la custom alignée
+`[2026-07-20T12:00Z,13:00Z)` et son fact à `12:30`: overview et conversations
+comptent tous deux un tour malgré l'absence du bucket horaire historique. Elle
+prouve aussi l'inclusion exacte de `start`, l'exclusion exacte de `end`,
+l'absence de fuite par bucket chevauchant et les cinq surfaces avec la même
+fenêtre. Le chemin préagrégé reste verrouillé pour une fenêtre prédéfinie
+alignée. La mutation contrôlée rétablit `aligné => buckets`, remet la custom
+historique au rouge, puis le correctif exact est restauré. Les tests ciblés
+couvrent en outre couverture, pagination, erreurs, content gate,
 matérialisation, rendu et absence de contenu brut. Aucune table, collecte,
 route, métrique source ou granularité n'est ajoutée. L7.3 reste ouvert;
 L7.3.5 n'est pas commencé.

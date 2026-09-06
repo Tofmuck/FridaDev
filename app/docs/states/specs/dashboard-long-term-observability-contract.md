@@ -528,7 +528,7 @@ Contrat:
 - les endpoints exposent toujours la couverture de fenetre: fenetre demandee, fenetre materialisee, couverture `complete` / `partial` / `absent`;
 - la fenetre mesuree est l'intervalle UTC semi-ouvert `[start,end)` applique a `dashboard_turn_facts.latest_ts`; `window.timestamp_field=latest_ts` et `window.interval=[start,end)` rendent ce contrat machine-lisible;
 - overview, conversations, tours, inspection et content gate doivent reutiliser exactement ces deux bornes; le frontend prend celles de l'overview comme autorite pour les lectures suivantes d'un meme affichage;
-- une fenetre alignee a sa granularite lit les `dashboard_metric_buckets` persistants; une fenetre non alignee reduit uniquement les turn facts persistants deja filtres sur `[start,end)`, puis borne ses buckets de bord a l'intervalle mesure;
+- toute fenetre `custom`, alignee ou non, reduit uniquement les turn facts persistants deja filtres sur `[start,end)`, puis borne ses buckets de bord a l'intervalle mesure; seule une fenetre predefinie alignee a sa granularite lit les `dashboard_metric_buckets` persistants;
 - un bucket qui chevauche seulement la fenetre ne peut jamais etre inclus entierement, car il apporterait des faits hors periode;
 - `source.status=ok` est autorise seulement si la materialisation couvre toute la fenetre demandee, sans troncature ni dependance `event_limit`;
 - les endpoints ne lisent pas `/api/admin/logs/chat` et ne dependent pas de `event_limit=2000`;
@@ -676,7 +676,7 @@ Le premier ecran produit du dashboard utilise les endpoints dashboard analytique
 - les libelles de premier niveau restent en francais produit: `Tours reussis`, `Reponses degradees`, `Problemes rencontres`, `Memoire utilisee`, `Recherche web utile`, `Latences utiles`;
 - la table conversations utilise le titre ou `display_label` quand il existe, sinon une date / heure lisible; l'identifiant opaque ne peut pas devenir le libelle principal;
 - l'etat et la colonne problemes d'une conversation consomment son `problem_count` canonique lorsqu'il est present, y compris a zero; pour un payload historique sans ce champ, leur seul repli est `error_count + failed_count + fallback_count`;
-- les visualisations du premier ecran consomment les `metric_buckets` persistants quand la fenetre est alignee, ou une reduction equivalente depuis les turn facts persistants pour toute fenetre non alignee, avec alternative tabulaire pour les counts importants;
+- les visualisations du premier ecran consomment les `metric_buckets` persistants pour une fenetre predefinie alignee, ou une reduction equivalente depuis les turn facts persistants pour toute fenetre `custom` et toute fenetre non alignee, avec alternative tabulaire pour les counts importants;
 - les courbes temporelles retenues au Lot 6 sont limitees aux reponses a surveiller, a la memoire injectee, au web utile et a la latence modele principal;
 - la latence de fenetre affichee est une moyenne exacte `main_duration_ms_total / main_duration_ms_count` issue des buckets providers;
 - les p50/p95 visibles au premier ecran restent des valeurs par bucket; ils ne doivent pas etre recomposes ou presentes comme p50/p95 de toute la fenetre;
