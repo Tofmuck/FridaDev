@@ -2,7 +2,7 @@
 
 Date de cadrage : 4 septembre 2026.
 
-**Statut : roadmap ouverte ; L1 à L6 fermés ; L7 et Z non commencés.**
+**Statut : roadmap ouverte ; L1 à L6 et L7.1-L7.4 fermés ; L7.5 et Z non commencés.**
 
 ## 1. But, source et règle de vérité
 
@@ -74,7 +74,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 | 4 | L4 | Conservation de la projection analytics | F21 | high | fermé — F21 corrigé |
 | 5 | L5 | Atomicité des écritures Workspace | F13b, F14a, F19b | xhigh par sous-lot | fermé — F13b, F14a et F19b corrigés |
 | 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | fermé — F05, F10, F12a-F12c, F13a, F14b, F15a-F15b et F19a corrigés |
-| 7 | L7 | Vérité d'API, observabilité et outils historiques | F16–F18, F20, F22, F24 et dette documentaire | high | non commencé |
+| 7 | L7 | Vérité d'API, observabilité et outils historiques | F16–F18, F20, F22, F24 et dette documentaire | high | en cours — L7.1-L7.4 fermés ; L7.5 non commencé |
 | 8 | Z | Réconciliation finale avec le grand audit | tous les Fxx et réserves non numérotées | xhigh | non commencé |
 
 - [x] Source, périmètre, ordre et règles de preuve consignés.
@@ -1202,8 +1202,7 @@ finales couvrent succès avec ligne présente, échec hermétique sans ligne,
 ouverture préservée, statuts d'audit exacts et absence de contenu brut. La
 mutation contrôlée rétablit le `True` inconditionnel, remet le témoin d'échec au
 rouge, puis le correctif exact est restauré. Aucune queue, retry, destination,
-base, route, métrique, vue ou capacité n'est ajoutée. L7.3 est fermé; L7.4
-n'est pas commencé.
+base, route, métrique, vue ou capacité n'est ajoutée. L7.3 est fermé.
 
 ### L7.4 — Réglages Identity historiques — F18
 
