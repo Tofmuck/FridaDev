@@ -630,9 +630,17 @@
     return "Conversation sans date";
   };
 
+  const problemCount = (value) => {
+    const payload = mapping(value);
+    if (Object.prototype.hasOwnProperty.call(payload, "problem_count")) {
+      return toInt(payload.problem_count);
+    }
+    return toInt(payload.error_count) + toInt(payload.failed_count) + toInt(payload.fallback_count);
+  };
+
   const conversationState = (item) => {
     const counts = mapping(item.classification_counts);
-    const problems = toInt(item.error_count) + toInt(item.fallback_count);
+    const problems = problemCount(item);
     if (problems || toInt(counts.degraded) || toInt(counts.partial)) {
       return { label: "A inspecter", status: "degraded" };
     }
@@ -688,7 +696,7 @@
       const stateTd = cell("");
       stateTd.appendChild(statusBadge(stateInfo.label, stateInfo.status));
 
-      const problems = toInt(item.error_count) + toInt(item.fallback_count);
+      const problems = problemCount(item);
       row.append(
         labelTd,
         stateTd,
@@ -782,7 +790,7 @@
         `${formatCount(item.source_event_count, "event")}`,
         `memoire injectee ${toInt(rag.injected)}`,
         `web ${web.injected ? "injecte" : "non injecte"}`,
-        `${toInt(errors.error_count) + toInt(errors.fallback_count)} probleme(s)`,
+        `${problemCount(errors)} probleme(s)`,
       ].join(" · ");
 
       button.append(head, details);

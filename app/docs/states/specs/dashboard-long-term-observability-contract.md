@@ -671,6 +671,7 @@ Le premier ecran produit du dashboard utilise les endpoints dashboard analytique
 - une reponse HTTP 200 n'est pas suffisante pour dire qu'une periode longue est fiable: l'UI doit distinguer periode complete, partielle, absente ou en erreur;
 - les libelles de premier niveau restent en francais produit: `Tours reussis`, `Reponses degradees`, `Problemes rencontres`, `Memoire utilisee`, `Recherche web utile`, `Latences utiles`;
 - la table conversations utilise le titre ou `display_label` quand il existe, sinon une date / heure lisible; l'identifiant opaque ne peut pas devenir le libelle principal;
+- l'etat et la colonne problemes d'une conversation consomment son `problem_count` canonique lorsqu'il est present, y compris a zero; pour un payload historique sans ce champ, leur seul repli est `error_count + failed_count + fallback_count`;
 - les visualisations du premier ecran consomment `metric_buckets` persistants pour les tendances temporelles, avec alternative tabulaire pour les counts importants;
 - les courbes temporelles retenues au Lot 6 sont limitees aux reponses a surveiller, a la memoire injectee, au web utile et a la latence modele principal;
 - la latence de fenetre affichee est une moyenne exacte `main_duration_ms_total / main_duration_ms_count` issue des buckets providers;
@@ -684,6 +685,7 @@ L'inspection traduite conversation / tour est livree par les read-models dashboa
 - ouverture conversation: `/api/admin/dashboard/conversations/<conversation_id>/turns`;
 - ouverture tour: `/api/admin/dashboard/turns/<turn_id>/inspection`;
 - le frontend affiche le recit `story` fourni par le read-model et les resumes `modules`;
+- le detail compact d'un tour applique la meme priorite a `errors.problem_count`; son repli historique additionne exactement `error_count`, `failed_count` et `fallback_count`, sans compter les statuts sans probleme;
 - la lecture principale reste en francais produit: ce que Frida a recu, ce que le modele a recu en lecture traduite, modules, problemes, donnees massives resumees, preuves et limites;
 - le recit doit expliquer explicitement ce qui est prouve, ce qui est resume, et ce qui n'est pas reconstructible avec les seuls faits compacts;
 - les reason codes bruts ne structurent pas la lecture principale: ils sont traduits quand une traduction stable existe, sinon regroupes comme causes techniques compactes disponibles dans les logs techniques;

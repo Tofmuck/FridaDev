@@ -1045,7 +1045,7 @@ Traiter séparément les cinq mécanismes :
 
 1. sources Web et blocs injectés ne sont pas la même unité — **L7.3.1 fermé** ;
 2. fenêtre durable et compteurs process-local doivent être nommés sans ambiguïté — **L7.3.2 fermé** ;
-3. `failed` doit suivre le compteur canonique du pipeline ;
+3. `failed` doit suivre le compteur canonique du pipeline — **L7.3.3 fermé** ;
 4. buckets et conversations doivent employer la même borne temporelle ;
 5. réception du callback de log ne doit pas devenir `audit.stored=true` si
    l'écriture fichier a échoué.
@@ -1110,7 +1110,33 @@ trois libellés, le début process inconnu et la borne `log_limit`. Le témoin
 causal réintroduit brièvement « fenêtre courante », fait échouer le test Node,
 puis le correctif exact est restauré. Les tests ciblés passent : 17 tests
 Python service/routes, 6 tests Node renderer et voisin immédiat, puis un unique
-scénario Chromium herméneutique ciblé. L7.3 reste ouvert; L7.3.3 n'est pas
+scénario Chromium herméneutique ciblé. L7.3 reste ouvert.
+
+#### L7.3.3 — Compteur canonique des problèmes
+
+**Fermé le 6 septembre 2026.** La revalidation au HEAD initial
+`d474a6cadfc0ee5536b8224791a90ce54decb3d6` confirme que le pipeline distingue
+déjà `error_count`, `failed_count` et `fallback_count`, puis expose leur
+`problem_count` canonique dans les items de tour et les résumés de conversation.
+Le dashboard recalculait pourtant trois fois `error_count + fallback_count` :
+pour l'état de conversation, sa colonne « problèmes » et le détail d'un tour.
+Un échec `failed` seul pouvait ainsi être affiché à zéro et laisser la
+conversation « Stable ».
+
+Le renderer utilise désormais une règle locale unique. La présence explicite
+de `problem_count` prévaut, y compris lorsqu'il vaut zéro; seul un payload
+historique qui ne porte pas ce champ déclenche le repli exact
+`error_count + failed_count + fallback_count`. Les statuts sans problème ne
+sont pas ajoutés, et ni la taxonomie, ni le pipeline, ni le read-model, ni
+l'API ou la collecte ne changent.
+
+La reproduction Chromium ciblée traverse le vrai dashboard avec un échec seul,
+un zéro canonique contredisant ses composants, un payload legacy, et les cas
+`error`/`fallback` existants, au niveau conversation comme au niveau tour. Elle
+échoue sur l'ancien calcul, passe après raccord, puis redevient rouge pendant
+la mutation contrôlée qui réintroduit `error_count + fallback_count`; le
+correctif exact est ensuite restauré. Les voisins Python confirment le compteur
+canonique et la projection content-free. L7.3 reste ouvert; L7.3.4 n'est pas
 commencé.
 
 ### L7.4 — Réglages Identity historiques — F18

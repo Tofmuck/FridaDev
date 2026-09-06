@@ -1784,7 +1784,9 @@ function dashboardMockScript({ mode = 'nominal' } = {}) {
               web_requested_turns: 2,
               web_injected_turns: 1,
               error_count: 0,
+              failed_count: 0,
               fallback_count: 1,
+              problem_count: 1,
             },
             {
               conversation_id: "conv-browser-2",
@@ -1797,11 +1799,57 @@ function dashboardMockScript({ mode = 'nominal' } = {}) {
               web_requested_turns: 1,
               web_injected_turns: 1,
               error_count: 1,
+              failed_count: 0,
               fallback_count: 0,
+              problem_count: 1,
+            },
+            {
+              conversation_id: "conv-browser-failed",
+              display_label: "Echec seul",
+              display_label_source: "title",
+              latest_ts: "2026-05-15T09:10:00+00:00",
+              turns_count: 1,
+              classification_counts: { complete: 1 },
+              memory_used_turns: 0,
+              web_requested_turns: 0,
+              web_injected_turns: 0,
+              error_count: 0,
+              failed_count: 1,
+              fallback_count: 0,
+              problem_count: 1,
+            },
+            {
+              conversation_id: "conv-browser-zero",
+              display_label: "Zero canonique",
+              display_label_source: "title",
+              latest_ts: "2026-05-15T08:10:00+00:00",
+              turns_count: 1,
+              classification_counts: { complete: 1 },
+              memory_used_turns: 0,
+              web_requested_turns: 0,
+              web_injected_turns: 0,
+              error_count: 4,
+              failed_count: 3,
+              fallback_count: 2,
+              problem_count: 0,
+            },
+            {
+              conversation_id: "conv-browser-legacy",
+              display_label: "Payload historique",
+              display_label_source: "title",
+              latest_ts: "2026-05-15T07:10:00+00:00",
+              turns_count: 1,
+              classification_counts: { complete: 1 },
+              memory_used_turns: 0,
+              web_requested_turns: 0,
+              web_injected_turns: 0,
+              error_count: 1,
+              failed_count: 1,
+              fallback_count: 1,
             },
           ],
-          count: partial ? 0 : 2,
-          total: partial ? 0 : 2,
+          count: partial ? 0 : 5,
+          total: partial ? 0 : 5,
           limit: 12,
           offset: 0,
           next_offset: null,
@@ -1825,7 +1873,7 @@ function dashboardMockScript({ mode = 'nominal' } = {}) {
             source_event_count: 8,
             rag: { retrieved: 8, basket: 5, kept: 3, rejected: 2, injected: 2 },
             web: { requested: true, success: true, injected: true, results_count: 4 },
-            errors: { error_count: 0, skipped_count: 0, fallback_count: 1 },
+            errors: { error_count: 0, failed_count: 0, skipped_count: 0, fallback_count: 1, problem_count: 1 },
           },
           {
             conversation_id: conversationId,
@@ -1837,11 +1885,47 @@ function dashboardMockScript({ mode = 'nominal' } = {}) {
             source_event_count: 7,
             rag: { retrieved: 0, basket: 0, kept: 0, rejected: 0, injected: 0 },
             web: { requested: false, success: false, injected: false, results_count: 0 },
-            errors: { error_count: 0, skipped_count: 0, fallback_count: 0 },
+            errors: { error_count: 0, failed_count: 0, skipped_count: 0, fallback_count: 0, problem_count: 0 },
+          },
+          {
+            conversation_id: conversationId,
+            turn_id: "turn-browser-failed",
+            first_ts: "2026-05-15T09:50:00+00:00",
+            latest_ts: "2026-05-15T09:55:00+00:00",
+            classification: "complete",
+            score: 100,
+            source_event_count: 1,
+            rag: { retrieved: 0, basket: 0, kept: 0, rejected: 0, injected: 0 },
+            web: { requested: false, success: false, injected: false, results_count: 0 },
+            errors: { error_count: 0, failed_count: 1, skipped_count: 0, fallback_count: 0, problem_count: 1 },
+          },
+          {
+            conversation_id: conversationId,
+            turn_id: "turn-browser-zero",
+            first_ts: "2026-05-15T08:50:00+00:00",
+            latest_ts: "2026-05-15T08:55:00+00:00",
+            classification: "complete",
+            score: 100,
+            source_event_count: 1,
+            rag: { retrieved: 0, basket: 0, kept: 0, rejected: 0, injected: 0 },
+            web: { requested: false, success: false, injected: false, results_count: 0 },
+            errors: { error_count: 4, failed_count: 3, skipped_count: 5, fallback_count: 2, problem_count: 0 },
+          },
+          {
+            conversation_id: conversationId,
+            turn_id: "turn-browser-legacy",
+            first_ts: "2026-05-15T07:50:00+00:00",
+            latest_ts: "2026-05-15T07:55:00+00:00",
+            classification: "complete",
+            score: 100,
+            source_event_count: 1,
+            rag: { retrieved: 0, basket: 0, kept: 0, rejected: 0, injected: 0 },
+            web: { requested: false, success: false, injected: false, results_count: 0 },
+            errors: { error_count: 1, failed_count: 1, skipped_count: 7, fallback_count: 1 },
           },
         ],
-        count: 2,
-        total: 2,
+        count: 5,
+        total: 5,
         limit: 20,
         offset: 0,
         next_offset: null,
@@ -2068,6 +2152,18 @@ test('dashboard overview renders pulse and conversations from aggregate endpoint
     await assertTextContains(page.locator('#dashboardConversationsTable'), 'Conversation du');
     await assertTextContains(page.locator('#dashboardSourceChip'), 'Periode complete');
 
+    const failedConversation = page.locator('#dashboardConversationsBody tr:has([data-conversation-id="conv-browser-failed"])');
+    await assertTextContains(failedConversation, 'A inspecter');
+    assert.equal((await failedConversation.locator('td').nth(5).textContent()).trim(), '1');
+    const zeroConversation = page.locator('#dashboardConversationsBody tr:has([data-conversation-id="conv-browser-zero"])');
+    await assertTextContains(zeroConversation, 'Stable');
+    assert.equal((await zeroConversation.locator('td').nth(5).textContent()).trim(), '0');
+    const legacyConversation = page.locator('#dashboardConversationsBody tr:has([data-conversation-id="conv-browser-legacy"])');
+    await assertTextContains(legacyConversation, 'A inspecter');
+    assert.equal((await legacyConversation.locator('td').nth(5).textContent()).trim(), '3');
+    assert.equal((await page.locator('#dashboardConversationsBody tr:has([data-conversation-id="conv-browser-1"]) td').nth(5).textContent()).trim(), '1');
+    assert.equal((await page.locator('#dashboardConversationsBody tr:has([data-conversation-id="conv-browser-2"]) td').nth(5).textContent()).trim(), '1');
+
     const visibleText = await page.locator('main').textContent();
     assert.equal(visibleText.includes('legacy_incomplete'), false);
     assert.equal(visibleText.includes('provider_caller'), false);
@@ -2080,6 +2176,10 @@ test('dashboard overview renders pulse and conversations from aggregate endpoint
     await assertTextContains(page.locator('#dashboardSelectedConversation'), 'Thread navigateur');
     await assertTextContains(page.locator('#dashboardTurnsList'), 'Tour du');
     await assertTextContains(page.locator('#dashboardTurnsList'), 'memoire injectee 2');
+    await assertTextContains(page.locator('#dashboardTurnsList [data-turn-id="turn-browser-failed"]'), '1 probleme(s)');
+    await assertTextContains(page.locator('#dashboardTurnsList [data-turn-id="turn-browser-zero"]'), '0 probleme(s)');
+    await assertTextContains(page.locator('#dashboardTurnsList [data-turn-id="turn-browser-legacy"]'), '3 probleme(s)');
+    await assertTextContains(page.locator('#dashboardTurnsList [data-turn-id="turn-browser-1"]'), '1 probleme(s)');
 
     await page.click('#dashboardTurnsList [data-turn-id="turn-browser-1"]');
     await page.waitForFunction(() =>
