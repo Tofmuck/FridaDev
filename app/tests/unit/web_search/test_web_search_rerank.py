@@ -332,6 +332,61 @@ class WebSearchRerankTests(unittest.TestCase):
                 self.assertNotIn("technical_documentation_soft_bonus", deceptive["rerank_reason_codes"])
                 self.assertNotIn("official_source_soft_bonus", deceptive["rerank_reason_codes"])
 
+    def test_ambiguous_url_gets_no_source_first_official_or_documentary_bonus(self) -> None:
+        forbidden_reasons = {
+            "source_first_authority_domain_soft_bonus",
+            "source_first_expected_domain_soft_bonus",
+            "profile_expected_domain_soft_bonus",
+            "profile_official_domain_soft_bonus",
+            "profile_official_domain_context_soft_bonus",
+            "technical_aligned_docs_domain_soft_bonus",
+            "technical_documentation_soft_bonus",
+            "official_source_soft_bonus",
+        }
+        source_first_plan = {
+            "source_first_active": True,
+            "source_first_authority": "OpenRouter",
+            "source_first_product": "web search",
+            "source_first_probable_domains": ["openrouter.ai/docs"],
+            "source_first_authority_terms": ["openrouter"],
+        }
+
+        for deceptive_url in (
+            "https://evil.test\\@openrouter.ai/docs",
+            "https://evil.test\t@openrouter.ai/docs",
+            "https://evil.test\r@openrouter.ai/docs",
+            "https://evil.test\n@openrouter.ai/docs",
+            "https://evil.test@openrouter.ai/docs\x7f",
+        ):
+            with self.subTest(url_kind=repr(deceptive_url)):
+                reranked, _observability = web_search_rerank.rerank_results(
+                    [
+                        {
+                            "title": "OpenRouter official documentation",
+                            "url": deceptive_url,
+                            "source_domain": "openrouter.ai",
+                            "content": "OpenRouter official API documentation",
+                        },
+                        {
+                            "title": "Neutral result",
+                            "url": "https://neutral.test/page",
+                            "content": "OpenRouter web search reference",
+                        },
+                    ],
+                    user_msg="documentation officielle OpenRouter web search",
+                    primary_query="OpenRouter web search documentation officielle",
+                    search_profile=web_search_profile.PROFILE_DOCUMENTATION_OFFICIELLE,
+                    max_results=2,
+                    enabled=True,
+                    source_first_plan=source_first_plan,
+                )
+
+                deceptive = next(item for item in reranked if item["url"] == deceptive_url)
+                self.assertTrue(
+                    forbidden_reasons.isdisjoint(deceptive["rerank_reason_codes"]),
+                    deceptive["rerank_reason_codes"],
+                )
+
     def test_source_first_requires_real_domain_and_bounded_expected_path(self) -> None:
         source_first_plan = {
             "source_first_active": True,

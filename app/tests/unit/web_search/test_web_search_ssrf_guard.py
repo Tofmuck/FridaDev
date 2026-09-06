@@ -17,7 +17,12 @@ APP_DIR = _resolve_app_dir()
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from tools import web_public_url_policy, web_search, web_search_crawl_policy
+from tools import (
+    web_public_url_policy,
+    web_search,
+    web_search_crawl_policy,
+    web_search_profile_policy,
+)
 
 
 def _resolved(*addresses: str):
@@ -25,6 +30,34 @@ def _resolved(*addresses: str):
 
 
 class WebPublicUrlPolicyTests(unittest.TestCase):
+    def test_crawl_guard_and_ranking_identity_reject_same_ambiguous_urls(self) -> None:
+        for url in (
+            "https://evil.test\\@openrouter.ai/docs",
+            "https://evil.test\t@openrouter.ai/docs",
+            "https://evil.test\r@openrouter.ai/docs",
+            "https://evil.test\n@openrouter.ai/docs",
+            "https://openrouter.ai/docs\x7f",
+        ):
+            with self.subTest(url_kind=repr(url)):
+                self.assertEqual(
+                    web_public_url_policy.blocked_url_reason(url),
+                    web_public_url_policy.REASON_URL_BLOCKED_INTERNAL,
+                )
+                self.assertIsNone(web_search_profile_policy.source_url_hostname_path(url))
+
+        legitimate_url = "https://www.openrouter.ai./docs/api-reference"
+        self.assertEqual(
+            web_public_url_policy.blocked_url_reason(
+                legitimate_url,
+                resolver=lambda *_args, **_kwargs: _resolved("93.184.216.34"),
+            ),
+            "",
+        )
+        self.assertEqual(
+            web_search_profile_policy.source_url_hostname_path(legitimate_url),
+            ("openrouter.ai", "/docs/api-reference"),
+        )
+
     def test_blocks_non_public_ip_families_and_internal_names(self) -> None:
         blocked_urls = [
             "http://127.0.0.1/page",

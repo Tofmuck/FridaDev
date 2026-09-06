@@ -51,7 +51,8 @@ suffixes `.gouv.fr`, `.europa.eu`, `.edu` et wildcard `ac-*.fr` restent
 reconnus. Un pattern de chemin exige le chemin exact ou un segment descendant:
 `/docs-evil` ne vaut pas `/docs`. Query, fragment, userinfo et une valeur
 `source_domain` contradictoire sont ignores; une URL absente ou invalide est
-neutre.
+neutre. Avant parsing, tout antislash ou caractère ASCII C0/DEL invalide
+l'identité entière; aucune suppression de ces caractères ne peut réparer l'URL.
 
 ## Politiques par profil
 

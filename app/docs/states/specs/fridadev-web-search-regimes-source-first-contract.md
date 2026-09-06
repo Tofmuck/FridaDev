@@ -87,7 +87,9 @@ L'identite d'une source est derivee d'une URL HTTP(S) exploitable. Le hostname
 est compare exactement ou comme sous-domaine legitime; un pattern avec chemin
 est compare au seul path avec une frontiere de segment. Query, fragment,
 userinfo et metadonnee `source_domain` ne peuvent ni etablir un domaine attendu
-ni promouvoir une source. Une URL absente ou invalide reste neutre.
+ni promouvoir une source. Une URL absente ou invalide reste neutre; antislash
+et caractères ASCII C0/DEL invalident l'identité avant tout parsing, sans
+normalisation réparatrice.
 
 Adobe, Microsoft, Stripe, OpenRouter, MDN et Docker sont des cas de garde-fou, pas des normes cachees. Une requete generique `documentation officielle` ou `API documentation` ne doit promouvoir aucun vendor de fixture.
 

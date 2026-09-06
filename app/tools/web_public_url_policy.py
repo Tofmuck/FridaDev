@@ -26,6 +26,14 @@ _BLOCKED_HOST_SUFFIXES = (
 )
 
 
+def has_ambiguous_url_characters(url: Any) -> bool:
+    value = str(url or "")
+    return "\\" in value or any(
+        ord(char) < 0x20 or ord(char) == 0x7F
+        for char in value
+    )
+
+
 def blocked_url_reason(
     url: str,
     *,
@@ -33,13 +41,10 @@ def blocked_url_reason(
 ) -> str:
     """Return a content-free reason when an HTTP(S) URL is not proven public."""
     try:
-        normalized_url = str(url or "").strip()
-        has_ambiguous_character = "\\" in normalized_url or any(
-            ord(char) < 0x20 or ord(char) == 0x7F
-            for char in normalized_url
-        )
-        if has_ambiguous_character:
+        raw_url = str(url or "")
+        if has_ambiguous_url_characters(raw_url):
             return REASON_URL_BLOCKED_INTERNAL
+        normalized_url = raw_url.strip()
         parsed = urlparse(normalized_url)
         scheme = str(parsed.scheme or "").lower()
         host = str(parsed.hostname or "").strip().lower().rstrip(".")

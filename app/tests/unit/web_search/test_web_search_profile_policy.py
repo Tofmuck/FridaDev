@@ -20,6 +20,58 @@ from tools import web_search_profile, web_search_profile_policy, web_search_sour
 
 
 class WebSearchProfilePolicyTests(unittest.TestCase):
+    def test_url_identity_rejects_backslash_and_every_c0_or_del_character(self) -> None:
+        ambiguous_urls = ['https://evil.test\\@openrouter.ai/docs']
+        ambiguous_urls.extend(
+            f'https://openrouter.ai/docs{chr(codepoint)}'
+            for codepoint in (*range(0x20), 0x7F)
+        )
+
+        for url in ambiguous_urls:
+            ambiguous_codepoints = [
+                ord(char)
+                for char in url
+                if ord(char) < 0x20 or ord(char) == 0x7F
+            ]
+            with self.subTest(
+                url_kind='backslash' if '\\' in url else ambiguous_codepoints
+            ):
+                self.assertIsNone(web_search_profile_policy.source_url_hostname_path(url))
+
+        self.assertEqual(
+            web_search_profile_policy.source_url_hostname_path(
+                'https://www.openrouter.ai./docs/api-reference'
+            ),
+            ('openrouter.ai', '/docs/api-reference'),
+        )
+
+    def test_ambiguous_url_is_neutral_despite_source_metadata_and_content(self) -> None:
+        policy = web_search_profile_policy.WebSearchProfilePolicy(
+            profile=web_search_profile.PROFILE_DOCUMENTATION_OFFICIELLE,
+            mode='test',
+            expected_domains=('openrouter.ai/docs',),
+        )
+
+        for url in (
+            'https://evil.test\\@openrouter.ai/docs',
+            'https://evil.test\t@openrouter.ai/docs',
+            'https://evil.test\r@openrouter.ai/docs',
+            'https://evil.test\n@openrouter.ai/docs',
+        ):
+            with self.subTest(url_kind=repr(url)):
+                self.assertEqual(
+                    web_search_profile_policy.classify_source_against_policy(
+                        {
+                            'url': url,
+                            'source_domain': 'openrouter.ai',
+                            'title': 'OpenRouter official documentation',
+                            'content': 'OpenRouter official API documentation',
+                        },
+                        policy,
+                    ),
+                    'neutral',
+                )
+
     def test_expected_path_pattern_uses_only_parsed_hostname_and_bounded_path(self) -> None:
         policy = web_search_profile_policy.WebSearchProfilePolicy(
             profile=web_search_profile.PROFILE_DOCUMENTATION_OFFICIELLE,

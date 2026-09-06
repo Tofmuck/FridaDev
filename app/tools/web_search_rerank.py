@@ -392,7 +392,11 @@ def _apply_profile_score(
             score += 105.0
             reasons.append("technical_aligned_docs_domain_soft_bonus")
             reasons.append("official_source_soft_bonus")
-        if _path_matches_marker(path, "/docs") or "documentation" in content_searchable or "api" in content_searchable:
+        if domain and (
+            _path_matches_marker(path, "/docs")
+            or "documentation" in content_searchable
+            or "api" in content_searchable
+        ):
             score += 24.0
             reasons.append("technical_documentation_soft_bonus")
         score, reasons = _dictionary_or_conjugator_downrank(domain, title, score, reasons)

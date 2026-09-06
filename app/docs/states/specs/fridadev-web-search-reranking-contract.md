@@ -35,7 +35,10 @@ Les signaux fondes sur l'URL utilisent seulement son `hostname` et son `path`
 parsés. Query, fragment et userinfo n'alimentent ni alignement, ni caractère
 docs-like, ni bonus documentaire. Les marqueurs de chemin respectent une
 frontière de segment; un domaine officiel mentionné dans un chemin tiers ou un
-hostname tel que `openrouter.ai.evil.test` n'est pas une autorité attendue.
+hostname tel que `openrouter.ai.evil.test` n'est pas une autorité attendue. Une
+URL contenant un antislash ou un caractère ASCII C0/DEL n'a aucune identité de
+classement et ne reçoit aucun bonus source-first, officiel ou documentaire,
+même si ses métadonnées ou son contenu paraissent alignés.
 
 ## Regles par profil
 

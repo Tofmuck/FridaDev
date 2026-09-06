@@ -828,6 +828,22 @@ mutation rétablissant la recherche de sous-chaîne remet le faux domaine
 officiel au rouge. Les preuves sont hermétiques, sans provider, SearXNG,
 Crawl4AI, réseau, DB opérateur, JavaScript ou Chromium. L6.6 n'est pas commencé.
 
+**Contre-audit résiduel au HEAD
+`77141c31d6d0de39462be3debff45bd5dda25dda`.** Une divergence restait possible
+avant `urlparse()` : un antislash ou un caractère ASCII C0/DEL pouvait être
+interprété différemment par le client HTTP et par l'identité de classement,
+jusqu'à faire passer un hôte tiers pour `openrouter.ai/docs`. Le prédicat
+lexical déjà porté par la garde d'URL publique est désormais mutualisé et
+appliqué à la valeur brute avant toute suppression ou parsing. Ces URL n'ont
+plus d'identité de classement, restent neutres malgré `source_domain`, titre ou
+contenu flatteurs, et ne reçoivent aucun bonus source-first, officiel ou
+documentaire. Les URL HTTP(S) légitimes gardent leur identité ; la garde de
+crawl et le classement rejettent les mêmes formes ambiguës. Cette correction
+reste un défaut de classement F15b, sans nouveau finding SSRF, politique,
+dépendance ou normalisation réparatrice. Les suites ciblées query plan,
+source-first, profile policy, reranking, garde d'URL publique et deux tests de
+composition passent `77/77`, sans réseau. L6.6 reste non commencé.
+
 ### L6.6 — ODT : préserver les séparateurs textuels — F19a
 
 Interpréter dans l'extracteur existant les éléments ODT d'espace, tabulation et

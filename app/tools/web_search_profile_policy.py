@@ -5,7 +5,7 @@ import re
 from typing import Any, Mapping, Sequence
 from urllib.parse import urlparse
 
-from tools import web_search_profile, web_search_source_first
+from tools import web_public_url_policy, web_search_profile, web_search_source_first
 
 
 POLICY_KIND = 'local_web_profile_policy_v0'
@@ -442,7 +442,10 @@ def source_url_matches_pattern(url: Any, pattern: str) -> bool:
 
 
 def source_url_hostname_path(url: Any) -> tuple[str, str] | None:
-    value = str(url or '').strip()
+    raw_value = str(url or '')
+    if web_public_url_policy.has_ambiguous_url_characters(raw_value):
+        return None
+    value = raw_value.strip()
     if not value:
         return None
     try:
