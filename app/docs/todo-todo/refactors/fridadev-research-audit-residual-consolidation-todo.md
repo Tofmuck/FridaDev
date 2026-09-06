@@ -2,8 +2,8 @@
 
 Date de cadrage : 4 septembre 2026.
 
-**Statut : roadmap ouverte ; L1 à L5 et L6.1 à L6.5 fermés ; L6 en cours ;
-L6.6, L7 et Z non commencés.**
+**Statut : roadmap ouverte ; L1 à L5 et L6.1 à L6.6 fermés ; L6 en cours ;
+L6.7, L7 et Z non commencés.**
 
 ## 1. But, source et règle de vérité
 
@@ -74,7 +74,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 | 3 | L3 | Compensation Nextcloud possédée | F08 | xhigh | fermé — F08 corrigé |
 | 4 | L4 | Conservation de la projection analytics | F21 | high | fermé — F21 corrigé |
 | 5 | L5 | Atomicité des écritures Workspace | F13b, F14a, F19b | xhigh par sous-lot | fermé — F13b, F14a et F19b corrigés |
-| 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | en cours — L6.1/F05, L6.2/F10, L6.3/F12a-F12b, L6.4/F12c et L6.5/F15a-F15b corrigés ; L6.6 non commencé |
+| 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | en cours — L6.1/F05, L6.2/F10, L6.3/F12a-F12b, L6.4/F12c, L6.5/F15a-F15b et L6.6/F19a corrigés ; L6.7 non commencé |
 | 7 | L7 | Vérité d'API, observabilité et outils historiques | F16–F18, F20, F22, F24 et dette documentaire | high | non commencé |
 | 8 | Z | Réconciliation finale avec le grand audit | tous les Fxx et réserves non numérotées | xhigh | non commencé |
 
@@ -90,6 +90,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 - [x] L6.3 fermé ; F12a et F12b corrigés sans commencer F12c/L6.4.
 - [x] L6.4 fermé ; F12c corrigé sans commencer L6.5.
 - [x] L6.5 fermé ; F15a et F15b corrigés sans commencer L6.6.
+- [x] L6.6 fermé ; F19a corrigé sans commencer L6.7.
 - [ ] L6 et ses décisions conditionnelles fermés.
 - [ ] L7 et ses décisions conditionnelles fermés.
 - [ ] Z réconcilie chaque finding et archive la roadmap.
@@ -849,6 +850,48 @@ composition passent `77/77`, sans réseau. L6.6 reste non commencé.
 Interpréter dans l'extracteur existant les éléments ODT d'espace, tabulation et
 saut de ligne afin de ne pas concaténer des mots. Ne pas prétendre garantir la
 fidélité universelle de tout ODT.
+
+**Statut : fermé — F19a corrigé.**
+
+**Revalidation au HEAD `5162f539b9e6f73b4079d23c2bc5446810c25551`.**
+F1 est confirmé et reproduit : `Element.itertext()` ignore les éléments vides
+`text:s`, `text:tab` et `text:line-break`, et concaténait donc le texte qui les
+précède avec leur `child.tail`.
+F2 est confirmé : l'upload de document actif accepte le résultat `complete` et
+active ce texte ; l'ingestion workspace en conserve taille/hash, puis la
+sélection explicite relit le même extracteur avant injection. F3 est confirmé :
+un parcours récursif local `node.text`, enfants, `child.tail` conserve l'ordre
+des spans/liens imbriqués sans parseur ODT général. F4 est confirmé par
+OpenDocument 1.3 : `text:s` vaut un espace sans `text:c`, dont le type est
+`nonNegativeInteger`; les valeurs malformées ou l'expansion explicite
+déraisonnable doivent échouer fermées. F5 est confirmé : le dispatch des
+formats, la normalisation finale, les statuts et les métadonnées sont communs
+après le parseur et n'ont pas besoin de changer.
+
+**Décision et correctif.** Aucun plan plus simple et plus sûr n'offre moins
+d'effets de bord. `_extract_odt_text()` remplace son unique `itertext()` par un
+parcours ordonné borné aux paragraphes/headings existants. Seuls les trois tags
+du namespace texte ODF exact sont interprétés : espace répété selon `text:c`,
+tabulation et saut de ligne. Le compteur accepte la forme XML Schema
+non négative, compare sa valeur avant conversion/multiplication et partage sur
+tout le document un budget maximal de `40 MiB` d'espaces explicites. Une valeur
+malformée ou un dépassement lève une erreur interne traduite par la frontière
+existante en `parse_error`, texte vide et métadonnées complètes absentes.
+
+**Preuves et limites.** Les tests rouges couvraient les trois séparateurs seuls
+et combinés, `text:c` absent/valide/zéro/malformé/excessif, tails, span et lien
+imbriqués, heading, plusieurs paragraphes, namespace étranger, ODT historique,
+entrée invalide et traversée réelle de l'upload actif. Après correction, les
+quatre suites ciblées extracteur, upload/OCR voisin, ingestion et sélection
+passent `67/67` dans le runner hermétique, checkout read-only, réseau coupé et
+`/tmp` en tmpfs. Une mutation rétablissant `itertext()` remet les quatre
+sous-cas centraux au rouge ; la restauration retrouve exactement l'empreinte
+du correctif. Le contre-audit confirme que ce `itertext()` était unique dans
+la frontière Documents, que DOCX/PDF/TXT/MD, normalisation, statut `complete`,
+taille/hash/tokens, logs et projections gardent leur wiring. Le lot ne promet
+ni fidélité ODT universelle ni validation complète du schéma, et n'ajoute
+aucune dépendance, route, télémétrie, format ou capacité produit. L6.7 n'est pas
+commencé.
 
 ### L6.7 — Décisions conditionnelles — F13a et F14b
 

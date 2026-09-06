@@ -62,6 +62,108 @@ class ActiveDocumentTextExtractionTest(unittest.TestCase):
         self.assertEqual(result.parser, "odt")
         self.assertEqual(result.text, "Premier bloc\n\nDeuxieme bloc")
 
+    def test_odt_preserves_explicit_separators_alone_and_combined_in_document_order(self):
+        cases = (
+            ("<text:p>alpha<text:s/>beta</text:p>", "alpha beta"),
+            ("<text:p>alpha<text:tab/>beta</text:p>", "alpha\tbeta"),
+            ("<text:p>alpha<text:line-break/>beta</text:p>", "alpha\nbeta"),
+            (
+                "<text:p>alpha<text:s/>beta<text:tab/>gamma"
+                "<text:line-break/>delta</text:p>",
+                "alpha beta\tgamma\ndelta",
+            ),
+        )
+        for content, expected in cases:
+            with self.subTest(content=content):
+                result = extraction.extract_active_document_text(
+                    _odt_content_bytes(content),
+                    filename="separateurs.odt",
+                    media_type="",
+                )
+
+                self.assertEqual(result.status, "complete")
+                self.assertEqual(result.text, expected)
+
+    def test_odt_space_count_defaults_and_accepts_valid_non_negative_integers(self):
+        cases = (
+            ("", "alpha beta"),
+            (' text:c="0"', "alphabeta"),
+            (' text:c="3"', "alpha   beta"),
+            (' text:c="+2"', "alpha  beta"),
+            (' text:c="-0"', "alphabeta"),
+        )
+        for attribute, expected in cases:
+            with self.subTest(attribute=attribute):
+                result = extraction.extract_active_document_text(
+                    _odt_content_bytes(f"<text:p>alpha<text:s{attribute}/>beta</text:p>"),
+                    filename="espaces.odt",
+                    media_type="",
+                )
+
+                self.assertEqual(result.status, "complete")
+                self.assertEqual(result.text, expected)
+
+    def test_odt_rejects_malformed_or_excessive_space_count_without_text(self):
+        for count in ("", "-1", "1.5", "1_0", "abc", "41943041"):
+            with self.subTest(count=count):
+                result = extraction.extract_active_document_text(
+                    _odt_content_bytes(f'<text:p>alpha<text:s text:c="{count}"/>beta</text:p>'),
+                    filename="espaces-invalides.odt",
+                    media_type="",
+                )
+
+                self.assertEqual(result.status, "parse_error")
+                self.assertEqual(result.reason_code, "document_parse_error")
+                self.assertEqual(result.text, "")
+                self.assertEqual(result.chars, 0)
+                self.assertEqual(result.token_estimate, 0)
+                self.assertEqual(result.sha256_12, "")
+
+    def test_odt_preserves_nested_text_tails_headings_and_paragraph_boundaries(self):
+        result = extraction.extract_active_document_text(
+            _odt_content_bytes(
+                "<text:h>Titre <text:span>imbrique <text:a>lie</text:a>"
+                " apres-lien</text:span> apres-span</text:h>"
+                "<text:p>Premier</text:p><text:p>Deuxieme</text:p>"
+            ),
+            filename="structure.odt",
+            media_type="",
+        )
+
+        self.assertEqual(result.status, "complete")
+        self.assertEqual(
+            result.text,
+            "Titre imbrique lie apres-lien apres-span\n\nPremier\n\nDeuxieme",
+        )
+
+    def test_odt_does_not_treat_foreign_namespace_elements_as_separators(self):
+        result = extraction.extract_active_document_text(
+            _odt_content_bytes(
+                '<text:p>alpha<foreign:s foreign:c="3"/>beta'
+                '<foreign:wrapper>gamma</foreign:wrapper>delta</text:p>',
+                extra_namespaces=' xmlns:foreign="urn:example:foreign"',
+            ),
+            filename="namespace.odt",
+            media_type="",
+        )
+
+        self.assertEqual(result.status, "complete")
+        self.assertEqual(result.text, "alphabetagammadelta")
+
+    def test_invalid_odt_is_parse_error_without_text_or_complete_metadata(self):
+        result = extraction.extract_active_document_text(
+            b"not an odt archive",
+            filename="invalide.odt",
+            media_type="application/vnd.oasis.opendocument.text",
+        )
+
+        self.assertEqual(result.status, "parse_error")
+        self.assertEqual(result.reason_code, "document_parse_error")
+        self.assertEqual(result.text, "")
+        self.assertEqual(result.chars, 0)
+        self.assertEqual(result.token_estimate, 0)
+        self.assertEqual(result.sha256_12, "")
+
     def test_pdf_success_extracts_textual_pdf(self):
         result = extraction.extract_active_document_text(
             _pdf_bytes(["Tiny PDF text"]),
@@ -148,18 +250,25 @@ def _docx_bytes(paragraphs: tuple[str, ...]) -> bytes:
 
 
 def _odt_bytes(paragraphs: tuple[str, ...]) -> bytes:
+    return _odt_content_bytes(
+        "\n".join(f"<text:p>{_xml_escape(text)}</text:p>" for text in paragraphs)
+    )
+
+
+def _odt_content_bytes(content: str, *, extra_namespaces: str = "") -> bytes:
     content_xml = """<?xml version="1.0" encoding="UTF-8"?>
 <office:document-content
   xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
-  xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0">
+  xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"{extra_namespaces}>
   <office:body>
     <office:text>
-      {paragraphs}
+      {content}
     </office:text>
   </office:body>
 </office:document-content>
 """.format(
-        paragraphs="\n".join(f"<text:p>{_xml_escape(text)}</text:p>" for text in paragraphs)
+        content=content,
+        extra_namespaces=extra_namespaces,
     )
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:

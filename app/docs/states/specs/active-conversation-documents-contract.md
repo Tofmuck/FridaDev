@@ -98,6 +98,16 @@ Choix de parsing retenus:
 - TXT / MD: decode texte UTF strict via la bibliotheque standard;
 - DOCX: lecture ZIP + XML WordprocessingML via la bibliotheque standard;
 - ODT: lecture ZIP + `content.xml` OpenDocument via la bibliotheque standard;
+  dans `text:p` et `text:h`, l'ordre `node.text`, enfants et `child.tail` est
+  conserve, et seuls `text:s`, `text:tab` et `text:line-break` du namespace
+  ODF texte sont interpretes respectivement comme espaces, tabulation et saut
+  de ligne;
+- pour `text:s`, `text:c` absent vaut un espace et une valeur presente doit
+  etre un `nonNegativeInteger` XML Schema; une valeur malformee ou une somme
+  d'espaces explicites superieure a `40 MiB` ferme l'extraction en
+  `parse_error`, sans texte ni statut `complete`;
+- cette interpretation corrige les separateurs ODF ordinaires; elle ne promet
+  pas une fidelite universelle de tous les documents ODT;
 - PDF textuel: `pypdf`, ajoute comme dependance sobre dediee aux PDF.
 
 OCR:

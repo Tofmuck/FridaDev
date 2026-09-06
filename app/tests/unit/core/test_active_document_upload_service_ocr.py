@@ -4,6 +4,7 @@ import io
 import json
 import sys
 import types
+import zipfile
 from dataclasses import dataclass
 from types import SimpleNamespace
 import unittest
@@ -17,6 +18,7 @@ except ModuleNotFoundError:  # pragma: no cover - local host may not have repo d
     sys.modules["psycopg.rows"] = rows_module
 
 from core import active_document_upload_service as upload_service
+from core import active_document_text_extraction
 
 
 CONV_ID = "11111111-1111-1111-1111-111111111111"
@@ -24,6 +26,28 @@ OCR_TEXT = "OCR TEXT THAT MUST NOT LEAK"
 
 
 class ActiveDocumentUploadOcrTest(unittest.TestCase):
+    def test_odt_explicit_separator_reaches_active_document_text(self):
+        active_docs = _FakeActiveDocuments()
+        payload, status = upload_service.upload_active_document_response(
+            CONV_ID,
+            {
+                "file": _UploadFile(
+                    _odt_bytes("<text:p>alpha<text:s/>beta</text:p>"),
+                    filename="espaces.odt",
+                    mimetype="application/vnd.oasis.opendocument.text",
+                )
+            },
+            conv_store_module=_FakeConvStore(),
+            active_documents_module=active_docs,
+            extractor_module=active_document_text_extraction,
+            ocr_module=_ExplodingOcr(),
+            admin_logs_module=_FakeAdminLogs(),
+        )
+
+        self.assertEqual(status, 201)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(active_docs.activated_texts, ["alpha beta"])
+
     def test_ocr_success_activates_after_final_complete_extraction(self):
         active_docs = _FakeActiveDocuments()
         extractor = _FakeExtractor(
@@ -289,6 +313,21 @@ def _run_ocr_failure(reason_code: str):
 
 def _files(content: bytes):
     return {"file": _UploadFile(content, filename="scan.pdf", mimetype="application/pdf")}
+
+
+def _odt_bytes(content: str) -> bytes:
+    content_xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<office:document-content
+  xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
+  xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0">
+  <office:body><office:text>{content}</office:text></office:body>
+</office:document-content>
+"""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("mimetype", "application/vnd.oasis.opendocument.text")
+        archive.writestr("content.xml", content_xml)
+    return buffer.getvalue()
 
 
 class _UploadFile:

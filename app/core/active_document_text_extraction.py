@@ -56,6 +56,11 @@ SUPPORTED_MEDIA_TYPES = {
 WORD_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 ODT_OFFICE_TEXT = "{urn:oasis:names:tc:opendocument:xmlns:office:1.0}text"
 ODT_TEXT_NS = "{urn:oasis:names:tc:opendocument:xmlns:text:1.0}"
+ODT_TEXT_SPACE = f"{ODT_TEXT_NS}s"
+ODT_TEXT_TAB = f"{ODT_TEXT_NS}tab"
+ODT_TEXT_LINE_BREAK = f"{ODT_TEXT_NS}line-break"
+ODT_TEXT_SPACE_COUNT = f"{ODT_TEXT_NS}c"
+ODT_MAX_EXPLICIT_SPACE_CHARS = 40 * 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -342,12 +347,69 @@ def _extract_odt_text(data: bytes) -> str:
         return ""
 
     blocks: list[str] = []
+    remaining_explicit_spaces = [ODT_MAX_EXPLICIT_SPACE_CHARS]
     for node in office_text.iter():
         if node.tag in (f"{ODT_TEXT_NS}p", f"{ODT_TEXT_NS}h"):
-            text = "".join(node.itertext()).strip()
+            text = _extract_odt_block_text(
+                node,
+                remaining_explicit_spaces=remaining_explicit_spaces,
+            ).strip()
             if text:
                 blocks.append(text)
     return "\n\n".join(blocks)
+
+
+def _extract_odt_block_text(
+    node: ElementTree.Element,
+    *,
+    remaining_explicit_spaces: list[int],
+) -> str:
+    fragments: list[str] = []
+
+    def append_node(current: ElementTree.Element) -> None:
+        if current.text:
+            fragments.append(current.text)
+        for child in current:
+            if child.tag == ODT_TEXT_SPACE:
+                count = _odt_space_count(child)
+                if count > remaining_explicit_spaces[0]:
+                    raise ValueError("odt_explicit_space_limit_exceeded")
+                remaining_explicit_spaces[0] -= count
+                if count:
+                    fragments.append(" " * count)
+            elif child.tag == ODT_TEXT_TAB:
+                fragments.append("\t")
+            elif child.tag == ODT_TEXT_LINE_BREAK:
+                fragments.append("\n")
+            else:
+                append_node(child)
+            if child.tail:
+                fragments.append(child.tail)
+
+    append_node(node)
+    return "".join(fragments)
+
+
+def _odt_space_count(node: ElementTree.Element) -> int:
+    raw_count = node.get(ODT_TEXT_SPACE_COUNT)
+    if raw_count is None:
+        return 1
+
+    value = raw_count.strip()
+    sign = value[:1] if value[:1] in ("+", "-") else ""
+    digits = value[1:] if sign else value
+    if not digits or not digits.isascii() or not digits.isdigit():
+        raise ValueError("invalid_odt_space_count")
+    if sign == "-" and any(digit != "0" for digit in digits):
+        raise ValueError("invalid_odt_space_count")
+
+    normalized_digits = digits.lstrip("0") or "0"
+    maximum = str(ODT_MAX_EXPLICIT_SPACE_CHARS)
+    if len(normalized_digits) > len(maximum) or (
+        len(normalized_digits) == len(maximum) and normalized_digits > maximum
+    ):
+        raise ValueError("odt_explicit_space_limit_exceeded")
+    return int(normalized_digits)
 
 
 def _extract_pdf_text(
