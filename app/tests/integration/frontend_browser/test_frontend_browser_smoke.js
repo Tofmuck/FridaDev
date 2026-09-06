@@ -2595,11 +2595,27 @@ function hermeneuticAdminMockScript({
             ok: true,
             mode: "enforced_all",
             mode_observation: { current_mode_observed: true, observed_since: "2026-05-14T10:00:00Z" },
-            counters: { parse_error_count: 0 },
-            rates: { fallback_rate: 0 },
-            latency_ms: { primary_node: { p50_ms: 11, p95_ms: 19 } },
+            measurement_scopes: {
+              durable_window: {
+                scope_kind: "durable_window",
+                window_days: 7,
+                counters: { identity_accept_count: 2 },
+                rates: { fallback_rate: 0.2 },
+              },
+              process_runtime: {
+                scope_kind: "process_runtime",
+                started_at: null,
+                counters: { parse_error_count: 0 },
+                rates: { parse_error_rate: 0, fallback_rate: 0 },
+                metrics: { arbiter_call_count: 1 },
+              },
+              current_log_sample: {
+                scope_kind: "current_log_file_sample",
+                log_limit: 5000,
+                latency_ms: { primary_node: { p50_ms: 11, p95_ms: 19 } },
+              },
+            },
             alerts: [],
-            runtime_metrics: { arbiter_call_count: 1 },
           }), { status: 200, headers: { "Content-Type": "application/json" } });
         }
 
@@ -2839,6 +2855,19 @@ test('hermeneutic admin keeps turn selection targeted and stage payloads content
   await openBrowserPage({ pathSuffix: '/hermeneutic-admin.html', mockScript: hermeneuticAdminMockScript() }, async (page) => {
     await page.waitForFunction(() =>
       document.querySelector('#hermeneuticAdminStatusBanner')?.textContent.includes('Lecture hermeneutique ok'));
+
+    const overviewText = String(await page.locator('#hermeneuticOverviewCards').textContent() || '');
+    assert.equal(overviewText.includes('Mesures durables'), true);
+    assert.equal(overviewText.includes('7 derniers jours'), true);
+    assert.equal(overviewText.includes('Processus courant'), true);
+    assert.equal(overviewText.includes('debut inconnu'), true);
+    assert.equal(overviewText.includes('Echantillon du fichier de log courant'), true);
+    assert.equal(overviewText.includes('au plus 5000 entrees'), true);
+    assert.equal(/fenetre courante/i.test(overviewText), false);
+    assert.equal(
+      String(await page.locator('#hermeneuticRuntimeMetrics').textContent() || '').includes('1'),
+      true,
+    );
 
     assert.equal(await page.locator('#hermeneuticIdentityRuntimeDisclosure').evaluate((node) => node.open), false);
     assert.ok(await page.locator('#hermeneuticTurnStages details.admin-disclosure').count() >= 1);

@@ -265,21 +265,22 @@ def dashboard_response(
             'exact_switch_known': False,
         }
 
-    fallback_rate = max(float(kpis.get('fallback_rate', 0.0)), runtime_fallback_rate)
+    durable_fallback_rate = float(kpis.get('fallback_rate', 0.0))
 
     alerts: List[str] = []
     if parse_error_rate > 0.05:
-        alerts.append('parse_error_rate_gt_5pct')
-    if fallback_rate > 0.10:
-        alerts.append('fallback_rate_gt_10pct')
+        alerts.append('process_runtime_parse_error_rate_gt_5pct')
+    if durable_fallback_rate > 0.10:
+        alerts.append('durable_window_fallback_rate_gt_10pct')
+    if runtime_fallback_rate > 0.10:
+        alerts.append('process_runtime_fallback_rate_gt_10pct')
 
-    counters = {
+    durable_counters = {
         'identity_accept_count': int(kpis.get('identity_accept_count', 0)),
         'identity_defer_count': int(kpis.get('identity_defer_count', 0)),
         'identity_reject_count': int(kpis.get('identity_reject_count', 0)),
         'identity_override_count': int(kpis.get('identity_override_count', 0)),
         'arbiter_fallback_count': int(kpis.get('arbiter_fallback_count', 0)),
-        'parse_error_count': parse_error_count,
     }
 
     return (
@@ -287,15 +288,33 @@ def dashboard_response(
             'ok': True,
             'mode': config_module.HERMENEUTIC_MODE,
             'mode_observation': mode_observation,
-            'window_days': window_days,
-            'counters': counters,
-            'rates': {
-                'parse_error_rate': round(parse_error_rate, 6),
-                'fallback_rate': round(fallback_rate, 6),
-                'runtime_fallback_rate': round(runtime_fallback_rate, 6),
+            'measurement_scopes': {
+                'durable_window': {
+                    'scope_kind': 'durable_window',
+                    'window_days': window_days,
+                    'counters': durable_counters,
+                    'rates': {
+                        'fallback_rate': round(durable_fallback_rate, 6),
+                    },
+                },
+                'process_runtime': {
+                    'scope_kind': 'process_runtime',
+                    'started_at': None,
+                    'counters': {
+                        'parse_error_count': parse_error_count,
+                    },
+                    'rates': {
+                        'parse_error_rate': round(parse_error_rate, 6),
+                        'fallback_rate': round(runtime_fallback_rate, 6),
+                    },
+                    'metrics': runtime_metrics,
+                },
+                'current_log_sample': {
+                    'scope_kind': 'current_log_file_sample',
+                    'log_limit': log_limit,
+                    'latency_ms': stage_latencies,
+                },
             },
-            'latency_ms': stage_latencies,
-            'runtime_metrics': runtime_metrics,
             'alerts': alerts,
         },
         200,

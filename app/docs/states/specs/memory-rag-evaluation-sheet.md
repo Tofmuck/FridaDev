@@ -60,7 +60,7 @@ Preuves runtime relues pour cette phase:
   - `retrieve`: `p50=167.832ms`, `p95=195.558ms`, `max=342.132ms`;
   - `arbiter`: `p50=1848.148ms`, `p95=2779.98ms`, `max=5714.496ms`;
   - `identity_extractor`: `p50=1049.938ms`, `p95=1925.069ms`, `max=3074.631ms`;
-- le dashboard actuel retourne encore `latency_ms=0` pour `retrieve/arbiter/identity_extractor` quand le fichier courant `admin.log.jsonl` ne porte pas les historiques rotates;
+- le dashboard peut retourner `measurement_scopes.current_log_sample.latency_ms=0` pour `retrieve/arbiter/identity_extractor` quand le fichier courant `admin.log.jsonl` ne porte pas les historiques rotates;
 - `prompt_prepared` persiste deja `memory_items_used`, `estimated_prompt_tokens` et `memory_prompt_injection`, mais pas les `candidate_id` injectes;
 - `arbiter` persiste deja `raw_candidates`, `kept_candidates`, `rejected_candidates`, `decision_source`, `fallback_used`, `fallback_decisions`, `rejection_reason_code_counts`;
 - `hermeneutic_node_insertion` persiste deja des resumes compacts `memory_retrieved.retrieved_count` et `memory_arbitration.{status,kept_count,rejected_count,decisions_count}`;
@@ -83,12 +83,12 @@ Mesurable et utile des maintenant:
 ## 4.2 Mesurable aujourd'hui, mais avec angle mort
 
 Mesurable avec prudence:
-- `dashboard.latency_ms`
+- `dashboard.measurement_scopes.current_log_sample.latency_ms`
   - utile pour un coup d'oeil rapide;
-  - insuffisant comme preuve de regression, car il depend du seul fichier courant;
-- `runtime_metrics`
+  - insuffisant comme preuve de regression, car il depend du seul fichier courant et d'au plus `log_limit` entrees;
+- `dashboard.measurement_scopes.process_runtime.metrics`
   - utiles pour comprendre le process courant;
-  - non suffisants comme artefact historique;
+  - non suffisants comme artefact historique et remis a zero au redemarrage;
 - `prompt_prepared.memory_prompt_injection`
   - utile pour compter les blocs effectivement injectes;
   - ne permet pas encore de relier durablement l'injection aux `candidate_id`.

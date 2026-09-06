@@ -643,7 +643,7 @@ Ce que ces events portent:
 
 Limite factuelle importante:
 - `admin_logs.read_logs()` ne lit que le fichier courant `admin.log.jsonl`, pas les rotations;
-- `dashboard.latency_ms` depend donc du fichier courant seulement et peut valoir `0` meme si les rotations gardent des `stage_latency` historiques;
+- `dashboard.measurement_scopes.current_log_sample.latency_ms` depend donc du fichier courant seulement et peut valoir `0` meme si les rotations gardent des `stage_latency` historiques;
 - a l'inverse, `summarize_hermeneutic_mode_observation()` parcourt bien les fichiers rotates.
 
 ### 8.4 Dashboard hermeneutique
@@ -652,10 +652,13 @@ Nature:
 - vue derivee, pas source de verite primaire
 
 Ce qu'il agrege:
-- KPIs depuis la DB via `get_hermeneutic_kpis()`
-- `runtime_metrics` depuis `arbiter.get_runtime_metrics()` en memoire process
-- `latency_ms` depuis `admin_logs.read_logs()`
+- `measurement_scopes.durable_window` depuis les KPI DB de `get_hermeneutic_kpis()`, bornes par son `window_days`
+- `measurement_scopes.process_runtime` depuis `arbiter.get_runtime_metrics()` en memoire process, sans heure de debut inventee
+- `measurement_scopes.current_log_sample.latency_ms` depuis au plus `log_limit` entrees de `admin_logs.read_logs()` dans le seul fichier courant
 - `mode_observation` depuis `admin_logs.summarize_hermeneutic_mode_observation()`
+
+Les taux de fallback durable et process-local restent distincts; aucune valeur
+generique ne prend leur maximum. Les alertes nomment leur mesure et leur portee.
 
 Conclusion pratique:
 - le dashboard est utile pour une lecture operateur rapide;
@@ -669,13 +672,13 @@ Persiste:
 - fichiers `admin*.log.jsonl`
 
 Derive:
-- `dashboard.latency_ms`
-- `dashboard.rates`
+- `dashboard.measurement_scopes.current_log_sample.latency_ms`
+- les `rates` propres a `dashboard.measurement_scopes.durable_window` et `dashboard.measurement_scopes.process_runtime`
 - `dashboard.mode_observation`
 - `prompt_prepared.memory_prompt_injection`
 
 Process-local:
-- `arbiter.get_runtime_metrics()`
+- `arbiter.get_runtime_metrics()`, expose sous `dashboard.measurement_scopes.process_runtime.metrics`
 - les objets runtime `memory_retrieved`, `memory_arbitration`, `memory_traces`
 
 ## 9. Ce qu'il manque encore pour evaluer proprement la pertinence amont

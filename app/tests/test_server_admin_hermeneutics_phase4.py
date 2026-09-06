@@ -413,7 +413,7 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
         self.assertEqual(response.status_code, 409)
         self.assertEqual(response.get_json()['error_code'], 'legacy_identity_control_disabled')
 
-    def test_dashboard_computes_rates_and_alerts_with_contract_fallbacks(self) -> None:
+    def test_dashboard_separates_durable_runtime_and_current_log_sample_scopes(self) -> None:
         observed = {'window_days': None, 'log_limit': None, 'current_mode': None}
         original_get_kpis = self.server.memory_store.get_hermeneutic_kpis
         original_get_runtime_metrics = self.server.arbiter.get_runtime_metrics
@@ -443,7 +443,12 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
         def fake_read_logs(*, limit: int):
             observed['log_limit'] = limit
             return [
-                {'event': 'stage_latency', 'stage': 'retrieve', 'duration_ms': 10},
+                {
+                    'event': 'stage_latency',
+                    'stage': 'retrieve',
+                    'duration_ms': 10,
+                    'content': 'RAW LOG CONTENT MUST NOT LEAK',
+                },
                 {'event': 'stage_latency', 'stage': 'retrieve', 'duration_ms': 30},
                 {'event': 'stage_latency', 'stage': 'arbiter', 'duration_ms': 50},
                 {'event': 'stage_latency', 'stage': 'dialogic_context_hint_extractor', 'duration_ms': 20},
@@ -484,7 +489,6 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
         self.assertEqual(observed['current_mode'], self.server.config.HERMENEUTIC_MODE)
         self.assertEqual(observed['window_days'], 7)
         self.assertEqual(observed['log_limit'], 5000)
-        self.assertEqual(data['window_days'], 7)
         self.assertEqual(data['mode_observation']['source'], 'admin_logs_retained_observations')
         self.assertEqual(
             data['mode_observation']['observed_since'],
@@ -492,15 +496,86 @@ class ServerAdminHermeneuticsPhase4Tests(unittest.TestCase):
         )
         self.assertEqual(data['mode_observation']['previous_mode'], 'shadow')
         self.assertFalse(data['mode_observation']['exact_switch_known'])
-        self.assertEqual(data['counters']['parse_error_count'], 3)
-        self.assertEqual(data['rates']['parse_error_rate'], 0.1)
-        self.assertEqual(data['rates']['runtime_fallback_rate'], 0.05)
-        self.assertEqual(data['rates']['fallback_rate'], 0.2)
-        self.assertIn('parse_error_rate_gt_5pct', data['alerts'])
-        self.assertIn('fallback_rate_gt_10pct', data['alerts'])
-        self.assertEqual(data['latency_ms']['retrieve']['count'], 2)
-        self.assertEqual(data['latency_ms']['retrieve']['p50_ms'], 20.0)
-        self.assertEqual(data['latency_ms']['retrieve']['p95_ms'], 29.0)
+        scopes = data['measurement_scopes']
+        durable = scopes['durable_window']
+        runtime = scopes['process_runtime']
+        latency_sample = scopes['current_log_sample']
+        self.assertEqual(durable['scope_kind'], 'durable_window')
+        self.assertEqual(durable['window_days'], 7)
+        self.assertEqual(durable['counters']['arbiter_fallback_count'], 5)
+        self.assertEqual(durable['rates']['fallback_rate'], 0.2)
+        self.assertEqual(runtime['scope_kind'], 'process_runtime')
+        self.assertIsNone(runtime['started_at'])
+        self.assertEqual(runtime['counters']['parse_error_count'], 3)
+        self.assertEqual(runtime['rates']['parse_error_rate'], 0.1)
+        self.assertEqual(runtime['rates']['fallback_rate'], 0.05)
+        self.assertEqual(runtime['metrics']['arbiter_call_count'], 20)
+        self.assertEqual(latency_sample['scope_kind'], 'current_log_file_sample')
+        self.assertEqual(latency_sample['log_limit'], 5000)
+        self.assertEqual(latency_sample['latency_ms']['retrieve']['count'], 2)
+        self.assertEqual(latency_sample['latency_ms']['retrieve']['p50_ms'], 20.0)
+        self.assertEqual(latency_sample['latency_ms']['retrieve']['p95_ms'], 29.0)
+        self.assertNotIn('counters', data)
+        self.assertNotIn('rates', data)
+        self.assertNotIn('latency_ms', data)
+        self.assertNotIn('runtime_metrics', data)
+        self.assertIn('process_runtime_parse_error_rate_gt_5pct', data['alerts'])
+        self.assertIn('durable_window_fallback_rate_gt_10pct', data['alerts'])
+        self.assertNotIn('process_runtime_fallback_rate_gt_10pct', data['alerts'])
+        self.assertNotIn('RAW LOG CONTENT MUST NOT LEAK', str(data))
+
+    def test_dashboard_runtime_scope_resets_without_changing_durable_scope(self) -> None:
+        original_get_kpis = self.server.memory_store.get_hermeneutic_kpis
+        original_get_runtime_metrics = self.server.arbiter.get_runtime_metrics
+        original_read_logs = self.server.admin_logs.read_logs
+        runtime_samples = [
+            {
+                'arbiter_parse_error_count': 0,
+                'dialogic_context_hint_parse_error_count': 0,
+                'arbiter_call_count': 4,
+                'dialogic_context_hint_extractor_call_count': 0,
+                'arbiter_fallback_count': 3,
+            },
+            {
+                'arbiter_parse_error_count': 0,
+                'dialogic_context_hint_parse_error_count': 0,
+                'arbiter_call_count': 0,
+                'dialogic_context_hint_extractor_call_count': 0,
+                'arbiter_fallback_count': 0,
+            },
+        ]
+
+        def fake_get_hermeneutic_kpis(*, window_days: int):
+            return {
+                'identity_accept_count': 2,
+                'identity_defer_count': 0,
+                'identity_reject_count': 0,
+                'identity_override_count': 0,
+                'arbiter_fallback_count': 1,
+                'fallback_rate': 0.05,
+            }
+
+        self.server.memory_store.get_hermeneutic_kpis = fake_get_hermeneutic_kpis
+        self.server.arbiter.get_runtime_metrics = lambda: runtime_samples.pop(0)
+        self.server.admin_logs.read_logs = lambda *, limit: []
+        try:
+            before_restart = self.client.get('/api/admin/hermeneutics/dashboard').get_json()
+            after_restart = self.client.get('/api/admin/hermeneutics/dashboard').get_json()
+        finally:
+            self.server.memory_store.get_hermeneutic_kpis = original_get_kpis
+            self.server.arbiter.get_runtime_metrics = original_get_runtime_metrics
+            self.server.admin_logs.read_logs = original_read_logs
+
+        before_scopes = before_restart['measurement_scopes']
+        after_scopes = after_restart['measurement_scopes']
+        self.assertEqual(before_scopes['durable_window'], after_scopes['durable_window'])
+        self.assertEqual(before_scopes['durable_window']['rates']['fallback_rate'], 0.05)
+        self.assertEqual(before_scopes['process_runtime']['rates']['fallback_rate'], 0.75)
+        self.assertEqual(after_scopes['process_runtime']['rates']['fallback_rate'], 0.0)
+        self.assertEqual(after_scopes['process_runtime']['counters']['parse_error_count'], 0)
+        self.assertIsNone(after_scopes['process_runtime']['started_at'])
+        self.assertIn('process_runtime_fallback_rate_gt_10pct', before_restart['alerts'])
+        self.assertNotIn('process_runtime_fallback_rate_gt_10pct', after_restart['alerts'])
 
     def test_corrections_export_filters_events_invalid_timestamps_and_cutoff(self) -> None:
         observed = {'limit': None}

@@ -1044,7 +1044,7 @@ n'est pas commencé.
 Traiter séparément les cinq mécanismes :
 
 1. sources Web et blocs injectés ne sont pas la même unité — **L7.3.1 fermé** ;
-2. fenêtre durable et compteurs process-local doivent être nommés sans ambiguïté ;
+2. fenêtre durable et compteurs process-local doivent être nommés sans ambiguïté — **L7.3.2 fermé** ;
 3. `failed` doit suivre le compteur canonique du pipeline ;
 4. buckets et conversations doivent employer la même borne temporelle ;
 5. réception du callback de log ne doit pas devenir `audit.stored=true` si
@@ -1079,7 +1079,39 @@ rôle `web_lane` quand le bloc existe sans insertion. Le chemin réel
 couvert, ainsi que `5/0/5`, `0/0/0`, `1/1/0`, final lock, erreur Web et absence
 de contenu brut. La mutation demandée rétablit le calcul par bloc, fait
 réapparaître `5/1/4`, puis le correctif exact est restauré. L7.3 reste ouvert;
-L7.3.2 n'est pas commencé.
+L7.3.2 est fermé.
+
+#### L7.3.2 — Portée des compteurs herméneutiques
+
+**Fermé le 6 septembre 2026.** La revalidation au HEAD initial
+`012664a915397b495066b2225e0ba9e2f24a46df` confirme trois populations
+distinctes dans le dashboard herméneutique : les KPI persistés de
+`get_hermeneutic_kpis()` sont bornés par `window_days`; les compteurs de
+`arbiter.get_runtime_metrics()` vivent uniquement dans le processus courant et
+sont remis à zéro au redémarrage; les latences sont calculées sur au plus
+`log_limit` entrées du seul fichier de log courant. L'ancien
+`max(durable_fallback_rate, runtime_fallback_rate)` mélangeait deux populations
+sans portée statistique cohérente, et le renderer parlait à tort d'une unique
+« fenêtre courante ».
+
+L'API groupe désormais les faits existants sous `measurement_scopes` :
+`durable_window` porte `window_days`, ses compteurs et son taux de fallback;
+`process_runtime` porte les compteurs, taux et métriques du processus, avec
+`started_at=null` puisque ce timestamp n'est pas collecté; `current_log_sample`
+porte `log_limit` et les latences du fichier courant. Les taux de fallback et
+leurs alertes restent séparés, avec des reason codes qui nomment mesure et
+portée. Les anciens agrégats top-level ambigus sont retirés et le frontend rend
+trois cartes explicites. Aucune collecte, route, page, télémétrie, donnée brute
+ou capacité produit n'est ajoutée.
+
+Les reproductions rouges traversent la route et le service réels pour les deux
+ordres durable/runtime, puis un redémarrage simulé; le renderer réel prouve les
+trois libellés, le début process inconnu et la borne `log_limit`. Le témoin
+causal réintroduit brièvement « fenêtre courante », fait échouer le test Node,
+puis le correctif exact est restauré. Les tests ciblés passent : 17 tests
+Python service/routes, 6 tests Node renderer et voisin immédiat, puis un unique
+scénario Chromium herméneutique ciblé. L7.3 reste ouvert; L7.3.3 n'est pas
+commencé.
 
 ### L7.4 — Réglages Identity historiques — F18
 

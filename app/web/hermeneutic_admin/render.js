@@ -264,10 +264,15 @@
   const renderOverview = (cardsTarget, runtimeMetricsTarget, dashboard) => {
     if (!cardsTarget || !runtimeMetricsTarget) return;
 
-    const counters = dashboard && typeof dashboard.counters === "object" ? dashboard.counters : {};
-    const rates = dashboard && typeof dashboard.rates === "object" ? dashboard.rates : {};
-    const latency = dashboard && typeof dashboard.latency_ms === "object" ? dashboard.latency_ms : {};
+    const scopes = dashboard && typeof dashboard.measurement_scopes === "object" ? dashboard.measurement_scopes : {};
+    const scope = (name) => (scopes && typeof scopes[name] === "object" ? scopes[name] : {});
+    const scopeMapping = (value) => (value && typeof value === "object" && !Array.isArray(value) ? value : {});
+    const durable = scope("durable_window"), runtime = scope("process_runtime"), logSample = scope("current_log_sample");
+    const durableCounters = scopeMapping(durable.counters), durableRates = scopeMapping(durable.rates);
+    const runtimeCounters = scopeMapping(runtime.counters), runtimeRates = scopeMapping(runtime.rates);
+    const latency = scopeMapping(logSample.latency_ms);
     const alerts = Array.isArray(dashboard?.alerts) ? dashboard.alerts : [];
+    const metricChips = (mappings) => mappings.flatMap((mapping) => Object.keys(mapping).sort().map((key) => `${key}=${mapping[key]}`));
 
     cardsTarget.innerHTML = "";
     const cards = [
@@ -280,24 +285,19 @@
         ],
       },
       {
-        title: "Compteurs",
-        body: "Compteurs runtime hermeneutiques.",
-        chips: Object.keys(counters).sort().map((key) => `${key}=${counters[key]}`),
+        title: "Mesures durables",
+        body: `KPIs persistes bornes aux ${durable.window_days || "?"} derniers jours.`,
+        chips: [`scope=${toText(durable.scope_kind) || "inconnu"}`, ...metricChips([durableCounters, durableRates])],
       },
       {
-        title: "Rates",
-        body: "Rates deja calculees par le backend.",
-        chips: Object.keys(rates).sort().map((key) => `${key}=${rates[key]}`),
+        title: "Processus courant",
+        body: `Compteurs et taux depuis le demarrage courant; debut ${toText(runtime.started_at) || "inconnu"}.`,
+        chips: [`scope=${toText(runtime.scope_kind) || "inconnu"}`, ...metricChips([runtimeCounters, runtimeRates])],
       },
       {
-        title: "Latences",
-        body: "Latences stage par stage sur la fenetre courante.",
-        chips: Object.keys(latency)
-          .sort()
-          .map((key) => {
-            const item = latency[key] || {};
-            return `${key}: p50=${item.p50_ms || 0} / p95=${item.p95_ms || 0}`;
-          }),
+        title: "Echantillon du fichier de log courant",
+        body: `Latences calculees sur au plus ${logSample.log_limit || "?"} entrees du fichier courant.`,
+        chips: [`scope=${toText(logSample.scope_kind) || "inconnu"}`, ...Object.keys(latency).sort().map((key) => `${key}: p50=${latency[key]?.p50_ms || 0} / p95=${latency[key]?.p95_ms || 0}`)],
       },
     ];
 
@@ -327,7 +327,7 @@
     });
     cardsTarget.appendChild(fragment);
 
-    renderReadonlyEntries(runtimeMetricsTarget, mappingToEntries(dashboard?.runtime_metrics, "dashboard"));
+    renderReadonlyEntries(runtimeMetricsTarget, mappingToEntries(runtime?.metrics, "process_runtime"));
   };
 
   const replaceSelectOptions = (selectElement, options, selectedValue) => {

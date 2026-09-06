@@ -61,13 +61,14 @@ Juste apres redemarrage:
    - `mode`
    - `mode_observation`
    - `alerts`
-   - `counters`
-   - `rates`
-   - `latency_ms`
-   - `runtime_metrics`
+   - `measurement_scopes.durable_window` pour les KPI persistés bornés par `window_days`
+   - `measurement_scopes.process_runtime` pour les compteurs et taux du processus courant
+   - `measurement_scopes.current_log_sample` pour les latences du seul fichier courant, bornées par `log_limit`
    Notes:
    - `mode_observation` decrit une observation retenue du mode courant dans les logs admin, pas une bascule exacte persistee;
    - `observed_since` est donc une premiere observation honnete du segment courant, pas un faux timestamp de transition.
+   - `process_runtime.started_at=null` signifie que le debut du processus est inconnu, pas qu'il coincide avec `window_days`;
+   - les taux et alertes de fallback durable et process-local ne sont jamais fusionnes.
 5. Verifier cote backend via `GET /api/admin/logs` que les tours post-restart portent bien les marqueurs d'enforcement reel:
    - `memory_mode_apply` avec `mode=enforced_all` et `source=arbiter_enforced`
    - `identity_mode_apply` avec `mode=enforced_all` et `action=record_legacy_identity_diagnostics_and_mutable_judge`
