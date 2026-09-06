@@ -20,6 +20,115 @@ from tools import web_search_profile, web_search_profile_policy, web_search_sour
 
 
 class WebSearchProfilePolicyTests(unittest.TestCase):
+    def test_expected_path_pattern_uses_only_parsed_hostname_and_bounded_path(self) -> None:
+        policy = web_search_profile_policy.WebSearchProfilePolicy(
+            profile=web_search_profile.PROFILE_DOCUMENTATION_OFFICIELLE,
+            mode='test',
+            expected_domains=('openrouter.ai/docs',),
+        )
+
+        for url in (
+            'https://evil.test/page?next=https://openrouter.ai/docs',
+            'https://evil.test/page#openrouter.ai/docs',
+            'https://evil.test/openrouter.ai/docs',
+            'https://openrouter.ai.evil.test/docs',
+            'https://openrouter.ai/docs-evil',
+        ):
+            with self.subTest(url=url):
+                self.assertEqual(
+                    web_search_profile_policy.classify_source_against_policy({'url': url}, policy),
+                    'neutral',
+                )
+
+        for url in (
+            'https://openrouter.ai/docs',
+            'https://www.openrouter.ai./docs/api-reference',
+            'https://api.openrouter.ai/docs/reference',
+        ):
+            with self.subTest(url=url):
+                self.assertEqual(
+                    web_search_profile_policy.classify_source_against_policy({'url': url}, policy),
+                    'expected',
+                )
+
+        host_only_policy = web_search_profile_policy.WebSearchProfilePolicy(
+            profile=web_search_profile.PROFILE_DOCUMENTATION_OFFICIELLE,
+            mode='test',
+            expected_domains=('openrouter.ai',),
+        )
+        self.assertEqual(
+            web_search_profile_policy.classify_source_against_policy(
+                {'url': 'https://openrouter.ai@evil.test/docs'},
+                host_only_policy,
+            ),
+            'neutral',
+        )
+
+    def test_source_domain_cannot_override_an_exploitable_url(self) -> None:
+        policy = web_search_profile_policy.WebSearchProfilePolicy(
+            profile=web_search_profile.PROFILE_DOCUMENTATION_OFFICIELLE,
+            mode='test',
+            expected_domains=('openrouter.ai/docs',),
+        )
+
+        self.assertEqual(
+            web_search_profile_policy.classify_source_against_policy(
+                {'url': 'https://openrouter.ai/docs/reference', 'source_domain': 'evil.test'},
+                policy,
+            ),
+            'expected',
+        )
+        self.assertEqual(
+            web_search_profile_policy.classify_source_against_policy(
+                {'url': 'https://evil.test/docs/reference', 'source_domain': 'openrouter.ai'},
+                policy,
+            ),
+            'neutral',
+        )
+
+    def test_suffix_and_wildcard_patterns_preserve_legitimate_official_hosts(self) -> None:
+        policy = web_search_profile_policy.WebSearchProfilePolicy(
+            profile=web_search_profile.PROFILE_ADMINISTRATIF_FRANCAIS,
+            mode='test',
+            expected_domains=('.gouv.fr', '.europa.eu', 'ac-*.fr'),
+            secondary_domains=('.edu',),
+        )
+
+        for url in (
+            'https://education.gouv.fr/programmes',
+            'https://digital-strategy.ec.europa.eu/policy',
+            'https://ac-nice.fr/education',
+        ):
+            with self.subTest(url=url):
+                self.assertEqual(
+                    web_search_profile_policy.classify_source_against_policy({'url': url}, policy),
+                    'expected',
+                )
+        self.assertEqual(
+            web_search_profile_policy.classify_source_against_policy(
+                {'url': 'https://law.stanford.edu/research'},
+                policy,
+            ),
+            'secondary',
+        )
+
+    def test_missing_or_invalid_url_is_neutral_even_with_source_domain(self) -> None:
+        policy = web_search_profile_policy.WebSearchProfilePolicy(
+            profile=web_search_profile.PROFILE_DOCUMENTATION_OFFICIELLE,
+            mode='test',
+            expected_domains=('openrouter.ai',),
+        )
+
+        for url in ('', 'openrouter.ai/docs', 'https:///docs', 'https://[invalid/docs'):
+            with self.subTest(url=url):
+                self.assertEqual(
+                    web_search_profile_policy.classify_source_against_policy(
+                        {'url': url, 'source_domain': 'openrouter.ai'},
+                        policy,
+                    ),
+                    'neutral',
+                )
+
     def test_documentation_officielle_is_strict_source_first_when_authority_is_named(self) -> None:
         plan = web_search_source_first.build_source_first_plan(
             "documentation officielle Adobe Photoshop",

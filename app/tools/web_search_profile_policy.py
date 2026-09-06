@@ -408,32 +408,58 @@ def _matches_any(source: Mapping[str, Any], patterns: Sequence[str]) -> bool:
 
 
 def _source_matches_pattern(source: Mapping[str, Any], pattern: str) -> bool:
+    return source_url_matches_pattern(source.get('url'), pattern)
+
+
+def source_url_matches_pattern(url: Any, pattern: str) -> bool:
     expected = str(pattern or '').strip().lower()
     if not expected:
         return False
-    url = str(source.get('url') or '').strip().lower()
-    domain = _source_domain(source)
-    if '/' in expected and expected in url:
-        return True
-    expected_domain = expected.split('/', 1)[0]
+    identity = source_url_hostname_path(url)
+    if identity is None:
+        return False
+    domain, path = identity
+    expected_domain, separator, expected_path = expected.partition('/')
+    expected_domain = expected_domain.rstrip('.')
+    if not expected_domain.startswith('.'):
+        expected_domain = expected_domain.removeprefix('www.')
     if expected_domain == '.gouv.fr':
-        return domain == 'gouv.fr' or domain.endswith('.gouv.fr')
-    if expected_domain == '.europa.eu':
-        return domain == 'europa.eu' or domain.endswith('.europa.eu')
-    if expected_domain == '.edu':
-        return domain.endswith('.edu')
-    if '*' in expected_domain:
+        domain_matches = domain == 'gouv.fr' or domain.endswith('.gouv.fr')
+    elif expected_domain == '.europa.eu':
+        domain_matches = domain == 'europa.eu' or domain.endswith('.europa.eu')
+    elif expected_domain == '.edu':
+        domain_matches = domain.endswith('.edu')
+    elif '*' in expected_domain:
         regex = '^' + re.escape(expected_domain).replace('\\*', '[a-z0-9-]+') + '$'
-        return bool(re.match(regex, domain))
-    return domain == expected_domain or domain.endswith(f'.{expected_domain}')
+        domain_matches = bool(re.match(regex, domain))
+    else:
+        domain_matches = domain == expected_domain or domain.endswith(f'.{expected_domain}')
+    if not domain_matches:
+        return False
+    if not separator:
+        return True
+    return _path_matches(path, f'/{expected_path}')
 
 
-def _source_domain(source: Mapping[str, Any]) -> str:
-    domain = str(source.get('source_domain') or '').strip().lower().removeprefix('www.')
-    if domain:
-        return domain
-    parsed = urlparse(str(source.get('url') or ''))
-    return parsed.netloc.lower().removeprefix('www.')
+def source_url_hostname_path(url: Any) -> tuple[str, str] | None:
+    value = str(url or '').strip()
+    if not value:
+        return None
+    try:
+        parsed = urlparse(value)
+        hostname = str(parsed.hostname or '').strip().lower().rstrip('.')
+        _ = parsed.port
+    except ValueError:
+        return None
+    if parsed.scheme.lower() not in {'http', 'https'} or not hostname or any(char.isspace() for char in hostname):
+        return None
+    return hostname.removeprefix('www.'), str(parsed.path or '/').lower()
+
+
+def _path_matches(path: str, expected_path: str) -> bool:
+    expected = '/' + str(expected_path or '').strip().lower().strip('/')
+    actual = '/' + str(path or '').strip().lower().strip('/')
+    return actual == expected or actual.startswith(f'{expected}/')
 
 
 def _source_used(source: Mapping[str, Any]) -> bool:

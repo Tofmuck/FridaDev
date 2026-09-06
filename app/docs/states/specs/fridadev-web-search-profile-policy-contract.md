@@ -44,6 +44,15 @@ Decisions humaines integrees:
 - actualite: Reuters utile mais jamais source unique, sources institutionnelles prioritaires pour actualite institutionnelle;
 - latence web manuel normal ciblee autour de 20 a 25 secondes.
 
+La classification expected/secondary/situated/downrank repose sur le
+`hostname` et le `path` parsés de l'URL HTTP(S). Le hostname est normalise en
+casse, sans prefixe `www.` ni point terminal; domaines exacts, sous-domaines,
+suffixes `.gouv.fr`, `.europa.eu`, `.edu` et wildcard `ac-*.fr` restent
+reconnus. Un pattern de chemin exige le chemin exact ou un segment descendant:
+`/docs-evil` ne vaut pas `/docs`. Query, fragment, userinfo et une valeur
+`source_domain` contradictoire sont ignores; une URL absente ou invalide est
+neutre.
+
 ## Politiques par profil
 
 | Profil | Mode | Domaines attendus | Secondaires | Declasses | Budget crawl | Latence cible |

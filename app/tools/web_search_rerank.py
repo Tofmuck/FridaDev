@@ -5,7 +5,6 @@ from dataclasses import dataclass
 import re
 import unicodedata
 from typing import Any
-from urllib.parse import urlparse
 
 from tools import web_search_profile, web_search_profile_policy, web_search_source_first
 
@@ -278,12 +277,14 @@ def _score_candidate(
     profile_policy: web_search_profile_policy.WebSearchProfilePolicy,
 ) -> _Candidate:
     url = str(result.get("url") or "")
-    domain = _domain(url)
+    identity = web_search_profile_policy.source_url_hostname_path(url)
+    domain, path = identity if identity is not None else ("", "")
     title = str(result.get("title") or "")
     content = str(result.get("content") or "")
-    searchable = _normalize_text(" ".join([title, content, url]))
+    content_searchable = _normalize_text(" ".join([title, content]))
+    searchable = _normalize_text(" ".join([title, content, domain, path]))
     source_category = web_search_profile_policy.classify_source_against_policy(
-        {"url": url, "source_domain": domain},
+        {"url": url},
         profile_policy,
     )
     score = 1000.0 - (raw_rank * 2.0)
@@ -308,8 +309,10 @@ def _score_candidate(
         profile=profile,
         domain=domain,
         url=url,
+        path=path,
         title=title,
         searchable=searchable,
+        content_searchable=content_searchable,
         has_essential_match=bool(matched_terms),
         has_technical_alignment=has_technical_alignment,
         source_first_plan=source_first_plan,
@@ -331,8 +334,10 @@ def _apply_profile_score(
     profile: str,
     domain: str,
     url: str,
+    path: str,
     title: str,
     searchable: str,
+    content_searchable: str,
     has_essential_match: bool,
     has_technical_alignment: bool,
     source_first_plan: web_search_source_first.SourceFirstPlan,
@@ -363,7 +368,7 @@ def _apply_profile_score(
         return score, reasons
 
     if profile == web_search_profile.PROFILE_DOCUMENTATION_OFFICIELLE:
-        if _source_first_domain_matches(domain, url, source_first_plan) and _source_first_authority_aligned(
+        if _source_first_domain_matches(url, source_first_plan) and _source_first_authority_aligned(
             domain,
             searchable,
             source_first_plan,
@@ -373,7 +378,7 @@ def _apply_profile_score(
             reasons.append("source_first_expected_domain_soft_bonus")
             reasons.append("profile_expected_domain_soft_bonus")
             reasons.append("official_source_soft_bonus")
-        docs_like = _is_technical_docs_like(domain, url)
+        docs_like = _is_technical_docs_like(domain, path)
         known_official = _domain_in(domain, _TECHNICAL_OFFICIAL_DOMAINS)
         if known_official:
             if has_technical_alignment:
@@ -387,7 +392,7 @@ def _apply_profile_score(
             score += 105.0
             reasons.append("technical_aligned_docs_domain_soft_bonus")
             reasons.append("official_source_soft_bonus")
-        if "/docs" in url.lower() or "documentation" in searchable or "api" in searchable:
+        if _path_matches_marker(path, "/docs") or "documentation" in content_searchable or "api" in content_searchable:
             score += 24.0
             reasons.append("technical_documentation_soft_bonus")
         score, reasons = _dictionary_or_conjugator_downrank(domain, title, score, reasons)
@@ -584,29 +589,26 @@ def _technical_request_terms(essential_terms: set[str]) -> set[str]:
     }
 
 
-def _is_technical_docs_like(domain: str, url: str) -> bool:
+def _is_technical_docs_like(domain: str, path: str) -> bool:
     if any(domain.startswith(prefix) for prefix in _TECHNICAL_DOC_DOMAIN_PREFIXES):
         return True
-    url_n = str(url or "").lower()
-    return any(marker in url_n for marker in _TECHNICAL_DOC_PATH_MARKERS)
+    return any(_path_matches_marker(path, marker) for marker in _TECHNICAL_DOC_PATH_MARKERS)
+
+
+def _path_matches_marker(path: str, marker: str) -> bool:
+    expected = "/" + str(marker or "").strip().lower().strip("/")
+    actual = "/" + str(path or "").strip().lower().strip("/")
+    return actual == expected or actual.startswith(f"{expected}/")
 
 
 def _source_first_domain_matches(
-    domain: str,
     url: str,
     source_first_plan: web_search_source_first.SourceFirstPlan,
 ) -> bool:
     if not source_first_plan.active:
         return False
-    url_n = str(url or "").lower()
     for probable in source_first_plan.probable_domains:
-        expected = str(probable or "").strip().lower()
-        if not expected:
-            continue
-        expected_domain = expected.split("/", 1)[0]
-        if domain == expected_domain or domain.endswith(f".{expected_domain}"):
-            return True
-        if expected in url_n:
+        if web_search_profile_policy.source_url_matches_pattern(url, probable):
             return True
     return False
 
@@ -631,7 +633,8 @@ def _normalize_text(value: Any) -> str:
 
 
 def _domain(url: str) -> str:
-    return urlparse(str(url or "")).netloc.strip().lower().removeprefix("www.")
+    identity = web_search_profile_policy.source_url_hostname_path(url)
+    return identity[0] if identity is not None else ""
 
 
 def _domain_in(domain: str, domains: set[str]) -> bool:

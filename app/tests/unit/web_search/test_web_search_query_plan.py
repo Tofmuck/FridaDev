@@ -30,16 +30,31 @@ class WebSearchQueryPlanTests(unittest.TestCase):
             [],
         )
 
-    def test_actualite_produces_at_most_two_recent_official_queries(self) -> None:
+    def test_actualite_football_europe_does_not_inject_ai_act_topic(self) -> None:
         queries = web_search_query_plan.build_specialized_queries(
-            "Quels changements récents sur la régulation IA Europe ?",
-            "régulation IA Europe 2026 changements récents sources",
+            "Quelles sont les actualités du football en Europe ?",
+            "actualités football Europe",
             web_search_profile.PROFILE_ACTUALITE,
         )
 
-        self.assertLessEqual(len(queries), 2)
-        self.assertTrue(any("actualite" in query.lower() or "AI Act" in query for query in queries))
-        self.assertTrue(any("ec.europa.eu" in query for query in queries))
+        self.assertEqual(
+            queries,
+            [
+                "actualités football Europe actualite recente sources officielles",
+                "actualités football Europe dernieres annonces source officielle",
+            ],
+        )
+        self.assertFalse(any("AI Act" in query or "ec.europa.eu" in query for query in queries))
+
+    def test_actualite_ai_act_keeps_subject_from_primary_query(self) -> None:
+        queries = web_search_query_plan.build_specialized_queries(
+            "Quels changements récents sur l'AI Act en Europe ?",
+            "AI Act Europe changements récents",
+            web_search_profile.PROFILE_ACTUALITE,
+        )
+
+        self.assertEqual(len(queries), 2)
+        self.assertTrue(all(query.startswith("AI Act Europe changements récents") for query in queries))
 
     def test_documentation_officielle_orients_to_source_first_docs(self) -> None:
         queries = web_search_query_plan.build_specialized_queries(

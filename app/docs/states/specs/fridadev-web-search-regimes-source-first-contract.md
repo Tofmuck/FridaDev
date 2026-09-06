@@ -41,6 +41,11 @@ Ordre de decision:
 5. Signaux academiques larges -> `academique`.
 6. Sinon -> `general_divers`.
 
+Les requetes secondaires du profil `actualite` restent bornees et derivees du
+`primary_query`. Elles n'introduisent aucune entite, institution, legislation
+ou date fixe absente du sujet; un sujet AI Act reste present seulement parce
+que la requete primaire le porte deja.
+
 Les demandes Q&A techniques explicites comme StackOverflow, GitHub issues, AskUbuntu ou SuperUser restent visibles comme appoint potentiel mais ne deviennent pas `documentation_officielle`.
 
 ## Source-first
@@ -76,7 +81,13 @@ Promotion forte seulement si:
 
 - l'autorite cible vient de la demande reelle;
 - le domaine probable est aligne avec cette autorite;
-- le domaine, l'URL ou le titre contient l'autorite ou le produit demande.
+- le hostname, le path ou le titre contient l'autorite ou le produit demande.
+
+L'identite d'une source est derivee d'une URL HTTP(S) exploitable. Le hostname
+est compare exactement ou comme sous-domaine legitime; un pattern avec chemin
+est compare au seul path avec une frontiere de segment. Query, fragment,
+userinfo et metadonnee `source_domain` ne peuvent ni etablir un domaine attendu
+ni promouvoir une source. Une URL absente ou invalide reste neutre.
 
 Adobe, Microsoft, Stripe, OpenRouter, MDN et Docker sont des cas de garde-fou, pas des normes cachees. Une requete generique `documentation officielle` ou `API documentation` ne doit promouvoir aucun vendor de fixture.
 

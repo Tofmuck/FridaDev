@@ -31,6 +31,12 @@ Le reranker utilise des signaux locaux:
 
 Ces signaux restent souples. Les resultats declasses restent inspectables dans les sources.
 
+Les signaux fondes sur l'URL utilisent seulement son `hostname` et son `path`
+parsés. Query, fragment et userinfo n'alimentent ni alignement, ni caractère
+docs-like, ni bonus documentaire. Les marqueurs de chemin respectent une
+frontière de segment; un domaine officiel mentionné dans un chemin tiers ou un
+hostname tel que `openrouter.ai.evil.test` n'est pas une autorité attendue.
+
 ## Regles par profil
 
 ### `documentation_officielle`

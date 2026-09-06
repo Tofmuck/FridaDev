@@ -37,13 +37,7 @@ def _context_text(original_user_message: str, primary_query: str) -> str:
     return _normalize_query(f'{original_user_message} {primary_query}')
 
 
-def _actualite_queries(original_user_message: str, primary_query: str) -> list[str]:
-    text = _context_text(original_user_message, primary_query)
-    if _contains_any(text, ('europe', 'ia', 'intelligence artificielle', 'regulation', 'ai act')):
-        return [
-            f'{primary_query} actualite recente sources officielles',
-            'AI Act intelligence artificielle Europe 2026 site:ec.europa.eu',
-        ]
+def _actualite_queries(primary_query: str) -> list[str]:
     return [
         f'{primary_query} actualite recente sources officielles',
         f'{primary_query} dernieres annonces source officielle',
@@ -149,7 +143,7 @@ def build_specialized_queries(
         )
 
     if profile == web_search_profile.PROFILE_ACTUALITE:
-        raw_candidates = _actualite_queries(original_user_message, primary)
+        raw_candidates = _actualite_queries(primary)
     elif profile == web_search_profile.PROFILE_DOCUMENTATION_OFFICIELLE:
         raw_candidates = _documentation_officielle_queries(original_user_message, primary, source_first_plan)
     elif profile == web_search_profile.PROFILE_ADMINISTRATIF_FRANCAIS:

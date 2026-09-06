@@ -291,6 +291,87 @@ class WebSearchRerankTests(unittest.TestCase):
         self.assertIn("source_first_authority_domain_soft_bonus", reranked[0]["rerank_reason_codes"])
         self.assertIn("source_first_expected_domain_soft_bonus", reranked[0]["rerank_reason_codes"])
 
+    def test_source_first_ignores_official_domain_in_query_fragment_or_userinfo(self) -> None:
+        for deceptive_url, probable_domain in (
+            ("https://evil.test/page?next=https://openrouter.ai/docs", "openrouter.ai/docs"),
+            ("https://evil.test/page#openrouter.ai/docs", "openrouter.ai/docs"),
+            ("https://openrouter.ai@evil.test/page", "openrouter.ai"),
+        ):
+            with self.subTest(url=deceptive_url):
+                source_first_plan = {
+                    "source_first_active": True,
+                    "source_first_authority": "OpenRouter",
+                    "source_first_product": "web search",
+                    "source_first_probable_domains": [probable_domain],
+                    "source_first_authority_terms": ["openrouter"],
+                }
+                reranked, _observability = web_search_rerank.rerank_results(
+                    [
+                        {
+                            "title": "OpenRouter web search",
+                            "url": deceptive_url,
+                            "content": "OpenRouter web search reference",
+                        },
+                        {
+                            "title": "Neutral result",
+                            "url": "https://neutral.test/page",
+                            "content": "OpenRouter web search reference",
+                        },
+                    ],
+                    user_msg="documentation officielle OpenRouter web search",
+                    primary_query="OpenRouter web search documentation officielle",
+                    search_profile=web_search_profile.PROFILE_DOCUMENTATION_OFFICIELLE,
+                    max_results=5,
+                    enabled=True,
+                    source_first_plan=source_first_plan,
+                )
+
+                deceptive = next(item for item in reranked if item["url"] == deceptive_url)
+                self.assertNotIn("source_first_expected_domain_soft_bonus", deceptive["rerank_reason_codes"])
+                self.assertNotIn("profile_expected_domain_soft_bonus", deceptive["rerank_reason_codes"])
+                self.assertNotIn("technical_documentation_soft_bonus", deceptive["rerank_reason_codes"])
+                self.assertNotIn("official_source_soft_bonus", deceptive["rerank_reason_codes"])
+
+    def test_source_first_requires_real_domain_and_bounded_expected_path(self) -> None:
+        source_first_plan = {
+            "source_first_active": True,
+            "source_first_authority": "OpenRouter",
+            "source_first_product": "web search",
+            "source_first_probable_domains": ["openrouter.ai/docs"],
+            "source_first_authority_terms": ["openrouter"],
+        }
+        urls = (
+            "https://openrouter.ai.evil.test/docs",
+            "https://evil.test/openrouter.ai/docs",
+            "https://openrouter.ai/docs-evil",
+            "https://openrouter.ai/docs/reference",
+        )
+
+        reranked, _observability = web_search_rerank.rerank_results(
+            [
+                {
+                    "title": "OpenRouter web search",
+                    "url": url,
+                    "content": "OpenRouter web search reference",
+                }
+                for url in urls
+            ],
+            user_msg="documentation officielle OpenRouter web search",
+            primary_query="OpenRouter web search documentation officielle",
+            search_profile=web_search_profile.PROFILE_DOCUMENTATION_OFFICIELLE,
+            max_results=5,
+            enabled=True,
+            source_first_plan=source_first_plan,
+        )
+
+        by_url = {item["url"]: item["rerank_reason_codes"] for item in reranked}
+        for url in urls[:3]:
+            self.assertNotIn("source_first_expected_domain_soft_bonus", by_url[url])
+            self.assertNotIn("profile_expected_domain_soft_bonus", by_url[url])
+        self.assertIn("source_first_expected_domain_soft_bonus", by_url[urls[3]])
+        self.assertIn("profile_expected_domain_soft_bonus", by_url[urls[3]])
+        self.assertNotIn("technical_documentation_soft_bonus", by_url[urls[2]])
+
     def test_documentation_officielle_phase5_expected_domain_reason_is_not_vendor_overfit(self) -> None:
         reranked, _observability = web_search_rerank.rerank_results(
             [

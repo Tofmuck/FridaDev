@@ -2,8 +2,8 @@
 
 Date de cadrage : 4 septembre 2026.
 
-**Statut : roadmap ouverte ; L1 à L5 et L6.1 à L6.4 fermés ; L6 en cours ;
-L6.5, L7 et Z non commencés.**
+**Statut : roadmap ouverte ; L1 à L5 et L6.1 à L6.5 fermés ; L6 en cours ;
+L6.6, L7 et Z non commencés.**
 
 ## 1. But, source et règle de vérité
 
@@ -74,7 +74,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 | 3 | L3 | Compensation Nextcloud possédée | F08 | xhigh | fermé — F08 corrigé |
 | 4 | L4 | Conservation de la projection analytics | F21 | high | fermé — F21 corrigé |
 | 5 | L5 | Atomicité des écritures Workspace | F13b, F14a, F19b | xhigh par sous-lot | fermé — F13b, F14a et F19b corrigés |
-| 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | en cours — L6.1/F05, L6.2/F10, L6.3/F12a-F12b et L6.4/F12c corrigés ; L6.5 non commencé |
+| 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | en cours — L6.1/F05, L6.2/F10, L6.3/F12a-F12b, L6.4/F12c et L6.5/F15a-F15b corrigés ; L6.6 non commencé |
 | 7 | L7 | Vérité d'API, observabilité et outils historiques | F16–F18, F20, F22, F24 et dette documentaire | high | non commencé |
 | 8 | Z | Réconciliation finale avec le grand audit | tous les Fxx et réserves non numérotées | xhigh | non commencé |
 
@@ -89,6 +89,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 - [x] L6.2 fermé ; F10 corrigé sur les quatre familles frontend confirmées.
 - [x] L6.3 fermé ; F12a et F12b corrigés sans commencer F12c/L6.4.
 - [x] L6.4 fermé ; F12c corrigé sans commencer L6.5.
+- [x] L6.5 fermé ; F15a et F15b corrigés sans commencer L6.6.
 - [ ] L6 et ses décisions conditionnelles fermés.
 - [ ] L7 et ses décisions conditionnelles fermés.
 - [ ] Z réconcilie chaque finding et archive la roadmap.
@@ -781,13 +782,51 @@ classification d'erreur Agenda. Une mutation contrôlée rematérialisant les
 périodes remet la preuve YEARLY centrale au rouge ; l'empreinte identique avant
 et après restauration prouve le retour exact au correctif. Les preuves restent
 synthétiques et sans provider, CalDAV réel, DB opérateur, JavaScript ou
-Chromium. L6.5 n'est pas commencé.
+Chromium. L6.5 n'avait pas été commencé par ce sous-lot.
 
 ### L6.5 — Web : requête pertinente et source réellement officielle — F15a/F15b
 
 Retirer ou dériver du sujet réel le gabarit AI Act hors sujet. Comparer les
 sources à partir du host/path parsé plutôt que d'une sous-chaîne de l'URL
 complète. Conserver budgets, profils et reranking existants.
+
+**Statut : fermé — F15a et F15b corrigés.**
+
+**Revalidation au HEAD `3b0bfcfb637cb69f1bc052ca1ae7a888840cfb5d`.**
+F1 et F2 sont confirmés : les marqueurs larges `europe`, `ia` ou `regulation`
+activaient un gabarit fixe AI Act ; « actualités du football en Europe »
+produisait donc `AI Act intelligence artificielle Europe 2026
+site:ec.europa.eu`. F3 est confirmé : les deux secondaires peuvent être
+dérivées du `primary_query`; une demande AI Act le conserve naturellement
+dans chacune. F4 et F5 sont confirmés : source-first et profile policy
+acceptaient une occurrence attendue dans l'URL complète, y compris query,
+fragment, chemin tiers ou suffixe de chemin sans frontière. F6 est confirmé :
+les signaux docs-like et le bonus documentaire lisaient eux aussi l'URL brute.
+F7 est confirmé : `hostname` et `path` parsés préservent domaines exacts,
+sous-domaines, `.gouv.fr`, `.europa.eu`, `.edu` et `ac-*.fr`, avec une frontière
+de segment pour les chemins. F8 est confirmé : budgets, profils, ordre souple,
+reason codes et champs d'observabilité n'ont pas besoin de changer.
+
+**Décision et correctif.** `_actualite_queries()` ne contient plus d'entité
+fixe et compose ses deux candidats depuis le sujet primaire, sans nouvelle
+heuristique sémantique. La comparaison URL est mutualisée dans la seule policy
+existante : schéma HTTP(S), `hostname` normalisé en casse, sans `www.` ni point
+terminal, et `path` borné par segment. Query, fragment, userinfo et
+`source_domain` ne participent plus à l'identité de classement ; une URL
+absente ou invalide reste neutre. Le reranker réutilise cette comparaison pour
+source-first et ne nourrit plus ses signaux textuels ou documentaires avec
+l'URL brute. Aucun chemin permissif concurrent n'est conservé.
+
+**Preuves et limites.** Les reproductions rouges couvraient football/Europe,
+le contre-cas AI Act, un domaine officiel caché dans query, fragment, userinfo
+ou chemin tiers, `openrouter.ai.evil.test`, `/docs-evil`, un hostname officiel
+réel et un `source_domain` contradictoire. Après correction, les quatre suites
+ciblées query plan, source-first, profile policy et reranking passent `63/63` ;
+deux tests de composition Web existants portent la preuve totale à `65/65`.
+Une mutation rétablissant le gabarit fixe remet le cas football au rouge ; une
+mutation rétablissant la recherche de sous-chaîne remet le faux domaine
+officiel au rouge. Les preuves sont hermétiques, sans provider, SearXNG,
+Crawl4AI, réseau, DB opérateur, JavaScript ou Chromium. L6.6 n'est pas commencé.
 
 ### L6.6 — ODT : préserver les séparateurs textuels — F19a
 
