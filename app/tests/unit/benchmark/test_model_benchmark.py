@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
 import sys
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 
 def _repo_root() -> Path:
@@ -19,17 +22,11 @@ if str(REPO_ROOT) not in sys.path:
 
 from benchmark.run_benchmark import (
     DEFAULT_ARBITER_MODELS,
-    DEFAULT_IDENTITY_EXTRACTOR_MODELS,
-    DEFAULT_IDENTITY_PERIODIC_MODELS,
     DEFAULT_SUMMARY_MODELS,
 )
+from benchmark import run_benchmark as benchmark_runner
 from benchmark.core import openrouter
 from benchmark.suites.arbiter import adapter, scorer, tournament
-from benchmark.suites.identity_extractor import adapter as identity_adapter
-from benchmark.suites.identity_extractor import campaign as identity_campaign
-from benchmark.suites.identity_extractor import scorer as identity_scorer
-from benchmark.suites.identity_periodic import adapter as periodic_adapter
-from benchmark.suites.identity_periodic import campaign as periodic_campaign
 from benchmark.suites.summary import adapter as summary_adapter
 from benchmark.suites.summary import campaign as summary_campaign
 
@@ -314,282 +311,65 @@ class SummaryBenchmarkSuiteTests(unittest.TestCase):
             self.assertIn("dry-run summary", summary_file.read_text(encoding="utf-8"))
 
 
-class IdentityExtractorBenchmarkSuiteTests(unittest.TestCase):
-    def test_default_identity_extractor_models_match_human_campaign(self) -> None:
-        self.assertEqual(
-            DEFAULT_IDENTITY_EXTRACTOR_MODELS,
-            [
-                "openai/gpt-5.4-mini",
-                "anthropic/claude-haiku-4.5",
-                "google/gemini-3.1-flash-lite",
-                "mistralai/mistral-small-2603",
-            ],
+class RetiredIdentityBenchmarkRunnerTests(unittest.TestCase):
+    RETIRED_SUITES = ("identity_extractor", "identity_periodic")
+    ACTIVE_SUITES = ("arbiter", "summary", "stimmung", "validation_agent", "web_search")
+
+    @staticmethod
+    def _run_cli(*args: str) -> subprocess.CompletedProcess[str]:
+        env = os.environ.copy()
+        env.pop("OPENROUTER_API_KEY", None)
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
+        return subprocess.run(
+            [sys.executable, str(REPO_ROOT / "benchmark" / "run_benchmark.py"), *args],
+            cwd=REPO_ROOT,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
         )
 
-    def test_identity_fixtures_are_short_human_reading_set(self) -> None:
-        cases = identity_adapter.load_cases(REPO_ROOT)
-        self.assertEqual(len(cases), 10)
-        self.assertEqual(sum(1 for case in cases if case["subject"] == "user"), 5)
-        self.assertEqual(sum(1 for case in cases if case["subject"] == "llm"), 5)
-        tags = {tag for case in cases for tag in case.get("tags", [])}
-        required = {
-            "durable",
-            "temporary",
-            "irony",
-            "projection",
-            "role_play",
-            "technical_limit",
-            "mixed",
-            "llm",
-            "user",
-        }
-        self.assertTrue(required.issubset(tags), sorted(required - tags))
-        for case in cases:
-            self.assertTrue(case.get("message"))
-            self.assertTrue(case.get("design_note"))
+    def test_help_lists_only_active_suites(self) -> None:
+        result = self._run_cli("--help")
 
-    def test_identity_payload_uses_production_prompt_and_fixed_params(self) -> None:
-        cases = identity_adapter.load_cases(REPO_ROOT)
-        prompt = identity_adapter.prompt_path(REPO_ROOT).read_text(encoding="utf-8").strip()
-        payload_a = identity_adapter.build_payload(cases[0], "openai/gpt-5.4-mini", prompt)
-        payload_b = identity_adapter.build_payload(cases[0], "mistralai/mistral-small-2603", prompt)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for suite in self.ACTIVE_SUITES:
+            self.assertIn(suite, result.stdout)
+        for suite in self.RETIRED_SUITES:
+            self.assertNotIn(suite, result.stdout)
 
-        self.assertEqual(payload_a["temperature"], 0.0)
-        self.assertEqual(payload_a["top_p"], 1.0)
-        self.assertEqual(payload_a["max_tokens"], 700)
-        self.assertEqual(payload_a["messages"], payload_b["messages"])
-        self.assertEqual(payload_a["messages"][0]["content"], prompt)
-        self.assertIn("Return only the JSON object", payload_a["messages"][1]["content"])
-        self.assertEqual(payload_a["model"], "openai/gpt-5.4-mini")
-        self.assertEqual(payload_b["model"], "mistralai/mistral-small-2603")
-
-    def test_identity_scorer_validates_schema(self) -> None:
-        case = {"subject": "user"}
-        raw = json.dumps(
-            {
-                "entries": [
-                    {
-                        "subject": "user",
-                        "content": "L'utilisateur préfère travailler en français.",
-                        "stability": "durable",
-                        "utterance_mode": "self_description",
-                        "recurrence": "first_seen",
-                        "scope": "user",
-                        "evidence_kind": "explicit",
-                        "confidence": 0.9,
-                        "reason": "Préférence explicitement formulée.",
-                    }
-                ]
-            },
-            ensure_ascii=False,
-        )
-        result = identity_scorer.score_response(case, raw, None)
-        self.assertTrue(result["json_valid"])
-        self.assertTrue(result["schema_valid"])
-        self.assertEqual(result["entry_count"], 1)
-
-    def test_identity_scorer_rejects_schema_drift(self) -> None:
-        result = identity_scorer.score_response({"subject": "llm"}, '{"entries": [{"subject": "assistant"}]}', None)
-        self.assertTrue(result["json_valid"])
-        self.assertFalse(result["schema_valid"])
-        self.assertIn("entry_0:invalid_subject", result["schema_errors"])
-
-    def test_identity_campaign_dry_run_writes_human_reports(self) -> None:
-        from tempfile import TemporaryDirectory
-
+    def test_retired_suites_are_rejected_before_credentials_or_output(self) -> None:
         with TemporaryDirectory() as tmp:
-            tmp_path = Path(tmp)
-            config = identity_campaign.CampaignConfig(
-                campaign_id="identity-dry",
-                suite="identity_extractor",
-                repo_root=REPO_ROOT,
-                output_dir=tmp_path / "results",
-                models=["openai/gpt-5.4-mini"],
-                dry_run=True,
-                timeout_s=1,
+            for suite in self.RETIRED_SUITES:
+                for selector in (("--suite", suite), (suite,)):
+                    with self.subTest(suite=suite, selector=selector[0]):
+                        output_dir = Path(tmp) / f"{suite}-{selector[0].lstrip('-')}"
+                        result = self._run_cli(
+                            *selector,
+                            "--campaign-id",
+                            "l75-retired-suite-rejection",
+                            "--output-dir",
+                            str(output_dir),
+                        )
+                        combined_output = result.stdout + result.stderr
+
+                        self.assertEqual(result.returncode, 2, combined_output)
+                        self.assertIn("invalid choice", combined_output)
+                        self.assertNotIn("OPENROUTER_API_KEY", combined_output)
+                        self.assertFalse(output_dir.exists())
+
+    def test_importing_active_runner_does_not_load_retired_identity_suites(self) -> None:
+        self.assertTrue(callable(benchmark_runner.main))
+        loaded_modules = set(sys.modules)
+        for prefix in (
+            "benchmark.suites.identity_extractor",
+            "benchmark.suites.identity_periodic",
+            "memory.memory_identity_periodic_apply",
+        ):
+            self.assertFalse(
+                any(name == prefix or name.startswith(f"{prefix}.") for name in loaded_modules),
+                prefix,
             )
-
-            result = identity_campaign.run_identity_human_campaign(config=config, client=None)
-
-            json_payload = json.loads(Path(result["json_path"]).read_text(encoding="utf-8"))
-            self.assertFalse(json_payload["production_runtime_changed"])
-            self.assertTrue(json_payload["human_judgment_required"])
-            self.assertEqual(json_payload["case_count"], 10)
-            technical = Path(result["technical_path"]).read_text(encoding="utf-8")
-            hermeneutic = Path(result["hermeneutic_path"]).read_text(encoding="utf-8")
-            self.assertIn("Synthese technique", technical)
-            self.assertIn("Taille sortie", technical)
-            self.assertIn("Sorties completes par cas", hermeneutic)
-            output_file = tmp_path / "results" / "identity-dry__openai__gpt-5.4-mini.md"
-            self.assertTrue(output_file.exists())
-
-
-class IdentityPeriodicBenchmarkSuiteTests(unittest.TestCase):
-    def test_default_identity_periodic_model_is_haiku_only(self) -> None:
-        self.assertEqual(DEFAULT_IDENTITY_PERIODIC_MODELS, ["anthropic/claude-haiku-4.5"])
-
-    def test_periodic_threshold_is_read_from_runtime_source(self) -> None:
-        self.assertEqual(periodic_adapter.buffer_target_pairs(REPO_ROOT), 5)
-
-    def test_periodic_fixture_is_exactly_fifteen_complete_pairs(self) -> None:
-        fixture = periodic_adapter.load_fixture(REPO_ROOT)
-        self.assertEqual(len(fixture["buffer_pairs"]), 15)
-        for pair in fixture["buffer_pairs"]:
-            self.assertIn("user", pair)
-            self.assertIn("assistant", pair)
-            self.assertTrue(pair["user"]["content"])
-            self.assertTrue(pair["assistant"]["content"])
-
-    def test_periodic_payload_uses_production_prompt_shape_and_temporal_guard(self) -> None:
-        fixture = periodic_adapter.load_fixture(REPO_ROOT)
-        prompt = periodic_adapter.prompt_path(REPO_ROOT).read_text(encoding="utf-8").strip()
-        payload_for_model = periodic_adapter.build_payload_for_model(fixture, repo_root=REPO_ROOT)
-        payload = periodic_adapter.build_payload(
-            model="anthropic/claude-haiku-4.5",
-            prompt_text=prompt,
-            payload_for_model=payload_for_model,
-        )
-
-        self.assertEqual(payload["temperature"], 0.0)
-        self.assertEqual(payload["top_p"], 1.0)
-        self.assertEqual(payload["max_tokens"], 1400)
-        self.assertEqual(payload["messages"][0]["content"], prompt)
-        self.assertEqual(payload["model"], "anthropic/claude-haiku-4.5")
-        self.assertEqual(payload_for_model["buffer_pairs_count"], 15)
-        self.assertEqual(payload_for_model["buffer_target_pairs"], 5)
-        source_summary = payload_for_model["identity_temporal_policy"]["source_summary"]
-        self.assertGreater(source_summary["user"]["weak_relative_source_count"], 0)
-        self.assertIn("temporal_source_guard", json.dumps(payload_for_model, ensure_ascii=False))
-
-    def test_periodic_parser_matches_runtime_fenced_json_tolerance(self) -> None:
-        parsed, error = periodic_campaign._parse_json('```json\n{"llm": {}, "user": {}, "meta": {}}\n```')
-        self.assertIsNone(error)
-        self.assertEqual(set(parsed.keys()), {"llm", "user", "meta"})
-
-    def test_periodic_smoke_dry_run_writes_artifacts(self) -> None:
-        from tempfile import TemporaryDirectory
-
-        with TemporaryDirectory() as tmp:
-            tmp_path = Path(tmp)
-            config = periodic_campaign.CampaignConfig(
-                campaign_id="identity-periodic-dry",
-                suite="identity_periodic",
-                repo_root=REPO_ROOT,
-                output_dir=tmp_path / "results",
-                models=["anthropic/claude-haiku-4.5"],
-                dry_run=True,
-                timeout_s=1,
-            )
-
-            result = periodic_campaign.run_identity_periodic_smoke_campaign(config=config, client=None)
-
-            json_payload = json.loads(Path(result["json_path"]).read_text(encoding="utf-8"))
-            markdown = Path(result["markdown_path"]).read_text(encoding="utf-8")
-            self.assertFalse(json_payload["production_runtime_changed"])
-            self.assertEqual(json_payload["threshold"]["value"], 5)
-            self.assertTrue(json_payload["json_valid"])
-            self.assertTrue(json_payload["schema_valid"])
-            self.assertIn("Seuil réel vérifié", markdown)
-            self.assertIn("Réponse complète de Haiku", markdown)
-
-    def test_periodic_comparison_counts_removed_operations(self) -> None:
-        from tempfile import TemporaryDirectory
-
-        with TemporaryDirectory() as tmp:
-            tmp_path = Path(tmp)
-            previous = {
-                "validated_response": {
-                    "llm": {"operations": [{"kind": "no_change", "proposition": "", "reason": "x"}]},
-                    "user": {
-                        "operations": [
-                            {"kind": "add", "proposition": "Tof préfère les artefacts relisibles.", "reason": "x"},
-                            {"kind": "add", "proposition": "Tof est attaché à une décision lisible.", "reason": "x"},
-                        ]
-                    },
-                    "meta": {"execution_status": "complete", "buffer_pairs_count": 15, "window_complete": True},
-                }
-            }
-            (tmp_path / "2026-05-19-haiku-smoke.json").write_text(
-                json.dumps(previous, ensure_ascii=False),
-                encoding="utf-8",
-            )
-            current = {
-                "llm": {"operations": [{"kind": "no_change", "proposition": "", "reason": "x"}]},
-                "user": {
-                    "operations": [
-                        {"kind": "add", "proposition": "Tof est attaché à une décision lisible.", "reason": "x"}
-                    ]
-                },
-                "meta": {"execution_status": "complete", "buffer_pairs_count": 15, "window_complete": True},
-            }
-
-            comparison = periodic_campaign._comparison_with_previous(
-                output_dir=tmp_path,
-                repo_root=REPO_ROOT,
-                campaign_id="2026-05-19-haiku-smoke-ontological",
-                current_validated=current,
-            )
-
-            self.assertEqual(comparison["previous_operation_count"], 3)
-            self.assertEqual(comparison["current_operation_count"], 2)
-            self.assertEqual(comparison["previous_add_count"], 2)
-            self.assertEqual(comparison["current_add_count"], 1)
-            self.assertEqual(
-                comparison["removed_propositions"],
-                ["Tof préfère les artefacts relisibles."],
-            )
-
-    def test_periodic_comparisons_include_initial_and_ontological_runs(self) -> None:
-        from tempfile import TemporaryDirectory
-
-        with TemporaryDirectory() as tmp:
-            tmp_path = Path(tmp)
-            initial = {
-                "validated_response": {
-                    "llm": {"operations": [{"kind": "no_change", "proposition": "", "reason": "x"}]},
-                    "user": {
-                        "operations": [
-                            {"kind": "add", "proposition": "workflow method", "reason": "x"},
-                            {"kind": "add", "proposition": "readable artifacts", "reason": "x"},
-                        ]
-                    },
-                    "meta": {"execution_status": "complete", "buffer_pairs_count": 15, "window_complete": True},
-                }
-            }
-            ontological = {
-                "validated_response": {
-                    "llm": {"operations": [{"kind": "no_change", "proposition": "", "reason": "x"}]},
-                    "user": {"operations": [{"kind": "add", "proposition": "readable artifacts", "reason": "x"}]},
-                    "meta": {"execution_status": "complete", "buffer_pairs_count": 15, "window_complete": True},
-                }
-            }
-            (tmp_path / "2026-05-19-haiku-smoke.json").write_text(
-                json.dumps(initial, ensure_ascii=False),
-                encoding="utf-8",
-            )
-            (tmp_path / "2026-05-19-haiku-smoke-ontological.json").write_text(
-                json.dumps(ontological, ensure_ascii=False),
-                encoding="utf-8",
-            )
-            current = {
-                "llm": {"operations": [{"kind": "no_change", "proposition": "", "reason": "x"}]},
-                "user": {"operations": []},
-                "meta": {"execution_status": "complete", "buffer_pairs_count": 15, "window_complete": True},
-            }
-
-            comparisons = periodic_campaign._comparisons_with_previous(
-                output_dir=tmp_path,
-                repo_root=REPO_ROOT,
-                campaign_id="2026-05-19-haiku-smoke-ontological-register",
-                current_validated=current,
-            )
-
-            self.assertEqual(
-                [item["previous_campaign_id"] for item in comparisons],
-                ["2026-05-19-haiku-smoke", "2026-05-19-haiku-smoke-ontological"],
-            )
-            self.assertEqual(comparisons[0]["operation_count_delta"], -2)
-            self.assertEqual(comparisons[1]["operation_count_delta"], -1)
 
 
 if __name__ == "__main__":

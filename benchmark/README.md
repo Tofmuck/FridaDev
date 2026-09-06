@@ -11,20 +11,12 @@ The second implemented suite is `summary`, which produces complete
 conversation summaries from one real Frida material sample for human reading.
 It intentionally does not score summary quality automatically.
 
-The third implemented suite is `identity_extractor`, which sends ten short
-user/LLM messages to the production identity extractor prompt and writes
-complete outputs for temporary human hermeneutic reading.
-
-The fourth implemented suite is `identity_periodic`, a targeted smoke run for
-the periodic identity agent on a simulated 15-pair buffer. It is not a model
-tournament and does not change production runtime settings.
-
-The fifth implemented suite is `stimmung`, which compares the primary
+The third implemented suite is `stimmung`, which compares the primary
 Stimmung agent on short French diagnostic scenes. It checks strict JSON/schema
 validity and gives a qualitative reading of local affect without benchmarking
 the fallback.
 
-The sixth implemented suite is `validation_agent`. Its historical campaign
+The fourth implemented suite is `validation_agent`. Its historical campaign
 compares candidate primary models; its Lot 3 Presence campaign compares the
 current primary and fallback roles explicitly. It checks the final
 hermeneutic posture contract (`answer|clarify|suspend`,
@@ -32,7 +24,7 @@ hermeneutic posture contract (`answer|clarify|suspend`,
 the production runtime settings. The Presence corpus is a separate,
 human-gated fixture set.
 
-The seventh implemented suite is `web_search`, which compares the local
+The fifth implemented suite is `web_search`, which compares the local
 FridaDev web pipeline (SearXNG + Crawl4AI) with OpenRouter server tools
 `openrouter:web_search` on bounded Exa and Parallel runs. It is an operator
 benchmark for the next product decision, not a runtime integration.
@@ -46,6 +38,11 @@ hashes inside a closed manifest describe freeze-time provenance. Current
 builders, normalizers and validators are exercised separately with their
 current signatures and contracts. When current inputs differ, the archive can
 remain intact while reuse as a comparable control is refused before any call.
+
+The retained `identity_extractor` and `identity_periodic` sources, fixtures and
+results are such historical evidence. They are intentionally absent from the
+active `benchmark/run_benchmark.py` CLI and must not be invoked or interpreted
+as measurements of the current Identity system.
 
 ## Run the arbiter campaign
 
@@ -101,28 +98,6 @@ python3 benchmark/run_benchmark.py \
   --campaign-id dry-run-summary \
   --summary-input-file /tmp/fridadev-summary-material.json \
   --output-dir /tmp/fridadev-summary-dry-run
-```
-
-The identity extractor suite has its own short fixture set and can be checked
-without provider calls:
-
-```bash
-python3 benchmark/run_benchmark.py \
-  --suite identity_extractor \
-  --dry-run \
-  --campaign-id dry-run-identity-extractor \
-  --output-dir /tmp/fridadev-identity-extractor-dry-run
-```
-
-The identity periodic suite runs one simulated threshold window against the
-production periodic prompt. It can also be checked without provider calls:
-
-```bash
-python3 benchmark/run_benchmark.py \
-  --suite identity_periodic \
-  --dry-run \
-  --campaign-id dry-run-identity-periodic \
-  --output-dir /tmp/fridadev-identity-periodic-dry-run
 ```
 
 ## Arbiter tournament
@@ -224,102 +199,49 @@ pretending the end state is proven.
 Do not commit the raw source material unless it has been deliberately reviewed
 for publication. The generated summaries are the human-review artifacts.
 
-## Identity extractor human-reading campaign
+## Historical Identity benches — inactive
 
-The identity extractor suite compares models by giving each one the exact
-production prompt `app/prompts/identity_extractor.txt` and the same ten short
-diagnostic messages. It is deliberately a human reading campaign: the runner
-checks JSON/schema validity and records latency/cost metadata, but it does not
-rank the models automatically.
+The directories `benchmark/suites/identity_extractor/` and
+`benchmark/suites/identity_periodic/` are retained only to preserve the
+provenance of their fixtures, campaign code and historical results. They are
+not active suites and have no supported command in `benchmark/run_benchmark.py`.
 
-Default identity extractor models:
+`identity_extractor` now points at the current dialogic-context-hint prompt,
+whose sole subject is `dialogue`, but its corpus and scorer still expect the
+retired `user` / `llm` entry contract. Its retained scores therefore do not
+measure the responsibility implemented at the current HEAD.
 
-- `openai/gpt-5.4-mini`
-- `anthropic/claude-haiku-4.5`
-- `google/gemini-3.1-flash-lite`
-- `mistralai/mistral-small-2603`
+`identity_periodic` imports the retired `memory_identity_periodic_apply`
+applicator and predates the active mutable Identity pipeline. It does not
+measure the current path:
 
-Fixed identity extractor parameters:
-
-- `temperature=0.0`
-- `top_p=1.0`
-- `max_tokens=700`
-
-Example live run:
-
-```bash
-OPENROUTER_API_KEY=... python3 benchmark/run_benchmark.py \
-  --suite identity_extractor \
-  --campaign-id 2026-05-18-identity-extractor-human \
-  --output-dir benchmark/results/identity_extractor
+```text
+memory_identity_periodic_agent
+  -> mutable_identity_runtime
+  -> mutable_identity_judge_v2
+  -> mutable_identity_apply
 ```
 
-The runner writes:
+The current, separate real-provider diagnostic is
+`app/scripts/smoke_mutable_identity_judge_llm.py`; it targets the V2 judge
+without applying or writing canonical state. Its existence is not evidence of
+execution and does not turn it into a replacement benchmark.
 
-- one structured JSON campaign artifact;
-- one technical Markdown report;
-- one hermeneutic Markdown report with the complete outputs grouped by case;
-- one complete Markdown output file per model.
+Retained provenance remains byte-for-byte historical and is not comparable to
+the current HEAD:
 
-The cases are artificial and designed for human diagnosis of durable identity,
-temporary state, irony, projection, role play, technical limitations and mixed
-evidence. They are not a private conversation dump.
+- `benchmark/suites/identity_extractor/fixtures/identity_extractor_human_cases.json`;
+- `benchmark/results/identity_extractor/2026-05-18-identity-extractor-human.json`;
+- `benchmark/results/identity_extractor/2026-05-18-identity-extractor-human-technical.md`;
+- `benchmark/results/identity_extractor/2026-05-18-identity-extractor-human-hermeneutic.md`;
+- `benchmark/suites/identity_periodic/fixtures/haiku_smoke_buffer.json`;
+- `benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.json`;
+- `benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.md`.
 
-For identity extractor human-reading campaigns, the per-model Markdown outputs
-and inline raw dumps in the hermeneutic report are temporary review artefacts.
-Once the human decision is made, remove the raw outputs from the repo and keep
-only compact technical/hermeneutic reports plus JSON metadata with hashes,
-metrics and retention flags.
-
-## Identity periodic Haiku smoke
-
-The identity periodic suite verifies the gesture of
-`identity_periodic_agent` on a simulated buffer at the real runtime threshold.
-It uses the production prompt `app/prompts/identity_periodic_agent.txt` and
-constructs the same kind of payload that the runtime sends after applying the
-identity temporal guard.
-
-Default identity periodic model:
-
-- `anthropic/claude-haiku-4.5`
-
-Fixed identity periodic parameters:
-
-- `temperature=0.0`
-- `top_p=1.0`
-- `max_tokens=1400`
-
-Example live smoke run:
-
-```bash
-OPENROUTER_API_KEY=... python3 benchmark/run_benchmark.py \
-  --suite identity_periodic \
-  --campaign-id 2026-05-19-haiku-smoke \
-  --output-dir benchmark/results/identity_periodic
-```
-
-The runner writes:
-
-- one structured JSON artifact;
-- one Markdown report with the simulated payload, the full model response,
-  JSON/schema validity, metadata and a short technical reading.
-
-When previous reference artifacts such as `2026-05-19-haiku-smoke.json` and
-`2026-05-19-haiku-smoke-ontological.json` are present in the same output
-directory, later smoke runs include a compact comparison of operation counts and
-proposition changes against those earlier runs.
-
-This suite is a targeted smoke test, not a production change. It must not be
-used as a hidden runtime slot for `identity_periodic_agent`.
-
-After human decision, raw periodic smoke outputs are not kept as durable
-evidence. Keep the compact decision pair instead:
-
-- `benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.md`
-- `benchmark/results/identity_periodic/2026-05-19-haiku-periodic-decision.json`
-
-Those files preserve operation counts, provider metadata and the selected
-runtime slot without retaining the full simulated payload and raw model dumps.
+Do not revive the retired applicator, adapt these corpora or scorers to create
+apparent comparability, or use these sources to launch a new Identity campaign.
+A V2 replacement benchmark would require a separate, explicitly authorized
+lot.
 
 ## Stimmung primary benchmark
 

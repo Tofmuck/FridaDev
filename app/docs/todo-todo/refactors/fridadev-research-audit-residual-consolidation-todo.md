@@ -2,7 +2,7 @@
 
 Date de cadrage : 4 septembre 2026.
 
-**Statut : roadmap ouverte ; L1 à L6 et L7.1-L7.4 fermés ; L7.5 et Z non commencés.**
+**Statut : roadmap ouverte ; L1 à L6 et L7.1-L7.5 fermés ; L7.6 et Z non commencés.**
 
 ## 1. But, source et règle de vérité
 
@@ -74,7 +74,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 | 4 | L4 | Conservation de la projection analytics | F21 | high | fermé — F21 corrigé |
 | 5 | L5 | Atomicité des écritures Workspace | F13b, F14a, F19b | xhigh par sous-lot | fermé — F13b, F14a et F19b corrigés |
 | 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | fermé — F05, F10, F12a-F12c, F13a, F14b, F15a-F15b et F19a corrigés |
-| 7 | L7 | Vérité d'API, observabilité et outils historiques | F16–F18, F20, F22, F24 et dette documentaire | high | en cours — L7.1-L7.4 fermés ; L7.5 non commencé |
+| 7 | L7 | Vérité d'API, observabilité et outils historiques | F16–F18, F20, F22, F24 et dette documentaire | high | en cours — L7.1-L7.5 fermés ; L7.6 non commencé |
 | 8 | Z | Réconciliation finale avec le grand audit | tous les Fxx et réserves non numérotées | xhigh | non commencé |
 
 - [x] Source, périmètre, ordre et règles de preuve consignés.
@@ -1235,9 +1235,39 @@ Identity n'est modifie. L7.5 n'est pas commence.
 
 ### L7.5 — Bancs Identity obsolètes — F22
 
-Étiqueter ou retirer du parcours courant les suites qui ne mesurent plus leur
-responsabilité annoncée. Ne pas lancer de campagne modèle et ne pas adapter un
-scorer pour fabriquer une comparabilité au HEAD.
+**Fermé le 6 septembre 2026.** La revalidation au HEAD initial
+`68eee3464a90c06a98a3a747f55fd82f1ec3bc91` confirme F22. Le banc
+`identity_extractor` chargeait le prompt courant `dialogic_context_hint_v1`,
+limité au sujet `dialogue`, tandis que sa fixture, son payload et son scorer
+attendaient encore des entrées `user` / `llm`. Le banc `identity_periodic`
+importait `memory_identity_periodic_apply`, applicateur retiré du dépôt, alors
+que le runtime actif passe par `memory_identity_periodic_agent ->
+mutable_identity_runtime -> mutable_identity_judge_v2 ->
+mutable_identity_apply`.
+
+Le runner général ne propose, n'importe et ne branche plus ces deux suites et
+ne porte plus leurs modèles par défaut. Les deux formes de sélection, option
+`--suite` et positionnelle, sont refusées par `argparse` avant résolution des
+credentials, construction du client, appel provider ou création du répertoire
+de résultat. Les tests positifs des campagnes historiques ont été remplacés
+par ces invariants négatifs sur la vraie CLI et par l'import du runner actif
+sans chargement des modules Identity historiques ni de l'applicateur retiré.
+
+Les sources, fixtures et résultats suivis restent inchangés comme preuves de
+provenance. `benchmark/README.md` les étiquette désormais comme historiques,
+inactifs et non comparables au HEAD. Il nomme le pipeline V2 courant et le
+smoke distinct `app/scripts/smoke_mutable_identity_judge_llm.py` sans prétendre
+qu'il a été exécuté ni en faire un banc de remplacement. La reproduction rouge
+a montré les deux noms dans `--help`, quatre tentatives atteignant encore la
+résolution de `OPENROUTER_API_KEY`, l'import actif du vieux banc extractor et
+l'échec de découverte du test périodique sur l'applicateur absent. Après le
+correctif, les 17 tests benchmark ciblés passent dans le conteneur hermétique
+existant, checkout read-only et `--network none`.
+
+Aucun corpus, scorer, prompt, modèle, juge, applicateur, canon, runtime ou
+artefact historique n'est modifié. Aucun provider, campagne modèle réelle,
+canari, DB, dialogue réel, JavaScript ou Chromium n'est lancé. L7.6 n'est pas
+commencé.
 
 ### L7.6 — Banc historique Stimmung — F24, garde avant réutilisation
 
