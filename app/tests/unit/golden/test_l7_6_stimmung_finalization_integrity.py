@@ -21,6 +21,12 @@ from benchmark.suites.stimmung import final_wording_rating_v2 as rating_v2
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 FREEZE_COMMIT = "f" * 40
+V24_FREEZE_COMMIT = "7fcf26d8d3991b6d64f586b89025b9404316e30e"
+V25_FREEZE_COMMIT = "1371a2422ec835b2229bd5c7668bccadd7363fc2"
+V24_MANIFEST_SHA256 = "736cb6d83ab8c0626de8f7cc4cf3ba4a9c7ab494d69353a2d0383f361ca25f91"
+V25_MANIFEST_SHA256 = "3f1863a855a13a49528348968cce2a748758c208ec0f0b19456101f0557521ec"
+V24_RESULT_SHA256 = "7bcfd7f15b7941a3b1257594c3c0f694148a3aa4e1a3c4daba6cf1e182cdd2be"
+V25_RESULT_SHA256 = "4a6b0f6f1f38c6917a3dfd50ceeb992ca6a61a4ce1c20afcfaefcfdc3a6dc5da"
 
 
 def _rating_material() -> tuple[dict[str, object], dict[str, object]]:
@@ -286,6 +292,77 @@ class L76HistoricalAttributionReproductionTests(unittest.TestCase):
 
 
 class L76HistoricalAttributionGuardTests(unittest.TestCase):
+    def test_historical_manifests_and_results_are_byte_authenticated(self) -> None:
+        cases = (
+            (
+                False,
+                V24_FREEZE_COMMIT,
+                "stimmung_final_wording_freeze_v2_4.json",
+                V24_MANIFEST_SHA256,
+                "2026-09-01-lot4c4-final-wording-v2-4-gpt-5-1.json",
+                V24_RESULT_SHA256,
+            ),
+            (
+                True,
+                V25_FREEZE_COMMIT,
+                "stimmung_final_wording_freeze_v2_5.json",
+                V25_MANIFEST_SHA256,
+                "2026-09-01-lot4c4-final-wording-v2-5-gpt-5-2.json",
+                V25_RESULT_SHA256,
+            ),
+        )
+        for v25, freeze_commit, manifest_name, manifest_sha, result_name, result_sha in cases:
+            with self.subTest(manifest=manifest_name):
+                manifest_path = (
+                    REPO_ROOT / "benchmark/suites/stimmung/fixtures" / manifest_name
+                )
+                result_path = REPO_ROOT / "benchmark/results/stimmung" / result_name
+                self.assertEqual(
+                    hashlib.sha256(manifest_path.read_bytes()).hexdigest(), manifest_sha
+                )
+                self.assertEqual(
+                    hashlib.sha256(result_path.read_bytes()).hexdigest(), result_sha
+                )
+                artifact = json.loads(result_path.read_text(encoding="utf-8"))
+                self.assertTrue(rating_v2.validate_durable_artifact(artifact))
+                context = campaign_v25._campaign_profile() if v25 else nullcontext()
+                with context:
+                    protocol, schedule = finalization_v2.load_historical_protocol(
+                        REPO_ROOT,
+                        freeze_commit=freeze_commit,
+                    )
+                self.assertEqual(protocol_v2.protocol_sha256(protocol), artifact["protocol_sha256"])
+                self.assertEqual(len(schedule), 24)
+
+    def test_manifest_cannot_authenticate_a_self_rewritten_frozen_input(self) -> None:
+        cases = (
+            (False, V24_FREEZE_COMMIT, "stimmung_final_wording_freeze_v2_4.json"),
+            (True, V25_FREEZE_COMMIT, "stimmung_final_wording_freeze_v2_5.json"),
+        )
+        for v25, freeze_commit, manifest_name in cases:
+            with self.subTest(manifest=manifest_name):
+                source = (
+                    REPO_ROOT / "benchmark/suites/stimmung/fixtures" / manifest_name
+                )
+                manifest = json.loads(source.read_text(encoding="utf-8"))
+                manifest["frozen_inputs"]["rating_module_sha256"] = "0" * 64
+                with tempfile.TemporaryDirectory(dir="/tmp") as raw:
+                    mutant = Path(raw) / source.name
+                    mutant.write_text(json.dumps(manifest), encoding="utf-8")
+                    context = campaign_v25._campaign_profile() if v25 else nullcontext()
+                    with context, mock.patch.object(
+                        protocol_v2,
+                        "freeze_manifest_path",
+                        return_value=mutant,
+                    ), self.assertRaisesRegex(
+                        ValueError,
+                        "historical_calendar_provenance_invalid",
+                    ):
+                        finalization_v2.load_historical_protocol(
+                            REPO_ROOT,
+                            freeze_commit=freeze_commit,
+                        )
+
     def test_legacy_public_finalizer_cannot_bypass_attribution_guard(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as raw:
             workflow = _create_complete_workflow(Path(raw))

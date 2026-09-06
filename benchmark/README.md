@@ -726,16 +726,16 @@ effect is useful but insufficiently bounded. This is the authoritative
 content-free human decision, not a cryptographic reconstruction of the deleted
 raw packet or mapping. V2.3 must not be replayed.
 
-The authoritative benchmark-only v2.4 protocol keeps the v2 module boundaries:
+The historical benchmark-only v2.4 protocol kept the v2 module boundaries at
+its freeze:
 
 - `final_wording_protocol_v2` validates the corpus, provider-visible matter,
   payload policy, bounded candidate, 24-call schedule, cost and freeze
   manifest;
-- `final_wording_execution_v2` reuses the shared OpenRouter transport, remains
-  offline without `--execute-live`, checkpoints `attempt_started` before each
-  external attempt, and resumes only from the same frozen campaign. Before any
-  POST it checks the exact model endpoint metadata and requires a compatible
-  route;
+- `final_wording_execution_v2` reused the shared OpenRouter transport,
+  checkpointed `attempt_started` before each external attempt, and resumed only
+  from the same frozen campaign. Before any POST it checked the exact model
+  endpoint metadata and required a compatible route;
 - `final_wording_rating_v2` distinguishes direct `tof_human_review` from
   `codex_assisted_review_for_tof`; Codex assistance requires an exact,
   content-free Tof ratification before any unblinding.
@@ -748,11 +748,14 @@ psychological attribution and content addition/removal, and falls back to
 no-op whenever substance could change. The production prompt remains
 unchanged.
 
-The authoritative freeze manifest is
+The authoritative historical freeze manifest is
 `benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2_4.json`.
+Its exact SHA-256 is
+`736cb6d83ab8c0626de8f7cc4cf3ba4a9c7ab494d69353a2d0383f361ca25f91`.
 It pins v2.3 and the earlier historical freezes, the shared OpenRouter client,
-all three current modules, the product prompt builders, the state machine and
-the exact reduced schedule: `6 x 2 x 2 = 24` transition calls. The six
+the three modules as they existed at the freeze, the product prompt builders,
+the state machine and the exact reduced schedule: `6 x 2 x 2 = 24` transition
+calls. The six
 countercases are not recalled because their `none` path is byte-identical and
 their ratified v2.3 result remains authoritative. It uses only the
 active `openai/gpt-5.1` model with no sampling or stop parameters, `max_tokens=8192`,
@@ -760,10 +763,10 @@ hidden `high` reasoning, a 900-second timeout,
 `allow_fallbacks=false` and `require_parameters=true`. Retry, model fallback,
 Batch, Flex, Priority, Validation, Stimmung and model-judge calls are forbidden.
 
-Before any future generation, the runner performs only the exact OpenRouter
-model-endpoint metadata GET and records a content-free capability summary. At
-least one endpoint must advertise exactly the required `reasoning` and
-`max_tokens` capabilities. Otherwise
+At the time of the frozen campaign, the runner performed only the exact
+OpenRouter model-endpoint metadata GET and recorded a content-free capability
+summary. At least one endpoint had to advertise exactly the required
+`reasoning` and `max_tokens` capabilities. Otherwise
 the campaign stops before any POST. Sequence 1 is the canary and remains part
 of the 24-call schedule: a valid result continues the remaining 23 calls; an
 authentication, routing or other non-recoverable 4xx result stops immediately,
@@ -775,18 +778,17 @@ At public prices rechecked on 2026-08-31, the calculated prompt cost is
 total ceiling is `2.17482500 USD`, the 10% safety budget is `2.39230750 USD`
 and the absolute cap is `3.00 USD`.
 
-Hermetic dry-run:
+The v2.4 provider runner and its dry-run are historical, not supported commands
+at the current HEAD. Their public entrypoints intentionally recalculate the
+source fingerprints and fail with `freeze_manifest_mismatch` before credential
+resolution, client construction, provider access, progress output or file
+creation. This is the expected non-comparability boundary; the manifest is
+authenticated as an archive instead of being rewritten to describe current
+sources.
 
-```bash
-PYTHONPATH="$PWD:$PWD/app" python3 -m \
-  benchmark.suites.stimmung.final_wording_execution_v2 \
-  --repo-root "$PWD" \
-  --freeze-commit <pushed-v2.4-commit> \
-  --dry-run
-```
-
-After a separately authorized live campaign, the runner writes only private
-`0600` material in a deterministic `0700` campaign directory under `/tmp`.
+During the separately authorized historical live campaign, the runner wrote
+only private `0600` material in a deterministic `0700` campaign directory under
+`/tmp`.
 Every completed or ambiguous attempt remains counted across invocations. A
 leftover `attempt_started` becomes a conservatively costed
 `attempt_outcome_unknown`, stops at `campaign_incomplete`, and is never called
@@ -797,49 +799,47 @@ Only a separate `0700` review export containing `rating_packet.json` is handed
 to the rater; `blind_mapping.json`, the ledger and private outputs remain in
 the campaign directory. The isolation is organizational and hash-bound, not a
 strong barrier against an operator deliberately opening both locations.
-Synthetic tests exercise the workflow but can never yield a provider `pass` or
-`fail`. One candidate-side critical failure forces `fail`; a complete campaign
-still stops at `human_rating_required`. The candidate is not observable as an
-active policy. The ratified v2.4 result below rejected `surface_only_v1`; it
+Synthetic tests exercised the workflow but could never yield a provider `pass`
+or `fail`. One candidate-side critical failure forced `fail`; a complete
+campaign stopped at `human_rating_required`. The candidate is not observable as
+an active policy. The ratified v2.4 result below rejected `surface_only_v1`; it
 must not be cut over or presented as a future active policy from this result.
 
-The v2.5 GPT-5.2 replication imports this frozen v2.4 campaign through
+The frozen v2.5 GPT-5.2 replication imported v2.4 through
 `final_wording_gpt52_v25` instead of copying its runner. The sole
 provider-visible change is `openai/gpt-5.2`; all 24 messages, arm order,
 candidate SHA, scorer and decision rules remain v2.4-identical. Hidden
 reasoning is still forced to `high`, with `max_tokens=8192`, a 900-second
 timeout, no sampling or stop, and no retry, fallback or service tier.
 
-The v2.5 preflight checks the exact model endpoint capabilities and the fresh
-model metadata before any POST. It requires `reasoning`, `max_tokens`, support
-for effort `high`, at least 400k context and 128k output, and the frozen public
-prices of 1.75/14 USD per million input/output. Those prices produce a
+At its freeze, the v2.5 preflight checked the exact model endpoint capabilities
+and the fresh model metadata before any POST. It required `reasoning`,
+`max_tokens`, support for effort `high`, at least 400k context and 128k output,
+and the frozen public prices of 1.75/14 USD per million input/output. Those
+prices produce a
 `3.04475500 USD` calculated ceiling, `3.34923050 USD` safety budget and a
 `4.00 USD` absolute cap. A GPT-5.1 observed route is rejected as provenance
 mismatch. The canary is sequence 1 of 24 and the terminal success state remains
 `human_rating_required`.
 
-```bash
-PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$PWD:$PWD/app" python3 -m \
-  benchmark.suites.stimmung.final_wording_gpt52_v25 \
-  --repo-root "$PWD" \
-  --freeze-commit <pushed-v2.5-commit> \
-  --dry-run
-```
-
-The frozen v2.5 runner remains byte-for-byte unchanged after its campaign.
+The v2.5 provider runner and dry-run are likewise historical and intentionally
+refuse the current source drift with `freeze_manifest_mismatch` before any
+effect. Its manifest remains byte-for-byte unchanged with SHA-256
+`3f1863a855a13a49528348968cce2a748758c208ec0f0b19456101f0557521ec`.
 Offline human-rating finalization is provided separately by
 `final_wording_gpt52_v25_finalize`; it validates the exact v2.5 paths, protocol,
 ledger, model and cost before reusing the shared v2.4 scorer. It never creates a
 provider client.
 
 Any authorized reuse of the v2.4 or v2.5 finalization path must cross the
-shared `final_wording_finalization_v2` attribution guard. The public v2.4
+shared `final_wording_finalization_v2` attribution guard. This offline
+finalization is the only reusable path from these campaigns. The public v2.4
 entrypoint remains `final_wording_rating_v2` and now requires both `--repo-root`
 and the campaign's `--freeze-commit`; the v2.5 finalizer delegates to the same
 guard under its frozen profile. The guard reconstructs the authoritative
-24-call calendar from the exact historical manifest and verifies its schedule
-fingerprint. It validates complete ratings and any required Tof ratification
+24-call calendar only after authenticating the exact historical manifest
+byte-for-byte, then verifies its schedule fingerprint. It validates complete
+ratings and any required Tof ratification
 before reconstructing that calendar or reading `blind_mapping.json`, then
 requires an exact sequence bijection across calendar, ledger, mapping and
 packet. Case, repetition, comparison kind, blind slot, message fingerprint,

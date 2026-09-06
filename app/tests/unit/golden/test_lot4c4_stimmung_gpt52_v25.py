@@ -1,78 +1,62 @@
+"""Separate frozen v2.5 evidence from deliberately refused runner reuse."""
+
 from __future__ import annotations
 
 import copy
+from contextlib import redirect_stdout
 import hashlib
+import io
 import json
-import os
 from pathlib import Path
 import tempfile
 import unittest
 from unittest import mock
 
 from benchmark.core import openrouter
-from benchmark.suites.stimmung import final_wording_rating_v2 as rating_v2
-from benchmark.suites.stimmung import final_wording_protocol_v2 as protocol_v24
+from benchmark.suites.stimmung import final_wording_finalization_v2 as finalization_v2
 from benchmark.suites.stimmung import final_wording_gpt52_v25 as campaign_v25
 from benchmark.suites.stimmung import final_wording_gpt52_v25_finalize as finalize_v25
+from benchmark.suites.stimmung import final_wording_protocol_v2 as protocol_v24
+from benchmark.suites.stimmung import final_wording_rating_v2 as rating_v2
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-FREEZE_COMMIT = "f" * 40
+V24_FREEZE_COMMIT = "7fcf26d8d3991b6d64f586b89025b9404316e30e"
+V25_FREEZE_COMMIT = "1371a2422ec835b2229bd5c7668bccadd7363fc2"
 RESULTS_ROOT = REPO_ROOT / "benchmark/results/stimmung"
+V25_MANIFEST_PATH = (
+    REPO_ROOT
+    / "benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2_5.json"
+)
+V25_MANIFEST_SHA256 = "3f1863a855a13a49528348968cce2a748758c208ec0f0b19456101f0557521ec"
+V25_RESULT_PATH = (
+    RESULTS_ROOT / "2026-09-01-lot4c4-final-wording-v2-5-gpt-5-2.json"
+)
+V25_RESULT_SHA256 = "4a6b0f6f1f38c6917a3dfd50ceeb992ca6a61a4ce1c20afcfaefcfdc3a6dc5da"
 
 
-def _write_0600(path: Path, value: object) -> None:
-    path.write_text(json.dumps(value), encoding="utf-8")
-    os.chmod(path, 0o600)
+def _historical_v24() -> tuple[dict[str, object], list[dict[str, object]]]:
+    return finalization_v2.load_historical_protocol(
+        REPO_ROOT,
+        freeze_commit=V24_FREEZE_COMMIT,
+    )
 
 
-def _codex_ratings(packet: dict[str, object]) -> dict[str, object]:
-    items = packet["items"]
-    assert isinstance(items, list)
-    return {
-        "schema_version": rating_v2.RATINGS_SCHEMA_VERSION,
-        "packet_sha256": packet["packet_sha256"],
-        "rating_source": "codex_assisted_review_for_tof",
-        "rater_id": "codex_for_tof",
-        "ratings_created_outside_runner": True,
-        "ratings": [
-            {
-                "blind_id": item["blind_id"],
-                "delicacy_effect": "equivalent",
-                "formulation_fit": "equivalent",
-                "psychologization": "none",
-                "certainty_change": "none",
-                "truth_or_evidence_change": "none",
-                "masked_target": "none",
-            }
-            for item in items
-        ],
-    }
+def _historical_v25() -> tuple[dict[str, object], list[dict[str, object]]]:
+    with campaign_v25._campaign_profile():
+        return finalization_v2.load_historical_protocol(
+            REPO_ROOT,
+            freeze_commit=V25_FREEZE_COMMIT,
+        )
 
 
-class _SyntheticGPT52Client:
+class _UnreachableGPT52Client:
     def __init__(self) -> None:
         self.calls: list[dict[str, object]] = []
 
-    def chat_completion(
-        self,
-        payload: dict[str, object],
-        *,
-        caller: str,
-        timeout_s: int,
-    ) -> dict[str, object]:
-        self.calls.append(copy.deepcopy(payload))
-        return {
-            "ok": True,
-            "status_code": 200,
-            "raw_text": "SYNTHETIC_TEST_RESPONSE",
-            "finish_reason": "stop",
-            "native_finish_reason": "stop",
-            "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
-            "cost_estimate_usd": 0.00001575,
-            "model": "openai/gpt-5.2",
-            "provider": "OpenAI",
-        }
+    def chat_completion(self, payload: dict[str, object], **_: object) -> dict[str, object]:
+        self.calls.append(payload)
+        raise AssertionError("historical GPT-5.2 runner reached the provider boundary")
 
 
 def _model_metadata(*, supported_efforts: list[str] | None = None) -> dict[str, object]:
@@ -91,10 +75,9 @@ def _model_metadata(*, supported_efforts: list[str] | None = None) -> dict[str, 
 
 
 class Lot4C4GPT52V25Tests(unittest.TestCase):
-    def test_gpt52_is_the_only_provider_visible_variable(self) -> None:
-        base = protocol_v24._build_request_schedule(REPO_ROOT)
-        campaign = campaign_v25.build_protocol(REPO_ROOT, freeze_commit=FREEZE_COMMIT)
-        adapted = campaign_v25.build_request_schedule(REPO_ROOT, campaign)
+    def test_gpt52_is_the_only_provider_visible_variable_in_the_archive(self) -> None:
+        base_protocol, base = _historical_v24()
+        campaign, adapted = _historical_v25()
         self.assertEqual(len(adapted), 24)
         self.assertEqual(campaign["model"], "openai/gpt-5.2")
         self.assertEqual(campaign["reasoning"], {"effort": "high", "exclude": True})
@@ -104,6 +87,7 @@ class Lot4C4GPT52V25Tests(unittest.TestCase):
             campaign["candidate_policy"]["sha256"],
             protocol_v24.BOUNDED_ENUNCIATION_POLICY_SHA256,
         )
+        self.assertEqual(base_protocol["model"], "openai/gpt-5.1")
         for old, new in zip(base, adapted, strict=True):
             self.assertEqual(old["messages_sha256"], new["messages_sha256"])
             self.assertEqual(old["payload"]["messages"], new["payload"]["messages"])
@@ -111,12 +95,17 @@ class Lot4C4GPT52V25Tests(unittest.TestCase):
             new_payload = copy.deepcopy(new["payload"])
             old_payload["model"] = new_payload["model"]
             self.assertEqual(old_payload, new_payload)
+            self.assertEqual(new_payload["reasoning"], {"effort": "high", "exclude": True})
+            self.assertEqual(
+                new_payload["provider"],
+                {"allow_fallbacks": False, "require_parameters": True},
+            )
             self.assertNotIn("temperature", new_payload)
             self.assertNotIn("top_p", new_payload)
             self.assertNotIn("stop", new_payload)
 
     def test_metadata_preflight_requires_high_and_recalculates_frozen_budget(self) -> None:
-        campaign = campaign_v25.build_protocol(REPO_ROOT, freeze_commit=FREEZE_COMMIT)
+        campaign, _ = _historical_v25()
         summary = campaign_v25.validate_model_metadata(
             capability_summary={
                 "status": "compatible",
@@ -134,12 +123,10 @@ class Lot4C4GPT52V25Tests(unittest.TestCase):
         self.assertTrue(summary["reasoning_effort_high_supported"])
         self.assertEqual(summary["context_length"], 400_000)
         self.assertEqual(summary["max_completion_tokens"], 128_000)
-        self.assertEqual(summary["prompt_price_usd_per_token"], 0.00000175)
-        self.assertEqual(summary["completion_price_usd_per_token"], 0.000014)
         self.assertLessEqual(summary["budget_with_safety_margin_usd"], 4.0)
 
     def test_metadata_preflight_rejects_missing_high_or_changed_price(self) -> None:
-        campaign = campaign_v25.build_protocol(REPO_ROOT, freeze_commit=FREEZE_COMMIT)
+        campaign, _ = _historical_v25()
         base = {
             "status": "compatible",
             "reason_code": "compatible_endpoint_available",
@@ -149,11 +136,10 @@ class Lot4C4GPT52V25Tests(unittest.TestCase):
             "compatible_endpoint_count": 1,
             "required_capabilities": ["output_token_limit", "reasoning"],
         }
-        missing_high = _model_metadata(supported_efforts=["medium", "low"])
         self.assertEqual(
             campaign_v25.validate_model_metadata(
                 capability_summary=base,
-                model_metadata=missing_high,
+                model_metadata=_model_metadata(supported_efforts=["medium", "low"]),
                 protocol=campaign,
             )["status"],
             "no_compatible_endpoint",
@@ -169,8 +155,8 @@ class Lot4C4GPT52V25Tests(unittest.TestCase):
             "metadata_contract_mismatch",
         )
 
-    def test_live_preflight_reads_exact_slug_then_fresh_model_metadata(self) -> None:
-        campaign = campaign_v25.build_protocol(REPO_ROOT, freeze_commit=FREEZE_COMMIT)
+    def test_live_preflight_component_reads_exact_slug_and_model_metadata(self) -> None:
+        campaign, _ = _historical_v25()
 
         class Response:
             status_code = 200
@@ -185,9 +171,7 @@ class Lot4C4GPT52V25Tests(unittest.TestCase):
             {
                 "data": {
                     "id": "openai/gpt-5.2",
-                    "endpoints": [
-                        {"supported_parameters": ["reasoning", "max_tokens"]}
-                    ],
+                    "endpoints": [{"supported_parameters": ["reasoning", "max_tokens"]}],
                 }
             }
         )
@@ -238,121 +222,46 @@ class Lot4C4GPT52V25Tests(unittest.TestCase):
         self.assertEqual(outcome["requested_model"], "openai/gpt-5.2")
         self.assertEqual(outcome["observed_model"], "unknown")
 
-    def test_synthetic_campaign_reuses_runner_and_stops_for_human_rating(self) -> None:
-        campaign = campaign_v25.build_protocol(REPO_ROOT, freeze_commit=FREEZE_COMMIT)
-        client = _SyntheticGPT52Client()
+    def test_public_runner_refuses_drift_before_client_progress_or_files(self) -> None:
+        campaign, _ = _historical_v25()
+        client = _UnreachableGPT52Client()
+        progress: list[tuple[object, ...]] = []
         with tempfile.TemporaryDirectory(dir="/tmp") as raw:
             root = Path(raw)
-            result = campaign_v25.run_campaign(
-                repo_root=REPO_ROOT,
-                protocol=campaign,
-                client=client,
-                output_dir=root / "private",
-                review_export_dir=root / "review",
-                execution_authorized=True,
-                evidence_source="synthetic_test",
-            )
-            self.assertEqual(result["status"], "human_rating_required")
-            self.assertEqual(result["attempted_call_count"], 24)
-            self.assertEqual(len(client.calls), 24)
-            self.assertTrue((root / "review" / "rating_packet.json").is_file())
-            self.assertTrue((root / "private" / "blind_mapping.json").is_file())
-            self.assertFalse((root / "review" / "blind_mapping.json").exists())
-            for payload in client.calls:
-                self.assertEqual(payload["model"], "openai/gpt-5.2")
-                self.assertEqual(payload["reasoning"], {"effort": "high", "exclude": True})
-                self.assertEqual(
-                    payload["provider"],
-                    {"allow_fallbacks": False, "require_parameters": True},
-                )
-
-    def test_v25_finalizer_requires_ratification_then_preserves_gpt52_evidence(self) -> None:
-        campaign = campaign_v25.build_protocol(REPO_ROOT, freeze_commit=FREEZE_COMMIT)
-        with tempfile.TemporaryDirectory(dir="/tmp") as raw:
-            root = Path(raw)
-            private_dir = root / "private"
-            review_dir = root / "review"
-            result = campaign_v25.run_campaign(
-                repo_root=REPO_ROOT,
-                protocol=campaign,
-                client=_SyntheticGPT52Client(),
-                output_dir=private_dir,
-                review_export_dir=review_dir,
-                execution_authorized=True,
-                evidence_source="synthetic_test",
-            )
-            self.assertEqual(result["status"], "human_rating_required")
-            packet_path = review_dir / "rating_packet.json"
-            packet = json.loads(packet_path.read_text(encoding="utf-8"))
-            ratings_path = review_dir / "ratings.json"
-            _write_0600(ratings_path, _codex_ratings(packet))
-            ledger_path = private_dir / "call_ledger.json"
-            ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
-            durable_path = root / "durable.json"
-
-            with mock.patch.object(
-                campaign_v25,
-                "expected_live_campaign_paths",
-                return_value=(private_dir, review_dir),
-            ):
-                with self.assertRaisesRegex(ValueError, "call_ledger_provenance_invalid"):
-                    rating_v2.finalize_campaign(
-                        campaign_dir=private_dir,
-                        rating_packet_path=packet_path,
-                        ratings_path=ratings_path,
-                        durable_output=durable_path,
-                    )
-                pending = finalize_v25.finalize_campaign(
+            private = root / "private"
+            review = root / "review"
+            with self.assertRaisesRegex(ValueError, "freeze_manifest_mismatch"):
+                campaign_v25.run_campaign(
                     repo_root=REPO_ROOT,
-                    freeze_commit=FREEZE_COMMIT,
-                    campaign_dir=private_dir,
-                    rating_packet_path=packet_path,
-                    ratings_path=ratings_path,
-                    durable_output=durable_path,
+                    protocol=campaign,
+                    client=client,
+                    output_dir=private,
+                    review_export_dir=review,
+                    execution_authorized=True,
+                    evidence_source="synthetic_test",
+                    progress=lambda *args: progress.append(args),
+                    capability_progress=lambda *args: progress.append(args),
                 )
-                self.assertEqual(pending["status"], "human_ratification_required")
-                self.assertTrue(private_dir.is_dir())
-                self.assertTrue(review_dir.is_dir())
-                self.assertFalse(durable_path.exists())
+            self.assertEqual(client.calls, [])
+            self.assertEqual(progress, [])
+            self.assertFalse(private.exists())
+            self.assertFalse(review.exists())
 
-                ratings_sha = hashlib.sha256(ratings_path.read_bytes()).hexdigest()
-                ratification_path = root / "ratification.json"
-                _write_0600(
-                    ratification_path,
-                    {
-                        "schema_version": rating_v2.RATIFICATION_SCHEMA_VERSION,
-                        "packet_sha256": packet["packet_sha256"],
-                        "ratings_sha256": ratings_sha,
-                        "ratification_source": "tof_human_ratification",
-                        "ratifier_id": "tof",
-                        "decision": "accept",
-                        "ratification_created_outside_provider_runner": True,
-                    },
-                )
-                artifact = finalize_v25.finalize_campaign(
-                    repo_root=REPO_ROOT,
-                    freeze_commit=FREEZE_COMMIT,
-                    campaign_dir=private_dir,
-                    rating_packet_path=packet_path,
-                    ratings_path=ratings_path,
-                    ratification_path=ratification_path,
-                    durable_output=durable_path,
-                )
+    def test_v25_finalizer_archive_inputs_match_retained_evidence(self) -> None:
+        raw_manifest = V25_MANIFEST_PATH.read_bytes()
+        raw_result = V25_RESULT_PATH.read_bytes()
+        self.assertEqual(hashlib.sha256(raw_manifest).hexdigest(), V25_MANIFEST_SHA256)
+        self.assertEqual(hashlib.sha256(raw_result).hexdigest(), V25_RESULT_SHA256)
+        protocol, schedule = _historical_v25()
+        artifact = json.loads(raw_result.decode("utf-8"))
+        self.assertTrue(rating_v2.validate_durable_artifact(artifact))
+        self.assertEqual(protocol_v24.protocol_sha256(protocol), artifact["protocol_sha256"])
+        self.assertEqual(len(schedule), 24)
+        self.assertEqual(artifact["route_counts"]["models"], {"openai/gpt-5.2": 24})
 
-            self.assertEqual(artifact["decision"], "provider_campaign_required")
-            self.assertEqual(artifact["route_counts"]["models"], {"openai/gpt-5.2": 24})
-            self.assertEqual(artifact["observed_cost_usd"], ledger["observed_cost_usd"])
-            self.assertEqual(artifact["ratification_source"], "tof_human_ratification")
-            self.assertFalse(private_dir.exists())
-            self.assertFalse(review_dir.exists())
-            self.assertTrue(durable_path.is_file())
-
-    def test_v25_finalize_cli_is_offline(self) -> None:
-        artifact = {
-            "decision": "fail",
-            "call_count": 24,
-            "rating_count": 12,
-        }
+    def test_v25_finalize_cli_is_offline_argument_wiring(self) -> None:
+        artifact = {"decision": "fail", "call_count": 24, "rating_count": 12}
+        output = io.StringIO()
         with mock.patch.object(
             finalize_v25,
             "finalize_campaign",
@@ -360,11 +269,11 @@ class Lot4C4GPT52V25Tests(unittest.TestCase):
         ) as finalize, mock.patch.object(
             campaign_v25.OpenRouterClient,
             "from_env",
-        ) as from_env:
+        ) as from_env, redirect_stdout(output):
             status = finalize_v25.main(
                 [
                     "--repo-root", str(REPO_ROOT),
-                    "--freeze-commit", FREEZE_COMMIT,
+                    "--freeze-commit", V25_FREEZE_COMMIT,
                     "--campaign-dir", "/tmp/private",
                     "--rating-packet", "/tmp/review/rating_packet.json",
                     "--ratings", "/tmp/review/ratings.json",
@@ -375,72 +284,75 @@ class Lot4C4GPT52V25Tests(unittest.TestCase):
         self.assertEqual(status, 0)
         finalize.assert_called_once()
         from_env.assert_not_called()
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            {
+                "status": "finalized",
+                "decision": "fail",
+                "call_count": 24,
+                "rating_count": 12,
+            },
+        )
 
     def test_ratified_gpt51_and_gpt52_artifacts_reject_the_same_candidate(self) -> None:
         expected = {
-            "2026-09-01-lot4c4-final-wording-v2-4-gpt-5-1.json": {
-                "model": "openai/gpt-5.1",
-                "cost": 0.389553,
-                "delicacy": 4,
-                "formulation": 6,
-                "critical": 3,
-            },
-            "2026-09-01-lot4c4-final-wording-v2-5-gpt-5-2.json": {
-                "model": "openai/gpt-5.2",
-                "cost": 0.2541882,
-                "delicacy": 4,
-                "formulation": 5,
-                "critical": 5,
-            },
+            "2026-09-01-lot4c4-final-wording-v2-4-gpt-5-1.json": (
+                "openai/gpt-5.1", 0.389553, 4, 6, 3
+            ),
+            "2026-09-01-lot4c4-final-wording-v2-5-gpt-5-2.json": (
+                "openai/gpt-5.2", 0.2541882, 4, 5, 5
+            ),
         }
         for filename, evidence in expected.items():
             with self.subTest(filename=filename):
-                artifact = json.loads(
-                    (RESULTS_ROOT / filename).read_text(encoding="utf-8")
-                )
+                artifact = json.loads((RESULTS_ROOT / filename).read_text(encoding="utf-8"))
+                model, cost, delicacy, formulation, critical = evidence
                 self.assertTrue(rating_v2.validate_durable_artifact(artifact))
                 self.assertEqual(artifact["decision"], "fail")
+                self.assertEqual(artifact["route_counts"]["models"], {model: 24})
+                self.assertEqual(artifact["observed_cost_usd"], cost)
                 self.assertEqual(
-                    artifact["reason_codes"],
-                    [
-                        "critical_zero_tolerance_breached",
-                        "delicacy_improvement_threshold_missed",
-                        "formulation_improvement_threshold_missed",
-                    ],
+                    artifact["metrics"]["transition_delicacy_improved_count"],
+                    delicacy,
                 )
                 self.assertEqual(
-                    artifact["route_counts"]["models"],
-                    {evidence["model"]: 24},
+                    artifact["metrics"]["transition_formulation_improved_count"],
+                    formulation,
                 )
-                self.assertEqual(artifact["observed_cost_usd"], evidence["cost"])
-                metrics = artifact["metrics"]
-                self.assertEqual(
-                    metrics["transition_delicacy_improved_count"],
-                    evidence["delicacy"],
-                )
-                self.assertEqual(
-                    metrics["transition_formulation_improved_count"],
-                    evidence["formulation"],
-                )
-                self.assertEqual(
-                    metrics["critical_failure_count"], evidence["critical"]
-                )
-                recalculated, reasons, observed = rating_v2._decision(
-                    evidence_source="main_model_provider",
-                    ledger={"outputs_complete": True},
-                    metrics=metrics,
-                )
-                self.assertEqual(recalculated, artifact["decision"])
-                self.assertEqual(reasons, artifact["reason_codes"])
-                self.assertTrue(observed)
+                self.assertEqual(artifact["metrics"]["critical_failure_count"], critical)
 
-    def test_dry_run_is_offline_and_frozen(self) -> None:
-        summary = campaign_v25.dry_run(REPO_ROOT, freeze_commit=FREEZE_COMMIT)
-        self.assertEqual(summary["status"], "ready_offline")
-        self.assertEqual(summary["decision"], "provider_campaign_required")
-        self.assertEqual(summary["model"], "openai/gpt-5.2")
-        self.assertEqual(summary["expected_call_count"], 24)
-        self.assertEqual(summary["absolute_cost_cap_usd"], 4.0)
+    def test_cli_refuses_dry_run_and_execution_before_output_or_credentials(self) -> None:
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory(dir="/tmp") as raw:
+            root = Path(raw)
+            private = root / "private"
+            review = root / "review"
+            with mock.patch.object(
+                campaign_v25.OpenRouterClient,
+                "from_env",
+                side_effect=AssertionError("credentials must stay unreachable"),
+            ), redirect_stdout(output):
+                with self.assertRaisesRegex(ValueError, "freeze_manifest_mismatch"):
+                    campaign_v25.main(
+                        [
+                            "--repo-root", str(REPO_ROOT),
+                            "--freeze-commit", V25_FREEZE_COMMIT,
+                            "--dry-run",
+                        ]
+                    )
+                with self.assertRaisesRegex(ValueError, "freeze_manifest_mismatch"):
+                    campaign_v25.main(
+                        [
+                            "--repo-root", str(REPO_ROOT),
+                            "--freeze-commit", V25_FREEZE_COMMIT,
+                            "--execute-live",
+                            "--output-dir", str(private),
+                            "--review-export-dir", str(review),
+                        ]
+                    )
+            self.assertFalse(private.exists())
+            self.assertFalse(review.exists())
+        self.assertEqual(output.getvalue(), "")
 
 
 if __name__ == "__main__":

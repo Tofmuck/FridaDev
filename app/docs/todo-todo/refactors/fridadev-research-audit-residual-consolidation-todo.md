@@ -1272,7 +1272,7 @@ commencé.
 
 ### L7.6 — Banc historique Stimmung — F24, garde avant réutilisation
 
-**Fermé le 6 septembre 2026.** La revalidation au HEAD initial
+**Fermé initialement le 6 septembre 2026.** La revalidation au HEAD initial
 `78cfe1350fb57f2515aa5ce7de71e2858a6711e7` confirme les hypothèses 1 à 6 de
 F24 et invalide la septième sur le chemin antérieur. `validate_mapping()` liait
 mapping et packet par leurs empreintes, mais ne recroisait ni séquence ni
@@ -1322,6 +1322,42 @@ manifestes, résultats et artefacts gelés restent inchangés. `keep_current_v2.
 reste actif et inchangé. Aucun canari, campagne, runtime, DB, dialogue réel,
 JavaScript, Chromium, rebuild, restart ou déploiement n'est lancé. L7.7 n'est
 pas commencé.
+
+**Correctif de réouverture puis fermeture définitive du 6 septembre 2026.** Au
+HEAD initial `6b3fd405c5fc4ef5820d55fb49f9ad01c70f43d8`, la garde F24 avait modifié
+le module de notation après les gels v2.4/v2.5. Le manifeste v2.4 conservait
+l'empreinte historique `b2154ec3...`, tandis que la source courante valait
+`6a4fb3f7...`. `build_protocol()` refusait donc correctement la dérive avec
+`freeze_manifest_mismatch`, mais trois `setUpClass` et sept tests v2.5
+continuaient à reconstruire les campagnes comme si leurs runners décrivaient
+le HEAD. La commande hermétique commune lançait 26 tests et produisait 10
+erreurs ; la preuve initiale L7.6 était trop étroite.
+
+Les preuves distinguent désormais trois contrats. Premièrement, les manifestes
+v2.1/v2.4/v2.5 et les résultats v2.4/v2.5 sont authentifiés byte-for-byte selon
+leur provenance gelée, sans substituer les hashes courants. La garde partagée
+ancre explicitement les SHA-256 exacts des manifestes v2.4/v2.5 avant toute
+réinjection de `frozen_inputs`, ce qui refuse aussi une auto-réécriture cohérente
+d'un champ historique. Deuxièmement, les entrées publiques runner et dry-run
+v2.4/v2.5 prouvent leur non-comparabilité au HEAD : elles échouent avant
+credentials, client, provider, progression ou création de fichier. Les anciens
+tests positifs de campagne ont été reclassés test par test en intégrité
+d'archive, helpers purs encore valides ou refus public ; aucun runner n'est
+réactivé. Troisièmement, les vrais finalizers offline v2.4/v2.5 continuent seuls
+à réutiliser la bijection F24, avec ratification, refus des permutations avant
+scorer/purge, destination no-clobber et restauration ou purge conforme au
+contrat.
+
+La preuve différentielle finale exécute les quatre modules v2.1/v2.4/v2.5/L7.6
+dans une même commande, en conteneur read-only, `/tmp` éphémère et réseau
+coupé : `50/50` tests verts, sans erreur de `setUpClass`, skip, expected failure
+ou xfail. Les manifestes, corpus, scorers, résultats, prompts, modèles, seuils
+et artefacts historiques restent byte-for-byte inchangés ; seul le loader de
+finalisation authentifie plus strictement leurs deux manifestes. Le runtime
+Stimmung et `keep_current_v2.3` restent inchangés. Aucun provider, canari,
+campagne, DB, dialogue réel, JavaScript, Chromium, rebuild, restart ou
+déploiement n'est lancé. L7.6 est définitivement refermé ; L7.7 n'est pas
+commencé.
 
 ### L7.7 — Passe documentaire bornée
 

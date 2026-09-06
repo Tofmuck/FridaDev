@@ -12,6 +12,16 @@ from benchmark.suites.stimmung import final_wording_protocol_v2 as protocol_v2
 from benchmark.suites.stimmung import final_wording_rating_v2 as rating_v2
 
 
+_HISTORICAL_FREEZE_MANIFEST_SHA256 = {
+    "stimmung_final_wording_freeze_v2_4.json": (
+        "736cb6d83ab8c0626de8f7cc4cf3ba4a9c7ab494d69353a2d0383f361ca25f91"
+    ),
+    "stimmung_final_wording_freeze_v2_5.json": (
+        "3f1863a855a13a49528348968cce2a748758c208ec0f0b19456101f0557521ec"
+    ),
+}
+
+
 def _compact_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
@@ -25,10 +35,6 @@ def _load_object_snapshot(path: Path, reason: str) -> tuple[dict[str, Any], str]
     if not isinstance(value, dict):
         raise ValueError(reason)
     return value, hashlib.sha256(raw).hexdigest()
-
-
-def _load_object(path: Path, reason: str) -> dict[str, Any]:
-    return _load_object_snapshot(path, reason)[0]
 
 
 def _same_identity(left: Any, right: Any) -> bool:
@@ -47,10 +53,13 @@ def load_historical_protocol(
             repo_root,
             freeze_commit=freeze_commit,
         )
-        manifest = _load_object(
-            protocol_v2.freeze_manifest_path(repo_root),
+        manifest_path = protocol_v2.freeze_manifest_path(repo_root)
+        manifest, manifest_sha = _load_object_snapshot(
+            manifest_path,
             "historical_calendar_provenance_invalid",
         )
+        if manifest_sha != _HISTORICAL_FREEZE_MANIFEST_SHA256.get(manifest_path.name):
+            raise ValueError("historical_calendar_provenance_invalid")
         frozen_inputs = manifest.get("frozen_inputs")
         if not isinstance(frozen_inputs, Mapping):
             raise ValueError("historical_calendar_provenance_invalid")
