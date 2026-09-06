@@ -40,7 +40,10 @@ def build_usage_projection(selection: Mapping[str, Any]) -> dict[str, Any]:
     selected = bool(selection.get("selected"))
     selection_status = _text(selection.get("selection_status"), 80) or "unknown"
     reason = _safe_reason_code(selection.get("reason_code"), fallback="")
-    last_excluded_reason = _safe_reason_code(selection.get("last_excluded_reason_code"), fallback="")
+    last_excluded_turn_id = _text(selection.get("last_excluded_turn_id"), 160)
+    raw_last_excluded_reason = _text(selection.get("last_excluded_reason_code"), 120)
+    last_excluded_reason = _safe_reason_code(raw_last_excluded_reason, fallback="")
+    has_current_exclusion = bool(last_excluded_turn_id or raw_last_excluded_reason)
     usage_status = DOCUMENT_STATUS_NOT_INJECTED
     readiness = READINESS_BLOCKED
     usage_reason = reason or REASON_CONTENT_REDACTED
@@ -48,9 +51,10 @@ def build_usage_projection(selection: Mapping[str, Any]) -> dict[str, Any]:
         usage_status = "selected"
         readiness = READINESS_PENDING
         usage_reason = REASON_SELECTED
-    if last_excluded_reason:
-        usage_reason = last_excluded_reason
+    if has_current_exclusion:
+        usage_status = DOCUMENT_STATUS_NOT_INJECTED
         readiness = READINESS_BLOCKED
+        usage_reason = REASON_CONTENT_REDACTED
         if last_excluded_reason in {
             REASON_PDF_VISUAL_REQUIRED,
             "workspace_file_model_unsupported",
@@ -58,6 +62,7 @@ def build_usage_projection(selection: Mapping[str, Any]) -> dict[str, Any]:
         }:
             usage_status = DOCUMENT_STATUS_PDF_VISUAL_REQUIRED
             readiness = READINESS_VISUAL
+            usage_reason = last_excluded_reason
         elif last_excluded_reason in {
             "workspace_file_too_large",
             "workspace_file_pdf_visual_too_large",
@@ -65,6 +70,7 @@ def build_usage_projection(selection: Mapping[str, Any]) -> dict[str, Any]:
             REASON_TOO_LARGE,
         }:
             usage_status = DOCUMENT_STATUS_TOO_LARGE
+            usage_reason = last_excluded_reason
         elif last_excluded_reason in {
             "workspace_file_missing",
             "workspace_file_deleted",
@@ -75,8 +81,10 @@ def build_usage_projection(selection: Mapping[str, Any]) -> dict[str, Any]:
             REASON_RUNTIME_UNAVAILABLE,
         }:
             usage_status = DOCUMENT_STATUS_UNAVAILABLE
+            usage_reason = last_excluded_reason
         elif last_excluded_reason in {"workspace_file_type_unsupported", REASON_TYPE_UNSUPPORTED}:
             usage_status = DOCUMENT_STATUS_UNSUPPORTED
+            usage_reason = last_excluded_reason
     elif selected and _text(selection.get("last_injected_turn_id"), 160):
         if _is_visual_selection(selection):
             usage_status = DOCUMENT_STATUS_VISUAL_READY
@@ -97,7 +105,7 @@ def build_usage_projection(selection: Mapping[str, Any]) -> dict[str, Any]:
         "selection_status": selection_status,
         "reason_code": usage_reason,
         "last_injected_turn_id": _text(selection.get("last_injected_turn_id"), 160),
-        "last_excluded_turn_id": _text(selection.get("last_excluded_turn_id"), 160),
+        "last_excluded_turn_id": last_excluded_turn_id,
         "last_excluded_reason_code": last_excluded_reason,
     }
 

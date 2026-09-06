@@ -238,11 +238,15 @@ Implementation Lot 3 livree:
 - aucune copie de contenu extrait dans `conversation_messages`, memoire, identity, summary, Biblio ou RAG;
 - observabilite content-free pour selection, decochage, injection, exclusion et stale/missing/deleted/disk_missing;
 - le chemin OCR `.ocr.md` reste distinct: l'injection PDF visuelle ne cree pas de Markdown derive, ne stocke pas d'OCR et ne promet pas une lecture textuelle complete.
-- la projection d'usage décrit la dernière décision effective: une exclusion
-  renseignée prime sur un `last_injected_turn_id` plus ancien pour
-  `usage_status`, `readiness` et `reason_code`, sans supprimer cet identifiant
-  historique; l'injection suivante efface les champs d'exclusion et rend de
-  nouveau le document prêt selon son type.
+- la projection d'usage décrit la dernière décision effective: la présence
+  brute de `last_excluded_turn_id` ou de `last_excluded_reason_code` établit
+  l'exclusion courante avant normalisation du motif et prime sur un
+  `last_injected_turn_id` plus ancien; un motif reconnu conserve son mapping,
+  tandis qu'un motif vide, malformé ou non mappé produit
+  `not_injected/blocked/folder_document_content_redacted`; les trois champs
+  historiques restent exposés selon leur normalisation content-free, et
+  l'injection suivante efface l'exclusion puis rend de nouveau le document
+  prêt selon son type.
 
 ## 9. Contrat OCR images/PDF
 

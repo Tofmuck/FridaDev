@@ -928,11 +928,14 @@ comprises, sera remplacé. Une annulation s'arrête avant le POST. Un verrou
 process-local par cible neutralise un double clic pendant la requête. Le client
 conserve désormais le statut HTTP réel avec le fichier retourné ; le succès
 affiche « créé » pour `201`, « mis à jour » pour `200`, et aucun autre statut ne
-fabrique un succès. Côté projection, un reason code d'exclusion effectif prime
-sur l'ancien ID d'injection pour `usage_status`, `readiness` et `reason_code`,
-mais les trois champs historiques restent exposés. L'injection suivante
-réutilise le contrat store existant qui efface l'exclusion et restaure
-`readable/ready`.
+fabrique un succès. Côté projection, l'existence de l'exclusion est désormais
+décidée depuis ses marqueurs durables avant normalisation du motif et prime sur
+l'ancien ID d'injection pour `usage_status`, `readiness` et `reason_code`. Un
+motif reconnu conserve son mapping ; un motif vide, malformé ou sûr mais non
+mappé produit `not_injected/blocked/folder_document_content_redacted`. Les
+trois champs historiques restent exposés selon leur normalisation content-free.
+L'injection suivante réutilise le contrat store existant qui efface l'exclusion
+et restaure `readable/ready`.
 
 **Preuves et limites.** Les reproductions rouges ont établi l'absence de
 confirmation, la perte de `Response.status` et la projection fautive
@@ -951,6 +954,18 @@ pré-POST repose volontairement sur le read-model déjà chargé : une autre
 surface concurrente peut le rendre caduc entre lecture et POST, mais le statut
 serveur final reste la vérité du libellé. Aucun algorithme OCR, stockage,
 versionnage, télémétrie ou capacité produit n'est ajouté. L7 n'est pas commencé.
+
+**Correctif résiduel F14b au HEAD
+`306c97d3901c017f3a7c3f9f81ed78e03b23c8bb`.** La revalidation a montré que
+le premier correctif utilisait le motif déjà normalisé comme preuve d'existence
+de l'exclusion : un motif vide ou malformé redevenait donc `readable/ready`, et
+un motif syntaxiquement sûr mais non mappé conservait à tort `selected`. Les
+reproductions ciblées ont échoué exactement sur ces états. La projection sépare
+maintenant l'existence, déterminée par les deux marqueurs bruts durables, du
+mapping du motif normalisé. Les tests de projection et de chaîne
+sélection/exclusion/injection couvrent aussi l'absence réelle d'exclusion, un
+motif valide et la reprise après injection. Aucun champ, helper, état, route,
+API ou capacité n'est ajouté ; L7 reste non commencé.
 
 ## 10. L7 — Vérité d'API, observabilité et outils historiques
 

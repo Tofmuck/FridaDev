@@ -293,6 +293,8 @@ class DocumentsV1ReadModelTests(unittest.TestCase):
         self.assertEqual(usage["usage_status"], "readable")
         self.assertEqual(usage["readiness"], "ready")
         self.assertEqual(usage["reason_code"], "folder_document_text_ready")
+        self.assertEqual(usage["last_excluded_turn_id"], "")
+        self.assertEqual(usage["last_excluded_reason_code"], "")
 
     def test_usage_projection_marks_image_prepared_as_visual_ready_after_prompt_injection(self) -> None:
         projected = workspace_folder_documents.apply_selection_document_v1_projection(
@@ -420,6 +422,58 @@ class DocumentsV1ReadModelTests(unittest.TestCase):
         self.assertEqual(usage["reason_code"], "workspace_file_too_large")
         self.assertEqual(usage["last_injected_turn_id"], historical_injection)
         self.assertEqual(usage["last_excluded_turn_id"], current_exclusion)
+        self.assertEqual(usage["last_excluded_reason_code"], "workspace_file_too_large")
+
+    def test_usage_projection_blocks_current_exclusion_with_missing_or_malformed_reason(self) -> None:
+        historical_injection = "44444444-4444-4444-8444-444444444444"
+        current_exclusion = "55555555-5555-4555-8555-555555555555"
+        for raw_reason in ("", "/Frida/Projet-Tulu/document.txt"):
+            with self.subTest(raw_reason=raw_reason):
+                projected = workspace_folder_documents.apply_selection_document_v1_projection(
+                    {
+                        "conversation_id": "11111111-1111-4111-8111-111111111111",
+                        "workspace_file_id": "33333333-3333-4333-8333-333333333333",
+                        "workspace_folder_id": "22222222-2222-4222-8222-222222222222",
+                        "selected": True,
+                        "selection_status": "selected",
+                        "last_injected_turn_id": historical_injection,
+                        "last_excluded_turn_id": current_exclusion,
+                        "last_excluded_reason_code": raw_reason,
+                    }
+                )
+
+                usage = projected["document_v1_usage"]
+                self.assertEqual(usage["usage_status"], "not_injected")
+                self.assertEqual(usage["readiness"], "blocked")
+                self.assertEqual(usage["reason_code"], "folder_document_content_redacted")
+                self.assertEqual(usage["last_injected_turn_id"], historical_injection)
+                self.assertEqual(usage["last_excluded_turn_id"], current_exclusion)
+                self.assertEqual(usage["last_excluded_reason_code"], "")
+
+    def test_usage_projection_redacts_unmapped_safe_current_exclusion_reason(self) -> None:
+        historical_injection = "44444444-4444-4444-8444-444444444444"
+        current_exclusion = "55555555-5555-4555-8555-555555555555"
+        unknown_reason = "workspace_file_future_reason"
+        projected = workspace_folder_documents.apply_selection_document_v1_projection(
+            {
+                "conversation_id": "11111111-1111-4111-8111-111111111111",
+                "workspace_file_id": "33333333-3333-4333-8333-333333333333",
+                "workspace_folder_id": "22222222-2222-4222-8222-222222222222",
+                "selected": True,
+                "selection_status": "selected",
+                "last_injected_turn_id": historical_injection,
+                "last_excluded_turn_id": current_exclusion,
+                "last_excluded_reason_code": unknown_reason,
+            }
+        )
+
+        usage = projected["document_v1_usage"]
+        self.assertEqual(usage["usage_status"], "not_injected")
+        self.assertEqual(usage["readiness"], "blocked")
+        self.assertEqual(usage["reason_code"], "folder_document_content_redacted")
+        self.assertEqual(usage["last_injected_turn_id"], historical_injection)
+        self.assertEqual(usage["last_excluded_turn_id"], current_exclusion)
+        self.assertEqual(usage["last_excluded_reason_code"], unknown_reason)
 
 
 if __name__ == "__main__":
