@@ -1006,9 +1006,38 @@ L7.2 n'est pas commencé.
 
 ### L7.2 — Conversations : succès, erreur et limite de liste — F17
 
-Respecter `SaveResult` à la création, distinguer erreur SQL et liste vide, puis
-décider la limite de 200 au regard du système mono-utilisateur. Ne pas ajouter
-une pagination générique si aucun parcours existant ne peut la consommer.
+**Fermé le 6 septembre 2026.** La revalidation au HEAD initial
+`16b86349d935ef4350d2173bfda8c37c92a9a9d7` confirme les trois branches de
+F17. `create_conversation()` ignorait le `ConversationSaveResult`, puis son
+résumé de repli transformait encore une sauvegarde refusée en réponse `201`.
+`conversations_store.list_conversations()` transformait toute exception SQL en
+`items=[]`, `total=0`; le service et la route ajoutaient ensuite `ok=true` et
+un statut `200`. Enfin, le sidebar demandait une seule page de 200 et jetait
+les champs `limit`, `offset` et `total` déjà exposés par l'API.
+
+Le correctif reste sur les contrats existants. Une création ne consulte son
+résumé et ne répond `201` qu'après un `ConversationSaveResult.ok=true`; sinon
+elle répond `503 conversation_save_failed`, sans conversation synthétique. Le
+store de liste distingue maintenant explicitement succès et échec; une panne
+SQL remonte jusqu'à `503 conversation_list_failed`, tandis qu'un vide sain
+reste `200`, `ok=true`, `items=[]`, `total=0`. Le sidebar accumule les pages de
+200 selon `limit/offset/total`, préserve leur ordre et refuse doublon, identifiant
+absent, total instable, offset incohérent ou page courte avant le total. Sa
+progression doit être strictement monotone et son état n'est remplacé qu'après
+chargement complet; toute page défaillante conserve liste, sélection et cache
+précédents.
+
+Les reproductions rouges ont observé `201 != 503`, `200 != 503`, une panne SQL
+rendue comme vide, seulement 200 conversations sur 205, la publication de la
+première page malgré l'échec de la suivante et l'acceptation d'une page courte.
+Les deux mutations causales demandées réintroduisent séparément le faux `201`
+en réignorant `ConversationSaveResult`, puis la limite à 200 en retournant la
+première page; chacune fait échouer son témoin avant restauration exacte. Les
+tests ciblés store/service/routes et les voisins Workspace passent `46/46`; les
+tests Node du sidebar, du renderer, du folder binding et des frontières
+Workspace passent `33/33`. Aucun schéma DB, route, écran, télémétrie, queue,
+retry, framework de pagination ou accès à la DB opérateur n'est ajouté. L7.3
+n'est pas commencé.
 
 ### L7.3 — Portée des compteurs — F20
 

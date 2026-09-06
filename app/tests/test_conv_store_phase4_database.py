@@ -96,6 +96,23 @@ class ConvStorePhase4DatabaseTests(unittest.TestCase):
 
         self.assertFalse(observed['called'])
 
+    def test_list_conversations_distinguishes_sql_failure_from_empty_list(self) -> None:
+        original_db_conn = conv_store._db_conn
+
+        def failing_db_conn():
+            raise RuntimeError('synthetic database outage')
+
+        conv_store._db_conn = failing_db_conn
+        try:
+            result = conv_store.list_conversations(limit=200, offset=0)
+        finally:
+            conv_store._db_conn = original_db_conn
+
+        self.assertFalse(result.get('ok', True))
+        self.assertEqual(result.get('reason_code'), 'conversation_list_failed')
+        self.assertNotIn('items', result)
+        self.assertNotIn('total', result)
+
 
 if __name__ == "__main__":
     unittest.main()

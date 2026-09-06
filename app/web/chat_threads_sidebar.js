@@ -226,9 +226,58 @@ function createChatThreadsSidebar({
   }
 
   async function listConversationsFromServer(limit = THREADS_PAGE_SIZE, offset = 0) {
-    const res = await httpFetch(`/api/conversations?limit=${encodeURIComponent(String(limit))}&offset=${encodeURIComponent(String(offset))}`);
-    const data = await parseServerResponse(res);
-    return Array.isArray(data.items) ? data.items : [];
+    const pageLimit = Number(limit);
+    let nextOffset = Number(offset);
+    if (!Number.isInteger(pageLimit) || pageLimit < 1 || !Number.isInteger(nextOffset) || nextOffset < 0) {
+      throw makeContentFreeListError("conversation_list_page_inconsistent");
+    }
+
+    const items = [];
+    const seenConversationIds = new Set();
+    let expectedTotal = null;
+    while (true) {
+      const res = await httpFetch(
+        `/api/conversations?limit=${encodeURIComponent(String(pageLimit))}&offset=${encodeURIComponent(String(nextOffset))}`,
+      );
+      const data = await parseServerResponse(res);
+      const pageItems = Array.isArray(data?.items) ? data.items : null;
+      const total = Number(data?.total);
+      const responseLimit = Number(data?.limit);
+      const responseOffset = Number(data?.offset);
+      if (
+        pageItems === null
+        || !Number.isSafeInteger(total)
+        || total < 0
+        || responseLimit !== pageLimit
+        || responseOffset !== nextOffset
+        || (expectedTotal !== null && total !== expectedTotal)
+      ) {
+        throw makeContentFreeListError("conversation_list_page_inconsistent");
+      }
+      expectedTotal = total;
+
+      const remaining = Math.max(0, total - nextOffset);
+      if (pageItems.length !== Math.min(pageLimit, remaining)) {
+        throw makeContentFreeListError("conversation_list_page_inconsistent");
+      }
+      for (const item of pageItems) {
+        const conversationId = String(item?.id || item?.conversation_id || "").trim();
+        if (!conversationId || seenConversationIds.has(conversationId)) {
+          throw makeContentFreeListError("conversation_list_page_inconsistent");
+        }
+        seenConversationIds.add(conversationId);
+        items.push(item);
+      }
+
+      if (nextOffset >= total || nextOffset + pageItems.length === total) {
+        return items;
+      }
+      const followingOffset = nextOffset + pageItems.length;
+      if (followingOffset <= nextOffset) {
+        throw makeContentFreeListError("conversation_list_page_inconsistent");
+      }
+      nextOffset = followingOffset;
+    }
   }
 
   async function listWorkspaceFoldersFromServer() {

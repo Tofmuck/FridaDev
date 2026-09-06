@@ -108,6 +108,16 @@ function response(status, payload) {
   };
 }
 
+function conversationPage(items, total, offset = 0, limit = THREADS_PAGE_SIZE) {
+  return response(200, {
+    ok: true,
+    items,
+    total,
+    limit,
+    offset,
+  });
+}
+
 function deferred() {
   let resolve;
   let reject;
@@ -270,6 +280,132 @@ test("normalizeThreadItem rejects malformed conversation identifiers", () => {
   assert.equal(normalizeThreadItem({ title: "sans id" }), null);
 });
 
+test("threads sidebar loads every conversation page once and preserves server order", async () => {
+  const conversations = Array.from({ length: 205 }, (_value, index) => ({
+    id: `conv-${String(index + 1).padStart(3, "0")}`,
+    title: `Conversation ${index + 1}`,
+  }));
+  const calls = [];
+  const { sidebar } = buildSidebarWithFetch(async (url) => {
+    const path = String(url || "");
+    calls.push(path);
+    if (path === "/api/conversations?limit=200&offset=0") {
+      return conversationPage(conversations.slice(0, 200), 205, 0);
+    }
+    if (path === "/api/conversations?limit=200&offset=200") {
+      return conversationPage(conversations.slice(200), 205, 200);
+    }
+    if (path === "/api/workspace-folders") {
+      return response(200, { ok: true, items: [] });
+    }
+    if (path === "/api/conversations/conv-205/workspace-file-selections") {
+      return response(200, { ok: true, selections: [] });
+    }
+    throw new Error(`unexpected test url ${path}`);
+  });
+
+  sidebar.saveThreads([normalizeThreadItem({ id: "conv-205", title: "Ancienne 205" })]);
+  sidebar.setCurrentId("conv-205");
+  sidebar.appendMessageToThread("conv-205", "assistant", "cache conservé");
+
+  assert.equal(await sidebar.refreshThreadsFromServer({ keepSelection: true }), true);
+  assert.equal(sidebar.getThreads().length, 205);
+  assert.deepEqual(sidebar.getThreads().map((item) => item.id), conversations.map((item) => item.id));
+  assert.equal(new Set(sidebar.getThreads().map((item) => item.id)).size, 205);
+  assert.equal(sidebar.getCurrentId(), "conv-205");
+  assert.equal(sidebar.getThreadById("conv-205").messages[0].content, "cache conservé");
+  assert.deepEqual(calls.filter((path) => path.startsWith("/api/conversations?")), [
+    "/api/conversations?limit=200&offset=0",
+    "/api/conversations?limit=200&offset=200",
+  ]);
+});
+
+test("threads sidebar keeps its prior state when a later conversation page fails", async () => {
+  const firstPage = Array.from({ length: 200 }, (_value, index) => ({
+    id: `new-${index + 1}`,
+    title: `Nouvelle ${index + 1}`,
+  }));
+  const { sidebar } = buildSidebarWithFetch(async (url) => {
+    const path = String(url || "");
+    if (path === "/api/conversations?limit=200&offset=0") {
+      return conversationPage(firstPage, 201, 0);
+    }
+    if (path === "/api/conversations?limit=200&offset=200") {
+      return response(503, { ok: false, reason_code: "conversation_list_failed" });
+    }
+    if (path === "/api/workspace-folders") {
+      return response(200, { ok: true, items: [] });
+    }
+    throw new Error(`unexpected test url ${path}`);
+  });
+  const previous = [normalizeThreadItem({ id: "conv-existing", title: "Existante" })];
+  sidebar.saveThreads(previous);
+  sidebar.setCurrentId("conv-existing");
+
+  assert.equal(await sidebar.refreshThreadsFromServer({ keepSelection: true }), false);
+  assert.deepEqual(sidebar.getThreads(), previous);
+  assert.equal(sidebar.getCurrentId(), "conv-existing");
+});
+
+test("threads sidebar stops after one complete conversation page", async () => {
+  const calls = [];
+  const { sidebar } = buildSidebarWithFetch(async (url) => {
+    calls.push(String(url || ""));
+    return conversationPage(
+      [
+        { id: "conv-1", title: "Une" },
+        { id: "conv-2", title: "Deux" },
+      ],
+      2,
+      0,
+    );
+  });
+
+  const items = await sidebar.listConversationsFromServer();
+
+  assert.deepEqual(items.map((item) => item.id), ["conv-1", "conv-2"]);
+  assert.deepEqual(calls, ["/api/conversations?limit=200&offset=0"]);
+});
+
+test("threads sidebar rejects a short conversation page before total without looping", async () => {
+  const calls = [];
+  const { sidebar } = buildSidebarWithFetch(async (url) => {
+    calls.push(String(url || ""));
+    return conversationPage(
+      Array.from({ length: 100 }, (_value, index) => ({ id: `conv-${index + 1}` })),
+      250,
+      0,
+    );
+  });
+
+  await assert.rejects(
+    sidebar.listConversationsFromServer(),
+    (err) => err?.payload?.reason_code === "conversation_list_page_inconsistent",
+  );
+  assert.deepEqual(calls, ["/api/conversations?limit=200&offset=0"]);
+});
+
+test("threads sidebar rejects duplicate conversations across pages", async () => {
+  const firstPage = Array.from({ length: 200 }, (_value, index) => ({
+    id: `conv-${index + 1}`,
+  }));
+  const { sidebar } = buildSidebarWithFetch(async (url) => {
+    const path = String(url || "");
+    if (path === "/api/conversations?limit=200&offset=0") {
+      return conversationPage(firstPage, 201, 0);
+    }
+    if (path === "/api/conversations?limit=200&offset=200") {
+      return conversationPage([{ id: "conv-1" }], 201, 200);
+    }
+    throw new Error(`unexpected test url ${path}`);
+  });
+
+  await assert.rejects(
+    sidebar.listConversationsFromServer(),
+    (err) => err?.payload?.reason_code === "conversation_list_page_inconsistent",
+  );
+});
+
 test("thread loading keeps a late conversation response out of the current conversation view", async () => {
   installDom();
   const wrapper = makeElement("div");
@@ -397,16 +533,16 @@ test("threads sidebar keeps exports and images API errors distinct from empty li
     const path = String(url || "");
     calls.push(path);
     if (path.startsWith("/api/conversations?")) {
-      return response(200, {
-        ok: true,
-        items: [
+      return conversationPage(
+        [
           {
             id: "conv-1",
             title: "Conversation",
             workspace_folder_id: "folder-1",
           },
         ],
-      });
+        1,
+      );
     }
     if (path === "/api/workspace-folders") {
       return response(200, {
@@ -468,7 +604,7 @@ test("threads sidebar keeps files API errors distinct from empty lists", async (
   const { sidebar, threadsUl } = buildSidebarWithFetch(async (url) => {
     const path = String(url || "");
     if (path.startsWith("/api/conversations?")) {
-      return response(200, { ok: true, items: [] });
+      return conversationPage([], 0);
     }
     if (path === "/api/workspace-folders") {
       return response(200, {
@@ -525,7 +661,7 @@ test("threads sidebar keeps normal empty files state when API returns an empty l
   const { sidebar, threadsUl } = buildSidebarWithFetch(async (url) => {
     const path = String(url || "");
     if (path.startsWith("/api/conversations?")) {
-      return response(200, { ok: true, items: [] });
+      return conversationPage([], 0);
     }
     if (path === "/api/workspace-folders") {
       return response(200, {
@@ -572,7 +708,7 @@ test("threads sidebar treats malformed files payloads as load errors", async () 
   const { sidebar, threadsUl } = buildSidebarWithFetch(async (url) => {
     const path = String(url || "");
     if (path.startsWith("/api/conversations?")) {
-      return response(200, { ok: true, items: [] });
+      return conversationPage([], 0);
     }
     if (path === "/api/workspace-folders") {
       return response(200, {
@@ -617,16 +753,16 @@ test("threads sidebar renders existing file controls when files list is ok", asy
   const { sidebar, threadsUl } = buildSidebarWithFetch(async (url) => {
     const path = String(url || "");
     if (path.startsWith("/api/conversations?")) {
-      return response(200, {
-        ok: true,
-        items: [
+      return conversationPage(
+        [
           {
             id: "conv-1",
             title: "Conversation",
             workspace_folder_id: "folder-1",
           },
         ],
-      });
+        1,
+      );
     }
     if (path === "/api/workspace-folders") {
       return response(200, {
@@ -685,7 +821,7 @@ test("threads sidebar treats malformed exports and images payloads as load error
   const { sidebar } = buildSidebarWithFetch(async (url) => {
     const path = String(url || "");
     if (path.startsWith("/api/conversations?")) {
-      return response(200, { ok: true, items: [] });
+      return conversationPage([], 0);
     }
     if (path === "/api/workspace-folders") {
       return response(200, {

@@ -317,6 +317,15 @@ n'est pas prouvé.
 Le renommage d'une conversation est une mutation ciblée du catalogue : il ne
 charge ni ne réécrit les messages.
 
+Les routes dédiées au catalogue conservent la même frontière de vérité. Un
+`POST /api/conversations` ne répond `201` qu'après un
+`ConversationSaveResult.ok=true`; le résumé de repli n'est construit qu'après
+cette preuve. Une sauvegarde refusée répond `503 conversation_save_failed`,
+sans identifiant ni conversation synthétique. Un `GET /api/conversations`
+réussi expose `items`, `total`, `limit` et `offset`; une liste réellement vide
+reste `200` avec `ok=true`, tandis qu'une panne SQL répond
+`503 conversation_list_failed` sans payload de liste vide.
+
 La sauvegarde canonique positive est la barrière commune aux dérivations : log
 `AssistantText`, traces Memory, écritures Identity, réactivations et projections.
 Chaque effet est tenté une fois et isolé. Sa panne après sauvegarde ne révoque

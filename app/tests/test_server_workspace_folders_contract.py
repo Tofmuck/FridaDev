@@ -319,6 +319,7 @@ class _FakeConvStore:
             if include_deleted or not item.get("deleted_at")
         ]
         return {
+            "ok": True,
             "items": items[offset:offset + limit],
             "total": len(items),
             "limit": limit,

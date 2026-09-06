@@ -938,11 +938,11 @@ workspace_folder_generated_image_routes.register_workspace_folder_generated_imag
 
 @app.get('/api/conversations')
 def api_list_conversations():
-    payload = conversations_service.list_conversations(
+    payload, status = conversations_service.list_conversations(
         request.args,
         conv_store_module=conv_store,
     )
-    return jsonify(payload)
+    return jsonify(payload), status
 
 
 @app.post('/api/conversations')

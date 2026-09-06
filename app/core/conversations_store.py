@@ -950,6 +950,7 @@ def list_conversations(
 
         items = [serialize_catalog_row_func(row) for row in rows]
         return {
+            "ok": True,
             "items": items,
             "total": total,
             "limit": limit,
@@ -958,8 +959,8 @@ def list_conversations(
     except Exception as exc:
         logger.error("conv_catalog_list_failed err=%s", exc)
         return {
-            "items": [],
-            "total": 0,
+            "ok": False,
+            "reason_code": "conversation_list_failed",
             "limit": limit,
             "offset": offset,
         }

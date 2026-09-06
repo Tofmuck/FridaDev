@@ -157,6 +157,15 @@ Implementation Lot 5 livree:
 - les etats vides `Aucun repertoire`, `Aucun fichier`, `Aucune conversation` sont visibles;
 - les etats fichier `OCR requis`, `Fichier absent`, `Supprimé`, `Erreur` sont affiches par libelles humains content-free;
 - les conversations restent compactes, lisibles comme etiquettes distinctes, avec clic simple pour charger et affordance visible de renommage manuel;
+- la liste des conversations consomme toutes les pages serveur de 200 via les
+  champs existants `limit`, `offset` et `total`, sans nouvelle UI ni framework
+  de pagination;
+- les pages sont accumulees dans l'ordre avec progression strictement monotone;
+  un doublon, un identifiant absent, un total ou offset incoherent, une page
+  courte avant le total ou l'echec d'une page annule le rafraichissement entier;
+- la liste, la selection courante et le cache de messages ne sont remplaces
+  qu'apres un chargement complet; une erreur conserve donc l'ancien etat au
+  lieu de publier une liste partielle;
 - aucun contenu fichier, chemin disque, base64, prompt ou description de repertoire n'est injecte ou expose dans le DOM;
 - le nommage automatique des conversations reste un futur mini-lot non-LLM tant qu'aucune decision explicite ne l'ouvre.
 

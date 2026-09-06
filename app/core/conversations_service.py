@@ -9,7 +9,7 @@ def list_conversations(
     args: Mapping[str, Any],
     *,
     conv_store_module: Any,
-) -> Dict[str, Any]:
+) -> Tuple[Dict[str, Any], int]:
     raw_limit = str(args.get('limit', '100') or '100').strip()
     raw_offset = str(args.get('offset', '0') or '0').strip()
     raw_include_deleted = str(args.get('include_deleted', '') or '').strip().lower()
@@ -31,7 +31,16 @@ def list_conversations(
         offset=offset,
         include_deleted=include_deleted,
     )
-    return {'ok': True, **payload}
+    if payload.get('ok') is not True:
+        return (
+            {
+                'ok': False,
+                'error': 'service temporairement indisponible',
+                'reason_code': 'conversation_list_failed',
+            },
+            503,
+        )
+    return payload, 200
 
 
 def create_conversation(
@@ -59,7 +68,16 @@ def create_conversation(
         )
 
     conversation = conv_store_module.new_conversation(system_prompt, title=title)
-    conv_store_module.save_conversation(conversation)
+    save_result = conv_store_module.save_conversation(conversation)
+    if not bool(getattr(save_result, 'ok', False)):
+        return (
+            {
+                'ok': False,
+                'error': 'service temporairement indisponible',
+                'reason_code': 'conversation_save_failed',
+            },
+            503,
+        )
 
     summary = conv_store_module.get_conversation_summary(conversation['id']) or {
         'id': conversation['id'],

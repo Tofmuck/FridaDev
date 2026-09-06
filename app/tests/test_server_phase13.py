@@ -59,7 +59,13 @@ class ServerPhase13Tests(unittest.TestCase):
 
         self.server.prompt_loader.get_main_system_prompt = lambda: 'BACKEND SYSTEM PROMPT'
         self.server.conv_store.new_conversation = fake_new_conversation
-        self.server.conv_store.save_conversation = lambda *_args, **_kwargs: None
+        self.server.conv_store.save_conversation = lambda *_args, **_kwargs: self.server.conv_store.ConversationSaveResult(
+            ok=True,
+            catalog_saved=True,
+            messages_saved=True,
+            updated_at='2026-03-26T00:00:00Z',
+            message_count=1,
+        )
         self.server.conv_store.get_conversation_summary = lambda *_args, **_kwargs: None
         try:
             response = self.client.post(
@@ -76,6 +82,52 @@ class ServerPhase13Tests(unittest.TestCase):
         self.assertEqual(observed['system_prompt'], 'BACKEND SYSTEM PROMPT')
         self.assertEqual(observed['title'], 'Titre test')
 
+    def test_api_create_conversation_never_returns_created_when_save_is_refused(self) -> None:
+        original_get_main_system_prompt = self.server.prompt_loader.get_main_system_prompt
+        original_new_conversation = self.server.conv_store.new_conversation
+        original_save_conversation = self.server.conv_store.save_conversation
+        original_get_summary = self.server.conv_store.get_conversation_summary
+        summary_called = {'value': False}
+
+        self.server.prompt_loader.get_main_system_prompt = lambda: 'BACKEND SYSTEM PROMPT'
+        self.server.conv_store.new_conversation = lambda *_args, **_kwargs: {
+            'id': 'conv-unsaved',
+            'title': 'Non sauvegardée',
+            'created_at': '2026-09-06T12:00:00Z',
+            'updated_at': '2026-09-06T12:00:00Z',
+            'messages': [],
+        }
+        self.server.conv_store.save_conversation = lambda *_args, **_kwargs: self.server.conv_store.ConversationSaveResult(
+            ok=False,
+            catalog_saved=False,
+            messages_saved=False,
+            updated_at='2026-09-06T12:00:00Z',
+            message_count=0,
+            reason='catalog_and_messages_write_failed',
+        )
+
+        def fake_get_summary(*_args, **_kwargs):
+            summary_called['value'] = True
+            return {'id': 'conv-unsaved'}
+
+        self.server.conv_store.get_conversation_summary = fake_get_summary
+        try:
+            response = self.client.post('/api/conversations', json={'title': 'Non sauvegardée'})
+        finally:
+            self.server.prompt_loader.get_main_system_prompt = original_get_main_system_prompt
+            self.server.conv_store.new_conversation = original_new_conversation
+            self.server.conv_store.save_conversation = original_save_conversation
+            self.server.conv_store.get_conversation_summary = original_get_summary
+
+        self.assertEqual(response.status_code, 503)
+        payload = response.get_json()
+        self.assertFalse(payload['ok'])
+        self.assertEqual(payload['reason_code'], 'conversation_save_failed')
+        self.assertNotIn('conversation', payload)
+        self.assertNotIn('conversation_id', payload)
+        self.assertNotIn('catalog_and_messages_write_failed', str(payload))
+        self.assertFalse(summary_called['value'])
+
     def test_api_list_conversations_parses_query_params_with_contract_fallbacks(self) -> None:
         observed = {}
         original_list_conversations = self.server.conv_store.list_conversations
@@ -85,8 +137,11 @@ class ServerPhase13Tests(unittest.TestCase):
             observed['offset'] = offset
             observed['include_deleted'] = include_deleted
             return {
+                'ok': True,
                 'items': [{'id': 'conv-phase4'}],
-                'count': 1,
+                'total': 1,
+                'limit': limit,
+                'offset': offset,
             }
 
         self.server.conv_store.list_conversations = fake_list_conversations
@@ -102,7 +157,47 @@ class ServerPhase13Tests(unittest.TestCase):
         self.assertEqual(observed['offset'], 0)
         self.assertTrue(observed['include_deleted'])
         self.assertEqual(data['items'][0]['id'], 'conv-phase4')
-        self.assertEqual(data['count'], 1)
+        self.assertEqual(data['total'], 1)
+
+    def test_api_list_conversations_propagates_store_failure(self) -> None:
+        original_db_conn = self.server.conv_store._db_conn
+
+        def failing_db_conn():
+            raise RuntimeError('synthetic route database outage')
+
+        self.server.conv_store._db_conn = failing_db_conn
+        try:
+            response = self.client.get('/api/conversations')
+        finally:
+            self.server.conv_store._db_conn = original_db_conn
+
+        self.assertEqual(response.status_code, 503)
+        payload = response.get_json()
+        self.assertFalse(payload['ok'])
+        self.assertEqual(payload['reason_code'], 'conversation_list_failed')
+        self.assertNotIn('items', payload)
+        self.assertNotIn('total', payload)
+        self.assertNotIn('synthetic route database outage', str(payload))
+
+    def test_api_list_conversations_keeps_healthy_empty_list_successful(self) -> None:
+        original_list_conversations = self.server.conv_store.list_conversations
+        self.server.conv_store.list_conversations = lambda **kwargs: {
+            'ok': True,
+            'items': [],
+            'total': 0,
+            'limit': kwargs['limit'],
+            'offset': kwargs['offset'],
+        }
+        try:
+            response = self.client.get('/api/conversations?limit=200&offset=0')
+        finally:
+            self.server.conv_store.list_conversations = original_list_conversations
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.get_json(),
+            {'ok': True, 'items': [], 'total': 0, 'limit': 200, 'offset': 0},
+        )
 
     def test_api_get_conversation_messages_falls_back_to_runtime_summary_when_missing(self) -> None:
         observed = {}
