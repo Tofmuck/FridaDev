@@ -291,14 +291,13 @@ def register_admin_logs_dashboard_routes(
     def api_admin_dashboard_turn_content(turn_id: str):
         def _audit_dashboard_content_gate(event: dict[str, Any]) -> bool:
             payload = event.get('payload_json') if isinstance(event.get('payload_json'), dict) else {}
-            admin_logs_module.log_event(
+            return admin_logs_module.log_event(
                 'dashboard_content_gate',
                 conversation_id=event.get('conversation_id'),
                 turn_id=event.get('turn_id'),
                 audit_event_id=event.get('event_id'),
                 **payload,
             )
-            return True
 
         try:
             dashboard_now = _ensure_dashboard_recent_for_admin_read('dashboard_turn_content_read')

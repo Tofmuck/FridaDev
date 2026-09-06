@@ -714,7 +714,8 @@ Le Lot 8 implemente le content gate sans changer la promesse content-free par de
 - si aucune preuve source ne permet la reconstruction, le gate retourne `not_reconstructible`;
 - si un contenu ressemble a un secret, token, DSN, `.env`, cle privee ou credential, le gate retourne `blocked_sensitive` sans le contenu;
 - l'ouverture est auditee par un evenement admin compact `dashboard_content_gate` quand l'ecriture est disponible;
-- l'evenement d'audit ne contient jamais le contenu ouvert.
+- `audit.attempted=true` constate l'appel du writer; `audit.stored=true` exige que ce writer ait termine l'ecriture sans exception, sinon l'ouverture reste disponible avec `audit.stored=false`;
+- l'evenement d'audit ne contient jamais le contenu ouvert;
 - l'audit ne doit pas etre ecrit dans `chat_log_events`, pour ne pas deplacer artificiellement un ancien tour dans les fenetres analytiques recentes;
 
 Le Lot 8 ne cree pas encore de stockage long terme d'artefacts bruts. Il exploite uniquement les evenements sources deja presents pour le tour. La consequence produit est volontairement explicite: le bouton peut ouvrir un contenu exact, un extrait partiel, une empreinte, ou une explication "non reconstructible"; il ne doit jamais inventer le prompt exact ni maquiller une absence de preuve.

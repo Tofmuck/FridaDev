@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -65,6 +67,40 @@ class ServerAdminDashboardContractTests(unittest.TestCase):
         self.assertEqual(data['reason_code'], reason_code)
         for marker in forbidden:
             self.assertNotIn(marker, encoded)
+
+    def _content_gate_payload_via_real_audit(self, turn_id, args, **kwargs):
+        payload = {
+            'kind': 'dashboard_turn_content_gate',
+            'conversation_id': args.get('conversation_id'),
+            'turn_id': turn_id,
+            'window': {'key': args.get('window')},
+            'availability': {
+                'status': 'fingerprint_only',
+                'status_fr': 'empreinte seule disponible',
+                'loaded_after_explicit_action': True,
+                'preloaded': False,
+                'status_counts': {'fingerprint_only': 1},
+                'events_truncated': False,
+            },
+            'items': [
+                {
+                    'key': 'main_model_payload',
+                    'label_fr': 'Payload du modele principal',
+                    'status': 'fingerprint_only',
+                    'status_fr': 'empreinte seule disponible',
+                    'content_text': None,
+                    'explanation_fr': 'Seules les empreintes existent.',
+                }
+            ],
+            'redaction': {'raw_content_included': False, 'secret_blocked_count': 0},
+        }
+        payload['audit'] = self.server.dashboard_read_model._audit_content_gate_open(
+            fact={'conversation_id': args.get('conversation_id'), 'turn_id': turn_id},
+            payload=payload,
+            audit_fn=kwargs.get('audit_fn'),
+            logger_instance=self.server.log_store.logger,
+        )
+        return payload
 
     def test_dashboard_overview_route_returns_windowed_payload(self) -> None:
         observed = {'args': None, 'refresh_reason': None}
@@ -230,44 +266,26 @@ class ServerAdminDashboardContractTests(unittest.TestCase):
         self._assert_content_free(data)
 
     def test_dashboard_turn_content_route_is_explicit_and_audited(self) -> None:
-        observed = {'turn_id': None, 'args': None, 'audit_fn': None}
-        original = self.server.dashboard_read_model.read_dashboard_turn_content
-
-        def fake_read_dashboard_turn_content(turn_id, args, **kwargs):
-            observed['turn_id'] = turn_id
-            observed['args'] = args
-            observed['audit_fn'] = kwargs.get('audit_fn')
-            return {
-                'kind': 'dashboard_turn_content_gate',
-                'conversation_id': args.get('conversation_id'),
-                'turn_id': turn_id,
-                'window': {'key': args.get('window')},
-                'availability': {
-                    'status': 'fingerprint_only',
-                    'status_fr': 'empreinte seule disponible',
-                    'loaded_after_explicit_action': True,
-                    'preloaded': False,
-                    'status_counts': {'fingerprint_only': 1},
-                },
-                'items': [
-                    {
-                        'key': 'main_model_payload',
-                        'label_fr': 'Payload du modele principal',
-                        'status': 'fingerprint_only',
-                        'status_fr': 'empreinte seule disponible',
-                        'content_text': None,
-                        'explanation_fr': 'Seules les empreintes existent.',
-                    }
-                ],
-                'audit': {'attempted': True, 'stored': True, 'raw_content_included': False},
-                'redaction': {'raw_content_included': False, 'secret_blocked_count': 0},
-            }
-
-        self.server.dashboard_read_model.read_dashboard_turn_content = fake_read_dashboard_turn_content
-        try:
-            response = self.client.get('/api/admin/dashboard/turns/turn-1/content?conversation_id=conv-1&window=24h')
-        finally:
-            self.server.dashboard_read_model.read_dashboard_turn_content = original
+        with tempfile.TemporaryDirectory() as tmp:
+            log_path = Path(tmp) / 'admin.log.jsonl'
+            with (
+                mock.patch.object(
+                    self.server.dashboard_read_model,
+                    'read_dashboard_turn_content',
+                    self._content_gate_payload_via_real_audit,
+                ),
+                mock.patch.object(self.server.admin_logs, 'LOG_PATH', log_path),
+                mock.patch.object(self.server.admin_logs, '_BOOTSTRAP_DONE', True),
+                mock.patch.object(
+                    self.server.dashboard_materialization_runtime,
+                    'ensure_recent_dashboard_analytics_fresh',
+                    return_value={'read_now': None},
+                ),
+            ):
+                response = self.client.get(
+                    '/api/admin/dashboard/turns/turn-1/content?conversation_id=conv-1&window=24h'
+                )
+            lines = log_path.read_text(encoding='utf-8').splitlines()
 
         self.assertEqual(response.status_code, 200)
         data = response.get_json()
@@ -275,10 +293,45 @@ class ServerAdminDashboardContractTests(unittest.TestCase):
         self.assertEqual(data['kind'], 'dashboard_turn_content_gate')
         self.assertTrue(data['availability']['loaded_after_explicit_action'])
         self.assertFalse(data['availability']['preloaded'])
+        self.assertTrue(data['audit']['attempted'])
+        self.assertTrue(data['audit']['stored'])
         self.assertEqual(data['items'][0]['status'], 'fingerprint_only')
-        self.assertEqual(observed['turn_id'], 'turn-1')
-        self.assertEqual(observed['args'].get('conversation_id'), 'conv-1')
-        self.assertIsNotNone(observed['audit_fn'])
+        self.assertEqual(len(lines), 1)
+        self.assertNotIn('content_text', lines[0])
+        self._assert_content_free(data)
+
+    def test_dashboard_turn_content_route_keeps_content_open_when_audit_write_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            blocked_path = Path(tmp) / 'blocked-as-file'
+            blocked_path.mkdir()
+            with (
+                mock.patch.object(
+                    self.server.dashboard_read_model,
+                    'read_dashboard_turn_content',
+                    self._content_gate_payload_via_real_audit,
+                ),
+                mock.patch.object(self.server.admin_logs, 'LOG_PATH', blocked_path),
+                mock.patch.object(self.server.admin_logs, '_BOOTSTRAP_DONE', True),
+                mock.patch.object(
+                    self.server.dashboard_materialization_runtime,
+                    'ensure_recent_dashboard_analytics_fresh',
+                    return_value={'read_now': None},
+                ),
+                self.assertLogs(self.server.admin_logs.logger, level='ERROR') as captured,
+            ):
+                response = self.client.get(
+                    '/api/admin/dashboard/turns/turn-1/content?conversation_id=conv-1&window=24h'
+                )
+            self.assertEqual(list(blocked_path.iterdir()), [])
+
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        self.assertTrue(data['ok'])
+        self.assertTrue(data['availability']['loaded_after_explicit_action'])
+        self.assertTrue(data['audit']['attempted'])
+        self.assertFalse(data['audit']['stored'])
+        self.assertFalse(data['audit']['raw_content_included'])
+        self.assertNotIn('RAW FAILURE CONTENT MUST NOT LEAK', '\n'.join(captured.output))
         self._assert_content_free(data)
 
     def test_dashboard_routes_map_read_model_errors_content_free(self) -> None:

@@ -1039,7 +1039,7 @@ Workspace passent `33/33`. Aucun schéma DB, route, écran, télémétrie, queue
 retry, framework de pagination ou accès à la DB opérateur n'est ajouté. L7.3
 n'est pas commencé.
 
-### L7.3 — Portée des compteurs — F20
+### L7.3 — Portée des compteurs — F20 — fermé
 
 Traiter séparément les cinq mécanismes :
 
@@ -1048,7 +1048,7 @@ Traiter séparément les cinq mécanismes :
 3. `failed` doit suivre le compteur canonique du pipeline — **L7.3.3 fermé** ;
 4. buckets et conversations doivent employer la même borne temporelle — **L7.3.4 fermé** ;
 5. réception du callback de log ne doit pas devenir `audit.stored=true` si
-   l'écriture fichier a échoué.
+   l'écriture fichier a échoué — **L7.3.5 fermé**.
 
 Un même micro-lot peut regrouper deux points uniquement s'ils partagent le même
 read-model et le même correctif. Aucune collecte ou dashboard supplémentaire.
@@ -1174,8 +1174,36 @@ alignée. La mutation contrôlée rétablit `aligné => buckets`, remet la custo
 historique au rouge, puis le correctif exact est restauré. Les tests ciblés
 couvrent en outre couverture, pagination, erreurs, content gate,
 matérialisation, rendu et absence de contenu brut. Aucune table, collecte,
-route, métrique source ou granularité n'est ajoutée. L7.3 reste ouvert;
-L7.3.5 n'est pas commencé.
+route, métrique source ou granularité n'est ajoutée. Lors de cette clôture
+initiale, L7.3 restait ouvert et L7.3.5 n'était pas commencé.
+
+#### L7.3.5 — Preuve de stockage de l'audit du content gate
+
+**Fermé le 6 septembre 2026.** La revalidation au HEAD initial
+`a8ad0844733afc11a277de61f27b5f83ba50abb4` confirme que
+`admin_logs.log_event()` absorbait une exception d'écriture sans retourner de
+preuve, tandis que le callback de la route content gate retournait toujours
+`True`. Le read-model pouvait donc publier `audit.attempted=true` et
+`audit.stored=true` sans qu'aucune ligne d'audit existe.
+
+Le writer retourne désormais `True` uniquement après l'écriture complète de la
+ligne JSONL sanitizée et `False` après exception. Le callback transmet ce
+résultat sans le remplacer. L'ouverture volontaire du contenu reste disponible
+en cas d'échec d'audit, mais sa réponse porte honnêtement
+`attempted=true/stored=false`; le frontend conserve son libellé existant
+« stockage non confirmé ». Les appelants historiques peuvent continuer à
+ignorer le retour. Rotation, destination, sanitisation et absence de contenu ou
+d'exception brute restent inchangées.
+
+Les reproductions rouges traversent le vrai writer, le callback de route et le
+read-model d'audit : le writer retournait `None` après succès comme après
+échec, puis un chemin sans ligne écrite devenait `stored=true`. Les preuves
+finales couvrent succès avec ligne présente, échec hermétique sans ligne,
+ouverture préservée, statuts d'audit exacts et absence de contenu brut. La
+mutation contrôlée rétablit le `True` inconditionnel, remet le témoin d'échec au
+rouge, puis le correctif exact est restauré. Aucune queue, retry, destination,
+base, route, métrique, vue ou capacité n'est ajoutée. L7.3 est fermé; L7.4
+n'est pas commencé.
 
 ### L7.4 — Réglages Identity historiques — F18
 

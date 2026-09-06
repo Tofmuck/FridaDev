@@ -71,7 +71,7 @@ _REDACT_KEYS = {
 }
 
 
-def log_event(event: str, level: str = 'INFO', **fields: Any) -> None:
+def log_event(event: str, level: str = 'INFO', **fields: Any) -> bool:
     _bootstrap_legacy_logs_if_needed()
     payload = {
         'timestamp': _now_iso(),
@@ -84,11 +84,13 @@ def log_event(event: str, level: str = 'INFO', **fields: Any) -> None:
         _rotate_if_needed()
         with LOG_PATH.open('a', encoding='utf-8') as handle:
             handle.write(json.dumps(payload, ensure_ascii=False) + '\n')
+        return True
     except Exception as exc:
         logger.error(
             'admin_log_write_error reason=admin_log_write_failed err_class=%s',
             exc.__class__.__name__,
         )
+        return False
 
 
 def read_logs(limit: int = 200, *, fail_closed: bool = False) -> list[dict[str, Any]]:
