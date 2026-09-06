@@ -971,9 +971,38 @@ API ou capacité n'est ajouté ; L7 reste non commencé.
 
 ### L7.1 — Agenda pending observable — F16
 
-Aligner les clés réellement émises et celles lues pour statut, niveau de
-confirmation et risques. Tester writer → projection → read-model/API ; aucune
-nouvelle surface.
+**Fermé le 6 septembre 2026.** La revalidation au HEAD initial
+`3253a1bd07c4fbd19423cf615ad0b396162a9e43` a confirmé F16 et un second maillon
+du même chemin causal : le writer pending émet au top-level `pending_status`,
+`pending_confirmation_level` et `pending_risk_flags`, puis dans
+`pending_execution` `pending_status`, `confirmation_level` et `risk_flags`,
+alors que la projection privilégiait les anciens noms. En outre, la garde
+centrale refusait les conteneurs content-free `final_response` et
+`pending_execution`; le logger remplaçait donc le payload avant son stockage et
+rendait le raccord de projection seul insuffisant.
+
+Le correctif minimal aligne la projection sur les clés writer et conserve les
+aliases historiques `pending_action_status`, `confirmation_level` et
+`risk_flags`. La garde admet uniquement, pour le schéma exact
+`frida_agenda_lot6_pending_v1`, les chemins et types content-free effectivement
+produits sous `final_response`, `pending_execution` et
+`pending_execution.draft_summary`; `pending_execution.write_execution` doit
+rester un mapping vide dans ce payload pending. Il n'existe aucune exemption
+générale pour ces conteneurs, les mappings, listes ou clés DAV. Les clés
+inconnues, types faux et valeurs sensibles restent refusés, notamment contenu,
+draft, titre, lieu, description, UID, ETag, URL/path DAV, ICS/XML, headers et
+credentials, y compris imbriqués.
+
+La preuve ciblée traverse un vrai résultat de
+`build_lot6_observability_payload()` depuis le writer pending, la garde, le log
+store simulé, la projection, `build_admin_observability()` et la route admin
+existante. Elle vérifie aussi absence vide, neutralisation des valeurs
+invalides, mutations sensibles négatives et absence de contenu brut. Les 62
+tests Agenda observabilité/garde/route et voisins immédiats passent dans le
+conteneur hermétique existant (`--network none`, checkout monté read-only).
+Aucun pending store, comportement de confirmation, product method, accès
+CalDAV, frontend, route, schéma DB, champ producteur ou télémétrie n'a changé.
+L7.2 n'est pas commencé.
 
 ### L7.2 — Conversations : succès, erreur et limite de liste — F17
 

@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 
 from observability.observability_payload_guard_schema import (
+    _AGENDA_CONTAINER_PAYLOAD_SCHEMAS,
+    _AGENDA_CONTAINER_SCHEMAS,
     _GENERAL_SAFE_TEXT_LIST_KEYS,
     _MANIFEST_DYNAMIC_INT_MAP_KEYS,
     _MANIFEST_SAFE_TEXT_KEYS,
@@ -15,6 +17,7 @@ from observability.observability_payload_guard_schema import (
     _is_manifest_bool_key,
     _is_manifest_number_key,
     _is_safe_general_container_key,
+    _is_safe_agenda_container_text,
     _is_safe_general_scalar_key,
     _is_safe_general_text_key,
     _is_safe_general_text_value,
@@ -219,11 +222,82 @@ def _inspect_general_list(key: str, values: list[Any], issues: dict[str, int], d
             _inspect_general_scalar(key, value, issues)
 
 
+def _inspect_agenda_container(
+    value: Any,
+    issues: dict[str, int],
+    *,
+    path: tuple[str, ...],
+    depth: int,
+) -> None:
+    if depth > _MAX_DEPTH:
+        _add_issue(issues, "max_depth_exceeded")
+        return
+    schema = _AGENDA_CONTAINER_SCHEMAS.get(path)
+    if not isinstance(value, Mapping) or not schema:
+        _add_issue(issues, "agenda_container_type")
+        return
+    for raw_key, child in value.items():
+        key = _safe_key(raw_key)
+        lower = key.lower()
+        kind = schema.get(lower)
+        if not key or kind is None:
+            _add_issue(issues, _dangerous_key_class(key) or "agenda_container_unknown_key")
+            continue
+        if kind == "mapping":
+            _inspect_agenda_container(
+                child,
+                issues,
+                path=(*path, lower),
+                depth=depth + 1,
+            )
+            continue
+        if kind == "empty_mapping":
+            if not isinstance(child, Mapping) or child:
+                _add_issue(issues, "agenda_container_type")
+            continue
+        if kind == "bool":
+            if type(child) is not bool:
+                _add_issue(issues, "agenda_container_type")
+            continue
+        if kind == "int":
+            if not isinstance(child, int) or isinstance(child, bool) or child < 0:
+                _add_issue(issues, "agenda_container_type")
+            continue
+        if kind == "text_list":
+            if not isinstance(child, list):
+                _add_issue(issues, "agenda_container_type")
+                continue
+            for item in child:
+                issue = _dangerous_value_class(lower, item)
+                if issue:
+                    _add_issue(issues, issue)
+                elif not isinstance(item, str) or not _is_safe_agenda_container_text(
+                    lower,
+                    item,
+                    kind="text",
+                ):
+                    _add_issue(issues, "agenda_container_text")
+            continue
+        issue = _dangerous_value_class(lower, child)
+        if issue:
+            _add_issue(issues, issue)
+        elif not isinstance(child, str) or not _is_safe_agenda_container_text(
+            lower,
+            child,
+            kind=kind,
+        ):
+            _add_issue(issues, "agenda_container_text")
+
+
 def _inspect_general(value: Any, issues: dict[str, int], *, key: str = "", depth: int = 0) -> None:
     if depth > _MAX_DEPTH:
         _add_issue(issues, "max_depth_exceeded")
         return
     if isinstance(value, Mapping):
+        agenda_container_payload = (
+            depth == 0
+            and str(value.get("schema_version") or "") in _AGENDA_CONTAINER_PAYLOAD_SCHEMAS
+        )
         for raw_key, child in value.items():
             child_key = _safe_key(raw_key)
             lower = child_key.lower()
@@ -233,6 +307,14 @@ def _inspect_general(value: Any, issues: dict[str, int], *, key: str = "", depth
             if lower in _QUALIFIED_RAW_FLAGS:
                 if child is not False:
                     _add_issue(issues, "raw_flag_true")
+                continue
+            if agenda_container_payload and (lower,) in _AGENDA_CONTAINER_SCHEMAS:
+                _inspect_agenda_container(
+                    child,
+                    issues,
+                    path=(lower,),
+                    depth=depth + 1,
+                )
                 continue
             key_issue = _dangerous_key_class(child_key)
             if key_issue:

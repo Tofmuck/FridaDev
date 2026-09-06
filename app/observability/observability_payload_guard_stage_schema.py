@@ -283,6 +283,84 @@ _GENERAL_SAFE_TEXT_LIST_KEYS = {
     "write_method_names",
 }
 
+_AGENDA_CONTAINER_PAYLOAD_SCHEMAS = frozenset(
+    {
+        "frida_agenda_lot6_pending_v1",
+    }
+)
+
+_AGENDA_CONTAINER_SCHEMAS = {
+    ("final_response",): {
+        "status": "text",
+        "source": "text",
+        "reason_code": "text",
+        "content_present": "bool",
+        "content_chars": "int",
+        "content_hash": "text",
+        "content_free": "bool",
+        "agenda_product_method": "text",
+        "agenda_pending_action_present": "bool",
+        "agenda_pending_action_hash": "text",
+        "agenda_operation": "text",
+        "agenda_pending_status": "text",
+        "agenda_confirmation_level": "text",
+        "agenda_risk_flags": "text_list",
+        "agenda_caldav_access": "bool",
+        "agenda_nextcloud_access": "bool",
+        "agenda_secret_access": "bool",
+        "agenda_mutation_attempted": "bool",
+    },
+    ("pending_execution",): {
+        "schema_version": "text",
+        "status": "text",
+        "reason_code": "text",
+        "product_method": "text",
+        "operation": "text",
+        "confirmation_level": "text",
+        "risk_flags": "text_list",
+        "pending_action_id": "text",
+        "pending_action_hash": "text",
+        "pending_expires_at": "timestamp",
+        "pending_status": "text",
+        "target_clear": "bool",
+        "cancelled": "bool",
+        "expired": "bool",
+        "draft_private": "bool",
+        "draft_summary": "mapping",
+        "target_verification_tool_names": "text_list",
+        "target_verification_error_class": "class_text",
+        "caldav_access": "bool",
+        "nextcloud_access": "bool",
+        "secret_access": "bool",
+        "mutation_attempted": "bool",
+        "write_execution": "empty_mapping",
+        "content_free": "bool",
+        "redacted": "bool",
+    },
+    ("pending_execution", "draft_summary"): {
+        "schema_version": "text",
+        "draft_schema_version": "text",
+        "product_method": "text",
+        "operation": "text",
+        "title_chars": "int",
+        "title_hash": "text",
+        "location_present": "bool",
+        "description_present": "bool",
+        "calendar_id_hash": "text",
+        "start_present": "bool",
+        "end_present": "bool",
+        "all_day": "bool",
+        "change_summary_chars": "int",
+        "change_summary_hash": "text",
+        "target_present": "bool",
+        "target_event_id_hash": "text",
+        "technical_ref_present": "bool",
+        "family_calendar": "bool",
+        "calendar_scope_unverified": "bool",
+        "content_free": "bool",
+    },
+}
+
 
 def _is_safe_general_text_key(key: str) -> bool:
     lower = key.lower()
@@ -327,3 +405,12 @@ def _is_safe_general_scalar_key(key: str) -> bool:
 def _is_safe_general_container_key(key: str) -> bool:
     lower = key.lower()
     return lower in _GENERAL_CONTAINER_KEYS or lower.endswith(("_counts", "_metrics", "_by_stage", "_by_provider_caller"))
+
+
+def _is_safe_agenda_container_text(key: str, value: Any, *, kind: str) -> bool:
+    text = str(value or "").strip()
+    if kind == "timestamp":
+        return _is_safe_timestamp_text(text)
+    if kind == "class_text":
+        return not text or _is_safe_class_text(text)
+    return _is_safe_code_text(text, allow_empty=True)

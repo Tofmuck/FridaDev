@@ -967,6 +967,38 @@ Lot 8A livre une premiere surface admin content-free:
   ou synthetiques, et erreurs content-free;
 - pending actions exposees seulement par id, hash, operation, statut,
   expiration, niveau de confirmation et flags de risque;
+- pour le payload pending `frida_agenda_lot6_pending_v1`, les cles writer
+  canoniques sont `pending_status`, `pending_confirmation_level` et
+  `pending_risk_flags` au top-level, puis `pending_status`,
+  `confirmation_level` et `risk_flags` sous `pending_execution`; la projection
+  conserve les aliases historiques `pending_action_status`,
+  `confirmation_level` et `risk_flags` sans produire un second schema;
+- avant stockage, la garde accepte les conteneurs content-free reellement
+  produits uniquement par chemins et types exacts sous `final_response`,
+  `pending_execution` et `pending_execution.draft_summary`;
+  `pending_execution.write_execution` reste un mapping vide pour ce schema
+  pending. Toute cle inconnue, type inattendu ou valeur sensible y est refuse,
+  sans exemption generale pour les conteneurs, mappings, listes ou cles DAV;
+- l'allowlist pending exacte est:
+  - `final_response.{status,source,reason_code,content_present,content_chars,`
+    `content_hash,content_free,agenda_product_method,`
+    `agenda_pending_action_present,agenda_pending_action_hash,`
+    `agenda_operation,agenda_pending_status,agenda_confirmation_level,`
+    `agenda_risk_flags,agenda_caldav_access,agenda_nextcloud_access,`
+    `agenda_secret_access,agenda_mutation_attempted}`;
+  - `pending_execution.{schema_version,status,reason_code,product_method,`
+    `operation,confirmation_level,risk_flags,pending_action_id,`
+    `pending_action_hash,pending_expires_at,pending_status,target_clear,`
+    `cancelled,expired,draft_private,draft_summary,`
+    `target_verification_tool_names,target_verification_error_class,`
+    `caldav_access,nextcloud_access,secret_access,mutation_attempted,`
+    `write_execution,content_free,redacted}`;
+  - `pending_execution.draft_summary.{schema_version,draft_schema_version,`
+    `product_method,operation,title_chars,title_hash,location_present,`
+    `description_present,calendar_id_hash,start_present,end_present,all_day,`
+    `change_summary_chars,change_summary_hash,target_present,`
+    `target_event_id_hash,technical_ref_present,family_calendar,`
+    `calendar_scope_unverified,content_free}`;
 - drafts prives, contenu humain d'evenement, references techniques CalDAV et
   payloads bruts restent exclus du read-model;
 - la route peut compter, hasher ou bucketiser, mais ne doit jamais recopier

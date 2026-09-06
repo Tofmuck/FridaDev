@@ -103,12 +103,24 @@ def project_observability_payload(payload: Any) -> dict[str, Any]:
         'pending_action_id': safe_token(data.get('pending_action_id'), max_chars=160),
         'pending_action_hash': safe_token(data.get('pending_action_hash'), max_chars=64),
         'pending_action_status': safe_token(
-            data.get('pending_action_status') or pending_execution.get('pending_action_status'),
+            data.get('pending_status')
+            or pending_execution.get('pending_status')
+            or data.get('pending_action_status')
+            or pending_execution.get('pending_action_status'),
             max_chars=48,
         ),
         'pending_expires_at': safe_timestamp(data.get('pending_expires_at')),
-        'confirmation_level': safe_token(data.get('confirmation_level'), max_chars=32),
-        'risk_flags': safe_token_list(data.get('risk_flags')),
+        'confirmation_level': safe_token(
+            data.get('pending_confirmation_level')
+            or pending_execution.get('confirmation_level')
+            or data.get('confirmation_level'),
+            max_chars=32,
+        ),
+        'risk_flags': safe_token_list(
+            data.get('pending_risk_flags')
+            or pending_execution.get('risk_flags')
+            or data.get('risk_flags')
+        ),
         'calendar_hashes': safe_token_list(data.get('calendar_hashes') or data.get('read_calendar_hashes')),
         'event_hashes': safe_token_list(data.get('event_hashes') or data.get('read_event_hashes')),
         'caldav_access': bool(data.get('caldav_access') or read_execution.get('caldav_access') or write_execution.get('caldav_access')),
