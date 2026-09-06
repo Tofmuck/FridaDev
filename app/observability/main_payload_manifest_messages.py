@@ -148,7 +148,7 @@ def _web_lane_injected(web_runtime_payload: Mapping[str, Any] | None) -> bool:
     payload = mapping(web_runtime_payload)
     if safe_str(payload.get("activation_mode")).lower() not in {"manual", "auto"}:
         return False
-    return bool(payload.get("context_injected") or str(payload.get("context_block") or ""))
+    return bool(payload.get("main_prompt_context_injected"))
 
 
 def _classify_message(

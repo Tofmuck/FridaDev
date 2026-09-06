@@ -156,7 +156,9 @@ def _web_lane(web_runtime_payload: Mapping[str, Any] | None) -> dict[str, Any]:
     payload = mapping(web_runtime_payload)
     enabled = bool(payload.get("enabled", payload.get("search_enabled", False)))
     selected = safe_str(payload.get("activation_mode")).lower() in {"manual", "auto"}
-    injected = bool(payload.get("context_injected") or str(payload.get("context_block") or ""))
+    source_count = safe_int(payload.get("results_count"))
+    context_injected = bool(payload.get("context_injected") or str(payload.get("context_block") or ""))
+    main_prompt_context_injected = bool(payload.get("main_prompt_context_injected"))
     if selected:
         status = safe_status(payload.get("status"), fallback=STATUS_OK)
     elif not enabled:
@@ -168,12 +170,15 @@ def _web_lane(web_runtime_payload: Mapping[str, Any] | None) -> dict[str, Any]:
         reason_code=safe_str(payload.get("reason_code")),
         selected=selected,
         enabled=enabled,
-        input_count=safe_int(payload.get("results_count")),
-        injected_count=1 if injected else 0,
-        excluded_count=max(0, safe_int(payload.get("results_count")) - (1 if injected else 0)),
+        input_count=source_count,
+        injected_count=source_count if main_prompt_context_injected else 0,
+        excluded_count=0 if main_prompt_context_injected else source_count,
         content_chars=safe_int(payload.get("context_chars")) or len(str(payload.get("context_block") or "")),
         origin="core.chat_prompt_context",
-        extra={"activation_mode": safe_str(payload.get("activation_mode")) or "off", "context_injected": injected},
+        extra={
+            "activation_mode": safe_str(payload.get("activation_mode")) or "off",
+            "context_injected": context_injected,
+        },
     )
 
 

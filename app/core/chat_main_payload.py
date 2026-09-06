@@ -92,6 +92,7 @@ def prepare_main_payload(
         web_context_injected_to_main_model = bool(
             web_injection_result.get('main_prompt_context_injected')
         )
+        web_runtime_payload = web_injection_result
     notes_before_refs = main_payload_manifest.capture_message_refs(prompt_messages)
     workspace_notes_lane = workspace_folder_notes_prompt_lane.inject_workspace_folder_notes_prompt_lane(
         prompt_messages,

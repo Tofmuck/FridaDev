@@ -1043,7 +1043,7 @@ n'est pas commencé.
 
 Traiter séparément les cinq mécanismes :
 
-1. sources Web et blocs injectés ne sont pas la même unité ;
+1. sources Web et blocs injectés ne sont pas la même unité — **L7.3.1 fermé** ;
 2. fenêtre durable et compteurs process-local doivent être nommés sans ambiguïté ;
 3. `failed` doit suivre le compteur canonique du pipeline ;
 4. buckets et conversations doivent employer la même borne temporelle ;
@@ -1052,6 +1052,34 @@ Traiter séparément les cinq mécanismes :
 
 Un même micro-lot peut regrouper deux points uniquement s'ils partagent le même
 read-model et le même correctif. Aucune collecte ou dashboard supplémentaire.
+
+#### L7.3.1 — Sources Web du manifeste principal
+
+**Fermé le 6 septembre 2026.** La revalidation au HEAD initial
+`3e364b9242a80997a4600a6f817382b8b49bc642` confirme que `results_count`
+compte les sources retenues, tandis que `context_block` est un bloc unique qui
+peut les regrouper. Le manifeste soustrayait pourtant `1` bloc au nombre de
+sources et pouvait donc produire `5/1/4`. Il prenait aussi la constitution du
+bloc, via `context_injected` ou sa présence brute, pour une preuve de son
+insertion dans le dernier message utilisateur.
+
+Le correctif conserve le schéma et les champs existants. La préparation du
+payload transmet au manifeste le résultat enrichi de l'injecteur; seule sa
+preuve `main_prompt_context_injected` gouverne l'attribution du rôle logique
+`web_lane` et les compteurs. Les trois compteurs sont désormais exprimés en
+sources: `N/N/0` après insertion réelle et `N/0/N` sinon. Le booléen
+`context_injected` continue seulement d'indiquer qu'un bloc Web a été
+constitué. Aucun prompt, résultat, classement, budget, modèle ou nombre de
+sources n'est modifié, et aucune requête, URL, source ou contenu brut n'est
+projeté.
+
+La reproduction rouge observe `5/1/4` pour cinq sources injectées et un faux
+rôle `web_lane` quand le bloc existe sans insertion. Le chemin réel
+`prepare_main_payload -> main_payload_manifest_v1 -> projection admin` est
+couvert, ainsi que `5/0/5`, `0/0/0`, `1/1/0`, final lock, erreur Web et absence
+de contenu brut. La mutation demandée rétablit le calcul par bloc, fait
+réapparaître `5/1/4`, puis le correctif exact est restauré. L7.3 reste ouvert;
+L7.3.2 n'est pas commencé.
 
 ### L7.4 — Réglages Identity historiques — F18
 

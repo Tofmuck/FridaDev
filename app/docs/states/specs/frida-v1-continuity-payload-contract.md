@@ -259,8 +259,11 @@ contenu. Un message utilisateur contenant une fausse balise de lane doit rester
 
 `web_lane` est le cas separe: la lane peut etre portee par le dernier message
 provider `user` seulement si le contexte Web a reellement ete injecte par le
-runtime Web, selon un payload structure indiquant une activation `manual` ou
-`auto` et une injection effective.
+runtime Web, selon une activation `manual` ou `auto` et la preuve
+`main_prompt_context_injected=true` renvoyee par l'injecteur du prompt. Le
+booleen Web amont `context_injected` indique seulement qu'un `context_block` a
+ete constitue; sa valeur, ni la presence du bloc dans le payload intermediaire,
+ne suffit a attribuer la lane au message final.
 
 ### Provenance runtime assistant durable
 
@@ -332,6 +335,16 @@ Chaque entree doit exposer au minimum:
 - `content_chars`
 - `estimated_tokens`
 - `raw_lane_content_included=false`
+
+Pour `web_lane`, `input_count`, `injected_count` et `excluded_count` ont tous
+la meme unite: des sources Web, jamais des blocs de prompt. `input_count`
+reprend le `results_count` content-free du runtime Web. Si
+`main_prompt_context_injected=true`, toutes ces sources ont contribue au bloc
+effectivement insere: `injected_count=input_count` et `excluded_count=0`.
+Sinon `injected_count=0` et `excluded_count=input_count`, meme si
+`context_injected=true` signale qu'un bloc avait ete constitue. La preuve
+d'insertion reste interne a la preparation; le manifeste ne publie ni
+`context_block`, ni requete, URL, titre, extrait ou contenu de source.
 
 Les statuts doivent rester compatibles avec la taxonomie agentique:
 `ok`, `skipped`, `disabled`, `not_selected`, `not_configured`,

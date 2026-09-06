@@ -6,6 +6,7 @@ import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest import mock
 
 
 def _resolve_app_dir() -> Path:
@@ -22,6 +23,8 @@ if str(APP_DIR) not in sys.path:
 from core import chat_llm_flow
 from core import active_document_prompt_lane
 from core import adobe_docs_prompt_lane
+from core import chat_main_payload
+from core import chat_document_prompt_reads
 from core import continuity_capsule
 from core import workspace_folder_notes_prompt_lane
 from biblio import chat_runtime as biblio_chat_runtime
@@ -76,6 +79,249 @@ def _message_source(message: dict, role: str, origin: str, stage: str) -> tuple[
 
 
 class MainPayloadManifestTests(unittest.TestCase):
+    def test_web_lane_counts_sources_from_actual_prompt_insertion(self) -> None:
+        cases = (
+            (5, True, (5, 5, 0)),
+            (5, False, (5, 0, 5)),
+            (0, True, (0, 0, 0)),
+            (1, True, (1, 1, 0)),
+        )
+        for results_count, prompt_injected, expected in cases:
+            with self.subTest(
+                results_count=results_count,
+                prompt_injected=prompt_injected,
+            ):
+                manifest = _build_manifest(
+                    web_runtime_payload={
+                        "enabled": True,
+                        "activation_mode": "manual",
+                        "status": "ok",
+                        "context_injected": bool(results_count),
+                        "main_prompt_context_injected": prompt_injected,
+                        "results_count": results_count,
+                        "context_chars": 120 if results_count else 0,
+                    },
+                )
+
+                lane = manifest["lane_statuses"]["web_lane"]
+                self.assertEqual(
+                    (
+                        lane["input_count"],
+                        lane["injected_count"],
+                        lane["excluded_count"],
+                    ),
+                    expected,
+                )
+
+    def test_web_lane_block_presence_does_not_claim_prompt_insertion(self) -> None:
+        sensitive_block = "SENSITIVE_WEB_CONTEXT_BLOCK_NOT_INSERTED"
+        manifest = _build_manifest(
+            prompt_messages=[
+                {"role": "system", "content": "system"},
+                {"role": "user", "content": "user question without web context"},
+            ],
+            web_runtime_payload={
+                "enabled": True,
+                "activation_mode": "manual",
+                "status": "ok",
+                "context_injected": True,
+                "main_prompt_context_injected": False,
+                "results_count": 5,
+                "context_block": sensitive_block,
+            },
+        )
+
+        lane = manifest["lane_statuses"]["web_lane"]
+        self.assertTrue(lane["context_injected"])
+        self.assertEqual(lane["input_count"], 5)
+        self.assertEqual(lane["injected_count"], 0)
+        self.assertEqual(lane["excluded_count"], 5)
+        self.assertNotIn("web_lane", manifest["messages"][-1]["logical_roles"])
+        self.assertNotIn(sensitive_block, _encoded(manifest))
+
+    def test_web_lane_error_and_final_lock_remain_honest_and_content_free(self) -> None:
+        sensitive_block = "SENSITIVE_WEB_CONTEXT_BLOCK_ERROR"
+        sensitive_query = "SENSITIVE_WEB_QUERY_ERROR"
+        sensitive_url = "https://sensitive.invalid/private"
+        override = chat_llm_flow.AssistantResponseOverride(
+            content="SENSITIVE_FINAL_LOCK_WEB_ERROR",
+            source="agenda_final_response_lock",
+            reason_code="agenda_final_response_authorized",
+        )
+        manifest = _build_manifest(
+            assistant_response_override=override,
+            web_runtime_payload={
+                "enabled": True,
+                "activation_mode": "manual",
+                "status": "error",
+                "reason_code": "web_search_upstream_error",
+                "context_injected": True,
+                "main_prompt_context_injected": False,
+                "results_count": 5,
+                "context_block": sensitive_block,
+                "query": sensitive_query,
+                "url": sensitive_url,
+            },
+        )
+        projected, _redaction = admin_log_projection.project_payload(manifest)
+
+        lane = manifest["lane_statuses"]["web_lane"]
+        self.assertFalse(manifest["main_model_called"])
+        self.assertEqual(lane["status"], "error")
+        self.assertEqual(lane["reason_code"], "web_search_upstream_error")
+        self.assertEqual(
+            (lane["input_count"], lane["injected_count"], lane["excluded_count"]),
+            (5, 0, 5),
+        )
+        encoded = _encoded({"manifest": manifest, "projected": projected})
+        for marker in (sensitive_block, sensitive_query, sensitive_url, override.content):
+            self.assertNotIn(marker, encoded)
+
+    def test_prepare_main_payload_projects_real_web_insertion_source_counts(self) -> None:
+        sensitive_block = "SENSITIVE_REAL_WEB_CONTEXT_BLOCK"
+        captured_manifest: dict[str, object] = {}
+        web_runtime_payload = {
+            "enabled": True,
+            "activation_mode": "manual",
+            "status": "ok",
+            "reason_code": "",
+            "context_injected": True,
+            "results_count": 5,
+            "context_block": sensitive_block,
+        }
+        conversation = {
+            "id": "conv-web-counts",
+            "messages": [
+                {"role": "system", "content": "system"},
+                {"role": "user", "content": "question"},
+            ],
+        }
+        biblio_result = biblio_chat_runtime.BiblioChatResult(
+            enabled=False,
+            used=False,
+            reason_code="biblio_toggle_disabled",
+            query_kind="not_requested",
+            observability_payload={
+                "enabled": False,
+                "used": False,
+                "status": "disabled",
+                "reason_code": "biblio_toggle_disabled",
+            },
+        )
+        agenda_result = SimpleNamespace(
+            enabled=False,
+            used=False,
+            status="disabled",
+            reason_code="agenda_toggle_off",
+            observability_payload={
+                "enabled": False,
+                "status": "disabled",
+                "reason_code": "agenda_toggle_off",
+                "mode": "off",
+            },
+            final_response_lock=None,
+        )
+
+        def capture_manifest(manifest, **_kwargs):
+            captured_manifest.update(manifest)
+            return True
+
+        with (
+            mock.patch.object(
+                chat_main_payload.main_payload_manifest,
+                "emit_main_payload_manifest",
+                side_effect=capture_manifest,
+            ),
+            mock.patch.object(
+                chat_main_payload.active_documents_observability,
+                "emit_prompt_decision_event",
+                return_value=True,
+            ),
+            mock.patch.object(
+                chat_main_payload.chat_turn_logger,
+                "current_turn_id",
+                return_value="turn-web-counts",
+            ),
+        ):
+            prepared = chat_main_payload.prepare_main_payload(
+                conversation=conversation,
+                user_msg="question",
+                runtime_main_model="openai/gpt-5.1",
+                now_iso_value="2026-09-06T12:00:00Z",
+                memory_traces=[],
+                context_hints=[],
+                web_runtime_payload=web_runtime_payload,
+                web_search_module=SimpleNamespace(),
+                admin_logs_module=SimpleNamespace(log_event=lambda *_args, **_kwargs: None),
+                document_prompt_read=chat_document_prompt_reads.ActiveDocumentsPromptRead(
+                    status="empty"
+                ),
+                workspace_notes_read=workspace_folder_notes_prompt_lane.WorkspaceFolderNotesPromptRead(
+                    status="empty"
+                ),
+                biblio_result=biblio_result,
+                agenda_result=agenda_result,
+                adobe_request=SimpleNamespace(active=False),
+                adobe_context=SimpleNamespace(active=False),
+                validated_result=SimpleNamespace(status="skipped", validated_output={}),
+                assistant_output_policy=SimpleNamespace(
+                    allow_structure=False,
+                    allow_code=False,
+                ),
+                hermeneutic_node_runtime={},
+                hermeneutic_judgment_block="",
+                biblio_recent_dialogue=(),
+                agenda_recent_dialogue=(),
+                summary_payload={},
+                identity_payload={},
+                recent_context_payload={},
+                recent_window_payload={},
+                current_mode="off",
+                memory_retrieved={},
+                memory_arbitration={},
+                temperature=0.4,
+                top_p=1.0,
+                max_tokens=512,
+                stream_req=False,
+                config_module=SimpleNamespace(
+                    MAX_TOKENS=4000,
+                    CONTINUITY_CAPSULE_ENABLED=False,
+                    CONTINUITY_CAPSULE_VERSION="continuity_capsule_v1",
+                    CONTINUITY_CAPSULE_MAX_CHARS=900,
+                    CONTINUITY_CAPSULE_TEXT="",
+                ),
+                count_tokens_func=lambda messages, _model: len(messages),
+                active_document_prompt_max_tokens=1000,
+                record_active_document_prompt_decisions_func=lambda **_kwargs: None,
+                workspace_file_selections_module=SimpleNamespace(),
+                logger=SimpleNamespace(warning=lambda *_args, **_kwargs: None),
+                conv_store_module=SimpleNamespace(
+                    build_prompt_messages=lambda *_args, **_kwargs: [
+                        dict(message) for message in conversation["messages"]
+                    ]
+                ),
+            )
+
+        projected_event = admin_log_projection.project_event_item(
+            {
+                "stage": "main_payload_manifest",
+                "status": "ok",
+                "payload": captured_manifest,
+            }
+        )
+        lane = projected_event["payload"]["lane_statuses"]["web_lane"]
+        self.assertTrue(prepared.web_context_injected_to_main_model)
+        self.assertEqual(
+            prepared.prompt_messages[-1]["content"],
+            f"{sensitive_block}\n\nQuestion : question",
+        )
+        self.assertEqual(
+            (lane["input_count"], lane["injected_count"], lane["excluded_count"]),
+            (5, 5, 0),
+        )
+        self.assertTrue(lane["context_injected"])
+        self.assertNotIn(sensitive_block, _encoded(projected_event))
+
     def test_simple_conversation_manifest_has_order_and_no_raw_content(self) -> None:
         raw_prompt = "SENSITIVE_PROMPT_MARKER_A"
         raw_user = "SENSITIVE_USER_MESSAGE_MARKER_A"
@@ -359,6 +605,7 @@ class MainPayloadManifestTests(unittest.TestCase):
                 "activation_mode": "manual",
                 "status": "ok",
                 "context_injected": True,
+                "main_prompt_context_injected": True,
                 "results_count": 2,
                 "context_chars": 99,
             },
@@ -989,6 +1236,7 @@ class MainPayloadManifestTests(unittest.TestCase):
                 "activation_mode": "manual",
                 "status": "ok",
                 "context_injected": True,
+                "main_prompt_context_injected": True,
                 "results_count": 1,
                 "context_chars": 25,
             },
