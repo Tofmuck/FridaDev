@@ -238,6 +238,11 @@ Implementation Lot 3 livree:
 - aucune copie de contenu extrait dans `conversation_messages`, memoire, identity, summary, Biblio ou RAG;
 - observabilite content-free pour selection, decochage, injection, exclusion et stale/missing/deleted/disk_missing;
 - le chemin OCR `.ocr.md` reste distinct: l'injection PDF visuelle ne cree pas de Markdown derive, ne stocke pas d'OCR et ne promet pas une lecture textuelle complete.
+- la projection d'usage décrit la dernière décision effective: une exclusion
+  renseignée prime sur un `last_injected_turn_id` plus ancien pour
+  `usage_status`, `readiness` et `reason_code`, sans supprimer cet identifiant
+  historique; l'injection suivante efface les champs d'exclusion et rend de
+  nouveau le document prêt selon son type.
 
 ## 9. Contrat OCR images/PDF
 
@@ -286,6 +291,13 @@ Implementation Lot 4 livree:
 - ouverture/edition/sauvegarde du `.ocr.md` via panneau UI, avec mise a jour bytes disque + metadonnees DB/hash/taille/texte;
 - suppression du fichier source ne supprime pas automatiquement le derive: le Markdown OCR reste un fichier durable distinct avec provenance tombstonee/content-free;
 - observabilite content-free pour succes/echec OCR et edition, sans texte OCR brut, bytes, chemin disque, `storage_key`, base64, prompt, memoire, identity, summary, Biblio ou RAG.
+- la ré-OCR conserve la politique de remplacement du dérivé existant, y
+  compris d'éventuelles corrections manuelles; lorsque le read-model chargé
+  contient ce dérivé de la même source, l'UI avertit explicitement avant le
+  POST et une annulation n'envoie aucune requête;
+- après succès, l'UI annonce un Markdown OCR « créé » uniquement pour le
+  statut HTTP `201` et « mis à jour » uniquement pour `200`, sans nouveau champ
+  d'API ni inférence depuis un texte de réponse.
 
 Correction d'integrite L5.1 livree le 4 septembre 2026:
 

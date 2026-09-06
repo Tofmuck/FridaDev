@@ -48,16 +48,7 @@ def build_usage_projection(selection: Mapping[str, Any]) -> dict[str, Any]:
         usage_status = "selected"
         readiness = READINESS_PENDING
         usage_reason = REASON_SELECTED
-    if selected and _text(selection.get("last_injected_turn_id"), 160):
-        if _is_visual_selection(selection):
-            usage_status = DOCUMENT_STATUS_VISUAL_READY
-            readiness = READINESS_VISUAL
-            usage_reason = REASON_PDF_VISUAL_READY
-        else:
-            usage_status = DOCUMENT_STATUS_READABLE
-            readiness = READINESS_READY
-            usage_reason = REASON_TEXT_READY
-    elif last_excluded_reason:
+    if last_excluded_reason:
         usage_reason = last_excluded_reason
         readiness = READINESS_BLOCKED
         if last_excluded_reason in {
@@ -86,6 +77,15 @@ def build_usage_projection(selection: Mapping[str, Any]) -> dict[str, Any]:
             usage_status = DOCUMENT_STATUS_UNAVAILABLE
         elif last_excluded_reason in {"workspace_file_type_unsupported", REASON_TYPE_UNSUPPORTED}:
             usage_status = DOCUMENT_STATUS_UNSUPPORTED
+    elif selected and _text(selection.get("last_injected_turn_id"), 160):
+        if _is_visual_selection(selection):
+            usage_status = DOCUMENT_STATUS_VISUAL_READY
+            readiness = READINESS_VISUAL
+            usage_reason = REASON_PDF_VISUAL_READY
+        else:
+            usage_status = DOCUMENT_STATUS_READABLE
+            readiness = READINESS_READY
+            usage_reason = REASON_TEXT_READY
     return {
         "source": "workspace_file_selection",
         "conversation_id": _text(selection.get("conversation_id"), 120),

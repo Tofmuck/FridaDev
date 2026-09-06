@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from core import active_document_prompt_lane
+from core import workspace_folder_documents
 from core import workspace_file_selection_prompt
 from core import workspace_file_selections_store
 from core import workspace_files_store
@@ -28,6 +29,7 @@ class _SelectionPromptCursor:
     def __init__(self, conn):
         self.conn = conn
         self.result = []
+        self.rowcount = 0
 
     def __enter__(self):
         return self
@@ -39,6 +41,26 @@ class _SelectionPromptCursor:
         normalized_sql = " ".join(str(sql).split()).lower()
         params = tuple(params or ())
         self.conn.queries.append(normalized_sql)
+        if normalized_sql.startswith("update workspace_file_selections"):
+            self.rowcount = 0
+            if "set last_injected_turn_id" in normalized_sql:
+                turn_id, conversation_id, file_id = params
+                for row in self.conn.rows:
+                    if row["conversation_id"] == conversation_id and row["workspace_file_id"] == file_id:
+                        row["last_injected_turn_id"] = turn_id
+                        row["last_excluded_turn_id"] = ""
+                        row["last_excluded_reason_code"] = ""
+                        self.rowcount += 1
+                return
+            if "set last_excluded_turn_id" in normalized_sql:
+                turn_id, reason_code, conversation_id, file_id = params
+                for row in self.conn.rows:
+                    if row["conversation_id"] == conversation_id and row["workspace_file_id"] == file_id:
+                        row["last_excluded_turn_id"] = turn_id
+                        row["last_excluded_reason_code"] = reason_code
+                        self.rowcount += 1
+                return
+            raise AssertionError(f"unexpected selection update: {normalized_sql}")
         if "from workspace_file_selections" not in normalized_sql:
             raise AssertionError(f"unexpected SQL: {normalized_sql}")
         conversation_id = params[0]
@@ -60,6 +82,7 @@ class _SelectionPromptConn:
     def __init__(self, rows):
         self.rows = list(rows)
         self.queries = []
+        self.commit_count = 0
 
     def __enter__(self):
         return self
@@ -69,6 +92,9 @@ class _SelectionPromptConn:
 
     def cursor(self, *args, **kwargs):
         return _SelectionPromptCursor(self)
+
+    def commit(self):
+        self.commit_count += 1
 
 
 def _selection_prompt_row(
@@ -124,6 +150,59 @@ def _selection_prompt_row(
 
 
 class WorkspaceFileSelectionPromptTests(unittest.TestCase):
+    def test_injection_after_exclusion_clears_current_exclusion_and_restores_ready_projection(self) -> None:
+        conversation_id = "11111111-1111-4111-8111-111111111111"
+        folder_id = "22222222-2222-4222-8222-222222222222"
+        file_id = "33333333-3333-4333-8333-333333333333"
+        row = _selection_prompt_row(
+            conversation_id=conversation_id,
+            folder_id=folder_id,
+            file_id=file_id,
+            storage_key=f"{folder_id}/{file_id}.txt",
+        )
+        row["last_injected_turn_id"] = "44444444-4444-4444-8444-444444444444"
+        conn = _SelectionPromptConn([row])
+        logger = _CaptureLogger()
+
+        excluded = workspace_file_selections_store.record_selection_excluded(
+            conversation_id,
+            file_id,
+            turn_id="55555555-5555-4555-8555-555555555555",
+            reason_code="workspace_file_too_large",
+            db_conn_func=lambda: conn,
+            logger=logger,
+        )
+        excluded_selection = workspace_file_selections_store._serialize_selection_row(row)
+        excluded_usage = workspace_folder_documents.apply_selection_document_v1_projection(
+            excluded_selection
+        )["document_v1_usage"]
+
+        self.assertTrue(excluded)
+        self.assertEqual(excluded_usage["usage_status"], "too_large")
+        self.assertEqual(excluded_usage["readiness"], "blocked")
+        self.assertEqual(excluded_usage["last_injected_turn_id"], "44444444-4444-4444-8444-444444444444")
+
+        injected = workspace_file_selections_store.record_selection_injected(
+            conversation_id,
+            file_id,
+            turn_id="66666666-6666-4666-8666-666666666666",
+            db_conn_func=lambda: conn,
+            logger=logger,
+        )
+        injected_selection = workspace_file_selections_store._serialize_selection_row(row)
+        injected_usage = workspace_folder_documents.apply_selection_document_v1_projection(
+            injected_selection
+        )["document_v1_usage"]
+
+        self.assertTrue(injected)
+        self.assertEqual(row["last_excluded_turn_id"], "")
+        self.assertEqual(row["last_excluded_reason_code"], "")
+        self.assertEqual(injected_usage["usage_status"], "readable")
+        self.assertEqual(injected_usage["readiness"], "ready")
+        self.assertEqual(injected_usage["reason_code"], "folder_document_text_ready")
+        self.assertEqual(injected_usage["last_injected_turn_id"], "66666666-6666-4666-8666-666666666666")
+        self.assertEqual(conn.commit_count, 2)
+
     def test_reads_text_bytes_from_disk(self) -> None:
         conversation_id = "11111111-1111-4111-8111-111111111111"
         folder_id = "22222222-2222-4222-8222-222222222222"

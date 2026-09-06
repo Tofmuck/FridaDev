@@ -190,6 +190,29 @@ test("threads sidebar module exposes the conversations page size contract", () =
   ]);
 });
 
+test("workspace OCR client preserves the actual HTTP creation and update status", async () => {
+  const responseStatuses = [201, 200];
+  const { sidebar } = buildSidebarWithFetch(async (url, init = {}) => {
+    assert.equal(String(url), "/api/workspace-folders/folder-1/files/file-1/ocr");
+    assert.equal(String(init.method || "GET"), "POST");
+    const status = responseStatuses.shift();
+    return response(status, {
+      ok: true,
+      file: { id: "derived-1", source_kind: "ocr_derived", source_file_id: "file-1" },
+    });
+  });
+
+  assert.deepEqual(await sidebar.ocrWorkspaceFileOnServer("folder-1", "file-1"), {
+    status: 201,
+    file: { id: "derived-1", source_kind: "ocr_derived", source_file_id: "file-1" },
+  });
+  assert.deepEqual(await sidebar.ocrWorkspaceFileOnServer("folder-1", "file-1"), {
+    status: 200,
+    file: { id: "derived-1", source_kind: "ocr_derived", source_file_id: "file-1" },
+  });
+  assert.deepEqual(responseStatuses, []);
+});
+
 test("clampThreadTitle normalizes whitespace and preserves the fallback contract", () => {
   assert.equal(clampThreadTitle("  Mon   fil   "), "Mon fil");
   assert.equal(clampThreadTitle("   "), "Nouvelle conversation");

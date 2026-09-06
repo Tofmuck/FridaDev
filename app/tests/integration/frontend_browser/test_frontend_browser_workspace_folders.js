@@ -69,8 +69,14 @@ function workspaceFoldersMockScript() {
         activeDocumentUploadCalls: [],
         selectionCalls: [],
         ocrCalls: [],
+        ocrConfirmCalls: [],
+        ocrConfirmResult: false,
       };
       window.__fridaWorkspaceFolderState = state;
+      window.confirm = (message) => {
+        state.ocrConfirmCalls.push(String(message || ""));
+        return state.ocrConfirmResult;
+      };
       window.fetch = async (input, init = {}) => {
         const url = new URL(typeof input === "string" ? input : input.url, window.location.origin);
         const method = String(init.method || "GET").toUpperCase();
@@ -122,7 +128,10 @@ function workspaceFoldersMockScript() {
 
         if (url.pathname === "/api/workspace-folders/folder-1/files/file-ocr-source/ocr" && method === "POST") {
           state.ocrCalls.push({ pathname: url.pathname, method });
-          state.files.push({
+          const existing = state.files.find((item) => (
+            item.source_kind === "ocr_derived" && item.source_file_id === "file-ocr-source"
+          ));
+          const derivative = existing || {
             id: "file-ocr-md",
             workspace_folder_id: "folder-1",
             display_name: "scan.ocr.md",
@@ -137,13 +146,14 @@ function workspaceFoldersMockScript() {
             reason_code: "",
             source_kind: "ocr_derived",
             source_file_id: "file-ocr-source",
-          });
+          };
+          if (!existing) state.files.push(derivative);
           return new Response(JSON.stringify({
             ok: true,
             workspace_folder_id: "folder-1",
             source_file_id: "file-ocr-source",
-            file: state.files[state.files.length - 1],
-          }), { status: 201, headers: { "Content-Type": "application/json" } });
+            file: derivative,
+          }), { status: existing ? 200 : 201, headers: { "Content-Type": "application/json" } });
         }
 
         const selectionCollectionMatch = url.pathname.match(/^\\/api\\/conversations\\/([^/]+)\\/workspace-file-selections$/);
@@ -247,6 +257,10 @@ function workspaceFoldersMockScript() {
 
 test('workspace folders start collapsed, expand on demand and move by drag-and-drop', async () => {
   await openBrowserPage({ mockScript: workspaceFoldersMockScript() }, async (page) => {
+    const consoleIssues = [];
+    page.on('console', (message) => {
+      if (['warning', 'error'].includes(message.type())) consoleIssues.push(message.text());
+    });
     await page.waitForSelector('.workspace-folder-row');
     await assertTextContains(page.locator('.workspace-folder-row'), 'Projet Tulu');
     assert.equal(await page.locator('.workspace-folder-svg').count(), 1);
@@ -316,6 +330,13 @@ test('workspace folders start collapsed, expand on demand and move by drag-and-d
       method: 'POST',
       payload: { file_id: 'file-1' },
     }]);
+    await page.locator('.workspace-folder-file-select').first().uncheck();
+    await page.waitForFunction(() => window.__fridaWorkspaceFolderState.selectionCalls.length === 2);
+    assert.deepEqual(await page.evaluate(() => window.__fridaWorkspaceFolderState.selectionCalls[1]), {
+      conversationId: 'conv-in',
+      method: 'DELETE',
+      fileId: 'file-1',
+    });
 
     await page.locator('li', { hasText: 'Conversation dehors' }).dragTo(page.locator('.workspace-folder-row'), {
       sourcePosition: { x: 12, y: 8 },
@@ -365,5 +386,32 @@ test('workspace folders start collapsed, expand on demand and move by drag-and-d
     }]);
     await page.waitForFunction(() => document.querySelector('.workspace-folder-files')?.textContent.includes('scan.ocr.md'));
     await assertTextContains(page.locator('.workspace-folder-files'), 'scan.ocr.md');
+    await assertTextContains(page.locator('.threads-status'), 'Markdown OCR créé dans le répertoire.');
+    assert.deepEqual(await page.evaluate(() => window.__fridaWorkspaceFolderState.ocrConfirmCalls), []);
+
+    await page.locator('.workspace-folder-file-ocr').first().click();
+    await page.waitForFunction(() => window.__fridaWorkspaceFolderState.ocrConfirmCalls.length === 1);
+    let reOcrState = await page.evaluate(() => ({
+      calls: window.__fridaWorkspaceFolderState.ocrCalls.length,
+      confirmation: window.__fridaWorkspaceFolderState.ocrConfirmCalls[0],
+    }));
+    assert.equal(reOcrState.calls, 1);
+    assert.match(reOcrState.confirmation, /remplacera le Markdown OCR actuel/i);
+    assert.match(reOcrState.confirmation, /corrections manuelles/i);
+
+    await page.evaluate(() => {
+      window.__fridaWorkspaceFolderState.ocrConfirmResult = true;
+    });
+    await page.locator('.workspace-folder-file-ocr').first().click();
+    await page.waitForFunction(() => window.__fridaWorkspaceFolderState.ocrCalls.length === 2);
+    await page.waitForFunction(() => document.querySelector('.threads-status')?.textContent.includes('mis à jour'));
+    await assertTextContains(page.locator('.threads-status'), 'Markdown OCR mis à jour dans le répertoire.');
+    reOcrState = await page.evaluate(() => ({
+      calls: window.__fridaWorkspaceFolderState.ocrCalls.length,
+      confirmations: window.__fridaWorkspaceFolderState.ocrConfirmCalls.length,
+      derivativeCount: window.__fridaWorkspaceFolderState.files.filter((item) => item.source_kind === 'ocr_derived').length,
+    }));
+    assert.deepEqual(reOcrState, { calls: 2, confirmations: 2, derivativeCount: 1 });
+    assert.deepEqual(consoleIssues, []);
   });
 });

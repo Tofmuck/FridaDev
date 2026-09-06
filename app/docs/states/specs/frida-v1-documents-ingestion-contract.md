@@ -321,7 +321,12 @@ Projections runtime:
   `active_document`, sans Biblio et sans Memory/RAG/Identity/Summary; depuis
   Lot 5, cette projection peut indiquer `selected`, `readable`,
   `pdf_visual_required`, `too_large`, `unsupported`, `unavailable` ou
-  `not_injected` selon le resultat de preparation du tour.
+  `not_injected` selon le resultat de preparation du tour; une exclusion
+  effective renseignée prime sur une injection plus ancienne pour l'état
+  courant et son reason code, tandis que `last_injected_turn_id`,
+  `last_excluded_turn_id` et `last_excluded_reason_code` restent exposés comme
+  historique inspectable; l'injection suivante efface l'exclusion selon le
+  contrat du store existant.
 
 Statuts projetes au Lot 2:
 

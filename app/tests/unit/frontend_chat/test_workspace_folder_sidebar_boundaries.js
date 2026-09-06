@@ -26,6 +26,10 @@ const { createWorkspaceFolderTreeRenderer } = optionalRequire(
   '../../../web/chat_workspace_folder_tree_renderer.js',
   'chat_workspace_folder_tree_renderer.js',
 );
+const { createWorkspaceFolderSidebarRenderer } = optionalRequire(
+  '../../../web/chat_workspace_folders_sidebar.js',
+  'chat_workspace_folders_sidebar.js',
+);
 
 function makeElement(tagName = 'div') {
   const classes = new Set();
@@ -94,6 +98,195 @@ function click(node) {
   const event = { stopPropagation() {}, target: { closest: () => null } };
   return node.listeners.get('click')[0](event);
 }
+
+async function waitFor(predicate, message) {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    if (predicate()) return;
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  assert.fail(message);
+}
+
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
+function buildOcrSidebar({ files, confirmResult = true, ocrResult }) {
+  const threadsUl = makeElement('ul');
+  const statuses = [];
+  const confirmations = [];
+  const ocrCalls = [];
+  const folder = {
+    id: 'folder-1',
+    display_name: 'Projet',
+    nextcloud_sync_state: 'local_only',
+  };
+  global.document = {
+    body: makeElement('body'),
+    createElement: makeElement,
+  };
+  global.window = {
+    confirm(message) {
+      confirmations.push(String(message || ''));
+      return confirmResult;
+    },
+  };
+  const renderer = createWorkspaceFolderSidebarRenderer({
+    threadsUl,
+    getWorkspaceFolders: () => [folder],
+    getWorkspaceFiles: () => files,
+    getWorkspaceFilesStatus: () => ({ status: 'ok' }),
+    getWorkspaceExports: () => [],
+    getWorkspaceExportsStatus: () => ({ status: 'ok' }),
+    getWorkspaceGeneratedImages: () => [],
+    getWorkspaceGeneratedImagesStatus: () => ({ status: 'ok' }),
+    getWorkspaceNotes: () => [],
+    getWorkspaceNotesStatus: () => ({ status: 'ok' }),
+    refreshThreadsFromServer: async () => {},
+    refreshWorkspaceFiles: async () => {},
+    refreshWorkspaceExports: async () => {},
+    refreshWorkspaceGeneratedImages: async () => {},
+    refreshWorkspaceNotes: async () => {},
+    renderThreads: () => {},
+    setThreadStatus: (message, isError = false) => statuses.push({ message, isError }),
+    ocrWorkspaceFileOnServer: (folderId, fileId) => {
+      ocrCalls.push({ folderId, fileId });
+      return typeof ocrResult === 'function' ? ocrResult() : ocrResult;
+    },
+    getCurrentThread: () => null,
+    getWorkspaceFileSelections: () => [],
+    bindConversationDropTarget: () => {},
+    consoleObj: { warn() {} },
+  });
+  renderer.appendFolderRow(folder, [], 0, () => {});
+  click(byClass(threadsUl, 'workspace-folder-toggle')[0]);
+  threadsUl.children = [];
+  renderer.appendFolderRow(folder, [], 0, () => {});
+  return {
+    confirmations,
+    ocrButton: byClass(threadsUl, 'workspace-folder-file-ocr')[0],
+    ocrCalls,
+    statuses,
+  };
+}
+
+function sourcePdf() {
+  return {
+    id: 'source-pdf',
+    workspace_folder_id: 'folder-1',
+    display_name: 'scan.pdf',
+    mime_type: 'application/pdf',
+    source_extension: '.pdf',
+    status: 'ocr_required',
+    source_kind: 'upload',
+  };
+}
+
+function derivedMarkdown() {
+  return {
+    id: 'derived-md',
+    workspace_folder_id: 'folder-1',
+    display_name: 'scan.ocr.md',
+    mime_type: 'text/markdown',
+    source_extension: '.md',
+    status: 'active',
+    source_kind: 'ocr_derived',
+    source_file_id: 'source-pdf',
+  };
+}
+
+test('first workspace OCR posts once without replacement warning and reports creation', async (t) => {
+  t.after(() => {
+    delete global.document;
+    delete global.window;
+  });
+  const ui = buildOcrSidebar({
+    files: [sourcePdf()],
+    ocrResult: Promise.resolve({ status: 201, file: derivedMarkdown() }),
+  });
+
+  click(ui.ocrButton);
+  await waitFor(() => ui.statuses.length > 0, 'first OCR did not publish its final status');
+
+  assert.equal(ui.confirmations.length, 0);
+  assert.deepEqual(ui.ocrCalls, [{ folderId: 'folder-1', fileId: 'source-pdf' }]);
+  assert.deepEqual(ui.statuses.at(-1), {
+    message: 'Markdown OCR créé dans le répertoire.',
+    isError: false,
+  });
+});
+
+test('cancelled workspace re-OCR warns about manual corrections and sends no POST', async (t) => {
+  t.after(() => {
+    delete global.document;
+    delete global.window;
+  });
+  const ui = buildOcrSidebar({
+    files: [sourcePdf(), derivedMarkdown()],
+    confirmResult: false,
+    ocrResult: Promise.resolve({ status: 200, file: derivedMarkdown() }),
+  });
+
+  click(ui.ocrButton);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(ui.confirmations.length, 1);
+  assert.match(ui.confirmations[0], /remplacera le Markdown OCR actuel/i);
+  assert.match(ui.confirmations[0], /corrections manuelles/i);
+  assert.deepEqual(ui.ocrCalls, []);
+  assert.deepEqual(ui.statuses, []);
+});
+
+test('confirmed workspace re-OCR sends one POST and reports the HTTP 200 update', async (t) => {
+  t.after(() => {
+    delete global.document;
+    delete global.window;
+  });
+  const pending = deferred();
+  const ui = buildOcrSidebar({
+    files: [sourcePdf(), derivedMarkdown()],
+    confirmResult: true,
+    ocrResult: () => pending.promise,
+  });
+
+  click(ui.ocrButton);
+  click(ui.ocrButton);
+  assert.equal(ui.confirmations.length, 1);
+  assert.deepEqual(ui.ocrCalls, [{ folderId: 'folder-1', fileId: 'source-pdf' }]);
+  pending.resolve({ status: 200, file: derivedMarkdown() });
+  await waitFor(() => ui.statuses.length > 0, 're-OCR did not publish its final status');
+
+  assert.deepEqual(ui.statuses.at(-1), {
+    message: 'Markdown OCR mis à jour dans le répertoire.',
+    isError: false,
+  });
+});
+
+test('failed workspace OCR never publishes a creation or update success', async (t) => {
+  t.after(() => {
+    delete global.document;
+    delete global.window;
+  });
+  const ui = buildOcrSidebar({
+    files: [sourcePdf()],
+    ocrResult: Promise.reject(new Error('synthetic OCR failure')),
+  });
+
+  click(ui.ocrButton);
+  await waitFor(() => ui.statuses.length > 0, 'failed OCR did not publish its error status');
+
+  assert.equal(ui.statuses.some(({ message }) => /créé|mis à jour/i.test(message)), false);
+  assert.deepEqual(ui.statuses.at(-1), {
+    message: 'OCR du fichier impossible.',
+    isError: true,
+  });
+});
 
 test('file rows keep API error distinct from a normal empty list', () => {
   assert.equal(typeof createWorkspaceFolderFileRowsRenderer, 'function');

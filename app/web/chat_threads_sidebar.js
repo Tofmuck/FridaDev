@@ -362,7 +362,10 @@ function createChatThreadsSidebar({
       { method: "POST" },
     );
     const data = await parseServerResponse(res);
-    return data.file || null;
+    return {
+      status: res.status,
+      file: data.file || null,
+    };
   }
 
   async function readWorkspaceOcrMarkdownOnServer(folderId, fileId) {

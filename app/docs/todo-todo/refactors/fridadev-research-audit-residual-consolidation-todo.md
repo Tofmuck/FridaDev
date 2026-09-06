@@ -2,8 +2,7 @@
 
 Date de cadrage : 4 septembre 2026.
 
-**Statut : roadmap ouverte ; L1 à L5 et L6.1 à L6.6 fermés ; L6 en cours ;
-L6.7, L7 et Z non commencés.**
+**Statut : roadmap ouverte ; L1 à L6 fermés ; L7 et Z non commencés.**
 
 ## 1. But, source et règle de vérité
 
@@ -74,7 +73,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 | 3 | L3 | Compensation Nextcloud possédée | F08 | xhigh | fermé — F08 corrigé |
 | 4 | L4 | Conservation de la projection analytics | F21 | high | fermé — F21 corrigé |
 | 5 | L5 | Atomicité des écritures Workspace | F13b, F14a, F19b | xhigh par sous-lot | fermé — F13b, F14a et F19b corrigés |
-| 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | en cours — L6.1/F05, L6.2/F10, L6.3/F12a-F12b, L6.4/F12c, L6.5/F15a-F15b et L6.6/F19a corrigés ; L6.7 non commencé |
+| 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | fermé — F05, F10, F12a-F12c, F13a, F14b, F15a-F15b et F19a corrigés |
 | 7 | L7 | Vérité d'API, observabilité et outils historiques | F16–F18, F20, F22, F24 et dette documentaire | high | non commencé |
 | 8 | Z | Réconciliation finale avec le grand audit | tous les Fxx et réserves non numérotées | xhigh | non commencé |
 
@@ -91,7 +90,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 - [x] L6.4 fermé ; F12c corrigé sans commencer L6.5.
 - [x] L6.5 fermé ; F15a et F15b corrigés sans commencer L6.6.
 - [x] L6.6 fermé ; F19a corrigé sans commencer L6.7.
-- [ ] L6 et ses décisions conditionnelles fermés.
+- [x] L6 fermé ; L6.7/F13a-F14b corrigés sans commencer L7.
 - [ ] L7 et ses décisions conditionnelles fermés.
 - [ ] Z réconcilie chaque finding et archive la roadmap.
 
@@ -901,6 +900,57 @@ commencé.
 - **F14b :** distinguer état courant et historique seulement si une surface ou
   une API affirme encore à tort qu'un document exclu est actuellement prêt ou
   injecté. Conserver l'historique utile.
+
+**Statut : fermé — F13a et F14b corrigés ; L6 fermé ; L7 non commencé.**
+
+**Revalidation au HEAD `1c6b88d720092e998f79f03e8757750a99232843`.**
+L'hypothèse 1 est confirmée : le premier OCR crée le dérivé et retourne `201`,
+tandis que la ré-OCR retrouve le même `source_file_id`, appelle
+`update_workspace_text_file()` et retourne `200`. L'hypothèse 2 est confirmée :
+l'édition humaine appelle elle aussi cette frontière de mise à jour ; la ré-OCR
+suivante remplace donc réellement les corrections du même Markdown.
+L'hypothèse 3 et l'hypothèse 4 sont confirmées : le frontend annonçait toujours
+« créé », sans avertissement, alors que `Response.status` et les métadonnées
+déjà listées `source_kind=ocr_derived`
+et `source_file_id` suffisent sans modifier l'API. L'hypothèse 5 est confirmée :
+une injection efface l'exclusion précédente ; une exclusion conserve l'ancien
+`last_injected_turn_id` et renseigne les deux champs d'exclusion. L'hypothèse 6 est
+confirmée : `build_usage_projection()` donnait priorité à cet identifiant
+historique et fabriquait `readable/ready` malgré la décision d'exclusion
+courante. L'hypothèse 7 est confirmée : aucun nouvel état durable, endpoint,
+écran, champ, événement, table ou workflow n'est nécessaire.
+
+**Décision et correctif.** Aucun plan plus simple et plus sûr n'offre moins
+d'effets de bord. Avant une ré-OCR, le contrôleur recherche dans la liste déjà
+chargée le dérivé actif de la même source et utilise la confirmation native
+existante pour annoncer que le Markdown OCR actuel, corrections manuelles
+comprises, sera remplacé. Une annulation s'arrête avant le POST. Un verrou
+process-local par cible neutralise un double clic pendant la requête. Le client
+conserve désormais le statut HTTP réel avec le fichier retourné ; le succès
+affiche « créé » pour `201`, « mis à jour » pour `200`, et aucun autre statut ne
+fabrique un succès. Côté projection, un reason code d'exclusion effectif prime
+sur l'ancien ID d'injection pour `usage_status`, `readiness` et `reason_code`,
+mais les trois champs historiques restent exposés. L'injection suivante
+réutilise le contrat store existant qui efface l'exclusion et restaure
+`readable/ready`.
+
+**Preuves et limites.** Les reproductions rouges ont établi l'absence de
+confirmation, la perte de `Response.status` et la projection fautive
+`readable/ready`. Les suites ciblées passent `42/42` côté Node et `48/48` côté
+Python hermétique, sans réseau, provider, Stirling, Nextcloud ni DB opérateur.
+Elles couvrent premier OCR, ré-OCR après correction humaine, annulation sans
+POST, confirmation et double clic bornés à un POST, libellés `201/200`, erreur
+sans faux succès, conservation de l'ID injecté historique, reprise après
+injection, image/PDF visuel et sélection/désélection. Le scénario Chromium
+Workspace ciblé passe `1/1` avec création, avertissement, annulation, mise à
+jour et sélection/désélection réelles dans le DOM. Deux mutations contrôlées —
+neutralisation de l'avertissement OCR puis subordination de l'exclusion à
+l'absence d'injection historique — remettent leurs preuves centrales au rouge ;
+leur restauration exacte retrouve les empreintes du correctif. La décision
+pré-POST repose volontairement sur le read-model déjà chargé : une autre
+surface concurrente peut le rendre caduc entre lecture et POST, mais le statut
+serveur final reste la vérité du libellé. Aucun algorithme OCR, stockage,
+versionnage, télémétrie ou capacité produit n'est ajouté. L7 n'est pas commencé.
 
 ## 10. L7 — Vérité d'API, observabilité et outils historiques
 

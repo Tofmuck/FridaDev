@@ -398,6 +398,29 @@ class DocumentsV1ReadModelTests(unittest.TestCase):
         self.assertEqual(usage["readiness"], "blocked")
         self.assertEqual(usage["reason_code"], "workspace_file_too_large")
 
+    def test_usage_projection_prefers_current_exclusion_to_historical_injection(self) -> None:
+        historical_injection = "44444444-4444-4444-8444-444444444444"
+        current_exclusion = "55555555-5555-4555-8555-555555555555"
+        projected = workspace_folder_documents.apply_selection_document_v1_projection(
+            {
+                "conversation_id": "11111111-1111-4111-8111-111111111111",
+                "workspace_file_id": "33333333-3333-4333-8333-333333333333",
+                "workspace_folder_id": "22222222-2222-4222-8222-222222222222",
+                "selected": True,
+                "selection_status": "selected",
+                "last_injected_turn_id": historical_injection,
+                "last_excluded_turn_id": current_exclusion,
+                "last_excluded_reason_code": "workspace_file_too_large",
+            }
+        )
+
+        usage = projected["document_v1_usage"]
+        self.assertEqual(usage["usage_status"], "too_large")
+        self.assertEqual(usage["readiness"], "blocked")
+        self.assertEqual(usage["reason_code"], "workspace_file_too_large")
+        self.assertEqual(usage["last_injected_turn_id"], historical_injection)
+        self.assertEqual(usage["last_excluded_turn_id"], current_exclusion)
+
 
 if __name__ == "__main__":
     unittest.main()

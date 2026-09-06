@@ -84,6 +84,7 @@ function createWorkspaceFolderSidebarRenderer({
   const iconKeys = WorkspaceFolderUiHelpers?.WORKSPACE_FOLDER_ICON_KEYS || ['folder'];
   const normalizeIconKey = WorkspaceFolderUiHelpers?.normalizeWorkspaceIconKey || ((value) => String(value || 'folder').trim() || 'folder');
   const expandedFolderIds = new Set();
+  const ocrRequestsInFlight = new Set();
   const exportsPanel = WorkspaceFolderExportsPanel?.createWorkspaceFolderExportsPanelRenderer?.({
     threadsUl,
     getWorkspaceExports,
@@ -272,14 +273,41 @@ function createWorkspaceFolderSidebarRenderer({
       setThreadStatus('OCR de répertoire indisponible.', true);
       return;
     }
+    const requestKey = `${String(folder?.id || '')}:${String(file?.id || '')}`;
+    if (ocrRequestsInFlight.has(requestKey)) return;
+    const files = typeof getWorkspaceFiles === 'function' ? getWorkspaceFiles(folder.id) : [];
+    const existingDerivative = files.find((candidate) => (
+      String(candidate?.source_kind || '') === 'ocr_derived'
+      && String(candidate?.source_file_id || '') === String(file?.id || '')
+      && String(candidate?.status || 'active') !== 'deleted'
+      && !candidate?.deleted_at
+    ));
+    if (existingDerivative) {
+      const confirmed = typeof window !== 'undefined' && typeof window.confirm === 'function'
+        ? window.confirm(
+          'Relancer l’OCR remplacera le Markdown OCR actuel, y compris ses corrections manuelles. Continuer ?'
+        )
+        : false;
+      if (!confirmed) return;
+    }
+    ocrRequestsInFlight.add(requestKey);
     try {
-      await ocrWorkspaceFileOnServer(folder.id, file.id);
+      const result = await ocrWorkspaceFileOnServer(folder.id, file.id);
+      if (result?.status !== 200 && result?.status !== 201) {
+        throw new Error('workspace_ocr_success_status_unexpected');
+      }
       await refreshWorkspaceFiles(folder.id);
       renderThreads();
-      setThreadStatus('Markdown OCR créé dans le répertoire.');
+      setThreadStatus(
+        result.status === 201
+          ? 'Markdown OCR créé dans le répertoire.'
+          : 'Markdown OCR mis à jour dans le répertoire.'
+      );
     } catch (err) {
       logger.warn('OCR fichier répertoire échoué', err);
       setThreadStatus('OCR du fichier impossible.', true);
+    } finally {
+      ocrRequestsInFlight.delete(requestKey);
     }
   };
 
