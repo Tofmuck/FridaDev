@@ -833,6 +833,31 @@ Offline human-rating finalization is provided separately by
 ledger, model and cost before reusing the shared v2.4 scorer. It never creates a
 provider client.
 
+Any authorized reuse of the v2.4 or v2.5 finalization path must cross the
+shared `final_wording_finalization_v2` attribution guard. The public v2.4
+entrypoint remains `final_wording_rating_v2` and now requires both `--repo-root`
+and the campaign's `--freeze-commit`; the v2.5 finalizer delegates to the same
+guard under its frozen profile. The guard reconstructs the authoritative
+24-call calendar from the exact historical manifest and verifies its schedule
+fingerprint. It validates complete ratings and any required Tof ratification
+before reconstructing that calendar or reading `blind_mapping.json`, then
+requires an exact sequence bijection across calendar, ledger, mapping and
+packet. Case, repetition, comparison kind, blind slot, message fingerprint,
+variant and output fingerprint must all agree. Closed integrity failures occur
+before scoring, durable-result creation or deletion, leaving all private and
+review evidence intact. The scorer consumes that validated snapshot rather than
+re-reading a mutable mapping. Immediately before durable commit, the private and
+review directories are atomically renamed to private, content-free staging
+names; a pre-commit failure restores both directories. Cleanup after the
+validated durable commit is best-effort and cannot turn that committed result
+into a destructive refusal; a persistent filesystem cleanup failure may leave
+private staged evidence for operator cleanup. Durable publication is atomic and
+no-clobber; existing destinations and destinations inside active or staged
+evidence directories are rejected before mutation. The internal post-guard
+scorer/purge function is not a supported finalization entrypoint. This guard
+does not make either frozen campaign runnable and does not authorize a provider
+call.
+
 Both reduced campaigns completed 24/24 valid calls and 12/12 ratified blind
 comparisons, with no unratable dimension:
 

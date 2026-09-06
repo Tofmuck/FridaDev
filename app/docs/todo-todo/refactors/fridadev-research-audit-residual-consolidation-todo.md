@@ -2,7 +2,7 @@
 
 Date de cadrage : 4 septembre 2026.
 
-**Statut : roadmap ouverte ; L1 à L6 et L7.1-L7.5 fermés ; L7.6 et Z non commencés.**
+**Statut : roadmap ouverte ; L1 à L6 et L7.1-L7.6 fermés ; L7.7 et Z non commencés.**
 
 ## 1. But, source et règle de vérité
 
@@ -74,7 +74,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 | 4 | L4 | Conservation de la projection analytics | F21 | high | fermé — F21 corrigé |
 | 5 | L5 | Atomicité des écritures Workspace | F13b, F14a, F19b | xhigh par sous-lot | fermé — F13b, F14a et F19b corrigés |
 | 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | fermé — F05, F10, F12a-F12c, F13a, F14b, F15a-F15b et F19a corrigés |
-| 7 | L7 | Vérité d'API, observabilité et outils historiques | F16–F18, F20, F22, F24 et dette documentaire | high | en cours — L7.1-L7.5 fermés ; L7.6 non commencé |
+| 7 | L7 | Vérité d'API, observabilité et outils historiques | F16–F18, F20, F22, F24 et dette documentaire | high | en cours — L7.1-L7.6 fermés ; L7.7 non commencé |
 | 8 | Z | Réconciliation finale avec le grand audit | tous les Fxx et réserves non numérotées | xhigh | non commencé |
 
 - [x] Source, périmètre, ordre et règles de preuve consignés.
@@ -91,6 +91,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 - [x] L6.5 fermé ; F15a et F15b corrigés sans commencer L6.6.
 - [x] L6.6 fermé ; F19a corrigé sans commencer L6.7.
 - [x] L6 fermé ; L6.7/F13a-F14b corrigés sans commencer L7.
+- [x] L7.6 fermé ; F24 corrigé sans commencer L7.7.
 - [ ] L7 et ses décisions conditionnelles fermés.
 - [ ] Z réconcilie chaque finding et archive la roadmap.
 
@@ -1271,9 +1272,56 @@ commencé.
 
 ### L7.6 — Banc historique Stimmung — F24, garde avant réutilisation
 
-Ne corriger que si ce banc doit être réutilisé. Avant calcul ou purge, recroiser
-variant et sequence avec calendrier, mapping et ledger déjà disponibles. Aucune
-nouvelle campagne et aucun changement de `keep_current_v2.3`.
+**Fermé le 6 septembre 2026.** La revalidation au HEAD initial
+`78cfe1350fb57f2515aa5ce7de71e2858a6711e7` confirme les hypothèses 1 à 6 de
+F24 et invalide la septième sur le chemin antérieur. `validate_mapping()` liait
+mapping et packet par leurs empreintes, mais ne recroisait ni séquence ni
+variante avec le calendrier et le ledger. Une
+permutation synthétique des deux seules variantes d'une paire, à empreintes de
+sorties inchangées, franchissait cette validation et modifiait les deux comptes
+d'amélioration attribués au candidat. Le ledger et le calendrier portaient déjà
+toutes les identités nécessaires ; le finalizer v2.5 réutilisait bien le même
+scorer v2.4, sans disposer d'une bijection causale commune.
+
+La frontière publique v2.4 exige désormais la racine et le commit gelé ; son
+ancien appel sans contexte historique échoue avec le reason code fermé
+`historical_attribution_guard_required`. Une garde de finalisation unique
+reconstruit le protocole historique depuis le manifeste v2.4 ou le profil v2.5,
+réinjecte seulement ses empreintes gelées de provenance, puis vérifie le
+manifeste exact et l'empreinte du calendrier de 24 appels. Cette reconstruction
+n'autorise ni reprise ni campagne. Après validation complète des ratings et de
+la ratification éventuelle, et seulement alors, elle lit le mapping et impose
+la bijection exacte des 24 séquences. Chaque lien recroise cas, répétition, type
+de comparaison, slot aveugle, empreinte des messages, variante autoritative et
+empreinte de sortie entre calendrier, ledger, mapping et packet. Les doublons,
+absences, séquences étrangères et incohérences utilisent uniquement des reason
+codes fermés et content-free.
+
+Le finalizer GPT-5.2 v2.5 délègue à cette même garde sous son profil historique ;
+aucun second protocole n'est copié. Toute incohérence s'arrête avant scorer,
+écriture durable, `unlink` ou `rmdir`, en conservant packet, ratings, mapping,
+ledger et sorties privées. Le scorer consomme le snapshot validé, et une
+nouvelle empreinte des sources juste avant scoring puis commit ferme la fenêtre
+de relecture TOCTOU. Les ratings incomplets et l'absence de ratification restent
+refusés avant reconstruction du calendrier et lecture du mapping. Les chemins
+nominaux v2.4 et v2.5 conservent l'écriture atomique, le readback, les
+permissions et la séparation privé/review. Avant le commit durable, les deux
+répertoires de preuves sont renommés sans lecture ni copie vers des noms privés
+content-free ; tout échec pré-commit restaure leurs noms et contenus. La purge
+post-commit est bornée à ces répertoires isolés et ne transforme jamais un
+résultat durable validé en refus destructeur. La publication durable est
+atomique, sans écrasement ; une destination existante ou située dans les
+répertoires actifs ou de staging est refusée sans mutation.
+
+La reproduction, les contre-cas et les chemins nominaux traversent les vrais
+finalizers dans 16 tests hermétiques, sans réseau ni provider. La mutation
+contrôlée retirant le contrôle de variante atteint de nouveau le scorer et remet
+le témoin de permutation au rouge ; la restauration exacte le remet au vert.
+La fonction de scoring sémantique, les seuils, corpus, prompts, modèles,
+manifestes, résultats et artefacts gelés restent inchangés. `keep_current_v2.3`
+reste actif et inchangé. Aucun canari, campagne, runtime, DB, dialogue réel,
+JavaScript, Chromium, rebuild, restart ou déploiement n'est lancé. L7.7 n'est
+pas commencé.
 
 ### L7.7 — Passe documentaire bornée
 

@@ -5,9 +5,8 @@ import json
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from benchmark.suites.stimmung import final_wording_finalization_v2 as finalization_v2
 from benchmark.suites.stimmung import final_wording_gpt52_v25 as campaign_v25
-from benchmark.suites.stimmung import final_wording_protocol_v2 as protocol_v2
-from benchmark.suites.stimmung import final_wording_rating_v2 as rating_v2
 
 
 def _compact_json(value: Any) -> str:
@@ -33,9 +32,8 @@ def finalize_campaign(
 ) -> dict[str, Any]:
     """Finalize v2.5 offline without altering its frozen provider runner."""
 
-    protocol = campaign_v25.build_protocol(repo_root, freeze_commit=freeze_commit)
     expected_private, expected_review = campaign_v25.expected_live_campaign_paths(
-        protocol
+        {"freeze_commit": freeze_commit}
     )
     if (
         campaign_dir.resolve() != expected_private.resolve()
@@ -51,8 +49,6 @@ def finalize_campaign(
     ledger = _load_object(ledger_path)
     expected_provenance: Mapping[str, Any] = {
         "freeze_commit": freeze_commit,
-        "protocol_sha256": protocol_v2.protocol_sha256(protocol),
-        "schedule_sha256": protocol["schedule_sha256"],
         "campaign_status": "human_rating_required",
         "terminal_reason_code": None,
         "attempted_call_count": campaign_v25.EXPECTED_CALLS,
@@ -70,7 +66,9 @@ def finalize_campaign(
     campaign_v25._normalize_v25_ledger(ledger, require_complete=True)
 
     with campaign_v25._campaign_profile():
-        artifact = rating_v2.finalize_campaign(
+        artifact = finalization_v2.finalize_campaign(
+            repo_root=repo_root,
+            freeze_commit=freeze_commit,
             campaign_dir=campaign_dir,
             rating_packet_path=rating_packet_path,
             ratings_path=ratings_path,
@@ -78,17 +76,6 @@ def finalize_campaign(
             durable_output=durable_output,
         )
 
-    if artifact.get("decision") is None:
-        return artifact
-    if (
-        artifact.get("call_count") != campaign_v25.EXPECTED_CALLS
-        or artifact.get("outputs_complete") is not True
-        or artifact.get("route_counts", {}).get("models")
-        != {campaign_v25.TARGET_MODEL: campaign_v25.EXPECTED_CALLS}
-        or artifact.get("observed_cost_usd") != ledger.get("observed_cost_usd")
-    ):
-        raise ValueError("v25_durable_evidence_mismatch")
-    rating_v2.validate_durable_artifact(artifact)
     return artifact
 
 

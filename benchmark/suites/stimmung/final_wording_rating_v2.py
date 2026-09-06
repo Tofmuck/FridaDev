@@ -70,6 +70,11 @@ _DURABLE_REASON_CODES = {
     "complete_provider_and_human_evidence_meets_thresholds",
 }
 _HEX = frozenset("0123456789abcdef")
+_ATTRIBUTION_GUARD_CAPABILITY = object()
+
+
+class _DurablePublicationError(Exception):
+    pass
 
 
 def _compact_json(value: Any) -> str:
@@ -120,6 +125,7 @@ def _atomic_write_private_json(path: Path, value: Mapping[str, Any]) -> None:
         suffix=".tmp",
     )
     temporary_path = Path(temporary_name)
+    published = False
     try:
         os.fchmod(descriptor, 0o600)
         with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
@@ -127,12 +133,26 @@ def _atomic_write_private_json(path: Path, value: Mapping[str, Any]) -> None:
             handle.write("\n")
             handle.flush()
             os.fsync(handle.fileno())
-        os.replace(temporary_path, path)
+        try:
+            os.link(temporary_path, path)
+        except FileExistsError:
+            raise ValueError("durable_output_already_exists") from None
+        published = True
+        temporary_path.unlink()
         os.chmod(path, 0o600)
         _fsync_directory(path.parent)
     except BaseException:
-        temporary_path.unlink(missing_ok=True)
+        try:
+            temporary_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        if published:
+            raise _DurablePublicationError from None
         raise
+
+
+def _purge_staging_path(directory: Path) -> Path:
+    return directory.with_name(f".{directory.name}.finalization-purge")
 
 
 def validate_packet(packet: Mapping[str, Any]) -> dict[str, Any]:
@@ -809,14 +829,33 @@ def validate_durable_artifact(artifact: Mapping[str, Any]) -> bool:
     return True
 
 
-def finalize_campaign(
+def _finalize_after_attribution_guard(
     *,
     campaign_dir: Path,
     rating_packet_path: Path,
     ratings_path: Path,
     durable_output: Path,
     ratification_path: Path | None = None,
+    _attribution_guard: object | None = None,
+    _attribution_snapshot: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
+    if _attribution_guard is not _ATTRIBUTION_GUARD_CAPABILITY:
+        raise ValueError("historical_attribution_guard_required")
+    expected_snapshot_keys = {
+        "packet",
+        "ledger",
+        "ratings_by_id",
+        "mapping_by_id",
+        "packet_summary",
+        "rating_source",
+        "ratification_source",
+        "artifact_source_fingerprints",
+        "file_fingerprints",
+    }
+    if not isinstance(_attribution_snapshot, Mapping) or set(
+        _attribution_snapshot
+    ) != expected_snapshot_keys:
+        raise ValueError("historical_attribution_guard_required")
     campaign_dir = campaign_dir.resolve()
     rating_packet_path = rating_packet_path.resolve()
     ratings_path = ratings_path.resolve()
@@ -847,62 +886,64 @@ def finalize_campaign(
         ratings_path.name,
     }:
         raise ValueError("review_export_contains_unexpected_files")
-    packet = _load_json(rating_packet_path)
-    ledger = _load_json(ledger_path)
-    ratings = _load_json(ratings_path)
-    packet_summary = validate_packet(packet)
-    validate_ledger(ledger, require_complete=True)
-    if (
-        packet.get("protocol_sha256") != ledger.get("protocol_sha256")
-        or packet.get("evidence_source") != ledger.get("evidence_source")
-    ):
-        raise ValueError("workflow_provenance_mismatch")
-    ratings_by_id = validate_ratings(
-        ratings,
-        packet=packet,
-        evidence_source=str(ledger["evidence_source"]),
-    )
-    rating_source = str(ratings["rating_source"])
-    ratings_sha = _sha256_file(ratings_path)
-    ratification_source: str | None = None
-    ratification_sha: str | None = None
-    if rating_source == "codex_assisted_review_for_tof":
-        if ratification_path is None:
-            return {
-                "status": "human_ratification_required",
-                "decision": None,
-                "reason_code": "codex_assisted_rating_requires_tof_ratification",
-                "packet_sha256": packet_summary["packet_sha256"],
-                "ratings_sha256": ratings_sha,
-                "rating_source": rating_source,
-            }
-        resolved_ratification = ratification_path.resolve()
-        if (
-            not resolved_ratification.is_file()
-            or resolved_ratification.stat().st_mode & 0o077
-        ):
-            raise ValueError("ratification_file_missing_or_permissions_invalid")
-        ratification = _load_json(resolved_ratification)
-        ratification_decision = validate_ratification(
-            ratification,
-            packet_sha256=packet_summary["packet_sha256"],
-            ratings_sha256=ratings_sha,
+    if {path.name for path in campaign_dir.iterdir()} != {
+        mapping_path.name,
+        ledger_path.name,
+        private_outputs_path.name,
+    }:
+        raise ValueError("private_campaign_contains_unexpected_files")
+    file_fingerprints = _attribution_snapshot["file_fingerprints"]
+    if not isinstance(file_fingerprints, Mapping):
+        raise ValueError("historical_attribution_guard_required")
+    source_paths = {
+        "packet_sha256": rating_packet_path,
+        "mapping_sha256": mapping_path,
+        "ledger_sha256": ledger_path,
+        "ratings_sha256": ratings_path,
+        "ratification_sha256": (
+            ratification_path.resolve() if ratification_path is not None else None
+        ),
+    }
+
+    def assert_sources_unchanged() -> None:
+        try:
+            for key, path in source_paths.items():
+                expected = file_fingerprints.get(key)
+                if path is None:
+                    if expected is not None:
+                        raise ValueError("historical_attribution_sources_changed")
+                    continue
+                if (
+                    not path.is_file()
+                    or path.stat().st_mode & 0o077
+                    or not isinstance(expected, str)
+                    or _sha256_file(path) != expected
+                ):
+                    raise ValueError("historical_attribution_sources_changed")
+        except OSError:
+            raise ValueError("historical_attribution_sources_changed") from None
+
+    assert_sources_unchanged()
+    ledger = _attribution_snapshot["ledger"]
+    ratings_by_id = _attribution_snapshot["ratings_by_id"]
+    mapping_by_id = _attribution_snapshot["mapping_by_id"]
+    packet_summary = _attribution_snapshot["packet_summary"]
+    rating_source = _attribution_snapshot["rating_source"]
+    ratification_source = _attribution_snapshot["ratification_source"]
+    artifact_source_fingerprints = _attribution_snapshot[
+        "artifact_source_fingerprints"
+    ]
+    if not all(
+        isinstance(value, Mapping)
+        for value in (
+            ledger,
+            ratings_by_id,
+            mapping_by_id,
+            packet_summary,
+            artifact_source_fingerprints,
         )
-        if ratification_decision == "refuse":
-            return {
-                "status": "human_ratification_required",
-                "decision": None,
-                "reason_code": "tof_ratification_refused",
-                "packet_sha256": packet_summary["packet_sha256"],
-                "ratings_sha256": ratings_sha,
-                "rating_source": rating_source,
-            }
-        ratification_source = "tof_human_ratification"
-        ratification_sha = _sha256_file(resolved_ratification)
-    elif ratification_path is not None:
-        raise ValueError("ratification_only_allowed_for_codex_assisted_review")
-    mapping = _load_json(mapping_path)
-    mapping_by_id = validate_mapping(mapping, packet)
+    ):
+        raise ValueError("historical_attribution_guard_required")
     metrics = _score_validated_ratings(ratings_by_id, mapping_by_id)
     decision, reasons, provider_observed = _decision(
         evidence_source=str(ledger["evidence_source"]),
@@ -930,11 +971,13 @@ def finalize_campaign(
         "finish_reason_counts": dict(ledger["finish_reason_counts"]),
         "observed_cost_usd": ledger["observed_cost_usd"],
         "source_fingerprints": {
-            "packet_sha256": packet_summary["packet_sha256"],
-            "mapping_sha256": _sha256_file(mapping_path),
-            "ledger_sha256": _sha256_file(ledger_path),
-            "ratings_sha256": ratings_sha,
-            "ratification_sha256": ratification_sha,
+            "packet_sha256": artifact_source_fingerprints["packet_sha256"],
+            "mapping_sha256": artifact_source_fingerprints["mapping_sha256"],
+            "ledger_sha256": artifact_source_fingerprints["ledger_sha256"],
+            "ratings_sha256": artifact_source_fingerprints["ratings_sha256"],
+            "ratification_sha256": artifact_source_fingerprints[
+                "ratification_sha256"
+            ],
         },
         "content_policy": {
             "raw_dialogue_included": False,
@@ -945,27 +988,111 @@ def finalize_campaign(
         },
     }
     validate_durable_artifact(artifact)
-    _atomic_write_private_json(durable_output, artifact)
-    persisted = _load_json(durable_output)
-    validate_durable_artifact(persisted)
-    if persisted != artifact:
-        durable_output.unlink(missing_ok=True)
-        raise ValueError("durable_artifact_readback_mismatch")
-    for path in (
-        rating_packet_path,
-        ratings_path,
-        mapping_path,
-        private_outputs_path,
-        ledger_path,
-    ):
-        path.unlink()
-    review_dir.rmdir()
-    campaign_dir.rmdir()
+    assert_sources_unchanged()
+
+    campaign_staged = _purge_staging_path(campaign_dir)
+    review_staged = _purge_staging_path(review_dir)
+    if campaign_staged.exists() or review_staged.exists():
+        raise ValueError("finalization_staging_failed")
+    try:
+        campaign_dir.replace(campaign_staged)
+        try:
+            review_dir.replace(review_staged)
+        except OSError:
+            campaign_staged.replace(campaign_dir)
+            raise
+    except OSError:
+        raise ValueError("finalization_staging_failed") from None
+
+    def restore_staged_sources() -> None:
+        try:
+            if review_staged.exists():
+                review_staged.replace(review_dir)
+            if campaign_staged.exists():
+                campaign_staged.replace(campaign_dir)
+        except OSError:
+            raise ValueError("finalization_rollback_failed") from None
+
+    source_paths.update(
+        {
+            "packet_sha256": review_staged / rating_packet_path.name,
+            "mapping_sha256": campaign_staged / mapping_path.name,
+            "ledger_sha256": campaign_staged / ledger_path.name,
+            "ratings_sha256": review_staged / ratings_path.name,
+        }
+    )
+    durable_published = False
+    try:
+        assert_sources_unchanged()
+        _atomic_write_private_json(durable_output, artifact)
+        durable_published = True
+        persisted = _load_json(durable_output)
+        validate_durable_artifact(persisted)
+        if persisted != artifact:
+            raise ValueError("durable_artifact_readback_mismatch")
+    except Exception as exc:
+        rollback_failed = False
+        if durable_published or isinstance(exc, _DurablePublicationError):
+            try:
+                durable_output.unlink(missing_ok=True)
+            except OSError:
+                rollback_failed = True
+        try:
+            restore_staged_sources()
+        except ValueError:
+            rollback_failed = True
+        if rollback_failed:
+            raise ValueError("finalization_rollback_failed") from None
+        raise ValueError("finalization_commit_failed") from None
+
+    staged_paths = (
+        review_staged / rating_packet_path.name,
+        review_staged / ratings_path.name,
+        campaign_staged / mapping_path.name,
+        campaign_staged / private_outputs_path.name,
+        campaign_staged / ledger_path.name,
+    )
+    for _attempt in range(2):
+        try:
+            for path in staged_paths:
+                path.unlink(missing_ok=True)
+            review_staged.rmdir()
+            campaign_staged.rmdir()
+            break
+        except OSError:
+            continue
     return artifact
+
+
+def finalize_campaign(
+    *,
+    campaign_dir: Path,
+    rating_packet_path: Path,
+    ratings_path: Path,
+    durable_output: Path,
+    ratification_path: Path | None = None,
+    repo_root: Path | None = None,
+    freeze_commit: str | None = None,
+) -> dict[str, Any]:
+    if repo_root is None or freeze_commit is None:
+        raise ValueError("historical_attribution_guard_required")
+    from benchmark.suites.stimmung import final_wording_finalization_v2
+
+    return final_wording_finalization_v2.finalize_campaign(
+        repo_root=repo_root,
+        freeze_commit=freeze_commit,
+        campaign_dir=campaign_dir,
+        rating_packet_path=rating_packet_path,
+        ratings_path=ratings_path,
+        ratification_path=ratification_path,
+        durable_output=durable_output,
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Lot 4C.4 v2 offline human-rating finalizer")
+    parser.add_argument("--repo-root", type=Path, required=True)
+    parser.add_argument("--freeze-commit", required=True)
     parser.add_argument("--campaign-dir", type=Path, required=True)
     parser.add_argument("--rating-packet", type=Path, required=True)
     parser.add_argument("--ratings", type=Path, required=True)
@@ -973,6 +1100,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--durable-output", type=Path, required=True)
     args = parser.parse_args(argv)
     artifact = finalize_campaign(
+        repo_root=args.repo_root,
+        freeze_commit=args.freeze_commit,
         campaign_dir=args.campaign_dir,
         rating_packet_path=args.rating_packet,
         ratings_path=args.ratings,
