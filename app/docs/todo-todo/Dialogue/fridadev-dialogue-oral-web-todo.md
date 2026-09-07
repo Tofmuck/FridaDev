@@ -70,6 +70,57 @@ d'écoute du microphone.
   audio et des fallbacks reste ouvert jusqu'à des preuves réelles sur téléphone
   dans la voiture.
 
+## Méthode obligatoire de choix du transport et des modèles
+
+Avant tout choix de modèle ou début d'implémentation, le lot devra lire
+intégralement la documentation officielle OpenRouter actuelle pertinente pour
+ce mode. Cette lecture est une précondition d'architecture, pas une simple
+référence ponctuelle. Elle partira de l'[index documentaire
+officiel](https://openrouter.ai/docs/llms.txt) et couvrira au minimum :
+
+- les contrats [Speech-to-Text](https://openrouter.ai/docs/guides/overview/multimodal/stt),
+  [Text-to-Speech](https://openrouter.ai/docs/guides/overview/multimodal/tts)
+  et [Audio](https://openrouter.ai/docs/guides/overview/multimodal/audio) ;
+- la découverte des modèles et endpoints réellement disponibles, leurs
+  formats, limites, réponses, erreurs et options propres aux providers ;
+- le [routage des
+  providers](https://openrouter.ai/docs/guides/routing/provider-selection),
+  les fallbacks et les recommandations de [latence et
+  performance](https://openrouter.ai/docs/guides/best-practices/latency-and-performance) ;
+- les prix actuels ainsi que les règles de [collecte des
+  données](https://openrouter.ai/docs/guides/privacy/data-collection), de
+  [journalisation des
+  providers](https://openrouter.ai/docs/guides/privacy/provider-logging) et de
+  rétention applicables à l'audio et au texte.
+
+Il est interdit de déduire le contrat audio par analogie avec le Chat
+Completions déjà utilisé par Frida. Les endpoints, formats de réponse,
+possibilités de streaming et règles de routage doivent être vérifiés dans la
+documentation courante du modèle et de son endpoint avant d'écrire le design.
+
+La sélection initiale ne doit pas déclencher par défaut une nouvelle campagne
+de benchmarks Frida. Elle commence par les benchmarks publiés, comparaisons
+indépendantes, model cards et mesures exposées par OpenRouter ou les providers,
+après vérification de leur date, de leur protocole et de leur comparabilité avec
+l'usage visé.
+
+Pour le STT, la présélection doit notamment examiner le français conversationnel,
+le bruit automobile, les hésitations et reprises, la fidélité des noms propres,
+la latence et le coût. Pour le TTS, elle doit examiner l'intelligibilité et le
+naturel en français, la stabilité de la voix, le délai jusqu'au premier son,
+les formats et modes de diffusion réellement disponibles, ainsi que le coût.
+
+Ces preuves existantes servent à former rapidement une courte liste ; elles ne
+prouvent pas l'intégration de Frida. La validation propre au projet doit donc se
+limiter ensuite à un essai d'acceptation borné, de bout en bout, avec le
+téléphone dans la voiture. Cet essai vérifie la compatibilité réelle, la
+latence ressentie et l'acceptabilité de la transcription et de la voix ; il ne
+constitue pas un nouveau benchmark général des modèles.
+
+Aucun modèle STT, modèle TTS, provider, voix ou politique de fallback n'est
+figé par ce contrat initial. Le catalogue, les prix, les capacités et les
+benchmarks devront être revérifiés au moment du lot d'implémentation.
+
 ## Formule de synthèse
 
 Une conversation textuelle Frida parfaitement ordinaire, dont l'entrée et la
