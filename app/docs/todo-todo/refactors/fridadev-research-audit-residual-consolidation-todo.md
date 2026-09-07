@@ -3,11 +3,13 @@
 Date de cadrage : 4 septembre 2026.
 
 **Statut : roadmap ouverte ; L1 à L6 et L7.1-L7.7 fermés ; Z exécuté le
-7 septembre 2026 mais non refermable : la réserve historique du libellé
-d'inventaire Biblio reste un défaut produit reproductible, le résultat final de
-la découverte Python unique est irrécupérable et deux témoins Chromium actuels
-n'atteignent plus leur frontière métier; un témoin Python conserve en outre
-l'ancienne attente Compose antérieure à F23.**
+7 septembre 2026 mais non refermable. Le micro-lot Biblio du 7 septembre a
+corrigé techniquement le libellé d'inventaire sans relever la borne de 20
+lignes; sa clôture produit attend encore un témoin agentique dépassant cette
+borne. Le résultat final de la découverte Python unique reste
+irrécupérable, deux témoins Chromium actuels n'atteignent plus leur frontière
+métier et un témoin Python conserve l'ancienne attente Compose antérieure à
+F23.**
 
 ## 1. But, source et règle de vérité
 
@@ -80,7 +82,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 | 5 | L5 | Atomicité des écritures Workspace | F13b, F14a, F19b | xhigh par sous-lot | fermé — F13b, F14a et F19b corrigés |
 | 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | fermé — F05, F10, F12a-F12c, F13a, F14b, F15a-F15b et F19a corrigés |
 | 7 | L7 | Vérité d'API, observabilité et outils historiques | F16–F18, F20, F22, F24 et dette documentaire | high | fermé — L7.1-L7.7 fermés |
-| 8 | Z | Réconciliation finale avec le grand audit | tous les Fxx et réserves non numérotées | xhigh | ouvert — registre complet, une réserve Biblio vivante et preuve finale incomplète |
+| 8 | Z | Réconciliation finale avec le grand audit | tous les Fxx et réserves non numérotées | xhigh | ouvert — registre complet, correctif Biblio livré mais preuve produit bornée manquante, trois témoins obsolètes et preuve finale incomplète |
 
 - [x] Source, périmètre, ordre et règles de preuve consignés.
 - [x] L1 fermé.
@@ -99,9 +101,15 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 - [x] L7.6 fermé ; F24 corrigé sans commencer L7.7.
 - [x] L7.7 et L7 fermés ; dette documentaire D1-D8 réconciliée sans commencer Z.
 - [x] Z réconcilie les 24 findings, leurs 34 lignes atomiques et les quatre réserves Biblio.
-- [ ] Un lot distinct corrige le libellé Biblio vivant; une passe suivante
-  rétablit les deux témoins Chromium et le témoin Python Compose devenus
-  obsolètes, obtient une preuve finale récupérable, puis décide de l'archivage.
+- [x] Le micro-lot Biblio borné corrige techniquement le libellé visible et
+  verrouille 25 retenus / 20 détaillés / 5 masqués sans changer les totaux
+  durables.
+- [ ] La clôture produit de cette réserve attend un témoin agentique live avec
+  plus de 20 documents retenus; les deux appels autorisés n'en ont observé que
+  12 et aucun appel supplémentaire n'est autorisé dans ce lot.
+- [ ] Une passe distincte rétablit les deux témoins Chromium et le témoin
+  Python Compose devenus obsolètes, obtient une preuve finale récupérable, puis
+  décide de l'archivage.
 
 ## 4. L1 — Restreindre le Compose du clone public
 
@@ -1417,12 +1425,16 @@ branche `main`, HEAD/upstream/distant égaux, divergence `0/0`, worktree propre.
   (2), F15 (2), F19 (2) et F20 (5) ajoutent dix lignes aux 24 identifiants :
   les 34 sont `corrigé`; zéro `invalidé`, zéro `différé avec condition`, zéro
   `ouvert`.
-- **Réserves non numérotées : une reste ouverte.** Le rendu d'un inventaire de
-  25 documents annonce encore `25 ouvrages affiches dans cette reponse.` tout
-  en détaillant 20 lignes et en signalant 5 documents masqués. C'est la réserve
-  historique déjà formulée le 2 septembre (« libellé à aligner sur le rendu »),
-  pas un Fxx ajouté. Le défaut visible est reproductible au HEAD et Z ne peut
-  pas le corriger.
+- **Réserves non numérotées : le défaut est corrigé techniquement, sa preuve
+  produit reste ouverte.** Le micro-lot Biblio distinct du 7 septembre fait
+  passer le témoin déterministe : un inventaire de 25 documents annonce 20
+  ouvrages affichés, détaille 20 lignes et signale 5 documents masqués.
+  `document_count=25` et `total_count=25` restent conservés dans l'objet et
+  l'observabilité; la borne de rendu reste 20. Les deux tours agentiques
+  autorisés n'ont retenu que 12 documents et n'auraient donc pas distingué
+  l'ancien renderer du nouveau. La clôture produit attend un témoin agentique
+  live avec plus de 20 documents. Les trois autres réserves demeurent des
+  limites ou mécanismes sans bug produit reproduit.
 - Ce classement ne suffit pas à fermer Z. La découverte Python complète a bien
   été lancée une seule fois dans le conteneur hermétique prescrit, mais son canal
   d'exécution s'est fermé après avoir montré des `F` et des `E`, avant que le
@@ -1450,9 +1462,10 @@ branche `main`, HEAD/upstream/distant égaux, divergence `0/0`, worktree propre.
 
 La décision honnête est donc : **Z reste ouvert et cette roadmap reste active.**
 Le registre ci-dessous réconcilie les Fxx livrés, mais la consolidation entière
-ne peut pas être archivée tant que la réserve Biblio visible n'est pas corrigée
-dans un micro-lot distinct et que la preuve finale n'est pas rejouée dans une
-passe ultérieure explicitement autorisée. Aucun code produit ne change dans Z.
+ne peut pas être archivée tant que la preuve agentique discriminante Biblio
+manque, que les trois témoins obsolètes ne sont pas réparés dans un micro-lot
+distinct et que la preuve finale n'est pas rejouée dans une passe ultérieure
+explicitement autorisée. Aucun code produit ne change dans Z.
 
 ### 11.2 Matrice exhaustive F01–F24
 
@@ -1508,15 +1521,15 @@ fichiers runtime/tests/contrats annoncés par leurs diffs sont encore présents.
 
 ### 11.3 Réserves Biblio non numérotées
 
-Ces quatre réserves ne deviennent pas de nouveaux findings. Les `92` tests
-actuels de `test_answer_object`, `test_librarian_planner` et
-`test_librarian_tools` passent au HEAD, sans réseau.
+Ces quatre réserves ne deviennent pas de nouveaux findings. Après le correctif
+borné, les `93` tests actuels de `test_answer_object`,
+`test_librarian_planner` et `test_librarian_tools` passent au HEAD, sans réseau.
 
 | Réserve | Limite exacte | Bug reproduit et effet concret | Condition de réouverture |
 | --- | --- | --- | --- |
 | Budgets d'outils | Le planner initial contrôle `max_steps`, `max_tool_calls` et `max_total_duration_ms` entre ses appels. Les continuations déterministes de `librarian_method_runtime.py` passent toutefois par `append_get_tool_call`, qui ne contrôle que le reliquat `max_tool_calls`; elles ne recomptent ni `max_steps` ni la durée, reconduisent le `duration_ms` initial et ne peuvent interrompre un appel HTTP bloqué. Ces budgets ne sont donc ni tous globaux aux continuations, ni une deadline murale. | Mécanisme confirmé par code et sonde content-free : avec `max_steps=0`, `max_total_duration_ms=0` et `duration_ms=999`, une continuation ajoute encore un appel. **Bug produit non établi** : `max_tool_calls` reste borné, aucun contrat courant ne promet une deadline murale et aucune gêne live n'a été mesurée. | Réouvrir si un contrat présente ces trois budgets comme globaux à toute la méthode, si une continuation dépasse une limite produit requise, ou si une gêne de latence réelle est observée. |
 | Introduction produite avant le résultat | `surface_intro` est générée avec le plan, avant l'exécution, puis conservée autour du résultat verrouillé. | Mécanisme confirmé, **bug non reproduit** : aucune introduction actuelle contredisant un échec ultérieur n'a été produite et aucune fréquence live n'est connue. | Réouvrir sur un témoin déterministe ou content-free montrant une introduction formulée après coup ou comme un succès, mais incompatible avec le statut finalement rendu. |
-| Inventaire plus large que les lignes | `document_count` compte les documents dédupliqués retenus, jusqu'à 100; le renderer annonce pourtant ce nombre comme `ouvrages affiches dans cette reponse` puis ne détaille que les 20 premiers et signale le reliquat masqué. | **Bug reproduit, effet concret établi** : une sonde de 25 documents rend simultanément `25 ouvrages affiches dans cette reponse.`, 20 lignes numérotées et `5 documents supplementaires masques par borne.` Le signal de borne évite une fausse exhaustivité du catalogue, mais ne rend pas vrai le nombre annoncé comme affiché. Cette réserve historique reste ouverte. | Micro-lot minimal : aligner le nombre/libellé visible sur les lignes réellement détaillées, conserver séparément total retenu et reliquat masqué, puis verrouiller le cas 25/20/5 par un test de rendu. Réouvrir ensuite sur tout nouvel écart entre compte annoncé, lignes visibles et reliquat. |
+| Inventaire plus large que les lignes | `document_count` continue de compter les documents dédupliqués retenus, jusqu'à 100; le renderer détaille au plus les 20 premiers. | **Correctif technique livré le 7 septembre 2026; clôture produit en attente.** Le renderer calcule maintenant le nombre « affiché » depuis la tranche réellement rendue. Le témoin déterministe 25/20/5 conserve `document_count=25` et `total_count=25`, annonce 20 ouvrages affichés, rend 20 lignes et signale 5 documents masqués. Aucun plafond, outil ou appel n'est ajouté. Les deux tours agentiques live n'ont retenu que 12 documents : ils prouvent la non-régression du chemin réel, pas le franchissement de la borne. | Fermer seulement sur un témoin agentique content-free avec plus de 20 documents retenus et accord exact entre compte annoncé, 20 lignes visibles, total retenu et reliquat masqué; réouvrir ensuite sur tout nouvel écart. |
 | Scoped search après top-N global | `catalog_search(query, limit)` obtient d'abord le top-N global, puis filtre sur `document_id`; un passage pertinent du document peut donc rester hors du top-N. | Mécanisme confirmé, **bug non reproduit** : le rendu dit qu'aucun *candidat restant* n'existe dans le scope, pas qu'aucun passage n'existe dans le document; aucun faux « absent du livre » n'a été observé. | Réouvrir si la surface transforme ce résultat borné en absence exhaustive, ou si un cas produit établi montre une affirmation contraire au contenu accessible. |
 
 ### 11.4 Ce que la réconciliation change dans le dialogue
@@ -1538,9 +1551,9 @@ publication réseau implicite du clone local.
 Cette matrice ne permet toujours pas d'affirmer que Frida retrouve toujours le
 meilleur souvenir, interprète correctement Tof, choisit la correction juste,
 lit exhaustivement un document, ou produit globalement un meilleur dialogue.
-Elle ne permet pas non plus de présenter l'inventaire Biblio actuel comme
-quantitativement exact : son nombre « affiché » peut encore dépasser les lignes
-réellement détaillées.
+Le correctif Biblio rend le nombre « affiché » quantitativement égal aux lignes
+détaillées dans le témoin 25/20/5, sans transformer ce rendu borné en inventaire
+exhaustif. La preuve agentique n'a pas encore franchi la borne de 20.
 Le panier Memory reste borné à huit. B1 ne fournit pas d'offset intra-page.
 Stimmung reste constitutive, `keep_current_v2.3` reste la décision active, et Z
 n'en déduit aucune amélioration sémantique globale. La latence actuelle n'est
@@ -1560,15 +1573,31 @@ Résultats actuels :
   benchmark et réserves Biblio : une première invocation trop étroite a passé
   71 tests mais produit quatre erreurs de loader sur des modules top-level mal
   nommés; l'invocation équivalente corrigée a passé **44/44**, puis les trois
-  modules Biblio **92/92**. Les témoins précis de panne de lecture Identity et
+  modules Biblio **92/92** au passage Z, puis **93/93** après ajout du témoin
+  25/20/5. Les témoins précis de panne de lecture Identity et
   de vérité du writer d'audit passent respectivement **1/1** et **2/2**; le
   témoin Python exact du compteur de problèmes F20.3 passe **1/1**. Cette
   classification est un écart de commande, pas un écart produit;
-- sondes Biblio content-free : une continuation ajoute **1 appel** malgré
+- sondes Biblio content-free du passage Z : une continuation ajoute **1 appel**
+  malgré
   `max_steps=0`, `max_total_duration_ms=0` et `duration_ms=999`, ce qui borne
   exactement la portée non globale de ces deux budgets; un inventaire de 25
-  documents annonce **25 affichés**, rend **20 lignes** et signale **5 masqués**,
-  ce qui reproduit le défaut de libellé;
+  documents annonçait **25 affichés**, rendait **20 lignes** et signalait
+  **5 masqués**. Le cycle TDD du micro-lot a reproduit exactement cet échec,
+  puis passe avec **20 affichés / 20 lignes / 5 masqués**, tandis que les totaux
+  retenus restent 25;
+- preuve agentique content-free
+  `states/baselines/biblio-smokes/inventory-render-agentic-20260907T111623Z.jsonl` :
+  deux appels `openai/gpt-5.2`, aucun fallback, deux exécutions `catalog_list`
+  `agent_first`, coût maximal théorique **1,848 USD** sous le plafond **2 USD**.
+  Les deux tours réels conservent 12 documents et rendent/annoncent 12 lignes,
+  sans reliquat, fuite, payload retenu ni endpoint interdit. Ils constituent
+  une preuve de non-régression agentique, mais ne traversent pas le cas
+  discriminant supérieur à 20. `P02` est entièrement `met`; le checker strict
+  global sort `2` parce que `P01`, bien que runtime et agent `met`, échoue une
+  cohérence de fermeture de cas. Aucun troisième appel n'a été lancé; la
+  clôture produit 25/20/5 et la preuve nominale complète P01-P02 restent donc
+  explicitement non acquises;
 - rendu Compose courant : config valide et mapping unique loopback confirmé;
 - témoin Python Compose historique : **1/1 échoué** parce qu'il exige encore
   littéralement `8093:8089`; le test est obsolète depuis F23, tandis que le
@@ -1604,14 +1633,16 @@ n'a pas été relancée, conformément à la règle d'unicité.
 
 ### 11.6 Micro-lots minimaux avant nouvelle décision d'archivage
 
-Z n'autorise aucune correction et s'arrête après avoir livré cette vérité
-documentaire. Deux lots ultérieurs distincts sont nécessaires :
+Z n'autorisait aucune correction pendant sa passe documentaire. Le premier des
+deux lots ultérieurs a livré son correctif technique mais reste ouvert au
+niveau de la preuve produit; le second n'est pas commencé :
 
-1. **correctif Biblio borné** : aligner uniquement le compte/libellé
-   d'inventaire sur les lignes réellement détaillées, sans augmenter la borne
-   ni ajouter de capacité; conserver le total retenu et le reliquat masqué,
-   ajouter le témoin de rendu 25 retenus / 20 détaillés / 5 masqués, puis mettre
-   à jour `frida-biblio-native-catalogue-contract.md`;
+1. **correctif Biblio borné — livré techniquement le 7 septembre 2026, preuve
+   produit encore ouverte** : compte visible dérivé des lignes réellement
+   détaillées, borne 20 inchangée, total retenu et reliquat masqué conservés,
+   témoin déterministe 25/20/5 vert et contrat Biblio synchronisé. Les deux
+   appels agentiques plafonnés n'ont observé que 12 documents; un témoin live
+   supérieur à 20 reste requis pour fermer la réserve produit;
 2. **tests/preuve/docs** : aligner uniquement les deux mocks Chromium de liste
    conversations sur le contrat F17 `items/total/limit/offset` et l'assertion
    Python Compose sur le mapping loopback F23, puis exécuter isolément les
@@ -1623,8 +1654,10 @@ documentaire. Deux lots ultérieurs distincts sont nécessaires :
    comptes, archiver la roadmap et réparer ses liens.
 
 Jusque-là, aucune ligne Fxx n'est réouverte par supposition, mais la roadmap ne
-peut pas être archivée : une réserve produit historique reste ouverte et la
-preuve globale finale demandée est manquante.
+peut pas être archivée : la clôture produit de la réserve Biblio manque encore
+son témoin agentique discriminant, les trois témoins sont obsolètes et la preuve
+globale finale demandée est manquante. L'anomalie agentique P01 ci-dessus reste
+une limite de preuve explicitement non résolue, pas un vert fabriqué.
 
 ## 12. Risques permanents et non-objectifs
 

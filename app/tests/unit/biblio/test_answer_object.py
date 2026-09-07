@@ -789,6 +789,50 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertNotIn(RAW_TITLE, _json(observed))
         self.assertNotIn("RAW AUTHOR", _json(observed))
 
+    def test_inventory_metadata_reports_visible_rows_separately_from_retained_documents(self) -> None:
+        documents = tuple(
+            {
+                "document_id": f"doc-{index:02d}",
+                "doc_id_short": f"doc-{index:02d}",
+                "title": f"Ouvrage {index:02d}",
+                "metadata_status": "validated",
+            }
+            for index in range(1, 26)
+        )
+        result = _tool_result(
+            tool_name=tools.TOOL_CATALOG_LIST,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_CATALOG,
+            items=documents,
+            observation_fields={
+                "total_count": 25,
+                "displayed_count": 25,
+                "truncated": False,
+            },
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_INVENTORY_METADATA,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        observed = answer.to_observability()
+        visible_document_lines = [
+            line
+            for line in rendered.content.splitlines()
+            if line.split(".", 1)[0].isdigit()
+        ]
+
+        self.assertEqual(answer.inventory_metadata["document_count"], 25)
+        self.assertEqual(observed["inventory_metadata"]["document_count"], 25)
+        self.assertEqual(observed["inventory_metadata"]["total_count"], 25)
+        self.assertEqual(len(visible_document_lines), 20)
+        self.assertIn("- 20 ouvrages affiches dans cette reponse.", rendered.content)
+        self.assertNotIn("- 25 ouvrages affiches dans cette reponse.", rendered.content)
+        self.assertIn("... 5 documents supplementaires masques par borne.", rendered.content)
+
     def test_document_resolution_renders_unique_candidate_without_exact_excerpt(self) -> None:
         result = _tool_result(
             tool_name=tools.TOOL_SEARCH_DOCUMENT,

@@ -277,16 +277,17 @@ def _anchor_key(anchor: Mapping[str, Any]) -> tuple[str, int, int]:
 def _inventory_lines(payload: Mapping[str, Any]) -> list[str]:
     lines = ["Bibliotheque:"]
     total_count = _int(payload.get("total_count"))
-    document_count = _int(payload.get("document_count"))
-    if total_count:
-        lines.append(f"- {total_count} ouvrages repertories.")
-    if document_count:
-        lines.append(f"- {document_count} ouvrages affiches dans cette reponse.")
-    if bool(payload.get("truncated")):
-        lines.append("- Liste bornee: certains ouvrages ne sont pas affiches ici.")
     raw_documents = payload.get("documents")
     documents = raw_documents if isinstance(raw_documents, Sequence) and not isinstance(raw_documents, (str, bytes, bytearray)) else ()
-    for index, raw_document in enumerate(documents[:20], 1):
+    visible_documents = documents[:20]
+    visible_document_count = sum(1 for document in visible_documents if isinstance(document, Mapping))
+    if total_count:
+        lines.append(f"- {total_count} ouvrages repertories.")
+    if visible_document_count:
+        lines.append(f"- {visible_document_count} ouvrages affiches dans cette reponse.")
+    if bool(payload.get("truncated")):
+        lines.append("- Liste bornee: certains ouvrages ne sont pas affiches ici.")
+    for index, raw_document in enumerate(visible_documents, 1):
         if not isinstance(raw_document, Mapping):
             continue
         parts = [f"{index}. "]

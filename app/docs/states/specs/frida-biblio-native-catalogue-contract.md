@@ -34,6 +34,7 @@ Recherche scoped canonique Last Chance Lot 4D: 2026-06-04
 Nettoyage surface visible Biblio Last Chance: 2026-06-05
 Passages deja lus BIB-31/BIB-32: 2026-06-06
 Echecs propres BIB-33: 2026-06-06
+Correction inventaire visible borne: 2026-09-07
 Classement: `app/docs/states/specs/`
 Roadmap archivee: `app/docs/todo-done/product/frida-biblio-native-catalogue-todo.md`
 Validation finale: `app/docs/todo-done/validations/frida-biblio-native-catalogue-validation-2026-05-29.md`
@@ -1739,3 +1740,36 @@ Le chantier Biblio native est clos au 2026-05-29. Son correctif P1 "vraie biblio
 - la decision produit accepte que FridaDev consomme Catalogue sans ecrire dans Catalogue, sauf lot separe d'edition explicitement approuve.
 
 Tout changement futur qui veut ecrire dans Catalogue, editer les metadonnees depuis FridaDev, supprimer un document, lancer OCR, backfill, indexer ou vectoriser doit ouvrir un nouveau lot explicite avant code.
+
+## 15. Correctif technique de l'inventaire visible borne
+
+Le rendu structure d'un inventaire distingue desormais trois quantites:
+
+- `total_count` reste le total annonce par Catalogue;
+- `document_count` reste le nombre de documents dedupliques retenus dans
+  l'objet de reponse et son observabilite content-free;
+- le nombre `ouvrages affiches dans cette reponse` est calcule depuis les
+  lignes effectivement rendues, toujours bornees aux 20 premiers documents.
+
+Le reliquat reste annonce separement comme documents masques par borne. Pour
+25 documents retenus, le contrat visible est donc exactement 20 annonces et
+lignes visibles, puis 5 masques; les deux totaux internes restent 25. Cette
+correction ne releve aucune borne, ne modifie ni Catalogue, ni outil, ni appel
+modele, ni final lock.
+
+Le test
+`test_answer_object.py::test_inventory_metadata_reports_visible_rows_separately_from_retained_documents`
+verrouille techniquement le cas 25/20/5. La preuve agentique content-free
+`app/docs/states/baselines/biblio-smokes/inventory-render-agentic-20260907T111623Z.jsonl`
+observe deux executions reelles `catalog_list` avec 12 documents retenus et 12
+lignes annoncees/rendues: elles prouvent la non-regression du chemin agentique,
+mais l'ancien renderer aurait produit le meme resultat sous la borne. P02 est
+nominalement `met`. Le smoke strict agrege reste rouge sur P01 malgre runtime
+et agent `met`, a cause d'une incoherence de fermeture de cas; l'artefact la
+conserve et aucun appel supplementaire n'a ete lance au-dela du plafond de deux
+appels / 2 USD.
+
+La reserve produit ne peut donc etre fermee qu'apres un temoin agentique
+content-free retenant plus de 20 documents et observant ensemble 20 annonces et
+lignes visibles, le total retenu et le reliquat masque. Cette preuve manque; le
+correctif est livre techniquement sans vert agentique discriminant fabrique.
