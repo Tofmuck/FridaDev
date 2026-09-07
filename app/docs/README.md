@@ -14,6 +14,8 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 
 ### Current-state
 
+- [Cadrage actif du dialogue oral Web](todo-todo/Dialogue/fridadev-dialogue-oral-web-todo.md) : boucle semi-duplex proposée pour l'usage en voiture depuis le téléphone — détection locale de parole, STT en ligne, pipeline Frida inchangé, TTS puis réarmement automatique. Document de décision uniquement ; aucune implémentation encore autorisée.
+
 - [Archive de consolidation résiduelle du grand audit de recherche](todo-done/refactors/fridadev-research-audit-residual-consolidation-todo.md) : L1 à L7 et Z sont fermés ; les 24 identifiants historiques et leurs 34 lignes atomiques restent classés corrigés. Biblio conserve sa preuve composée 12/12 puis 25/20/5 et son déclencheur de revalidation au premier corpus live supérieur à 20. Le préflight corrigé passe 2/2 et l'unique découverte complète de fermeture passe 3088/3088 en 614,653 s, sans échec, erreur ni skip, exit 0.
 
 - [Archive de la revue de recherche FridaDev, fonctionnalité par fonctionnalité — 2 septembre 2026](todo-done/audits/fridadev-research-feature-audit-2026-09-02.md) : source historique conservée sans réécriture de ses findings. Son encadré de clôture pointe vers le registre Z exhaustif : 24/24 identifiants et 34/34 lignes atomiques `corrigé`, réserve Biblio corrigée avec limite de preuve, puis découverte complète unique à 3088/3088, sans échec, erreur ni skip, exit 0.
