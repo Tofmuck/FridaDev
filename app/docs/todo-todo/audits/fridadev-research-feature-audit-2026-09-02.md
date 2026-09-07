@@ -2,6 +2,18 @@
 
 Date : 2 septembre 2026. Statut : **audit livré pour lecture et décision de Tof ; aucune correction ni expérimentation autorisée par ce rapport**.
 
+> **Suivi du 7 septembre 2026.** Le texte ci-dessous reste la source historique
+> inchangée des F01–F24. La
+> [réconciliation Lot Z](../refactors/fridadev-research-audit-residual-consolidation-todo.md)
+> classe les 24 identifiants et leurs 34 lignes atomiques comme corrigés, avec
+> commits, tests, limites et effets dialogiques. Z demeure toutefois ouvert :
+> la réserve historique du libellé d'inventaire Biblio reste reproductible
+> (25 annoncés affichés, 20 lignes rendues, 5 masqués), le résultat final de son
+> unique découverte Python n'a pas pu être récupéré et deux preuves Chromium
+> sont bloquées par des fixtures de pagination obsolètes; un témoin Python
+> attend encore le mapping Compose antérieur à F23. La roadmap n'est donc pas
+> archivée et aucun vert global n'est revendiqué.
+
 ## 1. Où en est Frida ?
 
 Frida est déjà davantage qu'un chat accompagné d'un profil utilisateur. Sa valeur tient à la coexistence de plusieurs rapports au passé : les paroles originales, leur résumé, des souvenirs retrouvés et attribués, des repères temporaires sur le dialogue, et un canon identitaire réciproque que Tof peut éditer. À cela s'ajoutent une lecture affective multi-tours, une distinction entre assurance épistémique et manière de s'adresser à l'autre, et des outils documentaires capables de préserver des extraits exacts. Ces distinctions existent dans le code et dans les raccords ; elles ne sont pas seulement un discours de présentation.
