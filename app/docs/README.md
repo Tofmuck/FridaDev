@@ -14,9 +14,9 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 
 ### Current-state
 
-- [Roadmap de consolidation résiduelle du grand audit de recherche](todo-todo/refactors/fridadev-research-audit-residual-consolidation-todo.md) : sept étapes ordonnées, exécutées uniquement par micro-lots séparés, pour revalider et traiter F05, F08–F10 et F12–F24. L1 à L6 et L7.1-L7.6 sont fermés ; F05, le raccord terminal vide reproduit, F10, F12a-F12c, F13a, F14b, F15a-F15b, F16, F17, F18, F19a, les cinq sous-cas F20, F22 et F24 sont corrigés. L7.7 reste non commencé. Le grand audit reste la source historique ; la clôture Z doit réconcilier chaque finding comme corrigé, invalidé, différé avec condition ou encore ouvert.
+- [Roadmap de consolidation résiduelle du grand audit de recherche](todo-todo/refactors/fridadev-research-audit-residual-consolidation-todo.md) : sept étapes ordonnées, exécutées uniquement par micro-lots séparés, pour revalider et traiter F05, F08–F10 et F12–F24. L1 à L6 et L7.1-L7.7 sont fermés ; F05, le raccord terminal vide reproduit, F10, F12a-F12c, F13a, F14b, F15a-F15b, F16, F17, F18, F19a, les cinq sous-cas F20, F22 et F24 sont corrigés, et la dette documentaire D1-D8 est réconciliée. Z reste non commencé. Le grand audit reste la source historique ; la clôture Z doit réconcilier chaque finding comme corrigé, invalidé, différé avec condition ou encore ouvert.
 
-- [Revue de recherche FridaDev, fonctionnalité par fonctionnalité — 2 septembre 2026](todo-todo/audits/fridadev-research-feature-audit-2026-09-02.md) : audit source conservé ; F01, F02, F03, F04, F06, F07 et F11 sont corrigés, prouvés et livrés par I1, I2, M1, M2, B1, O1 et B2 ; F23, F09, F08, F21, F13b, F14a et F19b sont corrigés et prouvés par L1 à L5.3 ; F05, F10, F12a-F12c, F13a, F14b, F15a-F15b et F19a sont corrigés et prouvés par L6.1 à L6.7 ; F16 et F17 sont corrigés par L7.1-L7.2, les cinq sous-cas F20 par L7.3.1-L7.3.5, F18 par L7.4, F22 par L7.5 et F24 par L7.6. Les autres findings demeurent ouverts.
+- [Revue de recherche FridaDev, fonctionnalité par fonctionnalité — 2 septembre 2026](todo-todo/audits/fridadev-research-feature-audit-2026-09-02.md) : audit source historique conservé ; F01, F02, F03, F04, F06, F07 et F11 sont corrigés, prouvés et livrés par I1, I2, M1, M2, B1, O1 et B2 ; F23, F09, F08, F21, F13b, F14a et F19b sont corrigés et prouvés par L1 à L5.3 ; F05, F10, F12a-F12c, F13a, F14b, F15a-F15b et F19a sont corrigés et prouvés par L6.1 à L6.7 ; F16 et F17 sont corrigés par L7.1-L7.2, les cinq sous-cas F20 par L7.3.1-L7.3.5, F18 par L7.4, F22 par L7.5 et F24 par L7.6. Z n'a pas encore produit la réconciliation finale canonique de ces statuts.
 
 - [Archive intégrité et continuité de la mémoire dialogique](todo-done/refactors/fridadev-dialogic-integrity-memory-refactor-todo.md) : correctifs streaming/Identity, Memory, compteur des hints et lecture/reprise Biblio fermés et livrés. Le cas `choices=[]` nu découvert par Z rejoint désormais `upstream_error` sans casser les trames metadata/usage ; la découverte Python autoritative passe `2933/2933`. La roadmap est archivée, tandis que les autres findings restent dans l'audit source.
 
@@ -236,7 +236,12 @@ Lire d'abord:
 - `todo-done/product/active-conversation-documents-todo.md`
 - `todo-done/product/active-conversation-documents-ocr-todo.md` pour l'archive de l'extension OCR bornee des PDF scannes.
 
-But: relire le chantier livre permettant a l'utilisateur de fournir des documents textuels, ou certains PDF scannes apres OCR V1 bornee, a une conversation active, sans RAG documentaire, sans contamination Memory/RAG/Identity/Summary, et sans promesse d'ouverture du texte complet du document dans le dashboard.
+But: relire le chantier livre permettant a l'utilisateur de fournir des
+documents textuels, des images ou des PDF admis par la voie visuelle bornee, et
+d'utiliser separement l'OCR explicite de l'atelier. Aucun OCR implicite n'est
+requis pour tout PDF scanne; ces chemins restent sans RAG documentaire, sans
+contamination Memory/RAG/Identity/Summary et sans promesse d'ouverture du texte
+complet du document dans le dashboard.
 
 Frontiere importante: ce chantier concerne les `active_document` temporaires, pas la Biblio persistante.
 

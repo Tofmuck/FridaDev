@@ -48,7 +48,9 @@ Termes normatifs:
 - `workspace_ocr_derivative`: fichier Markdown `.ocr.md` derive d'une image ou d'un PDF source.
 - `active_document`: etat d'injection de conversation existant, temporaire et conversation-scoped.
 
-La future implementation doit reutiliser le contrat `active_document` pour l'injection au modele, mais elle ne doit pas reutiliser la table courte duree des documents actifs comme stockage durable de fichiers de repertoire.
+L'implementation livree reutilise le contrat `active_document` pour l'injection
+au modele, sans reutiliser la table courte duree des documents actifs comme
+stockage durable de fichiers de repertoire.
 
 ## 3. Modele DB cible
 
@@ -448,7 +450,7 @@ Si la migration DB echoue, le chat doit rester capable de lister et ouvrir les c
 
 ## 14. Tests et preuves attendus
 
-Futurs lots DB/disque:
+Plan historique des lots DB/disque, desormais livres:
 
 - creation, renommage, suppression de repertoire;
 - ordre manuel stable;
@@ -458,7 +460,7 @@ Futurs lots DB/disque:
 - conversation rattachee puis sortie du repertoire;
 - suppression repertoire sans suppression automatique des conversations.
 
-Futurs lots fichiers:
+Plan historique des lots fichiers, desormais livres:
 
 - upload fichier dans repertoire;
 - stockage disque sous identifiant stable;
@@ -473,7 +475,7 @@ Futurs lots fichiers:
 - incoherence disque present/DB absente;
 - tombstone content-free.
 
-Futurs lots selection/injection:
+Plan historique des lots selection/injection, desormais livres:
 
 - aucun fichier injecte par defaut;
 - selection conversation-scoped persistante jusqu'a decochage;
@@ -484,7 +486,7 @@ Futurs lots selection/injection:
 - absence de troncature silencieuse;
 - absence de contenu brut et base64 dans logs/read-models/historique/dashboard.
 
-Futurs lots OCR:
+Plan historique des lots OCR, desormais livres:
 
 - OCR PDF vers `.ocr.md`;
 - OCR image vers `.ocr.md`;

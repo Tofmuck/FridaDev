@@ -668,6 +668,7 @@ class ServerAdminSettingsReadContractTests(unittest.TestCase):
         self.assertEqual(data['readonly_info']['fallback_max_tokens']['value'], 140)
         self.assertIn('final_judgment_posture', data['readonly_info']['validated_output_contract']['value'])
         self.assertIn('final_output_regime', data['readonly_info']['validated_output_contract']['value'])
+        self.assertIn('simple|meta|presence', data['readonly_info']['validated_output_contract']['value'])
         self.assertIn('arbiter_reason', data['readonly_info']['validated_output_contract']['value'])
 
     def test_get_admin_settings_validation_agent_model_projects_legacy_policy_from_live_values(self) -> None:

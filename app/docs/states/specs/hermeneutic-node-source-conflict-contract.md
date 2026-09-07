@@ -1,7 +1,11 @@
 # Hermeneutic Node Source Conflict Contract
 
-Statut: draft normatif ouvert
-Portee: contrat doctrinal minimal pour `source_conflicts`
+Statut: decision normative historique; module runtime livre
+Portee: contrat doctrinal minimal historique pour `source_conflicts`
+
+Etat courant: `source_conflicts.py` est branche dans le noeud primaire avec
+l'issue bornee `review_required`; il ne gouverne pas le verdict final de
+Validation.
 
 ## 1. Purpose
 
@@ -16,8 +20,8 @@ Elle tranche:
 - le lien explicite avec Lot 6, Lot 4 et Lot 5
 - le format compact de sortie
 
-Elle ne code rien.
-Elle ferme le contrat doctrinal qui devra preceder `app/core/hermeneutic_node/doctrine/source_conflicts.py`.
+A sa redaction, elle ne codait rien et fermait le contrat doctrinal precedant
+`app/core/hermeneutic_node/doctrine/source_conflicts.py`, livre depuis.
 
 ## 2. Repo Grounding
 
@@ -234,11 +238,11 @@ En l'absence de conflit residuel detecte, la forme minimale attendue est:
 }
 ```
 
-## 12. Non-goals
+## 12. Non-goals du contrat initial (historiques)
 
-Cette spec n'ouvre pas encore:
+Lors de sa redaction, cette spec n'ouvrait pas encore:
 
-- le runtime de `source_conflicts.py`
+- le runtime de `source_conflicts.py`, livre depuis
 - le moteur complet de resolution des conflits
 - une narration longue des conflits source par source
 - le retour de `prioriser` comme issue du Lot 7

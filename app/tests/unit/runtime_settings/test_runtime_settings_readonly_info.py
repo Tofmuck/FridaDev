@@ -302,6 +302,7 @@ class RuntimeSettingsReadonlyInfoTests(unittest.TestCase):
         self.assertEqual(readonly_info['validation_context_message_chars']['value'], 420)
         self.assertIn('final_judgment_posture', readonly_info['validated_output_contract']['value'])
         self.assertIn('final_output_regime', readonly_info['validated_output_contract']['value'])
+        self.assertIn('simple|meta|presence', readonly_info['validated_output_contract']['value'])
         self.assertIn('arbiter_reason', readonly_info['validated_output_contract']['value'])
 
     def test_get_section_readonly_info_web_reformulation_model_exposes_prompt_and_transport(self) -> None:

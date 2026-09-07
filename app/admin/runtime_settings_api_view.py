@@ -673,7 +673,7 @@ def get_section_readonly_info(section: str) -> dict[str, dict[str, Any]]:
             },
             'validated_output_contract': {
                 'label': 'VALIDATED_OUTPUT_ARBITER_CONTRACT',
-                'value': '{"schema_version":"v1","final_judgment_posture":"answer|clarify|suspend","final_output_regime":"simple|meta","arbiter_reason":"raison_courte_lisible"}',
+                'value': '{"schema_version":"v1","final_judgment_posture":"answer|clarify|suspend","final_output_regime":"simple|meta|presence","arbiter_reason":"raison_courte_lisible"}',
                 'is_editable': False,
                 'source': 'runtime_contract',
             },

@@ -279,7 +279,7 @@ function compactDocumentMeta(item) {
 function uploadInProgressLabel(files) {
   const list = Array.from(files || []).filter(Boolean);
   const hasPdf = list.some((file) => String(file?.name || '').toLowerCase().endsWith('.pdf'));
-  if (hasPdf) return 'Analyse du PDF, OCR si nécessaire…';
+  if (hasPdf) return 'Analyse du PDF pour lecture textuelle ou visuelle…';
   const hasImage = list.some((file) => ['.png', '.jpg', '.jpeg', '.webp'].some((ext) => String(file?.name || '').toLowerCase().endsWith(ext)));
   if (hasImage) return "Activation de l'image active…";
   return 'Activation du document actif…';
@@ -298,7 +298,7 @@ function uploadErrorLabel(reasonCode) {
     document_type_unsupported: 'Format non pris en charge.',
     document_parse_error: 'Lecture du fichier impossible.',
     document_empty_text: 'Aucun texte lisible.',
-    document_ocr_required: 'PDF scanné: OCR requis.',
+    document_ocr_required: 'PDF sans texte: lecture visuelle ou OCR explicite requis.',
     document_ocr_failed: 'OCR impossible.',
     document_ocr_timeout: 'OCR trop long.',
     document_ocr_empty: 'OCR sans texte lisible.',

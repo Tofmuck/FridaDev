@@ -1,7 +1,7 @@
 # Hermeneutic Node Primary Verdict Contract
 
-Statut: draft normatif ouvert
-Portee: troisieme brique normative du Lot 8 pour `primary_verdict`
+Statut: decision normative historique; runtime primaire livre
+Portee: troisieme brique normative historique du Lot 8 pour `primary_verdict`
 
 Note runtime 2026-04-19:
 
@@ -9,6 +9,10 @@ Note runtime 2026-04-19:
 - ce bloc advisory porte la recommendation amont principale, le regime propose, les familles de signaux actives et un indicateur simple de contrainte;
 - les champs doctrinaux top-level restent presents a ce stade pour compatibilite de transition, sans redonner une souverainete institutionnelle a l'amont.
 - le lot 6 verrouille par preuves que `upstream_advisory` peut etre suivie ou cassee par l'arbitre final, sans redevenir une couche souveraine.
+
+Etat courant: `primary_node.py` produit `primary_verdict` comme conseil amont;
+`validation_agent` rend ensuite le verdict final arbitral borne consomme par
+l'aval. Le pipeline runtime actif reste autoritatif pour le wiring.
 
 ## 1. Purpose
 
@@ -24,8 +28,8 @@ Elle tranche:
 - les champs minimaux d'auditabilite embarques dans le payload
 - la frontiere avec `node_state`, l'observabilite et la validation
 
-Elle ne code rien.
-Elle ne fixe ni le runtime complet du noeud primaire, ni la persistance SQL detaillee, ni la sortie finale post-validation.
+A sa redaction, elle ne codait rien et ne fixait ni le runtime complet du noeud
+primaire, ni la persistance SQL detaillee, ni la sortie finale post-validation.
 
 ## 2. Repo Grounding
 
@@ -56,7 +60,8 @@ La cible code la plus propre pour cette brique reste:
 
 - `app/core/hermeneutic_node/runtime/primary_node.py`
 
-Cette spec ne cree ni ce fichier, ni son wiring.
+A sa redaction, cette spec ne creait ni ce fichier, ni son wiring; les deux sont
+livres depuis.
 
 ## 3. Doctrine / Runtime / Observability / Validation Boundary
 
@@ -332,19 +337,21 @@ Regles minimales:
 
 - `primary_verdict` n'est pas encore la sortie finale
 - `justifications` ne font pas partie du `primary_verdict` minimal en V1
-- leur contrat exact reste a ouvrir au Lot 9
+- repere historique: leur contrat exact restait a ouvrir au Lot 9; Validation
+  porte maintenant le verdict final borne consomme par l'aval
 - `pipeline_directives_provisional` n'est pas directement aval-consommable
-- cette spec n'ouvre pas encore la table de combinaison normative complete du Lot 9
+- repere historique: cette spec n'ouvrait pas encore la combinaison normative
+  du Lot 9; le runtime courant confie directement le verdict final a Validation
 
-## 12. Non-goals
+## 12. Non-goals de la brique initiale (historiques)
 
-Cette troisieme brique normative ne fixe pas encore:
+Lors de sa redaction, cette troisieme brique normative ne fixait pas encore:
 
-- le runtime complet de `primary_node.py`
-- le wiring complet du noeud primaire
+- le runtime complet de `primary_node.py`, livre depuis
+- le wiring complet du noeud primaire, livre depuis
 - la persistance SQL detaillee
 - le contrat exact des `justifications`
 - une table d'audit hermeneutique complete
-- la validation finale
-- le branchement aval
+- la validation finale, livree depuis
+- le branchement aval, livre depuis
 - la shadow globale

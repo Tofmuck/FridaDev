@@ -233,9 +233,8 @@ BIBLIO_CATALOGUE_BASE_URL = os.environ.get(
 ).strip().rstrip('/')
 BIBLIO_CATALOGUE_TIMEOUT_S = _env_int('BIBLIO_CATALOGUE_TIMEOUT_S', 8)
 
-# Biblio librarian agent foundation.
-# Active smoke default: model-validated plan, deterministic path still controls
-# the product response until a separate activation lot executes agent tools.
+# Active Biblio librarian LLM, according to this runtime mode. Deterministic
+# code controls the GET-only tools, budgets, validation, fallback and rendering.
 BIBLIO_LIBRARIAN_AGENT_MODE = os.environ.get('BIBLIO_LIBRARIAN_AGENT_MODE', 'active').strip().lower() or 'active'
 BIBLIO_LIBRARIAN_AGENT_MODEL = os.environ.get(
     'BIBLIO_LIBRARIAN_AGENT_MODEL',

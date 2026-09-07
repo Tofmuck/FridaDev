@@ -2,7 +2,7 @@
 
 Date: 2026-03-31
 Statut: spec normative active
-Scope: contrat minimal de circulation parallele entre le pipeline LLM principal et le futur noeud hermeneutique
+Scope: contrat minimal de circulation parallele entre le pipeline LLM principal et le noeud hermeneutique livre
 
 ## Purpose
 
@@ -87,10 +87,14 @@ Le contrat impose donc:
 - pas de fusion qui ferait du noeud une autorite opaque et souveraine;
 - oui a un cadrage explicite de la reponse finale par la sortie du noeud.
 
-Tant que le branchement aval n'est pas implemente, le repo reste dans un etat preparatoire:
+Etat historique au 2026-03-31, avant livraison du branchement aval:
 
 - les entrees sont deja doublement alimentees;
 - la sortie du noeud n'est pas encore consommee par le LLM principal en production.
+
+Etat courant: `validation_agent` rend le verdict arbitral final borne, puis
+`validated_output` est projete dans `[JUGEMENT HERMENEUTIQUE]` et injecte au
+prompt principal. Le pipeline courant en decrit le wiring autoritatif.
 
 ## Current Repo Grounding
 
@@ -107,7 +111,7 @@ Le dual feed formelise donc un etat reel deja en place partiellement dans le cod
 
 ## Non-goals / Out of Scope
 
-Cette spec ne tranche pas encore:
+Lors de sa redaction, cette spec ne tranchait pas encore:
 
 - la taxonomie finale complete des regimes discursifs;
 - la doctrine detaillee de priorite des sources;
@@ -115,7 +119,7 @@ Cette spec ne tranche pas encore:
 - le contrat `demande_utilisateur` du Lot 2;
 - l'integration `Stimmung / M6`;
 - le contrat final du validation agent;
-- le branchement aval runtime de la sortie du noeud.
+- le branchement aval runtime de la sortie du noeud, livre depuis.
 
 ## Invariants
 
@@ -126,4 +130,7 @@ Les invariants suivants ne doivent pas etre violes par la suite:
 - la sortie du noeud doit cadrer la reponse finale, pas se substituer au LLM principal;
 - la sortie du noeud doit rester compacte, testable, auditable;
 - le dual feed doit rester mappe 1:1 au pipeline reel du repo;
-- tant que l'aval n'est pas branche, aucune implementation ne doit faire semblant que le noeud complet pilote deja la reponse finale.
+- invariant historique de livraison: avant le branchement aval, aucune
+  implementation ne devait faire semblant que le noeud complet pilotait deja
+  la reponse finale. Le wiring courant doit rester prouve par le code et le
+  pipeline runtime actif.

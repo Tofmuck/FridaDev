@@ -1,7 +1,10 @@
 # Hermeneutic Node Source Priority Contract
 
-Statut: draft normatif ouvert
-Portee: contrat doctrinal minimal pour `source_priority`
+Statut: decision normative historique; module runtime livre
+Portee: contrat doctrinal minimal historique pour `source_priority`
+
+Etat courant: `source_priority.py` est branche dans le noeud primaire. Il reste
+un conseil structure en amont du verdict final borne de Validation.
 
 ## 1. Purpose
 
@@ -17,8 +20,8 @@ Elle tranche:
 - les cas minimaux de cohabitation sans fusion abusive
 - le format compact de sortie
 
-Elle ne code rien.
-Elle ferme le contrat doctrinal qui devra preceder `app/core/hermeneutic_node/doctrine/source_priority.py`.
+A sa redaction, elle ne codait rien et fermait le contrat doctrinal precedant
+`app/core/hermeneutic_node/doctrine/source_priority.py`, livre depuis.
 
 ## 2. Repo Grounding
 
@@ -292,11 +295,11 @@ Le payload minimal attendu doit respecter:
 - aucune prose libre
 - aucune tentative d'encoder deja tout le moteur de conflits
 
-## 11. Non-goals
+## 11. Non-goals du contrat initial (historiques)
 
-Cette spec n'ouvre pas encore:
+Lors de sa redaction, cette spec n'ouvrait pas encore:
 
-- le runtime de `source_priority.py`
+- le runtime de `source_priority.py`, livre depuis
 - le moteur complet de resolution des conflits
 - une hierarchie ponderee fine source par source
 - une scission top-level de `identity` en deux sources distinctes

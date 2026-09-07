@@ -277,7 +277,9 @@ Observability canonique minimale au seam:
 Observability minimale du provider secondaire:
 
 - `stimmung_prompt_prepared` est emis avant l'appel provider du `stimmung_agent`
-- cet event prouve content-free que le provider secondaire a recu un payload prepare
+- cet event prouve seulement, de maniere content-free, la preparation ou
+  l'emission avant la frontiere provider; il ne prouve ni reception par le
+  provider, ni inference reussie, ni effet sur la reponse finale
 - il doit distinguer `provider_caller=stimmung_agent`, `secondary_provider_payload=true` et `main_llm_payload=false`
 - il expose les counts, longueurs, source de tentative et parametres
   effectivement envoyes; le fallback GPT-5.4 Nano ne presente donc aucun

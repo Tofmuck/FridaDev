@@ -89,7 +89,8 @@ La cible code de cette pause normative est:
 
 - `app/core/hermeneutic_node/validation/validation_agent.py`
 
-Cette spec ne cree ni ce fichier, ni son wiring.
+A sa redaction, cette spec ne creait ni ce fichier, ni son wiring; les deux sont
+livres depuis.
 
 ## 3. Primary Node / Validation / Downstream Boundary
 
@@ -434,13 +435,13 @@ Preuves de fermeture lot 6:
 - `/log` et `/hermeneutic-admin` utilisent le meme normaliseur frontend ferme:
   aucun effet n'est infere depuis une prose libre ou l'absence d'un champ.
 
-## 11. Non-goals
+## 11. Non-goals de la pause initiale (historiques)
 
-Cette pause normative ne ferme pas encore:
+Lors de sa redaction, cette pause normative ne fermait pas encore:
 
-- `validation_agent.py`
+- `validation_agent.py`, livre depuis
 - le contrat complet du verdict final post-validation
 - la table complete de combinaison normative
-- le wiring aval
+- le wiring aval, livre depuis
 - l'observabilite complete du dispositif final
 - la shadow globale

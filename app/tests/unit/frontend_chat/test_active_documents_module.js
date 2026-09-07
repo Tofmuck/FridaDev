@@ -268,12 +268,12 @@ test('active document warning states use human labels rather than raw reason cod
 
   assert.equal(meta, 'PDF · 1 ko · Trop gros pour ce tour.');
   assert.equal(meta.includes('document_too_large_for_turn'), false);
-  assert.equal(uploadErrorLabel('document_ocr_required'), 'PDF scanné: OCR requis.');
+  assert.equal(uploadErrorLabel('document_ocr_required'), 'PDF sans texte: lecture visuelle ou OCR explicite requis.');
   assert.equal(formatBytes(1536), '2 ko');
 });
 
 test('OCR upload states use human labels without fake progress', () => {
-  assert.equal(uploadInProgressLabel([{ name: 'scan.pdf' }]), 'Analyse du PDF, OCR si nécessaire…');
+  assert.equal(uploadInProgressLabel([{ name: 'scan.pdf' }]), 'Analyse du PDF pour lecture textuelle ou visuelle…');
   assert.equal(uploadInProgressLabel([{ name: 'note.txt' }]), 'Activation du document actif…');
   assert.equal(uploadInProgressLabel([{ name: 'capture.png' }]), "Activation de l'image active…");
   assert.equal(uploadInProgressLabel([{ name: 'scan.pdf' }]).includes('%'), false);

@@ -1,11 +1,15 @@
 # Hermeneutic Node Output Regime Contract
 
-Statut: draft normatif ouvert
-Portee: premiere pause normative du Lot 8 pour `output_regime`
+Statut: decision normative historique; module runtime livre
+Portee: premiere pause normative historique du Lot 8 pour `output_regime`
+
+Etat courant: `output_regime.py` alimente le conseil primaire; Validation rend
+le regime final borne ensuite projete vers l'aval. Le pipeline runtime actif
+reste autoritatif pour le wiring.
 
 ## 1. Purpose
 
-Cette spec ouvre le premier sous-pas normatif du Lot 8.
+Cette spec ouvrait le premier sous-pas normatif du Lot 8.
 
 Elle tranche:
 
@@ -14,10 +18,10 @@ Elle tranche:
 - la taxonomie minimale de `resituation_level`
 - la taxonomie minimale de `time_reference_mode`
 - l'articulation explicite de ces trois axes avec `judgment_posture`
-- le format compact minimal du futur bloc doctrinal de sortie
+- le format compact minimal du bloc doctrinal de sortie alors futur
 
-Elle ne code rien.
-Elle ne ferme ni la persistance d'etat du noeud, ni le payload unique complet, ni le fail-open primaire.
+A sa redaction, elle ne codait rien et ne fermait ni la persistance d'etat du
+noeud, ni le payload unique complet, ni le fail-open primaire.
 
 ## 2. Repo Grounding
 
@@ -239,9 +243,9 @@ Invariants minimaux:
 - si `judgment_posture = answer`, `discursive_regime` ne doit pas etre `meta`
 - si `judgment_posture != answer`, `discursive_regime` doit rester `meta` dans cette V1
 
-## 10. Link With The Future Primary Verdict
+## 10. Lien Historique Avec Le Verdict Primaire Alors Futur
 
-Ce bloc devra plus tard s'articuler proprement avec:
+Ce bloc devait ensuite s'articuler proprement avec:
 
 - `epistemic_regime`
 - `proof_regime`
@@ -250,20 +254,20 @@ Ce bloc devra plus tard s'articuler proprement avec:
 - `source_conflicts`
 - `pipeline_directives_provisional`
 
-Mais cette spec ne fixe pas encore:
+Lors de sa redaction, cette spec ne fixait pas encore:
 
 - le payload unique complet du noeud
 - l'ordre exact d'integration runtime
 - la persistance de cet etat doctrinal
 
-## 11. Non-goals
+## 11. Non-goals de la pause initiale (historiques)
 
-Cette premiere pause normative de Lot 8 ne fixe pas encore:
+Lors de sa redaction, cette premiere pause normative de Lot 8 ne fixait pas encore:
 
-- la persistance d'etat du noeud
-- `node_state.py`
+- la persistance d'etat du noeud, livree depuis
+- `node_state.py`, livre depuis
 - les regles d'inertie
 - le fail-open primaire complet
 - les champs complets d'auditabilite
-- la sortie finale post-validation
-- la table de combinaison avec l'agent de validation
+- la sortie finale post-validation, livree depuis sous autorite de Validation
+- l'arbitrage final avec l'agent de validation, livre depuis sans table externe souveraine

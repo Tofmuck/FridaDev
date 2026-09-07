@@ -1,7 +1,12 @@
 # Hermeneutic Node Downstream Branching Contract
 
-Statut: draft normatif ouvert
-Portee: troisieme pause normative du Lot 9 pour le branchement aval sur verdict valide uniquement
+Statut: decision normative historique; branchement aval livre
+Portee: troisieme pause normative historique du Lot 9 pour le branchement aval sur verdict valide uniquement
+
+Etat courant: `validation_agent` est l'arbitre final borne et l'aval projette
+`validated_output` dans `[JUGEMENT HERMENEUTIQUE]` avant le prompt principal.
+Le wiring autoritatif est decrit dans
+`app/docs/states/architecture/fridadev-current-runtime-pipeline.md`.
 
 ## 1. Purpose
 
@@ -17,8 +22,8 @@ Elle tranche:
 - ce qui n'y entre jamais
 - la zone runtime concernee par le branchement
 
-Elle ne code rien.
-Elle ne ferme ni le wiring runtime effectif, ni l'observabilite finale, ni les KPI, ni la shadow.
+A sa redaction, elle ne codait rien et ne fermait ni le wiring runtime effectif,
+ni l'observabilite finale, ni les KPI, ni la shadow.
 
 ## 2. Repo Grounding
 
@@ -43,8 +48,8 @@ Surfaces deja presentes et pertinentes:
 - `app/core/hermeneutic_node/runtime/primary_node.py`
 - `app/core/hermeneutic_node/validation/validation_agent.py`
 
-Cette spec ne cree aucun wiring.
-Elle fixe seulement la frontiere normative du branchement aval.
+A sa redaction, cette spec ne creait aucun wiring. Elle fixait seulement la
+frontiere normative du branchement aval, livre depuis.
 
 ## 3. Regle Forte De Consommation Aval
 
@@ -146,7 +151,7 @@ La prose aval doit rester:
 - stable
 - testable
 
-Forme minimale retenue:
+Forme minimale historique retenue avant l'ajout de `presence`:
 
 ```text
 [JUGEMENT HERMENEUTIQUE]
@@ -156,6 +161,10 @@ Consigne hermeneutique: <consigne normative compacte deja resolue>.
 Consigne de regime: <consigne compacte deja resolue>.
 Directives finales actives: <code_1[, code_2, ...]>.
 ```
+
+Le contrat courant accepte aussi `presence`, uniquement avec
+`final_judgment_posture=answer`; cette decision positive locale produit la
+sortie exacte `...` et reste distincte de `suspend`.
 
 Discipline minimale:
 
@@ -185,14 +194,14 @@ La prose aval reste donc:
 - interpretable
 - sans exposer la mecanique interne complete
 
-## 10. Zone Runtime Concernee
+## 10. Zone Runtime Cible Historique
 
 Zone runtime concernee par ce contrat:
 
 - `app/core/chat_service.py`
   - point d'orchestration et de passage du jugement valide vers le montage prompt aval
 - `app/core/chat_prompt_context.py`
-  - lieu cible le plus propre pour construire puis injecter le bloc `[JUGEMENT HERMENEUTIQUE]`
+  - lieu cible historique, desormais effectif, pour construire puis injecter le bloc `[JUGEMENT HERMENEUTIQUE]`
 - `app/prompts/main_system.txt`
 - `app/prompts/main_hermeneutical.txt`
   - surfaces promptées qui doivent lire ce bloc comme une brique normative supplementaire
@@ -203,11 +212,11 @@ Decision retenue:
 - en V1, il doit etre pense comme une brique du prompt augmente
 - il ne doit pas etre injecte comme dossier brut dans le dernier message utilisateur
 
-## 11. Non-goals
+## 11. Non-goals de la pause initiale (historiques)
 
-Cette pause normative ne ferme pas encore:
+Lors de sa redaction, cette pause normative ne fermait pas encore:
 
-- le wiring runtime effectif
+- le wiring runtime effectif, livre depuis
 - l'observabilite finale
 - les KPI
 - les preconditions shadow

@@ -1,14 +1,19 @@
 # Contrat de qualification minimale du tour utilisateur
 
 Date: 2026-03-31
-Statut: draft normatif ouvert
+Statut: decision normative historique; entree runtime livree
 Scope: premiere pose doctrinale pour qualifier le tour utilisateur comme geste dialogique dominant
+
+Etat courant: `user_turn_input.py` et `user_turn_signals` sont exposes au seam,
+puis consommes par le noeud primaire et Validation. Les raffinements
+doctrinaux explicitement hors contrat ne sont pas rouverts par ce statut.
 
 ## Purpose
 
-Cette spec ouvre le contrat de qualification minimale du tour utilisateur pour le futur noeud hermeneutique de `FridaDev`.
+Cette spec ouvrait le contrat de qualification minimale du tour utilisateur
+pour le noeud hermeneutique alors futur de `FridaDev`.
 
-Elle ne ferme pas encore le contrat complet.
+Elle ne fermait pas le contrat complet.
 
 Son objectif est plus borne:
 
@@ -621,9 +626,10 @@ La qualification minimale ne doit pas anticiper ces couches sous couvert de comp
 
 ## Minimal Seam Observability
 
-Cette observabilite minimale ne vaut qu'au moment ou `tour_utilisateur` et les signaux d'`ambiguite / sous_determination` seront reellement exposes au seam runtime.
-
-Elle devra etre branchee sur la chaine d'observabilite existante via `app/observability/hermeneutic_node_logger.py`, sans creer de mecanisme parallele.
+Ce passage posait la condition historique d'exposition de `tour_utilisateur` et
+des signaux d'`ambiguite / sous_determination`. Ils sont maintenant exposes au
+seam runtime et branches sur la chaine d'observabilite existante via
+`app/observability/hermeneutic_node_logger.py`, sans mecanisme parallele.
 
 Son role est borne:
 
@@ -652,11 +658,11 @@ Cette observabilite ne doit pas journaliser:
 
 ### Observed Fields for `ambiguite / sous_determination`
 
-Ces signaux devront apparaitre dans un bloc adjacent explicite:
+Ces signaux apparaissent dans un bloc adjacent explicite:
 
 - `user_turn_signals`
 
-Ce bloc devra rester distinct de `tour_utilisateur`, tout en vivant au meme niveau de seam dans la logique de payload `inputs`.
+Ce bloc reste distinct de `tour_utilisateur`, tout en vivant au meme niveau de seam dans la logique de payload `inputs`.
 
 L'observabilite minimale des signaux adjacents doit permettre de savoir au minimum:
 
@@ -710,12 +716,13 @@ Contraintes normatives:
 
 ### Repo Grounding for Seam Observability
 
-Grounding minimal dans l'etat actuel du repo:
+Grounding historique, puis etat courant du repo:
 
 - `app/observability/hermeneutic_node_logger.py` porte deja le resume compact des entrees exposees au seam;
 - `app/core/chat_service.py` branche deja ce resume au point d'insertion hermeneutique;
-- le sous-bloc B n'est pas encore expose au seam runtime;
-- cette section fixe donc le contrat minimal a respecter des que `user_turn_input.py` et les signaux adjacents seront effectivement branches.
+- repere historique: le sous-bloc B n'etait pas encore expose au seam runtime;
+- etat courant: `user_turn_input.py` et les signaux adjacents sont branches et
+  respectent ce contrat minimal.
 
 ## Repo / Program Grounding
 
@@ -724,13 +731,15 @@ Cette ouverture de contrat est grounded dans l'etat actuel du programme:
 - `app/docs/todo-done/refactors/hermeneutic-convergence-node-todo.md` documente l'ouverture du sous-bloc B du Lot 2 pour `tour_utilisateur`;
 - `app/docs/states/architecture/hermeneutic_convergence_node.md` fait du tour utilisateur un determinant du noeud, pas une simple metadonnee de requete;
 - `app/docs/states/architecture/hermeneutic_convergence_node_matrix.md` indique qu'un socle canonique minimal est desormais pose pour `tour_utilisateur`, tout en laissant ses raffinements ouverts;
-- `app/docs/states/specs/hermeneutic-node-dual-feed-contract.md` impose que les futures entrees canoniques restent lisibles au seam, sans dissoudre la matiere dans un texte opaque.
+- `app/docs/states/specs/hermeneutic-node-dual-feed-contract.md` impose que les entrees canoniques restent lisibles au seam, sans dissoudre la matiere dans un texte opaque.
 - `app/docs/states/specs/hermeneutic-recent-window-extraction-contract.md` pose deja `fenetre_recente` comme extraction mecanique distincte de toute qualification semantique, ce qui oblige a situer le `besoin de preuve` au-dessus de cette extraction et non a la place de celle-ci.
 - le grounding temporel du repo existe deja comme entree canonique `temps`, mais cette spec ne transforme pas `qualification_temporelle` en doctrine finale du temps; elle fixe seulement la lecture minimale du temps du tour utilisateur.
 
-Cette spec ne cree donc pas un axe doctrinal abstrait hors-sol. Elle ouvre le futur contrat d'entree `tour_utilisateur` la ou le chantier Lot 2 en a besoin.
+Cette spec ne creait donc pas un axe doctrinal abstrait hors-sol. Elle ouvrait
+le contrat d'entree `tour_utilisateur`, livre depuis, la ou le chantier Lot 2 en
+avait besoin.
 
-## What Remains Open
+## Raffinements doctrinaux restes hors du contrat
 
 Restent explicitement ouverts:
 
@@ -741,10 +750,12 @@ Restent explicitement ouverts:
 - la formalisation complete de l'interpretation metier avancee au-dela de cette frontiere minimale;
 - la ponderation relative entre types de preuve, provenance et composition selon les familles de tours;
 - la gestion des tours mixtes ou composes;
-- les extensions futures et la forme runtime detaillee du futur objet canonique `tour_utilisateur`;
-- l'articulation avec la posture de jugement et le regime epistemique des lots suivants.
+- les extensions futures du contrat; la forme runtime canonique minimale de
+  `tour_utilisateur` est, elle, livree;
+- l'articulation avancee avec la posture de jugement et le regime epistemique;
+  leur wiring minimal courant est livre et decrit par le pipeline runtime.
 
-## Non-goals / Out of Scope
+## Non-goals historiques / Out of Scope
 
 Cette premiere pose doctrinale ne tranche pas:
 
@@ -754,8 +765,9 @@ Cette premiere pose doctrinale ne tranche pas:
 - les sous-categories finales fines des signaux d'ambiguite ou de sous-determination;
 - une table finale de decision convertissant ces signaux en posture de sortie;
 - la taxonomie finale complete des sous-cas;
-- le code runtime `user_turn_input.py`;
-- l'implementation du classement automatique des tours.
+- le code runtime `user_turn_input.py`, livre depuis;
+- l'implementation du classement automatique des tours, livree depuis dans la
+  limite de la taxonomie canonique actuelle.
 
 ## Next Axes To Discuss Later
 

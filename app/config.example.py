@@ -155,7 +155,7 @@ TIMEOUT_S = _env_int('FRIDA_TIMEOUT', 900)
 # Admin API security
 # No application-level human admin token or LAN allowlist is configured here.
 # Public admin access is expected to be protected by Authelia/Caddy; /api/admin/*
-# accepts only loopback proof calls or trusted proxy calls with Remote-User.
+# accepts only container-loopback proof calls or trusted proxy calls with Remote-User.
 
 # Legacy full-prompt soft estimate. It is used for observability/warnings only:
 # the direct dialogue memory window is governed by SUMMARY_THRESHOLD_TOKENS and
@@ -189,8 +189,8 @@ BIBLIO_CATALOGUE_BASE_URL = os.environ.get(
 ).strip().rstrip('/')
 BIBLIO_CATALOGUE_TIMEOUT_S = _env_int('BIBLIO_CATALOGUE_TIMEOUT_S', 8)
 
-# Biblio librarian agent foundation. Default active smoke with deterministic
-# product response still controlling until a separate activation lot.
+# Active Biblio librarian LLM, according to this runtime mode. Deterministic
+# code controls the GET-only tools, budgets, validation, fallback and rendering.
 BIBLIO_LIBRARIAN_AGENT_MODE = os.environ.get('BIBLIO_LIBRARIAN_AGENT_MODE', 'active').strip().lower() or 'active'
 BIBLIO_LIBRARIAN_AGENT_MODEL = os.environ.get(
     'BIBLIO_LIBRARIAN_AGENT_MODEL',

@@ -2,7 +2,7 @@
 
 Date de cadrage : 4 septembre 2026.
 
-**Statut : roadmap ouverte ; L1 à L6 et L7.1-L7.6 fermés ; L7.7 et Z non commencés.**
+**Statut : roadmap ouverte ; L1 à L6 et L7.1-L7.7 fermés ; Z non commencé.**
 
 ## 1. But, source et règle de vérité
 
@@ -74,7 +74,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 | 4 | L4 | Conservation de la projection analytics | F21 | high | fermé — F21 corrigé |
 | 5 | L5 | Atomicité des écritures Workspace | F13b, F14a, F19b | xhigh par sous-lot | fermé — F13b, F14a et F19b corrigés |
 | 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | fermé — F05, F10, F12a-F12c, F13a, F14b, F15a-F15b et F19a corrigés |
-| 7 | L7 | Vérité d'API, observabilité et outils historiques | F16–F18, F20, F22, F24 et dette documentaire | high | en cours — L7.1-L7.6 fermés ; L7.7 non commencé |
+| 7 | L7 | Vérité d'API, observabilité et outils historiques | F16–F18, F20, F22, F24 et dette documentaire | high | fermé — L7.1-L7.7 fermés |
 | 8 | Z | Réconciliation finale avec le grand audit | tous les Fxx et réserves non numérotées | xhigh | non commencé |
 
 - [x] Source, périmètre, ordre et règles de preuve consignés.
@@ -92,7 +92,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 - [x] L6.6 fermé ; F19a corrigé sans commencer L6.7.
 - [x] L6 fermé ; L6.7/F13a-F14b corrigés sans commencer L7.
 - [x] L7.6 fermé ; F24 corrigé sans commencer L7.7.
-- [ ] L7 et ses décisions conditionnelles fermés.
+- [x] L7.7 et L7 fermés ; dette documentaire D1-D8 réconciliée sans commencer Z.
 - [ ] Z réconcilie chaque finding et archive la roadmap.
 
 ## 4. L1 — Restreindre le Compose du clone public
@@ -1367,6 +1367,27 @@ sections historiques Web, aide OCR, activation
 Biblio, pré-appel Stimmung présenté comme réception, mélange des temps dans les
 contrats herméneutiques et vocabulaire Identity legacy. Le grand audit reste
 conservé comme source datée ; aucune réécriture générale du README.
+
+**Fermé le 7 septembre 2026.** La revalidation phrase par phrase au HEAD
+initial `eb8870740e8b7d39504f5e64a9361d397d9babe5` classe les huit groupes sans
+modifier le grand audit historique:
+
+| Groupe | Classement | Revalidation et correction bornée |
+| --- | --- | --- |
+| D1 — Compose local | `déjà exact` | L1 avait déjà livré `127.0.0.1:8093:8089`; Compose et README distinguent usage local et absence de Caddy/Authelia. Aucun patch. |
+| D2 — Admin loopback/proxy | `encore faux puis corrigé` | Le guide appelait le port Docker depuis l'hôte comme preuve admin. La preuve technique part désormais du loopback conteneur; l'usage humain reste Caddy/Authelia + `Remote-User`, sans token admin. |
+| D3 — Web historique | `encore faux puis corrigé` | Le guide mélangeait l'ancien auto-Web et un chantier dit ouvert dans `todo-done`. Les passages sont marqués historiques, renvoient au pipeline courant et conservent `/api/chat`. |
+| D4 — OCR et lecture visuelle | `encore faux puis corrigé` | L'aide d'upload et des passages du contrat Workspace présentaient encore l'OCR comme futur ou implicitement attendu. Ils distinguent maintenant admission visuelle bornée, OCR explicite de l'atelier et absence d'OCR obligatoire pour tout PDF scanné. |
+| D5 — Biblio active | `encore faux puis corrigé` | Les deux exemples de configuration décrivaient encore un smoke futur. Ils nomment le bibliothécaire LLM actif selon le réglage et les murs déterministes. Aucun flag ni modèle ne change. |
+| D6 — Stimmung pré-appel | `encore faux puis corrigé` | Le contrat attribuait une réception provider à `stimmung_prompt_prepared`. Il borne désormais la preuve à la préparation/émission content-free avant frontière provider, sans inférence de réception, succès ou effet final. |
+| D7 — Temps herméneutiques | `encore faux puis corrigé` | Les contrats minimaux et leurs voisins conservaient des présents préparatoires. Les paragraphes sont marqués historiques et l'état courant nomme Validation arbitre final borné puis `validated_output` projeté dans `[JUGEMENT HERMENEUTIQUE]`. |
+| D8 — Identity et aides admin | `encore faux puis corrigé` | La taxonomie L7.4 était déjà exacte (`juge V2`, auxiliaires, compatibilité legacy, legacy inactif). L'aide Admin ne présente plus ses formulaires/logs comme futurs et le contrat readonly Validation inclut le régime `presence` déjà livré. |
+
+Aucun écart produit hors L7.7 n'a été reproduit. Les corrections portent sur
+des Markdown vivants, commentaires/exemples, aides statiques et assertions
+ciblées. Elles n'ajoutent ni capacité, route, API, schéma, seuil, éditabilité,
+provider, modèle ou workflow. Le runtime Stimmung et `keep_current_v2.3`, les
+benchmarks et Z restent inchangés. Le grand audit n'est pas modifié.
 
 ## 11. Z — Réconciliation finale avec le grand audit
 

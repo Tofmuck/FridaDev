@@ -20,7 +20,7 @@ Cette spec ferme le lot 1 documentaire du chantier `LLM-dominant response arbite
 
 Elle tranche noir sur blanc:
 
-- la chaine de pouvoir actuelle et sa limite institutionnelle;
+- la chaine de pouvoir historique avant le lot 2 et sa limite institutionnelle;
 - la chaine de pouvoir cible;
 - la distinction normative entre garde-fous durs, analyse amont conseillere et arbitre LLM dominant;
 - la souverainete cible du `validation_agent`;
@@ -28,9 +28,8 @@ Elle tranche noir sur blanc:
 - la matiere principale de l'arbitre;
 - le contrat minimal d'observabilite requis pour ouvrir les lots 2+.
 
-Elle ne code rien.
-Elle ne requalifie pas encore le runtime.
-Elle n'ouvre pas une refonte generale de l'observabilite.
+A sa redaction, elle ne codait rien et ne requalifiait pas encore le runtime.
+Elle n'ouvrait pas une refonte generale de l'observabilite.
 
 ## 2. Repo Grounding
 
@@ -59,15 +58,15 @@ Depuis le lot 2 runtime:
 - `[JUGEMENT HERMENEUTIQUE]` est projete depuis ce verdict final arbitral;
 - le seam compact `validation_agent` rend visible le suivi vs override, le verdict final et le verdict projete.
 
-## 3. Chaine De Pouvoir Actuelle
+## 3. Chaine De Pouvoir Historique Avant Le Lot 2
 
-Aujourd'hui, le pouvoir est trop precontraint en amont:
+Avant le lot 2 runtime, le pouvoir etait trop precontraint en amont:
 
 1. les couches deterministes amont produisent deja une posture et un regime fortement structurants;
 2. `validation_agent` intervient tard, avec un contrat encore borne autour de `validation_decision`;
 3. le verdict final projete reste derive d'un couloir deja ferme en amont.
 
-Dans cet etat:
+Dans cet etat historique:
 
 - l'amont ne conseille pas seulement, il ferme trop souvent le couloir de sortie;
 - `validation_agent` n'est pas encore l'arbitre souverain de la posture finale;
@@ -253,9 +252,9 @@ Regles normatives:
   `regime_presence`, puis l'aval canonise `...` par la voie d'override commune;
   le provider principal n'est pas appele.
 
-## 10. Contrat Minimal De Sortie Cible
+## 10. Contrat Minimal De Sortie Cible, Livre Depuis Le Lot 2
 
-Le futur arbitre final doit produire directement au minimum:
+Le contrat initial exigeait que l'arbitre final produise directement au minimum:
 
 - `final_judgment_posture`
 - `final_output_regime`
@@ -287,9 +286,10 @@ Champ de transition accepte en lot 2:
   - peut subsister comme trace legacy derivee du verdict final et des recommandations amont;
   - ne porte plus l'autorite normative du couloir final.
 
-Ce contrat de sortie reste volontairement minimal au lot 1.
-Il fixe la matiere obligatoire.
-Il ne fige pas encore le schema runtime detaille ni le transport technique final.
+Ce contrat de sortie etait volontairement minimal au lot 1: il fixait la
+matiere obligatoire sans figer alors le schema runtime detaille ni le transport
+technique final. Le runtime livre depuis le lot 2 est autoritatif pour ces deux
+dimensions.
 
 ## 11. Contrat Minimal D'Observabilite
 

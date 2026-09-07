@@ -83,9 +83,13 @@ Schema global de base a date (lecture rapide):
 - source: `EMBED_BASE_URL`, `EMBED_TOKEN`, `EMBED_DIM`
 - impact si indisponible: retrieval memoire degrade (retours vides), pipeline chat maintenu mais moins contextualise.
 
-2. SearXNG
+2. SearXNG (repere historique du guide initial)
 - source: `SEARXNG_URL`, `SEARXNG_RESULTS`
-- impact si indisponible: web search manuelle et auto-bornee degradees; les tours explicitement dependants du web peuvent alors rester sans evidence externe.
+- impact historique si indisponible: la recherche Web manuelle et l'ancien
+  chemin auto-borne pouvaient etre degrades. Ce libelle ne decrit pas une
+  activation lexicale automatique actuelle; les conditions et providers du
+  pipeline Web courant sont documentes dans
+  `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`.
 
 3. Crawl4AI
 - source: `CRAWL4AI_URL`, `CRAWL4AI_TOKEN`, `CRAWL4AI_TOP_N`, `CRAWL4AI_MAX_CHARS`, `CRAWL4AI_EXPLICIT_URL_MAX_CHARS`
@@ -185,8 +189,14 @@ curl -fsS http://127.0.0.1:8093/ >/dev/null && echo "root ok"
 2. Admin status:
 
 ```bash
-curl -fsS http://127.0.0.1:8093/api/admin/settings/status
+docker exec FridaDev python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8089/api/admin/settings/status', timeout=5).status)"
 ```
+
+Cette commande est une preuve technique par loopback **depuis le conteneur**.
+Un appel depuis l'hote vers le port Docker publie n'est pas ce loopback
+conteneur autorise. L'usage humain des surfaces `/api/admin/*` passe par le
+proxy Caddy/Authelia authentifie avec `Remote-User`; aucun
+`FRIDA_ADMIN_TOKEN` ne doit etre reinstaure.
 
 3. Chat minimal:
 
@@ -196,12 +206,16 @@ curl -sS -X POST http://127.0.0.1:8093/api/chat \
   -d '{"message":"Ping", "web_search": false}'
 ```
 
-Attendu:
+Attendu pour le chat:
 - `ok=true` si les secrets/services requis sont disponibles;
 - erreur explicite sinon (secret manquant, dependance indisponible).
-- `web_search=false` n'active plus le web pre-node:
-  - les demandes de source, de lien, de reference ou de verification ne declenchent plus le web a elles seules.
-  - le vrai rattrapage anti-suspension no-web -> web reste un pas doctrinal distinct, non implemente a ce stade.
+
+Repere historique du guide initial, desormais supersede: `web_search=false`
+n'activait pas l'ancien Web pre-node lexical et le rattrapage anti-suspension
+etait alors decrit comme non implemente. Le pipeline courant conserve
+`/api/chat`, separe les activations Web effectives et n'autorise pas a rouvrir
+l'auto-Web lexical depuis ce passage historique; voir
+`app/docs/states/architecture/fridadev-current-runtime-pipeline.md`.
 
 ## 8. Points de friction connus (clone neuf)
 
@@ -232,5 +246,5 @@ Ce guide:
 - ne remplace pas la future page produit/admin d'installation;
 - ne promet pas une installation one-click.
 
-Le chantier produit reste ouvert dans:
+Le chantier produit est archive dans:
 - `app/docs/todo-done/product/Frida-installation-config.md`.

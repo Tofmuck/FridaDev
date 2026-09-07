@@ -10,6 +10,9 @@ Note runtime 2026-04-19:
 - `validation_decision` peut subsister comme trace legacy derivee, mais elle n'a plus d'autorite normative propre.
 - le lot 4 runtime nomme maintenant les recommandations suivies ou cassees depuis la couche `upstream_advisory`, et non depuis des champs amont encore interpretes comme quasi-souverains.
 - le lot 6 verrouille par preuves un corpus stable `answer/simple`, `clarify` et `suspend/simple`, plus la coherence de projection vers `[JUGEMENT HERMENEUTIQUE]`.
+- le contrat courant ajoute `presence` comme regime final positif local,
+  uniquement avec `final_judgment_posture=answer`; l'aval consomme toujours
+  `validated_output` et produit alors la sortie exacte `...`.
 
 ## 1. Purpose
 
@@ -51,7 +54,8 @@ La cible code la plus propre pour cette pause normative reste:
 
 - `app/core/hermeneutic_node/validation/validation_agent.py`
 
-Cette spec ne cree ni ce fichier, ni sa sortie runtime.
+A sa redaction, cette spec ne creait ni ce fichier, ni sa sortie runtime; les
+deux sont livres depuis.
 
 ## 3. Validation / Final Output / Downstream Boundary
 
@@ -117,7 +121,7 @@ Taxonomie retenue pour `final_judgment_posture`:
 - `clarify`
 - `suspend`
 
-Taxonomie retenue pour `final_output_regime`:
+Taxonomie historique retenue avant l'ajout de `presence` pour `final_output_regime`:
 
 - `simple`
 - `meta`
@@ -189,10 +193,10 @@ Discipline minimale:
 - pas de prose UX finale
 - pas de recopie brute de `pipeline_directives_provisional`
 
-Cette pause normative ne ferme pas encore:
+Lors de sa redaction, cette pause normative ne fermait pas encore:
 
 - le vocabulaire complet de `pipeline_directives_final`
-- son runtime exact
+- son runtime exact, livre depuis
 
 ## 9. Boundary With `primary_verdict` And `validation_dialogue_context`
 
@@ -212,12 +216,12 @@ Regles fortes:
 - `justifications` restent hors `primary_verdict` et hors `validated_output`
 - la combinaison normative sert justement a eviter que l'aval doive relire lui-meme les artefacts amont
 
-## 10. Non-goals
+## 10. Non-goals de la pause initiale (historiques)
 
-Cette pause normative ne ferme pas encore:
+Lors de sa redaction, cette pause normative ne fermait pas encore:
 
-- `validation_agent.py`
-- le wiring aval
+- `validation_agent.py`, livre depuis
+- le wiring aval, livre depuis
 - l'observabilite complete du dispositif final
 - les KPI de stabilite
 - les preconditions shadow
