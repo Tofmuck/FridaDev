@@ -7,15 +7,14 @@ conservees comme preuves contradictoires. Une checkbox dans une piece
 historique n'est pas une tache active par defaut. Aucun chantier du mega-audit
 code + stack ne reste actif dans ce dossier apres sa cloture Lot Z.
 
-## Audit de recherche actif
+## Audit de recherche archivé
 
-- `fridadev-research-feature-audit-2026-09-02.md` : source historique F01-F24,
-  conservée dans `todo-todo` tant que la
-  `../refactors/fridadev-research-audit-residual-consolidation-todo.md` reste
-  ouverte. Les quatre incompatibilités tests/support initiales sont corrigées,
-  mais l'unique découverte complète suivante reste rouge sur deux URL de
-  services support neutralisées à tort ; aucun archivage global n'est donc
-  revendiqué.
+- `../../todo-done/audits/fridadev-research-feature-audit-2026-09-02.md` :
+  source historique F01-F24, archivée avec la roadmap
+  `../../todo-done/refactors/fridadev-research-audit-residual-consolidation-todo.md`.
+  Le préflight corrigé passe 2/2 et l'unique découverte complète de fermeture
+  passe 3088/3088, sans échec, erreur ni skip, exit 0. Aucun audit de recherche
+  lié à cette consolidation ne reste actif dans `todo-todo`.
 
 ## Archive globale du mega-audit code + stack
 

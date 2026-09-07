@@ -2,16 +2,12 @@
 
 Date de cadrage : 4 septembre 2026.
 
-**Statut : roadmap ouverte ; L1 à L6 et L7.1-L7.7 fermés ; Z non refermable au
-7 septembre 2026. Les quatre incompatibilités tests/support de la découverte à
-3079 tests sont corrigées sans changement produit. La sélection commune passe
-141/141, mais l'unique nouvelle découverte complète exécute 3088 tests en
-613,603 s et sort 1 avec 2 échecs, 0 erreur et 0 skip. Les deux échecs sont
-reproduits comme un défaut de commande hermétique : trois URL de services
-support validées syntaxiquement avaient été vidées avec les credentials ; elles
-passent 2/2 avec des URL `.invalid`, réseau toujours coupé et tokens vides. Z
-reste ouvert, la réserve Biblio conserve sa limite de preuve et la roadmap
-n'est pas archivée.**
+**Statut : roadmap fermée et archivée le 7 septembre 2026 ; L1 à L6,
+L7.1-L7.7 et Z sont fermés. Le préflight corrigé passe 2/2, puis l'unique
+découverte complète autorisée passe 3088/3088 en 614,653 s, sans échec, erreur
+ni skip et avec un code de sortie 0. Les F01-F24, leurs 34 lignes atomiques et
+la réserve Biblio restent corrigés sans réécriture de leur historique ; la
+limite de preuve Biblio et son déclencheur de revalidation sont conservés.**
 
 ## 1. But, source et règle de vérité
 
@@ -28,7 +24,7 @@ des findings reste conservé ; cette roadmap enregistre leur revalidation, leur
 correction, leur invalidation ou leur maintien explicite.
 
 La précédente roadmap
-[intégrité et continuité de la mémoire dialogique](../../todo-done/refactors/fridadev-dialogic-integrity-memory-refactor-todo.md)
+[intégrité et continuité de la mémoire dialogique](fridadev-dialogic-integrity-memory-refactor-todo.md)
 a fermé F01, F02, F03, F04, F06, F07 et F11. Elle n'a ni corrigé, ni invalidé,
 ni accepté tacitement F05, F08–F10 et F12–F24.
 
@@ -84,7 +80,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 | 5 | L5 | Atomicité des écritures Workspace | F13b, F14a, F19b | xhigh par sous-lot | fermé — F13b, F14a et F19b corrigés |
 | 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | fermé — F05, F10, F12a-F12c, F13a, F14b, F15a-F15b et F19a corrigés |
 | 7 | L7 | Vérité d'API, observabilité et outils historiques | F16–F18, F20, F22, F24 et dette documentaire | high | fermé — L7.1-L7.7 fermés |
-| 8 | Z | Réconciliation finale avec le grand audit | tous les Fxx et réserves non numérotées | xhigh | ouvert — quatre familles tests/support corrigées, sélection commune 141/141, découverte finale rouge sur deux URL de services support neutralisées à tort |
+| 8 | Z | Réconciliation finale avec le grand audit | tous les Fxx et réserves non numérotées | xhigh | fermé — préflight 2/2 et découverte unique 3088/3088, sans échec, erreur ni skip, exit 0 |
 
 - [x] Source, périmètre, ordre et règles de preuve consignés.
 - [x] L1 fermé.
@@ -116,10 +112,10 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 - [x] Le micro-lot final corrige les quatre familles tests/support sans rouvrir
   Agenda, F09, F24, Stimmung, Biblio ni les F01-F24 ; la sélection commune
   passe 141/141.
-- [ ] L'unique nouvelle découverte complète reste rouge : 3088 tests en
-  613,603 s, 2 échecs, 0 erreur, 0 skip, exit 1. Aucun second run complet n'est
-  autorisé dans ce lot ; l'archivage reste refusé jusqu'à une preuve distincte
-  avec URL de services support synthétiques valides et credentials neutralisés.
+- [x] Le préflight corrigé passe 2/2 avec les URL de services support
+  synthétiques valides, puis l'unique découverte complète autorisée passe
+  3088/3088 en 614,653 s, 0 échec, 0 erreur, 0 skip, exit 0 ; Z et la
+  consolidation sont fermés et archivés.
 
 ## 4. L1 — Restreindre le Compose du clone public
 
@@ -1472,12 +1468,13 @@ branche `main`, HEAD/upstream/distant égaux, divergence `0/0`, worktree propre.
   `.invalid`, `--network none` et tokens vides. Aucun défaut produit nouveau
   n'est établi.
 
-La décision honnête est donc : **Z reste ouvert et cette roadmap reste active.**
-Le registre ci-dessous réconcilie les Fxx livrés, les quatre incompatibilités
-initiales sont éliminées et la réserve Biblio n'est plus un bug produit ouvert,
-mais la consolidation entière ne peut pas être archivée sur une découverte
-finale rouge. Aucun code produit n'a changé et aucune seconde découverte
-complète n'a été lancée dans ce micro-lot.
+La décision honnête à ce stade était donc : **Z restait ouvert et cette roadmap
+restait active.** Le registre ci-dessous réconciliait les Fxx livrés, les quatre
+incompatibilités initiales étaient éliminées et la réserve Biblio n'était plus
+un bug produit ouvert, mais la consolidation entière ne pouvait pas être
+archivée sur cette découverte finale rouge. Aucun code produit n'avait changé
+et aucune seconde découverte complète n'avait été lancée dans ce micro-lot. La
+fermeture distincte est consignée en 11.7 sans réécrire ce résultat historique.
 
 ### 11.2 Matrice exhaustive F01–F24
 
@@ -1700,13 +1697,45 @@ les mêmes champs vides échoue 2/2 ; le contre-cas avec des URL synthétiques
 réseau toujours coupé et tokens vides, passe 2/2 en 0,001 s. Il s'agit d'un
 écart de commande, pas d'une baseline produit ni d'un cinquième finding.
 
-Z ne peut néanmoins pas être fermé sur cette sortie rouge et la découverte ne
-doit pas être relancée dans ce lot. Le prochain micro-lot est strictement
-preuve/docs-only : une unique découverte complète explicitement autorisée,
-avec credentials provider et tokens neutralisés mais URL de services support
-synthétiques `.invalid` valides, puis archivage seulement si elle est verte.
-La roadmap et le grand audit restent dans `todo-todo`; aucun déplacement vers
-`todo-done` ni lien d'archive concurrent n'est créé.
+À ce stade, Z ne pouvait néanmoins pas être fermé sur cette sortie rouge et la
+découverte ne devait pas être relancée dans ce lot. Le micro-lot suivant était
+donc strictement preuve/docs-only : une unique découverte complète
+explicitement autorisée, avec credentials provider et tokens neutralisés mais
+URL de services support synthétiques `.invalid` valides, puis archivage
+seulement si elle était verte. La roadmap et le grand audit restaient alors
+dans `todo-todo`; aucun déplacement vers `todo-done` ni lien d'archive
+concurrent n'avait été créé.
+
+### 11.7 Préflight corrigé, preuve unique et archivage
+
+Le micro-lot de fermeture part de `main` au HEAD/upstream/distant
+`12b09970a17c04351e7a9c64869819a5aa8e735a`, divergence `0/0` et worktree
+propre. Le préflight exécute ensemble les deux méthodes complètes de validation
+des patches de secrets candidats `embedding` et `services` dans l'image locale
+`platform-fridadev-app:local`. Le dépôt est monté en lecture seule sur
+`/workspace`, le workdir est `/workspace/app`, le réseau et les écritures sur
+la rootfs sont interdits, `/tmp` est un tmpfs et l'environnement est vidé avant
+de réinjecter seulement les variables techniques et les trois URL synthétiques
+`https://embed.invalid`, `https://crawl.invalid` et `https://search.invalid`.
+Résultat : **2 tests en 0,001 s, 2 succès, 0 `_FailedTest`, 0 échec, 0 erreur,
+0 skip, exit 0**.
+
+Après cette seule porte verte, `python -m unittest discover -s tests -p
+'test_*.py'` est lancé exactement une fois sous la même enveloppe dans le
+conteneur détaché nommé
+`fridadev-z-proof-corrected-20260907T163631Z-3465654`. Stdout, stderr et le code
+de sortie sont récupérés intégralement dans un répertoire temporaire hors dépôt
+et lus avant suppression du conteneur et des fichiers. Le résumé autoritatif
+est : **3088 tests en 614,653 s, 0 échec, 0 erreur, 0 skip, exit 0**. La ligne
+finale `OK` ne porte aucun compteur de skip, expected failure ou autre
+tolérance. Le log brut n'est ni conservé ni committé.
+
+Cette preuve ferme Z et la consolidation sans modifier code, tests, fixtures,
+support, benchmark ou runtime. Les 24 identifiants F01-F24 et leurs 34 lignes
+atomiques restent `corrigé`. La réserve Biblio reste corrigée par la preuve
+composée 12/12 puis 25/20/5, avec revalidation lorsque le corpus live dépassera
+20. La présente roadmap et l'audit source historique sont déplacés ensemble
+vers `todo-done`; aucune copie concurrente ne subsiste dans `todo-todo`.
 
 ## 12. Risques permanents et non-objectifs
 

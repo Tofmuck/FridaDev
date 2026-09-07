@@ -22,7 +22,7 @@ Le présent GO autorise la création et la livraison Git de cette documentation,
 pas l'exécution des corrections. Chaque lot ci-dessous sera confié séparément,
 avec son périmètre et sa livraison explicites. Un lot ne lance pas le suivant.
 
-**Source :** [audit de recherche du 2 septembre](../../todo-todo/audits/fridadev-research-feature-audit-2026-09-02.md),
+**Source :** [audit de recherche du 2 septembre](../audits/fridadev-research-feature-audit-2026-09-02.md),
 commit `49ed4b3cb1e8b7e2e03c1ac59db0e7dd3572d881`.
 Les identifiants Fxx renvoient exclusivement à cet audit.
 

@@ -2,7 +2,7 @@
 
 Date : 2 septembre 2026. Statut : **audit livré pour lecture et décision de Tof ; aucune correction ni expérimentation autorisée par ce rapport**.
 
-> **Suivi du 7 septembre 2026.** Le texte ci-dessous reste la source historique
+> **Clôture Lot Z du 7 septembre 2026.** Le texte ci-dessous reste la source historique
 > inchangée des F01–F24. La
 > [réconciliation Lot Z](../refactors/fridadev-research-audit-residual-consolidation-todo.md)
 > classe les 24 identifiants et leurs 34 lignes atomiques comme corrigés, avec
@@ -15,12 +15,11 @@ Date : 2 septembre 2026. Statut : **audit livré pour lecture et décision de To
 > F23 sont réalignés. Le micro-lot final corrige aussi les quatre familles
 > tests/support de la découverte à 3079 tests ; sa sélection commune passe
 > 141/141, dont les 50/50 témoins F24 et les 18/18 tests du store conversationnel.
-> Z demeure toutefois ouvert : l'unique nouvelle découverte complète exécute
-> 3088 tests en 613,603 s mais sort 1 avec 2 échecs, 0 erreur et 0 skip. Les deux
-> échecs sont reproduits comme un écart de harnais : des URL de services support
-> soumises à validation syntaxique ont été vidées avec les credentials ; les
-> deux tests passent avec des URL `.invalid`, réseau coupé et tokens vides. La
-> roadmap n'est donc pas archivée et aucun vert global n'est revendiqué.
+> Une passe preuve/docs-only distincte reprend ensuite le préflight corrigé à
+> 2/2 et lance exactement une découverte complète avec les trois URL `.invalid`,
+> réseau coupé et credentials neutralisés : **3088/3088 en 614,653 s, 0 échec,
+> 0 erreur, 0 skip, exit 0**. Z et la consolidation sont fermés ; cet audit et
+> sa roadmap sont archivés ensemble sans réécriture des findings historiques.
 
 ## 1. Où en est Frida ?
 
@@ -500,4 +499,4 @@ Impossible de conclure depuis ce seul audit : gain dialogique global, pertinence
 
 ### Livraison documentaire
 
-Le seul rapport durable est ce fichier dans `app/docs/todo-todo/audits/`, accompagné d'un lien bref dans `app/docs/README.md`. Pas de patch README public/code/tests/prompts/settings/corpus/archives ni données/services. Les vérifications Git finales et le commit de livraison sont indiqués dans le retour à Tof ; elles ne sont pas présumées par le présent texte. Après livraison : arrêt, attente de décision avant toute correction ou expérimentation.
+Le rapport durable est désormais archivé dans `app/docs/todo-done/audits/`, accompagné d'un lien bref dans `app/docs/README.md`. Pas de patch README public/code/tests/prompts/settings/corpus ni données/services. Les findings historiques restent inchangés ; seule la clôture Lot Z et la localisation documentaire sont actualisées.
