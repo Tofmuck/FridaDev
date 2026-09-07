@@ -1375,8 +1375,8 @@ modifier le grand audit historique:
 | Groupe | Classement | Revalidation et correction bornée |
 | --- | --- | --- |
 | D1 — Compose local | `déjà exact` | L1 avait déjà livré `127.0.0.1:8093:8089`; Compose et README distinguent usage local et absence de Caddy/Authelia. Aucun patch. |
-| D2 — Admin loopback/proxy | `encore faux puis corrigé` | Le guide appelait le port Docker depuis l'hôte comme preuve admin. La preuve technique part désormais du loopback conteneur; l'usage humain reste Caddy/Authelia + `Remote-User`, sans token admin. |
-| D3 — Web historique | `encore faux puis corrigé` | Le guide mélangeait l'ancien auto-Web et un chantier dit ouvert dans `todo-done`. Les passages sont marqués historiques, renvoient au pipeline courant et conservent `/api/chat`. |
+| D2 — Admin loopback/proxy | `encore faux puis corrigé` | Le guide appelait le port Docker depuis l'hôte comme preuve admin. La preuve technique part désormais du loopback conteneur; le Compose local n'offre pas de voie humaine admin authentifiée, tandis que l'OVH passe par Caddy/Authelia + `Remote-User`, sans token admin. |
+| D3 — Web historique | `encore faux puis corrigé` | Le guide mélangeait l'ancien auto-Web et un chantier dit ouvert dans `todo-done`. Seul le déclenchement lexical automatique est historique; SearXNG reste une dépendance actuelle de la recherche Web explicite. Les passages renvoient au pipeline courant et conservent `/api/chat`. |
 | D4 — OCR et lecture visuelle | `encore faux puis corrigé` | L'aide d'upload et des passages du contrat Workspace présentaient encore l'OCR comme futur ou implicitement attendu. Ils distinguent maintenant admission visuelle bornée, OCR explicite de l'atelier et absence d'OCR obligatoire pour tout PDF scanné. |
 | D5 — Biblio active | `encore faux puis corrigé` | Les deux exemples de configuration décrivaient encore un smoke futur. Ils nomment le bibliothécaire LLM actif selon le réglage et les murs déterministes. Aucun flag ni modèle ne change. |
 | D6 — Stimmung pré-appel | `encore faux puis corrigé` | Le contrat attribuait une réception provider à `stimmung_prompt_prepared`. Il borne désormais la preuve à la préparation/émission content-free avant frontière provider, sans inférence de réception, succès ou effet final. |
@@ -1388,6 +1388,11 @@ des Markdown vivants, commentaires/exemples, aides statiques et assertions
 ciblées. Elles n'ajoutent ni capacité, route, API, schéma, seuil, éditabilité,
 provider, modèle ou workflow. Le runtime Stimmung et `keep_current_v2.3`, les
 benchmarks et Z restent inchangés. Le grand audit n'est pas modifié.
+
+Contre-audit documentaire du 7 septembre 2026: la première rédaction
+sur-historicisait SearXNG et n'explicitait pas l'absence de voie humaine Admin
+dans le Compose local sans proxy. Le guide distingue maintenant ces deux
+frontières sans changement de code ni de comportement produit.
 
 ## 11. Z — Réconciliation finale avec le grand audit
 

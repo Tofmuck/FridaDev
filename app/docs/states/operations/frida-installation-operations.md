@@ -83,12 +83,13 @@ Schema global de base a date (lecture rapide):
 - source: `EMBED_BASE_URL`, `EMBED_TOKEN`, `EMBED_DIM`
 - impact si indisponible: retrieval memoire degrade (retours vides), pipeline chat maintenu mais moins contextualise.
 
-2. SearXNG (repere historique du guide initial)
+2. SearXNG
 - source: `SEARXNG_URL`, `SEARXNG_RESULTS`
-- impact historique si indisponible: la recherche Web manuelle et l'ancien
-  chemin auto-borne pouvaient etre degrades. Ce libelle ne decrit pas une
-  activation lexicale automatique actuelle; les conditions et providers du
-  pipeline Web courant sont documentes dans
+- impact actuel si indisponible: la decouverte par recherche Web explicite est
+  degradee; les tours qui en dependent peuvent rester sans preuve externe;
+- repere historique: seul l'ancien declenchement auto-borne lexical est retire.
+  La dependance SearXNG du pipeline Web courant ne l'est pas. Ses conditions
+  d'activation et ses autres services sont documentes dans
   `app/docs/states/architecture/fridadev-current-runtime-pipeline.md`.
 
 3. Crawl4AI
@@ -193,10 +194,14 @@ docker exec FridaDev python -c "import urllib.request; print(urllib.request.urlo
 ```
 
 Cette commande est une preuve technique par loopback **depuis le conteneur**.
-Un appel depuis l'hote vers le port Docker publie n'est pas ce loopback
-conteneur autorise. L'usage humain des surfaces `/api/admin/*` passe par le
-proxy Caddy/Authelia authentifie avec `Remote-User`; aucun
-`FRIDA_ADMIN_TOKEN` ne doit etre reinstaure.
+Le Compose local fourni n'embarque ni Caddy ni Authelia et ne fournit donc pas
+de voie humaine authentifiee vers `/api/admin/*`. Un appel depuis l'hote vers
+le port Docker publie n'est pas le loopback conteneur autorise et doit etre
+refuse.
+
+Dans le deploiement OVH, l'usage humain des surfaces `/api/admin/*` passe par
+Caddy/Authelia avec `Remote-User`; aucun `FRIDA_ADMIN_TOKEN` ne doit etre
+reinstaure.
 
 3. Chat minimal:
 
