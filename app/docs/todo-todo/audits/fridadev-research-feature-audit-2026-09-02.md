@@ -12,9 +12,14 @@ Date : 2 septembre 2026. Statut : **audit livré pour lecture et décision de To
 > sans branche provider supplémentaire au-delà de 20. La cardinalité live de
 > 12 ne constitue plus un échec produit; elle déclenche une revalidation lorsque
 > le corpus dépassera 20. Les deux fixtures Chromium F17 et le témoin Compose
-> F23 sont réalignés. Z demeure toutefois ouvert : son unique découverte Python
-> récupérable exécute 3079 tests mais sort 1 avec 11 échecs et 7 erreurs, classés
-> en quatre familles de témoins/fakes historiques ou d'isolation de modules. La
+> F23 sont réalignés. Le micro-lot final corrige aussi les quatre familles
+> tests/support de la découverte à 3079 tests ; sa sélection commune passe
+> 141/141, dont les 50/50 témoins F24 et les 18/18 tests du store conversationnel.
+> Z demeure toutefois ouvert : l'unique nouvelle découverte complète exécute
+> 3088 tests en 613,603 s mais sort 1 avec 2 échecs, 0 erreur et 0 skip. Les deux
+> échecs sont reproduits comme un écart de harnais : des URL de services support
+> soumises à validation syntaxique ont été vidées avec les credentials ; les
+> deux tests passent avec des URL `.invalid`, réseau coupé et tokens vides. La
 > roadmap n'est donc pas archivée et aucun vert global n'est revendiqué.
 
 ## 1. Où en est Frida ?

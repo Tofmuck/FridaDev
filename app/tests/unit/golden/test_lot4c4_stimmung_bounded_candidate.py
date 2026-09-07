@@ -1,3 +1,5 @@
+"""Exercise pure v2.4 helpers from the authenticated historical finalizer view."""
+
 from __future__ import annotations
 
 import copy
@@ -8,12 +10,28 @@ import unittest
 from unittest import mock
 
 from benchmark.suites.stimmung import final_wording_diagnostic as v1
+from benchmark.suites.stimmung import final_wording_finalization_v2 as finalization
 from benchmark.suites.stimmung import final_wording_protocol_v2 as protocol
 from benchmark.suites.stimmung import final_wording_rating_v2 as rating
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 FREEZE_COMMIT = "7fcf26d8d3991b6d64f586b89025b9404316e30e"
+V24_MANIFEST_PATH = (
+    REPO_ROOT
+    / "benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2_4.json"
+)
+V24_MANIFEST_SHA256 = "736cb6d83ab8c0626de8f7cc4cf3ba4a9c7ab494d69353a2d0383f361ca25f91"
+
+
+def _historical_v24() -> tuple[dict[str, object], list[dict[str, object]]]:
+    raw = V24_MANIFEST_PATH.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != V24_MANIFEST_SHA256:
+        raise AssertionError("v2.4 historical manifest changed")
+    return finalization.load_historical_protocol(
+        REPO_ROOT,
+        freeze_commit=FREEZE_COMMIT,
+    )
 
 
 class Lot4C4BoundedCandidateTests(unittest.TestCase):
@@ -52,8 +70,7 @@ class Lot4C4BoundedCandidateTests(unittest.TestCase):
         )
 
     def test_schedule_contains_only_six_transition_pairs_and_candidate_is_the_only_difference(self) -> None:
-        campaign = protocol.build_protocol(REPO_ROOT, freeze_commit=FREEZE_COMMIT)
-        schedule = protocol.build_request_schedule(REPO_ROOT, campaign)
+        _campaign, schedule = _historical_v24()
         self.assertEqual(len(schedule), 24)
         self.assertEqual({item["comparison_kind"] for item in schedule}, {"causal_transition"})
         self.assertEqual({item["variant"] for item in schedule}, {"runtime_current", "bounded_candidate"})
@@ -93,17 +110,12 @@ class Lot4C4BoundedCandidateTests(unittest.TestCase):
                 protocol.countercase_runtime_messages(case),
                 v1._build_messages(case, "treatment"),
             )
-        schedule_ids = {
-            item["case_id"]
-            for item in protocol.build_request_schedule(
-                REPO_ROOT,
-                protocol.build_protocol(REPO_ROOT, freeze_commit=FREEZE_COMMIT),
-            )
-        }
+        _campaign, schedule = _historical_v24()
+        schedule_ids = {item["case_id"] for item in schedule}
         self.assertTrue(schedule_ids.isdisjoint({case["id"] for case in countercases}))
 
     def test_protocol_freezes_candidate_observability_cost_and_v23_history(self) -> None:
-        campaign = protocol.build_protocol(REPO_ROOT, freeze_commit=FREEZE_COMMIT)
+        campaign, _schedule = _historical_v24()
         self.assertEqual(campaign["expected_call_count"], 24)
         self.assertEqual(campaign["absolute_call_cap"], 24)
         self.assertEqual(campaign["absolute_cost_cap_usd"], 3.0)
@@ -121,8 +133,7 @@ class Lot4C4BoundedCandidateTests(unittest.TestCase):
         )
 
     def test_raw_stimmung_and_runtime_policy_mutations_are_rejected(self) -> None:
-        campaign = protocol.build_protocol(REPO_ROOT, freeze_commit=FREEZE_COMMIT)
-        schedule = protocol.build_request_schedule(REPO_ROOT, campaign)
+        _campaign, schedule = _historical_v24()
         raw = copy.deepcopy(schedule)
         raw[0]["payload"]["messages"][0]["content"] += "\nstimmung_input=forbidden"
         raw[0]["messages_sha256"] = protocol._sha256_text(

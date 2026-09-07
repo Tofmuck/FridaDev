@@ -356,10 +356,23 @@ class MinimalValidationPhase4DatabaseTests(unittest.TestCase):
         self.assertIn('identity-surface-contract.md', read_model_spec)
         self.assertIn('activation_mode = manual|auto|not_requested', dual_feed_spec)
         self.assertIn("l'injection web dans le prompt principal depend du runtime web reel", dual_feed_spec)
-        self.assertIn('web search manuelle et auto-bornee degradees', operations_doc)
-        self.assertIn("`web_search=false` n'active plus le web pre-node", operations_doc)
-        self.assertIn('les demandes de source, de lien, de reference ou de verification ne declenchent plus le web a elles seules', operations_doc)
-        self.assertIn('le vrai rattrapage anti-suspension no-web -> web reste un pas doctrinal distinct', operations_doc)
+        self.assertIn(
+            'impact actuel si indisponible: la decouverte par recherche Web explicite est\n'
+            '  degradee; les tours qui en dependent peuvent rester sans preuve externe',
+            operations_doc,
+        )
+        self.assertIn(
+            "repere historique: seul l'ancien declenchement auto-borne lexical est retire",
+            operations_doc,
+        )
+        self.assertIn(
+            "La dependance SearXNG du pipeline Web courant ne l'est pas",
+            operations_doc,
+        )
+        self.assertIn(
+            'app/docs/states/architecture/fridadev-current-runtime-pipeline.md',
+            operations_doc,
+        )
         self.assertIn('- [x] Lot 4 - Ouvrir une edition controlee du statique', archived_identity_todo)
         self.assertIn('- [x] Lot 5 - Rendre les caps, seuils et budgets lisibles et gouvernables', archived_identity_todo)
         self.assertIn('- [x] Lot 6 - Assembler la surface `Identity` et sa navigation globale', archived_identity_todo)

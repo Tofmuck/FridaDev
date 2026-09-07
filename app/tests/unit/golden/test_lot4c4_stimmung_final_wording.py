@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import copy
+from contextlib import redirect_stdout
+import hashlib
+import io
 import json
 import unittest
 from pathlib import Path
@@ -15,6 +18,11 @@ from tests.support.stimmung_dialogic_pipeline import (
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
+V1_MANIFEST_PATH = (
+    REPO_ROOT
+    / "benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v1.json"
+)
+V1_MANIFEST_SHA256 = "207b44a407b0b468540921e22ffa7a0a49f192770dc07ae31c18e7f57219e996"
 
 
 def _perfect_provider_observations(corpus: dict[str, object]) -> list[dict[str, object]]:
@@ -272,62 +280,65 @@ class Lot4C4FinalWordingScorerTests(unittest.TestCase):
 class Lot4C4FinalWordingProtocolTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.corpus = final_wording_diagnostic.load_corpus(REPO_ROOT)
-        cls.protocol = final_wording_diagnostic.build_protocol(
-            REPO_ROOT,
-            freeze_commit="f" * 40,
-        )
-        cls.schedule = final_wording_diagnostic.build_request_schedule(
-            REPO_ROOT,
-            cls.protocol,
-        )
+        raw = V1_MANIFEST_PATH.read_bytes()
+        cls.manifest = json.loads(raw.decode("utf-8"))
+        if hashlib.sha256(raw).hexdigest() != V1_MANIFEST_SHA256:
+            raise AssertionError("v1 historical manifest changed")
 
-    def test_protocol_freezes_only_active_main_model_and_exact_cost_bound(self) -> None:
-        summary = final_wording_diagnostic.validate_protocol(
-            self.protocol,
-            REPO_ROOT,
-        )
-        freeze = final_wording_diagnostic.validate_freeze_manifest(
-            REPO_ROOT,
-            freeze_commit="f" * 40,
-        )
-        self.assertEqual(summary["expected_call_count"], 48)
-        self.assertEqual(freeze["status"], "provider_campaign_required")
-        self.assertEqual(freeze["call_count"], 48)
-        self.assertEqual(self.protocol["model"], "openai/gpt-5.1")
-        self.assertEqual(self.protocol["temperature"], 0.7)
-        self.assertEqual(self.protocol["top_p"], 1.0)
-        self.assertEqual(self.protocol["max_tokens"], 8192)
-        self.assertEqual(self.protocol["reasoning"], {"effort": "high", "exclude": True})
-        self.assertEqual(self.protocol["timeout_s"], 900)
-        self.assertEqual(self.protocol["repetitions"], 2)
+    def test_v1_protocol_archive_freezes_model_schedule_and_cost_provenance(self) -> None:
+        runtime_policy = self.manifest["runtime_policy"]
+        schedule = self.manifest["schedule"]
+        cost = self.manifest["cost"]
+        self.assertEqual(self.manifest["status"], "provider_campaign_required")
+        self.assertEqual(self.manifest["protocol_version"], "lot4c4_final_wording_provider_campaign_v1")
+        self.assertEqual(runtime_policy["model"], "openai/gpt-5.1")
+        self.assertEqual(runtime_policy["temperature"], 0.7)
+        self.assertEqual(runtime_policy["top_p"], 1.0)
+        self.assertEqual(runtime_policy["max_tokens"], 8192)
+        self.assertEqual(runtime_policy["reasoning"], {"effort": "high", "exclude": True})
+        self.assertEqual(runtime_policy["timeout_s"], 900)
+        self.assertEqual(schedule["repetitions"], 2)
         self.assertEqual(
-            self.protocol["repetition_rationale"],
+            schedule["repetition_rationale"],
             "minimum_repeat_to_expose_single_decode_variance_within_48_call_cap",
         )
-        self.assertEqual(self.protocol["absolute_call_cap"], 48)
-        self.assertGreater(self.protocol["theoretical_max_cost_usd"], 0)
+        self.assertEqual(schedule["call_count"], 48)
+        self.assertEqual(schedule["absolute_call_cap"], 48)
+        self.assertEqual(
+            schedule["sha256"],
+            "8fbb172691549621e09849959b6120057df3abd34e1d233e8ce94853072c3b42",
+        )
+        self.assertGreater(cost["theoretical_max_cost_usd"], 0)
         self.assertLessEqual(
-            self.protocol["estimated_max_cost_usd"],
-            self.protocol["absolute_cost_cap_usd"],
+            cost["estimated_max_cost_usd"],
+            cost["absolute_cost_cap_usd"],
         )
         self.assertEqual(
-            self.protocol["transport_policy"],
+            runtime_policy,
             {
-                "mode": "standard",
+                "model": "openai/gpt-5.1",
+                "temperature": 0.7,
+                "top_p": 1.0,
+                "max_tokens": 8192,
+                "reasoning": {"effort": "high", "exclude": True},
+                "timeout_s": 900,
+                "provider": {"allow_fallbacks": False, "require_parameters": True},
+                "transport": "standard",
                 "batch": False,
                 "flex": False,
                 "priority": False,
                 "retry_count": 0,
-                "automatic_model_fallback": False,
-                "provider_fallbacks": False,
             },
         )
-        self.assertEqual(self.protocol["additional_stage_calls"], 0)
 
         synthetic_raw = "synthetic provider response that must not persist"
         record = final_wording_diagnostic.content_free_call_record(
-            self.schedule[0],
+            {
+                "sequence": 1,
+                "case_id": "synthetic-case",
+                "repetition": 1,
+                "blinded_arm": "A",
+            },
             {
                 "ok": True,
                 "status_code": 200,
@@ -344,44 +355,20 @@ class Lot4C4FinalWordingProtocolTests(unittest.TestCase):
         self.assertFalse(record["raw_response_included"])
         self.assertNotIn(synthetic_raw, json.dumps(record, sort_keys=True))
 
-    def test_schedule_is_paired_and_only_authorized_directive_bytes_differ(self) -> None:
-        self.assertEqual(len(self.schedule), 48)
-        self.assertEqual(
-            [item["sequence"] for item in self.schedule],
-            list(range(1, 49)),
-        )
-        self.assertTrue(
-            all(item["payload"]["model"] == "openai/gpt-5.1" for item in self.schedule)
-        )
-        self.assertTrue(
-            all(
-                item["payload"]["provider"]
-                == {"allow_fallbacks": False, "require_parameters": True}
-                for item in self.schedule
+    def test_v1_historical_dry_run_is_refused_before_output(self) -> None:
+        output = io.StringIO()
+        with redirect_stdout(output), self.assertRaisesRegex(
+            ValueError,
+            "freeze_manifest_mismatch",
+        ):
+            final_wording_diagnostic.main(
+                [
+                    "--repo-root", str(REPO_ROOT),
+                    "--freeze-commit", str(self.manifest["baseline_head"]),
+                    "--dry-run",
+                ]
             )
-        )
-        paired = final_wording_diagnostic.validate_paired_schedule(
-            self.corpus,
-            self.schedule,
-        )
-        self.assertEqual(paired["pair_count"], 24)
-        self.assertEqual(paired["unauthorized_difference_count"], 0)
-        self.assertEqual(paired["raw_stimmung_occurrence_count"], 0)
-        self.assertEqual(paired["continuity_capsule_error_count"], 0)
-
-        duplicated = copy.deepcopy(self.schedule)
-        duplicated[0]["payload"]["messages"].append(
-            copy.deepcopy(duplicated[0]["payload"]["messages"][0])
-        )
-        with self.assertRaises(ValueError):
-            final_wording_diagnostic.validate_paired_schedule(self.corpus, duplicated)
-
-        raw_signal = copy.deepcopy(self.schedule)
-        raw_signal[0]["payload"]["messages"].append(
-            {"role": "system", "content": json.dumps({"stimmung_input": {"present": True}})}
-        )
-        with self.assertRaises(ValueError):
-            final_wording_diagnostic.validate_paired_schedule(self.corpus, raw_signal)
+        self.assertEqual(output.getvalue(), "")
 
 
 class Lot4C4RealCoordinatorFakeProofTests(unittest.TestCase):

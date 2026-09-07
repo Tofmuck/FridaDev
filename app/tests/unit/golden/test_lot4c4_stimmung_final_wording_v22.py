@@ -1,6 +1,10 @@
+"""Authenticate v2.2/v2.3 history without bypassing the F24 runner guard."""
+
 from __future__ import annotations
 
-import copy
+from contextlib import redirect_stdout
+import hashlib
+import io
 import json
 from pathlib import Path
 import tempfile
@@ -9,7 +13,7 @@ from unittest import mock
 
 from benchmark.core import openrouter
 from benchmark.suites.stimmung import final_wording_execution_v2
-from benchmark.suites.stimmung import final_wording_protocol_v2
+from benchmark.suites.stimmung import final_wording_finalization_v2
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -22,6 +26,11 @@ HISTORICAL_V22_FREEZE_SHA256 = (
 HISTORICAL_SCHEDULE_SHA256 = (
     "73130ead0e87c596347eb5cb09f3a8fa46be541a229d79199a876e7d8e272c7b"
 )
+HISTORICAL_V23_FREEZE_SHA256 = (
+    "77bf7bf67c8bcb1b61ae18a8ec3f86a3f0cffa4b2eb1dc82334e2a4b0f7ccb70"
+)
+V24_FREEZE_COMMIT = "7fcf26d8d3991b6d64f586b89025b9404316e30e"
+V24_MANIFEST_SHA256 = "736cb6d83ab8c0626de8f7cc4cf3ba4a9c7ab494d69353a2d0383f361ca25f91"
 
 
 class _MetadataResponse:
@@ -70,140 +79,80 @@ class _MetadataResponse:
         }
 
 
-class _SyntheticProviderClient(openrouter.OpenRouterClient):
-    def __init__(self, *, preflight_status: str, response_status: int) -> None:
-        super().__init__(
-            openrouter.OpenRouterConfig(
-                base_url="https://openrouter.invalid/api/v1",
-                api_key="synthetic-secret",
-            ),
-            pricing_by_model={},
-        )
-        self.preflight_status = preflight_status
-        self.response_status = response_status
-        self.events: list[str] = []
+class _UnreachableClient:
+    def __init__(self) -> None:
         self.calls: list[dict[str, object]] = []
-
-    def preflight_model_capabilities(
-        self,
-        model: str,
-        required_capabilities: dict[str, tuple[str, ...]],
-    ) -> dict[str, object]:
-        self.events.append("preflight")
-        compatible = self.preflight_status == "compatible"
-        return {
-            "status": self.preflight_status,
-            "reason_code": (
-                "compatible_endpoint_available"
-                if compatible
-                else "no_compatible_provider_endpoint"
-            ),
-            "model": model,
-            "metadata_http_status": 200,
-            "endpoint_count": 1,
-            "compatible_endpoint_count": int(compatible),
-            "required_capabilities": sorted(required_capabilities),
-        }
 
     def chat_completion(
         self,
         payload: dict[str, object],
-        *,
-        caller: str,
-        timeout_s: int,
+        **_: object,
     ) -> dict[str, object]:
-        self.events.append("post")
-        self.calls.append(copy.deepcopy(payload))
-        if self.response_status != 200:
-            return {
-                "ok": False,
-                "status_code": self.response_status,
-                "elapsed_ms": 1.0,
-                "error": "synthetic provider error",
-                "raw_text": None,
-                "finish_reason": None,
-                "native_finish_reason": None,
-                "usage": {},
-                "cost_estimate_usd": None,
-                "model": "",
-                "provider": "",
-            }
-        return {
-            "ok": True,
-            "status_code": 200,
-            "elapsed_ms": 1.0,
-            "error": None,
-            "raw_text": "SYNTHETIC_TEST_RESPONSE",
-            "finish_reason": "stop",
-            "native_finish_reason": "stop",
-            "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
-            "cost_estimate_usd": 0.00001125,
-            "model": "openai/gpt-5.1",
-            "provider": "OpenAI",
-        }
+        self.calls.append(payload)
+        raise AssertionError("historical runner reached the provider boundary")
+
+
+def _authenticated_manifest(filename: str, expected_sha256: str) -> dict[str, object]:
+    path = REPO_ROOT / "benchmark/suites/stimmung/fixtures" / filename
+    raw = path.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != expected_sha256:
+        raise AssertionError(f"historical manifest changed: {filename}")
+    return json.loads(raw.decode("utf-8"))
 
 
 class Lot4C4WorkflowV23Tests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.protocol = final_wording_protocol_v2.build_protocol(
+        cls.v21_manifest = _authenticated_manifest(
+            "stimmung_final_wording_freeze_v2_1.json",
+            HISTORICAL_V21_FREEZE_SHA256,
+        )
+        cls.v22_manifest = _authenticated_manifest(
+            "stimmung_final_wording_freeze_v2_2.json",
+            HISTORICAL_V22_FREEZE_SHA256,
+        )
+        cls.v23_manifest = _authenticated_manifest(
+            "stimmung_final_wording_freeze_v2_3.json",
+            HISTORICAL_V23_FREEZE_SHA256,
+        )
+        cls.v24_manifest = _authenticated_manifest(
+            "stimmung_final_wording_freeze_v2_4.json",
+            V24_MANIFEST_SHA256,
+        )
+        cls.v24_protocol, _ = final_wording_finalization_v2.load_historical_protocol(
             REPO_ROOT,
-            freeze_commit="f" * 40,
+            freeze_commit=V24_FREEZE_COMMIT,
         )
 
-    def test_payload_removes_sampling_without_changing_messages_or_schedule(self) -> None:
-        schedule = final_wording_protocol_v2.build_request_schedule(
-            REPO_ROOT,
-            self.protocol,
-        )
-        self.assertEqual(len(schedule), 24)
+    def test_v22_v23_archives_record_the_exact_runtime_policy_transition(self) -> None:
         self.assertEqual(
-            self.protocol["protocol_version"],
-            "lot4c4_final_wording_bounded_candidate_v2_4",
+            self.v22_manifest["protocol_version"],
+            "lot4c4_final_wording_provider_campaign_v2_2",
         )
-        self.assertNotIn("temperature", self.protocol)
-        self.assertNotIn("top_p", self.protocol)
-        for item in schedule:
-            payload = item["payload"]
-            self.assertNotIn("temperature", payload)
-            self.assertNotIn("top_p", payload)
-            self.assertNotIn("stop", payload)
-            self.assertEqual(payload["model"], "openai/gpt-5.1")
-            self.assertEqual(payload["max_tokens"], 8192)
-            self.assertEqual(payload["reasoning"], {"effort": "high", "exclude": True})
-            self.assertEqual(
-                payload["provider"],
-                {"allow_fallbacks": False, "require_parameters": True},
-            )
-
-        mutated = copy.deepcopy(schedule)
-        mutated[0]["payload"]["temperature"] = 0.7
-        with self.assertRaisesRegex(ValueError, "schedule_runtime_policy_invalid"):
-            final_wording_protocol_v2.validate_schedule(
-                final_wording_protocol_v2.load_corpus(REPO_ROOT),
-                mutated,
-            )
-        mutated = copy.deepcopy(schedule)
-        mutated[0]["payload"]["stop"] = ["<|endoftext|>"]
-        with self.assertRaisesRegex(ValueError, "schedule_runtime_policy_invalid"):
-            final_wording_protocol_v2.validate_schedule(
-                final_wording_protocol_v2.load_corpus(REPO_ROOT),
-                mutated,
-            )
-
         self.assertEqual(
-            self.protocol["required_endpoint_capabilities"],
+            self.v23_manifest["protocol_version"],
+            "lot4c4_final_wording_provider_campaign_v2_3",
+        )
+        v22_policy = self.v22_manifest["runtime_policy"]
+        v23_policy = self.v23_manifest["runtime_policy"]
+        self.assertNotIn("temperature", v22_policy)
+        self.assertNotIn("top_p", v22_policy)
+        self.assertNotIn("temperature", v23_policy)
+        self.assertNotIn("top_p", v23_policy)
+        self.assertEqual(
+            v22_policy["required_endpoint_capabilities"],
             {
                 "reasoning": ["reasoning"],
                 "output_token_limit": ["max_tokens"],
+                "stop_sequences": ["stop"],
+                "structured_outputs": ["response_format", "structured_outputs"],
             },
         )
-        mutated_protocol = copy.deepcopy(self.protocol)
-        mutated_protocol["required_endpoint_capabilities"]["structured_outputs"] = [
-            "response_format"
-        ]
-        with self.assertRaises(ValueError):
-            final_wording_protocol_v2.validate_protocol(mutated_protocol, REPO_ROOT)
+        self.assertEqual(
+            v23_policy["required_endpoint_capabilities"],
+            {"reasoning": ["reasoning"], "output_token_limit": ["max_tokens"]},
+        )
+        self.assertEqual(self.v22_manifest["schedule"], self.v23_manifest["schedule"])
 
     def test_model_endpoint_preflight_is_exact_and_content_free(self) -> None:
         client = openrouter.OpenRouterClient(
@@ -242,33 +191,17 @@ class Lot4C4WorkflowV23Tests(unittest.TestCase):
         )
         self.assertNotIn("synthetic endpoint", json.dumps(summary))
 
-    def test_preflight_rejects_missing_or_false_compatible_endpoints_before_post(self) -> None:
-        for status in ("no_compatible_endpoint", "model_metadata_mismatch"):
-            with self.subTest(status=status), tempfile.TemporaryDirectory(dir="/tmp") as raw:
-                root = Path(raw)
-                client = _SyntheticProviderClient(
-                    preflight_status=status,
-                    response_status=200,
-                )
-                with mock.patch.object(
-                    final_wording_execution_v2,
-                    "_validate_live_campaign_paths",
-                    return_value=None,
-                ):
-                    result = final_wording_execution_v2.run_campaign(
-                        repo_root=REPO_ROOT,
-                        protocol=self.protocol,
-                        client=client,
-                        output_dir=root / "private",
-                        review_export_dir=root / "review",
-                        execution_authorized=True,
-                        evidence_source="main_model_provider",
-                    )
-                self.assertEqual(result["status"], "campaign_incomplete")
-                self.assertEqual(result["reason_code"], "no_compatible_provider_endpoint")
-                self.assertEqual(result["attempted_call_count"], 0)
-                self.assertEqual(client.events, ["preflight"])
-                self.assertFalse((root / "private").exists())
+    def test_v22_preflight_refusal_and_v23_supersession_remain_historical(self) -> None:
+        superseded = self.v23_manifest["supersedes"]
+        self.assertEqual(superseded["protocol_version"], self.v22_manifest["protocol_version"])
+        self.assertFalse(superseded["campaign_started"])
+        self.assertEqual(superseded["provider_calls_observed"], 0)
+        self.assertEqual(superseded["provider_inference_count"], 0)
+        self.assertEqual(superseded["observed_cost_usd"], 0.0)
+        self.assertIn(
+            "preflight_capabilities_not_aligned_with_actual_payload",
+            superseded["reason_codes"],
+        )
 
     def test_http_4xx_taxonomy_is_not_transport(self) -> None:
         expected = {
@@ -295,110 +228,88 @@ class Lot4C4WorkflowV23Tests(unittest.TestCase):
                 )
                 self.assertEqual(outcome["status"], status)
 
-    def test_first_sequence_is_the_only_canary_and_404_stops_without_retry(self) -> None:
+    def test_current_public_runner_refuses_historical_protocol_before_any_effect(self) -> None:
+        client = _UnreachableClient()
+        progress: list[tuple[object, ...]] = []
         with tempfile.TemporaryDirectory(dir="/tmp") as raw:
             root = Path(raw)
-            client = _SyntheticProviderClient(
-                preflight_status="compatible",
-                response_status=404,
-            )
-            with mock.patch.object(
-                final_wording_execution_v2,
-                "_validate_live_campaign_paths",
-                return_value=None,
-            ):
-                result = final_wording_execution_v2.run_campaign(
+            private = root / "private"
+            review = root / "review"
+            with self.assertRaisesRegex(ValueError, "freeze_manifest_mismatch"):
+                final_wording_execution_v2.run_campaign(
                     repo_root=REPO_ROOT,
-                    protocol=self.protocol,
+                    protocol=self.v24_protocol,
                     client=client,
-                    output_dir=root / "private",
-                    review_export_dir=root / "review",
+                    output_dir=private,
+                    review_export_dir=review,
                     execution_authorized=True,
-                    evidence_source="main_model_provider",
+                    evidence_source="synthetic_test",
+                    progress=lambda *args: progress.append(args),
+                    capability_progress=lambda *args: progress.append(args),
                 )
-            ledger = json.loads(
-                (root / "private/call_ledger.json").read_text(encoding="utf-8")
-            )
-            self.assertEqual(client.events, ["preflight", "post"])
-            self.assertEqual(len(client.calls), 1)
-            self.assertEqual(result["status"], "campaign_incomplete")
-            self.assertEqual(result["reason_code"], "canary_provider_routing_error")
-            self.assertEqual(ledger["attempted_call_count"], 1)
-            self.assertEqual(ledger["status_counts"], {"provider_routing_error": 1})
-            self.assertFalse((root / "review").exists())
-
-        with tempfile.TemporaryDirectory(dir="/tmp") as raw:
-            root = Path(raw)
-            client = _SyntheticProviderClient(
-                preflight_status="compatible",
-                response_status=200,
-            )
-            with mock.patch.object(
-                final_wording_execution_v2,
-                "_validate_live_campaign_paths",
-                return_value=None,
-            ):
-                result = final_wording_execution_v2.run_campaign(
-                    repo_root=REPO_ROOT,
-                    protocol=self.protocol,
-                    client=client,
-                    output_dir=root / "private",
-                    review_export_dir=root / "review",
-                    execution_authorized=True,
-                    evidence_source="main_model_provider",
-                )
-            self.assertEqual(result["status"], "human_rating_required")
-            self.assertEqual(client.events[0], "preflight")
-            self.assertEqual(client.events[1:], ["post"] * 24)
-            self.assertEqual(len(client.calls), 24)
+            self.assertEqual(client.calls, [])
+            self.assertEqual(progress, [])
+            self.assertFalse(private.exists())
+            self.assertFalse(review.exists())
 
     def test_v21_v22_and_v23_history_is_pinned_and_cannot_be_reused(self) -> None:
-        historical_path = (
-            REPO_ROOT
-            / "benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2_1.json"
-        )
+        self.assertEqual(self.v22_manifest["schedule"]["sha256"], HISTORICAL_SCHEDULE_SHA256)
+        self.assertEqual(self.v23_manifest["schedule"]["sha256"], HISTORICAL_SCHEDULE_SHA256)
         self.assertEqual(
-            final_wording_protocol_v2._sha256_file(historical_path),
-            HISTORICAL_V21_FREEZE_SHA256,
-        )
-        historical_v22_path = (
-            REPO_ROOT
-            / "benchmark/suites/stimmung/fixtures/stimmung_final_wording_freeze_v2_2.json"
-        )
-        self.assertEqual(
-            final_wording_protocol_v2._sha256_file(historical_v22_path),
-            HISTORICAL_V22_FREEZE_SHA256,
-        )
-        self.assertEqual(
-            self.protocol["supersedes_protocol_version"],
+            self.v24_manifest["supersedes"]["protocol_version"],
             "lot4c4_final_wording_provider_campaign_v2_3",
         )
         self.assertEqual(
-            self.protocol["v2_2_preflight_history"],
+            self.v23_manifest["supersedes"],
             {
+                "campaign_reusable": False,
+                "campaign_started": False,
+                "compatible_endpoint_count": 0,
+                "endpoint_count": 5,
                 "metadata_get_count": 1,
                 "metadata_http_status": 200,
-                "endpoint_count": 5,
-                "compatible_endpoint_count": 0,
-                "provider_post_count": 0,
+                "protocol_version": "lot4c4_final_wording_provider_campaign_v2_2",
+                "provider_calls_observed": 0,
                 "provider_inference_count": 0,
                 "observed_cost_usd": 0.0,
-                "campaign_started": False,
-                "reusable": False,
+                "provider_results_attached": False,
+                "reason_codes": [
+                    "stop_parameter_not_supported_by_gpt_5_1_endpoints",
+                    "structured_outputs_capability_not_sent_by_payload",
+                    "preflight_capabilities_not_aligned_with_actual_payload",
+                ],
             },
         )
-        self.assertEqual(
-            self.protocol["v2_1_campaign_history"],
-            {
-                "attempted_call_count": 36,
-                "http_404_count": 36,
-                "provider_inference_count": 0,
-                "observed_cost_usd": 0.0,
-                "ledger_conservative_cost_usd": 3.2567175,
-                "ledger_conservative_cost_billed": False,
-                "reusable": False,
-            },
-        )
+        output = io.StringIO()
+        with mock.patch.object(
+            final_wording_execution_v2.OpenRouterClient,
+            "from_env",
+            side_effect=AssertionError("credentials must stay unreachable"),
+        ), redirect_stdout(output), tempfile.TemporaryDirectory(dir="/tmp") as raw:
+            root = Path(raw)
+            private = root / "private"
+            review = root / "review"
+            with self.assertRaisesRegex(ValueError, "freeze_manifest_mismatch"):
+                final_wording_execution_v2.main(
+                    [
+                        "--repo-root", str(REPO_ROOT),
+                        "--freeze-commit", V24_FREEZE_COMMIT,
+                        "--dry-run",
+                    ]
+                )
+            with self.assertRaisesRegex(ValueError, "freeze_manifest_mismatch"):
+                final_wording_execution_v2.main(
+                    [
+                        "--repo-root", str(REPO_ROOT),
+                        "--freeze-commit", V24_FREEZE_COMMIT,
+                        "--execute-live",
+                        "--output-dir", str(private),
+                        "--review-export-dir", str(review),
+                    ]
+                )
+            self.assertFalse(private.exists())
+            self.assertFalse(review.exists())
+        self.assertEqual(output.getvalue(), "")
 
 
 if __name__ == "__main__":

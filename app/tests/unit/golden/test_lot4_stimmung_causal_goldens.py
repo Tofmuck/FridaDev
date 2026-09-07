@@ -18,6 +18,7 @@ from tests.support.stimmung_dialogic_pipeline import (
     MAIN_MODEL,
     STIMMUNG_PRIMARY_MODEL,
     STIMMUNG_FALLBACK_MODEL,
+    _StimmungConversationStore,
     affective_signal,
     capture_validation_request,
     double_failure,
@@ -192,6 +193,71 @@ class Lot4StimmungCausalGoldenTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.server = load_server_module_for_tests()
+
+    def test_conversation_fake_holds_f09_lock_and_rejects_a_stale_snapshot(self) -> None:
+        conversation = {
+            "id": "55555555-5555-4555-8555-555555555555",
+            "created_at": "2026-08-28T09:00:00Z",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "LOT4_SYNTHETIC_SYSTEM",
+                    "timestamp": "2026-08-28T09:00:00Z",
+                },
+                {
+                    "role": "user",
+                    "content": "LOT4_SYNTHETIC_USER",
+                    "timestamp": "2026-08-28T09:01:00Z",
+                    "meta": {"affective_turn_signal": affective_signal("curiosite", 6)},
+                },
+                {
+                    "role": "assistant",
+                    "content": "LOT4_SYNTHETIC_ASSISTANT",
+                    "timestamp": "2026-08-28T09:02:00Z",
+                    "summarized_by": "lot4-summary",
+                    "embedded": True,
+                    "meta": {"assistant_runtime_provenance": {"origin": "main_model"}},
+                },
+            ],
+        }
+        store = _StimmungConversationStore()
+        saved = store.save(conversation, updated_at="2026-08-28T09:02:00Z")
+        self.assertTrue(saved.ok)
+        canonical = store.load(conversation["id"], "LOT4_SYNTHETIC_SYSTEM")
+        canonical_rows = copy.deepcopy(store.message_rows)
+        canonical_catalog = copy.deepcopy(store.catalog_row)
+        commits_before_conflict = store.commit_count
+        statements_before_conflict = len(store.write_statements)
+
+        stale = copy.deepcopy(canonical)
+        stale["messages"] = stale["messages"][:-1]
+        rejected = store.save(stale, updated_at="2026-08-28T09:03:00Z")
+        conflict_statements = store.write_statements[statements_before_conflict:]
+
+        self.assertFalse(rejected.ok)
+        self.assertEqual(rejected.reason, "conversation_snapshot_conflict")
+        self.assertEqual(store.commit_count, commits_before_conflict)
+        self.assertEqual(store.catalog_row, canonical_catalog)
+        self.assertEqual(
+            store.load(conversation["id"], "LOT4_SYNTHETIC_SYSTEM"),
+            canonical,
+        )
+        self.assertEqual(len(store.message_rows), len(canonical_rows))
+        self.assertTrue(
+            any(
+                statement.startswith(
+                    "SELECT role, content, timestamp, summarized_by, embedded, meta"
+                )
+                and statement.endswith("FOR UPDATE")
+                for statement in conflict_statements
+            )
+        )
+        self.assertFalse(
+            any(
+                statement.startswith("DELETE FROM conversation_messages")
+                for statement in conflict_statements
+            )
+        )
 
     def test_real_coordinator_store_functions_round_trip_and_aggregate_four_primary_signals(self) -> None:
         signal = affective_signal("apaisement", 7)

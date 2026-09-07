@@ -115,55 +115,101 @@ class _SilentStoreLogger:
         return None
 
 
-class _CatalogWriteCursor:
-    def __init__(self, store: "_StimmungConversationStore") -> None:
-        self._store = store
+class _AtomicWriteCursor:
+    def __init__(self, connection: "_AtomicWriteConnection") -> None:
+        self._connection = connection
         self._returned: dict[str, Any] | None = None
+        self._selected: list[dict[str, Any]] = []
 
-    def __enter__(self) -> "_CatalogWriteCursor":
+    def __enter__(self) -> "_AtomicWriteCursor":
         return self
 
     def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
         return False
 
-    def execute(self, _sql: str, params: Sequence[Any]) -> None:
-        self._store.catalog_row = {
-            "id": params[0],
-            "title": params[1],
-            "created_at": params[2],
-            "updated_at": params[3],
-            "message_count": params[4],
-            "last_message_preview": params[5],
-            "workspace_folder_id": params[6],
-            "deleted_at": None,
+    def execute(self, sql: str, params: Sequence[Any]) -> None:
+        statement = " ".join(sql.split())
+        self._connection._store.write_statements.append(statement)
+        if statement.startswith("INSERT INTO conversations"):
+            existing = self._connection._pending_catalog
+            self._connection._pending_catalog = {
+                "id": params[0],
+                "title": params[1],
+                "created_at": (
+                    min(existing["created_at"], params[2])
+                    if existing is not None
+                    else params[2]
+                ),
+                "updated_at": (
+                    max(existing["updated_at"], params[3])
+                    if existing is not None
+                    else params[3]
+                ),
+                "message_count": params[4],
+                "last_message_preview": params[5],
+                "workspace_folder_id": (
+                    params[6]
+                    if params[6] is not None
+                    else existing.get("workspace_folder_id") if existing is not None else None
+                ),
+                "deleted_at": (
+                    existing.get("deleted_at")
+                    if existing is not None and bool(params[7])
+                    else None
+                ),
+            }
+            self._returned = {"id": params[0]}
+            self._selected = []
+            return
+
+        if statement.startswith(
+            "SELECT role, content, timestamp, summarized_by, embedded, meta"
+        ):
+            if not statement.endswith("FOR UPDATE"):
+                raise AssertionError("canonical conversation read must hold FOR UPDATE")
+            self._selected = [self._message_dict(row) for row in self._connection._pending_messages]
+            self._returned = None
+            return
+
+        if statement.startswith("DELETE FROM conversation_messages"):
+            self._connection._pending_messages = []
+            self._returned = None
+            self._selected = []
+            return
+
+        raise AssertionError(f"unexpected atomic write statement: {statement}")
+
+    @staticmethod
+    def _message_dict(row: Sequence[Any]) -> dict[str, Any]:
+        json_meta = row[7]
+        return {
+            "role": row[2],
+            "content": row[3],
+            "timestamp": row[4],
+            "summarized_by": row[5],
+            "embedded": row[6],
+            "meta": copy.deepcopy(json_meta.obj) if json_meta is not None else None,
         }
-        self._returned = {"id": params[0]}
 
     def fetchone(self) -> dict[str, Any] | None:
         return copy.deepcopy(self._returned)
 
+    def fetchall(self) -> list[dict[str, Any]]:
+        return copy.deepcopy(self._selected)
 
-class _MessageWriteCursor:
-    def __init__(self, store: "_StimmungConversationStore") -> None:
-        self._store = store
-
-    def __enter__(self) -> "_MessageWriteCursor":
-        return self
-
-    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
-        return False
-
-    def execute(self, _sql: str, _params: Sequence[Any]) -> None:
-        self._store.message_rows = []
-
-    def executemany(self, _sql: str, rows: Sequence[Sequence[Any]]) -> None:
-        self._store.message_rows = [tuple(row) for row in rows]
+    def executemany(self, sql: str, rows: Sequence[Sequence[Any]]) -> None:
+        statement = " ".join(sql.split())
+        self._connection._store.write_statements.append(statement)
+        if not statement.startswith("INSERT INTO conversation_messages"):
+            raise AssertionError(f"unexpected atomic batch statement: {statement}")
+        self._connection._pending_messages = [tuple(row) for row in rows]
 
 
 class _AtomicWriteConnection:
     def __init__(self, store: "_StimmungConversationStore") -> None:
         self._store = store
-        self._cursor_index = 0
+        self._pending_catalog = copy.deepcopy(store.catalog_row)
+        self._pending_messages = copy.deepcopy(store.message_rows)
 
     def __enter__(self) -> "_AtomicWriteConnection":
         return self
@@ -171,14 +217,13 @@ class _AtomicWriteConnection:
     def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
         return False
 
-    def cursor(self, **_kwargs: Any) -> _CatalogWriteCursor | _MessageWriteCursor:
-        self._cursor_index += 1
-        if self._cursor_index == 1:
-            return _CatalogWriteCursor(self._store)
-        return _MessageWriteCursor(self._store)
+    def cursor(self, **_kwargs: Any) -> _AtomicWriteCursor:
+        return _AtomicWriteCursor(self)
 
     def commit(self) -> None:
-        return None
+        self._store.catalog_row = copy.deepcopy(self._pending_catalog)
+        self._store.message_rows = copy.deepcopy(self._pending_messages)
+        self._store.commit_count += 1
 
 
 class _CatalogReadCursor:
@@ -249,6 +294,8 @@ class _StimmungConversationStore:
     def __init__(self) -> None:
         self.catalog_row: dict[str, Any] | None = None
         self.message_rows: list[tuple[Any, ...]] = []
+        self.commit_count = 0
+        self.write_statements: list[str] = []
         self.logger = _SilentStoreLogger()
 
     @staticmethod
@@ -369,6 +416,22 @@ class _StimmungConversationStore:
         if loaded is None:
             raise AssertionError("synthetic Stimmung store failed to reload the conversation")
         return loaded
+
+    def inject_corrupt_latest_user_signal_for_test(self, signal: Mapping[str, Any]) -> None:
+        """Inject a canonical-row fault after normal saves for corruption tests only."""
+
+        for index in range(len(self.message_rows) - 1, -1, -1):
+            row = self.message_rows[index]
+            if row[2] != "user":
+                continue
+            mutable = list(row)
+            json_meta = mutable[7]
+            meta = copy.deepcopy(json_meta.obj) if json_meta is not None else {}
+            meta["affective_turn_signal"] = copy.deepcopy(dict(signal))
+            mutable[7] = conversations_store.Json(meta)
+            self.message_rows[index] = tuple(mutable)
+            return
+        raise AssertionError("synthetic corruption target missing")
 
 
 def capture_validation_request(canonical_inputs: Mapping[str, Any]) -> dict[str, Any]:
@@ -758,24 +821,13 @@ def exercise_stimmung_dialogue(
                 raise AssertionError(f"synthetic chat turn failed: {response.status_code}")
 
             if index + 1 in corrupt_after:
-                stored = store.load(conversation_id, "LOT4_SYNTHETIC_SYSTEM")
-                user_messages = [
-                    item
-                    for item in stored.get("messages", [])
-                    if isinstance(item, dict) and item.get("role") == "user"
-                ]
-                if not user_messages:
-                    raise AssertionError("synthetic corruption target missing")
-                user_messages[-1].setdefault("meta", {})["affective_turn_signal"] = {
+                store.inject_corrupt_latest_user_signal_for_test({
                     "schema_version": "v1",
                     "present": True,
                     "tones": [{"tone": "lot4_invalid", "strength": 99}],
                     "dominant_tone": "lot4_invalid",
                     "confidence": 2.0,
-                }
-                corruption_saved = store.save(stored, updated_at=stored.get("updated_at"))
-                if not corruption_saved.ok:
-                    raise AssertionError("synthetic Stimmung corruption save failed")
+                })
                 durable_json = json.dumps(
                     store.load(conversation_id, "LOT4_SYNTHETIC_SYSTEM"),
                     ensure_ascii=True,

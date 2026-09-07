@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import importlib
-import os
+import subprocess
 import sys
 import unittest
 from datetime import datetime
@@ -810,18 +809,39 @@ END:VCALENDAR
             client.list_calendars()
 
     def test_agenda_modules_do_not_read_runtime_secret_on_import(self) -> None:
-        with mock.patch.object(os, 'getenv', side_effect=AssertionError('secret env read is forbidden')):
-            import agenda.caldav_read_client as read_client_module
-            import agenda.ics_reader as ics_reader_module
-            import agenda.observability as observability_module
-            import agenda.read_tools as read_tools_module
-            import agenda.rrule_expander as rrule_expander_module
+        module_identities = {
+            name: sys.modules.get(name)
+            for name in (
+                'agenda.observability',
+                'agenda.rrule_expander',
+                'agenda.ics_reader',
+                'agenda.caldav_read_client',
+                'agenda.read_tools',
+            )
+        }
+        script = """
+import os
+from unittest import mock
 
-            importlib.reload(observability_module)
-            importlib.reload(rrule_expander_module)
-            importlib.reload(ics_reader_module)
-            importlib.reload(read_client_module)
-            importlib.reload(read_tools_module)
+with mock.patch.object(os, 'getenv', side_effect=AssertionError('secret env read is forbidden')):
+    import agenda.observability
+    import agenda.rrule_expander
+    import agenda.ics_reader
+    import agenda.caldav_read_client
+    import agenda.read_tools
+"""
+        completed = subprocess.run(
+            [sys.executable, '-c', script],
+            cwd=APP_DIR,
+            env={'PYTHONDONTWRITEBYTECODE': '1'},
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        for name, module in module_identities.items():
+            self.assertIs(sys.modules.get(name), module)
 
     def test_agenda_files_stay_below_600_lines_and_no_generic_helpers(self) -> None:
         agenda_dir = APP_DIR / 'agenda'

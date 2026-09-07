@@ -2,14 +2,16 @@
 
 Date de cadrage : 4 septembre 2026.
 
-**Statut : roadmap ouverte ; L1 à L6 et L7.1-L7.7 fermés ; Z réexécuté le
-7 septembre 2026 mais non refermable. La réserve Biblio est corrigée avec une
-limite de preuve documentée : chemin agentique réel à 12/12, renderer
-hermétique à 25 retenus / 20 affichés / 5 masqués, et revalidation lorsque le
-corpus live dépassera 20. Les deux témoins Chromium F17 et le témoin Python
-Compose F23 sont réalignés. L'unique découverte Python récupérable a exécuté
-3079 tests en 580,007 s et sort 1 avec 11 échecs et 7 erreurs, classés par
-preuves ciblées ; Z reste donc ouvert et la roadmap n'est pas archivée.**
+**Statut : roadmap ouverte ; L1 à L6 et L7.1-L7.7 fermés ; Z non refermable au
+7 septembre 2026. Les quatre incompatibilités tests/support de la découverte à
+3079 tests sont corrigées sans changement produit. La sélection commune passe
+141/141, mais l'unique nouvelle découverte complète exécute 3088 tests en
+613,603 s et sort 1 avec 2 échecs, 0 erreur et 0 skip. Les deux échecs sont
+reproduits comme un défaut de commande hermétique : trois URL de services
+support validées syntaxiquement avaient été vidées avec les credentials ; elles
+passent 2/2 avec des URL `.invalid`, réseau toujours coupé et tokens vides. Z
+reste ouvert, la réserve Biblio conserve sa limite de preuve et la roadmap
+n'est pas archivée.**
 
 ## 1. But, source et règle de vérité
 
@@ -82,7 +84,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 | 5 | L5 | Atomicité des écritures Workspace | F13b, F14a, F19b | xhigh par sous-lot | fermé — F13b, F14a et F19b corrigés |
 | 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | fermé — F05, F10, F12a-F12c, F13a, F14b, F15a-F15b et F19a corrigés |
 | 7 | L7 | Vérité d'API, observabilité et outils historiques | F16–F18, F20, F22, F24 et dette documentaire | high | fermé — L7.1-L7.7 fermés |
-| 8 | Z | Réconciliation finale avec le grand audit | tous les Fxx et réserves non numérotées | xhigh | ouvert — registre complet, Biblio corrigée avec limite de preuve, trois témoins réalignés, découverte finale récupérée mais rouge |
+| 8 | Z | Réconciliation finale avec le grand audit | tous les Fxx et réserves non numérotées | xhigh | ouvert — quatre familles tests/support corrigées, sélection commune 141/141, découverte finale rouge sur deux URL de services support neutralisées à tort |
 
 - [x] Source, périmètre, ordre et règles de preuve consignés.
 - [x] L1 fermé.
@@ -111,9 +113,13 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
   revalidation lorsque le corpus live dépassera 20, pas un bug produit ouvert.
 - [x] La passe distincte réaligne les deux fixtures Chromium F17 et le témoin
   Python Compose F23, puis récupère durablement la sortie de l'unique découverte.
-- [ ] La découverte finale reste rouge : 11 échecs et 7 erreurs classés en
-  quatre familles de témoins/fakes ou d'isolation de modules. Aucun second run
-  complet n'est autorisé dans ce lot ; l'archivage reste refusé.
+- [x] Le micro-lot final corrige les quatre familles tests/support sans rouvrir
+  Agenda, F09, F24, Stimmung, Biblio ni les F01-F24 ; la sélection commune
+  passe 141/141.
+- [ ] L'unique nouvelle découverte complète reste rouge : 3088 tests en
+  613,603 s, 2 échecs, 0 erreur, 0 skip, exit 1. Aucun second run complet n'est
+  autorisé dans ce lot ; l'archivage reste refusé jusqu'à une preuve distincte
+  avec URL de services support synthétiques valides et credentials neutralisés.
 
 ## 4. L1 — Restreindre le Compose du clone public
 
@@ -1448,21 +1454,30 @@ branche `main`, HEAD/upstream/distant égaux, divergence `0/0`, worktree propre.
   `items`, `total`, `limit` et `offset` cohérents avec la requête. Le scénario
   terminal vide passe `1/1` en 606,928 ms et le scénario Workspace passe `1/1`
   en 1 626,753 ms, sans timeout, skip du scénario ciblé ni faux succès.
-- L'unique découverte Python complète récupérable a exécuté **3079 tests en
-  580,007 s**, avec **11 échecs, 7 erreurs, 0 skip, exit code 1**. Son log et
-  son code de sortie ont été lus depuis le montage d'évidence durable avant
-  suppression. Les commandes ciblées classent les 18 anomalies en quatre
-  familles : pollution Agenda par recharge de module, six attentes de gels
-  Stimmung historiques supersédées par F24, dix utilisations d'une fake
-  conversation antérieure à la précondition F09, et une assertion documentaire
-  antérieure à L7.7. Les témoins autoritatifs Agenda, F09 et F24 restent verts,
-  mais ces contradictions de suite sont actives et interdisent l'archivage.
+- Les quatre familles de la découverte précédente sont corrigées. Agenda passe
+  dans les deux ordres, seul et avec l'import sans lecture de secret ; les 22
+  anciens tests Stimmung passent dans la même session que les 50 témoins F24 ;
+  les neuf témoins causaux de la fake conversationnelle et leur voisin passent
+  avec la vraie précondition F09 ; l'assertion L7.7 vérifie désormais le contrat Web
+  courant. La sélection commune passe **141/141 en 315,281 s**.
+- L'unique découverte Python complète de ce micro-lot a exécuté **3088 tests en
+  613,603 s**, avec **2 échecs, 0 erreur, 0 skip, exit code 1**. Le total
+  augmente de neuf : huit méthodes auparavant masquées par les erreurs de
+  `setUpClass` Stimmung redeviennent exécutables et un contre-cas F09 est ajouté.
+  Les deux seuls échecs concernent la validation de patches de secrets
+  `embedding` et `services` : la commande avait vidé `EMBED_BASE_URL`,
+  `CRAWL4AI_URL` et `SEARXNG_URL`, qui sont des champs de configuration soumis
+  à validation d'URL, pas des credentials. La reproduction ciblée échoue 2/2
+  avec ces champs vides puis passe 2/2 en 0,001 s avec des URL synthétiques
+  `.invalid`, `--network none` et tokens vides. Aucun défaut produit nouveau
+  n'est établi.
 
 La décision honnête est donc : **Z reste ouvert et cette roadmap reste active.**
-Le registre ci-dessous réconcilie les Fxx livrés et la réserve Biblio n'est plus
-un bug produit ouvert, mais la consolidation entière ne peut pas être archivée
-sur une découverte finale rouge. Aucun code produit n'a changé dans cette passe
-et aucune seconde découverte complète n'a été lancée.
+Le registre ci-dessous réconcilie les Fxx livrés, les quatre incompatibilités
+initiales sont éliminées et la réserve Biblio n'est plus un bug produit ouvert,
+mais la consolidation entière ne peut pas être archivée sur une découverte
+finale rouge. Aucun code produit n'a changé et aucune seconde découverte
+complète n'a été lancée dans ce micro-lot.
 
 ### 11.2 Matrice exhaustive F01–F24
 
@@ -1635,16 +1650,63 @@ Classification ciblée des 18 anomalies :
 
 ### 11.6 Décision d'archivage
 
-La réserve Biblio est fermée selon la preuve composée décidée, et les trois
-témoins explicitement visés par cette passe sont réalignés. Aucun code produit,
-provider, corpus live, DB opérateur ou runtime n'a été modifié.
+La réserve Biblio reste fermée selon la preuve composée décidée. Son chemin
+agentique live 12/12, son renderer 25/20/5 et son déclencheur de revalidation
+au premier corpus live supérieur à 20 restent inchangés. Aucun F01-F24, choix
+Biblio, Agenda, Stimmung ou F09 n'est rouvert.
 
-Z ne peut toutefois pas être fermé sur une découverte finale rouge. Les quatre
-familles ci-dessus ne deviennent pas de nouveaux findings du grand audit et ne
-justifient aucune correction produit dans ce lot ; elles exigent un lot de
-tests séparé avant une nouvelle preuve complète explicitement autorisée. La
-roadmap reste active, aucun déplacement vers `todo-done` n'est effectué et les
-liens vivants conservent leur cible courante.
+Le micro-lot final part de `main` au HEAD/upstream/distant
+`b29b7527b5738bff257384ad2d7e9039e4eb51d2`, divergence `0/0` et worktree
+propre. Les reproductions rouges distinguent les quatre causes attendues :
+
+1. Agenda : ordre `test_caldav_read_tools` puis `test_rrule_expander`, 36 tests,
+   1 erreur d'identité de `IcsRecurrenceUnsupportedError` après reload ;
+2. anciens témoins Stimmung : 14 tests exécutés, 6 erreurs
+   `freeze_manifest_mismatch` et 1 échec voisin de fake F09 ;
+3. fake conversationnelle : 14 tests, 10 échecs
+   `synthetic Stimmung store seed failed` ;
+4. assertion L7.7 : 1/1 rouge sur la phrase historique retirée.
+
+Les corrections restent dans tests/support. L'import Agenda est déplacé dans
+un sous-processus et l'identité des modules parents est vérifiée inchangée. Les
+anciens témoins authentifient les manifestes selon leurs SHA historiques,
+réutilisent seulement le finalizer offline F24 et prouvent que runner, dry-run,
+credentials, provider, progression et fichiers restent inatteignables au HEAD.
+La fake Stimmung suit désormais `INSERT ... RETURNING`, la lecture canonique
+ordonnée `SELECT ... FOR UPDATE` avec `fetchall()`, la réconciliation F09,
+`DELETE`, `executemany()` et commit transactionnel ; un snapshot périmé échoue
+sans commit ni mutation du canon. L7.7 vérifie précisément la dégradation de la
+recherche Web explicite sans SearXNG, le caractère historique et retiré de
+l'auto-Web lexical, et la référence au pipeline courant.
+
+Les preuves après patch passent : Agenda dans l'ordre initial, l'ordre inverse,
+le module seul et l'import sans lecture de secret ; anciens témoins et sélection
+F24 dans la même session **72/72 en 311,281 s**, dont les **50/50** autoritatifs ;
+fake causale et voisin **15/15 en 5,762 s** ; L7.7 **1/1** ; store courant
+**18/18** ; sélection commune **141/141 en 315,281 s**. Le contre-audit ne
+trouve aucun test supprimé, skip, xfail, expected failure, retry, timeout
+d'exécution augmenté, runner réactivé, succès préprogrammé, modification de gel
+Stimmung ou changement de code produit/runtime.
+
+L'unique découverte complète de ce micro-lot, lancée avec la commande demandée
+dans un conteneur nommé, read-only, checkout read-only, `/tmp` isolé et réseau
+coupé, termine cependant à **3088 tests en 613,603 s, 2 échecs, 0 erreur,
+0 skip, exit 1**. Son harnais avait neutralisé non seulement les credentials,
+mais aussi les trois URL de configuration `EMBED_BASE_URL`, `CRAWL4AI_URL` et
+`SEARXNG_URL`. Les deux tests de validation de secrets candidats refusent alors
+correctement les sections globalement invalides. Une reproduction ciblée avec
+les mêmes champs vides échoue 2/2 ; le contre-cas avec des URL synthétiques
+`https://embed.invalid`, `https://crawl.invalid` et `https://search.invalid`,
+réseau toujours coupé et tokens vides, passe 2/2 en 0,001 s. Il s'agit d'un
+écart de commande, pas d'une baseline produit ni d'un cinquième finding.
+
+Z ne peut néanmoins pas être fermé sur cette sortie rouge et la découverte ne
+doit pas être relancée dans ce lot. Le prochain micro-lot est strictement
+preuve/docs-only : une unique découverte complète explicitement autorisée,
+avec credentials provider et tokens neutralisés mais URL de services support
+synthétiques `.invalid` valides, puis archivage seulement si elle est verte.
+La roadmap et le grand audit restent dans `todo-todo`; aucun déplacement vers
+`todo-done` ni lien d'archive concurrent n'est créé.
 
 ## 12. Risques permanents et non-objectifs
 
