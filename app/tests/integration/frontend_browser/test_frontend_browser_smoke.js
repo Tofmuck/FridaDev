@@ -82,6 +82,8 @@ function chatMockScript({ streamMode, imageMode = 'success', chatDelayMs = 0 }) 
 
         if (url.pathname === "/api/conversations" && method === "GET") {
           state.conversationFetches += 1;
+          const limit = Number.parseInt(url.searchParams.get("limit") || "", 10);
+          const offset = Number.parseInt(url.searchParams.get("offset") || "", 10);
           const item = {
             id: "conv-browser",
             conversation_id: "conv-browser",
@@ -91,7 +93,8 @@ function chatMockScript({ streamMode, imageMode = 'success', chatDelayMs = 0 }) 
             message_count: state.streamMode === "error" && state.chatSubmitted ? 1 : (state.chatSubmitted ? 2 : 0),
             last_message_preview: state.chatSubmitted ? "Dernier message" : "",
           };
-          return new Response(JSON.stringify({ ok: true, items: [item] }), {
+          const items = [item].slice(offset, offset + limit);
+          return new Response(JSON.stringify({ ok: true, items, total: 1, limit, offset }), {
             status: 200,
             headers: { "Content-Type": "application/json" },
           });

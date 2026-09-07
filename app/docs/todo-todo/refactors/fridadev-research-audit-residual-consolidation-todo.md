@@ -2,14 +2,14 @@
 
 Date de cadrage : 4 septembre 2026.
 
-**Statut : roadmap ouverte ; L1 à L6 et L7.1-L7.7 fermés ; Z exécuté le
-7 septembre 2026 mais non refermable. Le micro-lot Biblio du 7 septembre a
-corrigé techniquement le libellé d'inventaire sans relever la borne de 20
-lignes; sa clôture produit attend encore un témoin agentique dépassant cette
-borne. Le résultat final de la découverte Python unique reste
-irrécupérable, deux témoins Chromium actuels n'atteignent plus leur frontière
-métier et un témoin Python conserve l'ancienne attente Compose antérieure à
-F23.**
+**Statut : roadmap ouverte ; L1 à L6 et L7.1-L7.7 fermés ; Z réexécuté le
+7 septembre 2026 mais non refermable. La réserve Biblio est corrigée avec une
+limite de preuve documentée : chemin agentique réel à 12/12, renderer
+hermétique à 25 retenus / 20 affichés / 5 masqués, et revalidation lorsque le
+corpus live dépassera 20. Les deux témoins Chromium F17 et le témoin Python
+Compose F23 sont réalignés. L'unique découverte Python récupérable a exécuté
+3079 tests en 580,007 s et sort 1 avec 11 échecs et 7 erreurs, classés par
+preuves ciblées ; Z reste donc ouvert et la roadmap n'est pas archivée.**
 
 ## 1. But, source et règle de vérité
 
@@ -82,7 +82,7 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 | 5 | L5 | Atomicité des écritures Workspace | F13b, F14a, F19b | xhigh par sous-lot | fermé — F13b, F14a et F19b corrigés |
 | 6 | L6 | Justesse produit directement perceptible | F05, F10, F12, F13a, F14b, F15, F19a | high/xhigh par sous-lot | fermé — F05, F10, F12a-F12c, F13a, F14b, F15a-F15b et F19a corrigés |
 | 7 | L7 | Vérité d'API, observabilité et outils historiques | F16–F18, F20, F22, F24 et dette documentaire | high | fermé — L7.1-L7.7 fermés |
-| 8 | Z | Réconciliation finale avec le grand audit | tous les Fxx et réserves non numérotées | xhigh | ouvert — registre complet, correctif Biblio livré mais preuve produit bornée manquante, trois témoins obsolètes et preuve finale incomplète |
+| 8 | Z | Réconciliation finale avec le grand audit | tous les Fxx et réserves non numérotées | xhigh | ouvert — registre complet, Biblio corrigée avec limite de preuve, trois témoins réalignés, découverte finale récupérée mais rouge |
 
 - [x] Source, périmètre, ordre et règles de preuve consignés.
 - [x] L1 fermé.
@@ -104,12 +104,16 @@ privés Memory/Identity ne sont pas rouverts par cette roadmap.
 - [x] Le micro-lot Biblio borné corrige techniquement le libellé visible et
   verrouille 25 retenus / 20 détaillés / 5 masqués sans changer les totaux
   durables.
-- [ ] La clôture produit de cette réserve attend un témoin agentique live avec
-  plus de 20 documents retenus; les deux appels autorisés n'en ont observé que
-  12 et aucun appel supplémentaire n'est autorisé dans ce lot.
-- [ ] Une passe distincte rétablit les deux témoins Chromium et le témoin
-  Python Compose devenus obsolètes, obtient une preuve finale récupérable, puis
-  décide de l'archivage.
+- [x] La réserve Biblio est corrigée par la preuve composée décidée par Tof :
+  12/12 sur le chemin agentique réel et 25/20/5 sur le même renderer
+  hermétique. La cardinalité live actuelle de 12 rend la borne supérieure à 20
+  non franchissable ; elle constitue une limite de preuve et un déclencheur de
+  revalidation lorsque le corpus live dépassera 20, pas un bug produit ouvert.
+- [x] La passe distincte réaligne les deux fixtures Chromium F17 et le témoin
+  Python Compose F23, puis récupère durablement la sortie de l'unique découverte.
+- [ ] La découverte finale reste rouge : 11 échecs et 7 erreurs classés en
+  quatre familles de témoins/fakes ou d'isolation de modules. Aucun second run
+  complet n'est autorisé dans ce lot ; l'archivage reste refusé.
 
 ## 4. L1 — Restreindre le Compose du clone public
 
@@ -1425,47 +1429,40 @@ branche `main`, HEAD/upstream/distant égaux, divergence `0/0`, worktree propre.
   (2), F15 (2), F19 (2) et F20 (5) ajoutent dix lignes aux 24 identifiants :
   les 34 sont `corrigé`; zéro `invalidé`, zéro `différé avec condition`, zéro
   `ouvert`.
-- **Réserves non numérotées : le défaut est corrigé techniquement, sa preuve
-  produit reste ouverte.** Le micro-lot Biblio distinct du 7 septembre fait
-  passer le témoin déterministe : un inventaire de 25 documents annonce 20
-  ouvrages affichés, détaille 20 lignes et signale 5 documents masqués.
-  `document_count=25` et `total_count=25` restent conservés dans l'objet et
-  l'observabilité; la borne de rendu reste 20. Les deux tours agentiques
-  autorisés n'ont retenu que 12 documents et n'auraient donc pas distingué
-  l'ancien renderer du nouveau. La clôture produit attend un témoin agentique
-  live avec plus de 20 documents. Les trois autres réserves demeurent des
-  limites ou mécanismes sans bug produit reproduit.
-- Ce classement ne suffit pas à fermer Z. La découverte Python complète a bien
-  été lancée une seule fois dans le conteneur hermétique prescrit, mais son canal
-  d'exécution s'est fermé après avoir montré des `F` et des `E`, avant que le
-  récapitulatif et les tracebacks puissent être récupérés. Le processus est
-  terminé et son conteneur `--rm` n'existe plus. Nombre exécuté, succès, échecs,
-  erreurs et skips finaux sont donc **inconnus**; aucune seconde découverte n'a
-  été lancée pour fabriquer un vert.
-- Deux scénarios Chromium requis n'atteignent plus leur assertion métier : leurs
-  mocks de `GET /api/conversations` dans
-  `test_frontend_browser_smoke.js::chat submit honors an explicit empty terminal...`
-  et `test_frontend_browser_workspace_folders.js::workspace folders start collapsed...`
-  omettent `total`, `limit` et `offset`, alors que
-  `chat_threads_sidebar.js` les exige depuis F17. Le contrôleur courant refuse
-  donc ces fixtures historiques avant la preuve terminal-vide F05 et avant la
-  preuve DOM OCR F13a. Les tests Node des deux contrôleurs sont verts et aucun
-  défaut produit n'est établi, mais la preuve Chromium actuelle manque.
-- `test_phase4_transversal.py::test_run_and_compose_runtime_binding_contract_is_unchanged`
-  attend encore le mapping pré-F23 `8093:8089`. Son exécution hermétique isolée
-  échoue **1/1** face au mapping courant et voulu
-  `127.0.0.1:8093:8089`. La configuration Compose rendue a été vérifiée saine;
-  ce témoin Python est obsolète, mais sa présence suffit à interdire un vert
-  global. Il peut expliquer un marqueur `F` de la découverte perdue, sans
-  permettre de lui attribuer rétrospectivement ce marqueur ni d'expliquer les
-  marqueurs `E`.
+- **Réserves non numérotées : la réserve de rendu Biblio est corrigée avec une
+  limite de preuve documentée.** Le chemin agentique réel
+  `catalog_list -> objet-réponse -> renderer` a retenu et rendu 12/12 ouvrages.
+  Le même renderer est traversé hermétiquement à 1/1, 20/20/0 et 25/20/5 ; un
+  cas où `total_count=40` et `document_count=25` maintient distincts total
+  répertorié, retenu, affiché et masqué. Au-delà de 20, aucune branche LLM ou
+  provider supplémentaire ne s'active : seule la tranche déterministe change.
+  Le corpus live courant ne contenant que 12 ouvrages, P01 est requalifié comme
+  frontière live non franchissable avec cette cardinalité, pas comme échec
+  produit. La revalidation devient obligatoire lorsque le corpus live dépassera
+  20. Les trois autres réserves demeurent des limites ou mécanismes sans bug
+  produit reproduit.
+- Les trois témoins explicitement autorisés ont été reproduits rouges avant
+  patch puis réalignés. Le Compose échouait seul sur l'ancien littéral et passe
+  désormais `1/1` sur `127.0.0.1:8093:8089`. Les deux scénarios Chromium
+  expiraient avant leur frontière métier ; leurs fixtures renvoient maintenant
+  `items`, `total`, `limit` et `offset` cohérents avec la requête. Le scénario
+  terminal vide passe `1/1` en 606,928 ms et le scénario Workspace passe `1/1`
+  en 1 626,753 ms, sans timeout, skip du scénario ciblé ni faux succès.
+- L'unique découverte Python complète récupérable a exécuté **3079 tests en
+  580,007 s**, avec **11 échecs, 7 erreurs, 0 skip, exit code 1**. Son log et
+  son code de sortie ont été lus depuis le montage d'évidence durable avant
+  suppression. Les commandes ciblées classent les 18 anomalies en quatre
+  familles : pollution Agenda par recharge de module, six attentes de gels
+  Stimmung historiques supersédées par F24, dix utilisations d'une fake
+  conversation antérieure à la précondition F09, et une assertion documentaire
+  antérieure à L7.7. Les témoins autoritatifs Agenda, F09 et F24 restent verts,
+  mais ces contradictions de suite sont actives et interdisent l'archivage.
 
 La décision honnête est donc : **Z reste ouvert et cette roadmap reste active.**
-Le registre ci-dessous réconcilie les Fxx livrés, mais la consolidation entière
-ne peut pas être archivée tant que la preuve agentique discriminante Biblio
-manque, que les trois témoins obsolètes ne sont pas réparés dans un micro-lot
-distinct et que la preuve finale n'est pas rejouée dans une passe ultérieure
-explicitement autorisée. Aucun code produit ne change dans Z.
+Le registre ci-dessous réconcilie les Fxx livrés et la réserve Biblio n'est plus
+un bug produit ouvert, mais la consolidation entière ne peut pas être archivée
+sur une découverte finale rouge. Aucun code produit n'a changé dans cette passe
+et aucune seconde découverte complète n'a été lancée.
 
 ### 11.2 Matrice exhaustive F01–F24
 
@@ -1488,7 +1485,7 @@ fichiers runtime/tests/contrats annoncés par leurs diffs sont encore présents.
 | F02 | **corrigé — I2.** Une panne de lecture mutable ressemblait à une absence et autorisait un remplacement; l'applicateur exige maintenant une lecture stricte avant toute planification ou écriture. | `7e2b56b328db2d899c29c92947b6c969570fc214`; `test_identity_periodic_agent_phase1.py::test_mutable_read_failure_uses_bounded_write_recovery_without_partial_write` traverse reader strict, façade, applicateur et reprise bornée. | Livré : le canon existant survit à une lecture en panne. Limite : SQL factice, aucune panne PostgreSQL réelle. Réouvrir si une erreur de lecture peut atteindre `INSERT`, audit ou succès. **Effet : direct.** |
 | F03 | **corrigé — M1.** Le résumeur marquait des paroles acquises malgré l'échec du stockage texte; le writer remonte désormais un booléen et `False`/`None` bloque marques, rattachement et succès. | `7ec484e0ebd4eb989ab34e03ae91ab224e420f5a`; `test_summarizer_phase4.py::test_writer_persistence_failure_does_not_acquire_summary_through_real_facades` traverse writer, façades, résumeur et éligibilité suivante. | Livré : une parole n'est retirée du prochain résumé qu'après commit du résumé. Limite : panne injectée, pas de mesure de qualité sémantique. Réouvrir si un stockage non confirmé produit `summarize_done`, `summary_generated` ou des marques. **Effet : direct.** |
 | F04 | **corrigé — M2.** La déduplication lexicale pouvait fusionner « mardi » et sa correction « jeudi » avant l'arbitre; seules l'identité textuelle stricte et la relation trace/résumé fusionnent encore. | `6dd346c0614e5ca78dd09cff57c78440cc65405e`; `test_memory_pre_arbiter_basket_phase7b.py::test_distinct_weekday_corrections_reach_the_real_arbiter_messages` traverse retrieval synthétique, panier et payload arbitre. | Livré : les formulations distinctes admises sous budget arrivent séparément au jugement. Limite : panier toujours borné à huit, arbitre non évalué sémantiquement. Réouvrir si deux textes distincts sont de nouveau fusionnés avant l'arbitre. **Effet : direct.** |
-| F05 | **corrigé — L6.1.** La normalisation retirait du code clôturé pourtant autorisé et le raccord secondaire pouvait ressusciter un brouillon quand le terminal final était vide; la policy préserve le code autorisé et la présence explicite de `final_text` prime sur le brouillon, même vide. | `3479eb1a19d3b75202cf3506702d0bf8736d3a56`; `test_chat_llm_flow.py::test_run_llm_exchange_stream_preserves_structure_for_explicit_plan_requests` traverse la finalisation, et `test_stream_control_parser_module.js::resolveStreamedAssistantText honors present empty final_text over streamed draft` le parser client. | Livré : code demandé intact et aucun assistant fantôme pour un terminal vide. Limite Z : le scénario Chromium terminal-vide est bloqué avant submit par son mock F17 obsolète; sa preuve historique existe, sa preuve DOM courante manque. Réouvrir si le code autorisé est altéré ou si un terminal vide conserve un brouillon. **Effet : direct.** |
+| F05 | **corrigé — L6.1.** La normalisation retirait du code clôturé pourtant autorisé et le raccord secondaire pouvait ressusciter un brouillon quand le terminal final était vide; la policy préserve le code autorisé et la présence explicite de `final_text` prime sur le brouillon, même vide. | `3479eb1a19d3b75202cf3506702d0bf8736d3a56`; `test_chat_llm_flow.py::test_run_llm_exchange_stream_preserves_structure_for_explicit_plan_requests` traverse la finalisation, `test_stream_control_parser_module.js::resolveStreamedAssistantText honors present empty final_text over streamed draft` le parser client, et le Chromium terminal-vide traverse désormais la preuve DOM complète. | Livré : code demandé intact et aucun assistant fantôme pour un terminal vide. La fixture F17 courante porte sa pagination complète et le scénario ciblé passe sans timeout. Réouvrir si le code autorisé est altéré ou si un terminal vide conserve un brouillon. **Effet : direct.** |
 | F06 | **corrigé — B1.** Une section coupée pouvait être annoncée complète; projection, rendu, final lock et état portent maintenant explicitement l'incomplétude et interdisent le saut du reste. | Code `2a063d27e3641eb4c1f78443761ed18f3c240b6a`, checker `28ee5f28299f05183ee915454d649e08ea717668`, preuve live `b1-section-truncation-live-20260903T123527Z.jsonl`; `test_librarian_agent_first.py::test_section_complete_extraction_keeps_truncated_single_page_partial` traverse outil, réponse et rendu. | Livré : un extrait tronqué reste partiel. Limite : pas d'offset de reprise intra-page, donc le reste est signalé mais pas progressivement accessible. Réouvrir si `range_complete=true`, une annonce complète ou une ancre suivante apparaît après coupe. **Effet : direct.** |
 | F07 | **corrigé — O1.** Le reader admin rejetait le sujet `dialogue` réellement écrit et affichait zéro; seul le reader d'evidence admet maintenant ce sujet et compte avant pagination. | `035c286cc5f9abe531747f5e35e50efb9cf8fb69`; `test_identity_read_model_phase2.py::test_dialogue_hints_flow_through_real_store_facades_and_both_admin_responses` traverse writer, store, reader et deux projections. | Livré : le total stocké est fidèle, sans élargir canon/fragments/conflits. Limite : store factice et compteur distinct de l'injection effective. Réouvrir si `dialogue` est refusé, admis dans les mauvaises familles ou si le total vient de la page limitée. **Effet : observabilité/outillage seulement.** |
 | F08 | **corrigé — L3.** Une compensation Nextcloud pouvait supprimer une version modifiée après la création de Frida; les DELETE compensatoires exigent l'ETag fort exact de la version créée et conservent les collections non prouvées. | Chaîne autoritative `bc4e88911b03989568bd0e314bfbe49653648680` puis correctif final `4f182c630bf0a2287deaea45af42d34feab5689f`; `test_workspace_nextcloud_compensation_etag.py::test_non_owning_etags_are_rejected_before_transport` traverse les quatre clients et le transport simulé. | Livré : version étrangère ou propriété non vérifiée conservée, statut résiduel honnête. Limite : DAV synthétique, aucune panne Nextcloud réelle. Réouvrir si une compensation sans ETag fort courant atteint un DELETE ou si `412` devient succès. **Effet : indirect.** |
@@ -1498,14 +1495,14 @@ fichiers runtime/tests/contrats annoncés par leurs diffs sont encore présents.
 | F12a | **corrigé — L6.3.** Un plan Agenda pouvait conclure à l'absence après `calendar_list` seul; la méthode exige désormais une lecture `REPORT` réussie, sur la fenêtre exacte et avec calendrier résolu. | `3cccab294f665e5cb7beaa8899cde8f537936f2a`; `test_chat_runtime.py::test_window_read_rejects_calendar_list_only_before_rendering_false_absence` traverse validation, exécution, rendu et final lock. | Livré : « aucun événement » exige sa preuve de lecture. Limite : client CalDAV factice. Réouvrir si une absence est rendue sans observation `REPORT` cohérente. **Effet : direct.** |
 | F12b | **corrigé — L6.3.** Timeouts, erreurs `requests` et XML invalide pouvaient sortir de la lane et faire échouer le chat; transport et client les normalisent en erreurs Agenda bornées et content-free. | `3cccab294f665e5cb7beaa8899cde8f537936f2a`; `test_chat_runtime.py::test_live_transport_failures_become_bounded_agenda_errors` traverse transport/client, runtime Agenda et verrou de réponse. | Livré : la panne Agenda reste une réponse Agenda bornée, sans masquer `KeyboardInterrupt`/`SystemExit`. Limite : erreurs injectées, pas de CalDAV réel. Réouvrir si une exception ordinaire échappe au raccord chat ou expose le corps brut. **Effet : direct.** |
 | F12c | **corrigé — L6.4.** L'expansion RRULE matérialisait des milliers de périodes avant de voir `COUNT`, `UNTIL` ou la fenêtre et pouvait dépasser `datetime`; l'itération est paresseuse et l'épuisement du domaine devient une erreur fermée. | `3b0bfcfb637cb69f1bc052ca1ae7a888840cfb5d`; `test_rrule_expander.py::test_extreme_yearly_count_returns_first_occurrence_without_advancing_period` traverse l'expandeur; `::test_agenda_read_execution_classifies_calendar_domain_exhaustion` traverse sa classification Agenda. | Livré : les arrêts bornés précèdent l'avancement inutile; plafond de 512 conservé. Limite : calendrier synthétique. Réouvrir si un petit `COUNT`/`UNTIL` scanne jusqu'à l'an 10000 ou laisse une `ValueError` brute. **Effet : indirect.** |
-| F13a | **corrigé — L6.7.** La ré-OCR remplaçait réellement le Markdown corrigé tout en annonçant toujours une création sans avertissement; le contrôleur confirme le remplacement, conserve le statut HTTP et distingue `201`/`200`. | `306c97d3901c017f3a7c3f9f81ed78e03b23c8bb`; `test_workspace_folder_sidebar_boundaries.js::cancelled workspace re-OCR warns about manual corrections and sends no POST` et `::confirmed workspace re-OCR sends one POST and reports the HTTP 200 update` traversent le contrôleur et le client. | Livré : annulation avant POST, avertissement et libellé juste. Limite Z : le scénario Chromium Workspace est bloqué par son mock F17 obsolète; concurrence entre lecture et POST toujours possible. Réouvrir si ré-OCR part sans confirmation ou fabrique un succès/création. **Effet : direct.** |
+| F13a | **corrigé — L6.7.** La ré-OCR remplaçait réellement le Markdown corrigé tout en annonçant toujours une création sans avertissement; le contrôleur confirme le remplacement, conserve le statut HTTP et distingue `201`/`200`. | `306c97d3901c017f3a7c3f9f81ed78e03b23c8bb`; `test_workspace_folder_sidebar_boundaries.js::cancelled workspace re-OCR warns about manual corrections and sends no POST` et `::confirmed workspace re-OCR sends one POST and reports the HTTP 200 update` traversent le contrôleur et le client; le Chromium Workspace traverse de nouveau le DOM complet. | Livré : annulation avant POST, avertissement et libellé juste. La fixture F17 courante porte sa pagination complète et le scénario ciblé passe sans timeout. La concurrence entre lecture et POST reste possible. Réouvrir si ré-OCR part sans confirmation ou fabrique un succès/création. **Effet : direct.** |
 | F13b | **corrigé — L5.1.** Deux écritures OCR recouvrantes pouvaient désaligner bytes, hash et SQL; un verrou de ligne couvre lecture, remplacement et commit, avec temporaire unique et compensation conditionnelle. | `7ea2e4acf6e9dbf61c7a761b00b14f2d11cad5d9`; `test_workspace_file_ocr_store.py::test_same_target_writer_waits_for_failed_writer_then_commits_consistently` traverse fake SQL transactionnelle et fichiers temporaires réels. | Livré : une seule version cohérente par cible, writers distincts indépendants. Limite : crash processus/hôte entre filesystem et commit non couvert. Réouvrir si un recouvrement laisse bytes/hash/ligne divergents ou un temporaire partagé. **Effet : indirect.** |
 | F14a | **corrigé — L5.2.** Après commit local d'un renommage, une panne de relecture/projection pouvait remettre le distant sous l'ancien nom; succès de mutation et projection post-commit sont maintenant séparés. | `8b7b1d09b58cfd249fddd72acd53dbe4cc2603dd`; `test_workspace_folder_rename_commit_projection.py::test_committed_rename_does_not_rollback_when_a_later_projection_read_would_fail` traverse store, MOVE simulé, commit et projection. | Livré : un commit local réussi n'est plus compensé par un GET ultérieur. Limite : DAV/SQL synthétiques. Réouvrir si une panne post-commit déclenche un MOVE inverse ou laisse deux autorités nommées. **Effet : indirect.** |
 | F14b | **corrigé — L6.7.** Un ancien `last_injected_turn_id` primait sur une exclusion courante et fabriquait `readable/ready`; l'existence brute de l'exclusion prime désormais, séparément de la normalisation de son motif. | Chaîne autoritative `306c97d3901c017f3a7c3f9f81ed78e03b23c8bb` puis correctif final `3253a1bd07c4fbd19423cf615ad0b396162a9e43`; `test_workspace_folder_documents.py::test_usage_projection_blocks_current_exclusion_with_missing_or_malformed_reason` traverse le read-model courant et ses marqueurs durables. | Livré : exclu courant reste `not_injected/blocked`; injection suivante lève l'exclusion. Limite : projection synthétique, pas de contenu opérateur. Réouvrir si une exclusion présente redevient prête à cause d'un ID historique ou d'un motif invalide. **Effet : indirect.** |
 | F15a | **corrigé — L6.5.** Des sous-chaînes larges comme « Europe » injectaient un gabarit AI Act hors sujet; les requêtes secondaires dérivent maintenant du sujet primaire sans entité fixe. | `77141c31d6d0de39462be3debff45bd5dda25dda`; `test_web_search_query_plan.py::test_actualite_football_europe_does_not_inject_ai_act_topic` traverse le vrai planificateur de requêtes. | Livré : une actualité football/Europe reste sur son sujet. Limite : pas de provider ni mesure de pertinence globale. Réouvrir si un marqueur large réintroduit une entité fixe absente de la demande. **Effet : direct.** |
 | F15b | **corrigé — L6.5.** Le classement reconnaissait un domaine officiel par sous-chaîne dans URL, query, fragment, userinfo ou forme ambiguë; une identité URL HTTP(S) stricte sur hostname/path est maintenant partagée avec la garde de crawl. | Chaîne autoritative `77141c31d6d0de39462be3debff45bd5dda25dda` puis correctif final `5162f539b9e6f73b4079d23c2bc5446810c25551`; `test_web_search_rerank.py::test_source_first_ignores_official_domain_in_query_fragment_or_userinfo` et `test_web_search_ssrf_guard.py::test_crawl_guard_and_ranking_identity_reject_same_ambiguous_urls` traversent policy, reranking et garde. | Livré : seules les vraies autorités reçoivent les bonus. Limite : URLs synthétiques, aucune recherche live. Réouvrir si query/fragment/userinfo/C0/antislash suffit à obtenir un classement officiel. **Effet : direct.** |
 | F16 | **corrigé — L7.1.** Les clés pending écrites ne correspondaient pas aux clés lues et la garde rejetait leur conteneur, rendant l'action invisible; projection et garde acceptent maintenant uniquement le schéma content-free exact. | `16b86349d935ef4350d2173bfda8c37c92a9a9d7`; `test_observability_read_model.py::test_real_pending_writer_payload_projects_pending_fields` traverse writer, garde, store simulé, read-model et API admin. | Livré : statut, niveau de confirmation et risques pending sont inspectables sans draft brut. Limite : aucune mutation Agenda ni frontend. Réouvrir si un payload writer valide disparaît, ou si une clé sensible traverse la garde. **Effet : observabilité/outillage seulement.** |
-| F17 | **corrigé — L7.2.** Création et liste pouvaient transformer un échec store en succès, tandis que le sidebar ne lisait que 200 fils; service/routes propagent `503` et le client parcourt toutes les pages avec invariants stricts. | `3e364b9242a80997a4600a6f817382b8b49bc642`; `test_server_phase13.py::test_api_create_conversation_never_returns_created_when_save_is_refused`, `::test_api_list_conversations_propagates_store_failure` et `test_threads_sidebar_module.js::threads sidebar loads every conversation page once and preserves server order` traversent store, service, HTTP et pagination client. | Livré : aucun faux `201/200`, liste complète ou état précédent conservé en erreur. Limite : DB et fetch factices; deux anciens mocks Chromium sont désormais rejetés par ce contrat. Réouvrir si échec devient vide/succès ou si une page valide reste ignorée. **Effet : direct.** |
+| F17 | **corrigé — L7.2.** Création et liste pouvaient transformer un échec store en succès, tandis que le sidebar ne lisait que 200 fils; service/routes propagent `503` et le client parcourt toutes les pages avec invariants stricts. | `3e364b9242a80997a4600a6f817382b8b49bc642`; `test_server_phase13.py::test_api_create_conversation_never_returns_created_when_save_is_refused`, `::test_api_list_conversations_propagates_store_failure` et `test_threads_sidebar_module.js::threads sidebar loads every conversation page once and preserves server order` traversent store, service, HTTP et pagination client. | Livré : aucun faux `201/200`, liste complète ou état précédent conservé en erreur. Limite : DB et fetch factices; les deux mocks Chromium historiques sont réalignés sur `items/total/limit/offset`. Réouvrir si échec devient vide/succès ou si une page valide reste ignorée. **Effet : direct.** |
 | F18 | **corrigé — L7.4.** Six seuils du writer Identity historique étaient présentés actifs et éditables; la gouvernance les expose désormais readonly, séparés des quatre auxiliaires actifs éditables, de l'auxiliaire actif readonly `identity_extractor_max_tokens` et des budgets du juge V2. | `d8b1e8e91a70bea0c747cebb0ea99e100c53ef60`; `test_identity_governance_service_phase5.py::test_inventory_response_exposes_authoritative_runtime_classification_matrix`, la route dédiée et le Chromium Identity traversent service, API et rendu. | Livré : l'admin n'offre plus de mutation trompeuse des knobs historiques. Limite : aucune sémantique Identity ni valeur opérateur modifiée. Réouvrir si une clé historique redevient éditable ou étiquetée comme pipeline actif. **Effet : observabilité/outillage seulement.** |
 | F19a | **corrigé — L6.6.** `itertext()` perdait les éléments ODT espace, tabulation et saut de ligne et concaténait des mots; un parcours ODF ordonné et borné restitue ces séparateurs. | `1c6b88d720092e998f79f03e8757750a99232843`; `test_active_document_text_extraction.py::test_odt_preserves_explicit_separators_alone_and_combined_in_document_order` traverse parseur, normalisation et statut; les tests upload/Workspace traversent les deux usages. | Livré : séparateurs standards préservés, expansions déraisonnables fermées en `parse_error`. Limite : pas de fidélité ODT universelle. Réouvrir si un séparateur ODF reconnu concatène encore du texte ou contourne la borne. **Effet : direct.** |
 | F19b | **corrigé — L5.3.** Après DELETE distant réussi puis échec du tombstone, un retry `404` ne terminait pas toujours et une course de renommage pouvait viser l'ancienne coordonnée; tombstone et retry exigent maintenant identité image et parent exactes. | Chaîne autoritative `2f493c5948771f6c10b5dc04c267620e55343e1b`, `c9272ff1ba46b66a12bc807b895077f010c43717`, puis correctif final `a04f1d2bc7ada60603e6bf8c06d746ace112d99f`; `test_workspace_folder_generated_image_delete_retry.py::test_retry_after_remote_delete_and_failed_tombstone_finishes_on_exact_404` et `::test_durable_parent_rename_before_tombstone_refuses_stale_delete_coordinate` traversent DELETE, parent et store. | Livré : retry exact peut finir; identité/parent changés refusent le faux succès. Limite : courses DAV/DB simulées. Réouvrir si un `404` tombstone une autre identité ou si le parent courant n'entre pas dans la précondition. **Effet : indirect.** |
@@ -1516,20 +1513,20 @@ fichiers runtime/tests/contrats annoncés par leurs diffs sont encore présents.
 | F20.5 — audit du content gate | **corrigé — L7.3.5.** Le callback retournait `stored=true` même après échec d'écriture; le writer retourne maintenant la vérité du write et la route la transmet sans bloquer l'ouverture volontaire. | `76e06ef8ce5c6c2220303ba27d15e66e22cce433`; `test_admin_logs_write_result.py::test_log_event_returns_false_when_no_line_can_be_written` puis `test_server_admin_dashboard_contract.py::test_dashboard_turn_content_route_keeps_content_open_when_audit_write_fails` traversent writer, callback et read-model. | Livré : `attempted=true/stored=false` sans ligne; ouverture inchangée. Limite : OSError injectée, pas de panne filesystem live. Réouvrir si acceptation du callback redevient preuve de stockage. **Effet : observabilité/outillage seulement.** |
 | F21 | **corrigé — L4.** Une panne de lecture des événements appelait le writer nominal avec des listes vides et effaçait les analytics; l'échec ne met plus à jour que le statut content-free. | `44924b0cf0acefcb5e834c979e2d564a0c7275bc`; `test_dashboard_analytics_lot2.py::test_source_read_failure_preserves_all_persisted_analytics_and_only_upserts_status` traverse fake relationnelle, transaction et reprise saine. | Livré : facts, summaries et buckets antérieurs survivent à la panne source. Limite : SQL factice, pas de panne PostgreSQL réelle. Réouvrir si une erreur source émet un DELETE/remplacement analytics. **Effet : observabilité/outillage seulement.** |
 | F22 | **corrigé — L7.5.** Deux suites Identity obsolètes semblaient actuelles, dont une importait un applicateur supprimé; le runner général les retire et refuse leurs noms avant credentials, client ou sortie. | `78cfe1350fb57f2515aa5ce7de71e2858a6711e7`; `test_model_benchmark.py::test_retired_suites_are_rejected_before_credentials_or_output` traverse la vraie CLI et `::test_importing_active_runner_does_not_load_retired_identity_suites` sa frontière d'import. | Livré : artefacts historiques conservés mais non exécutables comme benchmark HEAD. Limite : aucune campagne ou comparaison modèle. Réouvrir si les suites réapparaissent dans `--help` ou atteignent credentials/provider. **Effet : observabilité/outillage seulement.** |
-| F23 | **corrigé — L1.** Le Compose local publiait implicitement sur toutes les interfaces tout en étant présenté loopback; l'unique mapping est maintenant `127.0.0.1:8093:8089`. | `fe7cfe74e11de52e0c1de99035c7f3ae957c4df3`; au HEAD Z, `docker compose -f docker-compose.yml -f - config` alimenté par l'override `services.fridadev.env_file: !reset []` prouve `host_ip=127.0.0.1`, `published=8093`, `target=8089`, et le healthcheck interne loopback. | Livré pour le clone local; runtime OVH et Caddy/Authelia explicitement inchangés. Limite : pas d'audit réseau hôte. Réouvrir si le mapping perd son IP ou si la documentation le présente comme exposition publique protégée. **Effet : aucun effet produit.** |
+| F23 | **corrigé — L1.** Le Compose local publiait implicitement sur toutes les interfaces tout en étant présenté loopback; l'unique mapping est maintenant `127.0.0.1:8093:8089`. | `fe7cfe74e11de52e0c1de99035c7f3ae957c4df3`; au HEAD Z, `docker compose -f docker-compose.yml -f - config` alimenté par l'override `services.fridadev.env_file: !reset []` prouve `host_ip=127.0.0.1`, `published=8093`, `target=8089`, et le healthcheck interne loopback; le témoin Python réaligné passe `1/1`. | Livré pour le clone local; runtime OVH et Caddy/Authelia explicitement inchangés. Limite : pas d'audit réseau hôte. Réouvrir si le mapping perd son IP ou si la documentation le présente comme exposition publique protégée. **Effet : aucun effet produit.** |
 | F24 | **corrigé — L7.6.** Le finalizer historique pouvait accepter une permutation de variantes et attribuer le score au mauvais candidat; une garde commune authentifie manifeste, calendrier, ledger, mapping et packet avant scorer/purge, puis les tests historiques ont été requalifiés selon leur vraie provenance gelée. | Chaîne autoritative `6b3fd405c5fc4ef5820d55fb49f9ad01c70f43d8` puis requalification finale `eb8870740e8b7d39504f5e64a9361d397d9babe5`; `test_l7_6_stimmung_finalization_integrity.py::test_variant_swap_is_rejected_before_scorer_or_purge` et `::test_v25_nominal_finalizer_reuses_the_shared_guard` traversent les vrais finalizers offline. | Livré uniquement à l'outillage historique; runtime Stimmung et `keep_current_v2.3` inchangés. Limite : aucun provider, canari ni gain sémantique actuel mesuré. Réouvrir avant toute réutilisation si provenance/variants ne sont plus recroisés. **Effet : observabilité/outillage seulement.** |
 
 ### 11.3 Réserves Biblio non numérotées
 
 Ces quatre réserves ne deviennent pas de nouveaux findings. Après le correctif
-borné, les `93` tests actuels de `test_answer_object`,
+borné, les `95` tests actuels de `test_answer_object`,
 `test_librarian_planner` et `test_librarian_tools` passent au HEAD, sans réseau.
 
 | Réserve | Limite exacte | Bug reproduit et effet concret | Condition de réouverture |
 | --- | --- | --- | --- |
 | Budgets d'outils | Le planner initial contrôle `max_steps`, `max_tool_calls` et `max_total_duration_ms` entre ses appels. Les continuations déterministes de `librarian_method_runtime.py` passent toutefois par `append_get_tool_call`, qui ne contrôle que le reliquat `max_tool_calls`; elles ne recomptent ni `max_steps` ni la durée, reconduisent le `duration_ms` initial et ne peuvent interrompre un appel HTTP bloqué. Ces budgets ne sont donc ni tous globaux aux continuations, ni une deadline murale. | Mécanisme confirmé par code et sonde content-free : avec `max_steps=0`, `max_total_duration_ms=0` et `duration_ms=999`, une continuation ajoute encore un appel. **Bug produit non établi** : `max_tool_calls` reste borné, aucun contrat courant ne promet une deadline murale et aucune gêne live n'a été mesurée. | Réouvrir si un contrat présente ces trois budgets comme globaux à toute la méthode, si une continuation dépasse une limite produit requise, ou si une gêne de latence réelle est observée. |
 | Introduction produite avant le résultat | `surface_intro` est générée avec le plan, avant l'exécution, puis conservée autour du résultat verrouillé. | Mécanisme confirmé, **bug non reproduit** : aucune introduction actuelle contredisant un échec ultérieur n'a été produite et aucune fréquence live n'est connue. | Réouvrir sur un témoin déterministe ou content-free montrant une introduction formulée après coup ou comme un succès, mais incompatible avec le statut finalement rendu. |
-| Inventaire plus large que les lignes | `document_count` continue de compter les documents dédupliqués retenus, jusqu'à 100; le renderer détaille au plus les 20 premiers. | **Correctif technique livré le 7 septembre 2026; clôture produit en attente.** Le renderer calcule maintenant le nombre « affiché » depuis la tranche réellement rendue. Le témoin déterministe 25/20/5 conserve `document_count=25` et `total_count=25`, annonce 20 ouvrages affichés, rend 20 lignes et signale 5 documents masqués. Aucun plafond, outil ou appel n'est ajouté. Les deux tours agentiques live n'ont retenu que 12 documents : ils prouvent la non-régression du chemin réel, pas le franchissement de la borne. | Fermer seulement sur un témoin agentique content-free avec plus de 20 documents retenus et accord exact entre compte annoncé, 20 lignes visibles, total retenu et reliquat masqué; réouvrir ensuite sur tout nouvel écart. |
+| Inventaire plus large que les lignes | `document_count` continue de compter les documents dédupliqués retenus, jusqu'à 100; le renderer détaille au plus les 20 premiers. | **Correctif et preuve composée fermés le 7 septembre 2026.** Le chemin agentique réel `catalog_list -> objet-réponse -> renderer` rend 12/12. Le même renderer hermétique prouve 1/1, 20/20/0 et 25/20/5; avec `total_count=40` et `document_count=25`, total répertorié, retenu, affiché et masqué restent distincts. Aucun plafond, outil, appel ni branche provider n'est ajouté. La cardinalité live de 12 est une limite de preuve, pas un bug produit ouvert. | Revalider lorsque le corpus live dépassera 20, ou plus tôt si un écart apparaît entre total, retenu, lignes annoncées/rendues et reliquat masqué. |
 | Scoped search après top-N global | `catalog_search(query, limit)` obtient d'abord le top-N global, puis filtre sur `document_id`; un passage pertinent du document peut donc rester hors du top-N. | Mécanisme confirmé, **bug non reproduit** : le rendu dit qu'aucun *candidat restant* n'existe dans le scope, pas qu'aucun passage n'existe dans le document; aucun faux « absent du livre » n'a été observé. | Réouvrir si la surface transforme ce résultat borné en absence exhaustive, ou si un cas produit établi montre une affirmation contraire au contenu accessible. |
 
 ### 11.4 Ce que la réconciliation change dans le dialogue
@@ -1553,7 +1550,9 @@ meilleur souvenir, interprète correctement Tof, choisit la correction juste,
 lit exhaustivement un document, ou produit globalement un meilleur dialogue.
 Le correctif Biblio rend le nombre « affiché » quantitativement égal aux lignes
 détaillées dans le témoin 25/20/5, sans transformer ce rendu borné en inventaire
-exhaustif. La preuve agentique n'a pas encore franchi la borne de 20.
+exhaustif. Le corpus live actuel de 12 ouvrages ne permet pas de franchir la
+borne de 20 ; cette limite de preuve déclenche une revalidation lorsque le
+corpus la dépassera et ne maintient pas P01 en échec produit.
 Le panier Memory reste borné à huit. B1 ne fournit pas d'offset intra-page.
 Stimmung reste constitutive, `keep_current_v2.3` reste la décision active, et Z
 n'en déduit aucune amélioration sémantique globale. La latence actuelle n'est
@@ -1561,103 +1560,91 @@ pas mesurée; conformément à la décision opérateur du Lot 7, 7C ne devient p
 requis sans gêne réelle observée. Aucune panne réelle PostgreSQL, Nextcloud ou
 CalDAV, ni fréquence live des défauts historiques, n'a été observée.
 
-### 11.5 Tests finaux et incident de preuve
+### 11.5 Passe finale tests/preuve/docs du 7 septembre 2026
 
-Résultats actuels :
+Avant patch, les trois témoins autorisés ont été reproduits isolément :
 
-- sélection Python centrale hermétique couvrant streaming/canon,
-  Identity/Memory, Biblio, Agenda, Workspace/Nextcloud, Web,
-  observabilité/API et finalizers : **542 tests, OK**, `270,097 s`;
-- sélection Node des contrôleurs touchés : **57/57**, zéro échec, skip ou todo;
-- témoins Python supplémentaires API conversations, dashboard, Identity,
-  benchmark et réserves Biblio : une première invocation trop étroite a passé
-  71 tests mais produit quatre erreurs de loader sur des modules top-level mal
-  nommés; l'invocation équivalente corrigée a passé **44/44**, puis les trois
-  modules Biblio **92/92** au passage Z, puis **93/93** après ajout du témoin
-  25/20/5. Les témoins précis de panne de lecture Identity et
-  de vérité du writer d'audit passent respectivement **1/1** et **2/2**; le
-  témoin Python exact du compteur de problèmes F20.3 passe **1/1**. Cette
-  classification est un écart de commande, pas un écart produit;
-- sondes Biblio content-free du passage Z : une continuation ajoute **1 appel**
-  malgré
-  `max_steps=0`, `max_total_duration_ms=0` et `duration_ms=999`, ce qui borne
-  exactement la portée non globale de ces deux budgets; un inventaire de 25
-  documents annonçait **25 affichés**, rendait **20 lignes** et signalait
-  **5 masqués**. Le cycle TDD du micro-lot a reproduit exactement cet échec,
-  puis passe avec **20 affichés / 20 lignes / 5 masqués**, tandis que les totaux
-  retenus restent 25;
-- preuve agentique content-free
-  `states/baselines/biblio-smokes/inventory-render-agentic-20260907T111623Z.jsonl` :
-  deux appels `openai/gpt-5.2`, aucun fallback, deux exécutions `catalog_list`
-  `agent_first`, coût maximal théorique **1,848 USD** sous le plafond **2 USD**.
-  Les deux tours réels conservent 12 documents et rendent/annoncent 12 lignes,
-  sans reliquat, fuite, payload retenu ni endpoint interdit. Ils constituent
-  une preuve de non-régression agentique, mais ne traversent pas le cas
-  discriminant supérieur à 20. `P02` est entièrement `met`; le checker strict
-  global sort `2` parce que `P01`, bien que runtime et agent `met`, échoue une
-  cohérence de fermeture de cas. Aucun troisième appel n'a été lancé; la
-  clôture produit 25/20/5 et la preuve nominale complète P01-P02 restent donc
-  explicitement non acquises;
-- rendu Compose courant : config valide et mapping unique loopback confirmé;
-- témoin Python Compose historique : **1/1 échoué** parce qu'il exige encore
-  littéralement `8093:8089`; le test est obsolète depuis F23, tandis que le
-  fichier et le rendu Compose courants portent bien `127.0.0.1:8093:8089`;
-- sélection Chromium : **21 scénarios découverts, 6 passés, 2 échoués par
-  timeout de fixture, 13 filtrés**. Les deux échecs ont été reproduits seuls :
-  le chat n'obtient jamais de fil actif et Workspace jamais de ligne dossier,
-  car leurs mocks de liste omettent les métadonnées F17. Les six scénarios
-  atteints couvrent Identity governance, chat en vol/brouillon, logs stale,
-  dashboard overview, dashboard stale et scopes herméneutiques.
+- Compose : `1/1` échoué sur l'attente pré-F23 `8093:8089` face au mapping
+  courant `127.0.0.1:8093:8089` ;
+- Chromium terminal vide : timeout de 30 s sur `#threads li.active`, avant les
+  assertions de canon vide ;
+- Chromium Workspace : timeout de 30 s sur `.workspace-folder-row`, avant les
+  assertions dossier, drag-and-drop et OCR.
 
-La découverte Python complète a été lancée exactement une fois avec :
+Après le patch strictement tests-only :
 
-```bash
-docker run --rm --network none --read-only --tmpfs /tmp:rw,nosuid,size=1024m \
-  --mount type=bind,src=/opt/platform/fridadev,dst=/workspace,readonly \
-  --workdir /workspace/app \
-  --env PYTHONDONTWRITEBYTECODE=1 --env PYTHONPATH=/workspace/app:/workspace \
-  --env OPENROUTER_API_KEY= --env CRAWL4AI_TOKEN= --env WHISPER_API_KEY= \
-  --env EMBED_TOKEN= --env FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY= \
-  platform-fridadev-app:local \
-  python -m unittest discover -s tests -p 'test_*.py'
-```
+- `test_answer_object` passe **46/46** et couvre explicitement 1/1, 20/20/0,
+  25/20/5 et le cas distinct `total_count=40`, `document_count=25`, 20 lignes
+  visibles et 5 masquées ;
+- le témoin Compose exact passe **1/1** ;
+- les contrôleurs Node F17/F05/F13a passent **38/38**, sans échec, skip ou todo ;
+- Chromium terminal vide passe **1/1** en `606,928 ms` et atteint les
+  assertions `final_text=""`, absence d'assistant canonique et export sans
+  brouillon fantôme ; les 18 autres scénarios du fichier sont filtrés par le
+  nom exact, pas le scénario prouvé ;
+- Chromium Workspace passe **1/1** en `1 626,753 ms`, sans filtre ni skip, et
+  atteint les assertions de repli/dépli, navigation, sélection, OCR et
+  drag-and-drop ;
+- `node --check` passe sur les deux fichiers Chromium modifiés et
+  `git diff --check` ne relève aucun écart.
 
-Le flux avait affiché des tests en cours, dont des marqueurs `F` et `E`, puis le
-canal PTY a disparu avant le résumé. Aucun processus de découverte ne subsiste,
-le conteneur jetable a été supprimé, et aucune sortie n'avait été redirigée vers
-un fichier. Les champs obligatoires sont donc : **nombre exécuté inconnu,
-succès inconnus, échecs au moins un mais total inconnu, erreurs au moins une mais
-total inconnu, skips inconnus**. Sans tracebacks, leur rattachement à un finding,
-un contrat, une fixture ou l'environnement ne peut être prouvé. La découverte
-n'a pas été relancée, conformément à la règle d'unicité.
+La découverte Python complète a ensuite été lancée **exactement une fois** avec
+la commande demandée `python -m unittest discover -s tests -p 'test_*.py'`.
+Elle a tourné dans le conteneur nommé et détaché
+`fridadev-z-final-python-discovery-20260907`, réseau désactivé, filesystem
+read-only, checkout readonly, `/tmp` isolé et variables provider neutralisées.
+Stdout/stderr et code de sortie ont été écrits sur un montage hôte temporaire,
+lus après la fin du conteneur, puis supprimés avec celui-ci après consignation.
 
-### 11.6 Micro-lots minimaux avant nouvelle décision d'archivage
+Résumé autoritatif récupéré : **3079 tests, 580,007 s, 11 échecs, 7 erreurs,
+0 skip, exit code 1**. Aucune seconde découverte complète n'a été lancée.
 
-Z n'autorisait aucune correction pendant sa passe documentaire. Le premier des
-deux lots ultérieurs a livré son correctif technique mais reste ouvert au
-niveau de la preuve produit; le second n'est pas commencé :
+Classification ciblée des 18 anomalies :
 
-1. **correctif Biblio borné — livré techniquement le 7 septembre 2026, preuve
-   produit encore ouverte** : compte visible dérivé des lignes réellement
-   détaillées, borne 20 inchangée, total retenu et reliquat masqué conservés,
-   témoin déterministe 25/20/5 vert et contrat Biblio synchronisé. Les deux
-   appels agentiques plafonnés n'ont observé que 12 documents; un témoin live
-   supérieur à 20 reste requis pour fermer la réserve produit;
-2. **tests/preuve/docs** : aligner uniquement les deux mocks Chromium de liste
-   conversations sur le contrat F17 `items/total/limit/offset` et l'assertion
-   Python Compose sur le mapping loopback F23, puis exécuter isolément les
-   scénarios métier F05 et F13a ainsi que le témoin F23; depuis une baseline
-   propre, lancer une seule découverte hermétique complète en conservant sa
-   sortie content-free hors du dépôt jusqu'au résumé et aux tracebacks;
-   classifier les anomalies par commandes ciblées, sans seconde découverte;
-   enfin seulement, si aucune contradiction active ne subsiste, consigner les
-   comptes, archiver la roadmap et réparer ses liens.
+1. **Agenda, 1 erreur d'isolation de modules.** Le test
+   `test_agenda_read_execution_classifies_calendar_domain_exhaustion` passe
+   seul `1/1` et son module passe `9/9`. La sélection ordonnée
+   `test_caldav_read_tools` puis `test_rrule_expander` reproduit l'erreur sur
+   `36` tests : le premier module recharge `agenda.rrule_expander`, créant une
+   nouvelle classe `IcsRecurrenceUnsupportedError`, tandis que
+   `read_execution` conserve l'ancienne classe importée. Aucun défaut Agenda
+   produit n'est établi, mais la suite complète reste non hermétique entre
+   modules.
+2. **Stimmung historique, 6 erreurs de gels supersédés.** Trois anciens modules
+   tentent encore de reconstruire positivement les protocoles v2/v2.3 et
+   rencontrent correctement `freeze_manifest_mismatch` après F24. Leur
+   sélection ciblée reproduit 6 erreurs. Les quatre modules F24 autoritatifs,
+   qui authentifient les archives et refusent la réutilisation des runners,
+   passent **50/50** en `263,679 s`. Ces anciens témoins sont incompatibles
+   avec la décision F24 déjà livrée ; ils ne rouvrent pas Stimmung, mais restent
+   des erreurs actives de découverte.
+3. **Fake de conversation Stimmung, 10 échecs.** Neuf tests du module causal et
+   un voisin final-wording s'arrêtent sur `synthetic Stimmung store seed
+   failed`. Leur fake de curseur traite encore tout premier curseur comme un
+   simple `INSERT ... RETURNING` et ne sait pas exécuter le `SELECT ... FOR
+   UPDATE`/`fetchall()` ajouté par la précondition canonique F09. Le module
+   courant du store conversationnel passe **18/18**. Aucun défaut du store ou
+   de Stimmung n'est établi, mais ces dix preuves historiques restent
+   incompatibles avec le contrat F09.
+4. **Témoin documentaire, 1 échec.** Le test
+   `test_identity_archive_and_hermeneutic_suspension_todo_are_aligned` échoue
+   seul `1/1` parce qu'il exige encore la phrase
+   `web search manuelle et auto-bornee degradees`, retirée volontairement lors
+   de L7.7 au profit du contrat courant de recherche Web explicite. Le document
+   vivant est cohérent avec L7.7 ; l'assertion reste périmée.
 
-Jusque-là, aucune ligne Fxx n'est réouverte par supposition, mais la roadmap ne
-peut pas être archivée : la clôture produit de la réserve Biblio manque encore
-son témoin agentique discriminant, les trois témoins sont obsolètes et la preuve
-globale finale demandée est manquante. L'anomalie agentique P01 ci-dessus reste
-une limite de preuve explicitement non résolue, pas un vert fabriqué.
+### 11.6 Décision d'archivage
+
+La réserve Biblio est fermée selon la preuve composée décidée, et les trois
+témoins explicitement visés par cette passe sont réalignés. Aucun code produit,
+provider, corpus live, DB opérateur ou runtime n'a été modifié.
+
+Z ne peut toutefois pas être fermé sur une découverte finale rouge. Les quatre
+familles ci-dessus ne deviennent pas de nouveaux findings du grand audit et ne
+justifient aucune correction produit dans ce lot ; elles exigent un lot de
+tests séparé avant une nouvelle preuve complète explicitement autorisée. La
+roadmap reste active, aucun déplacement vers `todo-done` n'est effectué et les
+liens vivants conservent leur cible courante.
 
 ## 12. Risques permanents et non-objectifs
 

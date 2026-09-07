@@ -1741,7 +1741,7 @@ Le chantier Biblio native est clos au 2026-05-29. Son correctif P1 "vraie biblio
 
 Tout changement futur qui veut ecrire dans Catalogue, editer les metadonnees depuis FridaDev, supprimer un document, lancer OCR, backfill, indexer ou vectoriser doit ouvrir un nouveau lot explicite avant code.
 
-## 15. Correctif technique de l'inventaire visible borne
+## 15. Correctif et preuve composee de l'inventaire visible borne
 
 Le rendu structure d'un inventaire distingue desormais trois quantites:
 
@@ -1757,19 +1757,21 @@ lignes visibles, puis 5 masques; les deux totaux internes restent 25. Cette
 correction ne releve aucune borne, ne modifie ni Catalogue, ni outil, ni appel
 modele, ni final lock.
 
-Le test
-`test_answer_object.py::test_inventory_metadata_reports_visible_rows_separately_from_retained_documents`
-verrouille techniquement le cas 25/20/5. La preuve agentique content-free
+Les tests de `test_answer_object.py` verrouillent les frontieres 1/1,
+20/20/0 et 25/20/5, ainsi que la distinction semantique entre
+`total_count=40`, `document_count=25`, 20 lignes affichees et 5 documents
+masques. La preuve agentique content-free
 `app/docs/states/baselines/biblio-smokes/inventory-render-agentic-20260907T111623Z.jsonl`
 observe deux executions reelles `catalog_list` avec 12 documents retenus et 12
-lignes annoncees/rendues: elles prouvent la non-regression du chemin agentique,
-mais l'ancien renderer aurait produit le meme resultat sous la borne. P02 est
-nominalement `met`. Le smoke strict agrege reste rouge sur P01 malgre runtime
-et agent `met`, a cause d'une incoherence de fermeture de cas; l'artefact la
-conserve et aucun appel supplementaire n'a ete lance au-dela du plafond de deux
-appels / 2 USD.
+lignes annoncees/rendues. Elle traverse le chemin reel
+`catalog_list -> objet-reponse -> renderer`; le test 25/20/5 traverse ensuite
+le meme renderer hermetiquement. Aucune branche LLM ou provider supplementaire
+ne s'active au-dela de 20 : seule la tranche deterministe deja testee change.
 
-La reserve produit ne peut donc etre fermee qu'apres un temoin agentique
-content-free retenant plus de 20 documents et observant ensemble 20 annonces et
-lignes visibles, le total retenu et le reliquat masque. Cette preuve manque; le
-correctif est livre techniquement sans vert agentique discriminant fabrique.
+La decision de preuve du 7 septembre 2026 ferme donc P01 comme reserve produit
+corrigee avec limite de preuve. Le corpus live courant de 12 documents rend la
+frontiere superieure a 20 non franchissable sans nouvel appel provider; le
+statut strict historique conserve dans l'artefact JSONL ne transforme pas cette
+cardinalite en bug produit ouvert. Aucun appel supplementaire n'a ete lance.
+Une revalidation redevient obligatoire lorsque le corpus live depassera 20, ou
+plus tot si un ecart apparait entre total repertorie, retenu, affiche et masque.

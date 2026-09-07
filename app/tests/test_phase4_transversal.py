@@ -122,7 +122,7 @@ class Phase4TransversalTests(unittest.TestCase):
             self.assertIn('- ./app/.env', compose)
             self.assertIn('FRIDA_WEB_PORT: "8089"', compose)
             self.assertIn('FRIDA_WEB_HOST: "0.0.0.0"', compose)
-            self.assertIn('- "8093:8089"', compose)
+            self.assertIn('- "127.0.0.1:8093:8089"', compose)
     def test_frontend_chat_payload_contract_no_longer_serializes_history(self) -> None:
         app_js = (APP_DIR / 'web' / 'app.js').read_text(encoding='utf-8')
 

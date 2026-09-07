@@ -201,7 +201,16 @@ function workspaceFoldersMockScript() {
         }
 
         if (url.pathname === "/api/conversations" && method === "GET") {
-          return new Response(JSON.stringify({ ok: true, items: state.conversations }), {
+          const limit = Number.parseInt(url.searchParams.get("limit") || "", 10);
+          const offset = Number.parseInt(url.searchParams.get("offset") || "", 10);
+          const items = state.conversations.slice(offset, offset + limit);
+          return new Response(JSON.stringify({
+            ok: true,
+            items,
+            total: state.conversations.length,
+            limit,
+            offset,
+          }), {
             status: 200,
             headers: { "Content-Type": "application/json" },
           });

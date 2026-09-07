@@ -778,16 +778,63 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertEqual(answer.exact_text, "")
         self.assertEqual(answer.inventory_metadata["family"], product_methods.CANONICAL_FAMILY_INVENTORY_METADATA)
         self.assertEqual(observed["inventory_metadata"]["document_count"], 1)
+        self.assertEqual(observed["inventory_metadata"]["total_count"], 1)
         self.assertEqual(observed["inventory_metadata"]["language_known_count"], 1)
         self.assertTrue(lock.ok)
         self.assertFalse(lock.exact_text_rendered)
         self.assertIn("Bibliotheque:", rendered.content)
+        self.assertIn("- 1 ouvrages repertories.", rendered.content)
+        self.assertIn("- 1 ouvrages affiches dans cette reponse.", rendered.content)
+        self.assertNotIn("documents supplementaires masques par borne", rendered.content)
         _assert_visible_surface_clean(self, rendered.content)
         self.assertIn("langue: fr", rendered.content)
         self.assertIn("42 pages", rendered.content)
         self.assertIn(RAW_TITLE, rendered.content)
         self.assertNotIn(RAW_TITLE, _json(observed))
         self.assertNotIn("RAW AUTHOR", _json(observed))
+
+    def test_inventory_metadata_at_render_limit_displays_all_retained_documents(self) -> None:
+        documents = tuple(
+            {
+                "document_id": f"doc-{index:02d}",
+                "doc_id_short": f"doc-{index:02d}",
+                "title": f"Ouvrage {index:02d}",
+                "metadata_status": "validated",
+            }
+            for index in range(1, 21)
+        )
+        result = _tool_result(
+            tool_name=tools.TOOL_CATALOG_LIST,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_CATALOG,
+            items=documents,
+            observation_fields={
+                "total_count": 20,
+                "displayed_count": 20,
+                "truncated": False,
+            },
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_INVENTORY_METADATA,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        observed = answer.to_observability()
+        visible_document_lines = [
+            line
+            for line in rendered.content.splitlines()
+            if line.split(".", 1)[0].isdigit()
+        ]
+
+        self.assertEqual(answer.inventory_metadata["document_count"], 20)
+        self.assertEqual(observed["inventory_metadata"]["document_count"], 20)
+        self.assertEqual(observed["inventory_metadata"]["total_count"], 20)
+        self.assertEqual(len(visible_document_lines), 20)
+        self.assertIn("- 20 ouvrages affiches dans cette reponse.", rendered.content)
+        self.assertNotIn("documents supplementaires masques par borne", rendered.content)
 
     def test_inventory_metadata_reports_visible_rows_separately_from_retained_documents(self) -> None:
         documents = tuple(
@@ -829,9 +876,56 @@ class BiblioAnswerObjectTests(unittest.TestCase):
         self.assertEqual(observed["inventory_metadata"]["document_count"], 25)
         self.assertEqual(observed["inventory_metadata"]["total_count"], 25)
         self.assertEqual(len(visible_document_lines), 20)
+        self.assertIn("- 25 ouvrages repertories.", rendered.content)
         self.assertIn("- 20 ouvrages affiches dans cette reponse.", rendered.content)
         self.assertNotIn("- 25 ouvrages affiches dans cette reponse.", rendered.content)
         self.assertIn("... 5 documents supplementaires masques par borne.", rendered.content)
+
+    def test_inventory_metadata_keeps_catalogue_retained_visible_and_hidden_counts_distinct(self) -> None:
+        documents = tuple(
+            {
+                "document_id": f"doc-{index:02d}",
+                "doc_id_short": f"doc-{index:02d}",
+                "title": f"Ouvrage {index:02d}",
+                "metadata_status": "validated",
+            }
+            for index in range(1, 26)
+        )
+        result = _tool_result(
+            tool_name=tools.TOOL_CATALOG_LIST,
+            status=tools.STATUS_OK,
+            reason_code=tools.REASON_OK,
+            endpoint_kind=catalogue.ENDPOINT_CATALOG,
+            items=documents,
+            observation_fields={
+                "total_count": 40,
+                "displayed_count": 25,
+                "truncated": True,
+            },
+        )
+
+        answer = answer_object.build_biblio_answer_object(
+            tool_results=(result,),
+            product_method=product_methods.PRODUCT_METHOD_INVENTORY_METADATA,
+            case_id="",
+        )
+        rendered = answer_object.render_biblio_answer_object(answer)
+        observed = answer.to_observability()
+        visible_document_lines = [
+            line
+            for line in rendered.content.splitlines()
+            if line.split(".", 1)[0].isdigit()
+        ]
+
+        self.assertEqual(answer.inventory_metadata["total_count"], 40)
+        self.assertEqual(answer.inventory_metadata["document_count"], 25)
+        self.assertEqual(observed["inventory_metadata"]["total_count"], 40)
+        self.assertEqual(observed["inventory_metadata"]["document_count"], 25)
+        self.assertEqual(len(visible_document_lines), 20)
+        self.assertIn("- 40 ouvrages repertories.", rendered.content)
+        self.assertIn("- 20 ouvrages affiches dans cette reponse.", rendered.content)
+        self.assertIn("... 5 documents supplementaires masques par borne.", rendered.content)
+        self.assertNotIn("... 20 documents supplementaires masques par borne.", rendered.content)
 
     def test_document_resolution_renders_unique_candidate_without_exact_excerpt(self) -> None:
         result = _tool_result(

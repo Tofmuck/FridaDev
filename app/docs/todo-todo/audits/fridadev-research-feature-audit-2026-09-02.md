@@ -6,16 +6,16 @@ Date : 2 septembre 2026. Statut : **audit livré pour lecture et décision de To
 > inchangée des F01–F24. La
 > [réconciliation Lot Z](../refactors/fridadev-research-audit-residual-consolidation-todo.md)
 > classe les 24 identifiants et leurs 34 lignes atomiques comme corrigés, avec
-> commits, tests, limites et effets dialogiques. Le micro-lot Biblio borné du
-> même jour corrige techniquement la réserve historique du libellé : le témoin
-> déterministe conserve 25 documents, en annonce et en rend 20, puis en signale
-> 5 comme masqués. Les deux appels agentiques autorisés n'ont toutefois observé
-> que 12 documents; la preuve produit discriminante reste donc ouverte. Z
-> demeure aussi ouvert : le résultat final de son unique découverte
-> Python n'a pas pu être récupéré et deux preuves Chromium sont bloquées par des
-> fixtures de pagination obsolètes; un témoin Python attend encore le mapping
-> Compose antérieur à F23. La roadmap n'est donc pas archivée et aucun vert
-> global n'est revendiqué.
+> commits, tests, limites et effets dialogiques. La réserve Biblio est corrigée
+> avec une limite de preuve documentée : le chemin agentique réel rend 12/12,
+> puis le même renderer hermétique prouve 25 retenus / 20 affichés / 5 masqués,
+> sans branche provider supplémentaire au-delà de 20. La cardinalité live de
+> 12 ne constitue plus un échec produit; elle déclenche une revalidation lorsque
+> le corpus dépassera 20. Les deux fixtures Chromium F17 et le témoin Compose
+> F23 sont réalignés. Z demeure toutefois ouvert : son unique découverte Python
+> récupérable exécute 3079 tests mais sort 1 avec 11 échecs et 7 erreurs, classés
+> en quatre familles de témoins/fakes historiques ou d'isolation de modules. La
+> roadmap n'est donc pas archivée et aucun vert global n'est revendiqué.
 
 ## 1. Où en est Frida ?
 
