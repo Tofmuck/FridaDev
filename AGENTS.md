@@ -45,6 +45,15 @@ prouves de 16 Mio au niveau applicatif pour le fichier audio, 17 Mio pour le
 corps HTTP et 305 secondes de tolerance Whisper. Elle ne leve aucune autre
 partie de la doctrine de consolidation.
 
+Exception explicite et bornee decidee par l'utilisateur le 8 septembre 2026:
+le chat Web peut adopter les deux compositions visuelles Figma validees,
+claire et sombre, avec choix persiste dans le navigateur. Cette adaptation
+porte uniquement sur le theme et la presentation du frontend existant. Elle
+doit conserver la meme structure, le meme compositeur et toutes les actions
+de conversations, repertoires, fichiers, notes et outils dans les deux modes.
+Elle n'autorise ni nouvelle route, ni nouveau workflow metier, ni version
+mobile dediee, ni implementation du dialogue oral.
+
 Chaque lot doit demontrer: pas de capacite produit ajoutee, comportements
 legitimes preserves hors bug corrige, complexite stable ou reduite, ancien
 chemin retire quand il est remplace, et invariants utiles verrouilles par des

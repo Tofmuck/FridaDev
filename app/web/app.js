@@ -16,6 +16,10 @@
   if (!chatCopyExport) {
     throw new Error("FridaChatCopyExport module missing");
   }
+  const chatTheme = window.FridaChatTheme;
+  if (!chatTheme) {
+    throw new Error("FridaChatTheme module missing");
+  }
   const mainReasoningControl = window.FridaMainReasoningControl;
   if (!mainReasoningControl) {
     throw new Error("FridaMainReasoningControl module missing");
@@ -103,6 +107,7 @@
   const sidebar = document.querySelector('.sidebar');
   const sidebarBackdrop = $("#sidebarBackdrop");
   const btnMenu = $("#btnMenu");
+  chatTheme.createThemeController({ document, storage: localStorage });
   const openSidebar  = () => { sidebar.classList.add('open');    sidebarBackdrop && sidebarBackdrop.classList.add('show'); };
   const closeSidebar = () => { sidebar.classList.remove('open'); sidebarBackdrop && sidebarBackdrop.classList.remove('show'); };
   if (btnMenu)         btnMenu.addEventListener('click', openSidebar);
@@ -192,7 +197,7 @@
 
   const createMessageNode = (role, text = "", timestamp = null) => {
     const wrapper = document.createElement("div");
-    wrapper.className = `msg-wrapper ${role === "user" ? "me" : ""}`;
+    wrapper.className = `msg-wrapper ${role === "user" ? "me" : "assistant"}`;
 
     const bubble = document.createElement("div");
     bubble.className = `msg ${role === "user" ? "me" : ""}`;
@@ -210,6 +215,25 @@
       status.setAttribute("aria-live", "polite");
     }
 
+    if (role === "assistant") {
+      const identity = document.createElement("div");
+      identity.className = "assistant-identity";
+      identity.setAttribute("aria-hidden", "true");
+      const avatar = document.createElement("span");
+      avatar.className = "assistant-avatar-shell";
+      const image = document.createElement("img");
+      image.src = "./fridalogo.png";
+      image.alt = "";
+      image.width = 22;
+      image.height = 22;
+      const name = document.createElement("span");
+      name.className = "assistant-name";
+      name.textContent = "Frida";
+      avatar.appendChild(image);
+      identity.appendChild(avatar);
+      identity.appendChild(name);
+      wrapper.appendChild(identity);
+    }
     wrapper.appendChild(bubble);
     if (status) {
       wrapper.appendChild(status);

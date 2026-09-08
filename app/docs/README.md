@@ -14,6 +14,8 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 
 ### Current-state
 
+- [Contrat visuel du chat Web clair et sombre](states/specs/chat-web-visual-themes-contract.md) : deux thèmes sur une structure unique, choix navigateur persistant, géométrie du compositeur identique et conservation obligatoire de toutes les actions existantes.
+
 - [Cadrage actif du dialogue oral Web](todo-todo/Dialogue/fridadev-dialogue-oral-web-todo.md) : boucle semi-duplex proposée pour l'usage en voiture depuis le téléphone — détection locale de parole, STT en ligne, pipeline Frida inchangé, TTS puis réarmement automatique. Document de décision uniquement ; aucune implémentation encore autorisée.
 
 - [Archive de consolidation résiduelle du grand audit de recherche](todo-done/refactors/fridadev-research-audit-residual-consolidation-todo.md) : L1 à L7 et Z sont fermés ; les 24 identifiants historiques et leurs 34 lignes atomiques restent classés corrigés. Biblio conserve sa preuve composée 12/12 puis 25/20/5 et son déclencheur de revalidation au premier corpus live supérieur à 20. Le préflight corrigé passe 2/2 et l'unique découverte complète de fermeture passe 3088/3088 en 614,653 s, sans échec, erreur ni skip, exit 0.
@@ -138,6 +140,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 - Contrat du mode Adobe Photoshop / Illustrator: `states/specs/fridadev-adobe-docs-mode-contract.md`
 - Extension OCR archivee des documents actifs de conversation: `todo-done/product/active-conversation-documents-ocr-todo.md`
 - Copie de bulle et export Markdown du chat: `states/specs/chat-copy-export-contract.md`
+- Interface du chat Web, thèmes clair et sombre: `states/specs/chat-web-visual-themes-contract.md`
 - Contrat du dashboard long terme: `states/specs/dashboard-long-term-observability-contract.md`
 - Discipline triadique `Warum / Wofür / Wozu` du `validation_agent`: `states/specs/hermeneutic-warum-wofuer-wozu-triad-contract.md`
 

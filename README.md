@@ -21,6 +21,8 @@ testable et auditable sans lui ajouter opportunément de nouvelles capacités.
 
 ### Dialogue et continuité
 
+- interface Web disponible dans deux thèmes visuels, clair et sombre, avec une
+  géométrie et des capacités identiques ; le choix reste local au navigateur ;
 - conversation texte et dictée vocale optionnelle ; la dictée reste un blob,
   un upload et une transcription uniques, bornés à cinq minutes ;
 - réponses JSON ou streaming `text/plain`, avec un terminal de contrôle unique ;
@@ -229,6 +231,7 @@ domaine concerné. Les principales portes d'entrée sont :
 - [pipeline runtime courant](app/docs/states/architecture/fridadev-current-runtime-pipeline.md) ;
 - [Continuity Payload, manifeste et Capsule](app/docs/states/specs/frida-v1-continuity-payload-contract.md) ;
 - [protocole de streaming](app/docs/states/specs/streaming-protocol.md) ;
+- [interface du chat Web, thèmes clair et sombre](app/docs/states/specs/chat-web-visual-themes-contract.md) ;
 - [répertoires de travail](app/docs/states/specs/workspace-folders-contract.md) ;
 - [documents actifs](app/docs/states/specs/active-conversation-documents-contract.md) ;
 - [Biblio native et Catalogue](app/docs/states/specs/frida-biblio-native-catalogue-contract.md) ;

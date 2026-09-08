@@ -40,17 +40,23 @@ function activeDocumentsMockScript() {
 
         if (url.pathname === "/api/conversations" && method === "GET") {
           state.conversationFetches += 1;
+          const limit = Number.parseInt(url.searchParams.get("limit") || "", 10);
+          const offset = Number.parseInt(url.searchParams.get("offset") || "", 10);
+          const items = [{
+            id: "conv-browser",
+            conversation_id: "conv-browser",
+            title: "Thread navigateur",
+            created_at: "2026-05-03T09:00:00Z",
+            updated_at: "2026-05-03T09:00:00Z",
+            message_count: 0,
+            last_message_preview: "",
+          }].slice(offset, offset + limit);
           return new Response(JSON.stringify({
             ok: true,
-            items: [{
-              id: "conv-browser",
-              conversation_id: "conv-browser",
-              title: "Thread navigateur",
-              created_at: "2026-05-03T09:00:00Z",
-              updated_at: "2026-05-03T09:00:00Z",
-              message_count: 0,
-              last_message_preview: "",
-            }],
+            items,
+            total: 1,
+            limit,
+            offset,
           }), {
             status: 200,
             headers: { "Content-Type": "application/json" },
@@ -261,7 +267,7 @@ test('chat active conversation documents upload, OCR states, reload and remove w
 
     await dropFile(page, 'scan.pdf', 'application/pdf', 'TEXTE OCR BRUT NE DOIT PAS APPARAITRE');
     await page.waitForFunction(() =>
-      document.querySelector('#activeDocumentsStatus')?.textContent.includes('OCR si nécessaire'));
+      document.querySelector('#activeDocumentsStatus')?.textContent.includes('Analyse du PDF pour lecture textuelle ou visuelle'));
     const pendingOcrText = await page.locator('#activeDocumentsStatus').textContent();
     assert.equal(String(pendingOcrText || '').includes('%'), false);
     await page.waitForFunction(() =>

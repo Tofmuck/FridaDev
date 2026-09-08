@@ -551,6 +551,91 @@ test('chat composer keeps desktop textarea and action row from overlapping contr
   });
 });
 
+test('chat theme switch preserves the shared desktop layout and composer capabilities', async () => {
+  await openBrowserPage({
+    mockScript: chatMockScript({ streamMode: 'done' }),
+    afterPage: (page) => page.setViewportSize({ width: 1440, height: 900 }),
+  }, async (page) => {
+    await page.waitForSelector('#message:not([disabled])');
+
+    assert.equal(await page.locator('#btnTheme').count(), 1, 'the theme switch must be visible');
+
+    const readState = () => page.evaluate(() => {
+      const rect = (selector) => {
+        const box = document.querySelector(selector).getBoundingClientRect();
+        return {
+          left: box.left,
+          top: box.top,
+          width: box.width,
+          height: box.height,
+        };
+      };
+      const visibleControlIds = [
+        'btnMic',
+        'btnWebSearch',
+        'btnActiveDocument',
+        'btnImageGeneration',
+        'btnAdobeMode',
+        'btnBiblioMode',
+        'btnNotesMode',
+        'btnAgendaMode',
+      ].filter((id) => {
+        const node = document.getElementById(id);
+        return Boolean(node && node.getBoundingClientRect().width && node.getBoundingClientRect().height);
+      });
+      const submit = document.querySelector('#ask button[type="submit"]');
+      if (submit && submit.getBoundingClientRect().width && submit.getBoundingClientRect().height) {
+        visibleControlIds.push('submit');
+      }
+      return {
+        theme: document.documentElement.dataset.theme,
+        composer: rect('#ask'),
+        textarea: rect('#message'),
+        actions: rect('.composer-actions'),
+        visibleControlIds,
+        themeColor: document.querySelector('meta[name="theme-color"]')?.content,
+        themeLabel: document.querySelector('#btnTheme')?.getAttribute('aria-label'),
+      };
+    });
+
+    const light = await readState();
+    assert.equal(light.theme, 'light');
+    assert.equal(light.themeColor, '#f8f6f3');
+    assert.equal(light.themeLabel, 'Passer au mode sombre');
+    assert.deepEqual(light.visibleControlIds, [
+      'btnMic',
+      'btnWebSearch',
+      'btnActiveDocument',
+      'btnImageGeneration',
+      'btnAdobeMode',
+      'btnBiblioMode',
+      'btnNotesMode',
+      'btnAgendaMode',
+      'submit',
+    ]);
+
+    await page.click('#btnTheme');
+    const dark = await readState();
+    assert.equal(dark.theme, 'dark');
+    assert.equal(dark.themeColor, '#0b1018');
+    assert.equal(dark.themeLabel, 'Passer au mode clair');
+    assert.equal(await page.evaluate(() => localStorage.getItem('frida.chat.theme')), 'dark');
+    assert.deepEqual(dark.composer, light.composer, 'the composer must not move between themes');
+    assert.deepEqual(dark.textarea, light.textarea, 'the textarea must not move between themes');
+    assert.deepEqual(dark.actions, light.actions, 'the tool grid must not move between themes');
+    assert.deepEqual(dark.visibleControlIds, light.visibleControlIds);
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#message:not([disabled])');
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'dark');
+    assert.equal(await page.locator('#btnTheme').getAttribute('aria-label'), 'Passer au mode clair');
+
+    await page.click('#btnTheme');
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light');
+    assert.equal(await page.evaluate(() => localStorage.getItem('frida.chat.theme')), 'light');
+  });
+});
+
 test('chat reasoning shortcut stays compact on desktop and mobile', async () => {
   for (const viewport of [
     { width: 1440, height: 900, name: 'desktop', maxWidth: 150 },
