@@ -37,7 +37,10 @@ qu'il était enregistré.
 Le mode installé Safari respecte `viewport-fit=cover`, les safe areas et
 `100dvh`. Le document ne dessine ni barre d'état iOS ni indicateur d'accueil :
 ces éléments appartiennent au système. Le manifeste et le chrome mobile
-utilisent le fond `#060913` afin d'éviter un flash clair au démarrage.
+utilisent le fond `#060913` afin d'éviter un flash clair au démarrage. Le fil
+conversationnel est strictement vertical : son contenu ne dépasse pas la
+largeur du viewport et les gestes horizontaux ne déplacent pas le rail de
+lecture. Le zoom par pincement reste autorisé.
 
 ## Invariants fonctionnels
 
@@ -144,4 +147,6 @@ La preuve iPhone impose en plus : présentation mobile sombre sans écraser le
 thème desktop stocké, géométrie `414 × 62` et `390 × 146`, logo officiel,
 composer principal `textarea + micro + envoi`, rail bas, bouton Dialogue
 désactivé, ouverture/fermeture des outils secondaires, tiroir de navigation et
-présence effective des actions de répertoire.
+présence effective des actions de répertoire. Elle vérifie aussi l'égalité des
+largeurs `scrollWidth/clientWidth` du document, de la zone principale et du fil,
+ainsi que son verrouillage tactile sur l'axe vertical.

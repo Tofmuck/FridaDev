@@ -3545,11 +3545,15 @@ body {
 
   :root[data-presentation-theme="mobile-dialogue"] .chat {
     background: transparent;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
     overscroll-behavior-y: contain;
+    touch-action: pan-y pinch-zoom;
   }
 
   :root[data-presentation-theme="mobile-dialogue"] .hero {
     max-width: none;
+    width: auto;
     margin: 18px 16px 19px;
     padding: 0;
     overflow: hidden;

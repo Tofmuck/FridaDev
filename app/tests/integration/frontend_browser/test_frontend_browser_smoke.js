@@ -756,6 +756,55 @@ test('iPhone chat uses Figma Dialogue vivant without changing the stored desktop
   });
 });
 
+test('iPhone conversation stays on the vertical axis during touch scrolling', async () => {
+  await openBrowserPage({
+    mockScript: chatMockScript({ streamMode: 'done' }),
+    afterPage: (page) => page.setViewportSize({ width: 414, height: 896 }),
+  }, async (page) => {
+    await page.waitForSelector('#message:not([disabled])');
+    await page.waitForFunction(() => document.documentElement.dataset.presentationTheme === 'mobile-dialogue');
+
+    const overflow = await page.evaluate(() => {
+      const chat = document.querySelector('.chat');
+      const main = document.querySelector('.main');
+      const chatStyle = getComputedStyle(chat);
+      const initial = {
+        documentClientWidth: document.documentElement.clientWidth,
+        documentScrollWidth: document.documentElement.scrollWidth,
+        bodyClientWidth: document.body.clientWidth,
+        bodyScrollWidth: document.body.scrollWidth,
+        mainClientWidth: main.clientWidth,
+        mainScrollWidth: main.scrollWidth,
+        chatClientWidth: chat.clientWidth,
+        chatScrollWidth: chat.scrollWidth,
+        overflowX: chatStyle.overflowX,
+        overscrollBehaviorX: chatStyle.overscrollBehaviorX,
+        touchAction: chatStyle.touchAction,
+      };
+      chat.scrollLeft = 160;
+      document.documentElement.scrollLeft = 160;
+      document.body.scrollLeft = 160;
+      return {
+        ...initial,
+        chatScrollLeft: chat.scrollLeft,
+        documentScrollLeft: document.documentElement.scrollLeft,
+        bodyScrollLeft: document.body.scrollLeft,
+      };
+    });
+
+    assert.equal(overflow.documentScrollWidth, overflow.documentClientWidth);
+    assert.equal(overflow.bodyScrollWidth, overflow.bodyClientWidth);
+    assert.equal(overflow.mainScrollWidth, overflow.mainClientWidth);
+    assert.equal(overflow.chatScrollWidth, overflow.chatClientWidth);
+    assert.equal(overflow.overflowX, 'hidden');
+    assert.equal(overflow.overscrollBehaviorX, 'none');
+    assert.equal(overflow.touchAction, 'pan-y pinch-zoom');
+    assert.equal(overflow.chatScrollLeft, 0);
+    assert.equal(overflow.documentScrollLeft, 0);
+    assert.equal(overflow.bodyScrollLeft, 0);
+  });
+});
+
 test('chat reasoning shortcut stays compact on desktop and mobile', async () => {
   for (const viewport of [
     { width: 1440, height: 900, name: 'desktop', maxWidth: 150 },

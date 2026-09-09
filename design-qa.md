@@ -78,6 +78,12 @@ Le bouton Dialogue reste honnêtement désactivé jusqu'au chantier oral. Le
 bouton `…` rend Adobe, Biblio, Notes et Agenda accessibles dans une palette
 secondaire au lieu de les supprimer.
 
+Le rail conversationnel est borné à la largeur réelle de `414 px`. Le
+séparateur temporel n'ajoute plus ses marges à une largeur déjà fixée à 100 % ;
+le document, la zone principale et le chat ont donc tous `scrollWidth ==
+clientWidth`. Le geste tactile du fil reste réservé à l'axe vertical, sans
+dérive élastique gauche/droite, tout en conservant le zoom par pincement.
+
 L'état navigation a été contrôlé avec le tiroir ouvert à `354 px` : bouton de
 fermeture, Nouveau chat, création de dossier, hiérarchie, conversation,
 fichiers, OCR, note et six commandes du dossier restent reliés au DOM actuel.
