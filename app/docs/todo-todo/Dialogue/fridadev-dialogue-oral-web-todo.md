@@ -318,9 +318,9 @@ erreur JSON content-free : `422` pour l'entrée locale invalide, `502` pour une
 réponse `200` invalide ou un rejet `400/404/422` du contrat fixe, et `503` pour
 timeout, transport, `401/403/429` ou `5xx`. Aucun corps fournisseur, texte ou
 audio partiel n'est projeté. Pendant la lecture de `response.raw`, les classes
-réelles `urllib3.exceptions.ReadTimeoutError` et `ProtocolError` sont
-respectivement classées comme timeout et transport ; les autres erreurs de
-données illisibles restent des réponses `502` fermées.
+réelles `urllib3.exceptions.ReadTimeoutError`, `ProtocolError` et `SSLError`
+sont classées respectivement comme timeout, transport et transport ; les autres
+erreurs de données illisibles restent des réponses `502` fermées.
 
 Cette frontière reste inactive : aucun JavaScript ne l'appelle, le bouton
 Dialogue demeure désactivé et aucun appel TTS OpenRouter réel n'a été exécuté

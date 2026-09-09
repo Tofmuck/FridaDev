@@ -240,7 +240,13 @@ def synthesize_dialogue_speech(
             elif (
                 request_error_class is not None
                 and isinstance(exc, request_error_class)
-            ) or isinstance(exc, urllib3_exceptions.ProtocolError):
+            ) or isinstance(
+                exc,
+                (
+                    urllib3_exceptions.ProtocolError,
+                    urllib3_exceptions.SSLError,
+                ),
+            ):
                 reason_code = REASON_PROVIDER_TRANSPORT_ERROR
                 http_status = 503
             else:

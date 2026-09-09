@@ -429,27 +429,42 @@ class DialogueTtsServiceTests(unittest.TestCase):
             repr(result) + str(result.to_payload()) + "\n".join(self.logger.lines),
         )
 
-    def test_stream_read_urllib3_protocol_error_is_unavailable(self) -> None:
-        private_marker = "private-stream-transport-marker"
-        response = _StreamingResponse(
-            read_error=urllib3_exceptions.ProtocolError(private_marker)
+    def test_stream_read_urllib3_transport_errors_are_unavailable(self) -> None:
+        cases = (
+            (
+                urllib3_exceptions.ProtocolError(
+                    "private-stream-protocol-marker"
+                ),
+                "private-stream-protocol-marker",
+            ),
+            (
+                urllib3_exceptions.SSLError("private-stream-ssl-marker"),
+                "private-stream-ssl-marker",
+            ),
         )
 
-        result, _ = self._synthesize(transport=_FakeTransport(response))
+        for error, private_marker in cases:
+            with self.subTest(error_type=type(error).__name__):
+                response = _StreamingResponse(read_error=error)
+                result, _ = self._synthesize(transport=_FakeTransport(response))
 
-        self.assertFalse(result.ok)
-        self.assertEqual(
-            result.reason_code,
-            "dialogue_tts_provider_transport_error",
-        )
-        self.assertEqual(result.http_status, 503)
-        self.assertEqual(result.audio_bytes, b"")
-        self.assertTrue(response.closed)
-        self.assertEqual(response.close_calls, 1)
-        self.assertNotIn(
-            private_marker,
-            repr(result) + str(result.to_payload()) + "\n".join(self.logger.lines),
-        )
+                self.assertFalse(result.ok)
+                self.assertEqual(
+                    result.reason_code,
+                    "dialogue_tts_provider_transport_error",
+                )
+                self.assertEqual(result.http_status, 503)
+                self.assertEqual(result.audio_bytes, b"")
+                self.assertTrue(response.closed)
+                self.assertEqual(response.close_calls, 1)
+                self.assertNotIn(
+                    private_marker,
+                    (
+                        repr(result)
+                        + str(result.to_payload())
+                        + "\n".join(self.logger.lines)
+                    ),
+                )
 
     def test_stream_read_control_flow_exceptions_propagate_and_close(self) -> None:
         for error_type in (KeyboardInterrupt, SystemExit):

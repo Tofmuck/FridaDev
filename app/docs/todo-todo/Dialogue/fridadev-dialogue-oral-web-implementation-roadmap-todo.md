@@ -263,10 +263,9 @@ l'envoi.
 
 ## Lot D2 — frontière TTS et flux audio
 
-**Statut : définitivement refermé, poussé et livré par reconstruction ciblée
-du seul service applicatif après correction de la classification des erreurs
-`urllib3` pendant la lecture streaming. La frontière reste inactive et D3
-reste non commencé.**
+**Statut : micro-réouvert uniquement pour classer `urllib3.exceptions.SSLError`
+pendant la lecture streaming. Le patch est vérifié hors réseau ; la livraison
+ciblée reste à rejouer. La frontière reste inactive et D3 reste non commencé.**
 
 **Livrable :** une route TTS Frida qui retourne uniquement les octets audio
 confirmés de la voix Soleil, sans encore activer le mode produit.
@@ -424,6 +423,34 @@ du seul service applicatif. D3 reste non commencé.**
   entre checkout et conteneur ;
 - la sélection `82/82` repasse depuis l'image réellement déployée, sans montage
   du checkout, `--network none`, filesystem read-only et `/tmp` en `tmpfs`.
+
+### Correctif de classification SSL streaming D2 — 9 septembre 2026
+
+**Statut intermédiaire : correctif minimal vérifié hors réseau ; livraison
+ciblée du seul service applicatif à rejouer avant la fermeture définitive. D3
+reste non commencé.**
+
+- micro-réouverture depuis `main`, HEAD/upstream
+  `de588870ba19e5568886c0c15843d5cf1d073889`, divergence `0/0`, worktree
+  propre ;
+- environnement réellement embarqué : Requests `2.32.3`, `urllib3 2.7.0` ;
+  `SSLError` hérite directement de `urllib3.exceptions.HTTPError`, ni de
+  `ProtocolError` ni des exceptions Requests déjà reconnues ;
+- rouge causal hermétique : `SSLError` pendant `response.raw.read()` produisait
+  à tort `502/dialogue_tts_provider_audio_unreadable`, tandis que le sous-cas
+  `ProtocolError` restait vert ;
+- patch local au groupe transport de la lecture : `SSLError` devient
+  `503/dialogue_tts_provider_transport_error`. Une erreur générique telle que
+  `OSError` reste `502` ;
+- le témoin réel vérifie une fermeture unique et l'absence de l'exception brute
+  dans le résultat, le payload et les logs ;
+- mutation contrôlée : retirer uniquement `SSLError` du groupe transport remet
+  son sous-cas au rouge avec le `502` fautif ; les empreintes du service et du
+  test reviennent exactement à leur valeur préalable après restauration ;
+- la sélection D1/D2, routes, WSGI et client OpenRouter repasse `82/82` sans
+  réseau, dans un conteneur jetable, checkout en lecture seule et `/tmp` en
+  `tmpfs` ; aucun provider réel, frontend, STT, limite, streaming, timeout ou
+  lot D3 n'est modifié.
 
 ---
 
