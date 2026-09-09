@@ -5,6 +5,11 @@ const WorkspaceFolderTreeUiHelpers = (
     ? window.FridaWorkspaceFolders
     : (typeof require !== 'undefined' ? require('./chat_workspace_folders.js') : null)
 );
+const WorkspaceFolderTreeSidebarIcons = (
+  typeof window !== 'undefined' && window.FridaChatSidebarIcons
+    ? window.FridaChatSidebarIcons
+    : (typeof require !== 'undefined' ? require('./chat_sidebar_icons.js') : null)
+);
 
 function createWorkspaceFolderTreeRenderer({
   threadsUl,
@@ -28,13 +33,14 @@ function createWorkspaceFolderTreeRenderer({
     const li = doc.createElement('li');
     li.className = 'workspace-folder-toolbar';
     const label = doc.createElement('span');
-    label.textContent = 'Répertoires';
+    label.textContent = 'DOSSIERS';
     li.appendChild(label);
     const addBtn = doc.createElement('button');
     addBtn.type = 'button';
     addBtn.className = 'workspace-folder-add';
-    addBtn.textContent = '+';
+    WorkspaceFolderTreeSidebarIcons?.setSidebarButtonIcon?.(addBtn, doc, 'plus');
     addBtn.title = 'Créer un répertoire';
+    addBtn.setAttribute('aria-label', 'Créer un répertoire');
     addBtn.addEventListener('click', (event) => {
       event.stopPropagation();
       void onCreate();
@@ -66,8 +72,9 @@ function createWorkspaceFolderTreeRenderer({
     toggle.type = 'button';
     toggle.className = 'workspace-folder-toggle';
     toggle.title = collapsed ? 'Déplier le répertoire' : 'Replier le répertoire';
+    toggle.setAttribute('aria-label', toggle.title);
     toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-    toggle.textContent = collapsed ? '▸' : '▾';
+    WorkspaceFolderTreeSidebarIcons?.setSidebarButtonIcon?.(toggle, doc, collapsed ? 'chevron-right' : 'chevron-down');
     toggle.addEventListener('click', (event) => {
       event.stopPropagation();
       toggleFolderCollapsed(folder.id);
@@ -103,25 +110,26 @@ function createWorkspaceFolderTreeRenderer({
     const actions = doc.createElement('span');
     actions.className = 'workspace-folder-actions';
     const actionSpecs = [
-      ['↑', 'Monter', index === 0, () => onReorder(folder.id, -1)],
-      ['↓', 'Descendre', index >= folders.length - 1, () => onReorder(folder.id, 1)],
-      ['+F', 'Ajouter un fichier au répertoire', false, () => onUploadFile(folder)],
-      ['··', 'Renommer', false, () => onRename(folder)],
-      ['×', 'Supprimer', false, () => onDelete(folder)],
+      ['arrow-up', 'Monter', index === 0, () => onReorder(folder.id, -1)],
+      ['arrow-down', 'Descendre', index >= folders.length - 1, () => onReorder(folder.id, 1)],
+      ['pencil', 'Renommer', false, () => onRename(folder)],
+      ['file-plus', 'Ajouter un fichier au répertoire', false, () => onUploadFile(folder)],
+      ['trash-2', 'Supprimer', false, () => onDelete(folder)],
     ];
     if (artifactPanels?.requestCreateNote) {
-      actionSpecs.splice(3, 0, [
-        '+N',
+      actionSpecs.splice(4, 0, [
+        'notebook-pen',
         'Créer une note dans le répertoire',
         false,
         () => artifactPanels.requestCreateNote(folder),
       ]);
     }
-    actionSpecs.forEach(([text, title, disabled, handler]) => {
+    actionSpecs.forEach(([iconName, title, disabled, handler]) => {
       const btn = doc.createElement('button');
       btn.className = 'workspace-folder-action';
       btn.title = title;
-      btn.textContent = text;
+      btn.setAttribute('aria-label', title);
+      WorkspaceFolderTreeSidebarIcons?.setSidebarButtonIcon?.(btn, doc, iconName);
       btn.disabled = Boolean(disabled);
       btn.addEventListener('click', (event) => {
         event.stopPropagation();
@@ -143,17 +151,17 @@ function createWorkspaceFolderTreeRenderer({
 
     if (collapsed) return;
 
-    fileRowsRenderer?.appendFileRows?.(folder);
-    artifactPanels?.appendRows?.(folder);
-
     if (!folderThreads.length) {
       const empty = doc.createElement('li');
       empty.className = 'workspace-folder-empty';
       empty.textContent = 'Aucune conversation';
       threadsUl.appendChild(empty);
-      return;
+    } else {
+      folderThreads.forEach((thread) => appendThreadRow(thread, true));
     }
-    folderThreads.forEach((thread) => appendThreadRow(thread, true));
+
+    fileRowsRenderer?.appendFileRows?.(folder);
+    artifactPanels?.appendRows?.(folder);
   };
 
   return Object.freeze({ appendToolbar, appendNoFoldersEmpty, appendFolderRow });

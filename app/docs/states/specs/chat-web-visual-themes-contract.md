@@ -21,6 +21,10 @@ constitue pas une seconde interface. À `1440 × 900`, la sidebar mesure
 `272 px`, la barre supérieure `46 px`, la zone principale `1168 px` et le
 compositeur `1080 × 134 px`, placé à `316 × 744`.
 
+La hauteur effective du compositeur alimente sa variable de layout à chaque
+redimensionnement. Les panneaux d'outil restent ainsi au-dessus de lui quand
+le viewport existant passe du bureau au format étroit.
+
 ## Invariants fonctionnels
 
 Dans les deux thèmes restent présents et opérants :
@@ -35,6 +39,15 @@ Dans les deux thèmes restent présents et opérants :
 
 Le changement de thème ne déclenche aucune requête applicative et ne réordonne
 aucun état. La même règle vaut après rechargement de la page.
+
+La sidebar conserve une seule structure dans les deux thèmes. À `1440 × 900`,
+son contenu utile mesure `244 px` dans les `272 px` du panneau. Les libellés de
+section sont `DOSSIERS` et `CONVERSATIONS`. Chaque répertoire occupe une ligne
+de `34 px` au repos ; son ouverture révèle, dans cet ordre, ses conversations,
+ses fichiers puis ses panneaux Notes, Exports et Images. Les commandes du
+répertoire suivent l'ordre Figma : monter, descendre, renommer, ajouter un
+fichier, créer une note, supprimer. Les icônes de répertoire choisies par
+l'utilisateur restent distinctes de ces commandes.
 
 ## Identité visuelle
 
@@ -54,6 +67,11 @@ Les fonds du viewport sont des aplats, sans image ni halo décoratif global :
 `#fbf8f3` en clair et `#0d1117` en sombre. Le seul halo visuel volontaire est
 celui de l'identité Frida. L'icône de thème provient de l'asset Figma exporté,
 et non d'un glyphe ou d'un dessin CSS approché.
+
+Les commandes compactes de la sidebar utilisent les SVG de la bibliothèque
+Lucide distribués avec leur licence ISC. Aucun caractère typographique ou
+emoji ne sert d'icône. Les titres et libellés ARIA conservent le nom complet de
+chaque action ; l'iconographie ne retire donc ni fonction ni accessibilité.
 
 ## Limites
 
@@ -79,5 +97,7 @@ node --test --test-name-pattern="workspace folders start collapsed" \
 La preuve navigateur doit comparer les rectangles du formulaire, du textarea
 et de la grille d'outils avant et après bascule, vérifier les dimensions et les
 couleurs Figma à `1440 × 900`, la persistance après rechargement et la présence
-des contrôles existants. La preuve Workspace verrouille séparément les actions
-de répertoire, fichier, sélection, OCR et déplacement de conversation.
+des contrôles existants. La preuve Workspace verrouille séparément les
+dimensions clair/sombre, les icônes et leur ordre, ainsi que les actions de
+répertoire, conversation, fichier, note, export, image, sélection, OCR et
+déplacement de conversation.

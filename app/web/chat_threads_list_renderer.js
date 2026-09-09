@@ -1,5 +1,11 @@
 'use strict';
 
+const ConversationListSidebarIcons = (
+  typeof window !== 'undefined' && window.FridaChatSidebarIcons
+    ? window.FridaChatSidebarIcons
+    : (typeof require !== 'undefined' ? require('./chat_sidebar_icons.js') : null)
+);
+
 function createConversationListRenderer({
   threadsUl,
   documentObj,
@@ -31,6 +37,13 @@ function createConversationListRenderer({
     const main = doc.createElement('div');
     main.className = 'thread-main';
 
+    const kindIcon = ConversationListSidebarIcons?.createSidebarIcon?.(
+      doc,
+      nested ? 'message-circle' : (thread.id === currentId ? 'circle-dot' : 'circle'),
+      'thread-kind-icon',
+    );
+    if (kindIcon) main.appendChild(kindIcon);
+
     const titleSpan = doc.createElement('span');
     titleSpan.className = 'title';
     titleSpan.textContent = thread.title || 'Sans titre';
@@ -39,7 +52,8 @@ function createConversationListRenderer({
     const editBtn = doc.createElement('button');
     editBtn.className = 'thread-edit';
     editBtn.title = 'Renommer';
-    editBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+    editBtn.setAttribute('aria-label', 'Renommer');
+    ConversationListSidebarIcons?.setSidebarButtonIcon?.(editBtn, doc, 'pencil');
     editBtn.addEventListener('click', (event) => {
       event.stopPropagation();
       onRename(li, thread.id);
@@ -49,12 +63,17 @@ function createConversationListRenderer({
     const deleteBtn = doc.createElement('button');
     deleteBtn.className = 'thread-del';
     deleteBtn.title = 'Supprimer';
-    deleteBtn.innerHTML = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="1" y1="1" x2="9" y2="9"/><line x1="9" y1="1" x2="1" y2="9"/></svg>';
+    deleteBtn.setAttribute('aria-label', 'Supprimer');
+    ConversationListSidebarIcons?.setSidebarButtonIcon?.(deleteBtn, doc, 'trash-2');
     deleteBtn.addEventListener('click', async (event) => {
       event.stopPropagation();
       await onDelete(li, thread.id);
     });
     main.appendChild(deleteBtn);
+    if (nested) {
+      const dragIcon = ConversationListSidebarIcons?.createSidebarIcon?.(doc, 'grip-vertical', 'thread-drag-icon');
+      if (dragIcon) main.appendChild(dragIcon);
+    }
     li.appendChild(main);
 
     const timestamp = thread.updated_at || thread.created_at;
@@ -110,7 +129,9 @@ function createConversationListRenderer({
     if (folders.length) {
       const separator = doc.createElement('li');
       separator.className = 'workspace-folder-separator';
-      separator.textContent = 'Conversations hors répertoire';
+      separator.textContent = 'CONVERSATIONS';
+      separator.title = 'Conversations hors répertoire';
+      separator.setAttribute('aria-label', 'Conversations hors répertoire');
       folderBinding?.bindConversationDropTarget?.(separator, null);
       threadsUl.appendChild(separator);
     }

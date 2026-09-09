@@ -272,6 +272,15 @@ test('workspace folders start collapsed, expand on demand and move by drag-and-d
     });
     await page.waitForSelector('.workspace-folder-row');
     await assertTextContains(page.locator('.workspace-folder-row'), 'Projet Tulu');
+    assert.equal((await page.locator('.workspace-folder-toolbar > span').first().textContent()).trim(), 'DOSSIERS');
+    assert.equal(
+      await page.locator('.workspace-folder-add [data-sidebar-icon]').getAttribute('data-sidebar-icon'),
+      'plus',
+    );
+    assert.equal(
+      await page.locator('.workspace-folder-toggle [data-sidebar-icon]').getAttribute('data-sidebar-icon'),
+      'chevron-right',
+    );
     assert.equal(await page.locator('.workspace-folder-svg').count(), 1);
     assert.equal(await page.locator('.workspace-folder-svg-front').count(), 1);
     assert.equal(await page.locator('.workspace-folder-icon').first().getAttribute('title'), 'Dossier');
@@ -283,16 +292,99 @@ test('workspace folders start collapsed, expand on demand and move by drag-and-d
     await page.locator('.workspace-folder-row').click({ position: { x: 92, y: 10 } });
     await page.waitForSelector('.workspace-folder-files');
     assert.equal(await page.locator('.workspace-folder-toggle').first().getAttribute('aria-expanded'), 'true');
+    assert.equal(
+      await page.locator('.workspace-folder-toggle [data-sidebar-icon]').getAttribute('data-sidebar-icon'),
+      'chevron-down',
+    );
+    assert.deepEqual(
+      await page.locator('.workspace-folder-actions [data-sidebar-icon]').evaluateAll((nodes) => (
+        nodes.map((node) => node.getAttribute('data-sidebar-icon'))
+      )),
+      ['arrow-up', 'arrow-down', 'pencil', 'file-plus', 'notebook-pen', 'trash-2'],
+    );
+    const folderGeometry = await page.locator('.workspace-folder-row').first().evaluate((node) => {
+      const row = node.getBoundingClientRect();
+      const main = node.querySelector('.workspace-folder-main').getBoundingClientRect();
+      const actions = node.querySelector('.workspace-folder-actions').getBoundingClientRect();
+      return {
+        rowWidth: Math.round(row.width),
+        mainHeight: Math.round(main.height),
+        actionsHeight: Math.round(actions.height),
+        actionsOffset: Math.round(actions.left - row.left),
+      };
+    });
+    assert.deepEqual(folderGeometry, {
+      rowWidth: 244,
+      mainHeight: 34,
+      actionsHeight: 20,
+      actionsOffset: 24,
+    });
+    await page.locator('#btnTheme').click();
+    await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+    const darkFolderGeometry = await page.locator('.workspace-folder-row').first().evaluate((node) => {
+      const row = node.getBoundingClientRect();
+      const main = node.querySelector('.workspace-folder-main').getBoundingClientRect();
+      const actions = node.querySelector('.workspace-folder-actions').getBoundingClientRect();
+      return {
+        rowWidth: Math.round(row.width),
+        mainHeight: Math.round(main.height),
+        actionsHeight: Math.round(actions.height),
+        actionsOffset: Math.round(actions.left - row.left),
+      };
+    });
+    assert.deepEqual(darkFolderGeometry, folderGeometry);
+    await page.locator('#btnTheme').click();
+    await page.waitForFunction(() => document.documentElement.dataset.theme === 'light');
     await assertTextContains(page.locator('.workspace-folder-files'), 'note.md');
     await assertTextContains(page.locator('.workspace-folder-files'), 'MD · 2 ko · 42 caractères');
     await assertTextContains(page.locator('.workspace-folder-files'), 'scan.pdf');
     await assertTextContains(page.locator('.workspace-folder-files'), 'OCR requis');
-    await assertTextContains(page.locator('.workspace-folder-separator'), 'Conversations hors répertoire');
+    await assertTextContains(page.locator('.workspace-folder-separator'), 'CONVERSATIONS');
+    assert.equal(
+      await page.locator('.workspace-folder-separator').getAttribute('aria-label'),
+      'Conversations hors répertoire',
+    );
     const headingStyle = await page.locator('.workspace-folder-toolbar').evaluate((node) => getComputedStyle(node));
     const separatorStyle = await page.locator('.workspace-folder-separator').evaluate((node) => getComputedStyle(node));
     assert.equal(separatorStyle.fontSize, headingStyle.fontSize);
     assert.equal(separatorStyle.textTransform, headingStyle.textTransform);
     await assertTextContains(page.locator('li.in-workspace-folder .title'), 'Conversation dedans');
+    assert.equal(
+      await page.locator('li.in-workspace-folder .thread-kind-icon').getAttribute('data-sidebar-icon'),
+      'message-circle',
+    );
+    assert.equal(
+      await page.locator('li.in-workspace-folder .thread-drag-icon').getAttribute('data-sidebar-icon'),
+      'grip-vertical',
+    );
+    assert.equal(
+      await page.locator('li[data-conversation-id="conv-out"] .thread-kind-icon').getAttribute('data-sidebar-icon'),
+      'circle',
+    );
+    assert.equal(
+      await page.locator('.workspace-folder-file-type-icon').first().getAttribute('data-sidebar-icon'),
+      'file-text',
+    );
+    assert.equal(
+      await page.locator('.workspace-folder-file-delete [data-sidebar-icon]').first().getAttribute('data-sidebar-icon'),
+      'trash-2',
+    );
+    assert.equal(
+      await page.locator('.workspace-folder-file-ocr [data-sidebar-icon]').first().getAttribute('data-sidebar-icon'),
+      'scan-text',
+    );
+    assert.equal(
+      await page.locator('.workspace-folder-note-create [data-sidebar-icon]').getAttribute('data-sidebar-icon'),
+      'notebook-pen',
+    );
+    assert.equal(
+      await page.locator('.workspace-folder-export-create [data-sidebar-icon]').getAttribute('data-sidebar-icon'),
+      'file-output',
+    );
+    assert.equal(
+      await page.locator('.workspace-folder-generated-image-create [data-sidebar-icon]').getAttribute('data-sidebar-icon'),
+      'image',
+    );
     assert.equal(await page.locator('.thread-folder-select').count(), 0);
     const compactConversationRow = await page.locator('li.in-workspace-folder', { hasText: 'Conversation dedans' }).evaluate((node) => {
       const style = getComputedStyle(node);
@@ -301,11 +393,21 @@ test('workspace folders start collapsed, expand on demand and move by drag-and-d
         height: Math.round(node.getBoundingClientRect().height),
         backgroundColor: style.backgroundColor,
         editOpacity: Number(getComputedStyle(edit).opacity),
+        dragDisplay: getComputedStyle(node.querySelector('.thread-drag-icon')).display,
       };
     });
     assert.ok(compactConversationRow.height <= 44, `conversation row should stay compact, got ${compactConversationRow.height}px`);
     assert.notEqual(compactConversationRow.backgroundColor, 'rgba(0, 0, 0, 0)');
     assert.ok(compactConversationRow.editOpacity > 0.3);
+    assert.notEqual(compactConversationRow.dragDisplay, 'none');
+
+    await page.locator('li.in-workspace-folder', { hasText: 'Conversation dedans' }).hover();
+    const nestedHoverState = await page.locator('li.in-workspace-folder', { hasText: 'Conversation dedans' }).evaluate((node) => ({
+      editOpacity: Number(getComputedStyle(node.querySelector('.thread-edit')).opacity),
+      dragDisplay: getComputedStyle(node.querySelector('.thread-drag-icon')).display,
+    }));
+    assert.ok(nestedHoverState.editOpacity > 0.3);
+    assert.equal(nestedHoverState.dragDisplay, 'none');
 
     await page.locator('li.in-workspace-folder .thread-edit').first().click();
     await page.waitForSelector('li.in-workspace-folder .rename-input');

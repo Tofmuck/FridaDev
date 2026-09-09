@@ -2590,10 +2590,44 @@ body {
 
 #newChat > span:first-child {
   width: 14px;
-  text-align: center;
-  font-size: 16px;
-  font-weight: 400;
 }
+
+.sidebar-icon {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  background-color: currentColor;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.sidebar-icon[data-sidebar-icon="arrow-down"] { -webkit-mask-image: url("sidebar-icons/arrow-down.svg"); mask-image: url("sidebar-icons/arrow-down.svg"); }
+.sidebar-icon[data-sidebar-icon="arrow-up"] { -webkit-mask-image: url("sidebar-icons/arrow-up.svg"); mask-image: url("sidebar-icons/arrow-up.svg"); }
+.sidebar-icon[data-sidebar-icon="check"] { -webkit-mask-image: url("sidebar-icons/check.svg"); mask-image: url("sidebar-icons/check.svg"); }
+.sidebar-icon[data-sidebar-icon="chevron-down"] { -webkit-mask-image: url("sidebar-icons/chevron-down.svg"); mask-image: url("sidebar-icons/chevron-down.svg"); }
+.sidebar-icon[data-sidebar-icon="chevron-right"] { -webkit-mask-image: url("sidebar-icons/chevron-right.svg"); mask-image: url("sidebar-icons/chevron-right.svg"); }
+.sidebar-icon[data-sidebar-icon="circle"] { -webkit-mask-image: url("sidebar-icons/circle.svg"); mask-image: url("sidebar-icons/circle.svg"); }
+.sidebar-icon[data-sidebar-icon="circle-dot"] { -webkit-mask-image: url("sidebar-icons/circle-dot.svg"); mask-image: url("sidebar-icons/circle-dot.svg"); }
+.sidebar-icon[data-sidebar-icon="download"] { -webkit-mask-image: url("sidebar-icons/download.svg"); mask-image: url("sidebar-icons/download.svg"); }
+.sidebar-icon[data-sidebar-icon="external-link"] { -webkit-mask-image: url("sidebar-icons/external-link.svg"); mask-image: url("sidebar-icons/external-link.svg"); }
+.sidebar-icon[data-sidebar-icon="file-output"] { -webkit-mask-image: url("sidebar-icons/file-output.svg"); mask-image: url("sidebar-icons/file-output.svg"); }
+.sidebar-icon[data-sidebar-icon="file-plus"] { -webkit-mask-image: url("sidebar-icons/file-plus.svg"); mask-image: url("sidebar-icons/file-plus.svg"); }
+.sidebar-icon[data-sidebar-icon="file-text"] { -webkit-mask-image: url("sidebar-icons/file-text.svg"); mask-image: url("sidebar-icons/file-text.svg"); }
+.sidebar-icon[data-sidebar-icon="grip-vertical"] { -webkit-mask-image: url("sidebar-icons/grip-vertical.svg"); mask-image: url("sidebar-icons/grip-vertical.svg"); }
+.sidebar-icon[data-sidebar-icon="image"] { -webkit-mask-image: url("sidebar-icons/image.svg"); mask-image: url("sidebar-icons/image.svg"); }
+.sidebar-icon[data-sidebar-icon="message-circle"] { -webkit-mask-image: url("sidebar-icons/message-circle.svg"); mask-image: url("sidebar-icons/message-circle.svg"); }
+.sidebar-icon[data-sidebar-icon="notebook-pen"] { -webkit-mask-image: url("sidebar-icons/notebook-pen.svg"); mask-image: url("sidebar-icons/notebook-pen.svg"); }
+.sidebar-icon[data-sidebar-icon="pencil"] { -webkit-mask-image: url("sidebar-icons/pencil.svg"); mask-image: url("sidebar-icons/pencil.svg"); }
+.sidebar-icon[data-sidebar-icon="plus"] { -webkit-mask-image: url("sidebar-icons/plus.svg"); mask-image: url("sidebar-icons/plus.svg"); }
+.sidebar-icon[data-sidebar-icon="rotate-ccw"] { -webkit-mask-image: url("sidebar-icons/rotate-ccw.svg"); mask-image: url("sidebar-icons/rotate-ccw.svg"); }
+.sidebar-icon[data-sidebar-icon="scan-text"] { -webkit-mask-image: url("sidebar-icons/scan-text.svg"); mask-image: url("sidebar-icons/scan-text.svg"); }
+.sidebar-icon[data-sidebar-icon="sparkles"] { -webkit-mask-image: url("sidebar-icons/sparkles.svg"); mask-image: url("sidebar-icons/sparkles.svg"); }
+.sidebar-icon[data-sidebar-icon="trash-2"] { -webkit-mask-image: url("sidebar-icons/trash-2.svg"); mask-image: url("sidebar-icons/trash-2.svg"); }
 
 .threads {
   padding: 0 0 6px;
@@ -2607,6 +2641,18 @@ body {
   box-shadow: none;
 }
 
+.threads li.workspace-folder-toolbar,
+.threads li.workspace-folder-row,
+.threads li.workspace-folder-files,
+.threads li.workspace-folder-notes,
+.threads li.workspace-folder-exports,
+.threads li.workspace-folder-generated-images,
+.threads li.workspace-folder-separator,
+.threads li.workspace-folder-empty {
+  background: transparent;
+  box-shadow: none;
+}
+
 .threads li:not(.workspace-folder-toolbar):not(.workspace-folder-row):not(.workspace-folder-files):not(.workspace-folder-notes):not(.workspace-folder-exports):not(.workspace-folder-generated-images):not(.workspace-folder-separator):not(.workspace-folder-empty) {
   width: 100%;
   min-height: 36px;
@@ -2614,6 +2660,38 @@ body {
   border: 0;
   border-radius: 10px;
   background: transparent;
+}
+
+.thread-main {
+  width: 100%;
+  gap: 9px;
+}
+
+.thread-main .title {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.thread-kind-icon {
+  width: 9px;
+  height: 9px;
+  color: var(--fg-subtle);
+}
+
+.threads li.active .thread-kind-icon,
+.threads li.active .title {
+  color: var(--accent);
+}
+
+.thread-drag-icon {
+  width: 12px;
+  height: 12px;
+  margin-left: auto;
+  color: var(--fg-subtle);
+}
+
+.thread-time {
+  display: none;
 }
 
 .threads li:not(.workspace-folder-toolbar):not(.workspace-folder-row):not(.workspace-folder-files):not(.workspace-folder-notes):not(.workspace-folder-exports):not(.workspace-folder-generated-images):not(.workspace-folder-separator):not(.workspace-folder-empty):hover {
@@ -2629,10 +2707,11 @@ body {
 
 .workspace-folder-toolbar {
   width: 100%;
-  min-height: 26px;
+  min-height: 18px;
   margin: 0;
-  padding: 4px 8px 2px;
+  padding: 0;
   font-size: 10px;
+  font-weight: 600;
   letter-spacing: 0.08em;
 }
 
@@ -2645,31 +2724,52 @@ body {
   background: var(--surface);
 }
 
+.workspace-folder-add .sidebar-icon {
+  width: 11px;
+  height: 11px;
+}
+
 .workspace-folder-row,
 .workspace-folder-row.workspace-folder-collapsed {
   width: 100%;
+  height: 34px;
   min-height: 34px;
   margin: 0;
-  padding: 7px 8px;
+  padding: 0;
   border: 0;
   border-radius: 10px;
   background: transparent;
+  overflow: visible;
 }
 
 .workspace-folder-row:not(.workspace-folder-collapsed) {
-  min-height: 62px;
-  background: var(--thread-active);
+  height: 58px;
+  min-height: 58px;
+  background: transparent;
 }
 
 .workspace-folder-main {
-  min-height: 20px;
-  gap: 7px;
+  width: 100%;
+  height: 34px;
+  min-height: 34px;
+  gap: 9px;
+  padding: 0 8px;
+  border-radius: 10px;
+}
+
+.workspace-folder-row:not(.workspace-folder-collapsed) .workspace-folder-main {
+  background: var(--thread-active);
 }
 
 .workspace-folder-toggle {
-  width: 10px;
-  min-width: 10px;
-  height: 20px;
+  width: 14px;
+  min-width: 14px;
+  height: 24px;
+}
+
+.workspace-folder-toggle .sidebar-icon {
+  width: 13px;
+  height: 13px;
 }
 
 .workspace-folder-icon,
@@ -2679,14 +2779,18 @@ body {
 }
 
 .workspace-folder-name {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
 }
 
+.workspace-folder-count {
+  margin-left: auto;
+}
+
 .workspace-folder-actions {
-  top: 35px;
+  top: 38px;
   right: 8px;
-  left: 24px;
+  left: 14px;
   height: 20px;
   padding: 0;
   justify-content: flex-start;
@@ -2701,11 +2805,16 @@ body {
 }
 
 .workspace-folder-action {
-  min-width: 20px;
+  min-width: 14px;
+  width: 14px;
   height: 20px;
-  padding: 0 3px;
-  border-radius: 6px;
-  font-size: 10px;
+  padding: 0;
+  border-radius: 5px;
+}
+
+.workspace-folder-action .sidebar-icon {
+  width: 11px;
+  height: 11px;
 }
 
 .workspace-folder-files,
@@ -2717,17 +2826,125 @@ body {
   margin-left: 24px;
 }
 
+.workspace-folder-notes,
+.workspace-folder-exports,
+.workspace-folder-generated-images {
+  padding: 2px 0 4px;
+}
+
+.workspace-folder-note-header,
+.workspace-folder-export-header,
+.workspace-folder-generated-image-header {
+  min-height: 18px;
+  padding: 0 8px;
+}
+
+.workspace-folder-note-create .sidebar-icon,
+.workspace-folder-note-action .sidebar-icon,
+.workspace-folder-export-create .sidebar-icon,
+.workspace-folder-export-action .sidebar-icon,
+.workspace-folder-generated-image-create .sidebar-icon,
+.workspace-folder-generated-image-action .sidebar-icon {
+  width: 11px;
+  height: 11px;
+}
+
+.workspace-folder-note-empty,
+.workspace-folder-note-error,
+.workspace-folder-export-empty,
+.workspace-folder-generated-image-empty {
+  padding: 2px 8px 4px;
+}
+
 .threads li.in-workspace-folder {
-  min-height: 28px !important;
-  padding: 5px 8px !important;
+  min-height: 24px !important;
+  height: 24px;
+  padding: 0 8px !important;
   border: 1px solid var(--border-muted) !important;
+  border-radius: 8px !important;
   background: var(--thread-surface) !important;
 }
 
+.threads li.in-workspace-folder .thread-main {
+  gap: 8px;
+}
+
+.threads li.in-workspace-folder .thread-main .title {
+  font-size: 12px;
+}
+
+.threads li.in-workspace-folder .thread-edit,
+.threads li.in-workspace-folder .thread-del {
+  opacity: 0.46;
+}
+
+.threads li.in-workspace-folder:hover .thread-edit,
+.threads li.in-workspace-folder:hover .thread-del,
+.threads li.in-workspace-folder:focus-within .thread-edit,
+.threads li.in-workspace-folder:focus-within .thread-del {
+  opacity: 0.78;
+}
+
+.threads li.in-workspace-folder:hover .thread-drag-icon,
+.threads li.in-workspace-folder:focus-within .thread-drag-icon {
+  display: none;
+}
+
+.workspace-folder-files {
+  padding: 2px 0 5px;
+}
+
+.workspace-folder-file {
+  min-height: 28px;
+  grid-template-columns: 13px 13px minmax(0, 1fr) auto auto auto auto;
+  gap: 2px 5px;
+  padding: 3px 8px;
+  border: 1px solid var(--border-muted);
+  border-radius: 8px;
+  background: var(--thread-surface);
+}
+
+.workspace-folder-file-select {
+  grid-column: 1;
+}
+
+.workspace-folder-file-type-icon {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  align-self: center;
+  width: 12px;
+  height: 12px;
+  color: var(--fg-subtle);
+}
+
+.workspace-folder-file-name,
+.workspace-folder-file-meta {
+  grid-column: 3;
+}
+
+.workspace-folder-file-state {
+  grid-column: 4;
+}
+
+.workspace-folder-file-delete { grid-column: 5; }
+.workspace-folder-file-ocr { grid-column: 6; }
+.workspace-folder-file-edit { grid-column: 7; }
+
+.workspace-folder-file-delete .sidebar-icon,
+.workspace-folder-file-ocr .sidebar-icon,
+.workspace-folder-file-edit .sidebar-icon {
+  width: 11px;
+  height: 11px;
+}
+
 .workspace-folder-separator {
-  margin: 8px 8px 4px;
-  padding: 8px 0 2px;
+  margin: 8px 0 4px;
+  padding: 0;
+  min-height: 18px;
+  color: var(--fg-subtle);
   font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
 }
 
 .topbar {

@@ -10,6 +10,11 @@ const ImageGenerationOptions = (
     ? window.FridaImageGeneration
     : (typeof require !== 'undefined' ? require('./chat_image_generation.js') : null)
 );
+const WorkspaceFolderGeneratedImagesSidebarIcons = (
+  typeof window !== 'undefined' && window.FridaChatSidebarIcons
+    ? window.FridaChatSidebarIcons
+    : (typeof require !== 'undefined' ? require('./chat_sidebar_icons.js') : null)
+);
 
 function createWorkspaceFolderGeneratedImagesPanelRenderer({
   threadsUl,
@@ -153,10 +158,11 @@ function createWorkspaceFolderGeneratedImagesPanelRenderer({
     const create = document.createElement('button');
     create.type = 'button';
     create.className = 'workspace-folder-generated-image-create';
-    create.textContent = '+';
     create.title = WorkspaceGeneratedImagesPanelUi?.canLoadWorkspaceGeneratedImages?.(folder)
       ? 'Créer une image durable dans ce répertoire'
       : 'Images disponibles après synchronisation Nextcloud';
+    create.setAttribute('aria-label', create.title);
+    WorkspaceFolderGeneratedImagesSidebarIcons?.setSidebarButtonIcon?.(create, document, 'image');
     create.disabled = !WorkspaceGeneratedImagesPanelUi?.canLoadWorkspaceGeneratedImages?.(folder);
     create.addEventListener('click', (event) => {
       event.stopPropagation();
@@ -223,17 +229,18 @@ function createWorkspaceFolderGeneratedImagesPanelRenderer({
       row.appendChild(state);
 
       [
-        ['open', '↗', 'Ouvrir', imageItem.can_open, () => requestOpenImage(folder, imageItem)],
-        ['download', '↓', 'Télécharger', imageItem.can_download, () => requestDownloadImage(folder, imageItem)],
-        ['delete', '×', 'Supprimer', imageItem.can_delete, () => requestDeleteImage(folder, imageItem)],
-      ].forEach(([action, text, title, enabled, handler]) => {
+        ['open', 'external-link', 'Ouvrir', imageItem.can_open, () => requestOpenImage(folder, imageItem)],
+        ['download', 'download', 'Télécharger', imageItem.can_download, () => requestDownloadImage(folder, imageItem)],
+        ['delete', 'trash-2', 'Supprimer', imageItem.can_delete, () => requestDeleteImage(folder, imageItem)],
+      ].forEach(([action, iconName, title, enabled, handler]) => {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = `workspace-folder-generated-image-action workspace-folder-generated-image-action-${action}`;
-        btn.textContent = text;
         btn.title = enabled
           ? title
           : (WorkspaceGeneratedImagesPanelUi?.workspaceGeneratedImageActionLabel?.(imageItem, action) || 'Action indisponible');
+        btn.setAttribute('aria-label', btn.title);
+        WorkspaceFolderGeneratedImagesSidebarIcons?.setSidebarButtonIcon?.(btn, document, iconName);
         btn.disabled = !enabled;
         btn.addEventListener('click', (event) => {
           event.stopPropagation();

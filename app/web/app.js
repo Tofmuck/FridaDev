@@ -108,6 +108,21 @@
   const sidebarBackdrop = $("#sidebarBackdrop");
   const btnMenu = $("#btnMenu");
   const currentConversationTitle = document.querySelector('.topbar .title');
+  let composerHeightObserver = null;
+  const syncComposerHeight = () => {
+    if (!ask) return;
+    const height = Math.ceil(ask.getBoundingClientRect().height || 76);
+    document.documentElement.style.setProperty('--ask-h', `${Math.max(76, height)}px`);
+  };
+  if (ask) {
+    syncComposerHeight();
+    if (typeof ResizeObserver === 'function') {
+      composerHeightObserver = new ResizeObserver(syncComposerHeight);
+      composerHeightObserver.observe(ask);
+    } else {
+      window.addEventListener('resize', syncComposerHeight);
+    }
+  }
   const syncCurrentConversationTitle = (thread) => {
     if (!currentConversationTitle) return;
     currentConversationTitle.textContent = String(thread?.title || 'Nouvelle conversation');

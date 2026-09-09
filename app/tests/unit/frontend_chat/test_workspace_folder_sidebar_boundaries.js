@@ -422,7 +422,7 @@ test('folder tree keeps collapsed children absent and expanded children ordered'
 
   collapsed = false;
   renderer.appendFolderRow(folder, [{ id: 'conv-1' }], 0, () => childOrder.push('thread'));
-  assert.deepEqual(childOrder, ['files', 'artifacts', 'thread']);
+  assert.deepEqual(childOrder, ['thread', 'files', 'artifacts']);
 });
 
 test('folder tree delegates enabled folder actions exactly once', async () => {
@@ -458,9 +458,9 @@ test('folder tree delegates enabled folder actions exactly once', async () => {
   assert.deepEqual(folderActions.map((button) => [button.title, button.disabled]), [
     ['Monter', true],
     ['Descendre', false],
+    ['Renommer', false],
     ['Ajouter un fichier au répertoire', false],
     ['Créer une note dans le répertoire', false],
-    ['Renommer', false],
     ['Supprimer', false],
   ]);
   for (const title of [

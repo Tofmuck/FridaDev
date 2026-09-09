@@ -5,6 +5,11 @@ const WorkspaceFolderFileRowUiHelpers = (
     ? window.FridaWorkspaceFolders
     : (typeof require !== 'undefined' ? require('./chat_workspace_folders.js') : null)
 );
+const WorkspaceFolderFileRowSidebarIcons = (
+  typeof window !== 'undefined' && window.FridaChatSidebarIcons
+    ? window.FridaChatSidebarIcons
+    : (typeof require !== 'undefined' ? require('./chat_sidebar_icons.js') : null)
+);
 
 function createWorkspaceFolderFileRowsRenderer({
   threadsUl,
@@ -78,6 +83,9 @@ function createWorkspaceFolderFileRowsRenderer({
       });
       row.appendChild(toggle);
 
+      const typeIcon = WorkspaceFolderFileRowSidebarIcons?.createSidebarIcon?.(doc, 'file-text', 'workspace-folder-file-type-icon');
+      if (typeIcon) row.appendChild(typeIcon);
+
       const name = doc.createElement('span');
       name.className = 'workspace-folder-file-name';
       name.textContent = file.display_name || 'fichier';
@@ -101,8 +109,9 @@ function createWorkspaceFolderFileRowsRenderer({
       const del = doc.createElement('button');
       del.type = 'button';
       del.className = 'workspace-folder-file-delete';
-      del.textContent = '×';
+      WorkspaceFolderFileRowSidebarIcons?.setSidebarButtonIcon?.(del, doc, 'trash-2');
       del.title = 'Supprimer le fichier';
+      del.setAttribute('aria-label', del.title);
       del.addEventListener('click', (event) => {
         event.stopPropagation();
         void onDeleteFile(folder, file);
@@ -113,8 +122,9 @@ function createWorkspaceFolderFileRowsRenderer({
         const ocr = doc.createElement('button');
         ocr.type = 'button';
         ocr.className = 'workspace-folder-file-ocr';
-        ocr.textContent = 'OCR';
+        WorkspaceFolderFileRowSidebarIcons?.setSidebarButtonIcon?.(ocr, doc, 'scan-text');
         ocr.title = 'Extraire le texte en Markdown';
+        ocr.setAttribute('aria-label', ocr.title);
         ocr.addEventListener('click', (event) => {
           event.stopPropagation();
           void onOcrFile(folder, file);
@@ -126,8 +136,9 @@ function createWorkspaceFolderFileRowsRenderer({
         const edit = doc.createElement('button');
         edit.type = 'button';
         edit.className = 'workspace-folder-file-edit';
-        edit.textContent = 'Md';
+        WorkspaceFolderFileRowSidebarIcons?.setSidebarButtonIcon?.(edit, doc, 'pencil');
         edit.title = 'Éditer le Markdown OCR';
+        edit.setAttribute('aria-label', edit.title);
         edit.addEventListener('click', (event) => {
           event.stopPropagation();
           void onEditOcrMarkdown(folder, file);

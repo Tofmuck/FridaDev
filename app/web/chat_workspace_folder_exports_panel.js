@@ -5,6 +5,11 @@ const WorkspaceFolderExportsPanelUi = (
     ? window.FridaWorkspaceFolderExports
     : (typeof require !== 'undefined' ? require('./chat_workspace_folder_exports.js') : null)
 );
+const WorkspaceFolderExportsSidebarIcons = (
+  typeof window !== 'undefined' && window.FridaChatSidebarIcons
+    ? window.FridaChatSidebarIcons
+    : (typeof require !== 'undefined' ? require('./chat_sidebar_icons.js') : null)
+);
 
 function createWorkspaceFolderExportsPanelRenderer({
   threadsUl,
@@ -159,10 +164,11 @@ function createWorkspaceFolderExportsPanelRenderer({
     const create = document.createElement('button');
     create.type = 'button';
     create.className = 'workspace-folder-export-create';
-    create.textContent = '+';
     create.title = canCreateConversationExport(folder)
       ? 'Créer un export depuis cette conversation'
       : 'Créer depuis une conversation ouverte du répertoire';
+    create.setAttribute('aria-label', create.title);
+    WorkspaceFolderExportsSidebarIcons?.setSidebarButtonIcon?.(create, document, 'file-output');
     create.disabled = !canCreateConversationExport(folder);
     create.addEventListener('click', (event) => {
       event.stopPropagation();
@@ -229,17 +235,18 @@ function createWorkspaceFolderExportsPanelRenderer({
       row.appendChild(state);
 
       [
-        ['open', '↗', 'Ouvrir', exportItem.can_open, () => requestOpenExport(folder, exportItem)],
-        ['download', '↓', 'Télécharger', exportItem.can_download, () => requestDownloadExport(folder, exportItem)],
-        ['reuse', '↺', 'Réutiliser comme source', exportItem.can_reuse_as_source, () => requestReuseExport(folder, exportItem)],
-      ].forEach(([action, text, title, enabled, handler]) => {
+        ['open', 'external-link', 'Ouvrir', exportItem.can_open, () => requestOpenExport(folder, exportItem)],
+        ['download', 'download', 'Télécharger', exportItem.can_download, () => requestDownloadExport(folder, exportItem)],
+        ['reuse', 'rotate-ccw', 'Réutiliser comme source', exportItem.can_reuse_as_source, () => requestReuseExport(folder, exportItem)],
+      ].forEach(([action, iconName, title, enabled, handler]) => {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = `workspace-folder-export-action workspace-folder-export-action-${action}`;
-        btn.textContent = text;
         btn.title = enabled
           ? title
           : (WorkspaceFolderExportsPanelUi?.workspaceExportActionLabel?.(exportItem, action) || 'Action indisponible');
+        btn.setAttribute('aria-label', btn.title);
+        WorkspaceFolderExportsSidebarIcons?.setSidebarButtonIcon?.(btn, document, iconName);
         btn.disabled = !enabled;
         btn.addEventListener('click', (event) => {
           event.stopPropagation();

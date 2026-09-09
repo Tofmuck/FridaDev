@@ -5,6 +5,11 @@ const NotesMode = (
     ? window.FridaNotesMode
     : (typeof require !== 'undefined' ? require('./chat_notes_mode.js') : null)
 );
+const WorkspaceFolderNotesSidebarIcons = (
+  typeof window !== 'undefined' && window.FridaChatSidebarIcons
+    ? window.FridaChatSidebarIcons
+    : (typeof require !== 'undefined' ? require('./chat_sidebar_icons.js') : null)
+);
 
 function noteMeta(note) {
   const bits = [];
@@ -120,8 +125,9 @@ function createWorkspaceFolderNotesPanelRenderer({
     const create = document.createElement('button');
     create.type = 'button';
     create.className = 'workspace-folder-note-create';
-    create.textContent = '+N';
     create.title = 'Créer une note';
+    create.setAttribute('aria-label', create.title);
+    WorkspaceFolderNotesSidebarIcons?.setSidebarButtonIcon?.(create, document, 'notebook-pen');
     create.disabled = !NotesMode?.canLoadWorkspaceNotes?.(folder);
     create.addEventListener('click', (event) => {
       event.stopPropagation();
@@ -184,8 +190,13 @@ function createWorkspaceFolderNotesPanelRenderer({
       const select = document.createElement('button');
       select.type = 'button';
       select.className = 'workspace-folder-note-action workspace-folder-note-action-select';
-      select.textContent = selected ? '✓' : 'Utiliser';
       select.title = 'Utiliser cette note comme contexte';
+      select.setAttribute('aria-label', select.title);
+      WorkspaceFolderNotesSidebarIcons?.setSidebarButtonIcon?.(
+        select,
+        document,
+        selected ? 'check' : 'circle',
+      );
       select.addEventListener('click', (event) => {
         event.stopPropagation();
         requestSelectNote(folder, note);
@@ -195,8 +206,9 @@ function createWorkspaceFolderNotesPanelRenderer({
       const prepare = document.createElement('button');
       prepare.type = 'button';
       prepare.className = 'workspace-folder-note-action workspace-folder-note-action-prepare';
-      prepare.textContent = 'Préparer';
       prepare.title = 'Préparer cette note pour Frida';
+      prepare.setAttribute('aria-label', prepare.title);
+      WorkspaceFolderNotesSidebarIcons?.setSidebarButtonIcon?.(prepare, document, 'sparkles');
       prepare.addEventListener('click', (event) => {
         event.stopPropagation();
         void requestPrepareNote(folder, note);
