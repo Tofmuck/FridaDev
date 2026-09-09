@@ -128,8 +128,8 @@ vérité des animations sont déjà présents. D0 n'autorise aucune capacité au
 
 ## Lot D1 — contrat OpenRouter et frontière STT
 
-**Statut : implémenté et prouvé hermétiquement ; livraison runtime ciblée non
-encore exécutée. D2 reste non commencé.**
+**Statut : fermé, poussé et livré par reconstruction ciblée du seul service
+applicatif. D2 reste non commencé.**
 
 **Livrable :** une route STT Frida hermétique, bornée et testée, sans encore
 être appelée par l'interface.
@@ -167,7 +167,8 @@ encore exécutée. D2 reste non commencé.**
 
   Prouver avant le code : succès JSON, transcript vide légitime, timeout,
   erreur transport, 401/403/429/5xx, JSON invalide, champ texte absent, type
-  incorrect, audio vide, MIME refusé et dépassement de 25 MiB. Le fake inspecte
+  incorrect, audio vide, MIME refusé, dépassement de `24 000 000` octets pour
+  le fichier et de `25 000 000` octets pour le corps multipart. Le fake inspecte
   modèle, langue et température sans réseau.
 
   Exécuter :
@@ -200,7 +201,7 @@ encore exécutée. D2 reste non commencé.**
     tests.integration.chat.test_chat_dialogue_audio_routes
   ```
 
-- [ ] **D1.5 — Contre-auditer, documenter, commit et push**
+- [x] **D1.5 — Contre-auditer, documenter, commit et push**
 
   Vérifier que `/api/chat/transcribe` et le Whisper local restent inchangés,
   que la nouvelle route n'est appelée par aucun frontend, que le réseau est
@@ -213,7 +214,7 @@ encore exécutée. D2 reste non commencé.**
 final unique ou si les limites réelles ne peuvent pas être appliquées avant
 l'envoi.
 
-### Preuves D1 avant livraison runtime — 9 septembre 2026
+### Preuves D1 — 9 septembre 2026
 
 - baseline : `main`, HEAD/upstream
   `c591909c93b2e31b7e7d11ecb89be9c8afe39ad9`, divergence `0/0`, worktree
@@ -233,7 +234,19 @@ l'envoi.
   repassent au vert ;
 - toutes ces commandes ont utilisé un conteneur jetable `--network none`, le
   checkout monté en lecture seule et `/tmp` en `tmpfs` ; aucun appel OpenRouter
-  réel n'a été effectué.
+  réel n'a été effectué ;
+- commit applicatif poussé :
+  `7402185c944e45c106d7952715aa473084091079` ;
+- livraison sans pull implicite par `build --pull=false`, puis recréation
+  `--no-deps --force-recreate` du seul service `fridadev` ; l'image livrée est
+  `sha256:9ad85d835247a953760638fa532425c722cb5f20f72331f215f61f3509117979`
+  et l'image précédente reste récupérable sous le tag
+  `platform-fridadev-app:rollback-d1-20260909T143502Z` ;
+- `platform-fridadev` est `running`, `healthy`, restart `0`, OOM `false` ; les
+  31 voisins conservent strictement identité et état ;
+- HTTP interne `200`, rejet local hermétique de la route D1 en `422`, empreintes
+  des cinq fichiers runtime identiques entre checkout et conteneur, et zéro
+  ligne récente `ERROR`, `CRITICAL` ou `Traceback` depuis le démarrage.
 
 ---
 
