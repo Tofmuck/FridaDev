@@ -23,6 +23,7 @@ ACTIVE_PATH = "/api/conversations/11111111-1111-1111-1111-111111111111/active-do
 WORKSPACE_PATH = "/api/workspace-folders/11111111-2222-4333-8444-555555555555/files"
 WHISPER_PATH = "/api/chat/transcribe"
 DIALOGUE_STT_PATH = "/api/chat/dialogue/transcribe"
+DIALOGUE_TTS_PATH = "/api/chat/dialogue/speech"
 
 
 class _TrackingInput(io.BytesIO):
@@ -300,6 +301,31 @@ class ServerMultipartUploadLimitsContractTests(unittest.TestCase):
             self.server.workspace_files_service.WORKSPACE_FILE_UPLOAD_MAX_CONTENT_LENGTH,
             expected,
         )
+
+    def test_dialogue_tts_wsgi_body_rejection_keeps_closed_json_contract(self) -> None:
+        body = json.dumps({"text": "x" * 256}).encode("utf-8")
+        with mock.patch.dict(
+            self.server.app.config,
+            {"MAX_CONTENT_LENGTH": 128},
+        ):
+            response, stream = self._dispatch(
+                DIALOGUE_TTS_PATH,
+                body,
+                "application/json",
+                content_length=str(len(body)),
+                input_terminated=False,
+            )
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(
+            json.loads(response.get_data(as_text=True)),
+            {
+                "ok": False,
+                "reason_code": "dialogue_tts_text_too_large",
+                "duration_ms": 0,
+            },
+        )
+        self.assertEqual(stream.bytes_read, 0)
 
     def test_wsgi_boundary_accepts_limit_minus_one_and_exact_limit_for_all_multipart_routes(
         self,

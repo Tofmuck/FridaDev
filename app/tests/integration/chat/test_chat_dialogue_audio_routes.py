@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -33,6 +34,46 @@ class _FakeResponse:
         if isinstance(self._payload, Exception):
             raise self._payload
         return self._payload
+
+
+class _StreamingBody:
+    def __init__(self, data: bytes) -> None:
+        self._data = bytes(data)
+        self._offset = 0
+        self.read_sizes: list[int] = []
+
+    def read(self, size: int = -1) -> bytes:
+        self.read_sizes.append(int(size))
+        if size < 0:
+            raise AssertionError("unbounded response read")
+        chunk = self._data[self._offset : self._offset + int(size)]
+        self._offset += len(chunk)
+        return chunk
+
+
+class _StreamingResponse:
+    def __init__(
+        self,
+        data: bytes,
+        *,
+        status_code: int = 200,
+        content_type: str = "audio/mpeg",
+    ) -> None:
+        self.status_code = status_code
+        self.headers = {"Content-Type": content_type}
+        self.raw = _StreamingBody(data)
+        self.closed = False
+
+    @property
+    def content(self):
+        raise AssertionError("response.content must never be used")
+
+    @property
+    def text(self):
+        raise AssertionError("provider response text must never be read")
+
+    def close(self) -> None:
+        self.closed = True
 
 
 class _SizedFileStorage:
@@ -145,6 +186,224 @@ class ChatDialogueAudioRouteTests(unittest.TestCase):
                 return response.get_json(), status
         finally:
             self.server.request = original_request
+
+    def _patch_tts_provider(self, fake_post):
+        originals = []
+        missing = object()
+
+        def patch_attr(obj, name, value):
+            originals.append((obj, name, getattr(obj, name, missing)))
+            setattr(obj, name, value)
+
+        patch_attr(self.server.requests, "post", fake_post)
+        patch_attr(
+            self.server.llm,
+            "or_audio_speech_url",
+            lambda: "https://openrouter.example/api/v1/audio/speech",
+        )
+        patch_attr(
+            self.server.llm,
+            "or_headers_custom",
+            lambda **_kwargs: {
+                "Authorization": "Bearer synthetic-test-key",
+                "Content-Type": "application/json",
+                self.server.llm.INTERNAL_PROVIDER_CALLER_HEADER: "dialogue_tts",
+            },
+        )
+        patch_attr(
+            self.server.config,
+            "OR_REFERER_DIALOGUE_TTS",
+            "https://fridadev.frida-system.fr/openrouter/dialogue-tts",
+        )
+        patch_attr(self.server.config, "OR_TITLE_DIALOGUE_TTS", "FridaDev / Dialogue TTS")
+        patch_attr(self.server.config, "DIALOGUE_TTS_TIMEOUT_S", 60)
+
+        def restore():
+            while originals:
+                obj, name, value = originals.pop()
+                if value is missing:
+                    delattr(obj, name)
+                else:
+                    setattr(obj, name, value)
+
+        return restore
+
+    def test_speech_success_returns_only_exact_mp3_bytes_and_no_store(self) -> None:
+        observed = {}
+        provider_response = _StreamingResponse(b"ID3 exact route mp3")
+
+        def fake_post(url, *, json=None, headers=None, timeout=None, stream=None):
+            observed.update(
+                url=url,
+                json=dict(json or {}),
+                headers=dict(headers or {}),
+                timeout=timeout,
+                stream=stream,
+            )
+            return provider_response
+
+        restore = self._patch_tts_provider(fake_post)
+        try:
+            response = self.client.post(
+                "/api/chat/dialogue/speech",
+                json={"text": "  Texte final canonique.  "},
+            )
+        finally:
+            restore()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, b"ID3 exact route mp3")
+        self.assertEqual(response.content_type, "audio/mpeg")
+        self.assertEqual(response.headers.get("Cache-Control"), "no-store")
+        self.assertEqual(
+            observed["json"],
+            {
+                "model": "microsoft/mai-voice-2-flash",
+                "input": "  Texte final canonique.  ",
+                "voice": "fr-FR-Soleil:MAI-Voice-2",
+                "response_format": "mp3",
+            },
+        )
+        self.assertEqual(observed["timeout"], 60)
+        self.assertTrue(observed["stream"])
+        self.assertTrue(provider_response.closed)
+
+    def test_speech_accepts_only_the_exact_bounded_text_object(self) -> None:
+        cases = (
+            (None, "dialogue_tts_text_payload_invalid"),
+            ({}, "dialogue_tts_text_field_invalid"),
+            ({"text": "ok", "voice": "other"}, "dialogue_tts_text_field_invalid"),
+            ({"text": 123}, "dialogue_tts_text_type_invalid"),
+            ({"text": ""}, "dialogue_tts_text_empty"),
+            ({"text": " \n\t"}, "dialogue_tts_text_empty"),
+            ({"text": "x" * 16_001}, "dialogue_tts_text_too_large"),
+        )
+
+        for payload, reason_code in cases:
+            with self.subTest(reason_code=reason_code):
+                if payload is None:
+                    response = self.client.post(
+                        "/api/chat/dialogue/speech",
+                        data=b"not-json",
+                        content_type="text/plain",
+                    )
+                else:
+                    response = self.client.post(
+                        "/api/chat/dialogue/speech",
+                        json=payload,
+                    )
+                self.assertEqual(response.status_code, 422)
+                self.assertEqual(
+                    response.get_json(),
+                    {"ok": False, "reason_code": reason_code, "duration_ms": 0},
+                )
+
+    def test_global_flask_body_limit_keeps_the_speech_error_contract(self) -> None:
+        original_limit = self.server.app.config["MAX_CONTENT_LENGTH"]
+        self.server.app.config["MAX_CONTENT_LENGTH"] = 128
+        try:
+            response = self.client.post(
+                "/api/chat/dialogue/speech",
+                json={"text": "x" * 256},
+            )
+        finally:
+            self.server.app.config["MAX_CONTENT_LENGTH"] = original_limit
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(
+            response.get_json(),
+            {
+                "ok": False,
+                "reason_code": "dialogue_tts_text_too_large",
+                "duration_ms": 0,
+            },
+        )
+
+    def test_speech_failure_returns_generic_json_and_never_partial_audio(self) -> None:
+        provider_response = _StreamingResponse(
+            b"private-provider-error-body",
+            status_code=400,
+            content_type="application/json",
+        )
+        restore = self._patch_tts_provider(
+            lambda *_args, **_kwargs: provider_response
+        )
+        try:
+            with self.assertLogs("frida.server", level="WARNING") as captured:
+                response = self.client.post(
+                    "/api/chat/dialogue/speech",
+                    json={"text": "private-text-marker"},
+                )
+        finally:
+            restore()
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(
+            response.get_json(),
+            {
+                "ok": False,
+                "reason_code": "dialogue_tts_provider_contract_rejected",
+                "duration_ms": response.get_json()["duration_ms"],
+            },
+        )
+        rendered = response.get_data(as_text=True) + "\n" + "\n".join(captured.output)
+        self.assertNotIn("private-text-marker", rendered)
+        self.assertNotIn("private-provider-error-body", rendered)
+        self.assertNotIn("audio/mpeg", response.content_type)
+        self.assertTrue(provider_response.closed)
+
+    def test_stt_remains_json_while_tts_returns_audio_bytes(self) -> None:
+        restore_stt = self._patch_provider(
+            lambda *_args, **_kwargs: _FakeResponse(payload={"text": "bonjour"})
+        )
+        try:
+            stt_response = self.client.post(
+                "/api/chat/dialogue/transcribe",
+                data={
+                    "audio": (
+                        io.BytesIO(b"audio-bytes"),
+                        "clip.webm",
+                        "audio/webm",
+                    )
+                },
+                content_type="multipart/form-data",
+            )
+        finally:
+            restore_stt()
+
+        restore_tts = self._patch_tts_provider(
+            lambda *_args, **_kwargs: _StreamingResponse(b"ID3 mp3")
+        )
+        try:
+            tts_response = self.client.post(
+                "/api/chat/dialogue/speech",
+                json={"text": "bonjour"},
+            )
+        finally:
+            restore_tts()
+
+        self.assertEqual(stt_response.status_code, 200)
+        self.assertTrue(stt_response.is_json)
+        self.assertEqual(stt_response.get_json()["text"], "bonjour")
+        self.assertEqual(tts_response.status_code, 200)
+        self.assertEqual(tts_response.content_type, "audio/mpeg")
+        self.assertEqual(tts_response.data, b"ID3 mp3")
+
+    def test_dialogue_frontend_has_no_speech_consumer_and_button_stays_disabled(self) -> None:
+        html_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
+        button_match = re.search(
+            r'<button\b[^>]*\bid="btnDialogueMode"[^>]*>',
+            html_source,
+        )
+
+        self.assertIsNotNone(button_match)
+        self.assertRegex(button_match.group(0), r"\bdisabled\b")
+        for javascript_path in (APP_DIR / "web").glob("*.js"):
+            with self.subTest(javascript=javascript_path.name):
+                self.assertNotIn(
+                    "/api/chat/dialogue/speech",
+                    javascript_path.read_text(encoding="utf-8"),
+                )
 
     def test_success_and_empty_transcript_are_confirmed_honestly(self) -> None:
         for transcript in ("bonjour", ""):

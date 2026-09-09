@@ -34,6 +34,7 @@ from core import chat_service
 from core import conversations_prompt_window
 from core import conversations_service
 from core import dialogue_stt_service
+from core import dialogue_tts_service
 from core import workspace_files
 from core import workspace_file_ocr_service
 from core import workspace_files_service
@@ -205,6 +206,11 @@ def _request_entity_too_large(error: RequestEntityTooLarge):
             return jsonify(payload), status
     if request.endpoint == "api_chat_dialogue_transcribe":
         result = dialogue_stt_service.failure_result("audio_request_too_large")
+        return jsonify(result.to_payload()), result.http_status
+    if request.endpoint == "api_chat_dialogue_speech":
+        result = dialogue_tts_service.failure_result(
+            dialogue_tts_service.REASON_TEXT_TOO_LARGE
+        )
         return jsonify(result.to_payload()), result.http_status
     return error
 
@@ -749,11 +755,12 @@ class _AdminLogsChatLogProxy:
 # ── /api/chat/dialogue/transcribe ─────────────────────────────────────────────
 
 
-api_chat_dialogue_transcribe = (
+api_chat_dialogue_transcribe, api_chat_dialogue_speech = (
     chat_dialogue_audio_routes.register_chat_dialogue_audio_routes(
         app,
         get_request=lambda: request,
         dialogue_stt_service_module=dialogue_stt_service,
+        dialogue_tts_service_module=dialogue_tts_service,
         requests_module=requests,
         config_module=config,
         llm_module=llm,

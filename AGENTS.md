@@ -83,6 +83,20 @@ ni microphone, ni enregistrement navigateur, ni VAD produit, ni TTS. Elle ne
 constitue aucun precedent pour D2 a D6, qui restent soumis chacun a une decision
 utilisateur explicite distincte.
 
+Exception explicite et strictement bornee decidee par l'utilisateur le 9
+septembre 2026: le lot D2 du mode Dialogue oral Web autorise exclusivement une
+route backend TTS OpenRouter inactive qui transforme un texte final canonique
+de 16 000 caracteres maximum, sans troncature, en un unique MP3 borne a 16 Mio
+plus un octet de detection. Le modele reste fixe a
+`microsoft/mai-voice-2-flash`, la voix a
+`fr-FR-Soleil:MAI-Voice-2`, le timeout local a 60 secondes et la reponse
+valide a `audio/mpeg`. Cette frontiere reutilise la cle et la base OpenRouter
+serveur existantes, sans retry, fallback, cache, fichier, persistance, reglage
+Admin ni consommateur frontend. Le bouton Dialogue reste desactive et aucun
+appel fournisseur reel n'est autorise par ce lot. D2 n'autorise ni microphone,
+ni enregistrement navigateur, ni VAD produit, ni raccord au chat, ni lecture
+audio et ne constitue aucun precedent pour D3 a D6.
+
 Chaque lot doit demontrer: pas de capacite produit ajoutee, comportements
 legitimes preserves hors bug corrige, complexite stable ou reduite, ancien
 chemin retire quand il est remplace, et invariants utiles verrouilles par des

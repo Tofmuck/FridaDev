@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import runpy
 import sys
 import unittest
 from pathlib import Path
@@ -89,6 +90,47 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
             )
         finally:
             llm_client.runtime_settings.get_main_model_settings = original_view
+
+    def test_or_audio_speech_url_uses_the_existing_runtime_base_resolution(self) -> None:
+        original_view = llm_client.runtime_settings.get_main_model_settings
+
+        try:
+            llm_client.runtime_settings.get_main_model_settings = lambda: runtime_settings.RuntimeSectionView(
+                section='main_model',
+                payload={
+                    'base_url': {
+                        'value': 'https://runtime-main.invalid/api/v1/',
+                        'origin': 'db',
+                    }
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+            self.assertTrue(
+                hasattr(llm_client, 'or_audio_speech_url'),
+                'llm_client must expose the narrow audio speech URL resolver',
+            )
+            self.assertEqual(
+                llm_client.or_audio_speech_url(),
+                'https://runtime-main.invalid/api/v1/audio/speech',
+            )
+        finally:
+            llm_client.runtime_settings.get_main_model_settings = original_view
+
+    def test_dialogue_tts_config_and_example_share_dedicated_safe_defaults(self) -> None:
+        example = runpy.run_path(str(APP_DIR / "config.example.py"))
+
+        for source in (vars(config), example):
+            self.assertEqual(
+                source["OR_REFERER_DIALOGUE_TTS"],
+                "https://fridadev.frida-system.fr/openrouter/dialogue-tts",
+            )
+            self.assertEqual(
+                source["OR_TITLE_DIALOGUE_TTS"],
+                "FridaDev / Dialogue TTS",
+            )
+            self.assertEqual(source["DIALOGUE_TTS_TIMEOUT_S"], 60)
 
     def test_or_headers_uses_decrypted_db_api_key_when_available(self) -> None:
         original = llm_client.runtime_settings.get_runtime_secret_value

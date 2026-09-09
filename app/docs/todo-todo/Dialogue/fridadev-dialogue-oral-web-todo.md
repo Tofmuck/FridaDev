@@ -6,9 +6,10 @@ Dernière mise à jour de reconnaissance : 9 septembre 2026.
 **Statut : contrat initial et reconnaissance technique iPhone consignés. Les
 choix V1 du VAD, du STT et du TTS sont retenus ; seule leur invalidation par le
 test automobile réel peut les rouvrir. Le squelette visuel Figma et son
-contrôleur local d'états sont intégrés. La frontière backend STT D1 est
-implémentée sans consommateur frontend ; l'entrée produit reste désactivée et
-aucun microphone, VAD produit, enregistrement navigateur ni TTS n'est raccordé.**
+contrôleur local d'états sont intégrés. Les frontières backend STT D1 et TTS D2
+sont implémentées sans consommateur frontend ; l'entrée produit reste
+désactivée et aucun microphone, VAD produit, enregistrement navigateur, raccord
+audio ou appel fournisseur TTS n'est activé.**
 
 ## Intention
 
@@ -272,14 +273,53 @@ La documentation OpenRouter courante maintient le contrat utilisé par D1 :
 - les préférences de routage `order`, `only` et `ignore` ne s'appliquent pas
   aux requêtes de transcription ; D1 n'ajoute donc aucune sélection provider
   cachée ;
-- le prix publié reste `0,10 USD` par heure. OpenRouter n'enregistre pas les
-  entrées/sorties sauf opt-in, mais conserve les métadonnées de requête ; la
-  route Azure publiée indique absence d'entraînement et rétention nulle. Les
-  réglages de compte restent une responsabilité opérateur distincte du code.
+- le prix publié reste `0,10 USD` par heure. Le stockage OpenRouter du contenu
+  des entrées/sorties est désactivé par défaut sauf opt-in, tandis que les
+  métadonnées de requête sont conservées. Les réglages de compte restent une
+  responsabilité opérateur distincte du code.
 
 Cette revalidation est documentaire et s'appuie aussi sur les métadonnées
 publiques du modèle et de son endpoint. Aucun appel STT réel, canari ou
 benchmark fournisseur n'a été exécuté dans D1.
+
+### 5. Revalidation fournisseur et frontière inactive D2 — 9 septembre 2026
+
+La documentation et les métadonnées publiques OpenRouter courantes maintiennent
+le contrat requis par D2 :
+
+- `POST /api/v1/audio/speech` est l'endpoint TTS dédié. Son succès renvoie les
+  octets audio bruts, distinctement de l'audio base64 de Chat Completions ; avec
+  `response_format=mp3`, le média documenté est `audio/mpeg` ;
+- le modèle `microsoft/mai-voice-2-flash` reste publié et sa liste de voix
+  accepte exactement `fr-FR-Soleil:MAI-Voice-2` ;
+- le corps fournisseur D2 contient seulement `model`, `input`, `voice` et
+  `response_format`. Aucun champ de routage, style, vitesse, instruction ou
+  fallback n'est ajouté ;
+- le prix publié est `15 USD` par million de caractères. Aucun plafond d'entrée,
+  de sortie ou timeout TTS exact exploitable n'est publié pour l'endpoint du
+  modèle : `16 000` caractères, `16 Mio` d'audio et `60 s` sont donc des bornes
+  locales FridaDev, jamais présentées comme des limites OpenRouter ;
+- le texte accepté n'est ni tronqué ni réécrit. La réponse est lue en streaming
+  par blocs jusqu'à la borne locale plus un octet, avec fermeture garantie ; un
+  `Content-Length` valide déjà supérieur à la borne est refusé avant lecture ;
+- un succès local exige le statut `200`, un média de base exactement
+  `audio/mpeg`, des octets non vides et cohérents avec un éventuel
+  `Content-Length`, puis une taille au plus égale à `16 Mio` ;
+- le stockage OpenRouter du contenu des entrées/sorties est désactivé par défaut
+  sauf opt-in, tandis que les métadonnées de requête sont conservées. D2 ne
+  revendique aucune propriété de rétention ou d'entraînement propre au provider
+  sous-jacent sans preuve primaire spécifique conservée.
+
+La route locale `POST /api/chat/dialogue/speech` accepte uniquement l'objet JSON
+`{"text":"…"}`. Elle retourne le MP3 avec `Cache-Control: no-store`, ou une
+erreur JSON content-free : `422` pour l'entrée locale invalide, `502` pour une
+réponse `200` invalide ou un rejet `400/404/422` du contrat fixe, et `503` pour
+timeout, transport, `401/403/429` ou `5xx`. Aucun corps fournisseur, texte ou
+audio partiel n'est projeté.
+
+Cette frontière reste inactive : aucun JavaScript ne l'appelle, le bouton
+Dialogue demeure désactivé et aucun appel TTS OpenRouter réel n'a été exécuté
+pour D2.
 
 ### Règle de non-répétition
 
@@ -299,11 +339,11 @@ ligne, traitement Frida inchangé, lecture TTS, puis réarmement automatique.
 ## Frontière d'autorisation
 
 Ce mode constitue une extension fonctionnelle. L'exception UI du 9 septembre
-autorise seulement le squelette décrit ci-dessus. L'exception D1 distincte
-autorise uniquement la frontière backend STT OpenRouter inactive et bornée.
-Elle ne vaut pas autorisation d'activer le bouton, le microphone, le VAD,
-l'enregistrement navigateur, le raccord frontend ou le TTS. D2 à D6 exigent
-chacun un lot explicitement autorisé.
+autorise seulement le squelette décrit ci-dessus. Les exceptions distinctes D1
+et D2 autorisent uniquement les frontières backend STT et TTS OpenRouter
+inactives et bornées. Elles ne valent pas autorisation d'activer le bouton, le
+microphone, le VAD, l'enregistrement navigateur, le raccord frontend ou la
+lecture audio. D3 à D6 exigent chacun un lot explicitement autorisé.
 
 ## Roadmap d'implémentation
 

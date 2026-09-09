@@ -37,8 +37,10 @@ manuel Safari sur iPhone 11.
 - [x] Le bouton produit reste désactivé.
 - [x] La frontière backend STT D1 existe sans consommateur frontend et reste
   inactive dans le produit.
-- [ ] Aucun microphone, VAD produit, enregistrement navigateur ou TTS n'est
-  raccordé au produit.
+- [x] La frontière backend TTS D2 existe sans consommateur frontend et reste
+  inactive dans le produit.
+- [ ] Aucun microphone, VAD produit, enregistrement navigateur ou raccord audio
+  n'est activé dans le produit.
 
 Le commit de référence du squelette est
 `0b190aeb485262f8c813f048740e0b2774d58a8b`.
@@ -129,7 +131,7 @@ vérité des animations sont déjà présents. D0 n'autorise aucune capacité au
 ## Lot D1 — contrat OpenRouter et frontière STT
 
 **Statut : fermé, poussé et livré par reconstruction ciblée du seul service
-applicatif. D2 reste non commencé.**
+applicatif.**
 
 **Livrable :** une route STT Frida hermétique, bornée et testée, sans encore
 être appelée par l'interface.
@@ -261,6 +263,9 @@ l'envoi.
 
 ## Lot D2 — frontière TTS et flux audio
 
+**Statut : implémenté et vérifié hermétiquement ; commit, push et livraison
+ciblée restent à prouver avant fermeture. D3 reste non commencé.**
+
 **Livrable :** une route TTS Frida qui retourne uniquement les octets audio
 confirmés de la voix Soleil, sans encore activer le mode produit.
 
@@ -283,13 +288,13 @@ confirmés de la voix Soleil, sans encore activer le mode produit.
 - Produit : `POST /api/chat/dialogue/speech`, corps JSON `{ "text": "…" }`,
   réponse audio `audio/mpeg` en succès.
 
-- [ ] **D2.1 — Revalider le contrat TTS OpenRouter**
+- [x] **D2.1 — Revalider le contrat TTS OpenRouter**
 
   Vérifier endpoint, modèle, voix, format, limite de texte, prix, délai et
   politique de données. Arrêter si la voix exacte n'est plus acceptée ou si la
   réponse n'est plus un flux d'octets audio documenté.
 
-- [ ] **D2.2 — Écrire les tests rouges service et route**
+- [x] **D2.2 — Écrire les tests rouges service et route**
 
   Couvrir : MP3 confirmé, texte vide, texte hors borne, voix rejetée, audio vide,
   mauvais content-type, timeout, transport, 401/403/429/5xx et absence de fuite
@@ -303,13 +308,13 @@ confirmés de la voix Soleil, sans encore activer le mode produit.
     tests.integration.chat.test_chat_dialogue_audio_routes
   ```
 
-- [ ] **D2.3 — Implémenter le service et la route**
+- [x] **D2.3 — Implémenter le service et la route**
 
   Appeler `/api/v1/audio/speech` avec le modèle V1, la voix Soleil et `mp3`.
   Propager les octets seulement après succès HTTP et validation du content-type.
   Ne pas conserver l'audio sur disque et ne pas ajouter de cache.
 
-- [ ] **D2.4 — Vérifier les deux frontières ensemble**
+- [x] **D2.4 — Vérifier les deux frontières ensemble**
 
   Exécuter les suites D1/D2, les contrats HTTP voisins et un test prouvant que
   STT et TTS ne partagent ni réponse, ni payload, ni traitement d'erreur ambigu.
@@ -320,6 +325,33 @@ confirmés de la voix Soleil, sans encore activer le mode produit.
 
 **Stop D2 :** aucun appel provider live n'est nécessaire. Si la voix ne peut
 être fixée explicitement, ne pas substituer silencieusement une autre voix.
+
+### Preuves D2 avant livraison — 9 septembre 2026
+
+- baseline : `main`, HEAD/upstream
+  `af8d693fa9257d8e9bd4b4a1746f9c85e33ccc6f`, divergence `0/0`, worktree
+  propre avant édition ;
+- revalidation documentaire sans appel payant : endpoint brut
+  `/api/v1/audio/speech`, modèle et voix Soleil toujours publiés, format `mp3`
+  associé à `audio/mpeg`, prix `15 USD` par million de caractères et aucune
+  limite d'entrée/sortie ni timeout TTS exact exploitable publié ;
+- limites locales : `16 000` caractères sans troncature, réponse lue
+  physiquement jusqu'à `16 Mio + 1`, timeout `60 s` ;
+- rouge hermétique : `22` assertions causales sur le module, le résolveur et la
+  route absents, sans erreur de harnais ;
+- vert hermétique D1/D2, routes, WSGI et client OpenRouter : `80/80`, dans un
+  conteneur jetable `--network none`, checkout monté en lecture seule et `/tmp`
+  en `tmpfs` ;
+- contre-audit du streaming : un timeout ou une erreur transport pendant la
+  lecture du corps produisait initialement `502`; deux témoins rouges ont
+  imposé la classification fermée `503`, réponse toujours close ;
+- mutation de lecture : neutraliser temporairement l'arrêt à borne plus un fait
+  lire `10` octets au lieu de `5` et remet le témoin au rouge ;
+- mutation de média : neutraliser temporairement le contrôle accepte à tort
+  `application/json` et `audio/mpeg-private`, et remet les deux témoins au rouge ;
+- après restauration, les deux témoins repassent au vert. Aucun provider réel,
+  frontend, cache, fichier, persistance, retry, fallback, nouveau secret ou
+  réglage Admin n'est ajouté.
 
 ---
 

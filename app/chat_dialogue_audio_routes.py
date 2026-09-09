@@ -11,12 +11,13 @@ def register_chat_dialogue_audio_routes(
     *,
     get_request: Callable[[], Any],
     dialogue_stt_service_module: Any,
+    dialogue_tts_service_module: Any,
     requests_module: Any,
     config_module: Any,
     llm_module: Any,
     logger_obj: Any,
     jsonify_func: Callable[..., Any],
-) -> Callable[[], Any]:
+) -> tuple[Callable[[], Any], Callable[[], Any]]:
     def api_chat_dialogue_transcribe():
         current_request = get_request()
         body_guard = dialogue_stt_service_module.request_body_size_guard_result(
@@ -127,13 +128,54 @@ def register_chat_dialogue_audio_routes(
         )
         return jsonify_func(result.to_payload()), result.http_status
 
+    def api_chat_dialogue_speech():
+        current_request = get_request()
+        payload = current_request.get_json(silent=True)
+        if not isinstance(payload, Mapping):
+            return _local_failure(
+                dialogue_tts_service_module,
+                jsonify_func,
+                "dialogue_tts_text_payload_invalid",
+            )
+        if set(_mapping_keys(payload)) != {"text"}:
+            return _local_failure(
+                dialogue_tts_service_module,
+                jsonify_func,
+                "dialogue_tts_text_field_invalid",
+            )
+
+        text = payload.get("text")
+        result = dialogue_tts_service_module.synthesize_dialogue_speech(
+            text,
+            requests_module=requests_module,
+            config_module=config_module,
+            llm_module=llm_module,
+            logger_obj=logger_obj,
+        )
+        if not result.ok:
+            return jsonify_func(result.to_payload()), result.http_status
+
+        response = app.response_class(
+            result.audio_bytes,
+            status=result.http_status,
+            content_type=result.content_type,
+        )
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
     app.add_url_rule(
         "/api/chat/dialogue/transcribe",
         endpoint="api_chat_dialogue_transcribe",
         view_func=api_chat_dialogue_transcribe,
         methods=["POST"],
     )
-    return api_chat_dialogue_transcribe
+    app.add_url_rule(
+        "/api/chat/dialogue/speech",
+        endpoint="api_chat_dialogue_speech",
+        view_func=api_chat_dialogue_speech,
+        methods=["POST"],
+    )
+    return api_chat_dialogue_transcribe, api_chat_dialogue_speech
 
 
 class _AudioTooLarge(Exception):

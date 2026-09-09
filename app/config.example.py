@@ -61,6 +61,7 @@ _OPENROUTER_COMPONENT_REFERER_DEFAULTS = {
     'validation-agent': 'https://fridadev.frida-system.fr/openrouter/validation-agent',
     'biblio-librarian': 'https://fridadev.frida-system.fr/openrouter/biblio-librarian',
     'dialogue-stt': 'https://fridadev.frida-system.fr/openrouter/dialogue-stt',
+    'dialogue-tts': 'https://fridadev.frida-system.fr/openrouter/dialogue-tts',
 }
 
 
@@ -91,6 +92,7 @@ OR_REFERER_STIMMUNG_AGENT = os.environ.get('OPENROUTER_REFERER_STIMMUNG_AGENT', 
 OR_REFERER_VALIDATION_AGENT = os.environ.get('OPENROUTER_REFERER_VALIDATION_AGENT', _default_openrouter_component_referer('validation-agent')).strip() or _default_openrouter_component_referer('validation-agent')
 OR_REFERER_BIBLIO_LIBRARIAN = os.environ.get('OPENROUTER_REFERER_BIBLIO_LIBRARIAN', _default_openrouter_component_referer('biblio-librarian')).strip() or _default_openrouter_component_referer('biblio-librarian')
 OR_REFERER_DIALOGUE_STT = os.environ.get('OPENROUTER_REFERER_DIALOGUE_STT', _default_openrouter_component_referer('dialogue-stt')).strip() or _default_openrouter_component_referer('dialogue-stt')
+OR_REFERER_DIALOGUE_TTS = os.environ.get('OPENROUTER_REFERER_DIALOGUE_TTS', _default_openrouter_component_referer('dialogue-tts')).strip() or _default_openrouter_component_referer('dialogue-tts')
 OR_TITLE_BASE = os.environ.get('OPENROUTER_APP_NAME', 'FridaDev').strip() or 'FridaDev'
 OR_TITLE_LLM = os.environ.get('OPENROUTER_TITLE_LLM', f'{OR_TITLE_BASE} / Main Chat').strip() or f'{OR_TITLE_BASE} / Main Chat'
 OR_TITLE_WEB_REFORMULATION = os.environ.get(
@@ -120,6 +122,7 @@ OR_TITLE_BIBLIO_LIBRARIAN = os.environ.get(
     f'{OR_TITLE_BASE} / Biblio Librarian Agent',
 ).strip() or f'{OR_TITLE_BASE} / Biblio Librarian Agent'
 OR_TITLE_DIALOGUE_STT = os.environ.get('OPENROUTER_TITLE_DIALOGUE_STT', f'{OR_TITLE_BASE} / Dialogue STT').strip() or f'{OR_TITLE_BASE} / Dialogue STT'
+OR_TITLE_DIALOGUE_TTS = os.environ.get('OPENROUTER_TITLE_DIALOGUE_TTS', f'{OR_TITLE_BASE} / Dialogue TTS').strip() or f'{OR_TITLE_BASE} / Dialogue TTS'
 OR_TITLE = OR_TITLE_LLM
 
 # Web reformulation model
@@ -155,6 +158,7 @@ CRAWL4AI_EXPLICIT_URL_MAX_CHARS = _env_int('CRAWL4AI_EXPLICIT_URL_MAX_CHARS', 25
 WEB_PORT = _env_int('FRIDA_WEB_PORT', 8089)
 TIMEOUT_S = _env_int('FRIDA_TIMEOUT', 900)
 DIALOGUE_STT_TIMEOUT_S = _env_int('DIALOGUE_STT_TIMEOUT_S', 65)
+DIALOGUE_TTS_TIMEOUT_S = _env_int('DIALOGUE_TTS_TIMEOUT_S', 60)
 
 # Admin API security
 # No application-level human admin token or LAN allowlist is configured here.
