@@ -263,8 +263,8 @@ l'envoi.
 
 ## Lot D2 — frontière TTS et flux audio
 
-**Statut : implémenté et vérifié hermétiquement ; commit, push et livraison
-ciblée restent à prouver avant fermeture. D3 reste non commencé.**
+**Statut : fermé, poussé et livré par reconstruction ciblée du seul service
+applicatif. La frontière reste inactive et D3 reste non commencé.**
 
 **Livrable :** une route TTS Frida qui retourne uniquement les octets audio
 confirmés de la voix Soleil, sans encore activer le mode produit.
@@ -319,14 +319,14 @@ confirmés de la voix Soleil, sans encore activer le mode produit.
   Exécuter les suites D1/D2, les contrats HTTP voisins et un test prouvant que
   STT et TTS ne partagent ni réponse, ni payload, ni traitement d'erreur ambigu.
 
-- [ ] **D2.5 — Contre-auditer, documenter, commit et push**
+- [x] **D2.5 — Contre-auditer, documenter, commit et push**
 
   Commit attendu : `feat(dialogue): add bounded OpenRouter speech`.
 
 **Stop D2 :** aucun appel provider live n'est nécessaire. Si la voix ne peut
 être fixée explicitement, ne pas substituer silencieusement une autre voix.
 
-### Preuves D2 avant livraison — 9 septembre 2026
+### Preuves D2 — 9 septembre 2026
 
 - baseline : `main`, HEAD/upstream
   `af8d693fa9257d8e9bd4b4a1746f9c85e33ccc6f`, divergence `0/0`, worktree
@@ -351,7 +351,29 @@ confirmés de la voix Soleil, sans encore activer le mode produit.
   `application/json` et `audio/mpeg-private`, et remet les deux témoins au rouge ;
 - après restauration, les deux témoins repassent au vert. Aucun provider réel,
   frontend, cache, fichier, persistance, retry, fallback, nouveau secret ou
-  réglage Admin n'est ajouté.
+  réglage Admin n'est ajouté ;
+- commit applicatif poussé :
+  `73af11ec4156bedd89553250b8d1f2b337c44b15` ;
+- reconstruction sans pull implicite par `build --pull=false`, puis
+  recréation `--no-deps --force-recreate` du seul service `fridadev`. Une
+  première invocation avec le nom de projet supposé `platform` a été refusée
+  avant toute interruption par conflit de nom ; les labels du conteneur ont
+  établi que le projet d'autorité est `fridadev-app`, utilisé pour la recréation
+  réussie sans suppression d'orphelin ;
+- image livrée :
+  `sha256:55f7934122709cfe8e5ed90ce5ece6febc11d67a9cb3d55957d74ac9b829b15b` ;
+  image précédente récupérable sous
+  `platform-fridadev-app:rollback-d2-20260909T161610Z` ;
+- `platform-fridadev` est `running`, `healthy`, restart `0`, OOM `false` ; les
+  31 voisins conservent le même inventaire et le même état, empreinte
+  `5eadf6cf7b63bec7380a8af5355895b4e3d8df3c6b56ac33663b40aed1cb8ec0` avant
+  et après ;
+- HTTP interne `200`, route TTS présente et rejet local hermétique `422` sans
+  appel provider ; empreintes identiques entre checkout et conteneur pour les
+  cinq fichiers runtime, zéro ligne récente `ERROR`, `CRITICAL` ou `Traceback` ;
+- la sélection `80/80` repasse depuis l'image réellement déployée, sans montage
+  du checkout et toujours avec `--network none`, filesystem read-only et `/tmp`
+  en `tmpfs`.
 
 ---
 

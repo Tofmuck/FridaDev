@@ -7,7 +7,7 @@ Dernière mise à jour de reconnaissance : 9 septembre 2026.
 choix V1 du VAD, du STT et du TTS sont retenus ; seule leur invalidation par le
 test automobile réel peut les rouvrir. Le squelette visuel Figma et son
 contrôleur local d'états sont intégrés. Les frontières backend STT D1 et TTS D2
-sont implémentées sans consommateur frontend ; l'entrée produit reste
+sont implémentées et livrées sans consommateur frontend ; l'entrée produit reste
 désactivée et aucun microphone, VAD produit, enregistrement navigateur, raccord
 audio ou appel fournisseur TTS n'est activé.**
 
