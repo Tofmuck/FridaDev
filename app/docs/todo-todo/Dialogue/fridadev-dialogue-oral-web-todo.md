@@ -268,3 +268,10 @@ autorise seulement le squelette UI décrit ci-dessus. Elle ne vaut pas
 autorisation d'activer le bouton, le microphone, le VAD, l'enregistrement, le
 STT, le TTS, un endpoint, un provider ou une configuration. Ces raccords
 exigeront la roadmap dédiée et des lots explicitement autorisés.
+
+## Roadmap d'implémentation
+
+La mise en œuvre est découpée dans la
+[roadmap du mode Dialogue oral Web](fridadev-dialogue-oral-web-implementation-roadmap-todo.md).
+Elle garde le bouton produit désactivé jusqu'au canari iPhone en voiture et
+interdit de recommencer les choix VAD, STT, TTS ou voix sans fait nouveau.
