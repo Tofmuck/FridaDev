@@ -263,10 +263,10 @@ l'envoi.
 
 ## Lot D2 — frontière TTS et flux audio
 
-**Statut : micro-réouvert uniquement pour corriger la classification des
-erreurs `urllib3` pendant la lecture streaming. Le patch est vérifié hors
-réseau ; la livraison ciblée reste à rejouer. La frontière reste inactive et
-D3 reste non commencé.**
+**Statut : définitivement refermé, poussé et livré par reconstruction ciblée
+du seul service applicatif après correction de la classification des erreurs
+`urllib3` pendant la lecture streaming. La frontière reste inactive et D3
+reste non commencé.**
 
 **Livrable :** une route TTS Frida qui retourne uniquement les octets audio
 confirmés de la voix Soleil, sans encore activer le mode produit.
@@ -381,9 +381,8 @@ confirmés de la voix Soleil, sans encore activer le mode produit.
 
 ### Correctif de classification streaming D2 — 9 septembre 2026
 
-**Statut intermédiaire : correctif minimal vérifié hors réseau ; livraison
-ciblée du seul service applicatif à rejouer avant la fermeture définitive. D3
-reste non commencé.**
+**Statut : correctif minimal vérifié, poussé et livré par reconstruction ciblée
+du seul service applicatif. D3 reste non commencé.**
 
 - micro-réouverture depuis `main`, HEAD/upstream
   `b76419b96d5d0ec88f71b30b880bd556f20775e4`, divergence `0/0`, worktree
@@ -408,6 +407,23 @@ reste non commencé.**
 - `KeyboardInterrupt` et `SystemExit` ne sont pas absorbés et la réponse est
   néanmoins fermée une fois ; aucun corps fournisseur, texte, audio, exception
   brute, URL, header ou secret n'est projeté ou journalisé.
+- commit applicatif poussé :
+  `04ef9944772e2401fb3f202d3b4d9dcf9766d92c` ;
+- reconstruction sans pull implicite par `build --pull=false`, puis recréation
+  `--no-deps --force-recreate` du seul service `fridadev` ; image livrée
+  `sha256:e69806fc023997ffca9e0dc922e27c2a8070a6ada241770794dc58427c7c6757`,
+  image précédente récupérable sous
+  `platform-fridadev-app:rollback-d2-stream-20260909T164936Z` ;
+- `platform-fridadev` est `running`, `healthy`, restart `0`, OOM `false` ; les
+  31 voisins conservent strictement leur identité, image et état, empreinte
+  `1e07b24585e6113b7c44d38e2b5248c1e3f7197aef5ed167b380f079f9e68051`
+  avant et après ;
+- HTTP interne `200`, rejet local hermétique de la route TTS en `422` sans
+  appel fournisseur, zéro succès TTS live et zéro ligne récente `ERROR`,
+  `CRITICAL` ou `Traceback` ; empreintes du service et de son test identiques
+  entre checkout et conteneur ;
+- la sélection `82/82` repasse depuis l'image réellement déployée, sans montage
+  du checkout, `--network none`, filesystem read-only et `/tmp` en `tmpfs`.
 
 ---
 
