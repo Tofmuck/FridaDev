@@ -129,6 +129,25 @@ reste litteralement `disabled`. Aucun TTS, lecture audio, rearmement automatique
 ou appel provider reel n'est autorise. D5 et D6 restent non commences et exigent
 chacun une decision explicite distincte.
 
+Exception explicite et strictement bornee decidee par l'utilisateur le 9
+septembre 2026 : le lot D5 autorise, dans le seul harnais synthetique existant,
+la synthese du resultat final canonique D4 par la route D2 puis sa lecture
+sur un unique HTMLAudioElement possede par la session et explicitement transmis
+au recorder D3. Une amorce silencieuse locale, fixe et minuscule appelle play()
+synchroniquement depuis le geste initial ; son refus interdit tout armement.
+Ses evenements sont distincts du TTS metier. La lecture repetee sur Safari
+iPhone reste a valider materiellement en D6. Le texte canonique est transmis
+sans trim, normalisation ni reecriture ; Array.from(text).length applique la
+borne de 16 000 points de code, D2 restant l'autorite finale du blanc. Un seul
+POST produit un MP3 non vide d'au plus 16 Mio, sans retry ni persistance audio.
+tts_pending projette une attente sans animation ; seul playing valide autorise
+tts_speaking. Seul ended valide autorise un rearmement automatique unique,
+apres nettoyage du lecteur ; le microphone reste desarme pendant STT, chat,
+synthese et lecture. Pause, sortie et changement de conversation neutralisent
+operations et evenements tardifs. Une panne de vocalisation preserve le tour
+ecrit. Le bouton produit reste litteralement disabled, sans appel provider reel,
+canari, changement backend ni precedent pour D6, qui reste non commence.
+
 Chaque lot doit demontrer: pas de capacite produit ajoutee, comportements
 legitimes preserves hors bug corrige, complexite stable ou reduite, ancien
 chemin retire quand il est remplace, et invariants utiles verrouilles par des

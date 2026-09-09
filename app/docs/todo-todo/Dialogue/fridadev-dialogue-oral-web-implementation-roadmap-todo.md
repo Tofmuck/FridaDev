@@ -37,8 +37,8 @@ manuel Safari sur iPhone 11.
 - [x] Le bouton produit reste désactivé.
 - [x] La frontière backend STT D1 existe sans consommateur frontend et reste
   inactive dans le produit.
-- [x] La frontière backend TTS D2 existe sans consommateur frontend et reste
-  inactive dans le produit.
+- [x] La frontière backend TTS D2 existe ; D5 ajoute son consommateur dans le
+  seul harnais synthétique. Elle reste inactive dans le produit normal.
 - [ ] Aucun microphone, VAD produit, enregistrement navigateur ou raccord audio
   n'est activé dans le produit.
 
@@ -109,8 +109,8 @@ frontières.
   mapping content-free des erreurs.
 - `app/web/dialogue/dialogue_vad_recorder.js` : microphone, VAD, segmentation et
   production d'un blob unique.
-- `app/web/dialogue/dialogue_audio_client.js` : transport STT navigateur D4 vers
-  la seule route de transcription Frida ; aucune synthèse ou lecture avant D5.
+- `app/web/dialogue/dialogue_audio_client.js` : transports STT D4 et TTS D5
+  vers les deux routes Frida existantes, sans accès fournisseur direct.
 - `app/web/dialogue/dialogue_session_controller.js` : machine d'orchestration
   semi-duplex et raccord au contrôleur visuel existant.
 - `app/web/chat_dialogue_mode.js` : reste la projection visuelle pure ; aucune
@@ -894,7 +894,8 @@ dans le conteneur hermétique décrit ci-dessus.
 
 ## Lot D5 — lecture TTS et boucle semi-duplex
 
-**Statut : non commencé, non autorisé par D4.**
+**Statut : D5 implémenté et vérifié ; commit, push et livraison en cours.
+Bouton produit toujours désactivé ; D6 non commencé.**
 
 **Livrable :** après la réponse finale canonique, Frida la lit, anime uniquement
 pendant le son effectif, puis réarme l'écoute.
@@ -911,7 +912,12 @@ pendant le son effectif, puis réarme l'écoute.
 
 **Interfaces :**
 
-- `dialogueAudioClient.synthesize(text) -> Promise<Blob>`.
+- `dialogueAudioClient.synthesize(text, { signal }?) -> Promise<Blob>`.
+  Texte exact, comptage `Array.from(text).length`, HTTP 200 et MP3 borné.
+- `dialogueSessionController.whenReady() -> Promise<boolean>` confirme
+  préparation du lecteur et cleanup avant armement. `start()` appelle
+  synchroniquement `play()` sur le silence local depuis le geste initial.
+  Le lecteur est explicitement transmis au recorder D3, sans recherche DOM.
 - Le contrôleur possède exactement un `HTMLAudioElement` et révoque chaque
   object URL après fin ou erreur.
 - Le submit canonique de D4 retourne `{ ok: true, text }`, avec le texte exact
@@ -919,33 +925,34 @@ pendant le son effectif, puis réarme l'écoute.
   sans relire le DOM, le cache ou un fragment de stream ; un échec fermé ne
   fournit aucun texte à lire.
 
-- [ ] **D5.1 — Écrire les tests rouges de vérité audio**
+- [x] **D5.1 — Écrire les tests rouges de vérité audio**
 
   Prouver : aucun TTS avant final lock ; un seul POST TTS ; activation initiale
   Safari conservée ; état `tts_speaking` seulement après l'événement `playing` ;
   arrêt d'animation sur `pause`, `waiting`, `ended`, `error` et sortie ; aucun
   micro pendant lecture ; réarmement seulement après `ended`.
 
-- [ ] **D5.2 — Implémenter le lecteur possédé par la session**
+- [x] **D5.2 — Implémenter le lecteur possédé par la session**
 
-  Créer puis réutiliser un élément audio déverrouillé par le premier geste
-  utilisateur. Remplacer sa source par l'object URL du MP3 reçu. Ne pas lire
+  Créer puis réutiliser un élément audio préparé depuis le premier geste
+  utilisateur ; la conservation de l'autorisation Safari reste à valider
+  matériellement en D6. Remplacer sa source par l'object URL du MP3 reçu. Ne pas lire
   `innerHTML`, un brouillon, un placeholder ou un fragment de stream.
 
-- [ ] **D5.3 — Fermer la machine semi-duplex**
+- [x] **D5.3 — Fermer la machine semi-duplex**
 
   Cycle nominal exact : `listening → user_speaking → transcribing → thinking →
   tts_speaking → listening`. Pause désarme microphone et lecteur. Terminer ou
   fermer arrête pistes, VAD, recorder, requêtes frontend encore annulables,
   audio et animations, puis rend le fil normal interactif.
 
-- [ ] **D5.4 — Prouver échecs et reprises explicites**
+- [x] **D5.4 — Prouver échecs et reprises explicites**
 
   Couvrir refus `play()`, TTS indisponible, MP3 vide, fin de chat sans réponse
   assistant, arrêt utilisateur pendant synthèse et erreur après réponse déjà
   persistée. La réponse écrite reste vraie même si sa vocalisation échoue.
 
-- [ ] **D5.5 — Exécuter la sélection frontend complète**
+- [x] **D5.5 — Exécuter la sélection frontend complète**
 
   ```bash
   node --test app/tests/unit/frontend_chat/*.js
@@ -967,6 +974,89 @@ pendant le son effectif, puis réarme l'écoute.
 
 **Stop D5 :** le bouton produit reste désactivé même si les tests hermétiques
 sont verts. Son activation appartient exclusivement à D6.
+
+### Design D5 approuvé et preuves finales — 9 septembre 2026
+
+- baseline Git conforme : `/opt/platform/fridadev`, `main`, HEAD/upstream
+  `fc2da991f97b9e61cdde2dddcf11f736fede7200`, divergence `0/0`, worktree propre ;
+  travail directement dans l'IDE, sans SSH ni pull ;
+- design explicitement approuvé avant édition : un lecteur dans la session
+  existante, amorce PCM locale minuscule sans réseau, injection explicite à D3,
+  projection `tts_pending`, autorisation de réarmement consommée par `ended`
+  uniquement. Pas de nouveau module, dépendance, route ou pipeline ;
+- rouge transport : les 15 nouveaux cas D5 échouent sur l'absence de
+  `synthesize` ; sélection verte client `36/36`. Le texte Unicode composé,
+  décomposé, astral, U+0085, U+001C et U+FEFF n'est jamais réécrit ;
+- rouge visuel : `tts_pending` est absent. Après ajout, `4/4` preuves visuelles
+  passent, notamment l'extinction des animations sans transformer Pause en
+  Reprendre pendant le buffering ;
+- rouges session : amorce/readiness absentes, promesse `play()` tardive bloquant
+  le tour suivant après `ended`, puis reprise contournant une préparation
+  annulée. La sélection D4/D5 session passe `36/36` après correction ;
+- le premier rouge Chromium traverse le vrai wiring et constate le lecteur
+  non transmis à la session ; l'ouverture crée désormais l'élément avant toute
+  attente et l'injecte explicitement au recorder, puis attend `whenReady()` ;
+- première sélection frontend unitaire complète `276/276`, sans échec,
+  annulation ni skip. Les voisins Python D1/D2/routes, Whisper et input_mode
+  passent `57/57` dans un conteneur jetable `--network none`, filesystem et
+  checkout read-only, `/tmp` en tmpfs ; aucune donnée opérateur ni provider ;
+- revue indépendante transport/visuel/wiring : `40/40` ciblés. L'hypothèse
+  d'un rejet Unicode trop large est invalidée : l'exception U+FEFF préserve le
+  texte valide D2, les autres différences de blanc restent tranchées par D2 ;
+- contre-audit indépendant de la session et du wiring : `76/76` ciblés,
+  aucun finding vivant confirmé ;
+- image initiale observée :
+  `sha256:d6907e75766bdc95af2ba2825f2294d147718edea89a8a62a1417766d6fcaa84`,
+  différente de l'archive D4 mais les huit fichiers applicatifs vérifiés sont
+  strictement identiques au HEAD initial. Service running/healthy, restart 0,
+  OOM false ; labels d'autorité : projet `fridadev-app`, service `fridadev`,
+  Compose `/opt/platform/fridadev-app/docker-compose.yml`.
+
+
+---
+
+### Vérification finale D5 avant livraison
+
+- frontend unitaire complet après restauration des mutations : `276/276` ;
+  D3 et états visuels `32/32` ; huit fichiers JavaScript modifiés vérifiés par
+  `node --check`, sans erreur de syntaxe ;
+- smoke Chromium complet : `39/39`, sans échec, annulation ni skip, dont six
+  scénarios D5. Le vrai wiring traverse WAV D3, STT, soumission canonique et
+  POST TTS natifs interceptés localement. Les contrôles du lecteur portent sur
+  un vrai `HTMLAudioElement` aux événements/promesses contrôlés ;
+- deux tours utilisent un seul lecteur, deux object URLs et deux révocations.
+  `waiting` et `pause` éteignent les animations sans micro ; seul `ended`
+  réarme, après cleanup. Un `ended` dupliqué et la course `ended` puis Pause
+  ne produisent pas de capture fantôme ;
+- final vide, TTS indisponible, MP3 vide, refus du second `play()` et erreur
+  média aboutissent strictement à `error`, sans reprise automatique. Pour les
+  pannes de vocalisation, la réponse finale écrite reste dans le fil après
+  fermeture. Le refus initial simulé n'acquiert aucun microphone ;
+- preuve Chromium native distincte : un vrai clic crée le lecteur et invoque
+  son vrai `play()` dans le handler synchrone sur l'amorce locale ; le même
+  élément est transmis par identité au recorder D3. Ce test valide ce chemin
+  Chromium, pas Safari iPhone ni la sortie sonore matérielle ;
+- mutation animation anticipée : le vrai smoke reçoit `tts_speaking` avant
+  `playing`, au lieu de `tts_pending`, et échoue directement ;
+- mutation réarmement sur `waiting` : le même smoke observe une piste vivante
+  pendant le buffering et échoue ;
+- mutation révocation supprimée : après deux tours, zéro révocation au lieu de
+  deux remet le témoin au rouge. Les trois mutations sont tuées par la chaîne
+  navigateur réelle, pas par une recherche textuelle ;
+- chaque mutation restaure les octets originaux dans un `finally` ; le
+  contrôleur retrouve l'empreinte exacte
+  `9b4aa003eca250f0c2f33a0741133f081c8316053e3a7eb7e5b00b3301eb0192`,
+  puis le smoke complet et la suite unitaire repassent au vert ;
+- revue finale des tests/docs : aucun finding vivant. Le libellé d'un refus
+  simulé est corrigé pour ne pas le présenter comme une preuve native ;
+- contre-audit : aucun full-duplex, second lecteur actif, double réarmement,
+  écoute pendant TTS, URL oubliée, callback tardif efficace, second pipeline,
+  log de contenu, test affaibli, dépendance ou changement D6. Backends D1/D2,
+  final lock, VAD/ONNX épinglés, Whisper et `input_mode` sont inchangés ;
+- Browser plugin absent : Playwright existant, serveur local et transports
+  synthétiques inspectables, sans provider ni microphone physique. Capture
+  visuelle mobile `tts_pending` inspectée à 390 × 844 ; les données de test et
+  artefacts temporaires restent hors dépôt.
 
 ---
 

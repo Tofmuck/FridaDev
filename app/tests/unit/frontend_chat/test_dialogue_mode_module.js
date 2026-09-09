@@ -117,6 +117,24 @@ test('dialogue screen is integrated as a hidden mobile surface without transcrip
   assert.match(indexHtml, /id="btnDialogueMode"[^>]*disabled/);
 });
 
+test('D5 buffering stops both animations without turning Pause into Resume', () => {
+  const root = createFakeElement();
+  const status = createFakeElement();
+  const pause = createFakeElement();
+  const controller = dialogueMode.createDialogueModeController({
+    rootEl: root, statusEl: status, pauseButtonEl: pause,
+  });
+  controller.enter();
+  controller.setState('tts_speaking');
+  controller.setState('tts_pending');
+  assert.equal(root.dataset.dialogueVoiceActive, 'false');
+  assert.equal(root.dataset.dialogueFridaSpeaking, 'false');
+  assert.equal(status.textContent, 'AUDIO EN ATTENTE');
+  assert.equal(pause.getAttribute('aria-pressed'), 'false');
+  pause.dispatch('click');
+  assert.equal(controller.getState(), 'paused');
+});
+
 function createFakeElement({ hidden = false } = {}) {
   const attrs = new Map();
   const listeners = new Map();

@@ -250,14 +250,13 @@
     }
   };
 
-  const createDialogueD3Recorder = (runtime, d4Event) => {
+  const createDialogueD3Recorder = (runtime, d4Event, ttsMediaElement) => {
     const adapters = dialogueD3TestAdapters || {};
     return window.FridaDialogueVadRecorder.createDialogueVadRecorder({
       mediaDevices: adapters.mediaDevices,
       BlobCtor: adapters.BlobCtor,
       documentObj: document,
-      ttsMediaElement: adapters.ttsMediaElement
-        || document.querySelector('[data-frida-dialogue-tts]'),
+      ttsMediaElement: ttsMediaElement || adapters.ttsMediaElement,
       vadFactory: adapters.vadFactory || runtime.vadFactory,
       vadOptions: runtime.vadOptions,
       onEvent: (event) => projectDialogueD3Event(event, d4Event),
@@ -306,31 +305,46 @@
         const session = ++dialogueD3Session;
         dialogueModeController.enter();
         let d4Event = null;
+        let sessionController = null;
+        let ttsMediaElement = null;
         if (routeToChat) {
-          dialogueD4Controller = window.FridaDialogueSessionController.createDialogueSessionController({
-            capture: {
-              pause: () => dialogueD3Recorder?.pause(),
-              stop: () => dialogueD3Recorder?.stop(),
-              resume: async (isCurrent) => {
-                await dialogueD3Operation;
-                if (!isCurrent()) return;
-                await dialogueD3Recorder?.arm();
-                if (!isCurrent()) return;
-                await dialogueD3Recorder?.resume();
+          // Create and prepare the owned element in the initial gesture, before any await.
+          try {
+            ttsMediaElement = dialogueD3TestAdapters.createTtsMediaElement
+              ? dialogueD3TestAdapters.createTtsMediaElement() : new Audio();
+            sessionController = window.FridaDialogueSessionController.createDialogueSessionController({
+              ttsMediaElement,
+              capture: {
+                pause: () => dialogueD3Recorder?.pause(),
+                stop: () => dialogueD3Recorder?.stop(),
+                resume: async (isCurrent) => {
+                  await dialogueD3Operation;
+                  if (!isCurrent()) return;
+                  await dialogueD3Recorder?.arm();
+                  if (!isCurrent()) return;
+                  await dialogueD3Recorder?.resume();
+                },
               },
-            },
-            audioClient: window.FridaDialogueAudioClient.createDialogueAudioClient(),
-            getConversationId: () => getCurrentId(),
-            isChatBusy: () => chatRequestInFlight,
-            setState: (state) => dialogueModeController.setState(state),
-            submitCanonicalChatMessage: (text, inputMode) => submitCanonicalChatMessage(text, inputMode),
-          });
-          d4Event = dialogueD4Controller.start();
+              audioClient: window.FridaDialogueAudioClient.createDialogueAudioClient(),
+              getConversationId: () => getCurrentId(),
+              isChatBusy: () => chatRequestInFlight,
+              setState: (state) => dialogueModeController.setState(state),
+              submitCanonicalChatMessage: (text, inputMode) => submitCanonicalChatMessage(text, inputMode),
+            });
+            dialogueD4Controller = sessionController;
+            d4Event = sessionController.start();
+          } catch (_error) {
+            void sessionController?.close();
+            handleDialogueD3UnexpectedError();
+            return Promise.resolve();
+          }
         }
         return queueDialogueD3Operation(async () => {
+          if (sessionController && !await sessionController.whenReady()) return;
+          if (!dialogueD3Active || session !== dialogueD3Session) return;
           const runtime = await loadDialogueD3();
           if (!dialogueD3Active || session !== dialogueD3Session) return;
-          const recorderToArm = createDialogueD3Recorder(runtime, d4Event);
+          const recorderToArm = createDialogueD3Recorder(runtime, d4Event, ttsMediaElement);
           dialogueD3Recorder = recorderToArm;
           if (dialogueModeController.getState() === 'listening') await recorderToArm.arm();
         });

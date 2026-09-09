@@ -11,8 +11,9 @@ sont implémentées et livrées. La capture locale D3 est corrigée, refermée e
 livrée avec pré-roll borné et assets optionnels. D4 raccorde désormais le WAV à
 D1 puis au chat canonique dans le seul harnais synthétique ; D4 est fermé,
 poussé et livré après toutes les preuves et la vérification runtime. L'entrée
-produit reste désactivée ; D5/D6, TTS frontend, lecture audio et réarmement
-automatique restent non commencés.**
+produit reste désactivée. D5 est implémenté et vérifié, en cours de livraison :
+TTS frontend, lecteur possédé et réarmement après fin dans le seul harnais.
+D6 et les canaris réels restent non commencés.**
 
 ## Intention
 
@@ -236,7 +237,7 @@ Le brouillon clavier déjà présent est conservé lors d'une soumission Dialogu
 
 La réussite finale canonique retourne `{ ok: true, text: reply }` : `reply` est
 le texte du final lock et un `final_text: ""` reste exactement vide, sans
-réutiliser le brouillon streamé. Le contrôleur D4 ignore encore `text`, projette
+réutiliser le brouillon streamé. À la clôture D4, le contrôleur ignore `text`, projette
 `paused` et garde le microphone désarmé. Les résultats `busy`, `empty` et
 `chat_failed` ne portent aucun texte. Un STT vide, y compris uniquement des
 espaces, ne produit ni message ni POST chat et finit également en pause ; la
@@ -252,7 +253,72 @@ et `paused`.
 Les preuves rouges, mutations, suites et résultats de livraison réels sont
 consignés dans la [section D4 de la roadmap](fridadev-dialogue-oral-web-implementation-roadmap-todo.md#lot-d4--raccord-stt-au-pipeline-chat-canonique).
 Aucun appel provider réel, TTS, lecture audio ou activation du bouton n'a été
-exécuté. D5 et D6 restent non commencés.
+exécuté dans D4. Le prolongement D5 distinct est décrit ci-dessous ; D6 reste
+non commencé.
+
+## Lecture TTS et boucle D5 — 9 septembre 2026
+
+L'exception D5 explicitement approuvée prolonge seulement
+`FridaDialogueD3Harness.openAndArm({ routeToChat: true })`. Aucun nouveau mode
+de harnais concurrent : ce chemin enchaîne désormais D4 puis D5. Sans cette
+option, D3 reste local ; sans adaptateurs de test, le harnais reste absent.
+Le bouton produit reste littéralement `disabled`. Le bootstrap normal ne crée
+aucun lecteur et ne charge aucun asset lourd supplémentaire.
+
+L'ouverture crée un unique `HTMLAudioElement`, possédé par la session et passé
+explicitement au recorder D3 comme `ttsMediaElement`, sans recherche DOM.
+`start()` appelle `play()` synchroniquement dans le geste initial sur un WAV
+PCM silencieux fixe d'un échantillon, embarqué en data URI, sans réseau ni
+object URL. L'élément reste non muet. `whenReady()` doit confirmer le succès
+de cette préparation et son nettoyage avant tout armement. Refus, annulation
+ou erreur empêchent l'armement ; les événements de cette amorce ne sont jamais
+des événements TTS métier. Le même élément sert tous les tours suivants.
+Cette préparation est **à valider matériellement en D6 sur Safari iPhone** ;
+ni la documentation WebKit macOS ni le smoke Chromium ne garantissent cette
+compatibilité.
+
+Après résolution complète du submit D4, seul le `text` du résultat
+`{ ok: true, text }` est envoyé à `dialogueAudioClient.synthesize(text, { signal })`.
+Aucun DOM, cache, placeholder ni fragment streaming n'est relu. Le texte reste
+exact : pas de trim, normalisation, troncature ou réécriture ; la limite de
+16 000 points de code est comptée par `Array.from(text).length`. Le client
+refuse les types invalides, le vide et les blancs reconnus localement, sans
+rejeter U+FEFF que D2 accepte. U+0085 et U+001C traversent inchangés : D2 reste
+l'autorité finale pour les différences de définition du blanc. Le client fait
+un seul POST JSON `{ text }` vers `/api/chat/dialogue/speech`, sans retry.
+Un succès exige HTTP 200, média de base exactement `audio/mpeg`, Blob non vide
+et d'au plus 16 Mio ; toute erreur reste content-free.
+
+Après le final canonique, `tts_pending` affiche « AUDIO EN ATTENTE », onde et
+orbe au repos, pendant la synthèse, l'attente de lecture et le buffering.
+Seul `playing` de la lecture courante, avec source et propriétés cohérentes,
+projette `tts_speaking` et active onde et orbe. La résolution de `play()`
+ne suffit pas. `waiting` et `pause` média arrêtent les animations sans réarmer
+ni terminer la session ; un nouveau `playing` valide les reprend. Le `pause`
+naturel qui précède `ended` ne devient pas une erreur. La pause utilisateur
+reste distincte et annule la lecture en cours.
+
+Chaque lecture possède une object URL. Son nettoyage invalide d'abord ses
+callbacks, arrête le lecteur, retire sa source, appelle `load()` pour annuler
+les tâches média de l'ancienne ressource, puis révoque l'URL exactement une
+fois. Session, génération, conversation, identité de lecture, source et état
+du lecteur gardent les réponses TTS, événements et promesses `play()` tardifs.
+Une fermeture/réouverture crée une nouvelle session sans réutiliser ses callbacks.
+
+Seul `ended` confirmé de la lecture courante, après un `playing` observé,
+autorise un réarmement automatique unique, après cleanup audio. Les gardes sont
+revérifiées pendant la reprise D3 : Pause, sortie ou changement de conversation
+neutralisent un armement en attente et ses pistes tardives. Le micro reste
+désarmé pendant STT, chat, synthèse et lecture. Une promesse `play()` ancienne
+ne bloque pas le cycle suivant. Un échec ou un final vide conduit à `error`,
+sans réarmement automatique ; la réponse écrite déjà canonique demeure intacte.
+Le STT vide conserve sa pause D4 avec reprise explicitement actionnée.
+
+Annuler le fetch ne garantit pas l'arrêt d'un traitement D2 déjà reçu côté
+serveur ; l'invalidation locale reste donc indépendante de cette annulation.
+Aucun backend, modèle, voix, prompt, persistance, Whisper, VAD épinglé ou schéma
+`input_mode` n'est modifié. Aucun provider réel ni canari n'est exercé en D5.
+Les preuves et la livraison sont consignées dans la section D5 de la roadmap.
 
 ## Méthode obligatoire de choix du transport et des modèles
 
@@ -448,9 +514,10 @@ réelles `urllib3.exceptions.ReadTimeoutError`, `ProtocolError` et `SSLError`
 sont classées respectivement comme timeout, transport et transport ; les autres
 erreurs de données illisibles restent des réponses `502` fermées.
 
-Cette frontière reste inactive : aucun JavaScript ne l'appelle, le bouton
-Dialogue demeure désactivé et aucun appel TTS OpenRouter réel n'a été exécuté
-pour D2.
+À la clôture D2, aucun JavaScript n'appelait cette frontière. D5 ajoute son
+consommateur dans le seul harnais synthétique ; elle reste inactive dans le
+produit normal, dont le bouton Dialogue demeure désactivé. Aucun appel TTS
+OpenRouter réel n'a été exécuté pour D2 ou D5.
 
 ### Règle de non-répétition
 
@@ -476,8 +543,10 @@ inactives et bornées. L'exception D3 autorise uniquement la capture locale
 testable décrite ci-dessus, sans entrée produit. Elle ne vaut pas autorisation
 d'activer le bouton ni de lire le TTS. L'exception D4 explicitement approuvée
 le 9 septembre autorise seulement le raccord WAV → D1 → chat canonique décrit
-ci-dessus, dans le harnais synthétique. D5 et D6 exigent chacun un lot distinct
-explicitement autorisé ; aucun appel provider réel n'est autorisé par D4.
+ci-dessus, dans le harnais synthétique. L'exception D5 distincte approuvée le
+9 septembre autorise uniquement la lecture et la boucle décrites ci-dessus,
+toujours sans provider réel ni activation produit. D6 exige encore une décision
+explicite distincte et reste non commencé.
 
 ## Roadmap d'implémentation
 

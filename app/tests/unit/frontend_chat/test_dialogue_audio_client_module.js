@@ -87,3 +87,115 @@ test('D4 transport and abort are sanitized; pre-aborted operation never fetches'
     { message: 'dialogue_stt_unavailable' });
   assert.equal(calls, 0);
 });
+
+const mp3 = (parts = ['synthetic MP3'], contentType = 'audio/mpeg') =>
+  new Response(new Blob(parts, { type: contentType }), {
+    status: 200, headers: { 'Content-Type': contentType },
+  });
+
+test('D5 valid text sends one exact JSON request and returns the bounded MP3 Blob', async () => {
+  const samples = [
+    'Texte synthétique',
+    `e\u0301${'😀'.repeat(15_998)}`,
+    '\u0085',
+    '\u001c',
+    '\ufeff',
+  ];
+  for (const text of samples) {
+    let calls = 0;
+    const abort = new AbortController();
+    const api = client(async (url, options) => {
+      calls++;
+      assert.equal(url, '/api/chat/dialogue/speech');
+      assert.equal(options.method, 'POST');
+      assert.equal(options.signal, abort.signal);
+      assert.deepEqual(options.headers, { 'Content-Type': 'application/json' });
+      assert.equal(options.body, JSON.stringify({ text }));
+      return mp3(['x'], 'audio/mpeg; charset=binary');
+    });
+    const result = await api.synthesize(text, { signal: abort.signal });
+    assert.ok(result instanceof Blob);
+    assert.equal(result.size, 1);
+    assert.equal(calls, 1);
+  }
+});
+
+test('D5 invalid text fails locally using Unicode code points without rewriting', async () => {
+  let calls = 0;
+  const api = client(async () => { calls++; return mp3(); });
+  for (const text of [undefined, null, 3, {}, '', ' \t\n', '😀'.repeat(16_001)]) {
+    await assert.rejects(api.synthesize(text), { message: 'dialogue_tts_invalid_text' });
+  }
+  assert.equal(calls, 0);
+  await api.synthesize('😀'.repeat(16_000));
+  assert.equal(calls, 1, '16000 astral code points is inclusive');
+});
+
+for (const status of [201, 204, 400, 401, 403, 422, 429, 500, 502, 503]) {
+  test(`D5 HTTP ${status} exposes no response content and never retries`, async () => {
+    let calls = 0;
+    const api = client(async (_url, options) => {
+      calls++;
+      if (status === 422) assert.equal(options.body, JSON.stringify({ text: '\u0085' }));
+      return new Response('RAW_PRIVATE_SENTINEL', {
+        status, headers: { 'Content-Type': status === 204 ? 'audio/mpeg' : 'text/plain' },
+      });
+    });
+    await assert.rejects(api.synthesize(status === 422 ? '\u0085' : 'Bonjour'),
+      { message: 'dialogue_tts_unavailable' });
+    assert.equal(calls, 1);
+  });
+}
+
+test('D5 rejects wrong media type and non-Blob, empty or oversized bodies without retry', async () => {
+  const responses = [
+    () => mp3(['RAW_PRIVATE_SENTINEL'], 'audio/wav'),
+    () => mp3([], 'audio/mpeg'),
+    () => mp3([new Uint8Array(16 * 1024 * 1024 + 1)], 'audio/mpeg'),
+    () => ({ status: 200, headers: new Headers({ 'Content-Type': 'audio/mpeg' }),
+      blob: async () => ({ size: 1, type: 'audio/mpeg', raw: 'RAW_PRIVATE_SENTINEL' }) }),
+  ];
+  for (const response of responses) {
+    let calls = 0;
+    const api = client(async () => { calls++; return response(); });
+    await assert.rejects(api.synthesize('Bonjour'), { message: 'dialogue_tts_unavailable' });
+    assert.equal(calls, 1);
+  }
+});
+
+test('D5 accepts the inclusive 16 MiB MP3 boundary', async () => {
+  const api = client(async () => mp3([new Uint8Array(16 * 1024 * 1024)]));
+  assert.equal((await api.synthesize('Bonjour')).size, 16 * 1024 * 1024);
+});
+
+test('D5 transport, body-read and abort failures are sanitized with no retry', async () => {
+  for (const fetchFn of [
+    async () => { throw new Error('RAW_PRIVATE_SENTINEL'); },
+    async () => ({ status: 200, headers: new Headers({ 'Content-Type': 'audio/mpeg' }),
+      blob: async () => { throw new Error('RAW_PRIVATE_SENTINEL'); } }),
+  ]) {
+    let calls = 0;
+    const api = client(async (...args) => { calls++; return fetchFn(...args); });
+    await assert.rejects(api.synthesize('Bonjour'), { message: 'dialogue_tts_unavailable' });
+    assert.equal(calls, 1);
+  }
+
+  let calls = 0;
+  const preAbort = new AbortController();
+  preAbort.abort();
+  await assert.rejects(client(async () => { calls++; }).synthesize('Bonjour', { signal: preAbort.signal }),
+    { message: 'dialogue_tts_unavailable' });
+  assert.equal(calls, 0);
+
+  const postAbort = new AbortController();
+  const api = client(async () => ({
+    status: 200,
+    headers: new Headers({ 'Content-Type': 'audio/mpeg' }),
+    blob: async () => {
+      postAbort.abort();
+      return new Blob(['x'], { type: 'audio/mpeg' });
+    },
+  }));
+  await assert.rejects(api.synthesize('Bonjour', { signal: postAbort.signal }),
+    { message: 'dialogue_tts_unavailable' });
+});

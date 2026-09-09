@@ -25,6 +25,12 @@ const DIALOGUE_STATE_VIEWS = Object.freeze({
     voiceActive: false,
     fridaSpeaking: false,
   }),
+  tts_pending: Object.freeze({
+    state: 'tts_pending',
+    label: 'AUDIO EN ATTENTE',
+    voiceActive: false,
+    fridaSpeaking: false,
+  }),
   tts_speaking: Object.freeze({
     state: 'tts_speaking',
     label: 'FRIDA PARLE',

@@ -232,6 +232,10 @@ function dialogueD3MockScript() {
         recorders: [],
         vads: [],
         permissionGate: null,
+        audios: [],
+        audioFactoryCalls: 0,
+        objectUrls: [],
+        revokedUrls: [],
       };
 
       class FakeDialogueTrack extends EventTarget {
@@ -304,11 +308,70 @@ function dialogueD3MockScript() {
         state.permissionGate = { promise, release };
       };
       state.releasePermission = () => state.permissionGate && state.permissionGate.release();
+      const nativeCreateObjectURL = URL.createObjectURL.bind(URL);
+      const nativeRevokeObjectURL = URL.revokeObjectURL.bind(URL);
+      URL.createObjectURL = (blob) => {
+        const url = nativeCreateObjectURL(blob);
+        state.objectUrls.push({ url, blob });
+        return url;
+      };
+      URL.revokeObjectURL = (url) => {
+        state.revokedUrls.push(url);
+        return nativeRevokeObjectURL(url);
+      };
+      state.createTtsMediaElement = () => {
+        state.audioFactoryCalls += 1;
+        const audio = document.createElement('audio');
+        const control = {
+          element: audio,
+          playCalls: [],
+          pauseCalls: 0,
+          rejectNextPlay: false,
+          rejectPlayCall: 0,
+          playing: false,
+          ended: false,
+          readyState: 0,
+          mediaError: null,
+          play() {
+            this.playCalls.push(audio.src);
+            if (this.rejectNextPlay || this.rejectPlayCall === this.playCalls.length) {
+              this.rejectNextPlay = false;
+              return Promise.reject(new DOMException('synthetic play refusal', 'NotAllowedError'));
+            }
+            return Promise.resolve();
+          },
+          pause() {
+            this.pauseCalls += 1;
+            this.playing = false;
+            audio.dispatchEvent(new Event('pause'));
+          },
+          emit(type) {
+            if (type === 'playing') { this.playing = true; this.ended = false; this.readyState = 4; }
+            if (type === 'pause' || type === 'error') this.playing = false;
+            if (type === 'error') this.mediaError = { code: 3 };
+            if (type === 'waiting') { this.playing = false; this.readyState = 2; }
+            if (type === 'ended') { this.playing = false; this.ended = true; }
+            audio.dispatchEvent(new Event(type));
+          },
+        };
+        Object.defineProperties(audio, {
+          paused: { configurable: true, get: () => !control.playing },
+          ended: { configurable: true, get: () => control.ended },
+          currentSrc: { configurable: true, get: () => audio.src },
+          readyState: { configurable: true, get: () => control.readyState },
+          error: { configurable: true, get: () => control.mediaError },
+        });
+        audio.play = control.play.bind(control);
+        audio.pause = control.pause.bind(control);
+        state.audios.push(control);
+        return audio;
+      };
       window.__fridaDialogueD3Fake = state;
       window.__FRIDA_DIALOGUE_D3_TEST_ADAPTERS__ = {
         mediaDevices,
         vadFactory,
         nowFn: () => state.now,
+        createTtsMediaElement: state.createTtsMediaElement,
       };
     })();
   `;
@@ -4056,7 +4119,9 @@ function dialogueD4MockScript(streamMode = 'done') {
     window.__canonicalCalls = [];
     const d4ChatFetch = window.fetch;
     window.fetch = async (input, init = {}) => {
-      if (input === '/api/chat/dialogue/transcribe') return window.__d4NativeFetch(input, init);
+      if (input === '/api/chat/dialogue/transcribe' || input === '/api/chat/dialogue/speech') {
+        return window.__d4NativeFetch(input, init);
+      }
       if (input === '/api/chat') {
         await d4ChatFetch(input, init);
         return window.__d4NativeFetch(input, init);
@@ -4073,6 +4138,9 @@ async function instrumentCanonicalSubmission(page) {
   const instrumented = source.replace(
     /async function submitCanonicalChatMessage\(text, inputMode\)\s*\{/,
     '$& window.__canonicalCalls.push(inputMode);',
+  ).replace(
+    'return { ok: true, text: reply };',
+    'window.__canonicalResult = { ok: true, text: reply }; return window.__canonicalResult;',
   );
   await page.route('**/app.js', route => route.fulfill({ contentType: 'application/javascript', body: instrumented }));
 }
@@ -4087,7 +4155,7 @@ const d4Animations = page => page.evaluate(() => ({
   microphoneEnded: window.__fridaDialogueD3Fake.streams.every(s => s.track.readyState === 'ended'),
 }));
 
-test('D4 real Chromium WAV → one STT → canonical chat; hidden transcript, final lock, keyboard before/after', async () => {
+test('D5 Chromium WAV → STT → canonical final → one TTS → ended rearms capture', async () => {
   const sttStarted = d4Deferred(), sttRelease = d4Deferred(), chatStarted = d4Deferred(), chatRelease = d4Deferred();
   const posts = [];
   let sttBody;
@@ -4112,6 +4180,10 @@ test('D4 real Chromium WAV → one STT → canonical chat; hidden transcript, fi
           kind: 'frida-stream-control', event: 'done', final_text: 'Final D4 verrouillé', updated_at: '2026-09-09T12:00:00Z',
         }) + '\n' });
       });
+      await page.route('**/api/chat/dialogue/speech', async route => {
+        posts.push({ path: '/api/chat/dialogue/speech', payload: route.request().postDataJSON() });
+        await route.fulfill({ status: 200, contentType: 'audio/mpeg', body: Buffer.from('synthetic mp3') });
+      });
     },
   }, async page => {
     await page.waitForFunction(() => document.querySelector('.topbar .title').textContent === 'Thread navigateur');
@@ -4132,11 +4204,41 @@ test('D4 real Chromium WAV → one STT → canonical chat; hidden transcript, fi
     assert.equal(await page.evaluate(() => document.documentElement.dataset.dialogueState), 'thinking');
     assert.deepEqual(await d4Animations(page), { wave: 'none', orb: 'none', microphoneEnded: true });
     assert.equal((await page.locator('#dialogueModeScreen').textContent()).includes('Transcript D4 synthétique'), false);
-    chatRelease.resolve(); await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
-    assert.equal(await page.evaluate(() => document.documentElement.dataset.dialogueState), 'paused');
+    chatRelease.resolve();
+    await page.waitForFunction(() => (
+      window.__fridaDialogueD3Fake.objectUrls.length === 1
+      && window.__fridaDialogueD3Fake.audios[0].playCalls.length === 2
+    ) || document.documentElement.dataset.dialogueState === 'error');
+    const pendingState = await page.evaluate(() => ({
+      state: document.documentElement.dataset.dialogueState,
+      playCalls: window.__fridaDialogueD3Fake.audios[0]?.playCalls,
+      objectUrls: window.__fridaDialogueD3Fake.objectUrls.length,
+      canonicalResult: window.__canonicalResult,
+    }));
+    assert.equal(pendingState.state, 'tts_pending', JSON.stringify({ pendingState, posts }));
     assert.deepEqual(await d4Animations(page), { wave: 'none', orb: 'none', microphoneEnded: true });
+    assert.deepEqual(posts.filter(p => p.path.endsWith('/speech')).map(p => p.payload), [
+      { text: 'Final D4 verrouillé' },
+    ]);
+    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.audios[0].playCalls.length), 2,
+      'one synchronous priming play and one object-URL play');
+    await page.evaluate(() => window.__fridaDialogueD3Fake.audios[0].emit('playing'));
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.dialogueState), 'tts_speaking');
+    assert.deepEqual(await d4Animations(page), {
+      wave: 'dialogue-wave-voice', orb: 'dialogue-orb-breathe', microphoneEnded: true,
+    });
+    await page.evaluate(() => window.__fridaDialogueD3Fake.audios[0].emit('ended'));
+    await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.dialogueState), 'listening');
+    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.getUserMediaCalls), 2);
+    assert.deepEqual(await page.evaluate(() => ({
+      audioFactoryCalls: window.__fridaDialogueD3Fake.audioFactoryCalls,
+      objectUrls: window.__fridaDialogueD3Fake.objectUrls.length,
+      revokedUrls: window.__fridaDialogueD3Fake.revokedUrls.length,
+      sameElement: window.__fridaDialogueD3Fake.audios.length === 1,
+    })), { audioFactoryCalls: 1, objectUrls: 1, revokedUrls: 1, sameElement: true });
     assert.equal(await page.locator('#btnDialogueMode').getAttribute('disabled'), '');
-    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.getUserMediaCalls), 1);
+    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.getUserMediaCalls), 2);
     assert.equal((await page.locator('#dialogueModeScreen').textContent()).includes('Transcript D4 synthétique'), false);
     assert.deepEqual(posts.filter(p => p.path.includes('transcribe')).map(p => p.path), ['/api/chat/dialogue/transcribe']);
     const dialoguePosts = posts.filter(p => p.payload?.message === 'Transcript D4 synthétique');
@@ -4151,9 +4253,265 @@ test('D4 real Chromium WAV → one STT → canonical chat; hidden transcript, fi
     await page.waitForFunction(() => window.__canonicalCalls.length === 3);
     await page.waitForFunction(() => document.querySelectorAll('#log .msg-wrapper.assistant').length === 3);
     assert.deepEqual(posts.filter(p => p.path === '/api/chat').map(p => p.payload.input_mode), ['keyboard', 'voice', 'keyboard']);
-    assert.equal(posts.some(p => p.path.endsWith('/speech')), false);
-    assert.equal(await page.evaluate(() => window.__fridaBrowserState.fetchCalls.some(c => c.path.endsWith('/speech'))), false);
+    assert.equal(posts.filter(p => p.path.endsWith('/speech')).length, 1);
   });
+});
+
+test('D5 audio events project pending/speaking truth and only ended rearms once', async () => {
+  const speechBodies = [];
+  await openBrowserPage({
+    mockScript: dialogueD4MockScript(),
+    beforePage: async page => {
+      page.setDefaultTimeout(5000);
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.route('**/api/chat/dialogue/transcribe', route => route.fulfill({
+        json: { ok: true, text: 'Tour audio synthétique' },
+      }));
+      await page.route('**/api/chat', route => route.fulfill({ contentType: 'text/plain', body:
+        'Brouillon interdit au TTS\x1e' + JSON.stringify({ kind: 'frida-stream-control', event: 'done',
+          final_text: 'Final exact à vocaliser', updated_at: '2026-09-09T12:00:00Z' }) + '\n' }));
+      await page.route('**/api/chat/dialogue/speech', route => {
+        speechBodies.push(route.request().postDataJSON());
+        return route.fulfill({ status: 200, contentType: 'audio/mpeg', body: Buffer.from('mp3') });
+      });
+    },
+  }, async page => {
+    await page.waitForFunction(() => document.querySelector('.topbar .title').textContent === 'Thread navigateur');
+    await page.fill('#message', 'Initialiser le thread D5');
+    await page.click('#ask button[type="submit"]');
+    await page.waitForFunction(() => document.querySelector('#log').textContent.includes('Final exact à vocaliser'));
+    await page.evaluate(() => window.FridaDialogueD3Harness.openAndArm({ routeToChat: true }));
+    await page.evaluate(() => { window.__fridaDialogueD3Fake.speechStart(); window.__fridaDialogueD3Fake.speechEnd(); });
+    await page.waitForFunction(() => (
+      window.__fridaDialogueD3Fake.objectUrls.length === 1
+      && window.__fridaDialogueD3Fake.audios[0].playCalls.length === 2
+    ) || document.documentElement.dataset.dialogueState === 'error');
+    const eventPendingState = await page.evaluate(() => ({
+      state: document.documentElement.dataset.dialogueState,
+      playCalls: window.__fridaDialogueD3Fake.audios[0]?.playCalls,
+      objectUrls: window.__fridaDialogueD3Fake.objectUrls.length,
+    }));
+    assert.equal(eventPendingState.state, 'tts_pending', JSON.stringify({ eventPendingState, speechBodies }));
+    assert.deepEqual(speechBodies, [{ text: 'Final exact à vocaliser' }]);
+    assert.deepEqual(await d4Animations(page), { wave: 'none', orb: 'none', microphoneEnded: true });
+    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.getUserMediaCalls), 1);
+
+    await page.evaluate(() => window.__fridaDialogueD3Fake.audios[0].emit('playing'));
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.dialogueState), 'tts_speaking');
+    await page.evaluate(() => window.__fridaDialogueD3Fake.audios[0].emit('waiting'));
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.dialogueState), 'tts_pending');
+    assert.deepEqual(await d4Animations(page), { wave: 'none', orb: 'none', microphoneEnded: true });
+    await page.evaluate(() => window.__fridaDialogueD3Fake.audios[0].emit('playing'));
+    await page.evaluate(() => window.__fridaDialogueD3Fake.audios[0].emit('pause'));
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.dialogueState), 'tts_pending');
+    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.getUserMediaCalls), 1,
+      'pause/waiting are buffering facts, never capture triggers');
+    await page.evaluate(() => window.__fridaDialogueD3Fake.audios[0].emit('ended'));
+    await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.dialogueState), 'listening');
+    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.getUserMediaCalls), 2);
+    await page.evaluate(() => window.__fridaDialogueD3Fake.audios[0].emit('ended'));
+    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.getUserMediaCalls), 2,
+      'duplicate ended must not start another capture cycle');
+
+    await page.evaluate(() => { window.__fridaDialogueD3Fake.speechStart(); window.__fridaDialogueD3Fake.speechEnd(); });
+    await page.waitForFunction(() => window.__fridaDialogueD3Fake.objectUrls.length === 2);
+    await page.evaluate(() => {
+      const audio = window.__fridaDialogueD3Fake.audios[0]; audio.emit('playing');
+      window.__fridaDialogueD3Fake.holdNextPermission(); audio.emit('ended');
+    });
+    await page.click('#dialogueModePause');
+    await page.evaluate(() => window.__fridaDialogueD3Fake.releasePermission());
+    await page.waitForFunction(() => document.documentElement.dataset.dialogueState === 'paused');
+    assert.deepEqual(await page.evaluate(() => ({
+      audios: window.__fridaDialogueD3Fake.audios.length,
+      urls: window.__fridaDialogueD3Fake.objectUrls.length,
+      revoked: window.__fridaDialogueD3Fake.revokedUrls.length,
+      allTracksEnded: window.__fridaDialogueD3Fake.streams.every(s => s.track.readyState === 'ended'),
+    })), { audios: 1, urls: 2, revoked: 2, allTracksEnded: true });
+    await page.click('#dialogueModeClose');
+  });
+});
+
+test('D5 empty final and TTS failures preserve canonical written truth without automatic rearm', async () => {
+  for (const mode of ['empty-final', 'tts-error', 'empty-mp3', 'play-refusal', 'audio-error']) {
+    let speechCalls = 0;
+    await openBrowserPage({
+      mockScript: dialogueD4MockScript(),
+      beforePage: async page => {
+        page.setDefaultTimeout(5000);
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.route('**/api/chat/dialogue/transcribe', route => route.fulfill({
+          json: { ok: true, text: 'Question persistée' },
+        }));
+        await page.route('**/api/chat', route => route.fulfill({ contentType: 'text/plain', body:
+          'Brouillon visible\x1e' + JSON.stringify({ kind: 'frida-stream-control', event: 'done',
+            final_text: mode === 'empty-final' ? '' : 'Réponse écrite persistée',
+            updated_at: '2026-09-09T12:00:00Z' }) + '\n' }));
+        await page.route('**/api/chat/dialogue/speech', route => {
+          speechCalls += 1;
+          return mode === 'tts-error'
+            ? route.fulfill({ status: 503, json: { ok: false, error_code: 'dialogue_tts_unavailable' } })
+            : route.fulfill({ status: 200, contentType: 'audio/mpeg',
+              body: mode === 'empty-mp3' ? Buffer.alloc(0) : Buffer.from('mp3') });
+        });
+      },
+    }, async page => {
+      await page.waitForFunction(() => document.querySelector('.topbar .title').textContent === 'Thread navigateur');
+      if (mode === 'play-refusal') {
+        await page.evaluate(() => {
+          const factory = window.__FRIDA_DIALOGUE_D3_TEST_ADAPTERS__.createTtsMediaElement;
+          window.__FRIDA_DIALOGUE_D3_TEST_ADAPTERS__.createTtsMediaElement = () => {
+            const audio = factory();
+            window.__fridaDialogueD3Fake.audios.at(-1).rejectPlayCall = 2;
+            return audio;
+          };
+        });
+      }
+      await page.evaluate(() => window.FridaDialogueD3Harness.openAndArm({ routeToChat: true }));
+      await page.evaluate(() => { window.__fridaDialogueD3Fake.speechStart(); window.__fridaDialogueD3Fake.speechEnd(); });
+      if (mode === 'audio-error') {
+        await page.waitForFunction(() => window.__fridaDialogueD3Fake.objectUrls.length === 1);
+        await page.evaluate(() => {
+          const audio = window.__fridaDialogueD3Fake.audios[0]; audio.emit('playing'); audio.emit('error');
+        });
+      }
+      await page.waitForFunction(() => document.documentElement.dataset.dialogueState === 'error');
+      assert.equal(await page.locator('#log .msg-wrapper.me').filter({ hasText: 'Question persistée' }).count(), 1);
+      assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.getUserMediaCalls), 1);
+      assert.equal(speechCalls, mode === 'empty-final' ? 0 : 1);
+      assert.deepEqual(await d4Animations(page), { wave: 'none', orb: 'none', microphoneEnded: true });
+      await page.click('#dialogueModeClose');
+      await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
+      if (mode !== 'empty-final') {
+        assert.equal(await page.locator('#log .msg-wrapper.assistant')
+          .filter({ hasText: 'Réponse écrite persistée' }).count(), 1);
+      }
+    });
+  }
+});
+
+test('D5 initial simulated activation refusal arms no microphone', async () => {
+  await openBrowserPage({
+    mockScript: dialogueD4MockScript(),
+    beforePage: page => page.setViewportSize({ width: 390, height: 844 }),
+  }, async page => {
+    await page.evaluate(() => {
+      const factory = window.__FRIDA_DIALOGUE_D3_TEST_ADAPTERS__.createTtsMediaElement;
+      window.__FRIDA_DIALOGUE_D3_TEST_ADAPTERS__.createTtsMediaElement = () => {
+        const audio = factory(); window.__fridaDialogueD3Fake.audios.at(-1).rejectPlayCall = 1; return audio;
+      };
+    });
+    await page.evaluate(() => window.FridaDialogueD3Harness.openAndArm({ routeToChat: true }));
+    await page.waitForFunction(() => document.documentElement.dataset.dialogueState === 'error');
+    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.getUserMediaCalls), 0);
+    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.objectUrls.length), 0);
+    await page.click('#dialogueModeClose');
+  });
+});
+
+test('D5 native silent primer runs in the opening gesture and owns the D3 recorder element', async () => {
+  await openBrowserPage({
+    mockScript: dialogueD4MockScript(),
+    beforePage: async page => {
+      page.setDefaultTimeout(5000);
+      await page.setViewportSize({ width: 390, height: 844 });
+      const fs = require('node:fs/promises');
+      const path = require('node:path');
+      const source = await fs.readFile(path.resolve(__dirname, '../../../web/app.js'), 'utf8');
+      const instrumented = source.replace(
+        'ttsMediaElement: ttsMediaElement || adapters.ttsMediaElement,',
+        'ttsMediaElement: (window.__d5RecorderMediaElement = ttsMediaElement || adapters.ttsMediaElement),',
+      );
+      assert.notEqual(instrumented, source, 'recorder identity witness must instrument current app wiring');
+      await page.route('**/app.js', route => route.fulfill({ contentType: 'application/javascript', body: instrumented }));
+    },
+  }, async page => {
+    await page.waitForFunction(() => document.querySelector('.topbar .title').textContent === 'Thread navigateur');
+    await page.evaluate(() => {
+      const trigger = document.createElement('button');
+      trigger.id = 'd5NativeGesture';
+      trigger.textContent = 'D5 native primer';
+      document.body.appendChild(trigger);
+      const state = { inHandler: false, factoryInHandler: false, playInHandler: false, audio: null, promise: null };
+      window.__d5NativePrimer = state;
+      window.__FRIDA_DIALOGUE_D3_TEST_ADAPTERS__.createTtsMediaElement = () => {
+        state.factoryInHandler = state.inHandler;
+        const audio = document.createElement('audio');
+        const nativePlay = audio.play;
+        audio.play = function playNativePrimer() {
+          state.playInHandler = state.inHandler;
+          return nativePlay.call(this);
+        };
+        state.audio = audio;
+        return audio;
+      };
+      trigger.addEventListener('click', () => {
+        state.inHandler = true;
+        state.promise = window.FridaDialogueD3Harness.openAndArm({ routeToChat: true });
+        state.inHandler = false;
+      });
+    });
+    await page.click('#d5NativeGesture');
+    await page.evaluate(() => window.__d5NativePrimer.promise);
+    assert.deepEqual(await page.evaluate(() => ({
+      factoryInHandler: window.__d5NativePrimer.factoryInHandler,
+      playInHandler: window.__d5NativePrimer.playInHandler,
+      sameRecorderElement: window.__d5NativePrimer.audio === window.__d5RecorderMediaElement,
+      mediaTag: window.__d5NativePrimer.audio.tagName,
+      getUserMediaCalls: window.__fridaDialogueD3Fake.getUserMediaCalls,
+      state: document.documentElement.dataset.dialogueState,
+    })), {
+      factoryInHandler: true,
+      playInHandler: true,
+      sameRecorderElement: true,
+      mediaTag: 'AUDIO',
+      getUserMediaCalls: 1,
+      state: 'listening',
+    });
+    await page.click('#dialogueModeClose');
+    await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
+  });
+});
+
+test('D5 close during TTS fetch or playback invalidates late completion and stale ended', async () => {
+  for (const stage of ['fetch', 'playback']) {
+    const started = d4Deferred(), release = d4Deferred();
+    await openBrowserPage({
+      mockScript: dialogueD4MockScript(),
+      beforePage: async page => {
+        page.setDefaultTimeout(5000);
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.route('**/api/chat/dialogue/transcribe', route => route.fulfill({ json: { ok: true, text: 'Fermer D5' } }));
+        await page.route('**/api/chat', route => route.fulfill({ contentType: 'text/plain', body:
+          'Final\x1e' + JSON.stringify({ kind: 'frida-stream-control', event: 'done', final_text: 'Final fermé',
+            updated_at: '2026-09-09T12:00:00Z' }) + '\n' }));
+        await page.route('**/api/chat/dialogue/speech', async route => {
+          started.resolve();
+          if (stage === 'fetch') await release.promise;
+          await route.fulfill({ status: 200, contentType: 'audio/mpeg', body: Buffer.from('mp3') });
+        });
+      },
+    }, async page => {
+      await page.waitForFunction(() => document.querySelector('.topbar .title').textContent === 'Thread navigateur');
+      await page.evaluate(() => window.FridaDialogueD3Harness.openAndArm({ routeToChat: true }));
+      await page.evaluate(() => { window.__fridaDialogueD3Fake.speechStart(); window.__fridaDialogueD3Fake.speechEnd(); });
+      await started.promise;
+      if (stage === 'playback') await page.waitForFunction(() => window.__fridaDialogueD3Fake.objectUrls.length === 1);
+      await page.click('#dialogueModeClose');
+      release.resolve();
+      if (stage === 'playback') {
+        await page.evaluate(() => {
+          const audio = window.__fridaDialogueD3Fake.audios[0]; audio.emit('playing'); audio.emit('ended');
+        });
+      }
+      await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
+      assert.equal(await page.locator('#dialogueModeScreen').isHidden(), true);
+      assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.getUserMediaCalls), 1);
+      assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.streams.every(s => s.track.readyState === 'ended')), true);
+      assert.deepEqual(await d4Animations(page), { wave: 'none', orb: 'none', microphoneEnded: true });
+    });
+  }
 });
 
 test('D4 Chromium close during STT ignores late transcript with no phantom chat message', async () => {
