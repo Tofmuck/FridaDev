@@ -232,6 +232,10 @@ def or_chat_completions_url() -> str:
     return f"{_runtime_main_base_url()}/chat/completions"
 
 
+def or_audio_transcriptions_url() -> str:
+    return f"{_runtime_main_base_url()}/audio/transcriptions"
+
+
 def provider_attribution(caller: str = "llm") -> dict[str, dict[str, str]]:
     caller_key = normalize_provider_caller(caller)
     frida_caller, frida_slot = _PROVIDER_ATTRIBUTION_MAP.get(

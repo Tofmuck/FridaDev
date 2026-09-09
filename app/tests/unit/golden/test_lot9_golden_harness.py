@@ -248,7 +248,7 @@ class Lot9GoldenHarnessTests(unittest.TestCase):
 
     def test_route_map_is_exact_by_family_method_endpoint_and_guard(self) -> None:
         actual = lot9_route_map_contract.route_contracts_from_app(self.server.app)
-        self.assertEqual(len(actual), 122)
+        self.assertEqual(len(actual), 123)
         lot9_route_map_contract.assert_exact_route_contract(actual)
 
         client = self.server.app.test_client()

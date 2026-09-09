@@ -14,6 +14,7 @@ from flask import Flask, Response, jsonify, request, send_from_directory, stream
 from werkzeug.exceptions import RequestEntityTooLarge
 
 import chat_transport_routes
+import chat_dialogue_audio_routes
 import chat_transcription_routes
 import config
 import workspace_folder_export_routes
@@ -32,6 +33,7 @@ from core import active_document_upload_service
 from core import chat_service
 from core import conversations_prompt_window
 from core import conversations_service
+from core import dialogue_stt_service
 from core import workspace_files
 from core import workspace_file_ocr_service
 from core import workspace_files_service
@@ -201,6 +203,9 @@ def _request_entity_too_large(error: RequestEntityTooLarge):
         if body_guard:
             payload, status = body_guard
             return jsonify(payload), status
+    if request.endpoint == "api_chat_dialogue_transcribe":
+        result = dialogue_stt_service.failure_result("audio_request_too_large")
+        return jsonify(result.to_payload()), result.http_status
     return error
 
 
@@ -739,6 +744,23 @@ class _AdminLogsChatLogProxy:
                 error_class=event,
                 message_short=reason_code,
             )
+
+
+# ── /api/chat/dialogue/transcribe ─────────────────────────────────────────────
+
+
+api_chat_dialogue_transcribe = (
+    chat_dialogue_audio_routes.register_chat_dialogue_audio_routes(
+        app,
+        get_request=lambda: request,
+        dialogue_stt_service_module=dialogue_stt_service,
+        requests_module=requests,
+        config_module=config,
+        llm_module=llm,
+        logger_obj=logger,
+        jsonify_func=jsonify,
+    )
+)
 
 
 # ── /api/chat/transcribe ───────────────────────────────────────────────────────

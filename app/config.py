@@ -56,6 +56,7 @@ _OPENROUTER_COMPONENT_REFERER_DEFAULTS = {
     'stimmung': 'https://fridadev.frida-system.fr/openrouter/stimmung',
     'validation-agent': 'https://fridadev.frida-system.fr/openrouter/validation-agent',
     'biblio-librarian': 'https://fridadev.frida-system.fr/openrouter/biblio-librarian',
+    'dialogue-stt': 'https://fridadev.frida-system.fr/openrouter/dialogue-stt',
 }
 
 
@@ -112,6 +113,10 @@ OR_REFERER_BIBLIO_LIBRARIAN = os.environ.get(
     'OPENROUTER_REFERER_BIBLIO_LIBRARIAN',
     _default_openrouter_component_referer('biblio-librarian'),
 ).strip() or _default_openrouter_component_referer('biblio-librarian')
+OR_REFERER_DIALOGUE_STT = os.environ.get(
+    'OPENROUTER_REFERER_DIALOGUE_STT',
+    _default_openrouter_component_referer('dialogue-stt'),
+).strip() or _default_openrouter_component_referer('dialogue-stt')
 OR_TITLE_BASE = os.environ.get('OPENROUTER_APP_NAME', 'FridaDev').strip() or 'FridaDev'
 OR_TITLE_LLM = os.environ.get('OPENROUTER_TITLE_LLM', f'{OR_TITLE_BASE} / Main Chat').strip() or f'{OR_TITLE_BASE} / Main Chat'
 OR_TITLE_WEB_REFORMULATION = os.environ.get(
@@ -140,6 +145,10 @@ OR_TITLE_BIBLIO_LIBRARIAN = os.environ.get(
     'OPENROUTER_TITLE_BIBLIO_LIBRARIAN',
     f'{OR_TITLE_BASE} / Biblio Librarian Agent',
 ).strip() or f'{OR_TITLE_BASE} / Biblio Librarian Agent'
+OR_TITLE_DIALOGUE_STT = os.environ.get(
+    'OPENROUTER_TITLE_DIALOGUE_STT',
+    f'{OR_TITLE_BASE} / Dialogue STT',
+).strip() or f'{OR_TITLE_BASE} / Dialogue STT'
 OR_TITLE = OR_TITLE_LLM
 
 # Web reformulation model
@@ -186,6 +195,7 @@ TIMEOUT_S = _env_int('FRIDA_TIMEOUT', 900)
 WHISPER_API_URL = os.environ.get('WHISPER_API_URL', 'http://platform-whisper-api:9001').rstrip('/')
 WHISPER_API_TIMEOUT_S = _env_int('WHISPER_API_TIMEOUT_S', 180)
 WHISPER_API_KEY = os.environ.get('WHISPER_API_KEY', '').strip()
+DIALOGUE_STT_TIMEOUT_S = _env_int('DIALOGUE_STT_TIMEOUT_S', 65)
 
 # Obsolete admin guard compatibility names.
 #

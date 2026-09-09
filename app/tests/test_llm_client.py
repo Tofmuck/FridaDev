@@ -67,6 +67,29 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
             config.OR_BASE = original_base
             llm_client.runtime_settings.get_main_model_settings = original_view
 
+    def test_or_audio_transcriptions_url_uses_the_existing_runtime_base_resolution(self) -> None:
+        original_view = llm_client.runtime_settings.get_main_model_settings
+
+        try:
+            llm_client.runtime_settings.get_main_model_settings = lambda: runtime_settings.RuntimeSectionView(
+                section='main_model',
+                payload={
+                    'base_url': {
+                        'value': 'https://runtime-main.invalid/api/v1/',
+                        'origin': 'db',
+                    }
+                },
+                source='db',
+                source_reason='db_row',
+            )
+
+            self.assertEqual(
+                llm_client.or_audio_transcriptions_url(),
+                'https://runtime-main.invalid/api/v1/audio/transcriptions',
+            )
+        finally:
+            llm_client.runtime_settings.get_main_model_settings = original_view
+
     def test_or_headers_uses_decrypted_db_api_key_when_available(self) -> None:
         original = llm_client.runtime_settings.get_runtime_secret_value
         original_view = llm_client.runtime_settings.get_main_model_settings

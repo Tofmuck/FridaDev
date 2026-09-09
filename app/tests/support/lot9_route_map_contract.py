@@ -82,6 +82,12 @@ def _expected_rows() -> list[RouteContract]:
         _row('/log', 'GET', 'log_root', 'health_and_technical_surfaces'),
         _row('/memory-admin', 'GET', 'memory_admin_root', 'health_and_technical_surfaces'),
         _row('/api/chat', 'POST', 'api_chat', 'chat_and_transcription'),
+        _row(
+            '/api/chat/dialogue/transcribe',
+            'POST',
+            'api_chat_dialogue_transcribe',
+            'chat_and_transcription',
+        ),
         _row('/api/chat/transcribe', 'POST', 'api_chat_transcribe', 'chat_and_transcription'),
         _row(
             '/api/tools/image-generation',

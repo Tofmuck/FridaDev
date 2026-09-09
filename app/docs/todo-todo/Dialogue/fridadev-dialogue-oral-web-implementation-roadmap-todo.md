@@ -35,8 +35,10 @@ manuel Safari sur iPhone 11.
 - [x] `microsoft/mai-voice-2-flash`, voix
   `fr-FR-Soleil:MAI-Voice-2`, a été validé dans Safari réel.
 - [x] Le bouton produit reste désactivé.
-- [ ] Aucun microphone, VAD, enregistrement, endpoint audio, STT ou TTS n'est
-  encore raccordé au produit.
+- [x] La frontière backend STT D1 existe sans consommateur frontend et reste
+  inactive dans le produit.
+- [ ] Aucun microphone, VAD produit, enregistrement navigateur ou TTS n'est
+  raccordé au produit.
 
 Le commit de référence du squelette est
 `0b190aeb485262f8c813f048740e0b2774d58a8b`.
@@ -77,7 +79,8 @@ Le commit de référence du squelette est
 - Le TTS ne lit jamais un brouillon ni un fragment streaming : seulement le
   texte final canonique reçu du pipeline actuel.
 - Les limites suivantes sont des valeurs initiales à verrouiller par test : un
-  seul blob par énoncé, 25 MiB maximum à l'entrée STT, 300 secondes maximum,
+  seul blob par énoncé, `24 000 000` octets maximum pour le fichier STT et
+  `25 000 000` octets pour son corps multipart, 300 secondes maximum,
   température `0`, langue `fr`, réponse STT JSON, sortie TTS `mp3` en V1.
 - Une erreur ne réarme pas automatiquement une boucle infinie. Elle place la
   session en `error`, conserve le chat canonique et laisse à Tof le choix de
@@ -125,6 +128,9 @@ vérité des animations sont déjà présents. D0 n'autorise aucune capacité au
 
 ## Lot D1 — contrat OpenRouter et frontière STT
 
+**Statut : implémenté et prouvé hermétiquement ; livraison runtime ciblée non
+encore exécutée. D2 reste non commencé.**
+
 **Livrable :** une route STT Frida hermétique, bornée et testée, sans encore
 être appelée par l'interface.
 
@@ -149,7 +155,7 @@ vérité des animations sont déjà présents. D0 n'autorise aucune capacité au
 - Produit : `POST /api/chat/dialogue/transcribe`, multipart avec un seul champ
   `audio`, réponse JSON content-free hors `text` lorsqu'elle réussit.
 
-- [ ] **D1.1 — Revalider la documentation fournisseur**
+- [x] **D1.1 — Revalider la documentation fournisseur**
 
   Après inscription de l'exception explicitement autorisée dans `AGENTS.md`,
   lire les pages OpenRouter STT, modèles, prix, confidentialité et journalisation.
@@ -157,7 +163,7 @@ vérité des animations sont déjà présents. D0 n'autorise aucune capacité au
   D1 si le modèle, l'endpoint, `language=fr`, `temperature=0`, le format reçu ou
   la limite d'upload ne correspondent plus.
 
-- [ ] **D1.2 — Écrire les tests rouges du service**
+- [x] **D1.2 — Écrire les tests rouges du service**
 
   Prouver avant le code : succès JSON, transcript vide légitime, timeout,
   erreur transport, 401/403/429/5xx, JSON invalide, champ texte absent, type
@@ -172,13 +178,13 @@ vérité des animations sont déjà présents. D0 n'autorise aucune capacité au
 
   Attendu : échec causal parce que le service n'existe pas.
 
-- [ ] **D1.3 — Implémenter le service minimal**
+- [x] **D1.3 — Implémenter le service minimal**
 
   Envoyer exactement un fichier audio à l'endpoint transcription dédié.
   Conserver la clé et la réponse brute hors logs. Refuser localement toute
   entrée invalide. Ne pas ajouter de retry ni de fallback.
 
-- [ ] **D1.4 — Écrire puis satisfaire les tests rouges de route**
+- [x] **D1.4 — Écrire puis satisfaire les tests rouges de route**
 
   La route accepte un seul fichier, applique les limites avant appel fournisseur,
   renvoie `200` avec le transcript confirmé, `422` pour l'entrée invalide,
@@ -206,6 +212,28 @@ vérité des animations sont déjà présents. D0 n'autorise aucune capacité au
 **Stop D1 :** arrêter si la réponse fournisseur ne prouve pas un transcript
 final unique ou si les limites réelles ne peuvent pas être appliquées avant
 l'envoi.
+
+### Preuves D1 avant livraison runtime — 9 septembre 2026
+
+- baseline : `main`, HEAD/upstream
+  `c591909c93b2e31b7e7d11ecb89be9c8afe39ad9`, divergence `0/0`, worktree
+  propre avant édition ;
+- rouge initial hermétique : import du service absent et route non enregistrée,
+  sans réseau ; la commande hôte documentée a dû être adaptée au conteneur de
+  test parce que `python` n'existe pas dans le PATH et que `/usr/bin/python3`
+  ne possède pas Werkzeug ;
+- vert D1 : `18/18` tests service/route, dont le rejet pré-parsing d'un corps
+  sans taille déclarée afin de préserver la borne D1 propre ;
+- voisins Whisper : `22/22` ;
+- résolution OpenRouter, carte golden et garde multipart : `46/46` ;
+- contrats config/admin voisins : `11/11` ;
+- mutation contrôlée : neutraliser la borne fichier pré-transport fait échouer
+  `test_file_limit_is_enforced_before_transport`; après restauration, le
+  SHA-256 du service retrouve exactement sa valeur préalable et la suite D1
+  repassent au vert ;
+- toutes ces commandes ont utilisé un conteneur jetable `--network none`, le
+  checkout monté en lecture seule et `/tmp` en `tmpfs` ; aucun appel OpenRouter
+  réel n'a été effectué.
 
 ---
 

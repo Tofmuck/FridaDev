@@ -75,6 +75,14 @@ pour verrouiller le rendu, l'accessibilite et les deux familles d'animation.
 Le chat normal et le bureau restent inchanges. Toute activation audio reelle
 exige un lot ulterieur distinct et explicitement autorise.
 
+Exception explicite et strictement bornee decidee par l'utilisateur le 9
+septembre 2026: le lot D1 du mode Dialogue oral Web autorise exclusivement une
+route backend STT OpenRouter bornee, hermetiquement testee et sans raccord au
+frontend. Cette frontiere inactive n'autorise ni activation du bouton Dialogue,
+ni microphone, ni enregistrement navigateur, ni VAD produit, ni TTS. Elle ne
+constitue aucun precedent pour D2 a D6, qui restent soumis chacun a une decision
+utilisateur explicite distincte.
+
 Chaque lot doit demontrer: pas de capacite produit ajoutee, comportements
 legitimes preserves hors bug corrige, complexite stable ou reduite, ancien
 chemin retire quand il est remplace, et invariants utiles verrouilles par des

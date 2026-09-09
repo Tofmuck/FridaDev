@@ -6,8 +6,9 @@ Dernière mise à jour de reconnaissance : 9 septembre 2026.
 **Statut : contrat initial et reconnaissance technique iPhone consignés. Les
 choix V1 du VAD, du STT et du TTS sont retenus ; seule leur invalidation par le
 test automobile réel peut les rouvrir. Le squelette visuel Figma et son
-contrôleur local d'états sont intégrés, mais l'entrée produit reste désactivée
-et aucun raccord audio n'est commencé.**
+contrôleur local d'états sont intégrés. La frontière backend STT D1 est
+implémentée sans consommateur frontend ; l'entrée produit reste désactivée et
+aucun microphone, VAD produit, enregistrement navigateur ni TTS n'est raccordé.**
 
 ## Intention
 
@@ -246,6 +247,40 @@ pas lancer un nouveau benchmark général ni ajouter un fallback automatique.
 Le seul essai restant est un canari borné avec parole réelle et bruit de
 roulement dans la voiture.
 
+### 4. Revalidation fournisseur pour D1 — 9 septembre 2026
+
+La documentation OpenRouter courante maintient le contrat utilisé par D1 :
+
+- `POST /api/v1/audio/transcriptions` est l'endpoint STT dédié, distinct de
+  Chat Completions ; il accepte JSON base64 ou multipart OpenAI-compatible ;
+  D1 utilise uniquement le multipart sortant avec `file`, `model`,
+  `language=fr`, `temperature=0` et `response_format=json` ;
+- le modèle `microsoft/mai-transcribe-2` reste disponible avec une seule route
+  publiée, Azure, et annonce la température parmi ses paramètres supportés ;
+  les paramètres STT normalisés `language`, `temperature` et
+  `response_format` restent documentés au niveau de l'endpoint ;
+- la réponse `json` exige un unique champ final `text` de type chaîne et peut
+  aussi contenir `usage` ; `text=""` reste donc un succès fournisseur valide ;
+- les formats communs documentés et admis localement sont WAV, MP3, FLAC, M4A,
+  OGG, WebM et AAC, avec vérification conjointe du MIME et de l'extension ;
+- le plafond multipart est désormais formulé `25 MB`, et non `25 MiB`. D1
+  applique avant transport une borne fichier plus stricte de `24 000 000`
+  octets et une borne de corps multipart de `25 000 000` octets ; la lecture
+  applicative du fichier s'arrête à la borne plus un octet ;
+- OpenRouter indique un timeout provider après `60 s` de traitement. Le client
+  D1 est borné à `65 s`, sans retry, fallback, découpage ni streaming ;
+- les préférences de routage `order`, `only` et `ignore` ne s'appliquent pas
+  aux requêtes de transcription ; D1 n'ajoute donc aucune sélection provider
+  cachée ;
+- le prix publié reste `0,10 USD` par heure. OpenRouter n'enregistre pas les
+  entrées/sorties sauf opt-in, mais conserve les métadonnées de requête ; la
+  route Azure publiée indique absence d'entraînement et rétention nulle. Les
+  réglages de compte restent une responsabilité opérateur distincte du code.
+
+Cette revalidation est documentaire et s'appuie aussi sur les métadonnées
+publiques du modèle et de son endpoint. Aucun appel STT réel, canari ou
+benchmark fournisseur n'a été exécuté dans D1.
+
 ### Règle de non-répétition
 
 Un lot ultérieur ne doit pas recommencer le choix du VAD, du STT, du TTS ou de
@@ -263,11 +298,12 @@ ligne, traitement Frida inchangé, lecture TTS, puis réarmement automatique.
 
 ## Frontière d'autorisation
 
-Ce mode constitue une extension fonctionnelle. L'exception du 9 septembre
-autorise seulement le squelette UI décrit ci-dessus. Elle ne vaut pas
-autorisation d'activer le bouton, le microphone, le VAD, l'enregistrement, le
-STT, le TTS, un endpoint, un provider ou une configuration. Ces raccords
-exigeront la roadmap dédiée et des lots explicitement autorisés.
+Ce mode constitue une extension fonctionnelle. L'exception UI du 9 septembre
+autorise seulement le squelette décrit ci-dessus. L'exception D1 distincte
+autorise uniquement la frontière backend STT OpenRouter inactive et bornée.
+Elle ne vaut pas autorisation d'activer le bouton, le microphone, le VAD,
+l'enregistrement navigateur, le raccord frontend ou le TTS. D2 à D6 exigent
+chacun un lot explicitement autorisé.
 
 ## Roadmap d'implémentation
 
