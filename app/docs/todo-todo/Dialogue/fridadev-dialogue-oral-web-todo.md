@@ -7,10 +7,12 @@ Dernière mise à jour de reconnaissance : 9 septembre 2026.
 choix V1 du VAD, du STT et du TTS sont retenus ; seule leur invalidation par le
 test automobile réel peut les rouvrir. Le squelette visuel Figma et son
 contrôleur local d'états sont intégrés. Les frontières backend STT D1 et TTS D2
-sont implémentées et livrées sans consommateur frontend. La capture locale D3
-est corrigée, refermée et livrée avec pré-roll borné et assets optionnels ; l'entrée
-produit reste désactivée et aucun raccord STT frontend, chat, TTS, provider ou
-lecture audio n'est activé.**
+sont implémentées et livrées. La capture locale D3 est corrigée, refermée et
+livrée avec pré-roll borné et assets optionnels. D4 raccorde désormais le WAV à
+D1 puis au chat canonique dans le seul harnais synthétique ; ses preuves
+applicatives sont complètes, sa livraison runtime reste à vérifier. L'entrée
+produit reste désactivée ; D5/D6, TTS frontend, lecture audio et réarmement
+automatique restent non commencés.**
 
 ## Intention
 
@@ -81,11 +83,10 @@ d'écoute du microphone.
   `microsoft/mai-voice-2-flash`, avec la voix
   `fr-FR-Soleil:MAI-Voice-2`. Ces deux choix ne sont pas remis en concurrence
   sans échec concret du test automobile ou changement du contrat fournisseur.
-- Le seuil `x` reste à éprouver par le canari automobile. D3 fixe la préférence
-  de conteneur à `audio/mp4`, puis `audio/webm` et `audio/ogg` seulement si le
-  navigateur les déclare réellement supportés, sans paramètre codec inventé.
-  La V1 ne doit pas ajouter de fallback automatique qui changerait
-  silencieusement de modèle.
+- Le seuil `x` reste à éprouver par le canari automobile. L'autorité D3 courante
+  est un unique WAV `audio/wav`, PCM16 mono à 16 kHz, produit à partir du
+  Float32 segmenté par le VAD. Il n'existe aucune préférence MP4/WebM/OGG,
+  négociation de codec ni fallback automatique de format ou de modèle.
 
 ## Contrat visuel et animations
 
@@ -193,7 +194,62 @@ L'adaptateur reste volontairement lié aux internals de la version épinglée ;
 une montée de version doit revalider segmentation, pré-roll, ordre des callbacks,
 bornes et cleanup. D3 projette seulement `listening → user_speaking → listening`,
 pause et erreur. Il ne raccorde ni D1, ni D2, ni chat, ni Whisper, ni TTS.
-D4 reste strictement non commencé.
+Le raccord D4 distinct est décrit ci-dessous ; D3 seul conserve ce comportement.
+
+## Raccord D4 au chat canonique — 9 septembre 2026
+
+L'autorisation D4 est explicite et limitée au harnais existant :
+`FridaDialogueD3Harness.openAndArm({ routeToChat: true })`. Sans cette option,
+le harnais conserve les preuves locales D3 sans STT ; sans les adaptateurs de
+test, ce harnais est absent. Le bouton produit reste littéralement `disabled`.
+Le chargement normal ajoute seulement deux petits modules JavaScript D4,
+sans charger les assets VAD/ONNX de D3.
+
+`dialogueAudioClient.transcribe(blob, { signal }?)` valide avant fetch un vrai
+Blob, le MIME exact `audio/wav` et une taille comprise entre 1 et 24 000 000
+octets inclus. Il envoie une seule requête multipart vers
+`/api/chat/dialogue/transcribe` avec un seul champ `audio` et un nom `.wav`.
+Le navigateur construit la boundary. Un succès exige HTTP réussi, média JSON,
+`ok === true` et `text` chaîne ; une chaîne vide est un succès vide. Les erreurs
+HTTP, JSON, transport et interruption restent fermées et content-free. Aucun
+retry, fallback, cache, journal de transcript ou appel OpenRouter direct.
+
+La session possède ses générations et ses opérations. Dès le Blob, elle
+suspend D3 et attend son cleanup avant le POST STT. Elle vérifie session,
+conversation et `chatRequestInFlight` avant la transcription et la soumission.
+Le changement de conversation invalide aussi un aller-retour vers le même
+thread. Pause, Terminer et fermeture invalident et annulent le STT ; une réponse
+qui ignore cette annulation ne peut plus créer de message ou modifier la vue.
+Un Blob dupliqué est refusé, y compris après une reprise explicite ; la garde
+utilise des références faibles, sans retenir l'audio.
+
+Un transcript non vide mène à `thinking`, puis à l'unique
+`submitCanonicalChatMessage(text, inputMode)` extraite du handler de formulaire.
+Clavier, Whisper et Dialogue partagent le thread, le message utilisateur,
+`chatRequestInFlight`, streaming, terminal/final lock, cache, réhydratation,
+métadonnées et erreurs. La provenance interne `dialogue` devient `voice` avant
+le transport ; Whisper reste `voice` et le clavier `keyboard`. Aucun schéma,
+`chat_session_flow.py`, prompt, backend ou mécanisme de persistance ne change.
+Le transcript ne remplit jamais le textarea et n'est jamais rendu dans la vue
+Dialogue ; seul le message utilisateur normal du fil le rend consultable.
+Le brouillon clavier déjà présent est conservé lors d'une soumission Dialogue.
+
+La réussite finale canonique retourne seulement un résultat `ok` au contrôleur,
+qui projette `paused` et garde le microphone désarmé. Un STT vide, y compris
+uniquement des espaces, ne produit ni message ni POST chat et finit également
+en pause ; la reprise locale exige une action explicite. Une erreur STT,
+capture ou chat reste `error` jusqu'à fermeture/réouverture du harnais. Un chat
+déjà soumis garde sa finalisation canonique même si la vue est fermée ; D4
+n'ajoute pas d'annulation de ce pipeline. Une reprise encore en initialisation
+reste pausable : sa génération est revalidée avant armement et reprise D3.
+L'armement initial n'accepte que `listening`, jamais `error` après changement
+de thread. Orbe et onde restent au repos pendant `transcribing`, `thinking`
+et `paused`.
+
+Les preuves rouges, mutations, suites et résultats de livraison réels sont
+consignés dans la [section D4 de la roadmap](fridadev-dialogue-oral-web-implementation-roadmap-todo.md#lot-d4--raccord-stt-au-pipeline-chat-canonique).
+Aucun appel provider réel, TTS, lecture audio ou activation du bouton n'a été
+exécuté. D5 et D6 restent non commencés.
 
 ## Méthode obligatoire de choix du transport et des modèles
 
@@ -415,8 +471,10 @@ autorise seulement le squelette décrit ci-dessus. Les exceptions distinctes D1
 et D2 autorisent uniquement les frontières backend STT et TTS OpenRouter
 inactives et bornées. L'exception D3 autorise uniquement la capture locale
 testable décrite ci-dessus, sans entrée produit. Elle ne vaut pas autorisation
-d'activer le bouton, de raccorder le STT frontend ou le chat, ni de lire le TTS.
-D4 à D6 exigent chacun un lot explicitement autorisé.
+d'activer le bouton ni de lire le TTS. L'exception D4 explicitement approuvée
+le 9 septembre autorise seulement le raccord WAV → D1 → chat canonique décrit
+ci-dessus, dans le harnais synthétique. D5 et D6 exigent chacun un lot distinct
+explicitement autorisé ; aucun appel provider réel n'est autorisé par D4.
 
 ## Roadmap d'implémentation
 

@@ -199,6 +199,8 @@
   let dialogueD3TerminalError = false;
   let dialogueD3Operation = Promise.resolve();
   let dialogueModeController = null;
+  let dialogueD4Controller = null;
+  let dialogueD4Operation = Promise.resolve();
 
   const handleDialogueD3UnexpectedError = () => {
     dialogueD3TerminalError = true;
@@ -219,7 +221,7 @@
     return trackDialogueD3Operation(nextOperation);
   };
 
-  const projectDialogueD3Event = (event) => {
+  const projectDialogueD3Event = (event, d4Event) => {
     const observableEvent = event.type === 'blob'
       ? {
         type: event.type,
@@ -231,6 +233,13 @@
     dialogueD3Events.push(Object.freeze(observableEvent));
     if (dialogueD3Events.length > 32) dialogueD3Events.shift();
     if (!dialogueD3Active || !dialogueModeController) return;
+    if (d4Event) {
+      const operation = d4Event(event);
+      if (event.type === 'blob' || event.type === 'error') {
+        dialogueD4Operation = Promise.all([dialogueD4Operation, operation]).then(() => {});
+      }
+      return;
+    }
     if (event.type === 'speech-start') {
       dialogueModeController.setState('user_speaking');
     } else if (event.type === 'speech-end' || event.type === 'blob') {
@@ -241,7 +250,7 @@
     }
   };
 
-  const createDialogueD3Recorder = (runtime) => {
+  const createDialogueD3Recorder = (runtime, d4Event) => {
     const adapters = dialogueD3TestAdapters || {};
     return window.FridaDialogueVadRecorder.createDialogueVadRecorder({
       mediaDevices: adapters.mediaDevices,
@@ -251,7 +260,7 @@
         || document.querySelector('[data-frida-dialogue-tts]'),
       vadFactory: adapters.vadFactory || runtime.vadFactory,
       vadOptions: runtime.vadOptions,
-      onEvent: projectDialogueD3Event,
+      onEvent: (event) => projectDialogueD3Event(event, d4Event),
     });
   };
 
@@ -259,12 +268,15 @@
     if (!dialogueD3Active) return dialogueD3Operation;
     dialogueD3Active = false;
     dialogueD3Session += 1;
+    const d4Closing = dialogueD4Controller?.close();
+    dialogueD4Controller = null;
     const recorderToStop = dialogueD3Recorder;
     const pendingOperation = dialogueD3Operation;
     const immediateStop = recorderToStop ? recorderToStop.stop() : Promise.resolve();
     return trackDialogueD3Operation(Promise.all([
       pendingOperation.catch(() => {}),
       immediateStop,
+      d4Closing,
     ]).then(() => {
       if (dialogueD3Recorder === recorderToStop) dialogueD3Recorder = null;
     }));
@@ -286,23 +298,45 @@
   window.FridaDialogueModeController = dialogueModeController;
   if (dialogueD3TestAdapters) {
     window.FridaDialogueD3Harness = Object.freeze({
-      openAndArm() {
+      openAndArm({ routeToChat = false } = {}) {
         if (dialogueD3Active) return dialogueD3Operation;
         dialogueD3Active = true;
         dialogueD3TerminalError = false;
         dialogueD3Events.length = 0;
         const session = ++dialogueD3Session;
         dialogueModeController.enter();
+        let d4Event = null;
+        if (routeToChat) {
+          dialogueD4Controller = window.FridaDialogueSessionController.createDialogueSessionController({
+            capture: {
+              pause: () => dialogueD3Recorder?.pause(),
+              stop: () => dialogueD3Recorder?.stop(),
+              resume: async (isCurrent) => {
+                await dialogueD3Operation;
+                if (!isCurrent()) return;
+                await dialogueD3Recorder?.arm();
+                if (!isCurrent()) return;
+                await dialogueD3Recorder?.resume();
+              },
+            },
+            audioClient: window.FridaDialogueAudioClient.createDialogueAudioClient(),
+            getConversationId: () => getCurrentId(),
+            isChatBusy: () => chatRequestInFlight,
+            setState: (state) => dialogueModeController.setState(state),
+            submitCanonicalChatMessage: (text, inputMode) => submitCanonicalChatMessage(text, inputMode),
+          });
+          d4Event = dialogueD4Controller.start();
+        }
         return queueDialogueD3Operation(async () => {
           const runtime = await loadDialogueD3();
           if (!dialogueD3Active || session !== dialogueD3Session) return;
-          const recorderToArm = createDialogueD3Recorder(runtime);
+          const recorderToArm = createDialogueD3Recorder(runtime, d4Event);
           dialogueD3Recorder = recorderToArm;
-          if (dialogueModeController.getState() !== 'paused') await recorderToArm.arm();
+          if (dialogueModeController.getState() === 'listening') await recorderToArm.arm();
         });
       },
       events: () => [...dialogueD3Events],
-      whenSettled: () => dialogueD3Operation,
+      whenSettled: () => Promise.all([dialogueD3Operation, dialogueD4Operation]),
     });
   }
   if (dialogueModePause) {
@@ -310,6 +344,16 @@
       if (!dialogueD3Active) return;
       if (dialogueD3TerminalError) {
         dialogueModeController.setState('error');
+        return;
+      }
+      if (dialogueD4Controller) {
+        if (dialogueModeController.getState() === 'paused') {
+          dialogueD4Operation = Promise.all([dialogueD4Operation, dialogueD4Controller.pause()]).then(() => {});
+        } else {
+          // The visual toggle precedes this listener. Stay paused until capture really resumes.
+          dialogueModeController.setState('paused');
+          dialogueD4Operation = Promise.all([dialogueD4Operation, dialogueD4Controller.resume()]).then(() => {});
+        }
         return;
       }
       if (dialogueModeController.getState() === 'paused') {
@@ -599,7 +643,10 @@
     scrollToBottom,
     notesModeController,
     consoleObj: console,
-    onCurrentThreadChange: syncCurrentConversationTitle,
+    onCurrentThreadChange: (thread) => {
+      syncCurrentConversationTitle(thread);
+      dialogueD4Controller?.conversationChanged();
+    },
   });
   const {
     getCurrentId,
@@ -771,16 +818,23 @@
   // ---- Envoi
   ask.addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (chatRequestInFlight) return;
-    const text = (message.value || "").trim();
-    if (!text) return;
-    const inputMode = currentDraftInputMode;
+    return submitCanonicalChatMessage(message.value || "", currentDraftInputMode);
+  });
+
+  async function submitCanonicalChatMessage(text, inputMode) {
+    if (chatRequestInFlight) return { ok: false, reason: "busy" };
+    text = typeof text === "string" ? text.trim() : "";
+    if (!text) return { ok: false, reason: "empty" };
+    const isDialogue = inputMode === "dialogue";
+    inputMode = isDialogue || inputMode === "voice" ? "voice" : "keyboard";
     const requestThreadId = getCurrentId();
 
     addMsg("user", text);
     appendMessageToThread(requestThreadId, "user", text);
-    message.value = "";
-    setCurrentDraftInputMode("keyboard");
+    if (!isDialogue) {
+      message.value = "";
+      setCurrentDraftInputMode("keyboard");
+    }
 
     const assistantNode = createMessageNode("assistant", "");
     setAssistantLoader(assistantNode, true);
@@ -838,6 +892,7 @@
       } else if (shouldStickToBottom) {
         scrollToBottom(true);
       }
+      return { ok: true };
     } catch (err) {
       const errorMeta = getObservableStreamErrorMeta(err);
       const errorTerminal = err && typeof err === "object" ? err.terminal || null : null;
@@ -876,12 +931,13 @@
       applyAssistantStreamingFailure(visibleAssistantNode, errorMeta);
       visibleAssistantNode.bubble.textContent = extractErrorMessage(err);
       console.error(err);
+      return { ok: false, reason: "chat_failed" };
     } finally {
       chatRequestInFlight = false;
       syncDictationUi();
       void refreshActiveDocuments();
     }
-  });
+  }
 
   // ---- Endpoint réseau
   async function sendToServer(userText, onChunk, threadId, inputMode = "keyboard", options = {}){

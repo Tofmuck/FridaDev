@@ -109,8 +109,8 @@ frontières.
   mapping content-free des erreurs.
 - `app/web/dialogue/dialogue_vad_recorder.js` : microphone, VAD, segmentation et
   production d'un blob unique.
-- `app/web/dialogue/dialogue_audio_client.js` : transport navigateur vers les
-  deux routes Frida et consommation sûre du flux audio.
+- `app/web/dialogue/dialogue_audio_client.js` : transport STT navigateur D4 vers
+  la seule route de transcription Frida ; aucune synthèse ou lecture avant D5.
 - `app/web/dialogue/dialogue_session_controller.js` : machine d'orchestration
   semi-duplex et raccord au contrôleur visuel existant.
 - `app/web/chat_dialogue_mode.js` : reste la projection visuelle pure ; aucune
@@ -711,6 +711,9 @@ D4 NON COMMENCÉ.**
 
 ## Lot D4 — raccord STT au pipeline chat canonique
 
+**Statut : explicitement autorisé, implémenté et vérifié ; livraison runtime
+à vérifier avant fermeture. Bouton produit désactivé. D5/D6 non commencés.**
+
 **Livrable :** une parole produit un message utilisateur normal et traverse le
 pipeline Frida existant une seule fois. Le TTS n'est pas encore enchaîné.
 
@@ -718,8 +721,11 @@ pipeline Frida existant une seule fois. Le TTS n'est pas encore enchaîné.
 
 - Créer : `app/web/dialogue/dialogue_audio_client.js`
 - Créer : `app/web/dialogue/dialogue_session_controller.js`
+- Modifier : `AGENTS.md` pour l'exception D4 explicite
+- Modifier : `app/web/index.html` pour les deux petits modules D4
 - Modifier : `app/web/app.js`
 - Modifier : `app/web/chat_dialogue_mode.js` seulement si un état visuel manque
+- Créer : `app/tests/unit/frontend_chat/test_canonical_chat_submission.js`
 - Créer : `app/tests/unit/frontend_chat/test_dialogue_audio_client_module.js`
 - Créer : `app/tests/unit/frontend_chat/test_dialogue_session_controller_module.js`
 - Modifier : `app/tests/integration/frontend_browser/test_frontend_browser_smoke.js`
@@ -727,34 +733,38 @@ pipeline Frida existant une seule fois. Le TTS n'est pas encore enchaîné.
 
 **Interfaces :**
 
-- `dialogueAudioClient.transcribe(blob) -> Promise<string>`.
-- `dialogueSessionController.start()` possède le cycle mais reçoit par injection
-  `submitCanonicalChatMessage(text, inputMode)`.
+- `dialogueAudioClient.transcribe(blob, { signal }?) -> Promise<string>`.
+- `dialogueSessionController.start()` ouvre une génération et retourne son
+  callback de capture ; `pause`, `resume`, `stop`, `close` et
+  `conversationChanged` invalident les opérations selon leur état. Il reçoit
+  par injection `submitCanonicalChatMessage(text, inputMode)`.
 - `inputMode` vaut `dialogue`; le submit réutilise la même fonction interne que
-  le formulaire et conserve `chatRequestInFlight`.
+  le formulaire et conserve `chatRequestInFlight`. Le transport reste
+  exclusivement `voice` (Dialogue/Whisper) ou `keyboard` ; aucune valeur
+  `dialogue` ne rejoint le backend.
 
-- [ ] **D4.1 — Extraire sans dupliquer la frontière de soumission**
+- [x] **D4.1 — Extraire sans dupliquer la frontière de soumission**
 
   Écrire un test rouge prouvant qu'un texte clavier et un transcript Dialogue
   passent par une unique fonction de soumission, avec mêmes thread, streaming,
   sauvegarde, final lock et gestion d'erreur. Le refactor ne change pas le
   comportement clavier.
 
-- [ ] **D4.2 — Écrire les scénarios rouges de session**
+- [x] **D4.2 — Écrire les scénarios rouges de session**
 
   Couvrir : blob → `transcribing` → texte → `thinking`; transcript vide sans
   message ni appel chat ; STT échoué ; double événement blob ; conversation
   changée ; requête déjà en cours ; pause ou fin pendant STT ; réponse chat
   interrompue ; fermeture sans message fantôme.
 
-- [ ] **D4.3 — Implémenter le raccord minimal**
+- [x] **D4.3 — Implémenter le raccord minimal**
 
   La transcription n'est jamais injectée dans la vue Dialogue. Après succès,
   elle est soumise une seule fois comme message utilisateur ordinaire. Le
   contrôleur attend le résultat final de la fonction chat existante et ne lit
   pas directement le stream réseau.
 
-- [ ] **D4.4 — Prouver le chemin réel**
+- [x] **D4.4 — Prouver le chemin réel**
 
   Le smoke Chromium simule STT puis `/api/chat` et vérifie : un POST STT, un POST
   chat, un seul message utilisateur, la réponse finale existante, l'absence de
@@ -767,12 +777,84 @@ pipeline Frida existant une seule fois. Le TTS n'est pas encore enchaîné.
 
   Commit attendu : `feat(dialogue): route speech through canonical chat`.
 
-**Stop D4 :** si la soumission canonique ne peut pas être réutilisée sans
-copier le pipeline, faire un refactor borné séparé et garder le bouton désactivé.
+**Stop D4 :** si la soumission canonique ne peut pas être extraite sans copie
+ou modification comportementale large, arrêter après les preuves et rapporter
+le blocage. Cette condition n'a pas été rencontrée : le corps existant est
+extrait, sans second `sendToServer`.
+
+### Preuves D4 — 9 septembre 2026
+
+- baseline avant édition : `/opt/platform/fridadev`, `main`, HEAD/upstream
+  `0f712369949bc4a1db80d9e8e4818ddfc03ef990`, worktree propre, divergence `0/0` ;
+  travail dans l'IDE, sans SSH ni pull ;
+- rouges initiaux : `40` assertions unitaires échouent causalement sur les deux
+  modules absents et la fonction canonique non extraite. Les deux scénarios
+  Chromium initiaux ne rejoignent pas `transcribing` depuis le WAV D3 ;
+- rouges supplémentaires du contre-audit : reprise sous chargement affichée
+  en pause, puis armement tardif après une deuxième pause (`1` acquisition au
+  lieu de `0`) ; changement de thread pendant chargement laissant un micro
+  vivant en `error` ; reprise après erreur de capture projetant à tort l'écoute
+  d'un recorder mort ; même Blob accepté deux fois après reprise explicite ;
+  chaque témoin est satisfait par un correctif borné dans D4/wiring ;
+- la preuve de soumission exécute ensemble le vrai corps extrait et son vrai
+  parseur streaming, avec seulement DOM/serveur substitués. Elle couvre les
+  trois provenances, busy, message unique, thread, final lock, cache,
+  métadonnées, réhydratation et erreurs. Le témoin Chromium instrumente la
+  fonction réellement exécutée et inclut aussi le vrai module Whisper ;
+- mutation 1 : contourner le submit commun pour Dialogue fait disparaître
+  `dialogue` de la liste des appels canoniques, témoin Chromium rouge ;
+  restauration exacte de `app.js` :
+  `aa7f2c515fd731841d44fd758e272fc51db3fca17328312a9ed8c41b69cff064` ;
+- mutation 2 : supprimer les gardes génération/conversation provoque une
+  soumission au thread B, une soumission après Pause et des états tardifs sur
+  une nouvelle session. Les témoins échouent sur ces effets observés, sans
+  sleep ni attente non résolue ; restauration exacte du contrôleur :
+  `e2d07a8a82e422640ab3873adb689f3afae3387455f7224a44661873028f40a1` ;
+- après chaque restauration, le témoin concerné repasse avec exit `0` ;
+- sélection finale D4 `43/43`, frontend unitaire complet `236/236`, D3 complet
+  `28/28`, Chromium complet `34/34` (dont cinq scénarios D4), sans échec,
+  annulation, skip ou TODO ; `node --check` passe sur les sept JS du lot,
+  ainsi que `git diff --check` ;
+- voisins Python D1/D2/routes, Whisper et input_mode `57/57`, dans l'image D3
+  déjà déployée, avec checkout monté read-only, `--network none`, filesystem
+  read-only, `/tmp` en tmpfs et `PYTHONDONTWRITEBYTECODE=1`. Les erreurs de
+  transport/persistance injectées restent les témoins attendus, pas des accès
+  au provider ou à la DB opérateur ;
+- revue indépendante : aucun finding vivant après correction. Elle reproduit
+  en plus fermeture/réouverture pendant permission différée, anciens callbacks
+  inertes, un seul flux actif dans la nouvelle session puis zéro après sortie ;
+- aucun backend, provider, schéma input_mode, prompt, persistance, modèle,
+  licence/asset D3, Whisper, style ou contrôleur visuel n'est modifié. Aucune
+  lecture audio, TTS, activation du bouton, dispatch artificiel de formulaire,
+  stockage ou journal de transcript n'est introduit ;
+- le Browser plugin est absent : le smoke Playwright/Chromium existant sert la
+  page locale et intercepte les POST multipart/JSON natifs. Aucun provider,
+  micro physique ni donnée opérateur n'est utilisé. Le canari Safari réel et
+  le bruit de roulement restent hors D4.
+
+Commandes frontend exécutées après restauration :
+
+```bash
+node --test app/tests/unit/frontend_chat/test_canonical_chat_submission.js app/tests/unit/frontend_chat/test_dialogue_audio_client_module.js app/tests/unit/frontend_chat/test_dialogue_session_controller_module.js
+node --test app/tests/unit/frontend_chat/test_dialogue_vad_*.js
+node --test app/tests/unit/frontend_chat/*.js
+node --test app/tests/integration/frontend_browser/test_frontend_browser_smoke.js
+```
+
+Les sept JS modifiés/créés sont vérifiés individuellement par `node --check`.
+La sélection Python est `tests.unit.chat.test_dialogue_stt_service`,
+`tests.unit.chat.test_dialogue_tts_service`,
+`tests.integration.chat.test_chat_dialogue_audio_routes`,
+`tests.unit.chat.test_whisper_transcription_service`,
+`tests.integration.frontend_chat.test_frontend_whisper_contract` et
+`tests.integration.chat.test_chat_input_mode_route`, via `python -m unittest`
+dans le conteneur hermétique décrit ci-dessus.
 
 ---
 
 ## Lot D5 — lecture TTS et boucle semi-duplex
+
+**Statut : non commencé, non autorisé par D4.**
 
 **Livrable :** après la réponse finale canonique, Frida la lit, anime uniquement
 pendant le son effectif, puis réarme l'écoute.

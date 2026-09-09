@@ -115,6 +115,20 @@ cycle. Le bouton Dialogue reste desactive. D3 n'autorise aucun raccord STT,
 chat, TTS ou provider, aucune lecture audio et ne constitue aucun precedent
 pour D4 a D6.
 
+Exception explicite et strictement bornee decidee par l'utilisateur le 9
+septembre 2026: le lot D4 autorise exclusivement le raccord du WAV D3 a la
+route STT D1 puis a la soumission chat canonique unique, derriere le harnais
+synthetique existant. Le client envoie un seul champ multipart `audio`, MIME
+exact `audio/wav`, fichier de 1 a 24 000 000 octets. La provenance frontend
+`dialogue` devient `input_mode="voice"` sur le reseau, sans changement backend,
+persistance ni prompt. La capture est desarmee avant STT et reste desarmee
+pendant le chat et apres son succes, projete `paused`. Le transcript ne parait
+que dans le fil normal. Les generations, le thread et le garde chat existant
+refusent les operations perimees et les doubles soumissions. Le bouton produit
+reste litteralement `disabled`. Aucun TTS, lecture audio, rearmement automatique
+ou appel provider reel n'est autorise. D5 et D6 restent non commences et exigent
+chacun une decision explicite distincte.
+
 Chaque lot doit demontrer: pas de capacite produit ajoutee, comportements
 legitimes preserves hors bug corrige, complexite stable ou reduite, ancien
 chemin retire quand il est remplace, et invariants utiles verrouilles par des
