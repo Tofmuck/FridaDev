@@ -36,7 +36,7 @@ class AppPhase8Tests(unittest.TestCase):
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 
         self.assertIn('<link rel="manifest" href="/manifest.webmanifest" />', html_source)
-        self.assertIn('<meta name="theme-color" content="#f8f6f3" />', html_source)
+        self.assertIn('<meta name="theme-color" content="#fbf8f3" />', html_source)
         self.assertIn('<meta name="apple-mobile-web-app-capable" content="yes" />', html_source)
         self.assertIn('<meta name="apple-mobile-web-app-title" content="Frida" />', html_source)
         self.assertIn(
@@ -53,8 +53,8 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertEqual(manifest["start_url"], "/")
         self.assertEqual(manifest["scope"], "/")
         self.assertEqual(manifest["display"], "standalone")
-        self.assertEqual(manifest["theme_color"], "#f8f6f3")
-        self.assertEqual(manifest["background_color"], "#f8f6f3")
+        self.assertEqual(manifest["theme_color"], "#fbf8f3")
+        self.assertEqual(manifest["background_color"], "#fbf8f3")
 
         icons = manifest.get("icons")
         self.assertIsInstance(icons, list)
@@ -191,7 +191,10 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertIn('id="composerContextRow"', index_source)
         self.assertIn('class="composer-context-controls"', index_source)
         self.assertIn('id="mainReasoningLevel"', index_source)
-        self.assertIn('class="main-reasoning-label" title="Raisonnement global">Rais.</span>', index_source)
+        self.assertIn(
+            'class="main-reasoning-label" title="Raisonnement global">Raisonnement ·</span>',
+            index_source,
+        )
         self.assertIn('main_reasoning_control.js', index_source)
         self.assertIn('createMainReasoningControl', app_source)
         self.assertNotIn('reasoning_details', index_source)

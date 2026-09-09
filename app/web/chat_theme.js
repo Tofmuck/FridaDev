@@ -16,8 +16,8 @@
   const THEME_LIGHT = 'light';
   const THEME_DARK = 'dark';
   const THEME_COLORS = Object.freeze({
-    [THEME_LIGHT]: '#f8f6f3',
-    [THEME_DARK]: '#0b1018',
+    [THEME_LIGHT]: '#fbf8f3',
+    [THEME_DARK]: '#0d1117',
   });
 
   function normalizeTheme(value) {

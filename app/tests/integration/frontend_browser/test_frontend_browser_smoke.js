@@ -491,6 +491,9 @@ test('chat composer keeps desktop textarea and action row from overlapping contr
       const mic = document.querySelector('#btnMic').getBoundingClientRect();
       const activeDocument = document.querySelector('#btnActiveDocument').getBoundingClientRect();
       const adobe = document.querySelector('#btnAdobeMode').getBoundingClientRect();
+      const biblio = document.querySelector('#btnBiblioMode').getBoundingClientRect();
+      const notes = document.querySelector('#btnNotesMode').getBoundingClientRect();
+      const agenda = document.querySelector('#btnAgendaMode').getBoundingClientRect();
       const webSearch = document.querySelector('#btnWebSearch').getBoundingClientRect();
       const submit = document.querySelector('#ask button[type="submit"]').getBoundingClientRect();
       const actions = document.querySelector('.composer-actions').getBoundingClientRect();
@@ -520,6 +523,13 @@ test('chat composer keeps desktop textarea and action row from overlapping contr
         adobeLeft: adobe.left,
         adobeRight: adobe.right,
         adobeTop: adobe.top,
+        biblioLeft: biblio.left,
+        biblioRight: biblio.right,
+        notesLeft: notes.left,
+        notesRight: notes.right,
+        agendaLeft: agenda.left,
+        agendaRight: agenda.right,
+        toolsTop: webSearch.top,
         webSearchLeft: webSearch.left,
         webSearchRight: webSearch.right,
         submitLeft: submit.left,
@@ -529,22 +539,21 @@ test('chat composer keeps desktop textarea and action row from overlapping contr
       };
     });
 
-    assert.ok(
-      layout.messageWidth > layout.actionsWidth,
-      `desktop composer textarea should remain wider than actions: ${layout.messageWidth}px <= ${layout.actionsWidth}px`,
-    );
+    assert.ok(layout.messageWidth > 800, `desktop composer textarea should remain wide: ${layout.messageWidth}px`);
     assert.ok(layout.messageLeft >= layout.askLeft, 'textarea should stay inside the composer');
     assert.ok(layout.messageRight <= layout.askRight + 1, 'textarea should stay inside the composer');
-    assert.ok(layout.messageRight <= layout.actionsLeft, 'action grid should sit to the right of the textarea');
-    assert.ok(layout.actionsTop >= layout.messageTop - 1, 'action grid should align with the textarea top');
-    assert.ok(layout.actionsBottom <= layout.messageBottom + 1, 'action grid should stay within the textarea height');
+    assert.ok(layout.messageRight <= layout.micLeft, 'microphone should sit to the right of the textarea');
     assert.ok(layout.actionsLeft >= layout.askLeft, 'action row should stay inside the composer');
     assert.ok(layout.actionsRight <= layout.askRight + 1, 'action row should stay inside the composer');
-    assert.ok(layout.micRight <= layout.webSearchLeft, 'mic button should sit before web-search on the first row');
-    assert.ok(layout.webSearchRight <= layout.submitLeft, 'web-search button should not overlap the submit button');
+    assert.ok(layout.micRight <= layout.submitLeft, 'microphone should sit before submit on the first row');
     assert.ok(layout.submitTop <= layout.micBottom, 'submit button should stay on the first row');
+    assert.ok(layout.toolsTop >= layout.messageBottom, 'the seven tools should stay on the second row');
+    assert.ok(layout.webSearchRight <= layout.activeDocumentLeft, 'web-search should sit before document on the second row');
     assert.ok(layout.activeDocumentRight <= layout.imageGenerationLeft, 'document button should sit before image on the second row');
     assert.ok(layout.imageGenerationRight <= layout.adobeLeft, 'image button should sit before Adobe on the second row');
+    assert.ok(layout.adobeRight <= layout.biblioLeft, 'Adobe should sit before Biblio on the second row');
+    assert.ok(layout.biblioRight <= layout.notesLeft, 'Biblio should sit before Notes on the second row');
+    assert.ok(layout.notesRight <= layout.agendaLeft, 'Notes should sit before Agenda on the second row');
     assert.ok(layout.adobeTop >= layout.activeDocumentTop - 1, 'Adobe button should stay on the second row');
     assert.ok(layout.submitRight <= layout.actionsRight + 1, 'submit should stay inside action row');
     assert.ok(layout.askLeft >= 0 && layout.askRight <= layout.viewportWidth, 'composer should stay inside the viewport');
@@ -589,19 +598,47 @@ test('chat theme switch preserves the shared desktop layout and composer capabil
       }
       return {
         theme: document.documentElement.dataset.theme,
+        bodyBackgroundImage: getComputedStyle(document.body).backgroundImage,
+        bodyBackgroundColor: getComputedStyle(document.body).backgroundColor,
+        sidebar: rect('.sidebar'),
+        sideHeader: rect('.side-header'),
+        logo: rect('.logo img'),
+        newChat: rect('#newChat'),
+        topbar: rect('.topbar'),
         composer: rect('#ask'),
         textarea: rect('#message'),
         actions: rect('.composer-actions'),
         visibleControlIds,
         themeColor: document.querySelector('meta[name="theme-color"]')?.content,
         themeLabel: document.querySelector('#btnTheme')?.getAttribute('aria-label'),
+        themeToggle: rect('#btnTheme'),
+        presenceCount: document.querySelectorAll('.dialogue-presence').length,
+        titleText: document.querySelector('.topbar .title')?.textContent,
+        navigationOrder: Array.from(document.querySelector('.topbar').children)
+          .map((node) => node.id || (node.classList.contains('global-nav') ? 'global-nav' : node.className)),
       };
     });
 
     const light = await readState();
     assert.equal(light.theme, 'light');
-    assert.equal(light.themeColor, '#f8f6f3');
+    assert.equal(light.themeColor, '#fbf8f3');
     assert.equal(light.themeLabel, 'Passer au mode sombre');
+    assert.equal(light.bodyBackgroundImage, 'none');
+    assert.equal(light.bodyBackgroundColor, 'rgb(251, 248, 243)');
+    assert.deepEqual(light.sidebar, { left: 0, top: 0, width: 272, height: 900 });
+    assert.deepEqual(light.sideHeader, { left: 14, top: 16, width: 244, height: 58 });
+    assert.deepEqual(light.logo, { left: 23, top: 24, width: 42, height: 42 });
+    assert.deepEqual(light.newChat, { left: 14, top: 86, width: 244, height: 42 });
+    assert.deepEqual(light.topbar, { left: 272, top: 0, width: 1168, height: 46 });
+    assert.deepEqual(light.composer, { left: 316, top: 744, width: 1080, height: 134 });
+    assert.deepEqual(light.textarea, { left: 332, top: 755, width: 916, height: 58 });
+    assert.deepEqual(light.themeToggle, { left: 1388, top: 5, width: 36, height: 36 });
+    assert.equal(light.presenceCount, 1);
+    assert.equal(light.titleText, 'Thread navigateur');
+    assert.ok(
+      light.navigationOrder.indexOf('global-nav') < light.navigationOrder.indexOf('btnExportConversation'),
+      'the global navigation must precede export exactly as in the Figma composition',
+    );
     assert.deepEqual(light.visibleControlIds, [
       'btnMic',
       'btnWebSearch',
@@ -613,18 +650,22 @@ test('chat theme switch preserves the shared desktop layout and composer capabil
       'btnAgendaMode',
       'submit',
     ]);
-
     await page.click('#btnTheme');
     const dark = await readState();
     assert.equal(dark.theme, 'dark');
-    assert.equal(dark.themeColor, '#0b1018');
+    assert.equal(dark.themeColor, '#0d1117');
     assert.equal(dark.themeLabel, 'Passer au mode clair');
+    assert.equal(dark.bodyBackgroundImage, 'none');
+    assert.equal(dark.bodyBackgroundColor, 'rgb(13, 17, 23)');
     assert.equal(await page.evaluate(() => localStorage.getItem('frida.chat.theme')), 'dark');
+    assert.deepEqual(dark.sidebar, light.sidebar, 'the sidebar must not move between themes');
+    assert.deepEqual(dark.sideHeader, light.sideHeader, 'the Frida brand block must not move between themes');
+    assert.deepEqual(dark.newChat, light.newChat, 'the new-chat button must not move between themes');
+    assert.deepEqual(dark.topbar, light.topbar, 'the topbar must not move between themes');
     assert.deepEqual(dark.composer, light.composer, 'the composer must not move between themes');
     assert.deepEqual(dark.textarea, light.textarea, 'the textarea must not move between themes');
     assert.deepEqual(dark.actions, light.actions, 'the tool grid must not move between themes');
     assert.deepEqual(dark.visibleControlIds, light.visibleControlIds);
-
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#message:not([disabled])');
     assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'dark');
@@ -674,17 +715,25 @@ test('chat reasoning shortcut stays compact on desktop and mobile', async () => 
         };
       });
 
-      assert.equal(layout.labelText, 'Rais.');
+      assert.equal(layout.labelText, 'Raisonnement ·');
       assert.equal(layout.selectLabel, 'Niveau de raisonnement global');
       assert.ok(layout.reasoning.width <= viewport.maxWidth + 1, `${viewport.name} reasoning control too wide: ${layout.reasoning.width}px`);
       assert.ok(layout.contextRow.left >= layout.ask.left - 1, `${viewport.name} context row should stay inside composer`);
       assert.ok(layout.contextRow.right <= layout.ask.right + 1, `${viewport.name} context row should stay inside composer`);
-      assert.ok(layout.contextRow.bottom <= layout.message.top + 1, `${viewport.name} context row should stay above textarea`);
+      if (viewport.name === 'desktop') {
+        assert.ok(layout.contextRow.top >= layout.message.bottom - 1, 'desktop context row should stay below textarea');
+      } else {
+        assert.ok(layout.contextRow.bottom <= layout.message.top + 1, 'mobile context row should stay above textarea');
+      }
       assert.ok(layout.contextControls.left >= layout.ask.left - 1, `${viewport.name} context controls should stay inside composer`);
       assert.ok(layout.contextControls.right <= layout.ask.right + 1, `${viewport.name} context controls should stay inside composer`);
       assert.ok(layout.reasoning.left >= layout.ask.left - 1, `${viewport.name} reasoning control should stay inside composer`);
       assert.ok(layout.reasoning.right <= layout.ask.right + 1, `${viewport.name} reasoning control should stay inside composer`);
-      assert.ok(layout.reasoning.bottom <= layout.message.top + 1, `${viewport.name} reasoning control should stay above textarea`);
+      if (viewport.name === 'desktop') {
+        assert.ok(layout.reasoning.top >= layout.message.bottom - 1, 'desktop reasoning control should stay on the lower row');
+      } else {
+        assert.ok(layout.reasoning.bottom <= layout.message.top + 1, 'mobile reasoning control should stay above textarea');
+      }
       assert.ok(layout.select.width <= 88 + 1, `${viewport.name} reasoning select should remain compact`);
       assert.ok(layout.ask.left >= 0 && layout.ask.right <= layout.viewportWidth + 1, `${viewport.name} composer should stay inside viewport`);
     });

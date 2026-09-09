@@ -70,6 +70,7 @@ function createChatThreadsSidebar({
   scrollToBottom,
   notesModeController,
   consoleObj,
+  onCurrentThreadChange,
 } = {}) {
   const httpFetch = fetchFn || (typeof fetch !== "undefined" ? fetch : null);
   const logger = consoleObj || (typeof console !== "undefined" ? console : { warn() {} });
@@ -168,6 +169,9 @@ function createChatThreadsSidebar({
   const getCurrentId = () => currentThreadId;
   const setCurrentId = (id) => {
     currentThreadId = id || null;
+    if (typeof onCurrentThreadChange === "function") {
+      onCurrentThreadChange(currentThreadId ? getThreads().find((item) => item.id === currentThreadId) || null : null);
+    }
   };
   const getThreadById = (id) => getThreads().find((x) => x.id === id);
   const setThreadMeta = (id, patch) => {
@@ -176,6 +180,9 @@ function createChatThreadsSidebar({
     if (!t || !patch || typeof patch !== "object") return;
     Object.assign(t, patch);
     saveThreads([...threads]);
+    if (t.id === currentThreadId && typeof onCurrentThreadChange === "function") {
+      onCurrentThreadChange(t);
+    }
   };
 
   const applyConversationTerminalMeta = (threadId, terminal) => {

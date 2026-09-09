@@ -107,6 +107,11 @@
   const sidebar = document.querySelector('.sidebar');
   const sidebarBackdrop = $("#sidebarBackdrop");
   const btnMenu = $("#btnMenu");
+  const currentConversationTitle = document.querySelector('.topbar .title');
+  const syncCurrentConversationTitle = (thread) => {
+    if (!currentConversationTitle) return;
+    currentConversationTitle.textContent = String(thread?.title || 'Nouvelle conversation');
+  };
   chatTheme.createThemeController({ document, storage: localStorage });
   const openSidebar  = () => { sidebar.classList.add('open');    sidebarBackdrop && sidebarBackdrop.classList.add('show'); };
   const closeSidebar = () => { sidebar.classList.remove('open'); sidebarBackdrop && sidebarBackdrop.classList.remove('show'); };
@@ -174,7 +179,7 @@
     if (!value) return null;
     const d = value instanceof Date ? value : new Date(value);
     if (Number.isNaN(d.getTime())) return null;
-    return `${d.getHours()}h${String(d.getMinutes()).padStart(2, '0')}`;
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
 
   const resolveDisplayName = (role) => {
@@ -185,7 +190,7 @@
 
   const buildBylineText = (role, timestamp = null) => {
     const hourStr = fmtHour(timestamp);
-    return hourStr ? `${resolveDisplayName(role)} · ${hourStr}` : resolveDisplayName(role);
+    return hourStr || resolveDisplayName(role);
   };
 
   const setMessageNodeTimestamp = (messageNode, role, timestamp = null) => {
@@ -343,6 +348,7 @@
     scrollToBottom,
     notesModeController,
     consoleObj: console,
+    onCurrentThreadChange: syncCurrentConversationTitle,
   });
   const {
     getCurrentId,

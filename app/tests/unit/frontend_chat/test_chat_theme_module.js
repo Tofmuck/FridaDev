@@ -16,7 +16,7 @@ function createFixture(storedTheme = null) {
     removeEventListener: (name) => listeners.delete(name),
   };
   const meta = {
-    content: '#f8f6f3',
+    content: '#fbf8f3',
     setAttribute(name, value) {
       if (name === 'content') this.content = String(value);
     },
@@ -39,11 +39,11 @@ test('initial theme accepts only the stored dark value', () => {
   const dark = createFixture('dark');
   assert.equal(chatTheme.applyInitialTheme(dark), 'dark');
   assert.equal(dark.document.documentElement.dataset.theme, 'dark');
-  assert.equal(dark.meta.content, '#0b1018');
+  assert.equal(dark.meta.content, '#0d1117');
 
   const invalid = createFixture('sepia');
   assert.equal(chatTheme.applyInitialTheme(invalid), 'light');
-  assert.equal(invalid.meta.content, '#f8f6f3');
+  assert.equal(invalid.meta.content, '#fbf8f3');
 });
 
 test('theme controller toggles, persists and keeps accessible labels exact', () => {
