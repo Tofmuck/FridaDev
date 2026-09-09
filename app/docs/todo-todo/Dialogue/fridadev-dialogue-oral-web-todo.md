@@ -63,6 +63,10 @@ d'écoute du microphone.
 
 - Le chat Web et la conversation courante restent l'autorité.
 - La transcription devient un message utilisateur ordinaire du chat.
+- La vue Dialogue n'affiche pas la transcription reconnue. En cas
+  d'incompréhension, la réparation se fait dans le dialogue ; après avoir
+  quitté ce mode, le texte effectivement envoyé reste consultable dans le fil
+  normal comme tout message utilisateur.
 - Aucun second pipeline dialogique n'est créé.
 - Le STT local actuel est contourné pour ce mode, pas présenté comme amélioré.
 - Le microphone n'écoute pas les reprises pendant la lecture de Frida dans la
@@ -76,6 +80,34 @@ d'écoute du microphone.
 - Le seuil `x`, le format audio final et la politique exacte d'échec restent à
   régler dans le lot d'implémentation. La V1 ne doit pas ajouter de fallback
   automatique qui changerait silencieusement de modèle.
+
+## Contrat visuel et animations
+
+La maquette Figma distingue deux familles d'animation. Elle fixe leur aspect,
+pas leur déclenchement runtime : aucune boucle exportée par Figma ne doit être
+recopiée comme une animation permanente.
+
+- Le petit signal à ondes représente une **parole effectivement détectée**. Il
+  s'anime quand le VAD reconnaît la parole de Tof et, pendant la réponse, quand
+  l'audio TTS de Frida est effectivement lu. Il ne réagit ni au silence, ni au
+  bruit ambiant rejeté par le VAD, ni à une simple requête réseau en cours.
+- L'animation propre de Frida — orbe, halo et relief autour du logo — est
+  réservée à la voix de Frida. Elle ne commence qu'avec la lecture audio TTS
+  effective et s'arrête ou se suspend sur pause, attente de données, fin,
+  erreur, abandon ou neutralisation de cette lecture.
+- En écoute armée mais silencieuse, l'orbe et le signal vocal restent dans leur
+  état visuel de repos. Pendant la transcription et la réflexion de Frida, ils
+  restent également au repos ; seul le libellé d'état change.
+- Quand Tof parle, seul le signal vocal s'anime. Quand Frida parle, son
+  animation et le signal vocal peuvent s'animer ensemble.
+- Le mode reste semi-duplex : avant d'armer le microphone, la radio, les médias
+  et le propre TTS de Frida sont neutralisés. Les animations ne doivent donc
+  jamais fabriquer l'apparence de deux locuteurs simultanés.
+
+La vue Dialogue n'est pas une surface de contrôle de dictée. Elle montre les
+états fonctionnels nécessaires — écoute, transcription, réflexion, parole,
+pause ou erreur — sans afficher le texte STT. Le fil normal demeure la surface
+d'inspection a posteriori du texte réellement envoyé et de la réponse reçue.
 
 ## Méthode obligatoire de choix du transport et des modèles
 
