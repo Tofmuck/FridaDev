@@ -743,6 +743,10 @@ pipeline Frida existant une seule fois. Le TTS n'est pas encore enchaîné.
   le formulaire et conserve `chatRequestInFlight`. Le transport reste
   exclusivement `voice` (Dialogue/Whisper) ou `keyboard` ; aucune valeur
   `dialogue` ne rejoint le backend.
+- Le succès de `submitCanonicalChatMessage` retourne
+  `{ ok: true, text: reply }`, où `reply` est le final lock canonique exact,
+  y compris `""`. Les résultats fermés `busy`, `empty` et `chat_failed` ne
+  retournent pas de texte ; le contrôleur D4 ignore encore le texte du succès.
 
 - [x] **D4.1 — Extraire sans dupliquer la frontière de soumission**
 
@@ -910,7 +914,10 @@ pendant le son effectif, puis réarme l'écoute.
 - `dialogueAudioClient.synthesize(text) -> Promise<Blob>`.
 - Le contrôleur possède exactement un `HTMLAudioElement` et révoque chaque
   object URL après fin ou erreur.
-- Le submit canonique de D4 retourne le texte final à lire ou un échec fermé.
+- Le submit canonique de D4 retourne `{ ok: true, text }`, avec le texte exact
+  du final lock, y compris `""`. D5 devra consommer cette valeur directement,
+  sans relire le DOM, le cache ou un fragment de stream ; un échec fermé ne
+  fournit aucun texte à lire.
 
 - [ ] **D5.1 — Écrire les tests rouges de vérité audio**
 

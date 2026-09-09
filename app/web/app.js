@@ -892,7 +892,7 @@
       } else if (shouldStickToBottom) {
         scrollToBottom(true);
       }
-      return { ok: true };
+      return { ok: true, text: reply };
     } catch (err) {
       const errorMeta = getObservableStreamErrorMeta(err);
       const errorTerminal = err && typeof err === "object" ? err.terminal || null : null;

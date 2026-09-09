@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const streaming = require('../../../web/chat_streaming.js');
+const plain = value => JSON.parse(JSON.stringify(value));
 
 // Execute the real submission and transport together; only DOM and server boundaries are faked.
 function fixture({ terminal = { event: 'done', updated_at: '2026-09-09T10:00:00Z', final_text: 'Final verrouillé' }, httpError = false } = {}) {
@@ -62,7 +63,9 @@ for (const mode of ['keyboard', 'voice', 'dialogue']) {
     f.context.message.value = 'brouillon conservé';
     const pending = f.submit('Texte synthétique', mode);
     assert.equal(f.context.chatRequestInFlight, true);
-    await f.submit('doublon', 'dialogue');
+    const busyResult = await f.submit('doublon', 'dialogue');
+    assert.deepEqual(plain(busyResult), { ok: false, reason: 'busy' });
+    assert.equal(Object.hasOwn(busyResult, 'text'), false);
     assert.equal(f.requests.length, 1);
     assert.deepEqual(f.requests[0], { url: '/api/chat', payload: {
       message: 'Texte synthétique', conversation_id: 'thread-A', stream: true,
@@ -72,7 +75,7 @@ for (const mode of ['keyboard', 'voice', 'dialogue']) {
     assert.equal(f.nodes.filter(n => n.role === 'user').length, 1);
     if (mode === 'dialogue') assert.equal(f.context.message.value, 'brouillon conservé');
     f.release(); const result = await pending;
-    assert.equal(result.ok, true);
+    assert.deepEqual(plain(result), { ok: true, text: 'Final verrouillé' });
     assert.equal(f.context.chatRequestInFlight, false);
     assert.equal(f.nodes.at(-1).bubble.textContent, 'Final verrouillé');
     assert.deepEqual(f.cache.map(args => args.slice(0, 3)), [
@@ -84,6 +87,25 @@ for (const mode of ['keyboard', 'voice', 'dialogue']) {
     assert.deepEqual(f.hydrations, []);
   });
 }
+test('D4 preserves an explicitly empty canonical final for every input provenance', async () => {
+  for (const mode of ['keyboard', 'voice', 'dialogue']) {
+    const f = fixture({ terminal: {
+      event: 'done', updated_at: '2026-09-09T10:00:00Z', final_text: '',
+    } });
+    const pending = f.submit('Synthétique', mode); f.release(); const result = await pending;
+    assert.deepEqual(plain(result), { ok: true, text: '' });
+    assert.equal(result.text, '');
+    assert.equal(f.nodes.at(-1).bubble.textContent, '(vide)');
+    assert.equal(f.nodes.at(-1).bubble.textContent.includes('Brouillon'), false);
+    assert.equal(f.cache.filter(args => args[1] === 'assistant').length, 0);
+  }
+});
+test('D4 empty input remains a closed result without text', async () => {
+  const f = fixture();
+  const result = await f.submit('   ', 'keyboard');
+  assert.deepEqual(plain(result), { ok: false, reason: 'empty' });
+  assert.equal(Object.hasOwn(result, 'text'), false);
+});
 test('D4 keyboard and Whisper form submissions execute the same canonical function', async () => {
   for (const mode of ['keyboard', 'voice']) {
     const f = fixture();
@@ -103,7 +125,9 @@ for (const mode of ['keyboard', 'voice', 'dialogue']) {
   test(`D4 ${mode} preserves interrupted chat truth and rehydrates after unpersisted terminal`, async () => {
     const f = fixture({ terminal: { event: 'error', error_code: 'conversation_persist_failed' } });
     const pending = f.submit('Synthétique', mode); f.release(); const result = await pending;
-    assert.equal(result.ok, false); assert.equal(f.context.chatRequestInFlight, false);
+    assert.deepEqual(plain(result), { ok: false, reason: 'chat_failed' });
+    assert.equal(Object.hasOwn(result, 'text'), false);
+    assert.equal(f.context.chatRequestInFlight, false);
     assert.equal(f.cache.filter(args => args[1] === 'assistant').length, 0);
     assert.equal(f.hydrations.length, 1); assert.equal(f.hydrations[0][0], 'thread-A');
     assert.deepEqual(f.loads, ['thread-A']); assert.ok(f.states.includes('interrupted'));
@@ -111,8 +135,12 @@ for (const mode of ['keyboard', 'voice', 'dialogue']) {
 }
 test('D4 canonical HTTP failure returns failure; missing timestamp still forces hydration on success', async () => {
   const f = fixture({ httpError: true }); const pending = f.submit('Synthétique', 'dialogue');
-  f.release(); assert.equal((await pending).ok, false); assert.equal(f.context.chatRequestInFlight, false);
+  f.release(); const failure = await pending;
+  assert.deepEqual(plain(failure), { ok: false, reason: 'chat_failed' });
+  assert.equal(Object.hasOwn(failure, 'text'), false);
+  assert.equal(f.context.chatRequestInFlight, false);
   const g = fixture({ terminal: { event: 'done' } }); const success = g.submit('Synthétique', 'keyboard');
-  g.release(); assert.equal((await success).ok, true); assert.equal(g.hydrations.length, 1);
+  g.release(); assert.deepEqual(plain(await success), { ok: true, text: 'Brouillon' });
+  assert.equal(g.hydrations.length, 1);
   assert.deepEqual(g.loads, ['thread-A']);
 });

@@ -234,10 +234,13 @@ Le transcript ne remplit jamais le textarea et n'est jamais rendu dans la vue
 Dialogue ; seul le message utilisateur normal du fil le rend consultable.
 Le brouillon clavier déjà présent est conservé lors d'une soumission Dialogue.
 
-La réussite finale canonique retourne seulement un résultat `ok` au contrôleur,
-qui projette `paused` et garde le microphone désarmé. Un STT vide, y compris
-uniquement des espaces, ne produit ni message ni POST chat et finit également
-en pause ; la reprise locale exige une action explicite. Une erreur STT,
+La réussite finale canonique retourne `{ ok: true, text: reply }` : `reply` est
+le texte du final lock et un `final_text: ""` reste exactement vide, sans
+réutiliser le brouillon streamé. Le contrôleur D4 ignore encore `text`, projette
+`paused` et garde le microphone désarmé. Les résultats `busy`, `empty` et
+`chat_failed` ne portent aucun texte. Un STT vide, y compris uniquement des
+espaces, ne produit ni message ni POST chat et finit également en pause ; la
+reprise locale exige une action explicite. Une erreur STT,
 capture ou chat reste `error` jusqu'à fermeture/réouverture du harnais. Un chat
 déjà soumis garde sa finalisation canonique même si la vue est fermée ; D4
 n'ajoute pas d'annulation de ce pipeline. Une reprise encore en initialisation

@@ -50,7 +50,7 @@ test('D4 blob → transcribing → thinking → paused, double blob ignored and 
   assert.deepEqual(f.states, ['listening', 'transcribing', 'thinking']);
   await f.controller.resume();
   assert.equal(f.resumes, 0);
-  f.chat.resolve({ ok: true });
+  f.chat.resolve({ ok: true, text: 'Final verrouillé' });
   await pending;
   assert.deepEqual(f.states, ['listening', 'transcribing', 'thinking', 'paused']);
   await f.blob();
