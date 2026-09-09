@@ -8,7 +8,7 @@ choix V1 du VAD, du STT et du TTS sont retenus ; seule leur invalidation par le
 test automobile réel peut les rouvrir. Le squelette visuel Figma et son
 contrôleur local d'états sont intégrés. Les frontières backend STT D1 et TTS D2
 sont implémentées et livrées sans consommateur frontend. La capture locale D3
-est rouverte pour corriger le pré-roll et isoler le chargement des assets ; l'entrée
+est corrigée, refermée et livrée avec pré-roll borné et assets optionnels ; l'entrée
 produit reste désactivée et aucun raccord STT frontend, chat, TTS, provider ou
 lecture audio n'est activé.**
 
@@ -135,7 +135,7 @@ provider n'est raccordé. Le bouton produit reste désactivé ; l'écran ne peut
 
 D3 a été rouvert : le cycle complet depuis `arm()` et le chargement obligatoire
 du VAD au bootstrap étaient des défauts, pas des variantes autorisées du contrat.
-La correction reste en vérification avant refermeture.
+La correction est prouvée, poussée et livrée ; D3 est définitivement refermé.
 
 Le module `createDialogueVadRecorder(options)` conserve `arm()`, `pause()`,
 `resume()`, `stop()` et les seuls événements `speech-start`, `speech-end`,

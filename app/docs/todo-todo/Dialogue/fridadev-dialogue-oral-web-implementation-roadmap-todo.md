@@ -475,8 +475,9 @@ du seul service applicatif. D3 reste non commencé.**
 
 **Statut : D3 rouvert le 9 septembre 2026 pour corriger deux défauts établis :
 capture depuis armement et chargement VAD obligatoire au bootstrap du chat.
-La clôture antérieure ne prouvait pas ces invariants. Le bouton produit reste
-désactivé et D4 n'est pas commencé.**
+La clôture antérieure ne prouvait pas ces invariants. Après correction, rouges,
+mutations, suites complètes et livraison vérifiée, D3 est définitivement refermé.
+Le bouton produit reste désactivé et D4 n'est pas commencé.**
 
 **Livrable :** l'interface peut ouvrir une session locale de test, détecter une
 parole et produire un blob borné ; elle n'appelle encore ni STT ni chat.
@@ -682,7 +683,29 @@ le verdict « aucun finding » sont donc révoqués sur ces deux points.
 - les internals épinglés et les performances Safari restent à revalider au
   futur canari autorisé : si une inférence locale chevauche la suivante, D3
   ferme en erreur sans accumuler ni perdre silencieusement l'audio ;
-- livraison corrective en cours ; D3 reste rouvert jusqu'aux preuves runtime.
+- commit correctif poussé :
+  `53d60c1cd0f6f98f74f3ce3111c8269d119f5594` ;
+- reconstruction `build --pull=false` sans pull Git, dépendances en cache,
+  puis `up -d --no-deps --force-recreate fridadev` dans le projet
+  `fridadev-app`. Seul `platform-fridadev` est recréé ;
+- image corrective :
+  `sha256:19ba1ac8e66e1d74396d37062f5295835df26d07c313b161066dcbe4251a220e` ;
+  rollback conservé :
+  `platform-fridadev-app:rollback-d3-preroll-20260909T184755Z` ;
+- runtime `running/healthy`, restart `0`, OOM `false`; identité, image et
+  état des 31 voisins strictement inchangés ;
+- HTTP interne `200` sur la page et les 14 fichiers D3/entrypoint/licences,
+  content-types attendus, hashes des réponses servis identiques aux fichiers.
+  Le HTML servi ne charge aucun script D3. Empreinte agrégée des entrypoints,
+  modules et assets/manifest/licences, identique checkout/conteneur :
+  `98d0755c2b328636aeeb639bd831dd10c0a92f5a61d90054c503fb3125646dc4` ;
+- les 76 tests voisins repassent depuis l'image réellement reconstruite,
+  sans montage du checkout, réseau coupé, filesystem read-only et tmpfs ;
+- la présente réconciliation finale est documentaire seulement : les fichiers
+  runtime restent ceux du commit correctif livré, sans seconde recréation.
+
+**D3 DÉFINITIVEMENT REFERMÉ — BOUTON PRODUIT TOUJOURS DÉSACTIVÉ —
+D4 NON COMMENCÉ.**
 
 ---
 
