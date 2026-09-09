@@ -44,6 +44,14 @@
   if (!dialogueMode) {
     throw new Error("FridaDialogueMode module missing");
   }
+  const dialogueVadRecorder = window.FridaDialogueVadRecorder;
+  if (!dialogueVadRecorder) {
+    throw new Error("FridaDialogueVadRecorder module missing");
+  }
+  const dialogueVadRuntime = window.FridaDialogueVadRuntime;
+  if (!dialogueVadRuntime) {
+    throw new Error("FridaDialogueVadRuntime module missing");
+  }
   const notesMode = window.FridaNotesMode;
   if (!notesMode) {
     throw new Error("FridaNotesMode module missing");
@@ -161,7 +169,92 @@
     sidebarBackdrop && sidebarBackdrop.classList.remove('show');
     syncSidebarAccessibility();
   };
-  const dialogueModeController = dialogueMode.createDialogueModeController({
+  const dialogueD3TestAdapters = window.__FRIDA_DIALOGUE_D3_TEST_ADAPTERS__ || null;
+  const dialogueVadAssetBase = new URL('vendor/dialogue-vad/', document.baseURI).href;
+  const dialogueD3VadRuntime = dialogueVadRuntime.createDialogueVadRuntime({
+    vadRuntime: window.vad,
+    assetBaseUrl: dialogueVadAssetBase,
+  });
+  const dialogueD3Events = [];
+  let dialogueD3Recorder = null;
+  let dialogueD3Active = false;
+  let dialogueD3TerminalError = false;
+  let dialogueD3Operation = Promise.resolve();
+  let dialogueModeController = null;
+
+  const handleDialogueD3UnexpectedError = () => {
+    dialogueD3TerminalError = true;
+    if (dialogueModeController && dialogueModeController.isActive()) {
+      dialogueModeController.setState('error');
+    }
+  };
+
+  const trackDialogueD3Operation = (operation) => {
+    dialogueD3Operation = Promise.resolve(operation).catch(handleDialogueD3UnexpectedError);
+    return dialogueD3Operation;
+  };
+
+  const queueDialogueD3Operation = (operation) => {
+    const nextOperation = dialogueD3Operation
+      .catch(() => {})
+      .then(operation);
+    return trackDialogueD3Operation(nextOperation);
+  };
+
+  const projectDialogueD3Event = (event) => {
+    const observableEvent = event.type === 'blob'
+      ? {
+        type: event.type,
+        mimeType: event.mimeType,
+        durationMs: event.durationMs,
+        sizeBytes: event.sizeBytes,
+      }
+      : { ...event };
+    dialogueD3Events.push(Object.freeze(observableEvent));
+    if (dialogueD3Events.length > 32) dialogueD3Events.shift();
+    if (!dialogueD3Active || !dialogueModeController) return;
+    if (event.type === 'speech-start') {
+      dialogueModeController.setState('user_speaking');
+    } else if (event.type === 'speech-end' || event.type === 'blob') {
+      dialogueModeController.setState('listening');
+    } else if (event.type === 'error') {
+      dialogueD3TerminalError = true;
+      dialogueModeController.setState('error');
+    }
+  };
+
+  const createDialogueD3Recorder = () => {
+    const adapters = dialogueD3TestAdapters || {};
+    return dialogueVadRecorder.createDialogueVadRecorder({
+      mediaDevices: adapters.mediaDevices,
+      MediaRecorderCtor: adapters.MediaRecorderCtor,
+      BlobCtor: adapters.BlobCtor,
+      documentObj: document,
+      ttsMediaElement: adapters.ttsMediaElement
+        || document.querySelector('[data-frida-dialogue-tts]'),
+      setTimeoutFn: adapters.setTimeoutFn,
+      clearTimeoutFn: adapters.clearTimeoutFn,
+      nowFn: adapters.nowFn,
+      vadFactory: adapters.vadFactory || dialogueD3VadRuntime.vadFactory,
+      vadOptions: dialogueD3VadRuntime.vadOptions,
+      onEvent: projectDialogueD3Event,
+    });
+  };
+
+  const stopDialogueD3Capture = () => {
+    if (!dialogueD3Active || !dialogueD3Recorder) return dialogueD3Operation;
+    dialogueD3Active = false;
+    const recorderToStop = dialogueD3Recorder;
+    const pendingOperation = dialogueD3Operation;
+    const immediateStop = recorderToStop.stop();
+    return trackDialogueD3Operation(Promise.all([
+      pendingOperation.catch(() => {}),
+      immediateStop,
+    ]).then(() => {
+      if (dialogueD3Recorder === recorderToStop) dialogueD3Recorder = null;
+    }));
+  };
+  dialogueModeController = dialogueMode.createDialogueModeController({
     rootEl: document.documentElement,
     screenEl: dialogueModeScreen,
     backgroundEl: document.querySelector('.main'),
@@ -173,8 +266,39 @@
     closeButtonEl: dialogueModeClose,
     navigationButtonEl: dialogueModeNavigation,
     onOpenNavigation: openSidebar,
+    onExit: stopDialogueD3Capture,
   });
   window.FridaDialogueModeController = dialogueModeController;
+  if (dialogueD3TestAdapters) {
+    window.FridaDialogueD3Harness = Object.freeze({
+      openAndArm() {
+        if (dialogueD3Active) return dialogueD3Operation;
+        dialogueD3Active = true;
+        dialogueD3TerminalError = false;
+        dialogueD3Events.length = 0;
+        const recorderToArm = createDialogueD3Recorder();
+        dialogueD3Recorder = recorderToArm;
+        dialogueModeController.enter();
+        return queueDialogueD3Operation(() => recorderToArm.arm());
+      },
+      events: () => [...dialogueD3Events],
+      whenSettled: () => dialogueD3Operation,
+    });
+  }
+  if (dialogueModePause) {
+    dialogueModePause.addEventListener('click', () => {
+      if (!dialogueD3Active || !dialogueD3Recorder) return;
+      if (dialogueD3TerminalError) {
+        dialogueModeController.setState('error');
+        return;
+      }
+      if (dialogueModeController.getState() === 'paused') {
+        void queueDialogueD3Operation(() => dialogueD3Recorder.pause());
+      } else {
+        void queueDialogueD3Operation(() => dialogueD3Recorder.resume());
+      }
+    });
+  }
   const setMobileToolsExpanded = (expanded) => {
     const nextExpanded = Boolean(expanded && mobileLayoutQuery.matches);
     if (ask) ask.classList.toggle('mobile-tools-expanded', nextExpanded);

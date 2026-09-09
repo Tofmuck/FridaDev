@@ -7,9 +7,10 @@ Dernière mise à jour de reconnaissance : 9 septembre 2026.
 choix V1 du VAD, du STT et du TTS sont retenus ; seule leur invalidation par le
 test automobile réel peut les rouvrir. Le squelette visuel Figma et son
 contrôleur local d'états sont intégrés. Les frontières backend STT D1 et TTS D2
-sont implémentées et livrées sans consommateur frontend ; l'entrée produit reste
-désactivée et aucun microphone, VAD produit, enregistrement navigateur, raccord
-audio ou appel fournisseur TTS n'est activé.**
+sont implémentées et livrées sans consommateur frontend. La capture locale D3
+est intégrée derrière un harnais synthétique absent du produit normal ; l'entrée
+produit reste désactivée et aucun raccord STT frontend, chat, TTS, provider ou
+lecture audio n'est activé.**
 
 ## Intention
 
@@ -80,9 +81,11 @@ d'écoute du microphone.
   `microsoft/mai-voice-2-flash`, avec la voix
   `fr-FR-Soleil:MAI-Voice-2`. Ces deux choix ne sont pas remis en concurrence
   sans échec concret du test automobile ou changement du contrat fournisseur.
-- Le seuil `x`, le format audio final et la politique exacte d'échec restent à
-  régler dans le lot d'implémentation. La V1 ne doit pas ajouter de fallback
-  automatique qui changerait silencieusement de modèle.
+- Le seuil `x` reste à éprouver par le canari automobile. D3 fixe la préférence
+  de conteneur à `audio/mp4`, puis `audio/webm` et `audio/ogg` seulement si le
+  navigateur les déclare réellement supportés, sans paramètre codec inventé.
+  La V1 ne doit pas ajouter de fallback automatique qui changerait
+  silencieusement de modèle.
 
 ## Contrat visuel et animations
 
@@ -127,6 +130,67 @@ transcription et réflexion, onde et orbe ensemble pour `tts_speaking`, repos en
 pause ou erreur. Aucun microphone, VAD, enregistrement, STT, TTS, endpoint ou
 provider n'est raccordé. Le bouton produit reste désactivé ; l'écran ne peut
 être ouvert que par le contrôleur de test jusqu'au lot audio autorisé.
+
+### Capture locale D3 intégrée — 9 septembre 2026
+
+Le module local `createDialogueVadRecorder(options)` possède exclusivement
+`arm()`, `pause()`, `resume()` et `stop()`. Ses événements fermés sont
+`speech-start`, `speech-end`, `blob` et `error`; le blob expose seulement le
+fichier, son MIME de base, sa durée et sa taille, jamais un transcript.
+
+La distribution retenue est `@ricky0123/vad-web@0.0.30` avec
+`onnxruntime-web@1.22.0`, modèle Silero `legacy`. Les scripts, le worklet, le
+modèle ONNX, les deux fichiers WASM/MJS et leurs licences sont servis depuis
+`app/web/vendor/dialogue-vad/`; le manifeste conserve versions, intégrités npm
+et SHA-256. Il n'existe aucun CDN ni téléchargement runtime tiers.
+
+Une limite réelle de `MediaRecorder` interdit de jeter arbitrairement les vieux
+fragments d'un anneau : la spécification garantit la lecture de l'assemblage de
+tous les fragments d'un cycle terminé, pas celle d'un sous-ensemble. D3 démarre
+donc l'unique recorder avant le VAD et conserve le cycle complet depuis le geste
+d'armement. Cette équivalence minimale préserve l'attaque du premier mot et
+reste strictement bornée à `300 000 ms` et `24 000 000` octets, avec collecte
+locale périodique demandée toutes les 250 ms. Un dépassement produit `error`,
+détruit le cycle et n'émet aucun blob tronqué ou partiel.
+
+Le même `MediaStream` est injecté par identité au VAD et au recorder. Une fin
+VAD valide produit un seul blob puis rouvre un cycle sur le même recorder ; un
+bruit candidat ou `onVADMisfire` n'en produit aucun. `pause()`, sortie et erreur
+détruisent VAD et recorder, effacent timer et fragments et arrêtent toutes les
+pistes. Seul le geste explicite « Reprendre » acquiert ensuite un nouveau flux,
+partagé à son tour ; aucune erreur ne réarme la session.
+
+Les transitions concurrentes partagent leur cleanup : une reprise attend la
+fin réelle de la pause et une instance VAD rendue tardivement est détruite avant
+de clore la transition. La deadline de capture reste active jusqu'à l'événement
+`stop` du recorder ; s'il n'arrive pas, elle ferme tout de même la session. Une
+exception de `MediaRecorder.stop()` produit `recorder_error` sans blob incomplet.
+
+La version épinglée de MicVAD peut laisser son modèle ou son `AudioContext`
+ouverts si `start()` échoue avant que son graphe soit complet. L'adaptateur D3
+libère donc séparément graphe, modèle et contexte après avoir arrêté la piste
+possédée. Comme cette API n'expose pas de callback d'erreur d'inférence,
+l'adaptateur enveloppe sa fonction `processFrame` avant `start()` : la première
+réjection devient l'erreur fermée `vad_runtime_error`, les suivantes sont
+neutralisées pendant le cleanup. Aucun callback fournisseur fictif n'est
+supposé.
+
+Cet adaptateur dépend volontairement des internals de la version
+`@ricky0123/vad-web@0.0.30` épinglée. Toute montée de version doit donc
+revalider explicitement son ordre d'initialisation et de destruction avant de
+changer les assets ou les empreintes.
+
+Les bornes sont inclusives : un cycle final de `300 000 ms` ou un blob de
+`24 000 000` octets est accepté ; la milliseconde ou l'octet suivant place la
+session en erreur sans blob. L'arrêt des pistes, du timer et des fragments est
+immédiat, même si la destruction tardive d'une initialisation VAD en vol doit
+encore se terminer.
+
+Le raccord à la vue reste un harnais de test injecté avant chargement de la
+page. Il projette uniquement `listening → user_speaking → listening`, pause et
+erreur. Le bouton Dialogue produit demeure `disabled`; D3 n'appelle ni D1, ni
+D2, ni `/api/chat`, ne réutilise pas Whisper et ne conserve ni n'affiche aucun
+transcript.
 
 ## Méthode obligatoire de choix du transport et des modèles
 
@@ -346,9 +410,10 @@ ligne, traitement Frida inchangé, lecture TTS, puis réarmement automatique.
 Ce mode constitue une extension fonctionnelle. L'exception UI du 9 septembre
 autorise seulement le squelette décrit ci-dessus. Les exceptions distinctes D1
 et D2 autorisent uniquement les frontières backend STT et TTS OpenRouter
-inactives et bornées. Elles ne valent pas autorisation d'activer le bouton, le
-microphone, le VAD, l'enregistrement navigateur, le raccord frontend ou la
-lecture audio. D3 à D6 exigent chacun un lot explicitement autorisé.
+inactives et bornées. L'exception D3 autorise uniquement la capture locale
+testable décrite ci-dessus, sans entrée produit. Elle ne vaut pas autorisation
+d'activer le bouton, de raccorder le STT frontend ou le chat, ni de lire le TTS.
+D4 à D6 exigent chacun un lot explicitement autorisé.
 
 ## Roadmap d'implémentation
 

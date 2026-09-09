@@ -473,17 +473,25 @@ du seul service applicatif. D3 reste non commencé.**
 
 ## Lot D3 — VAD et enregistreur local sur Safari
 
+**Statut : implémentation locale et preuves hermétiques terminées ; livraison
+runtime ciblée à fermer après le commit et le push D3. Le bouton produit reste
+désactivé et D4 n'est pas commencé.**
+
 **Livrable :** l'interface peut ouvrir une session locale de test, détecter une
 parole et produire un blob borné ; elle n'appelle encore ni STT ni chat.
 
 **Fichiers :**
 
 - Créer : `app/web/dialogue/dialogue_vad_recorder.js`
+- Créer : `app/web/dialogue/dialogue_vad_runtime.js`, adaptateur strict de la
+  version VAD épinglée et de son cleanup partiel
 - Ajouter : distribution locale épinglée de `@ricky0123/vad-web` et ses assets
   strictement nécessaires sous `app/web/vendor/dialogue-vad/`
 - Modifier : `app/web/index.html`
 - Modifier : `app/web/app.js`
 - Créer : `app/tests/unit/frontend_chat/test_dialogue_vad_recorder_module.js`
+- Créer : `app/tests/unit/frontend_chat/test_dialogue_vad_runtime_module.js`
+- Créer : `app/tests/unit/frontend_chat/test_dialogue_vad_vendor_contract.js`
 - Modifier : `app/tests/integration/frontend_browser/test_frontend_browser_smoke.js`
 - Modifier : contrat et roadmap Dialogue
 
@@ -492,10 +500,10 @@ parole et produire un blob borné ; elle n'appelle encore ni STT ni chat.
 - Produit : `createDialogueVadRecorder(options)` avec `arm()`, `pause()`,
   `resume()`, `stop()` et événements `speech-start`, `speech-end`, `blob`,
   `error`.
-- L'événement `blob` porte un seul `Blob`, son MIME et sa durée ; jamais une
-  transcription.
+- L'événement `blob` porte un seul `Blob`, son MIME, sa durée et sa taille ;
+  jamais une transcription.
 
-- [ ] **D3.1 — Écrire les tests rouges de cycle de vie**
+- [x] **D3.1 — Écrire les tests rouges de cycle de vie**
 
   Avec fakes explicites de `getUserMedia`, VAD et `MediaRecorder`, prouver :
   aucun accès micro avant geste utilisateur, armement unique, bruit rejeté,
@@ -509,21 +517,21 @@ parole et produire un blob borné ; elle n'appelle encore ni STT ni chat.
   node --test app/tests/unit/frontend_chat/test_dialogue_vad_recorder_module.js
   ```
 
-- [ ] **D3.2 — Implémenter la machine locale**
+- [x] **D3.2 — Implémenter la machine locale**
 
   Sélectionner le premier type réellement supporté par
   `MediaRecorder.isTypeSupported()` dans une allowlist explicite Safari. Le VAD
   ferme l'énoncé après son événement de fin ; aucune minuterie basée sur le seul
   volume n'est ajoutée. Les limites du blob sont appliquées avant toute sortie.
 
-- [ ] **D3.3 — Neutraliser les médias contrôlables avant l'écoute**
+- [x] **D3.3 — Neutraliser les médias contrôlables avant l'écoute**
 
   Suspendre le lecteur TTS possédé par Frida et les éléments audio/vidéo du
   document avant `arm()`. Ne jamais prétendre contrôler une radio automobile ou
   une application tierce que Safari ne peut pas piloter. Si un média local ne
   peut pas être mis en pause, l'armement échoue honnêtement.
 
-- [ ] **D3.4 — Prouver l'intégration visuelle sans réseau**
+- [x] **D3.4 — Prouver l'intégration visuelle sans réseau**
 
   Le smoke Chromium ouvre le mode par son harnais, simule parole et silence,
   vérifie `listening → user_speaking → listening`, la vérité des animations,
@@ -538,6 +546,61 @@ parole et produire un blob borné ; elle n'appelle encore ni STT ni chat.
 
 **Stop D3 :** un échec de permission, d'initialisation VAD ou de codec doit
 rester visible et récupérable ; ne pas contourner le VAD par un seuil de volume.
+
+### Preuves locales D3 avant livraison — 9 septembre 2026
+
+- baseline : `/opt/platform/fridadev`, `main`, HEAD/upstream
+  `44bd13ceafd289d93db618c3adca3643469c5f7d`, divergence `0/0`, worktree
+  propre avant édition ;
+- API revalidée : `@ricky0123/vad-web@0.0.30`,
+  `onnxruntime-web@1.22.0`, `MicVAD.new()` avec `model: legacy`,
+  `processorType: AudioWorklet`, `startOnLoad: false`, chemins locaux
+  `baseAssetPath` et `onnxWASMBasePath`, puis flux propriétaire injecté par
+  `getStream`, `pauseStream` et `resumeStream` ;
+- le standard `MediaRecorder` garantit la lisibilité de l'assemblage de tous
+  les fragments d'un enregistrement terminé, pas d'un sous-ensemble roulant.
+  Le mécanisme minimal équivalent retenu démarre donc le recorder avant le VAD
+  et conserve le cycle complet borné depuis `arm()` ; aucun remuxeur, second
+  flux ou encodeur concurrent n'est introduit ;
+- rouges déterministes observés : module absent, implémentation sentinelle
+  `not implemented`, harnais navigateur absent, callbacks tardifs non gardés,
+  arrêt pendant initialisation laissant une piste active, nettoyage partiel
+  MicVAD laissant modèle/contexte ouverts, borne de durée exacte refusée et
+  réjection d'inférence ONNX non convertie en erreur fermée, appels lifecycle
+  concurrents résolus avant leur cleanup, reprise créant un second VAD avant la
+  destruction du premier, instance VAD retournée trop tard et non détruite,
+  finalisation sans événement `stop` devenue non bornée, puis exception
+  `MediaRecorder.stop()` émettant un blob incomplet ; chaque témoin est ensuite
+  repassé au vert sur son correctif minimal ;
+- la frontière MicVAD épinglée complète le cleanup fournisseur partiel,
+  enveloppe `processFrame` avant `start()` et convertit sa première réjection
+  en `vad_runtime_error`; elle ne fabrique aucun callback fournisseur ;
+- le smoke Chromium charge le modèle legacy, le module MJS et le WASM locaux
+  sans appel micro, puis le harnais synthétique prouve le flux partagé, les
+  états et animations, Pause/Reprendre/Terminer/fermer, y compris une fermeture
+  pendant permission différée, sans POST audio, STT, chat ou TTS ;
+- la borne accepte exactement `300 000 ms` et `24 000 000` octets, puis refuse
+  l'octet ou la milliseconde suivante sans blob ni troncature ; les fragments,
+  timers et pistes sont libérés avant toute attente de cleanup fournisseur. La
+  deadline reste armée pendant la finalisation et libère aussi une attente
+  `MediaRecorder.stop()` qui ne notifierait jamais sa fin ;
+- `pause()` arrête le flux courant. Seul le geste explicite Reprendre ouvre un
+  nouveau cycle, avec un unique nouveau flux de nouveau partagé par identité ;
+  les appels concurrents attendent la même opération de cleanup et une instance
+  VAD rendue tardivement est détruite explicitement ;
+- preuves finales hôte : syntaxe JavaScript et sélection D3/Dialogue/Whisper/
+  load-order `56/56`, tous les tests unitaires frontend `205/205`, smoke
+  Chromium complet `25/25` ; voisins Python D1/D2/Whisper/frontend `76/76`
+  dans un conteneur jetable read-only et sans réseau ;
+- mutation contrôlée : retirer le seul `stopTracks(targetStream)` du cleanup
+  remet au rouge le témoin d'arrêt pendant initialisation VAD (`live` au lieu
+  de `ended`). À l'instant de la restauration, le module retrouve exactement
+  son SHA-256 préalable
+  `e7235b3b4f130d0715e27aa42e27bcd3dad711d84209e77bafd6194b42203a1c` et le
+  témoin repasse au vert ;
+- revue adversariale indépendante : aucun finding P0, P1, P2 ou P3 restant
+  avant livraison. Le préfixe complet borné et la dépendance volontaire aux
+  internals de la version épinglée demeurent les deux limites déclarées.
 
 ---
 

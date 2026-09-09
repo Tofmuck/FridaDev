@@ -45,6 +45,7 @@ function chatMockScript({ streamMode, imageMode = 'success', chatDelayMs = 0 }) 
   return `
     (() => {
       const encoder = new TextEncoder();
+      const nativeFetch = window.fetch.bind(window);
       const state = {
         streamMode: ${JSON.stringify(streamMode)},
         chatDelayMs: ${JSON.stringify(chatDelayMs)},
@@ -79,6 +80,11 @@ function chatMockScript({ streamMode, imageMode = 'success', chatDelayMs = 0 }) 
           search: url.search,
           body,
         });
+
+        if (method === "GET" && url.origin === window.location.origin
+            && url.pathname.startsWith("/vendor/dialogue-vad/")) {
+          return nativeFetch(input, init);
+        }
 
         if (url.pathname === "/api/conversations" && method === "GET") {
           state.conversationFetches += 1;
@@ -211,6 +217,131 @@ function chatMockScript({ streamMode, imageMode = 'success', chatDelayMs = 0 }) 
         }
 
         throw new Error("Unexpected fetch " + method + " " + url.pathname + url.search);
+      };
+    })();
+  `;
+}
+
+function dialogueD3MockScript() {
+  return `
+    (() => {
+      const state = {
+        now: 0,
+        getUserMediaCalls: 0,
+        streams: [],
+        recorders: [],
+        vads: [],
+        permissionGate: null,
+      };
+
+      class FakeDialogueTrack extends EventTarget {
+        constructor() {
+          super();
+          this.enabled = true;
+          this.readyState = "live";
+          this.stopCalls = 0;
+        }
+
+        stop() {
+          this.stopCalls += 1;
+          this.enabled = false;
+          this.readyState = "ended";
+        }
+      }
+
+      const createStream = () => {
+        const track = new FakeDialogueTrack();
+        return {
+          track,
+          getTracks: () => [track],
+        };
+      };
+
+      class FakeDialogueMediaRecorder extends EventTarget {
+        static isTypeSupported(mimeType) {
+          return mimeType === "audio/mp4";
+        }
+
+        constructor(stream, options = {}) {
+          super();
+          this.stream = stream;
+          this.mimeType = options.mimeType || "";
+          this.options = { ...options };
+          this.state = "inactive";
+          this.startCalls = 0;
+          this.stopCalls = 0;
+          state.recorders.push(this);
+        }
+
+        start() {
+          this.startCalls += 1;
+          this.state = "recording";
+        }
+
+        stop() {
+          if (this.state === "inactive") return;
+          this.stopCalls += 1;
+          this.state = "inactive";
+          queueMicrotask(() => this.dispatchEvent(new Event("stop")));
+        }
+
+        emitBytes(size) {
+          const event = new Event("dataavailable");
+          event.data = new Blob([new Uint8Array(size)], { type: this.mimeType });
+          this.dispatchEvent(event);
+        }
+      }
+
+      const mediaDevices = {
+        async getUserMedia() {
+          state.getUserMediaCalls += 1;
+          const stream = createStream();
+          state.streams.push(stream);
+          const gate = state.permissionGate;
+          if (gate) {
+            await gate.promise;
+            if (state.permissionGate === gate) state.permissionGate = null;
+          }
+          return stream;
+        },
+      };
+
+      const vadFactory = async (options) => {
+        const instance = {
+          options,
+          stream: null,
+          pauseCalls: 0,
+          destroyCalls: 0,
+          async start() {
+            this.stream = await options.getStream();
+          },
+          async pause() {
+            this.pauseCalls += 1;
+            await options.pauseStream(this.stream);
+          },
+          async destroy() {
+            this.destroyCalls += 1;
+          },
+        };
+        state.vads.push(instance);
+        return instance;
+      };
+
+      state.speechStart = () => state.vads.at(-1).options.onSpeechRealStart();
+      state.speechEnd = () => state.vads.at(-1).options.onSpeechEnd(new Float32Array([0.1]));
+      state.emitBytes = (size) => state.recorders.at(-1).emitBytes(size);
+      state.holdNextPermission = () => {
+        let release;
+        const promise = new Promise((resolve) => { release = resolve; });
+        state.permissionGate = { promise, release };
+      };
+      state.releasePermission = () => state.permissionGate && state.permissionGate.release();
+      window.__fridaDialogueD3Fake = state;
+      window.__FRIDA_DIALOGUE_D3_TEST_ADAPTERS__ = {
+        mediaDevices,
+        MediaRecorderCtor: FakeDialogueMediaRecorder,
+        vadFactory,
+        nowFn: () => state.now,
       };
     })();
   `;
@@ -883,6 +1014,234 @@ test('iPhone dialogue preview keeps the Figma layout and honest animation states
     await page.click('#dialogueModeEnd');
     assert.equal(await page.locator('#dialogueModeScreen').isHidden(), true);
     assert.equal(await page.locator('.main').getAttribute('aria-hidden'), null);
+  });
+});
+
+test('iPhone D3 harness captures locally, projects VAD truth and cleans every exit without backend audio', async () => {
+  await openBrowserPage({
+    mockScript: `${chatMockScript({ streamMode: 'done' })}\n${dialogueD3MockScript()}`,
+    afterPage: (page) => page.setViewportSize({ width: 414, height: 896 }),
+  }, async (page) => {
+    await page.waitForSelector('#message:not([disabled])');
+    assert.equal(await page.locator('#btnDialogueMode').isDisabled(), true);
+    assert.deepEqual(await page.evaluate(() => ({
+      getUserMediaCalls: window.__fridaDialogueD3Fake.getUserMediaCalls,
+      recorderCount: window.__fridaDialogueD3Fake.recorders.length,
+      vadCount: window.__fridaDialogueD3Fake.vads.length,
+    })), { getUserMediaCalls: 0, recorderCount: 0, vadCount: 0 });
+
+    const baselineFetchCount = await page.evaluate(() => window.__fridaBrowserState.fetchCalls.length);
+    await page.evaluate(() => window.FridaDialogueD3Harness.openAndArm());
+    await page.waitForSelector('#dialogueModeScreen:not([hidden])');
+
+    const animationNames = () => page.evaluate(() => ({
+      wave: getComputedStyle(document.querySelector('.dialogue-signal-wave-3')).animationName,
+      orb: getComputedStyle(document.querySelector('.dialogue-orb-halo')).animationName,
+    }));
+    const dialogueState = () => page.evaluate(() => document.documentElement.dataset.dialogueState);
+
+    assert.equal(await dialogueState(), 'listening');
+    assert.deepEqual(await animationNames(), { wave: 'none', orb: 'none' });
+    assert.deepEqual(await page.evaluate(() => {
+      const box = (selector) => {
+        const rect = document.querySelector(selector).getBoundingClientRect();
+        return {
+          left: Math.round(rect.left),
+          top: Math.round(rect.top),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+          bottom: Math.round(rect.bottom),
+        };
+      };
+      return {
+        screen: box('#dialogueModeScreen'),
+        header: box('.dialogue-mode-header'),
+        controls: box('.dialogue-mode-controls'),
+      };
+    }), {
+      screen: { left: 0, top: 0, width: 414, height: 896, bottom: 896 },
+      header: { left: 0, top: 0, width: 414, height: 82, bottom: 82 },
+      controls: { left: 12, top: 778, width: 390, height: 84, bottom: 862 },
+    });
+    assert.deepEqual(await page.evaluate(() => ({
+      getUserMediaCalls: window.__fridaDialogueD3Fake.getUserMediaCalls,
+      recorderCount: window.__fridaDialogueD3Fake.recorders.length,
+      vadCount: window.__fridaDialogueD3Fake.vads.length,
+      sharedStream: window.__fridaDialogueD3Fake.recorders[0].stream
+        === window.__fridaDialogueD3Fake.vads[0].stream,
+      vadConfig: {
+        model: window.__fridaDialogueD3Fake.vads[0].options.model,
+        processorType: window.__fridaDialogueD3Fake.vads[0].options.processorType,
+        startOnLoad: window.__fridaDialogueD3Fake.vads[0].options.startOnLoad,
+        baseAssetPath: new URL(window.__fridaDialogueD3Fake.vads[0].options.baseAssetPath).pathname,
+        onnxWASMBasePath: new URL(
+          window.__fridaDialogueD3Fake.vads[0].options.onnxWASMBasePath,
+        ).pathname,
+      },
+    })), {
+      getUserMediaCalls: 1,
+      recorderCount: 1,
+      vadCount: 1,
+      sharedStream: true,
+      vadConfig: {
+        model: 'legacy',
+        processorType: 'AudioWorklet',
+        startOnLoad: false,
+        baseAssetPath: '/vendor/dialogue-vad/',
+        onnxWASMBasePath: '/vendor/dialogue-vad/',
+      },
+    });
+
+    await page.evaluate(() => window.__fridaDialogueD3Fake.speechStart());
+    assert.equal(await dialogueState(), 'user_speaking');
+    assert.deepEqual(await animationNames(), { wave: 'dialogue-wave-voice', orb: 'none' });
+
+    await page.evaluate(() => {
+      window.__fridaDialogueD3Fake.now = 750;
+      window.__fridaDialogueD3Fake.emitBytes(8);
+      window.__fridaDialogueD3Fake.speechEnd();
+    });
+    await page.waitForFunction(() => (
+      window.FridaDialogueD3Harness.events().filter((event) => event.type === 'blob').length === 1
+    ));
+    assert.equal(await dialogueState(), 'listening');
+    assert.deepEqual(await animationNames(), { wave: 'none', orb: 'none' });
+    assert.deepEqual(await page.evaluate(() => {
+      const blobEvent = window.FridaDialogueD3Harness.events()
+        .find((event) => event.type === 'blob');
+      return {
+        mimeType: blobEvent.mimeType,
+        sizeBytes: blobEvent.sizeBytes,
+        durationMs: blobEvent.durationMs,
+        hasTranscript: Object.hasOwn(blobEvent, 'transcript'),
+        transcriptControls: document.querySelectorAll(
+          '#dialogueModeScreen textarea, #dialogueModeScreen input, #dialogueModeScreen [data-transcript]',
+        ).length,
+      };
+    }), {
+      mimeType: 'audio/mp4',
+      sizeBytes: 8,
+      durationMs: 750,
+      hasTranscript: false,
+      transcriptControls: 0,
+    });
+
+    await page.click('#dialogueModePause');
+    await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
+    assert.equal(await dialogueState(), 'paused');
+    assert.deepEqual(await animationNames(), { wave: 'none', orb: 'none' });
+    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.streams[0].track.readyState), 'ended');
+
+    await page.click('#dialogueModePause');
+    await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
+    assert.equal(await dialogueState(), 'listening');
+    assert.deepEqual(await page.evaluate(() => ({
+      getUserMediaCalls: window.__fridaDialogueD3Fake.getUserMediaCalls,
+      recorderCount: window.__fridaDialogueD3Fake.recorders.length,
+      vadCount: window.__fridaDialogueD3Fake.vads.length,
+      sharedStream: window.__fridaDialogueD3Fake.recorders[1].stream
+        === window.__fridaDialogueD3Fake.vads[1].stream,
+    })), {
+      getUserMediaCalls: 2,
+      recorderCount: 2,
+      vadCount: 2,
+      sharedStream: true,
+    });
+
+    await page.click('#dialogueModeEnd');
+    await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
+    assert.equal(await page.locator('#dialogueModeScreen').isHidden(), true);
+    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.streams[1].track.readyState), 'ended');
+
+    await page.evaluate(() => window.FridaDialogueD3Harness.openAndArm());
+    await page.click('#dialogueModeClose');
+    await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
+    assert.equal(await page.locator('#dialogueModeScreen').isHidden(), true);
+    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.streams[2].track.readyState), 'ended');
+    assert.equal(await page.locator('#btnDialogueMode').isDisabled(), true);
+
+    await page.evaluate(() => {
+      window.__fridaDialogueD3Fake.holdNextPermission();
+      void window.FridaDialogueD3Harness.openAndArm();
+    });
+    await page.waitForFunction(() => window.__fridaDialogueD3Fake.getUserMediaCalls === 4);
+    await page.click('#dialogueModeClose');
+    await page.evaluate(() => window.__fridaDialogueD3Fake.releasePermission());
+    await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
+    assert.deepEqual(await page.evaluate(() => ({
+      lateTrackState: window.__fridaDialogueD3Fake.streams[3].track.readyState,
+      recorderCount: window.__fridaDialogueD3Fake.recorders.length,
+      vadCount: window.__fridaDialogueD3Fake.vads.length,
+    })), {
+      lateTrackState: 'ended',
+      recorderCount: 3,
+      vadCount: 3,
+    });
+    assert.equal(await page.locator('#dialogueModeScreen').isHidden(), true);
+
+    const unexpectedRequests = await page.evaluate((fromIndex) => (
+      window.__fridaBrowserState.fetchCalls.slice(fromIndex).filter((call) => (
+        call.method !== 'GET'
+        || call.path.startsWith('/api/chat/dialogue/')
+        || call.path === '/api/chat'
+      ))
+    ), baselineFetchCount);
+    assert.deepEqual(unexpectedRequests, []);
+  });
+});
+
+test('D3 pinned VAD initializes the local legacy model without requesting a microphone', async () => {
+  const assetRequests = [];
+  await openBrowserPage({
+    mockScript: chatMockScript({ streamMode: 'done' }),
+    afterPage: (page) => {
+      page.on('request', (request) => {
+        const pathname = new URL(request.url()).pathname;
+        if (pathname.startsWith('/vendor/dialogue-vad/')) assetRequests.push(pathname);
+      });
+    },
+  }, async (page) => {
+    await page.waitForSelector('#message:not([disabled])');
+    const result = await page.evaluate(async () => {
+      let getStreamCalls = 0;
+      const baseAssetPath = new URL('vendor/dialogue-vad/', document.baseURI).href;
+      const instance = await window.vad.MicVAD.new({
+        model: 'legacy',
+        startOnLoad: false,
+        processorType: 'AudioWorklet',
+        baseAssetPath,
+        onnxWASMBasePath: baseAssetPath,
+        getStream: async () => {
+          getStreamCalls += 1;
+          throw new Error('microphone must remain untouched');
+        },
+        ortConfig(ort) {
+          ort.env.logLevel = 'error';
+          ort.env.wasm.numThreads = 1;
+          ort.env.wasm.proxy = false;
+          ort.env.wasm.wasmPaths = {
+            wasm: `${baseAssetPath}ort-wasm-simd-threaded.wasm`,
+            mjs: `${baseAssetPath}ort-wasm-simd-threaded.mjs`,
+          };
+        },
+      });
+      await instance.model.release();
+      return {
+        defaultModel: window.vad.DEFAULT_MODEL,
+        selectedModel: instance.options.model,
+        getStreamCalls,
+      };
+    });
+
+    assert.deepEqual(result, {
+      defaultModel: 'legacy',
+      selectedModel: 'legacy',
+      getStreamCalls: 0,
+    });
+    assert.ok(assetRequests.includes('/vendor/dialogue-vad/silero_vad_legacy.onnx'));
+    assert.ok(assetRequests.includes('/vendor/dialogue-vad/ort-wasm-simd-threaded.mjs'));
+    assert.ok(assetRequests.includes('/vendor/dialogue-vad/ort-wasm-simd-threaded.wasm'));
+    assert.equal(assetRequests.some((pathname) => pathname.includes('silero_vad_v5')), false);
   });
 });
 

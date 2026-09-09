@@ -45,6 +45,7 @@ test('Lot 9 chat assets load once in dependency order and expose required global
   const publicationCounts = installRequiredGlobalPublicationCounters(context);
   context.window = context;
   context.globalThis = context;
+  context.self = context;
   context.document = undefined;
   for (const source of sources) {
     const scriptText = fs.readFileSync(path.join(WEB_DIR, source), 'utf8');

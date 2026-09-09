@@ -11,10 +11,12 @@ const WEB_DIR = path.resolve(__dirname, '../../../../web');
 function contentTypeFor(filePath) {
   const ext = path.extname(filePath).toLowerCase();
   if (ext === '.html') return 'text/html; charset=utf-8';
-  if (ext === '.js') return 'application/javascript; charset=utf-8';
+  if (ext === '.js' || ext === '.mjs') return 'application/javascript; charset=utf-8';
   if (ext === '.css') return 'text/css; charset=utf-8';
   if (ext === '.svg') return 'image/svg+xml; charset=utf-8';
   if (ext === '.png') return 'image/png';
+  if (ext === '.wasm') return 'application/wasm';
+  if (ext === '.onnx') return 'application/octet-stream';
   if (ext === '.webmanifest') return 'application/manifest+json; charset=utf-8';
   return 'application/octet-stream';
 }
