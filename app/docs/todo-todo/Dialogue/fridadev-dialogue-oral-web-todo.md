@@ -9,8 +9,8 @@ test automobile réel peut les rouvrir. Le squelette visuel Figma et son
 contrôleur local d'états sont intégrés. Les frontières backend STT D1 et TTS D2
 sont implémentées et livrées. La capture locale D3 est corrigée, refermée et
 livrée avec pré-roll borné et assets optionnels. D4 raccorde désormais le WAV à
-D1 puis au chat canonique dans le seul harnais synthétique ; ses preuves
-applicatives sont complètes, sa livraison runtime reste à vérifier. L'entrée
+D1 puis au chat canonique dans le seul harnais synthétique ; D4 est fermé,
+poussé et livré après toutes les preuves et la vérification runtime. L'entrée
 produit reste désactivée ; D5/D6, TTS frontend, lecture audio et réarmement
 automatique restent non commencés.**
 

@@ -711,8 +711,9 @@ D4 NON COMMENCÉ.**
 
 ## Lot D4 — raccord STT au pipeline chat canonique
 
-**Statut : explicitement autorisé, implémenté et vérifié ; livraison runtime
-à vérifier avant fermeture. Bouton produit désactivé. D5/D6 non commencés.**
+**Statut : D4 fermé, poussé et livré après preuves rouges/vertes, mutations,
+contre-audit et reconstruction ciblée. Bouton produit toujours désactivé.
+D5 et D6 non commencés.**
 
 **Livrable :** une parole produit un message utilisateur normal et traverse le
 pipeline Frida existant une seule fois. Le TTS n'est pas encore enchaîné.
@@ -770,7 +771,7 @@ pipeline Frida existant une seule fois. Le TTS n'est pas encore enchaîné.
   chat, un seul message utilisateur, la réponse finale existante, l'absence de
   transcript dans l'écran Dialogue et sa présence après retour au fil normal.
 
-- [ ] **D4.5 — Contre-auditer, documenter, commit et push**
+- [x] **D4.5 — Contre-auditer, documenter, commit et push**
 
   Rechercher tout second appel `sendToServer`, tout contournement du form guard,
   toute persistance frontend inventée et toute divergence clavier/Dialogue.
@@ -849,6 +850,41 @@ La sélection Python est `tests.unit.chat.test_dialogue_stt_service`,
 `tests.integration.frontend_chat.test_frontend_whisper_contract` et
 `tests.integration.chat.test_chat_input_mode_route`, via `python -m unittest`
 dans le conteneur hermétique décrit ci-dessus.
+
+---
+
+### Livraison D4 vérifiée — 9 septembre 2026
+
+- commit applicatif poussé sur `main` : `69b19a2b24ab55036f7ebc04164d018ee06c7fb7`, message
+  `feat(dialogue): route speech through canonical chat` ; HEAD/upstream égaux,
+  divergence `0/0`, worktree propre avant reconstruction ;
+- `docker compose -p fridadev-app -f /opt/platform/fridadev-app/docker-compose.yml build --pull=false fridadev`,
+  dépendances en cache, puis `up -d --no-deps --force-recreate fridadev` : seul
+  `platform-fridadev` est recréé, sans pull Git, changement Compose ou voisin ;
+- image livrée : `sha256:34ce6038c3f8db1231df3019d7079bc8add9b25f70fcb2567b6c96f193ce946e` ;
+- rollback conservé et vérifié : `platform-fridadev-app:rollback-d4-20260909T191410Z`,
+  image précédente `sha256:19ba1ac8e66e1d74396d37062f5295835df26d07c313b161066dcbe4251a220e` ;
+  un rollback applicatif peut réutiliser ce tag avec la même recréation ciblée,
+  sans toucher les données ni les services voisins ;
+- service `running/healthy`, restart `0`, OOM `false` ; identité, image,
+  démarrage, état, restart/OOM et health des `31` voisins strictement inchangés,
+  empreinte `f982e178b18f87f520be80384e8d115c3f03242c37557784b146414535bc1e41` ;
+- HTTP interne `200` pour la page et `17` fichiers de scripts/assets/licences.
+  Les `18` SHA-256 sont identiques entre checkout, disque du conteneur et corps
+  HTTP servi ; médias JavaScript/HTML/WASM corrects. Le HTML servi conserve
+  `disabled` et ne charge aucun script VAD/ONNX au bootstrap ; empreinte agrégée
+  du relevé chemin/statut/média/SHA-256 :
+  `1b72e3d1841b641bc3afbfcf8c138ec0775aa1a75ee74660dcc4df5ed47ce02c` ;
+- depuis le démarrage livré, zéro ligne `ERROR`, `CRITICAL` ou `Traceback`,
+  zéro POST `/api/chat/dialogue/*`. Aucun canari STT/provider ou audio réel ;
+- la sélection Python `57/57` repasse depuis l'image effectivement livrée,
+  sans montage du checkout, sans réseau et avec filesystem read-only/tmpfs ;
+  le hostname public retourne `302` sans authentification ;
+- cette réconciliation finale modifie seulement la documentation. Les quatre
+  fichiers runtime D4 restent ceux du commit applicatif livré ; elle ne
+  déclenche pas une deuxième recréation.
+
+**D4 FERMÉ — BOUTON PRODUIT TOUJOURS DÉSACTIVÉ — D5 NON COMMENCÉ.**
 
 ---
 
