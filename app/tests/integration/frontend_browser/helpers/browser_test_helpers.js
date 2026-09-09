@@ -21,10 +21,11 @@ function contentTypeFor(filePath) {
   return 'application/octet-stream';
 }
 
-async function createStaticWebServer() {
+async function createStaticWebServer(onRequest) {
   const server = http.createServer(async (req, res) => {
     const requestUrl = new URL(req.url || '/', 'http://127.0.0.1');
     const pathname = requestUrl.pathname === '/' ? '/index.html' : requestUrl.pathname;
+    if (onRequest) onRequest(pathname);
     const normalized = path.normalize(decodeURIComponent(pathname)).replace(/^(\.\.[/\\])+/, '');
     const filePath = path.resolve(WEB_DIR, normalized.replace(/^[/\\]+/, ''));
 
@@ -52,8 +53,8 @@ async function createStaticWebServer() {
   };
 }
 
-async function openBrowserPage({ pathSuffix = '/', mockScript, afterPage = null }, runTest) {
-  const server = await createStaticWebServer();
+async function openBrowserPage({ pathSuffix = '/', mockScript, beforePage = null, afterPage = null, onServerRequest = null }, runTest) {
+  const server = await createStaticWebServer(onServerRequest);
   let browser = null;
 
   try {
@@ -72,6 +73,7 @@ async function openBrowserPage({ pathSuffix = '/', mockScript, afterPage = null 
     if (mockScript) {
       await page.addInitScript(mockScript);
     }
+    if (typeof beforePage === 'function') await beforePage(page);
     await page.goto(`${server.baseUrl}${pathSuffix}`, { waitUntil: 'domcontentloaded' });
     if (typeof afterPage === 'function') {
       await afterPage(page);

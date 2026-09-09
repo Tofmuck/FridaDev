@@ -38,13 +38,9 @@ test('D3 vendor directory contains only the pinned local runtime and licenses', 
   assert.doesNotMatch(manifest, /@latest|node_modules|\.tgz/);
 });
 
-test('D3 runtime scripts load locally in dependency order while the product entry stays disabled', () => {
+test('normal bootstrap has no VAD assets or required VAD global and product stays disabled', () => {
   const index = fs.readFileSync(path.join(WEB_DIR, 'index.html'), 'utf8');
   const scriptPaths = [
-    'vendor/dialogue-vad/ort.wasm.min.js',
-    'vendor/dialogue-vad/bundle.min.js',
-    'dialogue/dialogue_vad_runtime.js',
-    'dialogue/dialogue_vad_recorder.js',
     'chat_dialogue_mode.js',
     'app.js',
   ];
@@ -55,5 +51,6 @@ test('D3 runtime scripts load locally in dependency order while the product entr
     previousIndex = scriptIndex;
   }
   assert.match(index, /id="btnDialogueMode"[^>]*disabled/);
+  assert.doesNotMatch(index, /<script[^>]+(?:vendor\/dialogue-vad\/|dialogue\/dialogue_vad_)/);
   assert.doesNotMatch(index, /https?:\/\/[^"']*dialogue-vad/i);
 });

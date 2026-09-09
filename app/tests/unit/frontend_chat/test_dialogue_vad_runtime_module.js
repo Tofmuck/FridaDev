@@ -172,6 +172,19 @@ test('inference rejection becomes one closed runtime error and is not passed to 
   await adapter.destroy();
 });
 
+test('non-Error inference rejection still produces a closed runtime error', async () => {
+  const failures = [];
+  const raw = createRawMicVad({ async processFrame() { throw null; } });
+  const runtime = dialogueRuntime.createDialogueVadRuntime({
+    vadRuntime: { MicVAD: { new: async () => raw }, Message: { SpeechStop: 'SPEECH_STOP' } },
+    assetBaseUrl: '/vendor/dialogue-vad/',
+  });
+  const adapter = await runtime.vadFactory({ onRuntimeError: (code) => failures.push(code) });
+  await raw.processFrame(new Float32Array(1536));
+  assert.deepEqual(failures, ['vad_runtime_error']);
+  await adapter.destroy();
+});
+
 test('destroy waits for an in-flight start then tears down every late audio resource once', async () => {
   const startGate = deferred();
   const sourceNode = {
@@ -242,4 +255,53 @@ test('destroy waits for an in-flight start then tears down every late audio reso
   assert.equal(audioContext.closeCalls, 1);
   assert.equal(raw.frameProcessor.pauseCalls, 1);
   assert.equal(raw.initializationState, 'destroyed');
+});
+
+test('destroy cancels an in-flight frame before buffer append and releases the model afterwards', async () => {
+  const { harness } = require('./helpers/dialogue_vad_test_helpers.js');
+  const gate = deferred(), entered = deferred();
+  const h = harness();
+  await h.recorder.arm();
+  const raw = h.vads[0];
+  raw.frameProcessor.modelProcessFunc = async () => {
+    entered.resolve();
+    await gate.promise;
+    return { isSpeech: 0.9 };
+  };
+  const frame = raw.processFrame(new Float32Array(1536));
+  await entered.promise;
+  const stop = h.recorder.stop();
+  assert.equal(h.streams[0].track.readyState, 'ended');
+  assert.equal(raw.model.releases, 0, 'do not release a running inference session');
+  gate.resolve();
+  await Promise.all([frame, stop]);
+  assert.equal(raw.frameProcessor.audioBuffer.length, 0);
+  assert.equal(raw.model.releases, 1);
+  assert.deepEqual(h.events, []);
+});
+
+test('concurrent inference cannot build an unbounded queue or emit late speech after error', async () => {
+  const { harness } = require('./helpers/dialogue_vad_test_helpers.js');
+  const gate = deferred(), entered = deferred();
+  const h = harness();
+  await h.recorder.arm();
+  const raw = h.vads[0];
+  let calls = 0;
+  raw.frameProcessor.modelProcessFunc = async () => {
+    calls++;
+    entered.resolve();
+    await gate.promise;
+    return { isSpeech: 0.9 };
+  };
+  const frame = raw.processFrame(new Float32Array(1536));
+  await entered.promise;
+  await raw.processFrame(new Float32Array(1536));
+  assert.deepEqual(h.events, [{ type: 'error', code: 'vad_runtime_error' }]);
+  assert.equal(h.streams[0].track.readyState, 'ended');
+  gate.resolve();
+  await frame;
+  await h.recorder.stop();
+  assert.equal(calls, 1);
+  assert.equal(raw.frameProcessor.audioBuffer.length, 0);
+  assert.equal(raw.model.releases, 1);
 });

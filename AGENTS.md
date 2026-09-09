@@ -102,11 +102,14 @@ Exception explicite et strictement bornee decidee par l'utilisateur le 9
 septembre 2026: le lot D3 du mode Dialogue oral Web autorise exclusivement la
 capture locale Safari derriere un harnais synthetique de test qui reste absent
 du produit normal. Cette frontiere utilise `@ricky0123/vad-web` et ONNX Runtime
-vendores a versions et empreintes fixes, un seul flux actif partage par le VAD
-et un unique `MediaRecorder`, puis produit au plus un blob de 300 secondes et
-24 000 000 octets par enonce reconnu. Le recorder commence avant l'ecoute VAD
-et conserve le cycle complet borne depuis l'armement afin de ne perdre aucune
-attaque ni fabriquer un conteneur incomplet. Pause, sortie et erreur liberent
+vendores a versions et empreintes fixes, charges uniquement apres ouverture
+explicite du harnais. Le chat normal ne charge aucun asset D3 et ne depend
+d'aucun global VAD. Un seul flux actif appartient au VAD; son audio Float32
+d'enonce reconnu, avec pre-roll strictement borne, produit un unique WAV mono
+PCM16 de 300 secondes et 24 000 000 octets maximum. L'attente avant parole
+n'entre ni dans le blob ni dans sa duree. L'ancienne mention autorisant le
+cycle complet depuis armement etait erronee et est retiree. Aucun
+MediaRecorder, second flux ni encodeur generique. Pause, sortie et erreur liberent
 les pistes; seule une reprise explicitement actionnee peut ouvrir un nouveau
 cycle. Le bouton Dialogue reste desactive. D3 n'autorise aucun raccord STT,
 chat, TTS ou provider, aucune lecture audio et ne constitue aucun precedent

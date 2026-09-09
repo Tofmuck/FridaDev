@@ -16,7 +16,7 @@ finale canonique déjà produite et persistée par Frida. Aucun second pipeline
 dialogique n'est créé.
 
 **Socle technique :** Flask et Python, JavaScript navigateur sans framework,
-`MediaRecorder`, VAD Silero local via `@ricky0123/vad-web`, endpoints audio
+WAV PCM16 local, VAD Silero local via `@ricky0123/vad-web`, endpoints audio
 OpenRouter, tests `unittest`, tests Node et smoke Chromium existant, puis canari
 manuel Safari sur iPhone 11.
 
@@ -473,8 +473,10 @@ du seul service applicatif. D3 reste non commencé.**
 
 ## Lot D3 — VAD et enregistreur local sur Safari
 
-**Statut : D3 fermé, poussé et livré par reconstruction ciblée du seul service
-applicatif. Le bouton produit reste désactivé et D4 n'est pas commencé.**
+**Statut : D3 rouvert le 9 septembre 2026 pour corriger deux défauts établis :
+capture depuis armement et chargement VAD obligatoire au bootstrap du chat.
+La clôture antérieure ne prouvait pas ces invariants. Le bouton produit reste
+désactivé et D4 n'est pas commencé.**
 
 **Livrable :** l'interface peut ouvrir une session locale de test, détecter une
 parole et produire un blob borné ; elle n'appelle encore ni STT ni chat.
@@ -504,10 +506,11 @@ parole et produire un blob borné ; elle n'appelle encore ni STT ni chat.
 
 - [x] **D3.1 — Écrire les tests rouges de cycle de vie**
 
-  Avec fakes explicites de `getUserMedia`, VAD et `MediaRecorder`, prouver :
+  Avec fakes explicites de `getUserMedia`, horloge et inférence, et le vrai
+  segmenter épinglé, prouver :
   aucun accès micro avant geste utilisateur, armement unique, bruit rejeté,
   parole reconnue, silence de fin, un blob unique, arrêt à la durée/poids
-  maximum, pistes arrêtées, double appui sans double recorder et cleanup après
+  maximum, pistes arrêtées, double appui sans double VAD et cleanup après
   erreur.
 
   Exécuter :
@@ -518,10 +521,11 @@ parole et produire un blob borné ; elle n'appelle encore ni STT ni chat.
 
 - [x] **D3.2 — Implémenter la machine locale**
 
-  Sélectionner le premier type réellement supporté par
-  `MediaRecorder.isTypeSupported()` dans une allowlist explicite Safari. Le VAD
-  ferme l'énoncé après son événement de fin ; aucune minuterie basée sur le seul
-  volume n'est ajoutée. Les limites du blob sont appliquées avant toute sortie.
+  Consommer le Float32 mono 16 kHz de `onSpeechEnd(audio)`, pré-roll borné
+  inclus, et produire un unique WAV PCM16 local sans dépendance. Le VAD ferme
+  l'énoncé ; l'attente silencieuse ne figure ni dans le blob ni dans sa durée.
+  Les bornes sont appliquées au buffer fournisseur avant concaténation puis
+  au WAV avant toute sortie. Supprimer la capture continue MediaRecorder.
 
 - [x] **D3.3 — Neutraliser les médias contrôlables avant l'écoute**
 
@@ -535,7 +539,9 @@ parole et produire un blob borné ; elle n'appelle encore ni STT ni chat.
   Le smoke Chromium ouvre le mode par son harnais, simule parole et silence,
   vérifie `listening → user_speaking → listening`, la vérité des animations,
   Pause, Terminer, fermeture, safe areas et absence de requête audio/backend ;
-  seuls les assets VAD locaux same-origin sont chargés.
+  seuls les assets VAD locaux same-origin sont chargés, après ouverture
+  explicite du harnais. La page normale ne charge aucun asset D3 et reste
+  utilisable même si les assets sont absents ou refusés.
 
 - [x] **D3.5 — Contre-auditer, documenter, commit et push**
 
@@ -544,10 +550,14 @@ parole et produire un blob borné ; elle n'appelle encore ni STT ni chat.
 
   Commit attendu : `feat(dialogue): add local voice activity capture`.
 
-**Stop D3 :** un échec de permission, d'initialisation VAD ou de codec doit
+**Stop D3 :** un échec de permission, d'initialisation VAD ou d'encodage doit
 rester visible et récupérable ; ne pas contourner le VAD par un seuil de volume.
 
-### Preuves et livraison D3 — 9 septembre 2026
+### Livraison D3 initiale — preuves historiques invalidées sur deux invariants
+
+La livraison ci-dessous est historique : ses tests verts ne prouvaient ni le
+pré-roll borné par énoncé ni l'isolation du bootstrap. La fermeture initiale et
+le verdict « aucun finding » sont donc révoqués sur ces deux points.
 
 - baseline : `/opt/platform/fridadev`, `main`, HEAD/upstream
   `44bd13ceafd289d93db618c3adca3643469c5f7d`, divergence `0/0`, worktree
@@ -557,11 +567,9 @@ rester visible et récupérable ; ne pas contourner le VAD par un seuil de volum
   `processorType: AudioWorklet`, `startOnLoad: false`, chemins locaux
   `baseAssetPath` et `onnxWASMBasePath`, puis flux propriétaire injecté par
   `getStream`, `pauseStream` et `resumeStream` ;
-- le standard `MediaRecorder` garantit la lisibilité de l'assemblage de tous
-  les fragments d'un enregistrement terminé, pas d'un sous-ensemble roulant.
-  Le mécanisme minimal équivalent retenu démarre donc le recorder avant le VAD
-  et conserve le cycle complet borné depuis `arm()` ; aucun remuxeur, second
-  flux ou encodeur concurrent n'est introduit ;
+- défaut initial : MediaRecorder conservait le cycle complet depuis `arm()`.
+  Ce choix violait le contrat de pré-roll et ne constituait pas un mécanisme
+  équivalent autorisé. Il est retiré au profit de l'audio segmenté du VAD ;
 - rouges déterministes observés : module absent, implémentation sentinelle
   `not implemented`, harnais navigateur absent, callbacks tardifs non gardés,
   arrêt pendant initialisation laissant une piste active, nettoyage partiel
@@ -598,9 +606,9 @@ rester visible et récupérable ; ne pas contourner le VAD par un seuil de volum
   son SHA-256 préalable
   `e7235b3b4f130d0715e27aa42e27bcd3dad711d84209e77bafd6194b42203a1c` et le
   témoin repasse au vert ;
-- revue adversariale indépendante : aucun finding P0, P1, P2 ou P3 restant
-  avant livraison. Le préfixe complet borné et la dépendance volontaire aux
-  internals de la version épinglée demeurent les deux limites déclarées ;
+- le verdict initial de revue sans finding restant était insuffisant :
+  le préfixe complet n'était pas une limite acceptable et le chargement
+  obligatoire du VAD avait échappé aux témoins du bootstrap ;
 - commit applicatif poussé :
   `70489f46753d0569e0863ba7fbdb00a614f48290` ;
 - reconstruction sans pull implicite par `build --pull=false`, toutes les
@@ -625,8 +633,56 @@ rester visible et récupérable ; ne pas contourner le VAD par un seuil de volum
   succès provider Dialogue ; l'unique warning n'appartient ni aux familles
   Dialogue, assets statiques, 404, OpenRouter, provider ou Whisper.
 
-**Stop D3 atteint : D3 fermé, bouton produit toujours désactivé, D4 non
-commencé.**
+### Réouverture corrective D3 — 9 septembre 2026
+
+- baseline : `main`, HEAD/upstream
+  `de37545b5983b3e95353b065ef3f3a5353a05db3`, divergence `0/0`,
+  worktree propre après fetch ;
+- rouges observés avant correction : expiration après 384 secondes de
+  silence/bruit rejeté ; durée dépendante de l'armement ; scripts ONNX/VAD
+  chargés par la page normale, y compris quand refusés ;
+- plan revalidé dans la distribution épinglée : Float32 mono 16 kHz,
+  pré-roll legacy de 8 trames / 768 ms, WAV PCM16 sans nouvelle dépendance.
+  300 s correspondent à 9 600 044 octets. Suppression de MediaRecorder ;
+- chargement de tous les modules et assets D3 différé à l'ouverture explicite
+  du harnais ; bornes du buffer fournisseur avant append/concaténation,
+  puis validation du tableau et du WAV ; D1/D2 et D4 restent intacts ;
+- preuves corrigées : D3 ciblé `28/28`, frontend unitaire complet `193/193`,
+  Chromium complet `29/29`, voisins Python D1/D2/Whisper/frontend `76/76`
+  dans un conteneur jetable read-only, réseau désactivé, checkout en lecture
+  seule. Les anciennes assertions propres au MediaRecorder supprimé sont
+  remplacées par des preuves WAV et du vrai segmenter épinglé ;
+- Chromium prouve zéro asset D3 à l'ouverture normale, chat clavier utilisable
+  avec assets refusés/absents, échec local D3 sans pageerror, et chargement
+  explicite de tous les assets locaux, worklet inclus (observé côté serveur
+  statique). Un flux AudioContext synthétique traverse le vrai MicVAD, une
+  inférence ONNX locale puis la segmentation pilotée déterministement ; son WAV
+  est décodé à 16 kHz en mono avec durée exacte de 2,592 s ;
+- les contrôles gardent safe areas, états, animations exactes, Pause/Reprendre,
+  Terminer et fermer. Rouge supplémentaire puis correction : Pause pendant
+  permission différée construisait encore un VAD tardif ; le geste invalide
+  maintenant immédiatement l'armement, avant toute reprise explicite ;
+- mutation 1 : réintroduire le préfixe PCM depuis armement remet le témoin de
+  long silence au rouge, et transforme une parole de 1 s après attente en
+  240 s. Restauration exacte du module :
+  `106640edd9b7690e72b08b6eb59005d07d4a99d0cd9587666d77f279f6ff8d7d` ;
+- mutation 2 : réintroduire l'initialisation obligatoire VAD au bootstrap
+  remet le témoin d'isolation au rouge. Restauration exacte de `app.js` :
+  `39f8afa7898528eb745b8061f293dbd205ad65f0bb20480bfb33c1deb6ff6e20` ;
+- après restauration, les suites complètes repassent sans skip, assertion
+  affaiblie ni sleep ajouté. Le décodage WAV utilise un OfflineAudioContext
+  à 16 kHz pour vérifier une durée exacte sans arrondi de rééchantillonnage ;
+- contre-audit : aucun MediaRecorder D3, second flux, timer depuis armement,
+  buffer non borné, réarmement implicite, CDN, nouvelle dépendance, route,
+  contenu journalisé, transcript visible ou raccord D1/D2/Whisper/chat/TTS.
+  Les assets et licences épinglés restent identiques. Le chat clavier,
+  le contrôleur visuel, le CSS mobile/desktop et les backends sont inchangés ;
+- aucun microphone réel, canari iPhone, provider, STT, TTS, chat backend ou DB
+  opérateur appelé. Les POST clavier dans Chromium sont exclusivement simulés ;
+- les internals épinglés et les performances Safari restent à revalider au
+  futur canari autorisé : si une inférence locale chevauche la suivante, D3
+  ferme en erreur sans accumuler ni perdre silencieusement l'audio ;
+- livraison corrective en cours ; D3 reste rouvert jusqu'aux preuves runtime.
 
 ---
 

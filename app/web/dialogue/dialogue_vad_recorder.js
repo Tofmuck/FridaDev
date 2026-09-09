@@ -1,32 +1,19 @@
 'use strict';
 
-const DIALOGUE_RECORDER_MIME_TYPES = Object.freeze([
-  'audio/mp4',
-  'audio/webm',
-  'audio/ogg',
-]);
+const DIALOGUE_RECORDER_SAMPLE_RATE = 16_000;
+const DIALOGUE_RECORDER_MIME_TYPE = 'audio/wav';
 const DIALOGUE_RECORDER_MAX_DURATION_MS = 300_000;
 const DIALOGUE_RECORDER_MAX_BYTES = 24_000_000;
-const DIALOGUE_RECORDER_TIMESLICE_MS = 250;
 
 function createDialogueVadRecorder(options = {}) {
   const mediaDevices = options.mediaDevices
     || (typeof navigator !== 'undefined' ? navigator.mediaDevices : null);
-  const MediaRecorderCtor = options.MediaRecorderCtor
-    || (typeof MediaRecorder !== 'undefined' ? MediaRecorder : null);
   const BlobCtor = options.BlobCtor
     || (typeof Blob !== 'undefined' ? Blob : null);
   const documentObj = options.documentObj
     || (typeof document !== 'undefined' ? document : null);
   const vadFactory = options.vadFactory;
   const onEvent = typeof options.onEvent === 'function' ? options.onEvent : () => {};
-  const setTimeoutFn = options.setTimeoutFn || setTimeout;
-  const clearTimeoutFn = options.clearTimeoutFn || clearTimeout;
-  const nowFn = options.nowFn || (() => (
-    typeof performance !== 'undefined' && typeof performance.now === 'function'
-      ? performance.now()
-      : Date.now()
-  ));
   const maxDurationMs = boundedPositiveInteger(
     options.maxDurationMs,
     DIALOGUE_RECORDER_MAX_DURATION_MS,
@@ -41,18 +28,7 @@ function createDialogueVadRecorder(options = {}) {
   let stopPromise = null;
   let stream = null;
   let vad = null;
-  let mediaRecorder = null;
-  let selectedMimeType = '';
-  let chunks = [];
-  let chunkBytes = 0;
-  let captureStartedAt = 0;
-  let captureTimer = null;
-  let speechConfirmed = false;
-  let speechFinalizing = false;
   let releaseInProgress = false;
-  let recorderStopPromise = null;
-  let recorderStopResolve = null;
-  let recorderStopTarget = null;
 
   const emit = (event) => {
     try {
@@ -60,21 +36,6 @@ function createDialogueVadRecorder(options = {}) {
     } catch (_error) {
       // A projection callback cannot make the microphone lifecycle unsafe.
     }
-  };
-
-  const clearCaptureTimer = () => {
-    if (captureTimer == null) return;
-    clearTimeoutFn(captureTimer);
-    captureTimer = null;
-  };
-
-  const resetCapture = () => {
-    clearCaptureTimer();
-    chunks = [];
-    chunkBytes = 0;
-    captureStartedAt = 0;
-    speechConfirmed = false;
-    speechFinalizing = false;
   };
 
   const stopTracks = (targetStream) => {
@@ -102,32 +63,6 @@ function createDialogueVadRecorder(options = {}) {
     }
   };
 
-  const settleRecorderStop = (targetRecorder) => {
-    if (recorderStopTarget !== targetRecorder) return;
-    const resolve = recorderStopResolve;
-    recorderStopPromise = null;
-    recorderStopResolve = null;
-    recorderStopTarget = null;
-    if (resolve) resolve();
-  };
-
-  const stopRecorder = async () => {
-    if (recorderStopPromise) return recorderStopPromise;
-    if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
-    const targetRecorder = mediaRecorder;
-    recorderStopPromise = new Promise((resolve) => {
-      recorderStopResolve = resolve;
-      recorderStopTarget = targetRecorder;
-    });
-    try {
-      targetRecorder.stop();
-    } catch (error) {
-      settleRecorderStop(targetRecorder);
-      throw error;
-    }
-    return recorderStopPromise;
-  };
-
   const destroyVadInstance = async (targetVad) => {
     if (!targetVad || typeof targetVad.destroy !== 'function') return;
     try {
@@ -144,21 +79,9 @@ function createDialogueVadRecorder(options = {}) {
   };
 
   const performCleanup = async () => {
-    clearCaptureTimer();
     const targetStream = stream;
-    const targetRecorder = mediaRecorder;
     stream = null;
-    mediaRecorder = null;
     stopTracks(targetStream);
-    resetCapture();
-    if (targetRecorder && targetRecorder.state !== 'inactive') {
-      try {
-        targetRecorder.stop();
-      } catch (_error) {
-        // The owned tracks are already stopped and all late callbacks are stale.
-      }
-    }
-    settleRecorderStop(targetRecorder);
     const vadPauseOperation = (async () => {
       if (vad && typeof vad.pause === 'function') {
         try {
@@ -195,119 +118,58 @@ function createDialogueVadRecorder(options = {}) {
     await cleanupResources();
   };
 
-  const startCapture = () => {
-    if (!mediaRecorder || phase === 'error' || phase === 'stopped') return;
-    resetCapture();
-    captureStartedAt = nowFn();
-    mediaRecorder.start(DIALOGUE_RECORDER_TIMESLICE_MS);
-    captureTimer = setTimeoutFn(() => {
-      void fail('duration_limit_exceeded');
-    }, maxDurationMs + 1);
-  };
-
-  const finishRecognizedSpeech = async (speechGeneration) => {
-    try {
-      await stopRecorder();
-    } catch (_error) {
-      await fail('recorder_error');
-      return;
-    }
-    if (speechGeneration !== generation || phase === 'error' || phase === 'stopped') {
-      resetCapture();
-      return;
-    }
-    clearCaptureTimer();
-
-    const elapsedMs = Math.max(0, nowFn() - captureStartedAt);
-    const durationMs = Math.round(elapsedMs);
-    const actualMimeType = normalizeRecorderMimeType(mediaRecorder && mediaRecorder.mimeType)
-      || selectedMimeType;
-    if (!DIALOGUE_RECORDER_MIME_TYPES.includes(actualMimeType)) {
-      await fail('recorder_mime_invalid');
-      return;
-    }
-
-    let blob;
-    try {
-      blob = new BlobCtor(chunks, { type: actualMimeType });
-    } catch (_error) {
-      await fail('blob_creation_failed');
-      return;
-    }
-    if (elapsedMs > maxDurationMs) {
-      await fail('duration_limit_exceeded');
-      return;
-    }
-    if (blob.size > maxBytes) {
-      await fail('size_limit_exceeded');
-      return;
-    }
-
-    emit({
-      type: 'blob',
-      blob,
-      mimeType: actualMimeType,
-      durationMs,
-      sizeBytes: blob.size,
-    });
-
-    if (speechGeneration !== generation || phase === 'error' || phase === 'stopped'
-        || phase === 'paused') {
-      resetCapture();
-      return;
-    }
-    phase = 'listening';
-    try {
-      startCapture();
-    } catch (_error) {
-      await fail('recorder_initialization_failed');
-    }
-  };
-
   const handleSpeechStart = (sessionGeneration) => {
-    if (sessionGeneration !== generation
-        || phase !== 'listening' || speechConfirmed || speechFinalizing) return;
-    speechConfirmed = true;
+    if (sessionGeneration !== generation || phase !== 'listening') return;
     phase = 'speaking';
     emit({ type: 'speech-start' });
   };
 
-  const handleSpeechEnd = (sessionGeneration) => {
-    if (sessionGeneration !== generation
-        || phase !== 'speaking' || !speechConfirmed || speechFinalizing) return;
-    speechFinalizing = true;
+  const handleSpeechEnd = (audio, sessionGeneration) => {
+    if (sessionGeneration !== generation || phase !== 'speaking') return;
     phase = 'finalizing';
-    emit({ type: 'speech-end' });
-    const speechGeneration = generation;
-    void finishRecognizedSpeech(speechGeneration);
-  };
-
-  const handleRecorderData = (event, sessionGeneration, targetRecorder) => {
-    if (sessionGeneration !== generation || targetRecorder !== mediaRecorder
-        || phase === 'error' || phase === 'stopped' || phase === 'paused') return;
-    const data = event && event.data;
-    const size = Number(data && data.size || 0);
-    if (!data || size <= 0) return;
-    if (size > maxBytes - chunkBytes) {
+    if (!(audio instanceof Float32Array) || audio.length === 0) {
+      void fail('vad_audio_invalid');
+      return;
+    }
+    const durationMs = audio.length * 1000 / DIALOGUE_RECORDER_SAMPLE_RATE;
+    if (durationMs > maxDurationMs) {
+      void fail('duration_limit_exceeded');
+      return;
+    }
+    const sizeBytes = 44 + audio.length * 2;
+    if (sizeBytes > maxBytes) {
       void fail('size_limit_exceeded');
       return;
     }
-    chunks.push(data);
-    chunkBytes += size;
+    // Validate the entire segment before allocating; never truncate invalid audio.
+    for (const sample of audio) {
+      if (!Number.isFinite(sample) || sample < -1 || sample > 1) {
+        void fail('vad_audio_invalid');
+        return;
+      }
+    }
+    let blob;
+    try {
+      blob = new BlobCtor([encodeDialogueWav(audio)], { type: DIALOGUE_RECORDER_MIME_TYPE });
+    } catch (_error) {
+      void fail('blob_creation_failed');
+      return;
+    }
+    if (blob.size > maxBytes) {
+      void fail('size_limit_exceeded');
+      return;
+    }
+    emit({ type: 'speech-end' });
+    if (sessionGeneration !== generation || phase !== 'finalizing') return;
+    emit({ type: 'blob', blob, mimeType: DIALOGUE_RECORDER_MIME_TYPE, durationMs, sizeBytes: blob.size });
+    if (sessionGeneration === generation && phase === 'finalizing') phase = 'listening';
   };
 
-  const handleRecorderStop = (targetRecorder) => {
-    settleRecorderStop(targetRecorder);
-  };
-
-  const handleRecorderError = (sessionGeneration, targetRecorder) => {
-    if (sessionGeneration !== generation || targetRecorder !== mediaRecorder) return;
-    void fail('recorder_error');
-  };
-
-  const handleVadRuntimeError = (sessionGeneration) => {
+  const handleVadRuntimeError = (sessionGeneration, code) => {
     if (sessionGeneration !== generation || phase === 'stopped' || phase === 'error') return;
-    void fail('vad_runtime_error');
+    const reason = ['duration_limit_exceeded', 'size_limit_exceeded'].includes(code)
+      ? code : 'vad_runtime_error';
+    void fail(reason);
   };
 
   const handleTrackEnded = (sessionGeneration, targetStream) => {
@@ -333,19 +195,11 @@ function createDialogueVadRecorder(options = {}) {
     }
   };
 
-  const selectMimeType = () => {
-    if (!MediaRecorderCtor || typeof MediaRecorderCtor.isTypeSupported !== 'function') return '';
-    return DIALOGUE_RECORDER_MIME_TYPES.find((mimeType) => (
-      MediaRecorderCtor.isTypeSupported(mimeType)
-    )) || '';
-  };
-
   const startSession = async (sessionGeneration) => {
-    selectedMimeType = selectMimeType();
-    if (!selectedMimeType || !BlobCtor || !mediaDevices
+    if (!BlobCtor || !mediaDevices
         || typeof mediaDevices.getUserMedia !== 'function'
         || typeof vadFactory !== 'function') {
-      await fail('codec_unsupported');
+      await fail('capture_unavailable');
       return;
     }
 
@@ -398,27 +252,14 @@ function createDialogueVadRecorder(options = {}) {
       }
     }
 
-    try {
-      const sessionRecorder = new MediaRecorderCtor(stream, { mimeType: selectedMimeType });
-      mediaRecorder = sessionRecorder;
-      sessionRecorder.addEventListener('dataavailable', (event) => {
-        handleRecorderData(event, sessionGeneration, sessionRecorder);
-      });
-      sessionRecorder.addEventListener('stop', () => handleRecorderStop(sessionRecorder));
-      sessionRecorder.addEventListener('error', () => {
-        handleRecorderError(sessionGeneration, sessionRecorder);
-      });
-      startCapture();
-    } catch (_error) {
-      await fail('recorder_initialization_failed');
-      return;
-    }
-
     let sessionVad = null;
     try {
       sessionVad = await vadFactory({
         ...(options.vadOptions || {}),
         startOnLoad: false,
+        submitUserSpeechOnPause: false,
+        maxDurationMs,
+        maxBytes,
         getStream: async () => acquiredStream,
         pauseStream: async (targetStream) => {
           setStreamEnabled(targetStream, false);
@@ -430,9 +271,9 @@ function createDialogueVadRecorder(options = {}) {
         },
         onSpeechStart: () => {},
         onSpeechRealStart: () => handleSpeechStart(sessionGeneration),
-        onSpeechEnd: () => handleSpeechEnd(sessionGeneration),
+        onSpeechEnd: (audio) => handleSpeechEnd(audio, sessionGeneration),
         onVADMisfire: () => {},
-        onRuntimeError: () => handleVadRuntimeError(sessionGeneration),
+        onRuntimeError: (code) => handleVadRuntimeError(sessionGeneration, code),
       });
       vad = sessionVad;
       if (sessionGeneration !== generation || phase === 'stopped' || phase === 'error') {
@@ -532,12 +373,30 @@ function boundedPositiveInteger(value, ceiling) {
   return Math.min(Math.floor(number), ceiling);
 }
 
-function normalizeRecorderMimeType(value) {
-  return String(value || '').split(';', 1)[0].trim().toLowerCase();
+// Fixed-format D3 encoder: one mono PCM16 RIFF/WAVE, no codec negotiation.
+function encodeDialogueWav(audio) {
+  const buffer = new ArrayBuffer(44 + audio.length * 2);
+  const view = new DataView(buffer);
+  for (const [offset, word] of [[0, 'RIFF'], [8, 'WAVE'], [12, 'fmt '], [36, 'data']]) {
+    for (let i = 0; i < word.length; i++) view.setUint8(offset + i, word.charCodeAt(i));
+  }
+  view.setUint32(4, buffer.byteLength - 8, true);
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, DIALOGUE_RECORDER_SAMPLE_RATE, true);
+  view.setUint32(28, DIALOGUE_RECORDER_SAMPLE_RATE * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  view.setUint32(40, audio.length * 2, true);
+  for (let i = 0; i < audio.length; i++) {
+    view.setInt16(44 + i * 2, audio[i] * (audio[i] < 0 ? 32768 : 32767), true);
+  }
+  return buffer;
 }
 
 const FridaDialogueVadRecorder = Object.freeze({
-  DIALOGUE_RECORDER_MIME_TYPES,
+  DIALOGUE_RECORDER_MIME_TYPE,
   DIALOGUE_RECORDER_MAX_DURATION_MS,
   DIALOGUE_RECORDER_MAX_BYTES,
   createDialogueVadRecorder,

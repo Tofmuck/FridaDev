@@ -257,40 +257,9 @@ function dialogueD3MockScript() {
         };
       };
 
-      class FakeDialogueMediaRecorder extends EventTarget {
-        static isTypeSupported(mimeType) {
-          return mimeType === "audio/mp4";
-        }
-
-        constructor(stream, options = {}) {
-          super();
-          this.stream = stream;
-          this.mimeType = options.mimeType || "";
-          this.options = { ...options };
-          this.state = "inactive";
-          this.startCalls = 0;
-          this.stopCalls = 0;
-          state.recorders.push(this);
-        }
-
-        start() {
-          this.startCalls += 1;
-          this.state = "recording";
-        }
-
-        stop() {
-          if (this.state === "inactive") return;
-          this.stopCalls += 1;
-          this.state = "inactive";
-          queueMicrotask(() => this.dispatchEvent(new Event("stop")));
-        }
-
-        emitBytes(size) {
-          const event = new Event("dataavailable");
-          event.data = new Blob([new Uint8Array(size)], { type: this.mimeType });
-          this.dispatchEvent(event);
-        }
-      }
+      window.MediaRecorder = class {
+        constructor() { state.recorders.push(this); throw new Error("D3 recorder forbidden"); }
+      };
 
       const mediaDevices = {
         async getUserMedia() {
@@ -328,8 +297,7 @@ function dialogueD3MockScript() {
       };
 
       state.speechStart = () => state.vads.at(-1).options.onSpeechRealStart();
-      state.speechEnd = () => state.vads.at(-1).options.onSpeechEnd(new Float32Array([0.1]));
-      state.emitBytes = (size) => state.recorders.at(-1).emitBytes(size);
+      state.speechEnd = () => state.vads.at(-1).options.onSpeechEnd(new Float32Array(12000).fill(0.5));
       state.holdNextPermission = () => {
         let release;
         const promise = new Promise((resolve) => { release = resolve; });
@@ -339,7 +307,6 @@ function dialogueD3MockScript() {
       window.__fridaDialogueD3Fake = state;
       window.__FRIDA_DIALOGUE_D3_TEST_ADAPTERS__ = {
         mediaDevices,
-        MediaRecorderCtor: FakeDialogueMediaRecorder,
         vadFactory,
         nowFn: () => state.now,
       };
@@ -1017,6 +984,123 @@ test('iPhone dialogue preview keeps the Figma layout and honest animation states
   });
 });
 
+test('normal chat is isolated from missing or refused D3 assets and never requests them', async () => {
+  for (const status of [404, 403]) {
+    const requests = [];
+    await openBrowserPage({
+      mockScript: chatMockScript({ streamMode: 'done' }),
+      beforePage: async (page) => {
+        page.on('request', (request) => {
+          if (request.url().includes('/vendor/dialogue-vad/')) requests.push(request.url());
+        });
+        await page.route('**/vendor/dialogue-vad/**', (route) => route.fulfill({ status, body: '' }));
+        await page.route('**/dialogue/dialogue_vad_*.js', (route) => route.fulfill({ status, body: '' }));
+      },
+    }, async (page) => {
+      assert.deepEqual(requests, [], 'normal bootstrap must not request VAD');
+      assert.equal(await page.evaluate(() => Boolean(window.FridaDialogueModeController)),
+        true, 'optional D3 must not interrupt app.js bootstrap');
+      await page.waitForSelector('#message:not([disabled])');
+      await page.fill('#message', 'Message clavier synthétique');
+      await page.click('#ask button[type="submit"]');
+      await page.waitForFunction(() => window.__fridaBrowserState.chatRequests === 1);
+      assert.equal(await page.locator('#btnDialogueMode').isDisabled(), true);
+      assert.equal(await page.evaluate(() => typeof window.vad), 'undefined');
+    });
+  }
+});
+
+test('D3 asset failures stay local to the explicit harness and never break normal chat', async () => {
+  for (const asset of ['ort.wasm.min.js', 'silero_vad_legacy.onnx']) {
+    await openBrowserPage({
+      mockScript: chatMockScript({ streamMode: 'done' }) + dialogueD3MockScript()
+        + '; delete window.__FRIDA_DIALOGUE_D3_TEST_ADAPTERS__.vadFactory;',
+      beforePage: async (page) => {
+        await page.setViewportSize({ width: 414, height: 896 });
+        await page.route('**/vendor/dialogue-vad/' + asset,
+          (route) => route.fulfill({ status: 404, body: '' }));
+      },
+    }, async (page) => {
+      await page.waitForSelector('#message:not([disabled])');
+      assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.getUserMediaCalls), 0);
+      await page.evaluate(() => window.FridaDialogueD3Harness.openAndArm());
+      assert.equal(await page.evaluate(() => document.documentElement.dataset.dialogueState), 'error');
+      assert.deepEqual(await page.evaluate(() => ({
+        wave: getComputedStyle(document.querySelector('.dialogue-signal-wave-3')).animationName,
+        orb: getComputedStyle(document.querySelector('.dialogue-orb-halo')).animationName,
+        ended: window.__fridaDialogueD3Fake.streams.every((s) => s.track.readyState === 'ended'),
+      })), { wave: 'none', orb: 'none', ended: true });
+      const calls = await page.evaluate(() => window.__fridaDialogueD3Fake.getUserMediaCalls);
+      await page.click('#dialogueModePause');
+      assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.getUserMediaCalls), calls);
+      await page.click('#dialogueModeClose');
+      await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
+      await page.fill('#message', 'Clavier après panne D3');
+      await page.click('#ask button[type="submit"]');
+      await page.waitForFunction(() => window.__fridaBrowserState.chatRequests === 1);
+      assert.equal(await page.locator('#btnDialogueMode').isDisabled(), true);
+    });
+  }
+});
+
+test('pause or close during lazy asset loading cannot arm the microphone late', async () => {
+  for (const action of ['dialogueModePause', 'dialogueModeClose']) {
+    let release, requested;
+    const gate = new Promise((resolve) => { release = resolve; });
+    const entered = new Promise((resolve) => { requested = resolve; });
+    await openBrowserPage({
+      mockScript: chatMockScript({ streamMode: 'done' }) + dialogueD3MockScript(),
+      beforePage: async (page) => {
+        await page.setViewportSize({ width: 414, height: 896 });
+        await page.route('**/vendor/dialogue-vad/ort.wasm.min.js', async (route) => {
+          requested();
+          await gate;
+          await route.continue();
+        });
+      },
+    }, async (page) => {
+      await page.evaluate(() => { void window.FridaDialogueD3Harness.openAndArm(); });
+      await entered;
+      await page.click('#' + action);
+      release();
+      await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
+      assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.getUserMediaCalls), 0);
+      if (action === 'dialogueModePause') {
+        await page.click('#dialogueModePause');
+        await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
+        assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.getUserMediaCalls), 1);
+        await page.click('#dialogueModeEnd');
+        await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
+        assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.streams[0].track.readyState), 'ended');
+      }
+    });
+  }
+});
+
+test('pause during pending permission invalidates capture before any late VAD starts', async () => {
+  await openBrowserPage({
+    mockScript: chatMockScript({ streamMode: 'done' }) + dialogueD3MockScript(),
+    beforePage: (page) => page.setViewportSize({ width: 414, height: 896 }),
+  }, async (page) => {
+    await page.evaluate(() => {
+      window.__fridaDialogueD3Fake.holdNextPermission();
+      void window.FridaDialogueD3Harness.openAndArm();
+    });
+    await page.waitForFunction(() => window.__fridaDialogueD3Fake.getUserMediaCalls === 1);
+    await page.click('#dialogueModePause');
+    await page.evaluate(() => window.__fridaDialogueD3Fake.releasePermission());
+    await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
+    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.vads.length), 0);
+    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.streams[0].track.readyState), 'ended');
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.dialogueState), 'paused');
+    await page.click('#dialogueModePause');
+    await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
+    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.vads.length), 1);
+    await page.click('#dialogueModeClose');
+    await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
+  });
+});
+
 test('iPhone D3 harness captures locally, projects VAD truth and cleans every exit without backend audio', async () => {
   await openBrowserPage({
     mockScript: `${chatMockScript({ streamMode: 'done' })}\n${dialogueD3MockScript()}`,
@@ -1067,7 +1151,7 @@ test('iPhone D3 harness captures locally, projects VAD truth and cleans every ex
       getUserMediaCalls: window.__fridaDialogueD3Fake.getUserMediaCalls,
       recorderCount: window.__fridaDialogueD3Fake.recorders.length,
       vadCount: window.__fridaDialogueD3Fake.vads.length,
-      sharedStream: window.__fridaDialogueD3Fake.recorders[0].stream
+      sharedStream: window.__fridaDialogueD3Fake.streams[0]
         === window.__fridaDialogueD3Fake.vads[0].stream,
       vadConfig: {
         model: window.__fridaDialogueD3Fake.vads[0].options.model,
@@ -1080,7 +1164,7 @@ test('iPhone D3 harness captures locally, projects VAD truth and cleans every ex
       },
     })), {
       getUserMediaCalls: 1,
-      recorderCount: 1,
+      recorderCount: 0,
       vadCount: 1,
       sharedStream: true,
       vadConfig: {
@@ -1098,7 +1182,6 @@ test('iPhone D3 harness captures locally, projects VAD truth and cleans every ex
 
     await page.evaluate(() => {
       window.__fridaDialogueD3Fake.now = 750;
-      window.__fridaDialogueD3Fake.emitBytes(8);
       window.__fridaDialogueD3Fake.speechEnd();
     });
     await page.waitForFunction(() => (
@@ -1119,8 +1202,8 @@ test('iPhone D3 harness captures locally, projects VAD truth and cleans every ex
         ).length,
       };
     }), {
-      mimeType: 'audio/mp4',
-      sizeBytes: 8,
+      mimeType: 'audio/wav',
+      sizeBytes: 24044,
       durationMs: 750,
       hasTranscript: false,
       transcriptControls: 0,
@@ -1139,11 +1222,11 @@ test('iPhone D3 harness captures locally, projects VAD truth and cleans every ex
       getUserMediaCalls: window.__fridaDialogueD3Fake.getUserMediaCalls,
       recorderCount: window.__fridaDialogueD3Fake.recorders.length,
       vadCount: window.__fridaDialogueD3Fake.vads.length,
-      sharedStream: window.__fridaDialogueD3Fake.recorders[1].stream
+      sharedStream: window.__fridaDialogueD3Fake.streams[1]
         === window.__fridaDialogueD3Fake.vads[1].stream,
     })), {
       getUserMediaCalls: 2,
-      recorderCount: 2,
+      recorderCount: 0,
       vadCount: 2,
       sharedStream: true,
     });
@@ -1174,7 +1257,7 @@ test('iPhone D3 harness captures locally, projects VAD truth and cleans every ex
       vadCount: window.__fridaDialogueD3Fake.vads.length,
     })), {
       lateTrackState: 'ended',
-      recorderCount: 3,
+      recorderCount: 0,
       vadCount: 3,
     });
     assert.equal(await page.locator('#dialogueModeScreen').isHidden(), true);
@@ -1190,58 +1273,90 @@ test('iPhone D3 harness captures locally, projects VAD truth and cleans every ex
   });
 });
 
-test('D3 pinned VAD initializes the local legacy model without requesting a microphone', async () => {
-  const assetRequests = [];
+test('explicit D3 harness lazily loads local ONNX worklet and WASM with one synthetic stream', async () => {
+  const requests = [];
   await openBrowserPage({
-    mockScript: chatMockScript({ streamMode: 'done' }),
-    afterPage: (page) => {
-      page.on('request', (request) => {
-        const pathname = new URL(request.url()).pathname;
-        if (pathname.startsWith('/vendor/dialogue-vad/')) assetRequests.push(pathname);
-      });
+    onServerRequest: (pathname) => {
+      if (pathname.startsWith('/vendor/dialogue-vad/')) requests.push(pathname);
+    },
+    mockScript: chatMockScript({ streamMode: 'done' }) + `
+      window.__d3Real = { calls: 0, vads: [] };
+      navigator.mediaDevices.getUserMedia = () => { throw new Error('real microphone forbidden'); };
+      window.__FRIDA_DIALOGUE_D3_TEST_ADAPTERS__ = {
+        mediaDevices: { async getUserMedia() {
+          const state = window.__d3Real;
+          state.calls++;
+          state.sourceContext = new AudioContext();
+          state.stream = state.sourceContext.createMediaStreamDestination().stream;
+          return state.stream;
+        } },
+        BlobCtor: class extends Blob {
+          constructor(...args) { super(...args); window.__d3Real.blob = this; }
+        },
+        async vadFactory(options) {
+          const runtime = window.FridaDialogueVadRuntime.createDialogueVadRuntime({
+            vadRuntime: window.vad,
+            assetBaseUrl: new URL('vendor/dialogue-vad/', document.baseURI).href,
+          });
+          const original = window.vad.MicVAD.new;
+          window.vad.MicVAD.new = async (opts) => {
+            const raw = await original.call(window.vad.MicVAD, opts);
+            window.__d3Real.vads.push(raw);
+            return raw;
+          };
+          try { return await runtime.vadFactory(options); }
+          finally { window.vad.MicVAD.new = original; }
+        },
+      };
+    `,
+    beforePage: async (page) => {
+      await page.setViewportSize({ width: 414, height: 896 });
     },
   }, async (page) => {
     await page.waitForSelector('#message:not([disabled])');
+    assert.deepEqual(requests, []);
+    assert.equal(await page.evaluate(() => typeof window.vad), 'undefined');
+    await page.evaluate(() => Promise.all([
+      window.FridaDialogueD3Harness.openAndArm(), window.FridaDialogueD3Harness.openAndArm(),
+    ]));
     const result = await page.evaluate(async () => {
-      let getStreamCalls = 0;
-      const baseAssetPath = new URL('vendor/dialogue-vad/', document.baseURI).href;
-      const instance = await window.vad.MicVAD.new({
-        model: 'legacy',
-        startOnLoad: false,
-        processorType: 'AudioWorklet',
-        baseAssetPath,
-        onnxWASMBasePath: baseAssetPath,
-        getStream: async () => {
-          getStreamCalls += 1;
-          throw new Error('microphone must remain untouched');
-        },
-        ortConfig(ort) {
-          ort.env.logLevel = 'error';
-          ort.env.wasm.numThreads = 1;
-          ort.env.wasm.proxy = false;
-          ort.env.wasm.wasmPaths = {
-            wasm: `${baseAssetPath}ort-wasm-simd-threaded.wasm`,
-            mjs: `${baseAssetPath}ort-wasm-simd-threaded.mjs`,
-          };
-        },
-      });
-      await instance.model.release();
+      const state = window.__d3Real, raw = state.vads[0];
+      await raw._audioContext.suspend();
+      // Run real local ONNX inference once; then drive the shipped segmenter deterministically.
+      await raw.processFrame(new Float32Array(1536));
+      raw.frameProcessor.modelProcessFunc = async (frame) => ({ isSpeech: frame[0] > 0 ? 0.9 : 0 });
+      for (let i = 0; i < 8; i++) await raw.processFrame(new Float32Array(1536));
+      for (let i = 0; i < 5; i++) await raw.processFrame(new Float32Array(1536).fill(0.5));
+      const speaking = document.documentElement.dataset.dialogueState;
+      for (let i = 0; i < 14; i++) await raw.processFrame(new Float32Array(1536));
+      const decoded = await new OfflineAudioContext(1, 1, 16000)
+        .decodeAudioData(await state.blob.arrayBuffer());
       return {
-        defaultModel: window.vad.DEFAULT_MODEL,
-        selectedModel: instance.options.model,
-        getStreamCalls,
+        calls: state.calls, vads: state.vads.length, sameStream: raw._stream === state.stream,
+        processor: raw._audioProcessorAdapterType, speaking,
+        ending: document.documentElement.dataset.dialogueState,
+        duration: decoded.duration, channels: decoded.numberOfChannels,
       };
     });
-
     assert.deepEqual(result, {
-      defaultModel: 'legacy',
-      selectedModel: 'legacy',
-      getStreamCalls: 0,
+      calls: 1, vads: 1, sameStream: true, processor: 'AudioWorklet',
+      speaking: 'user_speaking', ending: 'listening', duration: 2.592, channels: 1,
     });
-    assert.ok(assetRequests.includes('/vendor/dialogue-vad/silero_vad_legacy.onnx'));
-    assert.ok(assetRequests.includes('/vendor/dialogue-vad/ort-wasm-simd-threaded.mjs'));
-    assert.ok(assetRequests.includes('/vendor/dialogue-vad/ort-wasm-simd-threaded.wasm'));
-    assert.equal(assetRequests.some((pathname) => pathname.includes('silero_vad_v5')), false);
+    for (const file of ['ort.wasm.min.js', 'bundle.min.js', 'silero_vad_legacy.onnx',
+      'ort-wasm-simd-threaded.mjs', 'ort-wasm-simd-threaded.wasm', 'vad.worklet.bundle.min.js']) {
+      assert.equal(requests.filter((name) => name === '/vendor/dialogue-vad/' + file).length, 1, file);
+    }
+    await page.click('#dialogueModeEnd');
+    await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
+    assert.deepEqual(await page.evaluate(async () => {
+      const state = window.__d3Real, raw = state.vads[0];
+      await state.sourceContext.close();
+      return { ended: state.stream.getTracks().every((t) => t.readyState === 'ended'),
+        state: raw.initializationState, buffer: raw.frameProcessor.audioBuffer.length };
+    }), { ended: true, state: 'destroyed', buffer: 0 });
+    const forbidden = await page.evaluate(() => window.__fridaBrowserState.fetchCalls.filter((call) =>
+      call.method !== 'GET' || call.path.startsWith('/api/chat/dialogue/')));
+    assert.deepEqual(forbidden, []);
   });
 });
 

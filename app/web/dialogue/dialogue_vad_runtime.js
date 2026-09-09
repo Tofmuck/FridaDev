@@ -22,6 +22,7 @@ function createDialogueVadRuntime(options = {}) {
     preSpeechPadMs: DIALOGUE_VAD_PRE_SPEECH_PAD_MS,
     redemptionMs: DIALOGUE_VAD_REDEMPTION_MS,
     minSpeechMs: DIALOGUE_VAD_MIN_SPEECH_MS,
+    submitUserSpeechOnPause: false,
     baseAssetPath: assetBaseUrl,
     onnxWASMBasePath: assetBaseUrl,
     ortConfig(ort) {
@@ -38,37 +39,70 @@ function createDialogueVadRuntime(options = {}) {
   const vadFactory = async (micVadOptions) => {
     const {
       onRuntimeError,
+      maxDurationMs = 300_000,
+      maxBytes = 24_000_000,
       ...vendorOptions
     } = micVadOptions || {};
     const micVad = await vadRuntime.MicVAD.new(vendorOptions);
-    return createPinnedMicVadAdapter(micVad, vadRuntime, onRuntimeError);
+    return createPinnedMicVadAdapter(micVad, vadRuntime, onRuntimeError, {
+      maxDurationMs: Math.min(maxDurationMs, 300_000),
+      maxBytes: Math.min(maxBytes, 24_000_000),
+    });
   };
 
   return Object.freeze({ vadFactory, vadOptions });
 }
 
-function createPinnedMicVadAdapter(micVad, vadRuntime, onRuntimeError) {
+function createPinnedMicVadAdapter(micVad, vadRuntime, onRuntimeError, limits) {
   let startPromise = null;
   let destroyPromise = null;
   let destroyRequested = false;
   let runtimeFailed = false;
+  let framePromise = null;
+
+  const reportFailure = (code) => {
+    if (runtimeFailed || destroyRequested) return;
+    runtimeFailed = true;
+    try {
+      if (typeof onRuntimeError === 'function') onRuntimeError(code);
+    } catch (_error) {
+      // Projection cannot leak an inference rejection.
+    }
+  };
+  const vendorHandleEvent = micVad.handleFrameProcessorEvent.bind(micVad);
+  micVad.handleFrameProcessorEvent = (event) => {
+    if (destroyRequested || runtimeFailed) throw new Error('vad_cancelled');
+    if (event.msg === vadRuntime.Message.FrameProcessed) {
+      // 0.0.30 emits FrameProcessed BEFORE appending to audioBuffer or concatenating.
+      // legacy has exactly 1536 samples/frame at 16kHz; silence keeps only 8 frames.
+      const frames = micVad.frameProcessor.audioBuffer;
+      if (!Array.isArray(frames) || event.frame.length !== 1536) throw new Error('vad_frame_invalid');
+      const samples = frames.length * 1536 + event.frame.length;
+      if (samples / 16 > limits.maxDurationMs) throw new Error('duration_limit_exceeded');
+      if (44 + samples * 2 > limits.maxBytes) throw new Error('size_limit_exceeded');
+    }
+    vendorHandleEvent(event);
+  };
 
   if (typeof micVad.processFrame === 'function') {
     const vendorProcessFrame = micVad.processFrame.bind(micVad);
     micVad.processFrame = async (frame) => {
       if (runtimeFailed || destroyRequested) return;
+      // Never accumulate an unbounded queue if local inference falls behind.
+      if (framePromise) {
+        reportFailure('vad_runtime_error');
+        return;
+      }
+      const operation = Promise.resolve().then(() => vendorProcessFrame(frame));
+      framePromise = operation;
       try {
-        await vendorProcessFrame(frame);
-      } catch (_error) {
-        if (runtimeFailed || destroyRequested) return;
-        runtimeFailed = true;
-        if (typeof onRuntimeError === 'function') {
-          try {
-            onRuntimeError();
-          } catch (_callbackError) {
-            // The recorder owns the terminal projection; never leak a vendor rejection.
-          }
-        }
+        await operation;
+      } catch (error) {
+        const code = error && error.message;
+        reportFailure(['duration_limit_exceeded', 'size_limit_exceeded'].includes(code)
+          ? code : 'vad_runtime_error');
+      } finally {
+        if (framePromise === operation) framePromise = null;
       }
     };
   }
@@ -81,15 +115,16 @@ function createPinnedMicVadAdapter(micVad, vadRuntime, onRuntimeError) {
     return startPromise;
   };
 
-  const pause = async () => {
-    if (destroyRequested || typeof micVad.pause !== 'function') return;
-    await micVad.pause();
-  };
+  // D3 pause releases the whole session; there is no suspended graph to reuse.
+  const pause = () => destroy();
 
   const destroy = () => {
     if (destroyPromise) return destroyPromise;
     destroyRequested = true;
     destroyPromise = (async () => {
+      if (framePromise) {
+        try { await framePromise; } catch (_error) { /* Closed by processFrame. */ }
+      }
       if (startPromise) {
         try {
           await startPromise;

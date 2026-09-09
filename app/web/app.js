@@ -44,14 +44,6 @@
   if (!dialogueMode) {
     throw new Error("FridaDialogueMode module missing");
   }
-  const dialogueVadRecorder = window.FridaDialogueVadRecorder;
-  if (!dialogueVadRecorder) {
-    throw new Error("FridaDialogueVadRecorder module missing");
-  }
-  const dialogueVadRuntime = window.FridaDialogueVadRuntime;
-  if (!dialogueVadRuntime) {
-    throw new Error("FridaDialogueVadRuntime module missing");
-  }
   const notesMode = window.FridaNotesMode;
   if (!notesMode) {
     throw new Error("FridaNotesMode module missing");
@@ -170,11 +162,37 @@
     syncSidebarAccessibility();
   };
   const dialogueD3TestAdapters = window.__FRIDA_DIALOGUE_D3_TEST_ADAPTERS__ || null;
-  const dialogueVadAssetBase = new URL('vendor/dialogue-vad/', document.baseURI).href;
-  const dialogueD3VadRuntime = dialogueVadRuntime.createDialogueVadRuntime({
-    vadRuntime: window.vad,
-    assetBaseUrl: dialogueVadAssetBase,
-  });
+  let dialogueD3Load = null;
+  let dialogueD3Session = 0;
+  // This function is called only by the explicit, non-product D3 harness.
+  const loadDialogueD3 = () => {
+    if (!dialogueD3Load) dialogueD3Load = (async () => {
+      for (const source of [
+        'vendor/dialogue-vad/ort.wasm.min.js',
+        'vendor/dialogue-vad/bundle.min.js',
+        'dialogue/dialogue_vad_runtime.js',
+        'dialogue/dialogue_vad_recorder.js',
+      ]) {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = new URL(source, document.baseURI).href;
+          script.onload = () => { script.onload = null; script.onerror = null; resolve(); };
+          script.onerror = () => {
+            script.onload = null;
+            script.onerror = null;
+            script.remove();
+            reject(new Error('dialogue_assets_unavailable'));
+          };
+          document.head.appendChild(script);
+        });
+      }
+      return window.FridaDialogueVadRuntime.createDialogueVadRuntime({
+        vadRuntime: window.vad,
+        assetBaseUrl: new URL('vendor/dialogue-vad/', document.baseURI).href,
+      });
+    })();
+    return dialogueD3Load;
+  };
   const dialogueD3Events = [];
   let dialogueD3Recorder = null;
   let dialogueD3Active = false;
@@ -223,30 +241,27 @@
     }
   };
 
-  const createDialogueD3Recorder = () => {
+  const createDialogueD3Recorder = (runtime) => {
     const adapters = dialogueD3TestAdapters || {};
-    return dialogueVadRecorder.createDialogueVadRecorder({
+    return window.FridaDialogueVadRecorder.createDialogueVadRecorder({
       mediaDevices: adapters.mediaDevices,
-      MediaRecorderCtor: adapters.MediaRecorderCtor,
       BlobCtor: adapters.BlobCtor,
       documentObj: document,
       ttsMediaElement: adapters.ttsMediaElement
         || document.querySelector('[data-frida-dialogue-tts]'),
-      setTimeoutFn: adapters.setTimeoutFn,
-      clearTimeoutFn: adapters.clearTimeoutFn,
-      nowFn: adapters.nowFn,
-      vadFactory: adapters.vadFactory || dialogueD3VadRuntime.vadFactory,
-      vadOptions: dialogueD3VadRuntime.vadOptions,
+      vadFactory: adapters.vadFactory || runtime.vadFactory,
+      vadOptions: runtime.vadOptions,
       onEvent: projectDialogueD3Event,
     });
   };
 
   const stopDialogueD3Capture = () => {
-    if (!dialogueD3Active || !dialogueD3Recorder) return dialogueD3Operation;
+    if (!dialogueD3Active) return dialogueD3Operation;
     dialogueD3Active = false;
+    dialogueD3Session += 1;
     const recorderToStop = dialogueD3Recorder;
     const pendingOperation = dialogueD3Operation;
-    const immediateStop = recorderToStop.stop();
+    const immediateStop = recorderToStop ? recorderToStop.stop() : Promise.resolve();
     return trackDialogueD3Operation(Promise.all([
       pendingOperation.catch(() => {}),
       immediateStop,
@@ -276,10 +291,15 @@
         dialogueD3Active = true;
         dialogueD3TerminalError = false;
         dialogueD3Events.length = 0;
-        const recorderToArm = createDialogueD3Recorder();
-        dialogueD3Recorder = recorderToArm;
+        const session = ++dialogueD3Session;
         dialogueModeController.enter();
-        return queueDialogueD3Operation(() => recorderToArm.arm());
+        return queueDialogueD3Operation(async () => {
+          const runtime = await loadDialogueD3();
+          if (!dialogueD3Active || session !== dialogueD3Session) return;
+          const recorderToArm = createDialogueD3Recorder(runtime);
+          dialogueD3Recorder = recorderToArm;
+          if (dialogueModeController.getState() !== 'paused') await recorderToArm.arm();
+        });
       },
       events: () => [...dialogueD3Events],
       whenSettled: () => dialogueD3Operation,
@@ -287,15 +307,22 @@
   }
   if (dialogueModePause) {
     dialogueModePause.addEventListener('click', () => {
-      if (!dialogueD3Active || !dialogueD3Recorder) return;
+      if (!dialogueD3Active) return;
       if (dialogueD3TerminalError) {
         dialogueModeController.setState('error');
         return;
       }
       if (dialogueModeController.getState() === 'paused') {
-        void queueDialogueD3Operation(() => dialogueD3Recorder.pause());
+        // Invalidate an in-flight arm immediately, even while permission is pending.
+        const pending = dialogueD3Operation;
+        const pausing = dialogueD3Recorder?.pause();
+        void trackDialogueD3Operation(Promise.all([pending, pausing]));
       } else {
-        void queueDialogueD3Operation(() => dialogueD3Recorder.resume());
+        void queueDialogueD3Operation(async () => {
+          if (!dialogueD3Active || !dialogueD3Recorder) return;
+          await dialogueD3Recorder.arm();
+          await dialogueD3Recorder.resume();
+        });
       }
     });
   }
