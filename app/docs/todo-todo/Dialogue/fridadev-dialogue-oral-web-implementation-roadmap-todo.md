@@ -473,9 +473,8 @@ du seul service applicatif. D3 reste non commencé.**
 
 ## Lot D3 — VAD et enregistreur local sur Safari
 
-**Statut : implémentation locale et preuves hermétiques terminées ; livraison
-runtime ciblée à fermer après le commit et le push D3. Le bouton produit reste
-désactivé et D4 n'est pas commencé.**
+**Statut : D3 fermé, poussé et livré par reconstruction ciblée du seul service
+applicatif. Le bouton produit reste désactivé et D4 n'est pas commencé.**
 
 **Livrable :** l'interface peut ouvrir une session locale de test, détecter une
 parole et produire un blob borné ; elle n'appelle encore ni STT ni chat.
@@ -535,9 +534,10 @@ parole et produire un blob borné ; elle n'appelle encore ni STT ni chat.
 
   Le smoke Chromium ouvre le mode par son harnais, simule parole et silence,
   vérifie `listening → user_speaking → listening`, la vérité des animations,
-  Pause, Terminer, fermeture, safe areas et absence de fetch.
+  Pause, Terminer, fermeture, safe areas et absence de requête audio/backend ;
+  seuls les assets VAD locaux same-origin sont chargés.
 
-- [ ] **D3.5 — Contre-auditer, documenter, commit et push**
+- [x] **D3.5 — Contre-auditer, documenter, commit et push**
 
   Vérifier qu'aucun CDN runtime, second VAD, transcript visible, requête
   fournisseur ou réarmement implicite n'a été ajouté.
@@ -547,7 +547,7 @@ parole et produire un blob borné ; elle n'appelle encore ni STT ni chat.
 **Stop D3 :** un échec de permission, d'initialisation VAD ou de codec doit
 rester visible et récupérable ; ne pas contourner le VAD par un seuil de volume.
 
-### Preuves locales D3 avant livraison — 9 septembre 2026
+### Preuves et livraison D3 — 9 septembre 2026
 
 - baseline : `/opt/platform/fridadev`, `main`, HEAD/upstream
   `44bd13ceafd289d93db618c3adca3643469c5f7d`, divergence `0/0`, worktree
@@ -600,7 +600,33 @@ rester visible et récupérable ; ne pas contourner le VAD par un seuil de volum
   témoin repasse au vert ;
 - revue adversariale indépendante : aucun finding P0, P1, P2 ou P3 restant
   avant livraison. Le préfixe complet borné et la dépendance volontaire aux
-  internals de la version épinglée demeurent les deux limites déclarées.
+  internals de la version épinglée demeurent les deux limites déclarées ;
+- commit applicatif poussé :
+  `70489f46753d0569e0863ba7fbdb00a614f48290` ;
+- reconstruction sans pull implicite par `build --pull=false`, toutes les
+  couches de dépendances restant en cache, puis recréation
+  `--no-deps --force-recreate` du seul service `fridadev` ; image livrée
+  `sha256:9e9aac73d1015f870eea44cf3c58f4bc81b4a0786d9b5047e197f042efb154b1`,
+  image précédente récupérable sous
+  `platform-fridadev-app:rollback-d3-20260909T180603Z` ;
+- `platform-fridadev` est `running`, `healthy`, restart `0`, OOM `false`. Les
+  31 voisins conservent exactement identité, image et état, empreinte
+  `600cd770bd575dab2981eee238e9773d4718ea7c21469eb17a2476b1db5501a9`
+  avant et après ;
+- HTTP interne `/` et chacun des scripts, worklet, modèle ONNX, MJS et WASM
+  D3 répondent `200` avec le content-type attendu. L'arbre D3 checkout/conteneur
+  partage l'empreinte
+  `5352ce0976e66c075b17782f59d7fd0b52ee07c0dcfca0c61f75d809bdcf2c4e`
+  et les deux entrypoints Web l'empreinte
+  `9159560faffd4d4eb6879a0f53749369dc361b18a5b954cddc990b336e6f7768` ;
+- les voisins Python repassent `76/76` depuis l'image effectivement livrée,
+  sans montage du checkout, réseau coupé et filesystem read-only. Depuis le
+  démarrage livré, les logs comptent zéro `ERROR`, `CRITICAL`, `Traceback` ou
+  succès provider Dialogue ; l'unique warning n'appartient ni aux familles
+  Dialogue, assets statiques, 404, OpenRouter, provider ou Whisper.
+
+**Stop D3 atteint : D3 fermé, bouton produit toujours désactivé, D4 non
+commencé.**
 
 ---
 

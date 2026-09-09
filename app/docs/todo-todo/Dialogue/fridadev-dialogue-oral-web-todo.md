@@ -8,7 +8,7 @@ choix V1 du VAD, du STT et du TTS sont retenus ; seule leur invalidation par le
 test automobile réel peut les rouvrir. Le squelette visuel Figma et son
 contrôleur local d'états sont intégrés. Les frontières backend STT D1 et TTS D2
 sont implémentées et livrées sans consommateur frontend. La capture locale D3
-est intégrée derrière un harnais synthétique absent du produit normal ; l'entrée
+est livrée derrière un harnais synthétique absent du produit normal ; l'entrée
 produit reste désactivée et aucun raccord STT frontend, chat, TTS, provider ou
 lecture audio n'est activé.**
 
