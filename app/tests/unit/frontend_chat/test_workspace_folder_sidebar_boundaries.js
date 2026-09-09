@@ -482,3 +482,44 @@ test('folder tree delegates enabled folder actions exactly once', async () => {
     ['delete'],
   ]);
 });
+
+test('folder tree keeps Figma hierarchy clear without losing folder metadata or actions', () => {
+  assert.equal(typeof createWorkspaceFolderTreeRenderer, 'function');
+
+  const folder = {
+    id: 'folder-1',
+    display_name: 'Philosophie politique',
+    description: 'Cours et lectures',
+    icon_label: 'Livre',
+    nextcloud_sync_state: 'linked',
+  };
+  const threadsUl = makeElement('ul');
+  const renderer = createWorkspaceFolderTreeRenderer({
+    threadsUl,
+    documentObj,
+    getWorkspaceFolders: () => [folder, { id: 'folder-2' }],
+    isFolderCollapsed: () => false,
+    toggleFolderCollapsed() {},
+    onCreate() {},
+    onReorder() {},
+    onUploadFile() {},
+    onRename() {},
+    onDelete() {},
+    fileRowsRenderer: { appendFileRows() {} },
+    artifactPanels: { appendRows() {}, requestCreateNote() {} },
+    bindConversationDropTarget() {},
+  });
+
+  renderer.appendFolderRow(folder, [{ id: 'one' }, { id: 'two' }], 0, () => {});
+  const row = byClass(threadsUl, 'workspace-folder-row')[0];
+  assert.equal(row.title, 'Cours et lectures · 2 conversations · Synchronisé');
+  assert.equal(row['aria-label'], 'Philosophie politique · 2 conversations · Synchronisé');
+  assert.equal(byClass(row, 'workspace-folder-count').length, 0);
+  assert.equal(byClass(row, 'workspace-folder-sync-state').length, 0);
+  assert.deepEqual(
+    byClass(row, 'workspace-folder-action').map((button) => (
+      byClass(button, 'sidebar-icon')[0]?.['data-sidebar-icon']
+    )),
+    ['chevron-up', 'chevron-down', 'pencil', 'paperclip', 'notebook-pen', 'trash-2'],
+  );
+});

@@ -300,7 +300,7 @@ test('workspace folders start collapsed, expand on demand and move by drag-and-d
       await page.locator('.workspace-folder-actions [data-sidebar-icon]').evaluateAll((nodes) => (
         nodes.map((node) => node.getAttribute('data-sidebar-icon'))
       )),
-      ['arrow-up', 'arrow-down', 'pencil', 'file-plus', 'notebook-pen', 'trash-2'],
+      ['chevron-up', 'chevron-down', 'pencil', 'paperclip', 'notebook-pen', 'trash-2'],
     );
     const folderGeometry = await page.locator('.workspace-folder-row').first().evaluate((node) => {
       const row = node.getBoundingClientRect();

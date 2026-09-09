@@ -47,7 +47,11 @@ de `34 px` au repos ; son ouverture révèle, dans cet ordre, ses conversations,
 ses fichiers puis ses panneaux Notes, Exports et Images. Les commandes du
 répertoire suivent l'ordre Figma : monter, descendre, renommer, ajouter un
 fichier, créer une note, supprimer. Les icônes de répertoire choisies par
-l'utilisateur restent distinctes de ces commandes.
+l'utilisateur restent distinctes de ces commandes. Les chevrons, le crayon,
+le trombone, la note et la corbeille sont les icônes visibles de ces
+commandes. Le nombre de conversations et l'état Nextcloud restent disponibles
+dans le nom accessible et l'infobulle du répertoire ; ils ne compriment pas
+son nom dans la ligne visuelle.
 
 ## Identité visuelle
 

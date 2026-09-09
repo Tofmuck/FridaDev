@@ -144,6 +144,7 @@ class AppPhase8Tests(unittest.TestCase):
         )
         self.assertIn('id="btnExportConversation"', index_source)
         self.assertIn('class="chat-action-btn"', index_source)
+        self.assertIn('data-sidebar-icon="external-link"', index_source)
         self.assertIn('Exporter la conversation en Markdown', index_source)
         self.assertIn('chatCopyExport.createCopyButton', app_source)
         self.assertIn('chatCopyExport.buildConversationMarkdown', app_source)

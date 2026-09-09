@@ -2080,6 +2080,9 @@ body {
   --primary-bg: #292520;
   --primary-fg: #fbf8f3;
   --danger: #b85050;
+  --folder-icon-fill: #e1aa5d;
+  --folder-icon-stroke: #ad7134;
+  --folder-icon-mark: #5a3e1b;
   --radius: 12px;
   --radius-sm: 9px;
   --radius-lg: 18px;
@@ -2116,6 +2119,9 @@ body {
   --primary-bg: rgba(232, 237, 244, 0.94);
   --primary-fg: #111720;
   --danger: #e08a8a;
+  --folder-icon-fill: #d9a55d;
+  --folder-icon-stroke: #b57a37;
+  --folder-icon-mark: #1b222c;
   color-scheme: dark;
 }
 
@@ -2263,18 +2269,18 @@ body {
 }
 
 .workspace-folder-svg-back {
-  fill: color-mix(in srgb, var(--accent) 10%, transparent);
-  stroke: color-mix(in srgb, var(--accent) 38%, transparent);
+  fill: color-mix(in srgb, var(--folder-icon-fill) 54%, transparent);
+  stroke: var(--folder-icon-stroke);
 }
 
 .workspace-folder-svg-tab,
 .workspace-folder-svg-front {
-  fill: color-mix(in srgb, var(--bg-base) 78%, transparent);
-  stroke: color-mix(in srgb, var(--accent) 52%, transparent);
+  fill: var(--folder-icon-fill);
+  stroke: var(--folder-icon-stroke);
 }
 
 .workspace-folder-svg-mark {
-  stroke: var(--accent);
+  stroke: var(--folder-icon-mark);
 }
 
 .topbar {
@@ -2611,6 +2617,7 @@ body {
 .sidebar-icon[data-sidebar-icon="check"] { -webkit-mask-image: url("sidebar-icons/check.svg"); mask-image: url("sidebar-icons/check.svg"); }
 .sidebar-icon[data-sidebar-icon="chevron-down"] { -webkit-mask-image: url("sidebar-icons/chevron-down.svg"); mask-image: url("sidebar-icons/chevron-down.svg"); }
 .sidebar-icon[data-sidebar-icon="chevron-right"] { -webkit-mask-image: url("sidebar-icons/chevron-right.svg"); mask-image: url("sidebar-icons/chevron-right.svg"); }
+.sidebar-icon[data-sidebar-icon="chevron-up"] { -webkit-mask-image: url("sidebar-icons/chevron-down.svg"); mask-image: url("sidebar-icons/chevron-down.svg"); transform: rotate(180deg); }
 .sidebar-icon[data-sidebar-icon="circle"] { -webkit-mask-image: url("sidebar-icons/circle.svg"); mask-image: url("sidebar-icons/circle.svg"); }
 .sidebar-icon[data-sidebar-icon="circle-dot"] { -webkit-mask-image: url("sidebar-icons/circle-dot.svg"); mask-image: url("sidebar-icons/circle-dot.svg"); }
 .sidebar-icon[data-sidebar-icon="download"] { -webkit-mask-image: url("sidebar-icons/download.svg"); mask-image: url("sidebar-icons/download.svg"); }
@@ -2622,6 +2629,7 @@ body {
 .sidebar-icon[data-sidebar-icon="image"] { -webkit-mask-image: url("sidebar-icons/image.svg"); mask-image: url("sidebar-icons/image.svg"); }
 .sidebar-icon[data-sidebar-icon="message-circle"] { -webkit-mask-image: url("sidebar-icons/message-circle.svg"); mask-image: url("sidebar-icons/message-circle.svg"); }
 .sidebar-icon[data-sidebar-icon="notebook-pen"] { -webkit-mask-image: url("sidebar-icons/notebook-pen.svg"); mask-image: url("sidebar-icons/notebook-pen.svg"); }
+.sidebar-icon[data-sidebar-icon="paperclip"] { -webkit-mask-image: url("sidebar-icons/paperclip.svg"); mask-image: url("sidebar-icons/paperclip.svg"); }
 .sidebar-icon[data-sidebar-icon="pencil"] { -webkit-mask-image: url("sidebar-icons/pencil.svg"); mask-image: url("sidebar-icons/pencil.svg"); }
 .sidebar-icon[data-sidebar-icon="plus"] { -webkit-mask-image: url("sidebar-icons/plus.svg"); mask-image: url("sidebar-icons/plus.svg"); }
 .sidebar-icon[data-sidebar-icon="rotate-ccw"] { -webkit-mask-image: url("sidebar-icons/rotate-ccw.svg"); mask-image: url("sidebar-icons/rotate-ccw.svg"); }
@@ -2673,8 +2681,8 @@ body {
 }
 
 .thread-kind-icon {
-  width: 9px;
-  height: 9px;
+  width: 11px;
+  height: 11px;
   color: var(--fg-subtle);
 }
 
@@ -2774,8 +2782,8 @@ body {
 
 .workspace-folder-icon,
 .workspace-folder-svg {
-  width: 18px;
-  height: 16px;
+  width: 20px;
+  height: 17px;
 }
 
 .workspace-folder-name {
@@ -2813,8 +2821,8 @@ body {
 }
 
 .workspace-folder-action .sidebar-icon {
-  width: 11px;
-  height: 11px;
+  width: 12px;
+  height: 12px;
 }
 
 .workspace-folder-files,
@@ -3036,6 +3044,11 @@ body {
   border: 1px solid var(--border-muted) !important;
   border-radius: 10px !important;
   background: var(--surface) !important;
+}
+
+.chat-action-btn .sidebar-icon {
+  width: 14px;
+  height: 14px;
 }
 
 .theme-toggle {

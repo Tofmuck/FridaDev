@@ -60,9 +60,15 @@ function createWorkspaceFolderTreeRenderer({
     const folders = getWorkspaceFolders();
     const li = doc.createElement('li');
     const collapsed = isFolderCollapsed(folder.id);
+    const conversationCount = folderThreads.length;
+    const conversationLabel = `${conversationCount} conversation${conversationCount === 1 ? '' : 's'}`;
+    const syncLabel = uiHelpers?.workspaceFolderNextcloudStatusLabel?.(folder) || '';
+    const accessibleDetails = [folder.display_name, conversationLabel, syncLabel].filter(Boolean).join(' · ');
+    const hoverDetails = [folder.description || folder.display_name, conversationLabel, syncLabel].filter(Boolean).join(' · ');
     li.className = 'workspace-folder-row';
     if (collapsed) li.classList.add('workspace-folder-collapsed');
-    li.title = folder.description || folder.display_name;
+    li.title = hoverDetails;
+    li.setAttribute('aria-label', accessibleDetails);
     li.dataset.workspaceFolderId = folder.id;
 
     const main = doc.createElement('div');
@@ -93,27 +99,13 @@ function createWorkspaceFolderTreeRenderer({
     name.textContent = folder.display_name;
     main.appendChild(name);
 
-    const count = doc.createElement('span');
-    count.className = 'workspace-folder-count';
-    count.textContent = String(folderThreads.length);
-    main.appendChild(count);
-
-    const syncLabel = uiHelpers?.workspaceFolderNextcloudStatusLabel?.(folder) || '';
-    if (syncLabel) {
-      const sync = doc.createElement('span');
-      sync.className = 'workspace-folder-sync-state';
-      sync.textContent = syncLabel;
-      sync.title = syncLabel;
-      main.appendChild(sync);
-    }
-
     const actions = doc.createElement('span');
     actions.className = 'workspace-folder-actions';
     const actionSpecs = [
-      ['arrow-up', 'Monter', index === 0, () => onReorder(folder.id, -1)],
-      ['arrow-down', 'Descendre', index >= folders.length - 1, () => onReorder(folder.id, 1)],
+      ['chevron-up', 'Monter', index === 0, () => onReorder(folder.id, -1)],
+      ['chevron-down', 'Descendre', index >= folders.length - 1, () => onReorder(folder.id, 1)],
       ['pencil', 'Renommer', false, () => onRename(folder)],
-      ['file-plus', 'Ajouter un fichier au répertoire', false, () => onUploadFile(folder)],
+      ['paperclip', 'Ajouter un fichier au répertoire', false, () => onUploadFile(folder)],
       ['trash-2', 'Supprimer', false, () => onDelete(folder)],
     ];
     if (artifactPanels?.requestCreateNote) {
