@@ -297,8 +297,10 @@ le contrat requis par D2 :
   fallback n'est ajouté ;
 - le prix publié est `15 USD` par million de caractères. Aucun plafond d'entrée,
   de sortie ou timeout TTS exact exploitable n'est publié pour l'endpoint du
-  modèle : `16 000` caractères, `16 Mio` d'audio et `60 s` sont donc des bornes
-  locales FridaDev, jamais présentées comme des limites OpenRouter ;
+  modèle : `16 000` caractères et `16 Mio` d'audio sont donc des bornes locales
+  FridaDev, jamais présentées comme des limites OpenRouter. Le `timeout=60`
+  transmis à Requests est un délai local d'inactivité réseau, pas une deadline
+  murale absolue ;
 - le texte accepté n'est ni tronqué ni réécrit. La réponse est lue en streaming
   par blocs jusqu'à la borne locale plus un octet, avec fermeture garantie ; un
   `Content-Length` valide déjà supérieur à la borne est refusé avant lecture ;
@@ -315,7 +317,10 @@ La route locale `POST /api/chat/dialogue/speech` accepte uniquement l'objet JSON
 erreur JSON content-free : `422` pour l'entrée locale invalide, `502` pour une
 réponse `200` invalide ou un rejet `400/404/422` du contrat fixe, et `503` pour
 timeout, transport, `401/403/429` ou `5xx`. Aucun corps fournisseur, texte ou
-audio partiel n'est projeté.
+audio partiel n'est projeté. Pendant la lecture de `response.raw`, les classes
+réelles `urllib3.exceptions.ReadTimeoutError` et `ProtocolError` sont
+respectivement classées comme timeout et transport ; les autres erreurs de
+données illisibles restent des réponses `502` fermées.
 
 Cette frontière reste inactive : aucun JavaScript ne l'appelle, le bouton
 Dialogue demeure désactivé et aucun appel TTS OpenRouter réel n'a été exécuté

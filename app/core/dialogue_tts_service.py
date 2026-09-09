@@ -6,6 +6,7 @@ import time
 from typing import Any
 
 import requests
+from urllib3 import exceptions as urllib3_exceptions
 
 import config
 from core import llm_client
@@ -231,13 +232,15 @@ def synthesize_dialogue_speech(
                 provider_status=status_code,
             )
         except Exception as exc:
-            if timeout_class is not None and isinstance(exc, timeout_class):
+            if (
+                timeout_class is not None and isinstance(exc, timeout_class)
+            ) or isinstance(exc, urllib3_exceptions.ReadTimeoutError):
                 reason_code = REASON_PROVIDER_TIMEOUT
                 http_status = 503
-            elif request_error_class is not None and isinstance(
-                exc,
-                request_error_class,
-            ):
+            elif (
+                request_error_class is not None
+                and isinstance(exc, request_error_class)
+            ) or isinstance(exc, urllib3_exceptions.ProtocolError):
                 reason_code = REASON_PROVIDER_TRANSPORT_ERROR
                 http_status = 503
             else:

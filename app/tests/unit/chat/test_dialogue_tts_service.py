@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import requests
+from urllib3 import exceptions as urllib3_exceptions
 
 
 def _resolve_app_dir() -> Path:
@@ -27,7 +28,7 @@ except ImportError:
 
 
 class _StreamingBody:
-    def __init__(self, data: bytes, *, error: Exception | None = None) -> None:
+    def __init__(self, data: bytes, *, error: BaseException | None = None) -> None:
         self._data = bytes(data)
         self._offset = 0
         self._error = error
@@ -58,7 +59,7 @@ class _StreamingResponse:
         status_code: int = 200,
         content_type: str = "audio/mpeg",
         content_length: object | None = None,
-        read_error: Exception | None = None,
+        read_error: BaseException | None = None,
     ) -> None:
         self.status_code = status_code
         self.headers = {"Content-Type": content_type}
@@ -405,30 +406,61 @@ class DialogueTtsServiceTests(unittest.TestCase):
                 self.assertEqual(result.http_status, 503)
                 self.assertEqual(result.audio_bytes, b"")
 
-    def test_stream_read_timeout_and_transport_failures_are_unavailable(self) -> None:
-        cases = (
-            (
-                requests.exceptions.Timeout("private-stream-timeout-marker"),
-                "dialogue_tts_provider_timeout",
-            ),
-            (
-                requests.exceptions.RequestException(
-                    "private-stream-transport-marker"
-                ),
-                "dialogue_tts_provider_transport_error",
-            ),
+    def test_stream_read_urllib3_timeout_is_unavailable(self) -> None:
+        private_marker = "private-stream-timeout-marker"
+        response = _StreamingResponse(
+            read_error=urllib3_exceptions.ReadTimeoutError(
+                None,
+                "/api/v1/audio/speech",
+                private_marker,
+            )
         )
 
-        for error, reason_code in cases:
-            with self.subTest(reason_code=reason_code):
-                response = _StreamingResponse(read_error=error)
-                result, _ = self._synthesize(transport=_FakeTransport(response))
+        result, _ = self._synthesize(transport=_FakeTransport(response))
 
-                self.assertFalse(result.ok)
-                self.assertEqual(result.reason_code, reason_code)
-                self.assertEqual(result.http_status, 503)
-                self.assertEqual(result.audio_bytes, b"")
+        self.assertFalse(result.ok)
+        self.assertEqual(result.reason_code, "dialogue_tts_provider_timeout")
+        self.assertEqual(result.http_status, 503)
+        self.assertEqual(result.audio_bytes, b"")
+        self.assertTrue(response.closed)
+        self.assertEqual(response.close_calls, 1)
+        self.assertNotIn(
+            private_marker,
+            repr(result) + str(result.to_payload()) + "\n".join(self.logger.lines),
+        )
+
+    def test_stream_read_urllib3_protocol_error_is_unavailable(self) -> None:
+        private_marker = "private-stream-transport-marker"
+        response = _StreamingResponse(
+            read_error=urllib3_exceptions.ProtocolError(private_marker)
+        )
+
+        result, _ = self._synthesize(transport=_FakeTransport(response))
+
+        self.assertFalse(result.ok)
+        self.assertEqual(
+            result.reason_code,
+            "dialogue_tts_provider_transport_error",
+        )
+        self.assertEqual(result.http_status, 503)
+        self.assertEqual(result.audio_bytes, b"")
+        self.assertTrue(response.closed)
+        self.assertEqual(response.close_calls, 1)
+        self.assertNotIn(
+            private_marker,
+            repr(result) + str(result.to_payload()) + "\n".join(self.logger.lines),
+        )
+
+    def test_stream_read_control_flow_exceptions_propagate_and_close(self) -> None:
+        for error_type in (KeyboardInterrupt, SystemExit):
+            with self.subTest(error_type=error_type.__name__):
+                response = _StreamingResponse(read_error=error_type())
+
+                with self.assertRaises(error_type):
+                    self._synthesize(transport=_FakeTransport(response))
+
                 self.assertTrue(response.closed)
+                self.assertEqual(response.close_calls, 1)
 
     def test_payload_repr_and_logs_never_expose_content_or_provider_details(self) -> None:
         private_text = "private-text-marker"

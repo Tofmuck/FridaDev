@@ -89,13 +89,14 @@ route backend TTS OpenRouter inactive qui transforme un texte final canonique
 de 16 000 caracteres maximum, sans troncature, en un unique MP3 borne a 16 Mio
 plus un octet de detection. Le modele reste fixe a
 `microsoft/mai-voice-2-flash`, la voix a
-`fr-FR-Soleil:MAI-Voice-2`, le timeout local a 60 secondes et la reponse
-valide a `audio/mpeg`. Cette frontiere reutilise la cle et la base OpenRouter
-serveur existantes, sans retry, fallback, cache, fichier, persistance, reglage
-Admin ni consommateur frontend. Le bouton Dialogue reste desactive et aucun
-appel fournisseur reel n'est autorise par ce lot. D2 n'autorise ni microphone,
-ni enregistrement navigateur, ni VAD produit, ni raccord au chat, ni lecture
-audio et ne constitue aucun precedent pour D3 a D6.
+`fr-FR-Soleil:MAI-Voice-2`, le timeout d'inactivite reseau Requests local a 60
+secondes, sans deadline murale absolue, et la reponse valide a `audio/mpeg`.
+Cette frontiere reutilise la cle et la base OpenRouter serveur existantes, sans
+retry, fallback, cache, fichier, persistance, reglage Admin ni consommateur
+frontend. Le bouton Dialogue reste desactive et aucun appel fournisseur reel
+n'est autorise par ce lot. D2 n'autorise ni microphone, ni enregistrement
+navigateur, ni VAD produit, ni raccord au chat, ni lecture audio et ne constitue
+aucun precedent pour D3 a D6.
 
 Chaque lot doit demontrer: pas de capacite produit ajoutee, comportements
 legitimes preserves hors bug corrige, complexite stable ou reduite, ancien

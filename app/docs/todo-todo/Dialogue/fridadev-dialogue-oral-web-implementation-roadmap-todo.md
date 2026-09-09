@@ -263,8 +263,10 @@ l'envoi.
 
 ## Lot D2 — frontière TTS et flux audio
 
-**Statut : fermé, poussé et livré par reconstruction ciblée du seul service
-applicatif. La frontière reste inactive et D3 reste non commencé.**
+**Statut : micro-réouvert uniquement pour corriger la classification des
+erreurs `urllib3` pendant la lecture streaming. Le patch est vérifié hors
+réseau ; la livraison ciblée reste à rejouer. La frontière reste inactive et
+D3 reste non commencé.**
 
 **Livrable :** une route TTS Frida qui retourne uniquement les octets audio
 confirmés de la voix Soleil, sans encore activer le mode produit.
@@ -336,15 +338,17 @@ confirmés de la voix Soleil, sans encore activer le mode produit.
   associé à `audio/mpeg`, prix `15 USD` par million de caractères et aucune
   limite d'entrée/sortie ni timeout TTS exact exploitable publié ;
 - limites locales : `16 000` caractères sans troncature, réponse lue
-  physiquement jusqu'à `16 Mio + 1`, timeout `60 s` ;
+  physiquement jusqu'à `16 Mio + 1`, et `timeout=60` Requests comme délai
+  d'inactivité réseau, non comme deadline murale absolue ;
 - rouge hermétique : `22` assertions causales sur le module, le résolveur et la
   route absents, sans erreur de harnais ;
 - vert hermétique D1/D2, routes, WSGI et client OpenRouter : `80/80`, dans un
   conteneur jetable `--network none`, checkout monté en lecture seule et `/tmp`
   en `tmpfs` ;
-- contre-audit du streaming : un timeout ou une erreur transport pendant la
-  lecture du corps produisait initialement `502`; deux témoins rouges ont
-  imposé la classification fermée `503`, réponse toujours close ;
+- contre-audit initial du streaming : les deux témoins injectaient directement
+  des exceptions Requests dans `response.raw.read()` et verrouillaient la
+  classification visée sans reproduire les classes de la couche `urllib3`
+  réellement utilisée ; le correctif causal est documenté ci-dessous ;
 - mutation de lecture : neutraliser temporairement l'arrêt à borne plus un fait
   lire `10` octets au lieu de `5` et remet le témoin au rouge ;
 - mutation de média : neutraliser temporairement le contrôle accepte à tort
@@ -374,6 +378,36 @@ confirmés de la voix Soleil, sans encore activer le mode produit.
 - la sélection `80/80` repasse depuis l'image réellement déployée, sans montage
   du checkout et toujours avec `--network none`, filesystem read-only et `/tmp`
   en `tmpfs`.
+
+### Correctif de classification streaming D2 — 9 septembre 2026
+
+**Statut intermédiaire : correctif minimal vérifié hors réseau ; livraison
+ciblée du seul service applicatif à rejouer avant la fermeture définitive. D3
+reste non commencé.**
+
+- micro-réouverture depuis `main`, HEAD/upstream
+  `b76419b96d5d0ec88f71b30b880bd556f20775e4`, divergence `0/0`, worktree
+  propre ;
+- environnement réellement embarqué : Requests `2.32.3`, `urllib3 2.7.0` ;
+  `response.raw.read()` remonte notamment `ReadTimeoutError` et
+  `ProtocolError`, qui n'héritent pas des exceptions Requests utilisées par le
+  témoin précédent ;
+- rouge causal hermétique : ces deux classes réelles produisaient à tort
+  `502/dialogue_tts_provider_audio_unreadable` ;
+- patch local à la lecture : `ReadTimeoutError` devient
+  `503/dialogue_tts_provider_timeout`, `ProtocolError` devient
+  `503/dialogue_tts_provider_transport_error`, tandis qu'une erreur de données
+  générique telle que `OSError` reste `502` ;
+- la sélection D1/D2, routes, WSGI et client OpenRouter repasse `82/82` sans
+  réseau, dans un conteneur jetable, checkout en lecture seule et `/tmp` en
+  `tmpfs` ;
+- mutation contrôlée : retirer le raccord `ReadTimeoutError` remet le témoin
+  central au rouge avec le `502` fautif ; après restauration, les empreintes du
+  service reviennent exactement à leur valeur préalable et les deux témoins
+  causaux repassent au vert ;
+- `KeyboardInterrupt` et `SystemExit` ne sont pas absorbés et la réponse est
+  néanmoins fermée une fois ; aucun corps fournisseur, texte, audio, exception
+  brute, URL, header ou secret n'est projeté ou journalisé.
 
 ---
 
