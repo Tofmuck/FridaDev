@@ -160,6 +160,9 @@ test('Adobe composer controls stay in bounds on desktop and mobile', async () =>
       afterPage: (page) => page.setViewportSize({ width: viewport.width, height: viewport.height }),
     }, async (page) => {
       await page.waitForSelector('#message:not([disabled])');
+      if (viewport.name === 'mobile') {
+        await page.click('#btnMobileTools');
+      }
       await page.click('#btnAdobeMode');
       await page.click('[data-adobe-product="photoshop"]');
 
@@ -200,12 +203,18 @@ test('Adobe composer controls stay in bounds on desktop and mobile', async () =>
       if (viewport.name === 'desktop') {
         assert.ok(layout.contextRow.top >= layout.message.bottom - 1, 'desktop context row should stay below textarea');
         assert.ok(layout.contextRow.bottom <= layout.ask.bottom + 1, 'desktop context row should stay inside composer');
+        assert.ok(layout.contextControls.left >= layout.ask.left, 'desktop context controls should stay inside composer');
+        assert.ok(layout.contextControls.right <= layout.ask.right + 1, 'desktop context controls should stay inside composer');
       } else {
-        assert.ok(layout.contextRow.bottom <= layout.message.top + 1, 'mobile context row should stay above textarea');
+        assert.ok(layout.contextRow.top >= layout.ask.top - 1, 'mobile context layer should start inside composer');
+        assert.ok(layout.contextRow.bottom <= layout.ask.bottom + 1, 'mobile context layer should end inside composer');
       }
-      assert.ok(layout.contextControls.left >= layout.ask.left, `${viewport.name} context controls should stay inside composer`);
-      assert.ok(layout.contextControls.right <= layout.ask.right + 1, `${viewport.name} context controls should stay inside composer`);
-      assert.ok(layout.reasoning.right <= layout.choices.left || layout.reasoning.bottom <= layout.choices.top + 1, `${viewport.name} reasoning and Adobe choices should not overlap`);
+      assert.ok(
+        layout.reasoning.right <= layout.choices.left
+          || layout.reasoning.bottom <= layout.choices.top + 1
+          || layout.choices.bottom <= layout.reasoning.top + 1,
+        `${viewport.name} reasoning and Adobe choices should not overlap`,
+      );
       assert.ok(layout.message.left >= layout.ask.left, `${viewport.name} textarea should stay inside composer`);
       assert.ok(layout.message.right <= layout.ask.right + 1, `${viewport.name} textarea should stay inside composer`);
       if (viewport.name === 'desktop') {
@@ -213,22 +222,25 @@ test('Adobe composer controls stay in bounds on desktop and mobile', async () =>
         assert.ok(layout.mic.right <= layout.submit.left + 1, 'desktop submit should stay after microphone');
         assert.ok(layout.activeDocument.top >= layout.message.bottom - 1, 'desktop tools should stay on the lower row');
       } else {
-        assert.ok(layout.message.right <= layout.actions.left, 'mobile action grid should sit to the right of textarea');
-        assert.ok(layout.actions.top >= layout.message.top - 1, 'mobile action grid should align with textarea top');
-        assert.ok(layout.actions.bottom <= layout.message.bottom + 1, 'mobile action grid should stay within textarea height');
+        assert.ok(layout.message.right <= layout.mic.left + 1, 'mobile microphone should stay to the right of textarea');
+        assert.ok(layout.mic.right <= layout.submit.left + 1, 'mobile submit should stay after microphone');
+        assert.ok(layout.activeDocument.top >= layout.message.bottom + 1, 'mobile primary tools should stay on the lower Figma B rail');
       }
       assert.ok(layout.choices.left >= layout.ask.left, `${viewport.name} Adobe choices should stay inside composer`);
       assert.ok(layout.choices.right <= layout.ask.right + 1, `${viewport.name} Adobe choices should stay inside composer`);
-      assert.ok(layout.adobe.left >= layout.actions.left, `${viewport.name} Adobe button should stay inside action row`);
-      assert.ok(layout.submit.right <= layout.actions.right + 1, `${viewport.name} submit should stay inside action row`);
+      assert.ok(layout.submit.right <= layout.ask.right + 1, `${viewport.name} submit should stay inside composer`);
       if (viewport.name === 'mobile') {
-        assert.ok(layout.mic.right <= layout.webSearch.left, 'mobile mic should sit before web on the first row');
-        assert.ok(layout.webSearch.right <= layout.submit.left, 'mobile web should sit before submit on the first row');
-        assert.ok(layout.submit.top <= layout.mic.bottom, 'mobile submit should be on the first row');
+        assert.ok(layout.webSearch.right <= layout.activeDocument.left, 'mobile web should sit before document on the lower rail');
+        assert.ok(layout.submit.top <= layout.mic.bottom, 'mobile submit should stay on the input row');
+        assert.ok(layout.adobe.bottom <= layout.ask.top, 'mobile Adobe mode should open from the secondary tray above composer');
+      } else {
+        assert.ok(layout.adobe.left >= layout.actions.left, 'desktop Adobe button should stay inside action row');
       }
       assert.ok(layout.activeDocument.right <= layout.imageGeneration.left, `${viewport.name} document should sit before image on the second row`);
-      assert.ok(layout.imageGeneration.right <= layout.adobe.left, `${viewport.name} image should sit before Adobe on the second row`);
-      assert.ok(layout.adobe.top >= layout.activeDocument.top - 1, `${viewport.name} Adobe should be on the second row`);
+      if (viewport.name === 'desktop') {
+        assert.ok(layout.imageGeneration.right <= layout.adobe.left, 'desktop image should sit before Adobe on the second row');
+        assert.ok(layout.adobe.top >= layout.activeDocument.top - 1, 'desktop Adobe should be on the second row');
+      }
     });
   }
 });

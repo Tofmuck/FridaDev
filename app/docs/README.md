@@ -14,7 +14,7 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 
 ### Current-state
 
-- [Contrat visuel du chat Web clair et sombre](states/specs/chat-web-visual-themes-contract.md) : deux thèmes sur une structure unique, choix navigateur persistant, géométrie du compositeur identique et conservation obligatoire de toutes les actions existantes.
+- [Contrat visuel du chat Web et de sa composition iPhone](states/specs/chat-web-visual-themes-contract.md) : deux thèmes de bureau sur une structure unique, puis `Alternative B — Dialogue vivant` sur viewport étroit ; le choix desktop reste persistant et toutes les actions existantes demeurent accessibles.
 
 - [Cadrage actif du dialogue oral Web](todo-todo/Dialogue/fridadev-dialogue-oral-web-todo.md) : boucle semi-duplex proposée pour l'usage en voiture depuis le téléphone — détection locale de parole, STT en ligne, pipeline Frida inchangé, TTS puis réarmement automatique. Document de décision uniquement ; aucune implémentation encore autorisée.
 

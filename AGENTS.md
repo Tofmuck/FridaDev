@@ -54,6 +54,17 @@ de conversations, repertoires, fichiers, notes et outils dans les deux modes.
 Elle n'autorise ni nouvelle route, ni nouveau workflow metier, ni version
 mobile dediee, ni implementation du dialogue oral.
 
+Exception explicite et strictement bornee decidee par l'utilisateur le 9
+septembre 2026: sur un viewport etroit de type iPhone, le chat Web adopte la
+composition Figma `Alternative B - Dialogue vivant` comme presentation mobile
+dediee. Le bureau clair/sombre reste inchangé. Cette composition mobile doit
+reutiliser le DOM, les routes et les callbacks existants et maintenir l'acces
+a toutes les actions de conversation, repertoire, fichier, note et outil. Le
+bouton Dialogue peut etre visible comme jalon de design, mais reste desactive
+et annonce comme indisponible tant que le chantier oral n'est pas autorise et
+livre. Cette exception n'autorise ni nouveau workflow metier, ni STT/TTS en
+ligne, ni boucle de dialogue oral.
+
 Chaque lot doit demontrer: pas de capacite produit ajoutee, comportements
 legitimes preserves hors bug corrige, complexite stable ou reduite, ancien
 chemin retire quand il est remplace, et invariants utiles verrouilles par des

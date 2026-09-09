@@ -7,8 +7,8 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "theme_color": "#fbf8f3",
-  "background_color": "#fbf8f3",
+  "theme_color": "#060913",
+  "background_color": "#060913",
   "icons": [
     {
       "src": "/fridalogo.png",

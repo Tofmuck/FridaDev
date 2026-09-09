@@ -212,6 +212,7 @@ test('chat active conversation documents upload, OCR states, reload and remove w
     const imageBarBox = await page.locator('#activeDocumentsBar').boundingBox();
     const contextRowBox = await page.locator('#composerContextRow').boundingBox();
     const reasoningBox = await page.locator('.main-reasoning-control').boundingBox();
+    const composerBox = await page.locator('#ask').boundingBox();
     assert.ok(
       imageBarBox && imageBarBox.x >= 0 && imageBarBox.x + imageBarBox.width <= 390,
       'active image bar should fit mobile viewport'
@@ -221,8 +222,16 @@ test('chat active conversation documents upload, OCR states, reload and remove w
       'composer context row should fit mobile viewport'
     );
     assert.ok(
-      contextRowBox && imageBarBox && reasoningBox && imageBarBox.y < reasoningBox.y && contextRowBox.y <= imageBarBox.y,
-      'active documents and reasoning should share the context area without overlapping on mobile'
+      contextRowBox && composerBox
+        && Math.abs(contextRowBox.x - composerBox.x) <= 1
+        && Math.abs(contextRowBox.width - composerBox.width) <= 2,
+      'mobile context layer should stay aligned with the Figma B composer'
+    );
+    assert.ok(
+      imageBarBox && composerBox && reasoningBox
+        && imageBarBox.y + imageBarBox.height <= composerBox.y
+        && reasoningBox.y >= composerBox.y,
+      'active documents should float above the composer while reasoning stays in its lower rail'
     );
 
     const callsAfterImageUpload = await page.evaluate(() => window.__fridaBrowserState.fetchCalls);

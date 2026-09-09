@@ -1,18 +1,20 @@
-# Contrat visuel du chat Web — clair et sombre
+# Contrat visuel du chat Web — bureau clair/sombre et iPhone
 
 Date d'autorité : 2026-09-09
 Statut : livré dans le frontend Web courant
 
 Autorité Figma : fichier `FridaDev — Chat Web et dialogue oral`
 (`OiGP7QIP4XiEKjm901DEvY`), vues complètes `18:3` pour le mode clair et
-`27:34` pour le mode sombre, réunies dans `29:30`.
+`27:34` pour le mode sombre, réunies dans `29:30`, puis composition mobile
+`Alternative B — Dialogue vivant` dans `71:2` (`71:9` pour l'écran de
+conversation).
 
 ## Portée
 
-Le chat Web possède une structure unique et deux présentations visuelles :
-`light` et `dark`. Le bouton de la barre supérieure bascule entre elles et le
-choix est conservé localement sous `frida.chat.theme`. Aucun réglage serveur,
-cookie métier, route ou schéma n'est ajouté.
+Sur bureau, le chat Web possède une structure unique et deux présentations
+visuelles : `light` et `dark`. Le bouton de la barre supérieure bascule entre
+elles et le choix est conservé localement sous `frida.chat.theme`. Aucun
+réglage serveur, cookie métier, route ou schéma n'est ajouté.
 
 Les deux thèmes partagent la même structure fonctionnelle et font varier les
 tokens et effets CSS. Ils conservent exactement la même géométrie du
@@ -25,6 +27,18 @@ La hauteur effective du compositeur alimente sa variable de layout à chaque
 redimensionnement. Les panneaux d'outil restent ainsi au-dessus de lui quand
 le viewport existant passe du bureau au format étroit.
 
+À `640 px` de large ou moins, le même DOM fonctionnel adopte la composition
+sombre dédiée `Dialogue vivant`. À `414 × 896`, la barre supérieure mesure
+`414 × 62 px` hors safe area iOS et le compositeur mesure `390 × 146 px`, à
+`12 px` des bords. Le thème de présentation mobile ne réécrit pas le choix
+desktop conservé : revenir à un viewport large restitue `light` ou `dark` tel
+qu'il était enregistré.
+
+Le mode installé Safari respecte `viewport-fit=cover`, les safe areas et
+`100dvh`. Le document ne dessine ni barre d'état iOS ni indicateur d'accueil :
+ces éléments appartiennent au système. Le manifeste et le chrome mobile
+utilisent le fond `#060913` afin d'éviter un flash clair au démarrage.
+
 ## Invariants fonctionnels
 
 Dans les deux thèmes restent présents et opérants :
@@ -36,6 +50,14 @@ Dans les deux thèmes restent présents et opérants :
 - dictée, Web, document actif, génération d'image, Adobe, Biblio, Notes,
   Agenda, niveau de raisonnement et envoi ;
 - heure et copie de chaque bulle, ainsi que l'export de conversation.
+
+Sur iPhone, le menu ouvre la sidebar existante dans un tiroir de `354 px`
+maximum. Nouveau chat, création de répertoire, icône, déplacement, renommage,
+ajout de fichier, note, OCR, sélection et conversations continuent donc
+d'utiliser leurs callbacks existants. Dans un répertoire ouvert, les six
+commandes possèdent chacune une cible tactile de `44 × 44 px` à `414 px` de
+large. Le bouton `…` du compositeur déploie Adobe, Biblio, Notes et Agenda ; il
+ne remplace ni ne désactive ces outils.
 
 Le changement de thème ne déclenche aucune requête applicative et ne réordonne
 aucun état. La même règle vaut après rechargement de la page.
@@ -67,26 +89,35 @@ conversation et l'état de présence occupent la partie gauche de la barre ; la
 navigation, l'export et le bouton de thème occupent sa partie droite dans cet
 ordre.
 
-Les fonds du viewport sont des aplats, sans image ni halo décoratif global :
-`#fbf8f3` en clair et `#0d1117` en sombre. Le seul halo visuel volontaire est
-celui de l'identité Frida. L'icône de thème provient de l'asset Figma exporté,
-et non d'un glyphe ou d'un dessin CSS approché.
+Sur bureau, les fonds du viewport sont des aplats, sans image ni halo décoratif
+global : `#fbf8f3` en clair et `#0d1117` en sombre. Le seul halo visuel
+volontaire est celui de l'identité Frida. L'icône de thème provient de l'asset
+Figma exporté, et non d'un glyphe ou d'un dessin CSS approché.
 
 Les commandes compactes de la sidebar utilisent les SVG de la bibliothèque
 Lucide distribués avec leur licence ISC. Aucun caractère typographique ou
 emoji ne sert d'icône. Les titres et libellés ARIA conservent le nom complet de
 chaque action ; l'iconographie ne retire donc ni fonction ni accessibilité.
 
+La composition mobile suit la direction B : fond bleu nuit en dégradé, halos
+cyan/indigo, bulles assistant et utilisateur de même famille lumineuse,
+topbar compacte avec identité Frida et compositeur flottant à deux niveaux.
+Le bouton `Dialogue` est présent pour rendre lisible la direction de design,
+mais il est désactivé et son nom accessible annonce explicitement que le mode
+dialogique n'est pas encore disponible. Il ne déclenche aucun appel, aucun
+état et aucune mutation.
+
 ## Limites
 
-Ce contrat couvre le chat Web responsive existant. Le champ de recherche de
+Le champ de recherche de
 conversations visible dans la maquette reste absent : FridaDev ne possédait pas
 ce workflow et ce lot visuel n'ajoute pas de contrôle inerte ni de capacité
 produit. Les contours et ombres externes du cadre Figma appartiennent à sa
 présentation sur le canevas, pas au viewport Web.
 
-Le contrat ne prétend pas livrer une composition mobile dédiée, le dialogue
-oral semi-duplex, un nouveau STT ou un nouveau TTS.
+La composition mobile dédiée est livrée, mais pas le dialogue oral semi-duplex,
+un nouveau STT ou un nouveau TTS. Le bouton `Dialogue` ne doit être activé que
+par un lot produit ultérieur explicitement autorisé.
 
 ## Preuves minimales
 
@@ -95,6 +126,9 @@ node --test app/tests/unit/frontend_chat/test_chat_theme_module.js
 node --test --test-name-pattern="chat theme switch preserves" \
   app/tests/integration/frontend_browser/test_frontend_browser_smoke.js
 node --test --test-name-pattern="workspace folders start collapsed" \
+  app/tests/integration/frontend_browser/test_frontend_browser_workspace_folders.js
+node --test --test-name-pattern="iPhone chat uses Figma Dialogue vivant|iPhone navigation keeps the Figma B drawer" \
+  app/tests/integration/frontend_browser/test_frontend_browser_smoke.js \
   app/tests/integration/frontend_browser/test_frontend_browser_workspace_folders.js
 ```
 
@@ -105,3 +139,9 @@ des contrôles existants. La preuve Workspace verrouille séparément les
 dimensions clair/sombre, les icônes et leur ordre, ainsi que les actions de
 répertoire, conversation, fichier, note, export, image, sélection, OCR et
 déplacement de conversation.
+
+La preuve iPhone impose en plus : présentation mobile sombre sans écraser le
+thème desktop stocké, géométrie `414 × 62` et `390 × 146`, logo officiel,
+composer principal `textarea + micro + envoi`, rail bas, bouton Dialogue
+désactivé, ouverture/fermeture des outils secondaires, tiroir de navigation et
+présence effective des actions de répertoire.

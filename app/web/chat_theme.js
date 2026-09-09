@@ -15,6 +15,8 @@
   const STORAGE_KEY = 'frida.chat.theme';
   const THEME_LIGHT = 'light';
   const THEME_DARK = 'dark';
+  const MOBILE_DIALOGUE_QUERY = '(max-width: 640px)';
+  const MOBILE_DIALOGUE_COLOR = '#060913';
   const THEME_COLORS = Object.freeze({
     [THEME_LIGHT]: '#fbf8f3',
     [THEME_DARK]: '#0d1117',
@@ -42,13 +44,36 @@
     button.setAttribute('aria-pressed', theme === THEME_DARK ? 'true' : 'false');
   }
 
+  function getMobileDialogueQuery(documentRef) {
+    const view = documentRef && documentRef.defaultView;
+    return view && typeof view.matchMedia === 'function'
+      ? view.matchMedia(MOBILE_DIALOGUE_QUERY)
+      : null;
+  }
+
+  function syncPresentationTheme(documentRef, theme) {
+    if (!documentRef || !documentRef.documentElement) return theme;
+    const mobileQuery = getMobileDialogueQuery(documentRef);
+    const mobileDialogue = Boolean(mobileQuery && mobileQuery.matches);
+    if (mobileDialogue) {
+      documentRef.documentElement.dataset.presentationTheme = 'mobile-dialogue';
+    } else {
+      delete documentRef.documentElement.dataset.presentationTheme;
+    }
+    const presentationTheme = mobileDialogue ? THEME_DARK : theme;
+    documentRef.documentElement.style.colorScheme = presentationTheme;
+    const themeColor = documentRef.querySelector('meta[name="theme-color"]');
+    if (themeColor) {
+      themeColor.setAttribute('content', mobileDialogue ? MOBILE_DIALOGUE_COLOR : THEME_COLORS[theme]);
+    }
+    return presentationTheme;
+  }
+
   function applyTheme(documentRef, value) {
     if (!documentRef || !documentRef.documentElement) return THEME_LIGHT;
     const theme = normalizeTheme(value);
     documentRef.documentElement.dataset.theme = theme;
-    documentRef.documentElement.style.colorScheme = theme;
-    const themeColor = documentRef.querySelector('meta[name="theme-color"]');
-    if (themeColor) themeColor.setAttribute('content', THEME_COLORS[theme]);
+    syncPresentationTheme(documentRef, theme);
     updateThemeButton(documentRef, theme);
     return theme;
   }
@@ -63,6 +88,13 @@
     if (!button) throw new Error('theme button missing');
 
     let theme = applyTheme(documentRef, documentRef.documentElement.dataset.theme || readStoredTheme(storage));
+    const mobileQuery = getMobileDialogueQuery(documentRef);
+    const onPresentationChange = () => syncPresentationTheme(documentRef, theme);
+    if (mobileQuery && typeof mobileQuery.addEventListener === 'function') {
+      mobileQuery.addEventListener('change', onPresentationChange);
+    } else if (mobileQuery && typeof mobileQuery.addListener === 'function') {
+      mobileQuery.addListener(onPresentationChange);
+    }
     const setTheme = (value, { persist = true } = {}) => {
       theme = applyTheme(documentRef, value);
       if (persist) {
@@ -80,7 +112,14 @@
     return {
       getTheme: () => theme,
       setTheme,
-      destroy: () => button.removeEventListener('click', onClick),
+      destroy: () => {
+        button.removeEventListener('click', onClick);
+        if (mobileQuery && typeof mobileQuery.removeEventListener === 'function') {
+          mobileQuery.removeEventListener('change', onPresentationChange);
+        } else if (mobileQuery && typeof mobileQuery.removeListener === 'function') {
+          mobileQuery.removeListener(onPresentationChange);
+        }
+      },
     };
   }
 
@@ -88,6 +127,8 @@
     STORAGE_KEY,
     THEME_LIGHT,
     THEME_DARK,
+    MOBILE_DIALOGUE_QUERY,
+    MOBILE_DIALOGUE_COLOR,
     normalizeTheme,
     applyTheme,
     applyInitialTheme,

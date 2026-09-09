@@ -5,7 +5,7 @@ const test = require('node:test');
 
 const chatTheme = require('../../../web/chat_theme.js');
 
-function createFixture(storedTheme = null) {
+function createFixture(storedTheme = null, mobile = false) {
   const attributes = new Map();
   const listeners = new Map();
   const button = {
@@ -22,6 +22,7 @@ function createFixture(storedTheme = null) {
     },
   };
   const values = new Map();
+  const mediaListeners = new Map();
   if (storedTheme !== null) values.set(chatTheme.STORAGE_KEY, storedTheme);
   const storage = {
     getItem: (key) => values.has(key) ? values.get(key) : null,
@@ -29,10 +30,17 @@ function createFixture(storedTheme = null) {
   };
   const document = {
     documentElement: { dataset: {}, style: {} },
+    defaultView: {
+      matchMedia: () => ({
+        matches: mobile,
+        addEventListener: (name, callback) => mediaListeners.set(name, callback),
+        removeEventListener: (name) => mediaListeners.delete(name),
+      }),
+    },
     getElementById: (id) => id === 'btnTheme' ? button : null,
     querySelector: (selector) => selector === 'meta[name="theme-color"]' ? meta : null,
   };
-  return { document, storage, button, meta, listeners, values };
+  return { document, storage, button, meta, listeners, mediaListeners, values };
 }
 
 test('initial theme accepts only the stored dark value', () => {
@@ -44,6 +52,16 @@ test('initial theme accepts only the stored dark value', () => {
   const invalid = createFixture('sepia');
   assert.equal(chatTheme.applyInitialTheme(invalid), 'light');
   assert.equal(invalid.meta.content, '#fbf8f3');
+});
+
+test('mobile Dialogue vivant forces only the presentation theme', () => {
+  const fixture = createFixture('light', true);
+  assert.equal(chatTheme.applyInitialTheme(fixture), 'light');
+  assert.equal(fixture.document.documentElement.dataset.theme, 'light');
+  assert.equal(fixture.document.documentElement.dataset.presentationTheme, 'mobile-dialogue');
+  assert.equal(fixture.document.documentElement.style.colorScheme, 'dark');
+  assert.equal(fixture.meta.content, chatTheme.MOBILE_DIALOGUE_COLOR);
+  assert.equal(fixture.values.get(chatTheme.STORAGE_KEY), 'light');
 });
 
 test('theme controller toggles, persists and keeps accessible labels exact', () => {

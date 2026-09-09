@@ -677,6 +677,85 @@ test('chat theme switch preserves the shared desktop layout and composer capabil
   });
 });
 
+test('iPhone chat uses Figma Dialogue vivant without changing the stored desktop theme', async () => {
+  await openBrowserPage({
+    mockScript: `${chatMockScript({ streamMode: 'done' })}\nlocalStorage.setItem('frida.chat.theme', 'light');`,
+    afterPage: (page) => page.setViewportSize({ width: 414, height: 896 }),
+  }, async (page) => {
+    await page.waitForSelector('#message:not([disabled])');
+    await page.waitForFunction(() => document.documentElement.dataset.presentationTheme === 'mobile-dialogue');
+
+    const readRect = (selector) => page.locator(selector).evaluate((node) => {
+      const box = node.getBoundingClientRect();
+      const style = getComputedStyle(node);
+      return {
+        left: Math.round(box.left),
+        top: Math.round(box.top),
+        width: Math.round(box.width),
+        height: Math.round(box.height),
+        display: style.display,
+        borderRadius: style.borderRadius,
+      };
+    });
+
+    assert.equal(await page.evaluate(() => localStorage.getItem('frida.chat.theme')), 'light');
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light');
+    assert.equal(await page.locator('meta[name="theme-color"]').getAttribute('content'), '#060913');
+    assert.equal(await page.locator('#btnTheme').isHidden(), true);
+    assert.equal(await page.locator('.global-nav').isHidden(), true);
+    assert.equal(await page.locator('.mobile-frida-mark').isVisible(), true);
+
+    const topbar = await readRect('.topbar');
+    const composer = await readRect('#ask');
+    const textarea = await readRect('#message');
+    const mic = await readRect('#btnMic');
+    const submit = await readRect('#ask button[type="submit"]');
+    assert.deepEqual(topbar, {
+      left: 0,
+      top: 0,
+      width: 414,
+      height: 62,
+      display: 'grid',
+      borderRadius: '0px',
+    });
+    assert.equal(composer.left, 12);
+    assert.equal(composer.width, 390);
+    assert.equal(composer.height, 146);
+    assert.equal(composer.borderRadius, '28px');
+    assert.equal(textarea.height, 62);
+    assert.equal(mic.width, 52);
+    assert.equal(mic.height, 52);
+    assert.equal(submit.width, 56);
+    assert.equal(submit.height, 56);
+
+    assert.equal(await page.locator('#btnDialogueMode').isVisible(), true);
+    assert.equal(await page.locator('#btnDialogueMode').isDisabled(), true);
+    assert.match(String(await page.locator('#btnDialogueMode').getAttribute('title')), /pas encore disponible/i);
+    for (const selector of ['#btnWebSearch', '#btnActiveDocument', '#btnImageGeneration', '#btnMobileTools']) {
+      assert.equal(await page.locator(selector).isVisible(), true, `${selector} should stay directly visible`);
+    }
+    for (const selector of ['#btnAdobeMode', '#btnBiblioMode', '#btnNotesMode', '#btnAgendaMode']) {
+      assert.equal(await page.locator(selector).isHidden(), true, `${selector} should start in the secondary tool tray`);
+    }
+
+    await page.click('#btnMobileTools');
+    assert.equal(await page.locator('#btnMobileTools').getAttribute('aria-expanded'), 'true');
+    for (const selector of ['#btnAdobeMode', '#btnBiblioMode', '#btnNotesMode', '#btnAgendaMode']) {
+      assert.equal(await page.locator(selector).isVisible(), true, `${selector} should remain reachable on iPhone`);
+    }
+    await page.click('#btnMobileTools');
+    assert.equal(await page.locator('#btnMobileTools').getAttribute('aria-expanded'), 'false');
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.waitForFunction(() => !document.documentElement.dataset.presentationTheme);
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'light');
+    assert.equal(await page.locator('meta[name="theme-color"]').getAttribute('content'), '#fbf8f3');
+    assert.equal(await page.locator('#btnTheme').isVisible(), true);
+    assert.equal(await page.locator('#btnDialogueMode').isHidden(), true);
+    assert.equal(await page.locator('#btnMobileTools').isHidden(), true);
+  });
+});
+
 test('chat reasoning shortcut stays compact on desktop and mobile', async () => {
   for (const viewport of [
     { width: 1440, height: 900, name: 'desktop', maxWidth: 150 },
@@ -722,17 +801,19 @@ test('chat reasoning shortcut stays compact on desktop and mobile', async () => 
       assert.ok(layout.contextRow.right <= layout.ask.right + 1, `${viewport.name} context row should stay inside composer`);
       if (viewport.name === 'desktop') {
         assert.ok(layout.contextRow.top >= layout.message.bottom - 1, 'desktop context row should stay below textarea');
+        assert.ok(layout.contextControls.left >= layout.ask.left - 1, 'desktop context controls should stay inside composer');
+        assert.ok(layout.contextControls.right <= layout.ask.right + 1, 'desktop context controls should stay inside composer');
       } else {
-        assert.ok(layout.contextRow.bottom <= layout.message.top + 1, 'mobile context row should stay above textarea');
+        assert.ok(layout.contextRow.top >= layout.ask.top - 1, 'mobile context layer should start inside composer');
+        assert.ok(layout.contextRow.bottom <= layout.ask.bottom + 1, 'mobile context layer should end inside composer');
       }
-      assert.ok(layout.contextControls.left >= layout.ask.left - 1, `${viewport.name} context controls should stay inside composer`);
-      assert.ok(layout.contextControls.right <= layout.ask.right + 1, `${viewport.name} context controls should stay inside composer`);
       assert.ok(layout.reasoning.left >= layout.ask.left - 1, `${viewport.name} reasoning control should stay inside composer`);
       assert.ok(layout.reasoning.right <= layout.ask.right + 1, `${viewport.name} reasoning control should stay inside composer`);
       if (viewport.name === 'desktop') {
         assert.ok(layout.reasoning.top >= layout.message.bottom - 1, 'desktop reasoning control should stay on the lower row');
       } else {
-        assert.ok(layout.reasoning.bottom <= layout.message.top + 1, 'mobile reasoning control should stay above textarea');
+        assert.ok(layout.reasoning.top >= layout.message.bottom + 1, 'mobile reasoning control should stay on the lower Figma B rail');
+        assert.ok(layout.reasoning.bottom <= layout.ask.bottom + 1, 'mobile reasoning control should stay inside composer');
       }
       assert.ok(layout.select.width <= 88 + 1, `${viewport.name} reasoning select should remain compact`);
       assert.ok(layout.ask.left >= 0 && layout.ask.right <= layout.viewportWidth + 1, `${viewport.name} composer should stay inside viewport`);

@@ -9,6 +9,9 @@ Date : 2026-09-09
 - clair : `18:3`
 - sombre : `27:34`
 - viewport de comparaison : `1440 × 900`
+- mobile : `Alternative B — Dialogue vivant`, wrapper `71:2`, conversation
+  `71:9`
+- viewport mobile de comparaison : `414 × 896`
 
 ## Vérification visuelle
 
@@ -60,5 +63,28 @@ champ de recherche en bas de sidebar n'est pas reproduit, car il n'existe pas
 dans le produit courant et ce lot n'autorise ni contrôle inerte ni nouveau
 workflow. L'ombre extérieure du cadre Figma appartient au canevas de
 présentation, pas à la page Web.
+
+## Vérification mobile B
+
+La composition rendue à `414 × 896` a été comparée à `71:2` : topbar sombre de
+`62 px`, logo transparent sur halo cyan, présence, export, bulles arrondies,
+fond nuit lumineux et compositeur `390 × 146 px` concordent avec la direction
+`Dialogue vivant`. Le test ne reproduit ni la barre d'état ni l'indicateur
+d'accueil dessinés dans la planche, car Safari/iOS en garde l'autorité.
+
+Le compositeur conserve une entrée de `62 px`, un micro de `52 px`, un envoi
+de `56 px`, le niveau de raisonnement, Web, document actif et image visibles.
+Le bouton Dialogue reste honnêtement désactivé jusqu'au chantier oral. Le
+bouton `…` rend Adobe, Biblio, Notes et Agenda accessibles dans une palette
+secondaire au lieu de les supprimer.
+
+L'état navigation a été contrôlé avec le tiroir ouvert à `354 px` : bouton de
+fermeture, Nouveau chat, création de dossier, hiérarchie, conversation,
+fichiers, OCR, note et six commandes du dossier restent reliés au DOM actuel.
+Dans le dossier ouvert, ces six commandes disposent chacune d'une cible tactile
+de `44 × 44 px`, comme dans l'état B de la maquette ; les lignes de conversation,
+fichier et note conservent elles aussi une hauteur tactile minimale de `44 px`.
+Le thème desktop stocké est restitué lorsque le viewport repasse au format
+large.
 
 final result: passed

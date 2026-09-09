@@ -264,6 +264,70 @@ function workspaceFoldersMockScript() {
   `;
 }
 
+test('iPhone navigation keeps the Figma B drawer and all folder operations', async () => {
+  await openBrowserPage({
+    mockScript: workspaceFoldersMockScript(),
+    afterPage: (page) => page.setViewportSize({ width: 414, height: 896 }),
+  }, async (page) => {
+    await page.waitForSelector('.workspace-folder-row');
+    assert.equal(await page.locator('.sidebar').getAttribute('aria-hidden'), 'true');
+    await page.click('#btnMenu');
+    await page.waitForFunction(() => Math.round(document.querySelector('.sidebar').getBoundingClientRect().left) === 0);
+    assert.equal(await page.locator('.sidebar').getAttribute('aria-hidden'), 'false');
+
+    const drawer = await page.locator('.sidebar').evaluate((node) => {
+      const box = node.getBoundingClientRect();
+      const style = getComputedStyle(node);
+      return {
+        left: Math.round(box.left),
+        top: Math.round(box.top),
+        width: Math.round(box.width),
+        height: Math.round(box.height),
+        borderRadius: style.borderRadius,
+      };
+    });
+    assert.deepEqual(drawer, { left: 0, top: 0, width: 354, height: 896, borderRadius: '0px 28px 28px 0px' });
+    assert.equal(await page.locator('#btnSidebarClose').isVisible(), true);
+    assert.equal(await page.locator('#newChat').isVisible(), true);
+    assert.equal(await page.locator('.workspace-folder-add').isVisible(), true);
+
+    await page.locator('.workspace-folder-row').click({ position: { x: 92, y: 10 } });
+    assert.deepEqual(
+      await page.locator('.workspace-folder-actions [data-sidebar-icon]').evaluateAll((nodes) => (
+        nodes.map((node) => node.getAttribute('data-sidebar-icon'))
+      )),
+      ['chevron-up', 'chevron-down', 'pencil', 'paperclip', 'notebook-pen', 'trash-2'],
+    );
+    const mobileFolderGeometry = await page.locator('.workspace-folder-row').evaluate((node) => {
+      const row = node.getBoundingClientRect();
+      const main = node.querySelector('.workspace-folder-main').getBoundingClientRect();
+      const actions = node.querySelector('.workspace-folder-actions').getBoundingClientRect();
+      const actionButtons = [...node.querySelectorAll('.workspace-folder-action')].map((button) => {
+        const box = button.getBoundingClientRect();
+        return { width: Math.round(box.width), height: Math.round(box.height) };
+      });
+      return {
+        rowHeight: Math.round(row.height),
+        mainHeight: Math.round(main.height),
+        actionsHeight: Math.round(actions.height),
+        actionButtons,
+      };
+    });
+    assert.deepEqual(mobileFolderGeometry, {
+      rowHeight: 104,
+      mainHeight: 50,
+      actionsHeight: 44,
+      actionButtons: Array.from({ length: 6 }, () => ({ width: 44, height: 44 })),
+    });
+    assert.equal(await page.locator('.workspace-folder-file-ocr').isVisible(), true);
+    assert.equal(await page.locator('.workspace-folder-note-create').isVisible(), true);
+    assert.equal(await page.locator('li.in-workspace-folder').isVisible(), true);
+
+    await page.click('#btnSidebarClose');
+    assert.equal(await page.locator('.sidebar').getAttribute('aria-hidden'), 'true');
+  });
+});
+
 test('workspace folders start collapsed, expand on demand and move by drag-and-drop', async () => {
   await openBrowserPage({ mockScript: workspaceFoldersMockScript() }, async (page) => {
     const consoleIssues = [];

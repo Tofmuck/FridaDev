@@ -107,6 +107,8 @@
   const sidebar = document.querySelector('.sidebar');
   const sidebarBackdrop = $("#sidebarBackdrop");
   const btnMenu = $("#btnMenu");
+  const btnSidebarClose = $("#btnSidebarClose");
+  const btnMobileTools = $("#btnMobileTools");
   const currentConversationTitle = document.querySelector('.topbar .title');
   let composerHeightObserver = null;
   const syncComposerHeight = () => {
@@ -128,10 +130,65 @@
     currentConversationTitle.textContent = String(thread?.title || 'Nouvelle conversation');
   };
   chatTheme.createThemeController({ document, storage: localStorage });
-  const openSidebar  = () => { sidebar.classList.add('open');    sidebarBackdrop && sidebarBackdrop.classList.add('show'); };
-  const closeSidebar = () => { sidebar.classList.remove('open'); sidebarBackdrop && sidebarBackdrop.classList.remove('show'); };
+  const mobileLayoutQuery = window.matchMedia('(max-width: 640px)');
+  const syncSidebarAccessibility = () => {
+    if (!sidebar) return;
+    const isOpen = sidebar.classList.contains('open');
+    sidebar.setAttribute('aria-hidden', mobileLayoutQuery.matches && !isOpen ? 'true' : 'false');
+    if (btnMenu) btnMenu.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  };
+  const openSidebar = () => {
+    if (!sidebar) return;
+    sidebar.classList.add('open');
+    sidebarBackdrop && sidebarBackdrop.classList.add('show');
+    syncSidebarAccessibility();
+  };
+  const closeSidebar = () => {
+    if (!sidebar) return;
+    sidebar.classList.remove('open');
+    sidebarBackdrop && sidebarBackdrop.classList.remove('show');
+    syncSidebarAccessibility();
+  };
+  const setMobileToolsExpanded = (expanded) => {
+    const nextExpanded = Boolean(expanded && mobileLayoutQuery.matches);
+    if (ask) ask.classList.toggle('mobile-tools-expanded', nextExpanded);
+    if (btnMobileTools) {
+      btnMobileTools.setAttribute('aria-expanded', nextExpanded ? 'true' : 'false');
+      btnMobileTools.setAttribute('title', nextExpanded ? 'Masquer les autres outils' : 'Afficher les autres outils');
+      btnMobileTools.setAttribute('aria-label', nextExpanded ? 'Masquer les autres outils' : 'Afficher les autres outils');
+    }
+  };
+  syncSidebarAccessibility();
   if (btnMenu)         btnMenu.addEventListener('click', openSidebar);
+  if (btnSidebarClose) btnSidebarClose.addEventListener('click', closeSidebar);
   if (sidebarBackdrop) sidebarBackdrop.addEventListener('click', closeSidebar);
+  if (btnMobileTools) {
+    btnMobileTools.addEventListener('click', () => {
+      setMobileToolsExpanded(btnMobileTools.getAttribute('aria-expanded') !== 'true');
+    });
+  }
+  [btnAdobeMode, btnBiblioMode, btnNotesMode, btnAgendaMode].forEach((button) => {
+    if (button) button.addEventListener('click', () => setMobileToolsExpanded(false));
+  });
+  const handleMobileLayoutChange = () => {
+    if (!mobileLayoutQuery.matches) {
+      closeSidebar();
+      setMobileToolsExpanded(false);
+    } else {
+      syncSidebarAccessibility();
+    }
+    syncComposerHeight();
+  };
+  if (typeof mobileLayoutQuery.addEventListener === 'function') {
+    mobileLayoutQuery.addEventListener('change', handleMobileLayoutChange);
+  } else if (typeof mobileLayoutQuery.addListener === 'function') {
+    mobileLayoutQuery.addListener(handleMobileLayoutChange);
+  }
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    closeSidebar();
+    setMobileToolsExpanded(false);
+  });
 
   // ---- Web search toggle
   let webSearchEnabled = localStorage.getItem("frida.webSearch") === "1";

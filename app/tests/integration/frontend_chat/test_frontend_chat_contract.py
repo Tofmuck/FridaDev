@@ -40,7 +40,7 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertIn('<meta name="apple-mobile-web-app-capable" content="yes" />', html_source)
         self.assertIn('<meta name="apple-mobile-web-app-title" content="Frida" />', html_source)
         self.assertIn(
-            '<meta name="apple-mobile-web-app-status-bar-style" content="default" />',
+            '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />',
             html_source,
         )
         self.assertIn(
@@ -53,8 +53,8 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertEqual(manifest["start_url"], "/")
         self.assertEqual(manifest["scope"], "/")
         self.assertEqual(manifest["display"], "standalone")
-        self.assertEqual(manifest["theme_color"], "#fbf8f3")
-        self.assertEqual(manifest["background_color"], "#fbf8f3")
+        self.assertEqual(manifest["theme_color"], "#060913")
+        self.assertEqual(manifest["background_color"], "#060913")
 
         icons = manifest.get("icons")
         self.assertIsInstance(icons, list)
@@ -67,6 +67,31 @@ class AppPhase8Tests(unittest.TestCase):
         combined_source = html_source + manifest_path.read_text(encoding="utf-8")
         self.assertNotIn("serviceWorker", combined_source)
         self.assertNotIn("caches.", combined_source)
+
+    def test_mobile_dialogue_composition_reuses_every_existing_chat_action(self) -> None:
+        html_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
+        js_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")
+        css_source = (APP_DIR / "web" / "styles.css").read_text(encoding="utf-8")
+
+        self.assertIn('class="mobile-frida-mark"', html_source)
+        self.assertIn('id="btnSidebarClose"', html_source)
+        self.assertIn('id="btnDialogueMode"', html_source)
+        self.assertIn('Mode dialogique pas encore disponible', html_source)
+        self.assertIn('id="btnMobileTools"', html_source)
+        self.assertIn('setMobileToolsExpanded', js_source)
+        self.assertIn('mobile-tools-expanded', js_source)
+        self.assertIn('data-presentation-theme="mobile-dialogue"', css_source)
+        for control_id in (
+            "btnMic",
+            "btnWebSearch",
+            "btnActiveDocument",
+            "btnImageGeneration",
+            "btnAdobeMode",
+            "btnBiblioMode",
+            "btnNotesMode",
+            "btnAgendaMode",
+        ):
+            self.assertEqual(html_source.count(f'id="{control_id}"'), 1)
 
     def test_hermeneutic_admin_link_uses_global_navigation_from_chat_surface(self) -> None:
         html_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")

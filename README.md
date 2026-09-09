@@ -21,8 +21,10 @@ testable et auditable sans lui ajouter opportunément de nouvelles capacités.
 
 ### Dialogue et continuité
 
-- interface Web disponible dans deux thèmes visuels, clair et sombre, avec une
-  géométrie et des capacités identiques ; le choix reste local au navigateur ;
+- interface Web de bureau disponible dans deux thèmes visuels, clair et sombre,
+  avec une géométrie et des capacités identiques ; le choix reste local au
+  navigateur ; sur iPhone, la composition sombre dédiée `Dialogue vivant`
+  reprend les mêmes conversations, répertoires et outils ;
 - conversation texte et dictée vocale optionnelle ; la dictée reste un blob,
   un upload et une transcription uniques, bornés à cinq minutes ;
 - réponses JSON ou streaming `text/plain`, avec un terminal de contrôle unique ;

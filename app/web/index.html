@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Frida" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/fridalogo.png" sizes="1024x1024" type="image/png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,12 +22,18 @@
   <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
 
   <!-- ===== Sidebar (gauche) ===== -->
-  <aside class="sidebar">
+  <aside id="sidebar" class="sidebar" aria-label="Navigation Frida">
     <div class="side-header">
       <div class="logo">
         <img src="./fridalogo.png" alt="Frida" width="28" height="28" />
       </div>
       <div class="brand-small">Frida</div>
+      <button id="btnSidebarClose" class="mobile-sidebar-close" type="button" title="Fermer le menu" aria-label="Fermer le menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
     </div>
 
     <button id="newChat" class="primary"><span class="sidebar-icon" data-sidebar-icon="plus" aria-hidden="true"></span><span>Nouveau chat</span></button>
@@ -43,13 +49,14 @@
   <div class="main">
     <!-- Top bar -->
     <header class="topbar">
-      <button id="btnMenu" class="btn-menu" title="Menu" aria-label="Ouvrir le menu">
+      <button id="btnMenu" class="btn-menu" title="Menu" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="sidebar">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <line x1="3" y1="6" x2="21" y2="6"/>
           <line x1="3" y1="12" x2="21" y2="12"/>
           <line x1="3" y1="18" x2="21" y2="18"/>
         </svg>
       </button>
+      <span class="mobile-frida-mark" aria-hidden="true"><img src="./fridalogo.png" alt="" width="34" height="34" /></span>
       <div class="title">Nouvelle conversation</div>
       <div class="dialogue-presence" aria-label="Frida présente"><span aria-hidden="true"></span>présente</div>
       <nav class="right global-nav" aria-label="Navigation globale">
@@ -181,6 +188,23 @@
                 <line x1="8" y1="2" x2="8" y2="6"/>
                 <line x1="16" y1="2" x2="16" y2="6"/>
                 <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+            </button>
+            <button type="button" id="btnDialogueMode" class="btn-dialogue-mode" title="Mode dialogique pas encore disponible" aria-label="Mode dialogique pas encore disponible" disabled>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+                <path d="M4 12v2" />
+                <path d="M8 8v8" />
+                <path d="M12 5v14" />
+                <path d="M16 8v8" />
+                <path d="M20 11v3" />
+              </svg>
+              <span>Dialogue</span>
+            </button>
+            <button type="button" id="btnMobileTools" class="btn-mobile-tools" title="Afficher les autres outils" aria-label="Afficher les autres outils" aria-expanded="false" aria-controls="ask">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <circle cx="5" cy="12" r="1.5" />
+                <circle cx="12" cy="12" r="1.5" />
+                <circle cx="19" cy="12" r="1.5" />
               </svg>
             </button>
           </div>
