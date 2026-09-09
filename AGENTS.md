@@ -65,6 +65,16 @@ et annonce comme indisponible tant que le chantier oral n'est pas autorise et
 livre. Cette exception n'autorise ni nouveau workflow metier, ni STT/TTS en
 ligne, ni boucle de dialogue oral.
 
+Exception explicite et strictement bornee decidee par l'utilisateur le 9
+septembre 2026: l'ecran mobile Figma `Mode dialogue - Ecoute` peut etre integre
+au frontend avec son controleur local d'etats et un harnais synthetique de test.
+Cette couche UI doit rester inaccessible par le bouton produit, encore
+desactive, et ne doit armer aucun microphone ni appeler aucun VAD, enregistrement,
+STT, TTS, backend ou provider. Elle peut seulement projeter des etats simules
+pour verrouiller le rendu, l'accessibilite et les deux familles d'animation.
+Le chat normal et le bureau restent inchanges. Toute activation audio reelle
+exige un lot ulterieur distinct et explicitement autorise.
+
 Chaque lot doit demontrer: pas de capacite produit ajoutee, comportements
 legitimes preserves hors bug corrige, complexite stable ou reduite, ancien
 chemin retire quand il est remplace, et invariants utiles verrouilles par des

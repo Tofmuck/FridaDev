@@ -7,7 +7,8 @@ Autorité Figma : fichier `FridaDev — Chat Web et dialogue oral`
 (`OiGP7QIP4XiEKjm901DEvY`), vues complètes `18:3` pour le mode clair et
 `27:34` pour le mode sombre, réunies dans `29:30`, puis composition mobile
 `Alternative B — Dialogue vivant` dans `71:2` (`71:9` pour l'écran de
-conversation).
+conversation) et écran dialogue `Mobile sombre — Mode dialogue — Écoute` dans
+`106:4`.
 
 ## Portée
 
@@ -108,7 +109,15 @@ topbar compacte avec identité Frida et compositeur flottant à deux niveaux.
 Le bouton `Dialogue` est présent pour rendre lisible la direction de design,
 mais il est désactivé et son nom accessible annonce explicitement que le mode
 dialogique n'est pas encore disponible. Il ne déclenche aucun appel, aucun
-état et aucune mutation.
+état et aucune mutation produit.
+
+L'écran dialogue est déjà intégré comme couche mobile cachée. Il reprend la
+topbar, l'orbe Frida, le signal vocal, le statut et les deux commandes de la
+maquette Figma. Son contrôleur local n'est pilotable que par les tests tant que
+le bouton reste désactivé. Il projette des états synthétiques sans microphone,
+VAD, audio, STT, TTS, backend ni provider. Aucun transcript n'apparaît dans
+cette vue. L'onde ne s'anime que sur une parole déclarée active ; l'orbe ne
+s'anime que sur l'état distinct `tts_speaking`.
 
 ## Limites
 
@@ -126,6 +135,7 @@ par un lot produit ultérieur explicitement autorisé.
 
 ```bash
 node --test app/tests/unit/frontend_chat/test_chat_theme_module.js
+node --test app/tests/unit/frontend_chat/test_dialogue_mode_module.js
 node --test --test-name-pattern="chat theme switch preserves" \
   app/tests/integration/frontend_browser/test_frontend_browser_smoke.js
 node --test --test-name-pattern="workspace folders start collapsed" \
@@ -133,6 +143,8 @@ node --test --test-name-pattern="workspace folders start collapsed" \
 node --test --test-name-pattern="iPhone chat uses Figma Dialogue vivant|iPhone navigation keeps the Figma B drawer" \
   app/tests/integration/frontend_browser/test_frontend_browser_smoke.js \
   app/tests/integration/frontend_browser/test_frontend_browser_workspace_folders.js
+node --test --test-name-pattern="iPhone dialogue preview keeps the Figma layout" \
+  app/tests/integration/frontend_browser/test_frontend_browser_smoke.js
 ```
 
 La preuve navigateur doit comparer les rectangles du formulaire, du textarea
@@ -150,3 +162,9 @@ désactivé, ouverture/fermeture des outils secondaires, tiroir de navigation et
 présence effective des actions de répertoire. Elle vérifie aussi l'égalité des
 largeurs `scrollWidth/clientWidth` du document, de la zone principale et du fil,
 ainsi que son verrouillage tactile sur l'axe vertical.
+
+La preuve de l'écran dialogue impose en plus les dimensions `414 × 896`, la
+topbar hors safe area à `82 px`, l'orbe `344 × 344`, le panneau inférieur
+`390 × 84`, le chargement des SVG Figma, l'absence de champ de transcription,
+l'inertie du chat masqué et les déclenchements d'animation distincts pour Tof
+et Frida.

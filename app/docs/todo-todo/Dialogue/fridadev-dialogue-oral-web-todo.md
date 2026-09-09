@@ -5,8 +5,9 @@ Dernière mise à jour de reconnaissance : 9 septembre 2026.
 
 **Statut : contrat initial et reconnaissance technique iPhone consignés. Les
 choix V1 du VAD, du STT et du TTS sont retenus ; seule leur invalidation par le
-test automobile réel peut les rouvrir. Aucune implémentation n'est encore
-autorisée par ce document.**
+test automobile réel peut les rouvrir. Le squelette visuel Figma et son
+contrôleur local d'états sont intégrés, mais l'entrée produit reste désactivée
+et aucun raccord audio n'est commencé.**
 
 ## Intention
 
@@ -108,6 +109,22 @@ La vue Dialogue n'est pas une surface de contrôle de dictée. Elle montre les
 états fonctionnels nécessaires — écoute, transcription, réflexion, parole,
 pause ou erreur — sans afficher le texte STT. Le fil normal demeure la surface
 d'inspection a posteriori du texte réellement envoyé et de la réponse reçue.
+
+### Squelette UI intégré — 9 septembre 2026
+
+La composition Figma `Mobile sombre — Mode dialogue — Écoute` (`106:4`) est
+intégrée au frontend mobile avec ses SVG d'autorité, le PNG transparent Frida,
+les safe areas Safari et un contrôleur local fermé sur les états `listening`,
+`user_speaking`, `transcribing`, `thinking`, `tts_speaking`, `paused` et
+`error`. Elle ne dessine pas la barre d'état ni l'indicateur d'accueil iOS,
+qui appartiennent au système.
+
+Le harnais synthétique prouve les règles d'animation sans fabriquer de capacité
+audio : repos en écoute silencieuse, onde seule pour `user_speaking`, repos en
+transcription et réflexion, onde et orbe ensemble pour `tts_speaking`, repos en
+pause ou erreur. Aucun microphone, VAD, enregistrement, STT, TTS, endpoint ou
+provider n'est raccordé. Le bouton produit reste désactivé ; l'écran ne peut
+être ouvert que par le contrôleur de test jusqu'au lot audio autorisé.
 
 ## Méthode obligatoire de choix du transport et des modèles
 
@@ -246,7 +263,8 @@ ligne, traitement Frida inchangé, lecture TTS, puis réarmement automatique.
 
 ## Frontière d'autorisation
 
-Ce mode constitue une extension fonctionnelle. Sa consignation documentaire
-ne vaut ni levée implicite de la doctrine de consolidation, ni autorisation de
-modifier le code, le runtime, les providers ou la configuration. Son
-implémentation exigera une décision explicite et un cadrage séparé.
+Ce mode constitue une extension fonctionnelle. L'exception du 9 septembre
+autorise seulement le squelette UI décrit ci-dessus. Elle ne vaut pas
+autorisation d'activer le bouton, le microphone, le VAD, l'enregistrement, le
+STT, le TTS, un endpoint, un provider ou une configuration. Ces raccords
+exigeront la roadmap dédiée et des lots explicitement autorisés.

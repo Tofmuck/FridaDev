@@ -805,6 +805,87 @@ test('iPhone conversation stays on the vertical axis during touch scrolling', as
   });
 });
 
+test('iPhone dialogue preview keeps the Figma layout and honest animation states', async () => {
+  await openBrowserPage({
+    mockScript: chatMockScript({ streamMode: 'done' }),
+    afterPage: (page) => page.setViewportSize({ width: 414, height: 896 }),
+  }, async (page) => {
+    await page.waitForSelector('#message:not([disabled])');
+    await page.waitForFunction(() => document.documentElement.dataset.presentationTheme === 'mobile-dialogue');
+
+    assert.equal(await page.locator('#btnDialogueMode').isDisabled(), true);
+    await page.evaluate(() => window.FridaDialogueModeController.enter());
+    await page.waitForSelector('#dialogueModeScreen:not([hidden])');
+
+    const layout = await page.evaluate(() => {
+      const rect = (selector) => {
+        const box = document.querySelector(selector).getBoundingClientRect();
+        return {
+          left: Math.round(box.left),
+          top: Math.round(box.top),
+          width: Math.round(box.width),
+          height: Math.round(box.height),
+          bottom: Math.round(box.bottom),
+        };
+      };
+      const screen = document.querySelector('#dialogueModeScreen');
+      const main = document.querySelector('.main');
+      return {
+        screen: rect('#dialogueModeScreen'),
+        header: rect('.dialogue-mode-header'),
+        orb: rect('.dialogue-mode-orb'),
+        controls: rect('.dialogue-mode-controls'),
+        title: document.querySelector('#dialogueModeTitle').textContent,
+        status: document.querySelector('#dialogueModeStatus').textContent,
+        state: document.documentElement.dataset.dialogueState,
+        voiceActive: document.documentElement.dataset.dialogueVoiceActive,
+        fridaSpeaking: document.documentElement.dataset.dialogueFridaSpeaking,
+        transcriptControls: screen.querySelectorAll('textarea, input, [data-transcript]').length,
+        backgroundInert: main.hasAttribute('inert'),
+        backgroundAriaHidden: main.getAttribute('aria-hidden'),
+        missingImages: Array.from(screen.querySelectorAll('img')).filter((image) => !image.complete || image.naturalWidth === 0).length,
+      };
+    });
+
+    assert.deepEqual(layout.screen, { left: 0, top: 0, width: 414, height: 896, bottom: 896 });
+    assert.deepEqual(layout.header, { left: 0, top: 0, width: 414, height: 82, bottom: 82 });
+    assert.equal(layout.orb.width, 344);
+    assert.equal(layout.orb.height, 344);
+    assert.deepEqual(layout.controls, { left: 12, top: 778, width: 390, height: 84, bottom: 862 });
+    assert.equal(layout.title, 'Dialogue avec Frida');
+    assert.equal(layout.status, 'ÉCOUTE ACTIVE');
+    assert.equal(layout.state, 'listening');
+    assert.equal(layout.voiceActive, 'false');
+    assert.equal(layout.fridaSpeaking, 'false');
+    assert.equal(layout.transcriptControls, 0);
+    assert.equal(layout.backgroundInert, true);
+    assert.equal(layout.backgroundAriaHidden, 'true');
+    assert.equal(layout.missingImages, 0);
+
+    const animationNames = () => page.evaluate(() => ({
+      wave: getComputedStyle(document.querySelector('.dialogue-signal-wave-3')).animationName,
+      orb: getComputedStyle(document.querySelector('.dialogue-orb-halo')).animationName,
+    }));
+
+    assert.deepEqual(await animationNames(), { wave: 'none', orb: 'none' });
+    await page.evaluate(() => window.FridaDialogueModeController.setState('user_speaking'));
+    assert.deepEqual(await animationNames(), { wave: 'dialogue-wave-voice', orb: 'none' });
+    await page.evaluate(() => window.FridaDialogueModeController.setState('thinking'));
+    assert.deepEqual(await animationNames(), { wave: 'none', orb: 'none' });
+    await page.evaluate(() => window.FridaDialogueModeController.setState('tts_speaking'));
+    assert.deepEqual(await animationNames(), { wave: 'dialogue-wave-voice', orb: 'dialogue-orb-breathe' });
+
+    await page.click('#dialogueModePause');
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.dialogueState), 'paused');
+    assert.equal(await page.locator('#dialogueModePauseLabel').textContent(), 'Reprendre');
+    assert.deepEqual(await animationNames(), { wave: 'none', orb: 'none' });
+
+    await page.click('#dialogueModeEnd');
+    assert.equal(await page.locator('#dialogueModeScreen').isHidden(), true);
+    assert.equal(await page.locator('.main').getAttribute('aria-hidden'), null);
+  });
+});
+
 test('chat reasoning shortcut stays compact on desktop and mobile', async () => {
   for (const viewport of [
     { width: 1440, height: 900, name: 'desktop', maxWidth: 150 },

@@ -40,6 +40,10 @@
   if (!agendaMode) {
     throw new Error("FridaAgendaMode module missing");
   }
+  const dialogueMode = window.FridaDialogueMode;
+  if (!dialogueMode) {
+    throw new Error("FridaDialogueMode module missing");
+  }
   const notesMode = window.FridaNotesMode;
   if (!notesMode) {
     throw new Error("FridaNotesMode module missing");
@@ -75,6 +79,7 @@
   const btnAdobeMode = $("#btnAdobeMode");
   const btnBiblioMode = $("#btnBiblioMode");
   const btnAgendaMode = $("#btnAgendaMode");
+  const btnDialogueMode = $("#btnDialogueMode");
   const btnNotesMode = $("#btnNotesMode");
   const adobeProductChoices = $("#adobeProductChoices");
   const btnExportConversation = $("#btnExportConversation");
@@ -110,6 +115,13 @@
   const btnSidebarClose = $("#btnSidebarClose");
   const btnMobileTools = $("#btnMobileTools");
   const currentConversationTitle = document.querySelector('.topbar .title');
+  const dialogueModeScreen = $("#dialogueModeScreen");
+  const dialogueModeStatus = $("#dialogueModeStatus");
+  const dialogueModePause = $("#dialogueModePause");
+  const dialogueModePauseLabel = $("#dialogueModePauseLabel");
+  const dialogueModeEnd = $("#dialogueModeEnd");
+  const dialogueModeClose = $("#dialogueModeClose");
+  const dialogueModeNavigation = $("#dialogueModeNavigation");
   let composerHeightObserver = null;
   const syncComposerHeight = () => {
     if (!ask) return;
@@ -149,6 +161,20 @@
     sidebarBackdrop && sidebarBackdrop.classList.remove('show');
     syncSidebarAccessibility();
   };
+  const dialogueModeController = dialogueMode.createDialogueModeController({
+    rootEl: document.documentElement,
+    screenEl: dialogueModeScreen,
+    backgroundEl: document.querySelector('.main'),
+    statusEl: dialogueModeStatus,
+    entryButtonEl: btnDialogueMode,
+    pauseButtonEl: dialogueModePause,
+    pauseLabelEl: dialogueModePauseLabel,
+    endButtonEl: dialogueModeEnd,
+    closeButtonEl: dialogueModeClose,
+    navigationButtonEl: dialogueModeNavigation,
+    onOpenNavigation: openSidebar,
+  });
+  window.FridaDialogueModeController = dialogueModeController;
   const setMobileToolsExpanded = (expanded) => {
     const nextExpanded = Boolean(expanded && mobileLayoutQuery.matches);
     if (ask) ask.classList.toggle('mobile-tools-expanded', nextExpanded);
@@ -172,6 +198,7 @@
   });
   const handleMobileLayoutChange = () => {
     if (!mobileLayoutQuery.matches) {
+      dialogueModeController.exit();
       closeSidebar();
       setMobileToolsExpanded(false);
     } else {
@@ -186,6 +213,7 @@
   }
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
+    dialogueModeController.exit();
     closeSidebar();
     setMobileToolsExpanded(false);
   });
