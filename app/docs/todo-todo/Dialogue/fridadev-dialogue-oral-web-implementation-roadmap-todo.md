@@ -247,6 +247,15 @@ l'envoi.
 - HTTP interne `200`, rejet local hermétique de la route D1 en `422`, empreintes
   des cinq fichiers runtime identiques entre checkout et conteneur, et zéro
   ligne récente `ERROR`, `CRITICAL` ou `Traceback` depuis le démarrage.
+- micro-correctif de refermeture D1 : la matrice multipart WSGI recense désormais
+  explicitement les quatre routes et prouve pour Dialogue les bornes adjacentes,
+  les longueurs absentes, invalides ou non positives, `wsgi.input_terminated`,
+  l'absence de surlecture et la lecture fichier limitée à borne + 1 avec des
+  buffers d'environ 1 Kio. Le transcript participe à nouveau à l'égalité de
+  `DialogueSttResult` tout en restant exclu de son `repr`. Les sélections passent
+  `31/31` puis `61/61` sans réseau ; les mutations du flag d'égalité et de
+  l'inventaire WSGI remettent chacune leur témoin au rouge avant restauration
+  SHA-256 exacte.
 
 ---
 

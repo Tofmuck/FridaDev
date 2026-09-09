@@ -55,7 +55,7 @@ _DEFAULT_TIMEOUT_S = 65
 @dataclass(frozen=True)
 class DialogueSttResult:
     ok: bool
-    text: str = field(default="", repr=False, compare=False)
+    text: str = field(default="", repr=False)
     reason_code: str = ""
     http_status: int = 503
     duration_ms: int = 0

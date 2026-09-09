@@ -108,6 +108,24 @@ class DialogueSttServiceTests(unittest.TestCase):
         self.llm = _FakeLlmClient()
         self.logger = _FakeLogger()
 
+    def test_result_equality_includes_the_transcript(self) -> None:
+        first = dialogue_stt_service.DialogueSttResult(
+            ok=True,
+            text="premier transcript",
+            reason_code="dialogue_stt_ok",
+            http_status=200,
+            duration_ms=1,
+        )
+        second = dialogue_stt_service.DialogueSttResult(
+            ok=True,
+            text="second transcript",
+            reason_code="dialogue_stt_ok",
+            http_status=200,
+            duration_ms=1,
+        )
+
+        self.assertNotEqual(first, second)
+
     def _transcribe(self, audio=b"audio-bytes", mime_type="audio/webm", *, transport=None):
         effective_transport = transport or _FakeTransport()
         result = dialogue_stt_service.transcribe_dialogue_audio(
