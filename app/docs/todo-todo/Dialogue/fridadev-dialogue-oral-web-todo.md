@@ -11,7 +11,7 @@ sont implémentées et livrées. La capture locale D3 est corrigée, refermée e
 livrée avec pré-roll borné et assets optionnels. D4 raccorde désormais le WAV à
 D1 puis au chat canonique dans le seul harnais synthétique ; D4 est fermé,
 poussé et livré après toutes les preuves et la vérification runtime. L'entrée
-produit reste désactivée. D5 est implémenté et vérifié, en cours de livraison :
+produit reste désactivée. D5 est fermé, poussé et livré après vérification runtime :
 TTS frontend, lecteur possédé et réarmement après fin dans le seul harnais.
 D6 et les canaris réels restent non commencés.**
 

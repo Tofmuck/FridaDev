@@ -894,7 +894,7 @@ dans le conteneur hermétique décrit ci-dessus.
 
 ## Lot D5 — lecture TTS et boucle semi-duplex
 
-**Statut : D5 implémenté et vérifié ; commit, push et livraison en cours.
+**Statut : D5 fermé, poussé et livré après vérification runtime.
 Bouton produit toujours désactivé ; D6 non commencé.**
 
 **Livrable :** après la réponse finale canonique, Frida la lit, anime uniquement
@@ -921,14 +921,16 @@ pendant le son effectif, puis réarme l'écoute.
 - Le contrôleur possède exactement un `HTMLAudioElement` et révoque chaque
   object URL après fin ou erreur.
 - Le submit canonique de D4 retourne `{ ok: true, text }`, avec le texte exact
-  du final lock, y compris `""`. D5 devra consommer cette valeur directement,
+  du final lock, y compris `""`. D5 consomme cette valeur directement,
   sans relire le DOM, le cache ou un fragment de stream ; un échec fermé ne
   fournit aucun texte à lire.
 
 - [x] **D5.1 — Écrire les tests rouges de vérité audio**
 
-  Prouver : aucun TTS avant final lock ; un seul POST TTS ; activation initiale
-  Safari conservée ; état `tts_speaking` seulement après l'événement `playing` ;
+  Prouver : aucun TTS avant final lock ; un seul POST TTS ; amorce locale appelée
+  synchroniquement dans le geste initial, refus fermé avant armement (Safari
+  iPhone reste à valider matériellement en D6) ; état `tts_speaking` seulement
+  après l'événement `playing` ;
   arrêt d'animation sur `pause`, `waiting`, `ended`, `error` et sortie ; aucun
   micro pendant lecture ; réarmement seulement après `ended`.
 
@@ -941,9 +943,10 @@ pendant le son effectif, puis réarme l'écoute.
 
 - [x] **D5.3 — Fermer la machine semi-duplex**
 
-  Cycle nominal exact : `listening → user_speaking → transcribing → thinking →
-  tts_speaking → listening`. Pause désarme microphone et lecteur. Terminer ou
-  fermer arrête pistes, VAD, recorder, requêtes frontend encore annulables,
+  Cycle nominal : `listening → user_speaking → transcribing → thinking →
+  tts_pending → tts_speaking → listening`, avec `tts_pending` également pendant
+  le buffering et le réarmement après cleanup. Pause désarme microphone et
+  lecteur. Terminer ou fermer arrête pistes, VAD, recorder, requêtes frontend encore annulables,
   audio et animations, puis rend le fil normal interactif.
 
 - [x] **D5.4 — Prouver échecs et reprises explicites**
@@ -965,7 +968,7 @@ pendant le son effectif, puis réarme l'écoute.
 
   Puis exécuter le smoke Chromium complet existant.
 
-- [ ] **D5.6 — Contre-auditer, documenter, commit et push**
+- [x] **D5.6 — Contre-auditer, documenter, commit et push**
 
   Vérifier zéro full-duplex, barge-in, chunking TTS, lecture anticipée, fuite
   textuelle ou boucle automatique après erreur.
@@ -1057,6 +1060,58 @@ sont verts. Son activation appartient exclusivement à D6.
   synthétiques inspectables, sans provider ni microphone physique. Capture
   visuelle mobile `tts_pending` inspectée à 390 × 844 ; les données de test et
   artefacts temporaires restent hors dépôt.
+
+---
+
+### Livraison D5 vérifiée — 9 septembre 2026
+
+- commit applicatif poussé sur `main` :
+  `5afc5a416bbf944d3f247d0857008545f65b25e3`, message
+  `feat(dialogue): complete semi-duplex voice loop` ; HEAD/upstream égaux,
+  divergence `0/0`, worktree propre avant reconstruction ;
+- reconstruction avec le Compose d'autorité :
+  `docker compose -p fridadev-app -f /opt/platform/fridadev-app/docker-compose.yml build --pull=false fridadev`,
+  puis `up -d --no-deps --force-recreate fridadev`. Seul `platform-fridadev`
+  est recréé, sans pull Git ni modification de Compose ;
+- image livrée :
+  `sha256:d8ff6e73b8612b77831dba2b2d4b133bc0d3a1505f3d8bb175427a2a984a194a` ;
+- rollback conservé et vérifié avant reconstruction :
+  `platform-fridadev-app:rollback-d5-20260909T200335Z`, image précédente
+  `sha256:d6907e75766bdc95af2ba2825f2294d147718edea89a8a62a1417766d6fcaa84`.
+  Ce tag permet de rétablir l'image applicative avec la même recréation ciblée,
+  sans toucher aux données ni aux services voisins ;
+- service démarré à `2026-09-09T20:04:00.071788586Z`, `running/healthy`,
+  restart `0`, OOM `false`. Identité, image, démarrage, état, restart/OOM et
+  health des `31` voisins strictement inchangés ; SHA-256 du relevé JSON
+  normalisé (clés triées, séparateurs compacts, sans retour final) :
+  `04fb8394d097e7be2621370727f8c5d208645141194e5d36bd3c576414409bd1` ;
+- page et `17` scripts/assets/licences servis en HTTP interne `200` ; leurs
+  `18` empreintes sont identiques entre checkout, disque du conteneur et corps
+  HTTP. Les médias HTML, JavaScript et WASM sont corrects. Les `24` fichiers
+  vérifiés sur disque, incluant les tests D5 et frontières backend, correspondent
+  au checkout. SHA-256 du relevé complet chemin/statut/média/empreintes,
+  selon la même sérialisation JSON normalisée :
+  `d9b85b5804bb6b966ede4b78684705dcb38dfa657534cec59c88c467e1b2864d` ;
+- le HTML servi conserve littéralement `disabled` sur le bouton Dialogue et
+  ne charge aucun script VAD/ONNX au bootstrap. Le contrôle public sans
+  authentification retourne `302` avec `Accept: text/html`, `401` sans cet
+  en-tête ; la différence initiale de commande est ainsi reproduite et expliquée ;
+- depuis le démarrage livré : zéro ligne `ERROR`, `CRITICAL` ou `Traceback`,
+  zéro POST `/api/chat/dialogue/*` et zéro marqueur de fin provider STT/TTS.
+  Aucun microphone physique, canari ni appel provider réel n'a été exécuté ;
+- les voisins Python D1/D2/routes, Whisper et `input_mode` repassent `57/57`
+  depuis l'image effectivement livrée, sans montage du checkout, sans réseau,
+  sans données opérateur, filesystem read-only et `/tmp` en tmpfs ;
+- hypothèses H1 à H4 et H6 à H10 confirmées sur les frontières et preuves
+  décrites ci-dessus. H5 est confirmée comme garde navigateur : seul `playing`
+  autorise l'animation ; cela ne mesure pas la sortie sonore matérielle. Pour
+  H9, l'inertie locale est prouvée indépendamment de l'annulation du fetch,
+  qui ne garantit pas l'arrêt du traitement serveur déjà reçu ;
+- la réconciliation de livraison modifie seulement le contrat, la roadmap et
+  le hub. Les fichiers runtime restent ceux du commit applicatif livré ;
+  aucune deuxième reconstruction ou recréation n'est nécessaire.
+
+**D5 FERMÉ ET LIVRÉ — BOUTON PRODUIT TOUJOURS DÉSACTIVÉ — D6 NON COMMENCÉ.**
 
 ---
 
