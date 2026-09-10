@@ -9,15 +9,17 @@ test automobile réel peut les rouvrir. Le squelette visuel Figma et son
 contrôleur local d'états sont intégrés. Les frontières backend STT D1 et TTS D2
 sont implémentées et livrées. La capture locale D3 est corrigée, refermée et
 livrée avec pré-roll borné et assets optionnels. D4 raccorde désormais le WAV à
-D1 puis au chat canonique dans le seul harnais synthétique ; D4 est fermé,
+D1 puis au chat canonique, initialement dans le harnais synthétique ; D4 est fermé,
 poussé et livré après toutes les preuves et la vérification runtime. L'entrée
 produit reste désactivée. D5 est fermé, poussé et livré après vérification runtime :
-TTS frontend, lecteur possédé et réarmement après fin dans le seul harnais.
+TTS frontend, lecteur possédé et réarmement après fin, initialement dans le harnais.
 D6.1 est fermé : le préflight local sans transport fonctionne sur Safari iPhone
 après remplacement du primer WAV d'un échantillon, rejeté par le décodeur, par
 un primer silencieux de huit échantillons. Le VAD matériel, la distinction
 parole/silence et la sortie de session ont été vérifiés sans appel fournisseur.
-D6.2 à D6.5, Z et les canaris réels restent non commencés.**
+D6.2a prépare l'entrée ponctuelle `full_canary` vers cette même chaîne.
+D6.2 reste ouvert, sans canari exécuté et sous `GO canari` distinct.
+D6.3 à D6.5 et Z restent non commencés.**
 
 ## Intention
 
@@ -267,20 +269,21 @@ L'exception D5 explicitement approuvée prolonge seulement
 `FridaDialogueD3Harness.openAndArm({ routeToChat: true })`. Aucun nouveau mode
 de harnais concurrent : ce chemin enchaîne désormais D4 puis D5. Sans cette
 option, D3 reste local ; sans adaptateurs de test, le harnais reste absent.
+L'entrée ponctuelle D6.2a décrite ci-dessous réutilise cette chaîne complète.
 Le bouton produit reste littéralement `disabled`. Le bootstrap normal ne crée
 aucun lecteur et ne charge aucun asset lourd supplémentaire.
 
 L'ouverture crée un unique `HTMLAudioElement`, possédé par la session et passé
 explicitement au recorder D3 comme `ttsMediaElement`, sans recherche DOM.
 `start()` appelle `play()` synchroniquement dans le geste initial sur un WAV
-PCM silencieux fixe d'un échantillon, embarqué en data URI, sans réseau ni
-object URL. L'élément reste non muet. `whenReady()` doit confirmer le succès
+PCM silencieux fixe de huit échantillons depuis le correctif D6.1, embarqué
+en data URI, sans réseau ni object URL. L'élément reste non muet. `whenReady()` doit confirmer le succès
 de cette préparation et son nettoyage avant tout armement. Refus, annulation
 ou erreur empêchent l'armement ; les événements de cette amorce ne sont jamais
 des événements TTS métier. Le même élément sert tous les tours suivants.
-Cette préparation est **à valider matériellement en D6 sur Safari iPhone** ;
-ni la documentation WebKit macOS ni le smoke Chromium ne garantissent cette
-compatibilité.
+Cette préparation a été validée matériellement en D6.1 sur Safari iPhone.
+La lecture du MP3 fournisseur et le réarmement de la boucle restent à prouver
+en D6.2 ; le smoke Chromium ne remplace pas cette preuve matérielle.
 
 Après résolution complète du submit D4, seul le `text` du résultat
 `{ ok: true, text }` est envoyé à `dialogueAudioClient.synthesize(text, { signal })`.
@@ -360,7 +363,7 @@ Après réussite de l'amorce seulement, les assets D3 same-origin sont chargés 
 le recorder reçoit ce même lecteur avant d'acquérir son unique MediaStream.
 Le VAD et la capture partagent le flux. L'acquisition micro intervient après
 ce chargement ; la permission et le fonctionnement depuis ce seul geste
-restent à valider matériellement sur Safari iPhone.
+ont été validés matériellement sur Safari iPhone en D6.1, comme consigné ci-dessous.
 
 Le mode local utilise le contrôleur de session existant, sans seconde machine.
 Le wiring ne construit aucun client STT/TTS et ne transmet aucun callback chat.
@@ -413,6 +416,44 @@ frontières réseau.
 La preuve établit le préflight Safari iPhone et ferme D6.1. Elle n'autorise ni
 appel fournisseur ni activation produit : D6.2 demeure le premier canari
 borné et D6.4 devra toujours retirer explicitement le mécanisme de marqueur.
+
+## Entrée ponctuelle D6.2a — 10 septembre 2026
+
+Le diagnostic D6.2 est confirmé au HEAD initial
+`b6803e65f0e702a1d73f67f920cf175062da2aef` : le HTML désactivé ne donne aucune
+autorité produit ; le harnais complet est absent sans adaptateurs de test ;
+le marqueur D6.1a ne permet que le préflight local.
+
+L'exception D6.2a ajoute seulement la valeur exacte
+`data-dialogue-preflight="full_canary"` au listener existant. Après préparation
+éphémère dans Inspector et activation DOM locale du bouton, un clic trusted
+consomme le marqueur, redésactive le bouton, puis appelle synchroniquement
+`openDialogueSession('full')`. Les clients D4/D5 de production et la soumission
+canonique sont ceux du chemin complet existant. Aucun adaptateur de bootstrap
+n'est nécessaire à ce droit d'entrée, et aucun nouveau global n'est exposé.
+
+Le marqueur est absent du HTML servi et de toute URL, configuration ou
+persistance. Toute valeur autre que les deux valeurs exactes est consommée
+puis refusée ; elle ne retombe jamais sur l'autorité produit. Sans marqueur,
+le booléen immuable du bootstrap reste seul décisionnaire. `local_preflight`
+conserve l'interdiction de transport et ignore les blobs. L'événement synthétique
+reste inerte. D6.4 supprimera explicitement **tout** le mécanisme de marqueur.
+
+Une préparation autorise une seule ouverture : un nouveau clic après consommation,
+même après réactivation DOM seule, n'ouvre rien avec le HTML actuellement servi.
+Cette propriété ne limite pas la session complète à un tour : la boucle et le
+réarmement D5 restent inchangés. Le budget 1 STT / 1 chat / 1 TTS appartient
+au protocole séparé D6.2, à établir avant son `GO canari` explicite.
+
+Les preuves Chromium utilisent un vrai clic trusted, l'amorce native, les vrais
+assets D3 et un flux synthétique sans microphone physique. Le WAV traverse les
+vrais clients vers trois requêtes HTTP interceptées ; une réponse TTS 503
+contrôlée termine ce témoin sans simuler une lecture réussie. Aucun audio,
+transcript ou réponse opérateur n'est collecté. Les mutations et résultats
+de livraison sont consignés dans la section D6.2a de la roadmap.
+
+**D6.2a est un prérequis technique ; D6.2 reste ouvert, sans appel fournisseur,
+avec `GO canari` distinct requis. D6.3 à D6.5 et Z restent non commencés.**
 
 ## Méthode obligatoire de choix du transport et des modèles
 
@@ -641,9 +682,11 @@ ci-dessus, dans le harnais synthétique. L'exception D5 distincte approuvée le
 9 septembre autorise uniquement la lecture et la boucle décrites ci-dessus,
 toujours sans provider réel ni activation produit. L'exception D6.1a approuvée
 le 10 septembre autorise uniquement le prérequis local décrit ci-dessus.
-D6.1 est fermé après la preuve iPhone et le correctif minimal du primer WAV ;
-D6.2 à D6.5 et Z restent non commencés et exigent des décisions explicites
-distinctes.
+D6.1 est fermé après la preuve iPhone et le correctif minimal du primer WAV.
+L'exception D6.2a du 10 septembre autorise seulement l'entrée ponctuelle
+`full_canary`, ses tests hermétiques et sa livraison applicative. D6.2 reste
+ouvert et son exécution fournisseur exige encore un `GO canari` distinct.
+D6.3 à D6.5 et Z restent non commencés et exigent des décisions explicites.
 
 ## Roadmap d'implémentation
 

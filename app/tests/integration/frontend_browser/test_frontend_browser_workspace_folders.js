@@ -272,7 +272,8 @@ test('iPhone navigation keeps the Figma B drawer and all folder operations', asy
     await page.waitForSelector('.workspace-folder-row');
     assert.equal(await page.locator('.sidebar').getAttribute('aria-hidden'), 'true');
     await page.click('#btnMenu');
-    await page.waitForFunction(() => Math.round(document.querySelector('.sidebar').getBoundingClientRect().left) === 0);
+    // Wait for the actual end position; rounded -0 passes === 0 before the transition ends.
+    await page.waitForFunction(() => document.querySelector('.sidebar').getBoundingClientRect().left === 0);
     assert.equal(await page.locator('.sidebar').getAttribute('aria-hidden'), 'false');
 
     const drawer = await page.locator('.sidebar').evaluate((node) => {

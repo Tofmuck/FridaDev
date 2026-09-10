@@ -152,7 +152,7 @@ Exception explicite et strictement bornee decidee par l'utilisateur le 10
 septembre 2026 : D6.1a autorise le raccord preparatoire du bouton a l'unique
 fonction interne d'ouverture D3-D5 et un mode explicite `local_preflight`.
 L'autorite produit est capturee au bootstrap depuis le HTML servi : tant que
-le bouton est servi `disabled`, une activation DOM ulterieure ne peut ouvrir
+le bouton est servi `disabled`, une activation DOM ulterieure seule ne peut ouvrir
 le mode complet. Seul le marqueur DOM exact
 `data-dialogue-preflight="local_preflight"`, prepare ephemerement dans Safari
 Inspector puis consomme et supprime au clic physique, autorise le preflight.
@@ -166,6 +166,21 @@ Safari iPhone et correction du primer WAV silencieux, passe de un a huit
 echantillons pour etre decodable. D6.2 a D6.5 et Z restent non commences. D6.4
 devra retirer explicitement le mecanisme de marqueur et activer le meme listener
 par le retrait commite de `disabled`, sans second wiring.
+
+Exception explicite et strictement bornee decidee par l'utilisateur le 10
+septembre 2026 : D6.2a autorise exclusivement l'extension du marqueur existant
+par la valeur exacte `full_canary`. Prepare ephemerement dans Inspector sur
+le bouton localement active, il est supprime et le bouton redesactive avant
+toute attente dans le clic trusted. Il ouvre une fois la fonction existante
+`openDialogueSession('full')`, avec les clients D4/D5 de production, sans
+adaptateurs de bootstrap requis. L'autorite produit immuable reste fausse pour
+le HTML servi `disabled`. Les valeurs inconnues sont refusees sans retombee
+produit ; `local_preflight` reste sans transport. Aucun nouveau global, harnais,
+listener, route, stockage ou changement D1-D5 n'est autorise. L'usage unique
+porte sur l'entree, pas sur le nombre de tours de la boucle D5 conservee.
+D6.2a autorise tests hermetiques, documentation et livraison du seul service
+applicatif ; aucun appel fournisseur reel. D6.2 reste ouvert et son canari
+exige un `GO canari` distinct. D6.4 retirera tout le mecanisme de marqueur.
 
 Chaque lot doit demontrer: pas de capacite produit ajoutee, comportements
 legitimes preserves hors bug corrige, complexite stable ou reduite, ancien

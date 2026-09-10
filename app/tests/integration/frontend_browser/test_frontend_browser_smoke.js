@@ -4193,7 +4193,8 @@ test('D6.1a DOM enable cannot grant bootstrap product authority with absent or m
     const box = await page.locator('#btnDialogueMode').boundingBox();
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
     assert.equal(await page.evaluate(() => window.FridaDialogueModeController.isActive()), false);
-    for (const marker of [null, '', 'full', 'local_preflight ']) {
+    for (const marker of [null, '', 'full', 'local_preflight ', 'full_canary ', ' full_canary',
+      'FULL_CANARY', 'full_canary_extra', 'full-canary', 'full_canar']) {
       await page.evaluate(marker => {
         const button = document.querySelector('#btnDialogueMode');
         if (marker === null) button.removeAttribute('data-dialogue-preflight');
@@ -4351,6 +4352,134 @@ test('D6.1a normal bootstrap without adapters opens local native primer and real
     await page.waitForFunction(() => window.__d61Native.vads[0].initializationState === 'destroyed');
     await page.evaluate(() => window.__d61Native.context.close());
     assert.equal(await page.locator('#btnDialogueMode').isDisabled(), true);
+  });
+});
+
+test('D6.2a full_canary trusted click consumes once and reaches production D4-D5 without bootstrap adapters', async () => {
+  const posts = [], external = [];
+  await openBrowserPage({
+    mockScript: `window.__canaryFetch = window.fetch.bind(window);`
+      + chatMockScript({ streamMode: 'done' }) + `
+      window.__canary = { opens: [], plays: [], streams: [], vads: [], canonical: [] };
+      const chatFetch = window.fetch;
+      window.fetch = (input, init) => ['/api/chat', '/api/chat/dialogue/transcribe', '/api/chat/dialogue/speech'].includes(input)
+        ? window.__canaryFetch(input, init) : chatFetch(input, init);
+      const play = HTMLMediaElement.prototype.play;
+      HTMLMediaElement.prototype.play = function () {
+        const button = document.querySelector('#btnDialogueMode');
+        window.__canary.plays.push({ trusted: window.event?.isTrusted === true,
+          onEntryButton: window.event?.currentTarget === button,
+          disabled: button.disabled, marker: button.getAttribute('data-dialogue-preflight') });
+        window.__canary.audio = this;
+        return play.call(this);
+      };
+      navigator.mediaDevices.getUserMedia = async () => {
+        const state = window.__canary;
+        state.context = new AudioContext();
+        const stream = state.context.createMediaStreamDestination().stream;
+        state.streams.push(stream); return stream;
+      };
+    `,
+    beforePage: async page => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      // Only the local static server can be contacted. Every API POST is intercepted below.
+      await page.route('**/*', route => {
+        const url = new URL(route.request().url());
+        if (url.hostname === '127.0.0.1') return route.fallback();
+        external.push(url.hostname); return route.fulfill({ status: 204, body: '' });
+      });
+      const fs = require('node:fs/promises'), path = require('node:path');
+      const source = await fs.readFile(path.resolve(__dirname, '../../../web/app.js'), 'utf8');
+      const instrumented = source.replace('const openDialogueSession = (mode) => {',
+        '$& window.__canary.opens.push(mode);').replace('async function submitCanonicalChatMessage(text, inputMode) {',
+        '$& window.__canary.canonical.push(inputMode);');
+      assert.notEqual(instrumented, source);
+      await page.route('**/app.js', route => route.fulfill({ contentType: 'application/javascript', body: instrumented }));
+      const recorder = await fs.readFile(path.resolve(__dirname, '../../../web/dialogue/dialogue_vad_recorder.js'), 'utf8');
+      await page.route('**/dialogue/dialogue_vad_recorder.js', route => route.fulfill({ contentType: 'application/javascript', body: recorder + `
+        const create = window.FridaDialogueVadRecorder.createDialogueVadRecorder;
+        window.FridaDialogueVadRecorder = { createDialogueVadRecorder(options) {
+          window.__canary.recorderAudio = options.ttsMediaElement; return create(options);
+        } };
+        const createVad = window.vad.MicVAD.new;
+        window.vad.MicVAD.new = async function (options) {
+          const vad = await createVad.call(this, options); window.__canary.vads.push(vad); return vad;
+        };
+      ` }));
+      await page.route('**/api/chat/dialogue/transcribe', async route => {
+        posts.push('stt');
+        const request = route.request(), body = request.postDataBuffer();
+        assert.equal(request.method(), 'POST');
+        assert.match(request.headers()['content-type'], /^multipart\/form-data; boundary=/);
+        assert.ok(body.includes(Buffer.from('name="audio"; filename="dialogue.wav"')));
+        assert.ok(body.includes(Buffer.from('Content-Type: audio/wav')));
+        assert.ok(body.includes(Buffer.from('RIFF')));
+        await route.fulfill({ json: { ok: true, text: 'Entrée synthétique', duration_ms: 1 } });
+      });
+      await page.route('**/api/chat', async route => {
+        posts.push('chat');
+        const payload = route.request().postDataJSON();
+        assert.equal(payload.input_mode, 'voice');
+        assert.equal(payload.conversation_id, 'conv-browser');
+        assert.equal(payload.message, 'Entrée synthétique');
+        await route.fulfill({ contentType: 'text/plain', body: '\x1e' + JSON.stringify({
+          kind: 'frida-stream-control', event: 'done', final_text: 'Final synthétique',
+          updated_at: '2026-09-10T00:00:00Z',
+        }) + '\n' });
+      });
+      await page.route('**/api/chat/dialogue/speech', async route => {
+        posts.push('tts');
+        assert.deepEqual(route.request().postDataJSON(), { text: 'Final synthétique' });
+        // A closed HTTP failure ends this transport witness without fabricated playback.
+        await route.fulfill({ status: 503, json: { ok: false, reason_code: 'dialogue_tts_provider_unavailable' } });
+      });
+    },
+  }, async page => {
+    await page.waitForFunction(() => document.querySelector('.topbar .title').textContent === 'Thread navigateur');
+    assert.equal(await page.evaluate(() => typeof window.__FRIDA_DIALOGUE_D3_TEST_ADAPTERS__), 'undefined');
+    assert.equal(await page.evaluate(() => typeof window.FridaDialogueD3Harness), 'undefined');
+    assert.equal(await page.locator('#btnDialogueMode').getAttribute('disabled'), '');
+    assert.equal(await page.locator('#btnDialogueMode').getAttribute('data-dialogue-preflight'), null);
+    await page.evaluate(() => {
+      const button = document.querySelector('#btnDialogueMode');
+      button.setAttribute('data-dialogue-preflight', 'full_canary'); button.disabled = false;
+      button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    assert.deepEqual(await page.evaluate(() => window.__canary.opens), []);
+    assert.deepEqual(await page.evaluate(() => window.__canary.plays), []);
+    assert.equal(await page.locator('#btnDialogueMode').getAttribute('data-dialogue-preflight'), 'full_canary');
+    await page.click('#btnDialogueMode');
+    assert.equal(await page.locator('#btnDialogueMode').getAttribute('data-dialogue-preflight'), null);
+    assert.equal(await page.locator('#btnDialogueMode').isDisabled(), true);
+    assert.deepEqual(await page.evaluate(() => window.__canary.opens), ['full'], 'consumed full_canary must open full once');
+    assert.deepEqual(await page.evaluate(() => window.__canary.plays),
+      [{ trusted: true, onEntryButton: true, disabled: true, marker: null }]);
+    await page.waitForFunction(() => window.__canary.vads[0]?.listening === true);
+    assert.equal(await page.evaluate(() => window.__canary.audio === window.__canary.recorderAudio), true);
+    await page.evaluate(async () => {
+      const raw = window.__canary.vads[0]; await raw._audioContext.suspend();
+      await raw.processFrame(new Float32Array(1536));
+      raw.frameProcessor.modelProcessFunc = async frame => ({ isSpeech: frame[0] > 0 ? 0.9 : 0 });
+      for (let i = 0; i < 8; i++) await raw.processFrame(new Float32Array(1536));
+      for (let i = 0; i < 5; i++) await raw.processFrame(new Float32Array(1536).fill(0.5));
+      for (let i = 0; i < 14; i++) await raw.processFrame(new Float32Array(1536));
+    });
+    await page.waitForFunction(() => document.documentElement.dataset.dialogueState === 'error');
+    assert.deepEqual(posts, ['stt', 'chat', 'tts']);
+    assert.deepEqual(await page.evaluate(() => window.__canary.canonical), ['dialogue']);
+    assert.equal(await page.evaluate(() => window.__canary.streams.every(s => s.getTracks().every(t => t.readyState === 'ended'))), true);
+    await page.click('#dialogueModePause'); await page.click('#dialogueModeEnd');
+    const box = await page.locator('#btnDialogueMode').boundingBox();
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await page.evaluate(() => { document.querySelector('#btnDialogueMode').disabled = false; });
+    await page.click('#btnDialogueMode'); // Inspector re-enable alone cannot reuse the consumed authority.
+    assert.deepEqual(await page.evaluate(() => window.__canary.opens), ['full']);
+    assert.equal(await page.locator('#dialogueModeScreen').isHidden(), true);
+    assert.deepEqual(posts, ['stt', 'chat', 'tts']);
+    assert.equal(await page.evaluate(() => window.__canary.streams.length), 1);
+    assert.equal(await page.evaluate(() => window.__canary.plays.length), 1);
+    assert.equal(external.every(host => ['fonts.googleapis.com', 'fonts.gstatic.com'].includes(host)), true);
+    await page.evaluate(() => window.__canary.context.close());
   });
 });
 

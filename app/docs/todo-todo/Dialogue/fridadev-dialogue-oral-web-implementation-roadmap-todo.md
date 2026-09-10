@@ -1305,10 +1305,76 @@ service. Le micro-lot correctif distinct ci-dessous lui succède.
 
 **D6.1 FERMÉ — PRÉFLIGHT SAFARI IPHONE VERT — AUCUN APPEL FOURNISSEUR.**
 
+### D6.2a — entrée ponctuelle du canari — 10 septembre 2026
+
+- [x] **D6.2a — Prérequis technique implémenté et vérifié**
+
+  Le canari D6.2 reste ouvert et non exécuté. Sa préparation physique et son
+  premier appel réel exigent encore un `GO canari` distinct. Aucun appel
+  fournisseur n'est autorisé par D6.2a.
+
+- Baseline conforme : `/opt/platform/fridadev`, `main`, HEAD/upstream
+  `b6803e65f0e702a1d73f67f920cf175062da2aef`, divergence `0/0`, worktree propre,
+  y compris après fetch ; sans SSH ni pull.
+- Diagnostic confirmé : autorité produit fausse avec le HTML `disabled`,
+  marqueur précédent limité à `local_preflight`, harnais complet conditionné
+  aux adaptateurs absents du bootstrap normal.
+- Décision minimale : un seul cas exact `full_canary` dans le listener existant,
+  après suppression du marqueur et redésactivation du bouton, appelle
+  `openDialogueSession('full')`. Aucun second mode de session, listener,
+  contrôleur, global runtime ou transport. L'autorité produit reste immuable.
+- Rouge causal : clic Chromium trusted, marqueur consommé et bouton désactivé,
+  mais aucune ouverture au HEAD initial (`[]` au lieu de `['full']`). Les
+  variantes absente, vide, espaces, suffixe, casse et graphies proches restent
+  refusées ; un événement synthétique reste inerte.
+- Vert central sans adaptateurs de bootstrap : une ouverture `full`, `play()`
+  natif dans le listener trusted avec marqueur déjà absent et bouton désactivé,
+  lecteur identique transmis au vrai recorder, vrais assets VAD/ONNX locaux et
+  flux synthétique. Une inférence locale puis le segmenter épinglé produisent
+  un WAV qui traverse les clients D4/D5 de production : un POST STT, une
+  soumission canonique `dialogue` transportée en `voice`, un POST TTS.
+  Ces requêtes sont interceptées ; le TTS répond délibérément 503 et ferme
+  le témoin sans fabriquer une preuve de lecture réussie.
+- Deuxième clic après consommation, y compris après réactivation DOM seule :
+  aucune autre ouverture, piste ou requête. `local_preflight`, le futur bouton
+  servi autorisé, le harnais existant, le clavier, Whisper, mobile et desktop
+  conservent leurs preuves. L'usage unique borne l'entrée ; il ne limite pas
+  le nombre de tours de la boucle D5. Le budget réel relève du protocole D6.2.
+- Mutation 1 : retrait du cas exact → même rouge d'ouverture. Mutation 2 :
+  acceptation d'un marqueur quelconque → ouverture interdite, témoin rouge.
+  Restaurations exactes après chacune, SHA-256 de `app.js` :
+  `3e55447931e8ab5cc54c1b17cee392ec7e195436b17f9291c7832178067d4728`.
+- Tests ciblés D6.1a/D6.2a : `7/7`. Validation complète après restauration :
+  frontend unitaire `282/282`, toutes les suites Chromium `52/52` dont le smoke
+  Dialogue `46/46`, backend D1/D2/routes `39/39`, sans échec, skip, annulation
+  ni TODO. Le backend tourne dans l'image existante, réseau coupé, filesystem
+  et checkout read-only, `/tmp` en tmpfs, sans volumes opérateur.
+- La première suite Chromium élargie observait `51/52` : le témoin voisin
+  du tiroir comparait strictement `-0` à `0`. Le même échec est reproduit avec
+  `app.js` de la baseline puis du patch, restauré exactement. Son attente
+  acceptait prématurément l'arrondi pendant la transition. Seule cette attente
+  de test exige désormais la coordonnée réellement nulle ; assertion, timeout
+  et UI sont inchangés. La suite complète repasse `52/52`.
+- Contre-audit : valeurs inconnues sans retombée produit, clic non trusted
+  inerte, consommation avant amorce, une seule chaîne existante, aucun nouveau
+  stockage, secret, route, harnais ou appel réel. `node --check` sur les trois
+  JavaScript touchés et `git diff --check` réussissent.
+- L'exception bornée est consignée dans `AGENTS.md`, le contrat et le hub.
+  D6.4 devra supprimer les deux valeurs et tout le mécanisme de marqueur.
+  La livraison ciblée est consignée séparément ci-dessous après vérification.
+
+Commandes complètes : `node --test app/tests/unit/frontend_chat/*.js`,
+`node --test --test-concurrency=1 app/tests/integration/frontend_browser/test_*.js`
+et `python -B -m unittest tests.unit.chat.test_dialogue_stt_service
+tests.unit.chat.test_dialogue_tts_service
+tests.integration.chat.test_chat_dialogue_audio_routes` dans l'enveloppe
+hermétique décrite ci-dessus. Aucun temporaire de preuve n'est conservé.
+
 - [ ] **D6.2 — Canari fournisseur borné hors voiture**
 
   Une seule parole courte puis une seule réponse Frida, en ouvrant la session
-  par le harnais interne déjà prévu tant que le bouton reste désactivé. Prouver
+  par le marqueur éphémère exact `full_canary` livré en D6.2a, après un
+  `GO canari` distinct, tant que le bouton servi reste désactivé. Prouver
   dans le même thread : transcript envoyé une fois, traitement canonique,
   réponse persistée, voix Soleil entendue, animation calée sur l'audio,
   réarmement après fin.
@@ -1328,7 +1394,8 @@ service. Le micro-lot correctif distinct ci-dessous lui succède.
 
   Retirer `disabled`, conserver l'accessibilité clavier et tactile, puis rejouer
   les tests frontend, les deux routes backend, le smoke mobile et le chemin chat
-  clavier. Retirer explicitement le mécanisme DOM `local_preflight` de D6.1a.
+  clavier. Retirer explicitement tout le mécanisme DOM de D6.1a/D6.2a,
+  y compris `local_preflight` et `full_canary`.
   Le HTML servi actif donnera l'autorité au bootstrap : conserver exactement
   le même listener et la même fonction d'ouverture vers `full`, sans second
   wiring. Aucun autre contrôle ou écran n'est ajouté.

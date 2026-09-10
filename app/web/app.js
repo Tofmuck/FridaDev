@@ -360,12 +360,13 @@
   };
   btnDialogueMode?.addEventListener('click', (event) => {
     if (!event.isTrusted || btnDialogueMode.disabled) return;
-    // D6.1 only: one-shot DOM preparation, removed explicitly in D6.4.
+    // D6 verification only: one-shot DOM preparation, removed explicitly in D6.4.
     const marker = btnDialogueMode.getAttribute('data-dialogue-preflight');
     if (marker !== null) {
       btnDialogueMode.removeAttribute('data-dialogue-preflight');
       btnDialogueMode.disabled = true;
       if (marker === 'local_preflight') void openDialogueSession('local_preflight');
+      else if (marker === 'full_canary') void openDialogueSession('full');
       return;
     }
     if (dialogueProductAuthorized) void openDialogueSession('full');
