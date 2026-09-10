@@ -1405,7 +1405,7 @@ Livraison du 10 septembre 2026 à 14:42 UTC :
 
 ### D6.2b — alignement sur le V5 validé dans le démonstrateur — 10 septembre 2026
 
-- [x] **D6.2b — Correctif technique vérifié ; livraison consignée ci-dessous**
+- [x] **D6.2b — Correctif technique fermé et livré**
 
 - Baseline conforme : `/opt/platform/fridadev`, `main`, HEAD/upstream
   `148fb82244c618018eabc10b2fa5efe255b454ea`, divergence `0/0`, worktree propre.
@@ -1484,8 +1484,32 @@ Python hermétique : `python -B -m unittest` avec
 `tests.integration.chat.test_chat_transcription_route` et
 `tests.integration.frontend_chat.test_frontend_whisper_contract`.
 
-**D6.2 reste ouvert : nouveau canari matériel iPhone requis après livraison,
-à conduire par Tof dans un lot distinct.**
+Livraison vérifiée le 10 septembre 2026 à 16:39 UTC :
+
+- Commit applicatif `661cc4f29f121100b98f44238b6d6a09c709df1a` poussé sur
+  `main`, HEAD = upstream, divergence `0/0`, worktree propre avant build.
+- Image active précédente conservée sous
+  `platform-fridadev-app:rollback-d62b-20260910T163913Z`, empreinte vérifiée
+  `sha256:3dd43f33b41f4cb35946b4bc42b96028a82eb34995054fce1f30e33b04d9a1d6`.
+- Compose applicatif inchangé : `build --pull=false fridadev`, dépendances en
+  cache, puis `up -d --no-deps --force-recreate --no-build --pull never fridadev`.
+  Seul `platform-fridadev` est recréé. Image livrée :
+  `sha256:84d5d6448e065df38fdf786cc0a81e64608af832e32ec1cc166c5fdff3363bad`.
+- Runtime `running/healthy`, restart `0`, OOM `false`. Les 31 voisins conservent
+  exactement leurs identités, images, démarrages, états, health, restart et OOM.
+- Vingt-trois empreintes checkout/conteneur concordent, dont dix-huit aussi
+  avec les réponses HTTP `200`. V5 : `application/octet-stream`, 2 327 524
+  octets, SHA-256 exact `2623a2953f6ff3d2c1e61740c6cdb7168133479b267dfef114a4a3cc5bdd788f`.
+  Legacy absent sur disque et HTTP `404`. HTML toujours `disabled`, sans marqueur.
+- Zéro marqueur de succès provider STT/TTS dans les logs depuis le nouveau
+  démarrage (`2026-09-10T16:39:41.502444701Z`) ; également zéro pendant la
+  fenêtre de contrôle pré-livraison depuis 16:29:47 UTC. Aucun log brut, contenu
+  audio, transcript ou secret n'est conservé dans les preuves. Aucun appel réel
+  STT/chat/TTS ni microphone matériel n'est déclenché par le lot.
+- Cette clôture est documentaire seulement : aucun second rebuild/restart.
+  Le nouveau canari iPhone reste à conduire par Tof dans un lot distinct.
+
+**D6.2b FERMÉ — D6.2 OUVERT — NOUVEAU CANARI IPHONE REQUIS.**
 
 - [ ] **D6.2 — Canari fournisseur borné hors voiture**
 

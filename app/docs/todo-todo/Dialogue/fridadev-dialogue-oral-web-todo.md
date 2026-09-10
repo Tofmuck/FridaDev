@@ -18,7 +18,7 @@ après remplacement du primer WAV d'un échantillon, rejeté par le décodeur, p
 un primer silencieux de huit échantillons. Le VAD matériel, la distinction
 parole/silence et la sortie de session ont été vérifiés sans appel fournisseur.
 D6.2a est fermé et livré : entrée ponctuelle `full_canary` vers cette même chaîne.
-D6.2b corrige le choix VAD vers V5 ; D6.2 reste ouvert jusqu'au nouveau canari
+D6.2b est fermé et livré : choix VAD aligné sur V5. D6.2 reste ouvert jusqu'au nouveau canari
 matériel iPhone, distinct de ce micro-correctif sans fournisseur.
 D6.3 à D6.5 et Z restent non commencés.**
 
@@ -493,6 +493,8 @@ Les preuves déterministes de segmentation et WAV, les mutations et la livraison
 sont consignées dans la section D6.2b de la roadmap. Elles ne prouvent pas
 l'acceptabilité acoustique de Frida V5 sur l'iPhone. Aucun microphone matériel,
 appel fournisseur ou canari n'est exercé dans ce correctif ; D6.2 reste ouvert.
+
+**D6.2b FERMÉ — D6.2 OUVERT — NOUVEAU CANARI IPHONE REQUIS.**
 
 ## Méthode obligatoire de choix du transport et des modèles
 
