@@ -1134,8 +1134,8 @@ après une preuve de bout en bout, avec rollback ciblé prêt.
   choisi, routes STT/TTS présentes, absence de secret dans le bundle, UI mobile
   stable et chat clavier inchangé. En cas d'échec, ne pas appeler OpenRouter.
 
-  **Ouvert : prérequis D6.1a implémenté et testé ; livraison runtime puis preuve
-  Safari iPhone encore requises. Aucun appel fournisseur autorisé.**
+  **Ouvert : prérequis D6.1a livré et runtime vérifié ; preuve Safari iPhone
+  encore requise. Aucun appel fournisseur autorisé.**
 
 ### D6.1a — raccord préparatoire approuvé le 10 septembre 2026
 
@@ -1180,6 +1180,43 @@ après une preuve de bout en bout, avec rollback ciblé prêt.
 - L'artefact `/tmp/fridadev-d61-reproduction.json` a été identifié comme le JSON
   content-free de la reproduction précédente, supprimé seul et son absence
   vérifiée. Aucun audio ou transcript n'est conservé dans les preuves.
+
+### Livraison D6.1a vérifiée — 10 septembre 2026
+
+- Commit applicatif `e56e5899697d9536c576688d7c0173a75a62ac0d` poussé sur
+  `main`, avec HEAD/upstream égaux, divergence `0/0` et worktree propre avant
+  reconstruction.
+- Reconstruction via le Compose applicatif existant, `build --pull=false
+  fridadev`, puis `up -d --no-deps --force-recreate --no-build --pull never
+  fridadev`. Seul `platform-fridadev` a été recréé.
+- Image livrée :
+  `sha256:97f1de558e2dc5c17bda0350d4c3b1baa6ee152134eef3622027fbcae1318cf3`.
+  État `running/healthy`, restart `0`, OOM `false`.
+- Rollback ciblé conservé et vérifié :
+  `platform-fridadev-app:rollback-d61a-20260910T094824Z`, image précédente
+  `sha256:d8ff6e73b8612b77831dba2b2d4b133bc0d3a1505f3d8bb175427a2a984a194a`.
+  Le retour arrière consiste à réassigner cette image au tag applicatif local
+  puis recréer le seul service `fridadev`, sans build ni pull.
+- `18/18` ressources web : HTTP `200`, médias attendus et SHA-256 identiques
+  entre checkout, disque conteneur et réponse HTTP. Les `10/10` empreintes du
+  manifeste VAD sont conservées. Les trois fichiers backend D1/D2 contrôlés
+  correspondent aussi au checkout. Le HTML servi conserve `disabled`, sans
+  marqueur DOM de préflight.
+- HTTPS public : certificat vérifié, sans contournement Authelia ; accès non
+  authentifié `302` pour HTML et `401` pour JSON. Ce contrôle serveur ne prouve
+  pas encore `isSecureContext` dans Safari iPhone.
+- Deux seuls smokes POST réels, content-free, en loopback du conteneur : `{}`
+  vers STT → `422/multipart_required` ; `{}` vers TTS →
+  `422/dialogue_tts_text_field_invalid`. Ces branches retournent avant tout
+  appel au service fournisseur, prouvé par les contrats/tests et leurs sources
+  identiques déployées. Aucun chat ou audio réel envoyé.
+- Noms sensibles absents des sept sources propres au bootstrap/Dialogue
+  inspectées ; requêtes d'assets D3 observées dans Chromium same-origin et sans
+  header d'autorisation, clé API ou credential. Aucune valeur de secret lue.
+- `31/31` voisins inchangés : IDs conteneur, images, états/health, restart et
+  OOM identiques. L'absence de l'ancien artefact de reproduction est revérifiée.
+- Cette consignation de livraison est documentaire seulement : aucun second
+  rebuild ou redémarrage pour elle.
 
 Le verdict matériel de Tof reste absent. Ne pas cocher D6.1 sur la base de
 Chromium. D6.2 à D6.5 et Z restent explicitement non commencés.

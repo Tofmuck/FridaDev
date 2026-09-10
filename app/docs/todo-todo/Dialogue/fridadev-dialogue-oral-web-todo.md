@@ -13,7 +13,7 @@ D1 puis au chat canonique dans le seul harnais synthétique ; D4 est fermé,
 poussé et livré après toutes les preuves et la vérification runtime. L'entrée
 produit reste désactivée. D5 est fermé, poussé et livré après vérification runtime :
 TTS frontend, lecteur possédé et réarmement après fin dans le seul harnais.
-D6.1 est ouvert : D6.1a prépare son préflight local sans transport ; la preuve
+D6.1 est ouvert : le prérequis D6.1a du préflight local sans transport est livré ; la preuve
 Safari iPhone manque encore. D6.2 à D6.5, Z et les canaris réels restent non commencés.**
 
 ## Intention
@@ -324,7 +324,7 @@ Les preuves et la livraison sont consignées dans la section D5 de la roadmap.
 
 ## Préflight local D6.1a — 10 septembre 2026
 
-**Prérequis implémenté et testé ; livraison runtime à vérifier. D6.1 reste ouvert
+**Prérequis implémenté, testé, poussé et livré avec runtime vérifié. D6.1 reste ouvert
 jusqu'à la preuve matérielle Safari iPhone. D6.2 reste non commencé.**
 
 Le blocage de vérification précédent est requalifié : le harnais D3 n'existe
