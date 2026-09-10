@@ -1,7 +1,7 @@
 # FridaDev — dialogue oral greffé sur le pipeline Web
 
 Date de cadrage initial : 7 septembre 2026.
-Dernière mise à jour de reconnaissance : 9 septembre 2026.
+Dernière mise à jour de reconnaissance : 10 septembre 2026.
 
 **Statut : contrat initial et reconnaissance technique iPhone consignés. Les
 choix V1 du VAD, du STT et du TTS sont retenus ; seule leur invalidation par le
@@ -13,9 +13,11 @@ D1 puis au chat canonique dans le seul harnais synthétique ; D4 est fermé,
 poussé et livré après toutes les preuves et la vérification runtime. L'entrée
 produit reste désactivée. D5 est fermé, poussé et livré après vérification runtime :
 TTS frontend, lecteur possédé et réarmement après fin dans le seul harnais.
-D6.1 est ouvert : le prérequis D6.1a du préflight local sans transport est livré,
-mais l'essai Safari iPhone est bloqué avant le chargement D3. L'essai est arrêté,
-sans appel fournisseur. D6.2 à D6.5, Z et les canaris réels restent non commencés.**
+D6.1 est fermé : le préflight local sans transport fonctionne sur Safari iPhone
+après remplacement du primer WAV d'un échantillon, rejeté par le décodeur, par
+un primer silencieux de huit échantillons. Le VAD matériel, la distinction
+parole/silence et la sortie de session ont été vérifiés sans appel fournisseur.
+D6.2 à D6.5, Z et les canaris réels restent non commencés.**
 
 ## Intention
 
@@ -325,9 +327,10 @@ Les preuves et la livraison sont consignées dans la section D5 de la roadmap.
 
 ## Préflight local D6.1a — 10 septembre 2026
 
-**Prérequis implémenté, testé, poussé et livré avec runtime vérifié. L'essai
-Safari iPhone reproduit un blocage avant le chargement D3 ; D6.1 reste ouvert.
-D6.2 reste non commencé.**
+**Prérequis implémenté, testé, poussé et livré avec runtime vérifié. Le blocage
+Safari iPhone a été reproduit, expliqué puis corrigé par un primer WAV silencieux
+minimal décodable. D6.1 est fermé sans appel fournisseur ; D6.2 reste non
+commencé.**
 
 Le blocage de vérification précédent est requalifié : le harnais D3 n'existe
 qu'avec les adaptateurs présents au bootstrap ; `routeToChat: false` exclut
@@ -381,25 +384,35 @@ donnera alors l'autorité au bootstrap et au même listener vers `full`.
 
 ### Verdict matériel Safari iPhone — 10 septembre 2026
 
-Les retours content-free de Tof confirment HTTPS, `isSecureContext`, la présence
-de `getUserMedia`, le bouton initialement désactivé et l'absence de marqueur,
-de harnais et de global VAD avant préparation. Le marqueur exact est ensuite
-posé depuis Inspector, puis consommé par le clic physique ; le bouton est
-redésactivé et la session visuelle ouverte.
+Le premier essai content-free avait bien confirmé HTTPS, `isSecureContext`,
+`getUserMedia`, le marqueur consommé une fois et le bouton redésactivé, mais il
+restait bloqué avant D3. L'instrumentation directe de l'unique
+`HTMLMediaElement.play()` a ensuite établi la cause : le primer WAV PCM local
+d'un seul échantillon atteignait `loadedmetadata`, puis `error` avec
+`MediaError.code=3` (`MEDIA_ERR_DECODE`) ; sa promesse restait en attente. Le
+chargement D3, situé après `whenReady()`, ne pouvait donc pas commencer.
 
-La permission microphone n'apparaît pas. L'état reste `listening`, mais le
-global VAD est absent et Tof rapporte un panneau Réseau vide, après l'avoir
-vidé avant le clic. Aucune requête STT, chat ou TTS n'est observée. L'essai est
-arrêté : Terminer ramène au chat, confirmé par Tof. Ni la capture, ni la
-distinction bruit/parole, ni l'arrêt de pistes effectivement acquises ne sont
-validés matériellement par cet essai.
+Une matrice locale sur le même Safari iPhone a montré qu'un échantillon échoue
+et que huit échantillons atteignent `canplay`. La substitution transitoire de
+la seule data URI par ce candidat de huit échantillons a fait résoudre
+`play()`, charger les assets VAD same-origin, demander puis obtenir la permission
+microphone et ouvrir l'écoute effective. Une phrase articulée a produit la
+séquence `ÉCOUTE ACTIVE` → `JE T’ÉCOUTE` → `ÉCOUTE ACTIVE`. Terminer a arrêté
+l'unique piste audio de `live` à `ended` et a ramené au chat. Aucune ressource
+STT, chat ou TTS n'a été demandée.
 
-Le code attend `whenReady()` avant de charger D3 ; l'amorce `play()` qui ne se
-terminerait pas est donc une hypothèse de diagnostic, pas une cause mesurée.
-L'état visuel `listening` ne constitue pas une preuve de capture effective.
-Les observations détaillées et les limites H1–H9 figurent dans la roadmap.
-Aucune correction runtime, relance ou poursuite fournisseur n'est effectuée ;
-un diagnostic correctif éventuel exige une décision distincte.
+Le correctif livré remplace exclusivement la data URI invalide par ce WAV
+silencieux de huit échantillons, soit 16 octets PCM et 60 octets RIFF complets.
+Après rechargement propre de la page, l'ancien monkeypatch était absent : un
+nouveau clic physique sur l'image réellement déployée a de nouveau franchi
+l'amorce et chargé D3 ; Tof a confirmé le cycle parole/silence puis Terminer.
+Le panneau réseau n'a montré aucun transport STT, chat ou TTS. Le bouton produit
+reste servi `disabled` et le mode local continue d'ignorer tout blob avant les
+frontières réseau.
+
+La preuve établit le préflight Safari iPhone et ferme D6.1. Elle n'autorise ni
+appel fournisseur ni activation produit : D6.2 demeure le premier canari
+borné et D6.4 devra toujours retirer explicitement le mécanisme de marqueur.
 
 ## Méthode obligatoire de choix du transport et des modèles
 
@@ -628,8 +641,9 @@ ci-dessus, dans le harnais synthétique. L'exception D5 distincte approuvée le
 9 septembre autorise uniquement la lecture et la boucle décrites ci-dessus,
 toujours sans provider réel ni activation produit. L'exception D6.1a approuvée
 le 10 septembre autorise uniquement le prérequis local décrit ci-dessus.
-D6.1 reste ouvert jusqu'à la preuve iPhone ; D6.2 à D6.5 et Z restent non
-commencés et exigent des décisions explicites distinctes.
+D6.1 est fermé après la preuve iPhone et le correctif minimal du primer WAV ;
+D6.2 à D6.5 et Z restent non commencés et exigent des décisions explicites
+distinctes.
 
 ## Roadmap d'implémentation
 

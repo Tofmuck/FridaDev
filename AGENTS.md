@@ -161,10 +161,11 @@ est amorce synchroniquement. Le mode local ne recoit aucun client STT/TTS ni
 callback de soumission chat et ignore les blobs avant tout travail de transport.
 Le sens historique de `routeToChat: false` reste D3 seul, sans amorce D5.
 Aucun harnais global supplementaire, route, stockage ou appel fournisseur
-n'est autorise. Le HTML commite reste `disabled`. D6.1 reste ouvert jusqu'a la
-preuve Safari iPhone ; D6.2 a D6.5 et Z restent non commences. D6.4 devra retirer
-explicitement le mecanisme de marqueur et activer le meme listener par le
-retrait commite de `disabled`, sans second wiring.
+n'est autorise. Le HTML commite reste `disabled`. D6.1 est ferme apres preuve
+Safari iPhone et correction du primer WAV silencieux, passe de un a huit
+echantillons pour etre decodable. D6.2 a D6.5 et Z restent non commences. D6.4
+devra retirer explicitement le mecanisme de marqueur et activer le meme listener
+par le retrait commite de `disabled`, sans second wiring.
 
 Chaque lot doit demontrer: pas de capacite produit ajoutee, comportements
 legitimes preserves hors bug corrige, complexite stable ou reduite, ancien

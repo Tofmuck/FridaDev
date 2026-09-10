@@ -1128,14 +1128,15 @@ après une preuve de bout en bout, avec rollback ciblé prêt.
 - Modifier : `app/tests/integration/frontend_browser/test_frontend_browser_smoke.js`
 - Modifier : contrat et roadmap Dialogue
 
-- [ ] **D6.1 — Préflight déployé sans appel fournisseur**
+- [x] **D6.1 — Préflight déployé sans appel fournisseur**
 
   Vérifier HTTPS, permission micro après geste, chargement local du VAD, codec
   choisi, routes STT/TTS présentes, absence de secret dans le bundle, UI mobile
   stable et chat clavier inchangé. En cas d'échec, ne pas appeler OpenRouter.
 
-  **Ouvert : prérequis D6.1a livré et runtime vérifié ; blocage reproduit sur
-  Safari iPhone avant chargement D3. Essai arrêté, aucun appel fournisseur.**
+  **Fermé : prérequis D6.1a livré, blocage Safari reproduit puis corrigé par un
+  primer WAV silencieux décodable ; VAD et sortie matérielle vérifiés, sans appel
+  fournisseur.**
 
 ### D6.1a — raccord préparatoire approuvé le 10 septembre 2026
 
@@ -1218,7 +1219,7 @@ après une preuve de bout en bout, avec rollback ciblé prêt.
 - Cette consignation de livraison est documentaire seulement : aucun second
   rebuild ou redémarrage pour elle.
 
-### Préflight matériel Safari iPhone — blocage reproduit le 10 septembre 2026
+### Préflight matériel Safari iPhone — rouge causal du 10 septembre 2026
 
 Preuve distincte des tests Chromium, rapportée par Tof depuis Safari iPhone
 et son inspecteur Web. Le checkout de consignation est `main` à
@@ -1261,12 +1262,48 @@ ferment pas ce blocage matériel. Aucun audio, transcript ou log brut n'est
 collecté. Le mode local livré n'a aucune capacité de transport STT/TTS/chat,
 et aucune requête fournisseur n'est effectuée par ce lot.
 
-La consignation est docs-only : aucune correction automatique, nouvelle
-instrumentation runtime, relance, reconstruction ou recréation de service.
-Tout diagnostic correctif ultérieur exige une décision distincte. D6.1 reste
-décoché ; D6.2 à D6.5 et Z restent explicitement non commencés.
+Cette première consignation était docs-only : aucune correction automatique,
+nouvelle instrumentation runtime, relance, reconstruction ou recréation de
+service. Le micro-lot correctif distinct ci-dessous lui succède.
 
-**D6.1 OUVERT — BLOCAGE REPRODUIT — AUCUN APPEL FOURNISSEUR.**
+### Correctif et preuve matérielle D6.1 — 10 septembre 2026
+
+- Inspection directe du seul `HTMLMediaElement.play()` sur Safari iPhone : le
+  primer WAV livré, limité à un échantillon PCM16, atteint `loadedmetadata` puis
+  échoue avec `MediaError.code=3` ; la promesse reste en attente et empêche
+  `whenReady()` de libérer le chargement D3.
+- Matrice sur le même appareil : un échantillon échoue ; huit, 32, 80, 160,
+  320, 800 et 1 600 échantillons atteignent `canplay`. Huit est retenu comme
+  plus petit candidat observé, sans changer le rôle silencieux de l'amorce.
+- Substitution diagnostique strictement locale de l'ancienne data URI par le
+  candidat : `play()` résolu, assets D3 same-origin chargés, permission micro
+  accordée, global VAD présent et écoute effective. Une parole articulée donne
+  `ÉCOUTE ACTIVE` → `JE T’ÉCOUTE` → `ÉCOUTE ACTIVE` ; Terminer fait passer
+  l'unique piste audio de `live` à `ended` et ferme la vue.
+- Rouge TDD ajouté au contrôleur : le primer doit contenir exactement huit
+  échantillons PCM16 complets, soit un chunk `data` de 16 octets et un RIFF de
+  60 octets. Sur l'ancien code, il observe 2 octets au lieu de 16.
+- Patch minimal dans `dialogue_session_controller.js` : seule la data URI du
+  silence passe de un à huit échantillons. Aucun flux, ordre, timeout, VAD,
+  transport, bouton, harnais ou état n'est modifié.
+- Verts frais : contrôleur `42/42`, frontend unitaire complet `282/282`,
+  Chromium complet `45/45`, `node --check` et `git diff --check` réussis.
+- Commit applicatif `624e97a5bfada6033691711d5dceb0333d505280`
+  (`fix(dialogue): use Safari-decodable silent primer`) poussé sur `main`.
+- Image livrée :
+  `sha256:9c3a8f8c7ba8ceae15d456e76d5ba2e5000eb03718592eac02176b51c54a8bb5`.
+  Seul `platform-fridadev` a été recréé ; état `running/healthy`, restart `0`,
+  OOM `false`, HTTP interne `200`. Les empreintes checkout, conteneur et asset
+  servi concordent. Les 31 voisins restent inchangés. Rollback disponible :
+  `platform-fridadev-app:rollback-d61-primer-20260910T120744Z`.
+- Rechargement propre sur l'iPhone après livraison : l'ancien monkeypatch est
+  absent ; le clic physique franchit l'amorce du vrai code et charge D3. Tof
+  confirme ensuite le cycle parole/silence demandé puis Terminer. Aucune requête
+  vers STT, chat ou TTS n'est observée. Aucun audio ou transcript n'est collecté.
+- Le bouton produit reste littéralement `disabled`. D6.2 à D6.5 et Z restent
+  explicitement non commencés.
+
+**D6.1 FERMÉ — PRÉFLIGHT SAFARI IPHONE VERT — AUCUN APPEL FOURNISSEUR.**
 
 - [ ] **D6.2 — Canari fournisseur borné hors voiture**
 
