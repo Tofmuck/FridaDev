@@ -1134,8 +1134,8 @@ après une preuve de bout en bout, avec rollback ciblé prêt.
   choisi, routes STT/TTS présentes, absence de secret dans le bundle, UI mobile
   stable et chat clavier inchangé. En cas d'échec, ne pas appeler OpenRouter.
 
-  **Ouvert : prérequis D6.1a livré et runtime vérifié ; preuve Safari iPhone
-  encore requise. Aucun appel fournisseur autorisé.**
+  **Ouvert : prérequis D6.1a livré et runtime vérifié ; blocage reproduit sur
+  Safari iPhone avant chargement D3. Essai arrêté, aucun appel fournisseur.**
 
 ### D6.1a — raccord préparatoire approuvé le 10 septembre 2026
 
@@ -1218,8 +1218,55 @@ après une preuve de bout en bout, avec rollback ciblé prêt.
 - Cette consignation de livraison est documentaire seulement : aucun second
   rebuild ou redémarrage pour elle.
 
-Le verdict matériel de Tof reste absent. Ne pas cocher D6.1 sur la base de
-Chromium. D6.2 à D6.5 et Z restent explicitement non commencés.
+### Préflight matériel Safari iPhone — blocage reproduit le 10 septembre 2026
+
+Preuve distincte des tests Chromium, rapportée par Tof depuis Safari iPhone
+et son inspecteur Web. Le checkout de consignation est `main` à
+`3e925f6ffeb0c37ce1aa6715229e4788c7c09fe3`, identique à l'upstream après
+fetch, divergence `0/0`, worktree initial propre. L'image applicative reste
+celle de la livraison D6.1a ci-dessus, `running/healthy`, restart `0`, OOM `false`.
+
+| Étape | Fait rapporté par Tof |
+| --- | --- |
+| Ouverture normale via Authelia | Chat affiché sur l'iPhone ; inspecteur ouvert sur cet onglet. |
+| Contrôle initial | `https`, `secureContext`, `microphoneDisponible`, `boutonDesactive`, `marqueurAbsent`, `harnaisAbsent`, `vadNonCharge` : tous `true`. La disponibilité de l'API n'est pas une permission accordée. |
+| Préparation éphémère | `marqueurExact`, `boutonActiveLocalement`, `sessionFermee` : tous `true`, avant le clic. Panneau Réseau vidé, sans filtre. |
+| Clic physique unique | Aucune demande de permission microphone. `marqueurConsomme: true`, `boutonRedesactive: true`, `sessionActive: true`, `etatLocal: listening`, `vadCharge: false`. La valeur `recorderCharge`, masquée dans le retour, n'est pas connue. |
+| Vérification réseau | Panneau Réseau rapporté vide. Aucune requête D3, STT, chat ou TTS observée pendant l'essai. |
+| Arrêt de l'essai | Terminer actionné sur l'iPhone ; retour au chat confirmé. Aucun essai bruit/parole ou reprise n'est ensuite demandé. |
+
+**Qualification :** le préflight n'atteint pas le chargement D3 ni une écoute
+effective démontrée. L'état visuel `listening` apparaît déjà avant ces étapes.
+Le code de `openDialogueSession` attend `sessionController.whenReady()` avant
+`loadDialogueD3()` ; cette readiness dépend de l'amorce `audio.play()` du
+contrôleur existant. Une amorce restant en attente est compatible avec les
+observations, mais aucune mesure directe de sa promesse ou de son erreur
+Safari ne prouve encore cette cause. Aucun diagnostic de permission refusée
+ou de VAD défaillant n'est établi.
+
+| Finding D6.1 | Verdict borné aux preuves disponibles |
+| --- | --- |
+| H1 | Validé sur iPhone par les retours HTTPS/secure context derrière Authelia. |
+| H2 | Absence de chargement au bootstrap confirmée sur iPhone ; chargement same-origin prouvé en Chromium et côté serveur, non atteint sur l'iPhone. |
+| H3 | Condition de sortie non satisfaite : clic reconnu, mais permission et démarrage audio effectif non démontrés. |
+| H4 | Flux partagé et cleanup prouvés par les tests ; capture réelle et arrêt de ses pistes non exercés sur l'iPhone. Terminer prouve seulement le retour visuel au chat dans cet essai. |
+| H5 | Compatibilité WAV/D1 prouvée par contrats et tests ; aucun WAV matériel iPhone produit ou inspecté. |
+| H6 | Routes déployées et rejets locaux `422` prouvés avant transport lors du préflight serveur. |
+| H7 | Contrôles statiques et requêtes Chromium bornés au périmètre décrit dans la livraison ; aucune nouvelle requête observée dans l'essai iPhone. |
+| H8 | Préparation Inspector, consommation unique et ouverture locale confirmées ; le préflight audio complet reste bloqué. |
+| H9 | Régressions clavier, Whisper, mobile et desktop vertes ; ouverture et retour au chat confirmés sur iPhone. Aucune nouvelle soumission clavier réelle n'est effectuée. |
+
+Les tests et mutations précédents restent des preuves hermétiques ; ils ne
+ferment pas ce blocage matériel. Aucun audio, transcript ou log brut n'est
+collecté. Le mode local livré n'a aucune capacité de transport STT/TTS/chat,
+et aucune requête fournisseur n'est effectuée par ce lot.
+
+La consignation est docs-only : aucune correction automatique, nouvelle
+instrumentation runtime, relance, reconstruction ou recréation de service.
+Tout diagnostic correctif ultérieur exige une décision distincte. D6.1 reste
+décoché ; D6.2 à D6.5 et Z restent explicitement non commencés.
+
+**D6.1 OUVERT — BLOCAGE REPRODUIT — AUCUN APPEL FOURNISSEUR.**
 
 - [ ] **D6.2 — Canari fournisseur borné hors voiture**
 

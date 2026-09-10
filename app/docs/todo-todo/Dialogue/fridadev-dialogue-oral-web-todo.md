@@ -13,8 +13,9 @@ D1 puis au chat canonique dans le seul harnais synthétique ; D4 est fermé,
 poussé et livré après toutes les preuves et la vérification runtime. L'entrée
 produit reste désactivée. D5 est fermé, poussé et livré après vérification runtime :
 TTS frontend, lecteur possédé et réarmement après fin dans le seul harnais.
-D6.1 est ouvert : le prérequis D6.1a du préflight local sans transport est livré ; la preuve
-Safari iPhone manque encore. D6.2 à D6.5, Z et les canaris réels restent non commencés.**
+D6.1 est ouvert : le prérequis D6.1a du préflight local sans transport est livré,
+mais l'essai Safari iPhone est bloqué avant le chargement D3. L'essai est arrêté,
+sans appel fournisseur. D6.2 à D6.5, Z et les canaris réels restent non commencés.**
 
 ## Intention
 
@@ -324,8 +325,9 @@ Les preuves et la livraison sont consignées dans la section D5 de la roadmap.
 
 ## Préflight local D6.1a — 10 septembre 2026
 
-**Prérequis implémenté, testé, poussé et livré avec runtime vérifié. D6.1 reste ouvert
-jusqu'à la preuve matérielle Safari iPhone. D6.2 reste non commencé.**
+**Prérequis implémenté, testé, poussé et livré avec runtime vérifié. L'essai
+Safari iPhone reproduit un blocage avant le chargement D3 ; D6.1 reste ouvert.
+D6.2 reste non commencé.**
 
 Le blocage de vérification précédent est requalifié : le harnais D3 n'existe
 qu'avec les adaptateurs présents au bootstrap ; `routeToChat: false` exclut
@@ -376,6 +378,28 @@ figurent dans la section D6.1a de la roadmap. Elles ne constituent ni une preuve
 matérielle iPhone ni une autorisation fournisseur. D6.4 devra retirer
 explicitement le mécanisme de marqueur ; le retrait committé de `disabled`
 donnera alors l'autorité au bootstrap et au même listener vers `full`.
+
+### Verdict matériel Safari iPhone — 10 septembre 2026
+
+Les retours content-free de Tof confirment HTTPS, `isSecureContext`, la présence
+de `getUserMedia`, le bouton initialement désactivé et l'absence de marqueur,
+de harnais et de global VAD avant préparation. Le marqueur exact est ensuite
+posé depuis Inspector, puis consommé par le clic physique ; le bouton est
+redésactivé et la session visuelle ouverte.
+
+La permission microphone n'apparaît pas. L'état reste `listening`, mais le
+global VAD est absent et Tof rapporte un panneau Réseau vide, après l'avoir
+vidé avant le clic. Aucune requête STT, chat ou TTS n'est observée. L'essai est
+arrêté : Terminer ramène au chat, confirmé par Tof. Ni la capture, ni la
+distinction bruit/parole, ni l'arrêt de pistes effectivement acquises ne sont
+validés matériellement par cet essai.
+
+Le code attend `whenReady()` avant de charger D3 ; l'amorce `play()` qui ne se
+terminerait pas est donc une hypothèse de diagnostic, pas une cause mesurée.
+L'état visuel `listening` ne constitue pas une preuve de capture effective.
+Les observations détaillées et les limites H1–H9 figurent dans la roadmap.
+Aucune correction runtime, relance ou poursuite fournisseur n'est effectuée ;
+un diagnostic correctif éventuel exige une décision distincte.
 
 ## Méthode obligatoire de choix du transport et des modèles
 
