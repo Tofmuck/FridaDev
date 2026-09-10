@@ -479,6 +479,11 @@ La clôture antérieure ne prouvait pas ces invariants. Après correction, rouge
 mutations, suites complètes et livraison vérifiée, D3 est définitivement refermé.
 Le bouton produit reste désactivé et D4 n'est pas commencé.**
 
+**Rectification du 10 septembre, D6.2b :** les preuves historiques ci-dessous
+utilisaient legacy. L'affirmation du manifeste reliant ce modèle à la calibration
+Safari du démonstrateur était fausse. Le raccord courant passe à V5 ; les valeurs
+historiques restent ici datées et ne décrivent plus la segmentation courante.
+
 **Livrable :** l'interface peut ouvrir une session locale de test, détecter une
 parole et produire un blob borné ; elle n'appelle encore ni STT ni chat.
 
@@ -1398,9 +1403,94 @@ Livraison du 10 septembre 2026 à 14:42 UTC :
 
 **D6.2a FERMÉ ET LIVRÉ — D6.2 OUVERT — AUCUN APPEL FOURNISSEUR — GO CANARI DISTINCT REQUIS.**
 
+### D6.2b — alignement sur le V5 validé dans le démonstrateur — 10 septembre 2026
+
+- [x] **D6.2b — Correctif technique vérifié ; livraison consignée ci-dessous**
+
+- Baseline conforme : `/opt/platform/fridadev`, `main`, HEAD/upstream
+  `148fb82244c618018eabc10b2fa5efe255b454ea`, divergence `0/0`, worktree propre.
+  Aucun SSH ni pull. L'autorisation utilisateur porte sur ce seul correctif,
+  sans microphone matériel ni appel fournisseur.
+- Diagnostic confirmé au HEAD : modèle `legacy`, seuils par défaut implicites,
+  garde de frame `1536`, V5 local absent, affirmation de calibration Safari
+  erronée dans le manifeste. Le WAV parasite non vide et la validation Safari
+  du démonstrateur sont les faits rapportés par Tof, pas de nouvelles mesures
+  de ce lot. Le seuil `0,96` est retiré ; aucun filtre sonore n'est ajouté.
+- Sources primaires : [algorithme](https://github.com/ricky0123/vad/blob/master/docs/user-guide/algorithm.md),
+  [source officiel du démonstrateur](https://github.com/ricky0123/vad/blob/8941bbf9116234748934d6b563c1751ce4d43c35/test-site/src/script-tags-example/index.html)
+  (`v5`, `0.4/0.4`, ORT `1.22.0`) et distribution npm `0.0.30` vérifiée
+  par son intégrité SHA-512. Le hostname du démonstrateur ne se résout pas
+  depuis cette machine : ses assets déployés n'ont pas été relus directement.
+  Les empreintes bundle/worklet fournies par Tof correspondent exactement aux
+  fichiers locaux et à la distribution officielle épinglée.
+- V5 extrait sans modification : 2 327 524 octets,
+  SHA-256 `2623a2953f6ff3d2c1e61740c6cdb7168133479b267dfef114a4a3cc5bdd788f`.
+  Le modèle legacy est supprimé du vendor et des listes d'assets actives.
+  Le bundle upstream reste intact, y compris ses internals non sélectionnés.
+- Quatre rouges causaux avant patch : sélection `legacy` au lieu de `v5`,
+  frame V5 rejetée `vad_frame_invalid`, asset V5 absent, ancienne affirmation
+  documentaire fausse. Aucun faux vert de harnais ni erreur d'import.
+- Patch strict : modèle V5, probabilités `0.4/0.4`, AudioWorklet,
+  `startOnLoad: false`, garde fixe `512`. Options temporelles inchangées
+  800 / 1 400 / 400 ms ; le segmenter `0.0.30` les arrondit à 25 / 43 / 12
+  frames de 32 ms. Aucune option d'entrée obsolète en frames n'est copiée.
+- Segmentation déterministe : onze frames positives rejetées, douze acceptées ;
+  quarante-deux négatives ne terminent pas, la quarante-troisième termine.
+  Les probabilités `0.399` et `0.4` sont injectées indépendamment de l'amplitude
+  des échantillons ; ce test n'est pas une classification acoustique.
+- Après 384 s de bruit/silence synthétique, 25 frames de pré-roll, 15 de parole
+  et 43 de fin produisent exactement 42 496 échantillons, 2 656 ms et
+  85 036 octets WAV. En-tête RIFF/PCM16 mono 16 kHz et chaque échantillon PCM
+  sont contrôlés. Une attente de 960 s reste bornée sans expiration ni blob.
+  Les bornes 300 s / 24 000 000 octets et leur rejet adjacent restent vertes.
+- Chromium utilise le vrai V5/ONNX local, une inférence réelle sur flux
+  synthétique puis le segmenter piloté, avec décodage WAV à 16 kHz. Les chemins
+  D3, `local_preflight` et `full_canary`, la consommation du marqueur, les
+  états, le flux unique, le cleanup et les transports interceptés sont verts.
+- Mutations : retour au modèle `legacy` → témoin de sélection rouge ; retour
+  à `1536` → témoin de frame rouge. Après chacune, restauration exacte de
+  `dialogue_vad_runtime.js`, SHA-256
+  `6276365fb785ee002f69a5f54d0a55ef58fb60be8c17a2b6623bf7264c548208`,
+  puis témoin vert.
+- Validation après restauration : D3/D4/D5 ciblés `110/110`, frontend unitaire complet `286/286`,
+  Chromium complet `52/52`, voisins Python D1/D2/routes/Whisper `63/63` ;
+  aucun skip, échec, annulation ni timeout augmenté. Python utilise l'image
+  applicative existante, `--network none`, filesystem et checkout read-only,
+  `/tmp` en tmpfs, aucun volume opérateur. Ses tentatives d'initialisation DB
+  loopback échouent dans cette enveloppe sans joindre la DB réelle.
+- Contre-audit : aucun appelant Frida legacy actif, RMS, seuil de volume,
+  second flux, nouveau transport, fallback, activation produit ou contenu
+  collecté. D1/D2/D4/D5, recorder, bouton HTML et wiring D6.1a/D6.2a inchangés.
+  STT vide/blanc → `paused`, aucun chat/TTS, reprise explicite uniquement.
+  La correction de sélection ne prouve pas encore l'acceptabilité sur iPhone.
+- `node --check` sur les sept JavaScript touchés, `git diff --check`, dix
+  empreintes vendor et neuf liens locaux vérifiés. Aucun temporaire conservé.
+  `AGENTS.md` reste inchangé : il autorise déjà les corrections de bugs et
+  n'impose pas legacy ; aucune instruction agent supplémentaire n'est requise.
+
+Commandes de preuve :
+
+```bash
+node --test app/tests/unit/frontend_chat/test_dialogue_vad_*.js
+node --test app/tests/unit/frontend_chat/*.js
+node --test --test-concurrency=1 app/tests/integration/frontend_browser/test_*.js
+```
+
+Python hermétique : `python -B -m unittest` avec
+`tests.unit.chat.test_dialogue_stt_service`,
+`tests.unit.chat.test_dialogue_tts_service`,
+`tests.integration.chat.test_chat_dialogue_audio_routes`,
+`tests.unit.chat.test_whisper_transcription_service`,
+`tests.integration.chat.test_chat_transcription_route` et
+`tests.integration.frontend_chat.test_frontend_whisper_contract`.
+
+**D6.2 reste ouvert : nouveau canari matériel iPhone requis après livraison,
+à conduire par Tof dans un lot distinct.**
+
 - [ ] **D6.2 — Canari fournisseur borné hors voiture**
 
-  Une seule parole courte puis une seule réponse Frida, en ouvrant la session
+  Nouveau canari matériel après alignement V5 D6.2b : une seule parole courte
+  puis une seule réponse Frida, en ouvrant la session
   par le marqueur éphémère exact `full_canary` livré en D6.2a, après un
   `GO canari` distinct, tant que le bouton servi reste désactivé. Prouver
   dans le même thread : transcript envoyé une fois, traitement canonique,

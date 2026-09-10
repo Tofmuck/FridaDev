@@ -17,7 +17,7 @@ const EXPECTED_HASHES = Object.freeze({
   'ort-wasm-simd-threaded.mjs': '30dd851d9c00622940500f71ddd2ff8820c5cb65270816080175b958705385a8',
   'ort-wasm-simd-threaded.wasm': '71aef04959c5c1b6de461b6538e2058e306610034a85aad2742d0c7fd4533fe4',
   'ort.wasm.min.js': '65e09376df69107e881b5c34d2d37aed333a366b6d941073ec518168e269b87d',
-  'silero_vad_legacy.onnx': 'a35ebf52fd3ce5f1469b2a36158dba761bc47b973ea3382b3186ca15b1f5af28',
+  'silero_vad_v5.onnx': '2623a2953f6ff3d2c1e61740c6cdb7168133479b267dfef114a4a3cc5bdd788f',
   'vad.worklet.bundle.min.js': '8a48fdc7429948a2fde3d29a84bb1a64c1f67b4ba578ccaa7548b7f989f06a74',
 });
 
@@ -34,8 +34,23 @@ test('D3 vendor directory contains only the pinned local runtime and licenses', 
   const manifest = fs.readFileSync(path.join(VENDOR_DIR, 'MANIFEST.md'), 'utf8');
   assert.match(manifest, /@ricky0123\/vad-web@0\.0\.30/);
   assert.match(manifest, /onnxruntime-web@1\.22\.0/);
-  assert.match(manifest, /The explicitly selected model is `legacy`/);
+  assert.match(manifest, /The explicitly selected model is `v5`/);
   assert.doesNotMatch(manifest, /@latest|node_modules|\.tgz/);
+});
+
+test('D6.2b local V5 model has the pinned size and checksum', () => {
+  const file = path.join(VENDOR_DIR, 'silero_vad_v5.onnx');
+  assert.equal(fs.existsSync(file), true, 'the selected V5 model must exist locally');
+  const bytes = fs.readFileSync(file);
+  assert.equal(bytes.length, 2327524);
+  assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), EXPECTED_HASHES['silero_vad_v5.onnx']);
+});
+
+test('D6.2b manifest corrects the false legacy Safari calibration claim', () => {
+  const manifest = fs.readFileSync(path.join(VENDOR_DIR, 'MANIFEST.md'), 'utf8');
+  assert.doesNotMatch(manifest, /avoids silently changing the calibration used by the existing\s+Safari proof/);
+  assert.match(manifest, /previous claim[^\n]*legacy[^\n]*Safari[^\n]*false/i);
+  assert.match(manifest, /The explicitly selected model is `v5`/);
 });
 
 test('normal bootstrap has no VAD assets or required VAD global and product stays disabled', () => {

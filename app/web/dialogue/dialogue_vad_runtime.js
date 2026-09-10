@@ -1,6 +1,7 @@
 'use strict';
 
-const DIALOGUE_VAD_MODEL = 'legacy';
+const DIALOGUE_VAD_MODEL = 'v5';
+const DIALOGUE_VAD_FRAME_SAMPLES = 512;
 const DIALOGUE_VAD_PROCESSOR = 'AudioWorklet';
 const DIALOGUE_VAD_PRE_SPEECH_PAD_MS = 800;
 const DIALOGUE_VAD_REDEMPTION_MS = 1_400;
@@ -18,6 +19,9 @@ function createDialogueVadRuntime(options = {}) {
 
   const vadOptions = Object.freeze({
     model: DIALOGUE_VAD_MODEL,
+    positiveSpeechThreshold: 0.4,
+    negativeSpeechThreshold: 0.4,
+    startOnLoad: false,
     processorType: DIALOGUE_VAD_PROCESSOR,
     preSpeechPadMs: DIALOGUE_VAD_PRE_SPEECH_PAD_MS,
     redemptionMs: DIALOGUE_VAD_REDEMPTION_MS,
@@ -74,10 +78,10 @@ function createPinnedMicVadAdapter(micVad, vadRuntime, onRuntimeError, limits) {
     if (destroyRequested || runtimeFailed) throw new Error('vad_cancelled');
     if (event.msg === vadRuntime.Message.FrameProcessed) {
       // 0.0.30 emits FrameProcessed BEFORE appending to audioBuffer or concatenating.
-      // legacy has exactly 1536 samples/frame at 16kHz; silence keeps only 8 frames.
+      // V5 has exactly 512 samples/frame at 16kHz; silence keeps only 25 frames.
       const frames = micVad.frameProcessor.audioBuffer;
-      if (!Array.isArray(frames) || event.frame.length !== 1536) throw new Error('vad_frame_invalid');
-      const samples = frames.length * 1536 + event.frame.length;
+      if (!Array.isArray(frames) || event.frame.length !== DIALOGUE_VAD_FRAME_SAMPLES) throw new Error('vad_frame_invalid');
+      const samples = frames.length * DIALOGUE_VAD_FRAME_SAMPLES + event.frame.length;
       if (samples / 16 > limits.maxDurationMs) throw new Error('duration_limit_exceeded');
       if (44 + samples * 2 > limits.maxBytes) throw new Error('size_limit_exceeded');
     }

@@ -25,13 +25,13 @@ function harness(overrides = {}) {
   const runtime = runtimeModule.createDialogueVadRuntime({
     vadRuntime: { ...vendor, MicVAD: { async new(options) {
       state.factoryEntered = true;
-      options = { ...vendor.getDefaultRealTimeVADOptions('legacy'), ...options };
+      options = { ...vendor.getDefaultRealTimeVADOptions('v5'), ...options };
       if (overrides.newGate) await overrides.newGate.promise;
       if (overrides.newError) throw new Error('synthetic VAD initialization');
       const model = { probability: 0, releases: 0, async release() { this.releases++; } };
       const fp = new vendor.FrameProcessor(async () => ({ isSpeech: model.probability }),
-        () => {}, options, 96);
-      const raw = new vendor.MicVAD(options, fp, model, 1536);
+        () => {}, options, 32);
+      const raw = new vendor.MicVAD(options, fp, model, 512);
       raw.starts = 0;
       raw.start = async () => {
         raw.starts++;
@@ -49,7 +49,7 @@ function harness(overrides = {}) {
       };
       raw.feed = async (probability, value = 0) => {
         model.probability = probability;
-        await raw.processFrame(new Float32Array(1536).fill(value));
+        await raw.processFrame(new Float32Array(512).fill(value));
       };
       state.vads.push(raw);
       return raw;

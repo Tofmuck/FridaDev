@@ -44,7 +44,7 @@ function createRawMicVad(overrides = {}) {
   };
 }
 
-test('pinned D3 runtime fixes the legacy model and every asset path locally', async () => {
+test('D6.2b pinned D3 runtime selects V5 calibration and every asset path locally', async () => {
   const createdOptions = [];
   const raw = createRawMicVad();
   const runtime = dialogueRuntime.createDialogueVadRuntime({
@@ -62,6 +62,9 @@ test('pinned D3 runtime fixes the legacy model and every asset path locally', as
 
   assert.deepEqual({
     model: runtime.vadOptions.model,
+    positiveSpeechThreshold: runtime.vadOptions.positiveSpeechThreshold,
+    negativeSpeechThreshold: runtime.vadOptions.negativeSpeechThreshold,
+    startOnLoad: runtime.vadOptions.startOnLoad,
     processorType: runtime.vadOptions.processorType,
     preSpeechPadMs: runtime.vadOptions.preSpeechPadMs,
     redemptionMs: runtime.vadOptions.redemptionMs,
@@ -69,7 +72,10 @@ test('pinned D3 runtime fixes the legacy model and every asset path locally', as
     baseAssetPath: runtime.vadOptions.baseAssetPath,
     onnxWASMBasePath: runtime.vadOptions.onnxWASMBasePath,
   }, {
-    model: 'legacy',
+    model: 'v5',
+    positiveSpeechThreshold: 0.4,
+    negativeSpeechThreshold: 0.4,
+    startOnLoad: false,
     processorType: 'AudioWorklet',
     preSpeechPadMs: 800,
     redemptionMs: 1_400,
@@ -77,6 +83,9 @@ test('pinned D3 runtime fixes the legacy model and every asset path locally', as
     baseAssetPath: 'https://frida.invalid/vendor/dialogue-vad/',
     onnxWASMBasePath: 'https://frida.invalid/vendor/dialogue-vad/',
   });
+
+  assert.equal('minSpeechFrames' in runtime.vadOptions, false);
+  assert.equal('preSpeechPadFrames' in runtime.vadOptions, false);
 
   const ort = { env: { wasm: {} } };
   runtime.vadOptions.ortConfig(ort);
@@ -101,6 +110,30 @@ test('pinned D3 runtime fixes the legacy model and every asset path locally', as
     vadRuntime: { MicVAD: { new: async () => raw }, Message: {} },
     assetBaseUrl: '/vendor/dialogue-vad/',
   }), /runtime unavailable/);
+});
+
+test('D6.2b V5 frame guard accepts 512 samples and enforces bounds before append', async () => {
+  const forwarded = [];
+  const raw = createRawMicVad({
+    frameProcessor: { audioBuffer: [], pause() {} },
+    handleFrameProcessorEvent(event) { forwarded.push(event); },
+  });
+  const runtime = dialogueRuntime.createDialogueVadRuntime({
+    vadRuntime: { MicVAD: { new: async () => raw },
+      Message: { SpeechStop: 'SPEECH_STOP', FrameProcessed: 'FRAME_PROCESSED' } },
+    assetBaseUrl: '/vendor/dialogue-vad/',
+  });
+  const adapter = await runtime.vadFactory({ maxDurationMs: 320 });
+  const event = { msg: 'FRAME_PROCESSED', frame: new Float32Array(512) };
+  raw.frameProcessor.audioBuffer.length = 9;
+  assert.doesNotThrow(() => raw.handleFrameProcessorEvent(event));
+  assert.equal(forwarded.length, 1, 'ten V5 frames exactly fit 320 ms');
+  raw.frameProcessor.audioBuffer.length = 10;
+  assert.throws(() => raw.handleFrameProcessorEvent(event), /duration_limit_exceeded/);
+  raw.frameProcessor.audioBuffer.length = 0;
+  assert.throws(() => raw.handleFrameProcessorEvent({ ...event, frame: new Float32Array(1536) }), /vad_frame_invalid/);
+  assert.equal(forwarded.length, 1, 'rejected frames never reach the segmenter');
+  await adapter.destroy();
 });
 
 test('partial MicVAD start failure still releases the model and owned AudioContext', async () => {
@@ -180,7 +213,7 @@ test('non-Error inference rejection still produces a closed runtime error', asyn
     assetBaseUrl: '/vendor/dialogue-vad/',
   });
   const adapter = await runtime.vadFactory({ onRuntimeError: (code) => failures.push(code) });
-  await raw.processFrame(new Float32Array(1536));
+  await raw.processFrame(new Float32Array(512));
   assert.deepEqual(failures, ['vad_runtime_error']);
   await adapter.destroy();
 });
@@ -268,7 +301,7 @@ test('destroy cancels an in-flight frame before buffer append and releases the m
     await gate.promise;
     return { isSpeech: 0.9 };
   };
-  const frame = raw.processFrame(new Float32Array(1536));
+  const frame = raw.processFrame(new Float32Array(512));
   await entered.promise;
   const stop = h.recorder.stop();
   assert.equal(h.streams[0].track.readyState, 'ended');
@@ -293,9 +326,9 @@ test('concurrent inference cannot build an unbounded queue or emit late speech a
     await gate.promise;
     return { isSpeech: 0.9 };
   };
-  const frame = raw.processFrame(new Float32Array(1536));
+  const frame = raw.processFrame(new Float32Array(512));
   await entered.promise;
-  await raw.processFrame(new Float32Array(1536));
+  await raw.processFrame(new Float32Array(512));
   assert.deepEqual(h.events, [{ type: 'error', code: 'vad_runtime_error' }]);
   assert.equal(h.streams[0].track.readyState, 'ended');
   gate.resolve();

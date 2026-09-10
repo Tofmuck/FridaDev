@@ -108,7 +108,7 @@ test('byte ceiling is checked before allocation and again on the actual Blob', a
 });
 
 test('pinned VAD buffer rejects over-limit frame before append or concatenation', async () => {
-  for (const options of [{ maxDurationMs: 960 }, { maxBytes: 44 + 10 * 1536 * 2 }]) {
+  for (const options of [{ maxDurationMs: 320 }, { maxBytes: 44 + 10 * 512 * 2 }]) {
     const h = harness({ options });
     await h.recorder.arm();
     const raw = h.vads[0];

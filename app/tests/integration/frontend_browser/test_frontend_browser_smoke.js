@@ -1074,7 +1074,7 @@ test('normal chat is isolated from missing or refused D3 assets and never reques
 });
 
 test('D3 asset failures stay local to the explicit harness and never break normal chat', async () => {
-  for (const asset of ['ort.wasm.min.js', 'silero_vad_legacy.onnx']) {
+  for (const asset of ['ort.wasm.min.js', 'silero_vad_v5.onnx']) {
     await openBrowserPage({
       mockScript: chatMockScript({ streamMode: 'done' }) + dialogueD3MockScript()
         + '; delete window.__FRIDA_DIALOGUE_D3_TEST_ADAPTERS__.vadFactory;',
@@ -1231,7 +1231,7 @@ test('iPhone D3 harness captures locally, projects VAD truth and cleans every ex
       vadCount: 1,
       sharedStream: true,
       vadConfig: {
-        model: 'legacy',
+        model: 'v5',
         processorType: 'AudioWorklet',
         startOnLoad: false,
         baseAssetPath: '/vendor/dialogue-vad/',
@@ -1386,12 +1386,12 @@ test('explicit D3 harness lazily loads local ONNX worklet and WASM with one synt
       const state = window.__d3Real, raw = state.vads[0];
       await raw._audioContext.suspend();
       // Run real local ONNX inference once; then drive the shipped segmenter deterministically.
-      await raw.processFrame(new Float32Array(1536));
+      await raw.processFrame(new Float32Array(512));
       raw.frameProcessor.modelProcessFunc = async (frame) => ({ isSpeech: frame[0] > 0 ? 0.9 : 0 });
-      for (let i = 0; i < 8; i++) await raw.processFrame(new Float32Array(1536));
-      for (let i = 0; i < 5; i++) await raw.processFrame(new Float32Array(1536).fill(0.5));
+      for (let i = 0; i < 25; i++) await raw.processFrame(new Float32Array(512));
+      for (let i = 0; i < 15; i++) await raw.processFrame(new Float32Array(512).fill(0.5));
       const speaking = document.documentElement.dataset.dialogueState;
-      for (let i = 0; i < 14; i++) await raw.processFrame(new Float32Array(1536));
+      for (let i = 0; i < 43; i++) await raw.processFrame(new Float32Array(512));
       const decoded = await new OfflineAudioContext(1, 1, 16000)
         .decodeAudioData(await state.blob.arrayBuffer());
       return {
@@ -1403,9 +1403,9 @@ test('explicit D3 harness lazily loads local ONNX worklet and WASM with one synt
     });
     assert.deepEqual(result, {
       calls: 1, vads: 1, sameStream: true, processor: 'AudioWorklet',
-      speaking: 'user_speaking', ending: 'listening', duration: 2.592, channels: 1,
+      speaking: 'user_speaking', ending: 'listening', duration: 2.656, channels: 1,
     });
-    for (const file of ['ort.wasm.min.js', 'bundle.min.js', 'silero_vad_legacy.onnx',
+    for (const file of ['ort.wasm.min.js', 'bundle.min.js', 'silero_vad_v5.onnx',
       'ort-wasm-simd-threaded.mjs', 'ort-wasm-simd-threaded.wasm', 'vad.worklet.bundle.min.js']) {
       assert.equal(requests.filter((name) => name === '/vendor/dialogue-vad/' + file).length, 1, file);
     }
@@ -4330,11 +4330,11 @@ test('D6.1a normal bootstrap without adapters opens local native primer and real
     const before = await page.evaluate(() => window.__fridaBrowserState.fetchCalls.length);
     await page.evaluate(async () => {
       const raw = window.__d61Native.vads[0]; await raw._audioContext.suspend();
-      await raw.processFrame(new Float32Array(1536)); // One real local inference.
+      await raw.processFrame(new Float32Array(512)); // One real local inference.
       raw.frameProcessor.modelProcessFunc = async frame => ({ isSpeech: frame[0] > 0 ? 0.9 : 0 });
-      for (let i = 0; i < 8; i++) await raw.processFrame(new Float32Array(1536));
-      for (let i = 0; i < 5; i++) await raw.processFrame(new Float32Array(1536).fill(0.5));
-      for (let i = 0; i < 14; i++) await raw.processFrame(new Float32Array(1536));
+      for (let i = 0; i < 25; i++) await raw.processFrame(new Float32Array(512));
+      for (let i = 0; i < 15; i++) await raw.processFrame(new Float32Array(512).fill(0.5));
+      for (let i = 0; i < 43; i++) await raw.processFrame(new Float32Array(512));
     });
     assert.equal(await page.evaluate(() => window.__d61Native.events.some(e => e.type === 'blob' && e.sizeBytes > 44)), true);
     assert.equal(await page.evaluate(() => document.documentElement.dataset.dialogueState), 'listening');
@@ -4343,7 +4343,7 @@ test('D6.1a normal bootstrap without adapters opens local native primer and real
     assert.deepEqual(transports, []);
     assert.equal(browserAssets.every(r => r.origin === new URL(page.url()).origin), true);
     assert.equal(browserAssets.every(r => r.sensitiveHeaderNames.length === 0), true);
-    for (const file of ['ort.wasm.min.js', 'bundle.min.js', 'silero_vad_legacy.onnx',
+    for (const file of ['ort.wasm.min.js', 'bundle.min.js', 'silero_vad_v5.onnx',
       'ort-wasm-simd-threaded.mjs', 'ort-wasm-simd-threaded.wasm', 'vad.worklet.bundle.min.js']) {
       assert.equal(assets.filter(p => p === '/vendor/dialogue-vad/' + file).length, 1, file);
     }
@@ -4458,11 +4458,11 @@ test('D6.2a full_canary trusted click consumes once and reaches production D4-D5
     assert.equal(await page.evaluate(() => window.__canary.audio === window.__canary.recorderAudio), true);
     await page.evaluate(async () => {
       const raw = window.__canary.vads[0]; await raw._audioContext.suspend();
-      await raw.processFrame(new Float32Array(1536));
+      await raw.processFrame(new Float32Array(512));
       raw.frameProcessor.modelProcessFunc = async frame => ({ isSpeech: frame[0] > 0 ? 0.9 : 0 });
-      for (let i = 0; i < 8; i++) await raw.processFrame(new Float32Array(1536));
-      for (let i = 0; i < 5; i++) await raw.processFrame(new Float32Array(1536).fill(0.5));
-      for (let i = 0; i < 14; i++) await raw.processFrame(new Float32Array(1536));
+      for (let i = 0; i < 25; i++) await raw.processFrame(new Float32Array(512));
+      for (let i = 0; i < 15; i++) await raw.processFrame(new Float32Array(512).fill(0.5));
+      for (let i = 0; i < 43; i++) await raw.processFrame(new Float32Array(512));
     });
     await page.waitForFunction(() => document.documentElement.dataset.dialogueState === 'error');
     assert.deepEqual(posts, ['stt', 'chat', 'tts']);

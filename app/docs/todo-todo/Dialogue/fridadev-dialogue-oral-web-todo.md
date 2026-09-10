@@ -18,7 +18,8 @@ après remplacement du primer WAV d'un échantillon, rejeté par le décodeur, p
 un primer silencieux de huit échantillons. Le VAD matériel, la distinction
 parole/silence et la sortie de session ont été vérifiés sans appel fournisseur.
 D6.2a est fermé et livré : entrée ponctuelle `full_canary` vers cette même chaîne.
-D6.2 reste ouvert, sans canari exécuté et sous `GO canari` distinct.
+D6.2b corrige le choix VAD vers V5 ; D6.2 reste ouvert jusqu'au nouveau canari
+matériel iPhone, distinct de ce micro-correctif sans fournisseur.
 D6.3 à D6.5 et Z restent non commencés.**
 
 ## Intention
@@ -152,18 +153,25 @@ pré-roll borné, jamais l'attente silencieuse depuis l'armement. Son événemen
 porte uniquement le Blob, `audio/wav`, sa durée et sa taille, sans transcript.
 
 La distribution reste `@ricky0123/vad-web@0.0.30`,
-`onnxruntime-web@1.22.0`, modèle Silero `legacy`; versions, intégrités npm,
-SHA-256 et licences restent inchangés dans `vendor/dialogue-vad/MANIFEST.md`.
+`onnxruntime-web@1.22.0`, modèle Silero `v5` depuis D6.2b. Les versions,
+intégrités npm, bundle, worklet, ORT et licences restent épinglés ; seul
+l'asset modèle est remplacé, avec sa nouvelle empreinte dans
+`vendor/dialogue-vad/MANIFEST.md`. L'ancienne affirmation selon laquelle
+`legacy` correspondait à la calibration Safari validée était fausse.
+Le runtime fixe les probabilités positive et négative à `0.4`, AudioWorklet et
+`startOnLoad: false`, sans filtre de volume ni option d'entrée obsolète en frames.
 Aucun CDN, package nouveau ou téléchargement tiers au runtime.
 
 Le code fournisseur épinglé est l'autorité technique :
 `onSpeechEnd(audio)` reçoit un `Float32Array` mono à 16 000 Hz. Le worklet
 rééchantillonne à cette fréquence. Le segmenter concatène son buffer seulement
 après parole reconnue et fin VAD. En attente, il conserve au plus
-`floor(800 / 96) = 8` trames legacy de 1 536 échantillons, soit 768 ms de
-pré-roll effectif, inférieur au plafond configuré de 800 ms. Le début du premier
-mot est conservé. La fin inclut le silence de fermeture VAD
-(`floor(1400 / 96) = 14` trames, 1 344 ms), pas une attente antérieure libre.
+`floor(800 / 32) = 25` trames V5 de 512 échantillons, soit 800 ms de
+pré-roll effectif. Le début du premier mot est conservé. La fin inclut le
+silence de fermeture VAD (`floor(1400 / 32) = 43` trames, 1 376 ms), pas une
+attente antérieure libre. L'option de parole minimale reste 400 ms ; le
+segmenter épinglé l'arrondit à `floor(400 / 32) = 12` trames, soit 384 ms.
+Ces arrondis fournisseur sont conservés, sans modification de l'algorithme.
 
 D3 convertit ce seul tableau en WAV RIFF mono PCM16 little-endian : en-tête de
 44 octets, 2 octets par échantillon. La durée est `audio.length / 16` ms,
@@ -192,7 +200,7 @@ supplémentaire. Aucun buffer audio n'est conservé par le wiring visuel.
 
 Le chargement normal du chat ne demande aucun script, modèle, worklet, WASM ou
 MJS D3 et ne dépend d'aucun global VAD. L'ouverture explicite du harnais de test
-ou du préflight local D6.1a décrit ci-dessous charge, une fois et dans l'ordre,
+ou des entrées D6.1a/D6.2a décrites ci-dessous charge, une fois et dans l'ordre,
 les scripts locaux, puis initialise le VAD.
 Un asset absent/refusé met uniquement D3 en erreur ; le chat clavier demeure
 utilisable. Pause ou fermeture pendant ce chargement ne déclenche aucun micro
@@ -452,8 +460,39 @@ contrôlée termine ce témoin sans simuler une lecture réussie. Aucun audio,
 transcript ou réponse opérateur n'est collecté. Les mutations et résultats
 de livraison sont consignés dans la section D6.2a de la roadmap.
 
-**D6.2a est fermé et livré comme prérequis technique ; D6.2 reste ouvert, sans appel fournisseur,
-avec `GO canari` distinct requis. D6.3 à D6.5 et Z restent non commencés.**
+**D6.2a est fermé et livré comme prérequis technique, sans appel fournisseur
+dans ce micro-lot. D6.2 reste ouvert et son canari est distinct.
+D6.3 à D6.5 et Z restent non commencés.**
+
+## Correction du modèle VAD D6.2b — 10 septembre 2026
+
+Le fait nouveau rapporté par Tof est un décalage entre Frida (`legacy`) et le
+démonstrateur officiel réellement validé sur Safari iPhone (`v5`, seuils
+`0.4/0.4`). Le source officiel confirme ces options. Ses anciens champs
+`minSpeechFrames` et `preSpeechPadFrames` ne sont pas recopiés : notre version
+utilise les millisecondes 800 / 1 400 / 400. Les probabilités de parole ne sont
+ni des niveaux sonores ni une classification garantie de l'articulation.
+La proposition `0,96` est retirée ; aucun RMS, filtre d'énergie ou de volume
+n'est ajouté. Le WAV parasite rapporté n'était pas vide : sa seule taille ou
+son volume ne suffisent pas à traiter le défaut de sélection du modèle.
+
+V5 est extrait de la distribution npm `@ricky0123/vad-web@0.0.30`, intégrité
+vérifiée : `silero_vad_v5.onnx`, 2 327 524 octets,
+SHA-256 `2623a2953f6ff3d2c1e61740c6cdb7168133479b267dfef114a4a3cc5bdd788f`.
+L'asset legacy sans appelant Frida est supprimé. Le bundle upstream conserve
+ses internals legacy non sélectionnés ; il n'est pas modifié. Le raccord
+spécifique V5 valide des frames de 512 échantillons avant calcul des bornes
+et append. Le recorder, l'encodeur WAV, les limites et D1/D2/D4/D5 sont inchangés.
+
+Un énoncé accepté reste envoyé une seule fois au STT dans le parcours complet.
+Un STT réellement vide ou blanc produit toujours `paused`, aucun chat/TTS et
+aucun réarmement implicite. `local_preflight` reste sans transport et
+`full_canary` garde son autorité ponctuelle. Le bouton servi reste `disabled`.
+
+Les preuves déterministes de segmentation et WAV, les mutations et la livraison
+sont consignées dans la section D6.2b de la roadmap. Elles ne prouvent pas
+l'acceptabilité acoustique de Frida V5 sur l'iPhone. Aucun microphone matériel,
+appel fournisseur ou canari n'est exercé dans ce correctif ; D6.2 reste ouvert.
 
 ## Méthode obligatoire de choix du transport et des modèles
 
