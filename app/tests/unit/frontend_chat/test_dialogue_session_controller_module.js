@@ -23,6 +23,7 @@ function fixture(options = {}) {
   const f = { audio: options.audio || new FakeAudio(), urls: [], revoked: [], synthCalls: [], thread: 'thread-A', busy: false, armed: true, resumes: 0, stops: 0,
     states: [], submissions: [], sttCalls: 0, stt, chat, sttStarted, chatStarted };
   f.controller = require(modulePath).createDialogueSessionController({
+    mode: options.mode,
     ttsMediaElement: f.audio,
     urlApi: { createObjectURL: () => { const url = `blob:synthetic-${f.urls.length}`; f.urls.push(url); return url; }, revokeObjectURL: url => f.revoked.push(url) },
     capture: {
@@ -70,6 +71,58 @@ test('D5 primes synchronously, consumes exact canonical final once and rearms on
   await new Promise(setImmediate); assert.equal(f.resumes, 2); assert.equal(f.urls.length, 2);
   assert.deepEqual(f.revoked, f.urls);
 });
+
+// A permissive local mode would inherit all three full-session transports.
+test('D6.1a local preflight rejects transport capabilities before creating a session', () => {
+  assert.throws(() => fixture({ mode: 'local_preflight' }), /dialogue_local_transport_forbidden/);
+  assert.throws(() => fixture({ mode: 'unknown' }), /dialogue_session_mode_invalid/);
+});
+
+function localFixture(audio = new FakeAudio()) {
+  const f = { audio, states: [], armed: true, resumes: 0, thread: 'local-A' };
+  f.controller = require(modulePath).createDialogueSessionController({
+    mode: 'local_preflight', ttsMediaElement: audio,
+    capture: {
+      pause: () => { f.armed = false; }, stop: () => { f.armed = false; },
+      resume: (isCurrent) => { if (isCurrent()) { f.armed = true; f.resumes++; } },
+    },
+    getConversationId: () => f.thread, isChatBusy: () => false,
+    setState: state => f.states.push(state),
+    urlApi: { createObjectURL() { assert.fail('local blob must never become a playback URL'); } },
+  });
+  f.event = f.controller.start();
+  return f;
+}
+test('D6.1a local complete blob is discarded without pausing, transport or playback', async () => {
+  const f = localFixture();
+  assert.equal(f.audio.plays, 1, 'primer must precede the first await');
+  assert.equal(await f.controller.whenReady(), true);
+  await f.event({ type: 'speech-start' }); assert.equal(f.states.at(-1), 'user_speaking');
+  await f.event({ type: 'speech-end' }); assert.equal(f.states.at(-1), 'listening');
+  await f.event({ type: 'blob', blob: new Blob([new Uint8Array(24044)], { type: 'audio/wav' }) });
+  assert.equal(f.armed, true); assert.equal(f.states.at(-1), 'listening');
+  assert.equal(f.audio.plays, 1);
+  await f.controller.pause(); assert.equal(f.armed, false);
+  await f.event({ type: 'speech-start' }); assert.equal(f.states.at(-1), 'paused');
+  await f.controller.resume(); assert.equal(f.resumes, 1);
+  await f.controller.close();
+  const states = [...f.states];
+  await f.event({ type: 'speech-start' }); await f.event({ type: 'blob', blob: new Blob(['late']) });
+  assert.deepEqual(f.states, states); assert.equal(f.armed, false);
+});
+for (const action of ['pause', 'close', 'conversationChanged']) {
+  test(`D6.1a local ${action} cancels pending primer and late callbacks`, async () => {
+    const gate = deferred(), audio = new FakeAudio(); audio.playResult = gate.promise;
+    const f = localFixture(audio);
+    if (action === 'conversationChanged') f.thread = 'local-B';
+    await f.controller[action]();
+    assert.equal(f.armed, false); assert.equal(audio.paused, true); assert.equal(audio.src, '');
+    const states = [...f.states]; gate.resolve();
+    assert.equal(await f.controller.whenReady(), false);
+    await f.event({ type: 'speech-start' }); await f.event({ type: 'blob', blob: new Blob(['late']) });
+    assert.deepEqual(f.states, states); assert.equal(f.resumes, 0);
+  });
+}
 test('D4 empty or whitespace STT creates no message; only explicit local resume can arm again', async () => {
   for (const text of ['', ' \n ']) {
     const f = fixture(); const pending = f.blob();

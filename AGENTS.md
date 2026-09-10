@@ -148,6 +148,24 @@ operations et evenements tardifs. Une panne de vocalisation preserve le tour
 ecrit. Le bouton produit reste litteralement disabled, sans appel provider reel,
 canari, changement backend ni precedent pour D6, qui reste non commence.
 
+Exception explicite et strictement bornee decidee par l'utilisateur le 10
+septembre 2026 : D6.1a autorise le raccord preparatoire du bouton a l'unique
+fonction interne d'ouverture D3-D5 et un mode explicite `local_preflight`.
+L'autorite produit est capturee au bootstrap depuis le HTML servi : tant que
+le bouton est servi `disabled`, une activation DOM ulterieure ne peut ouvrir
+le mode complet. Seul le marqueur DOM exact
+`data-dialogue-preflight="local_preflight"`, prepare ephemerement dans Safari
+Inspector puis consomme et supprime au clic physique, autorise le preflight.
+Le bouton est immediatement redesactive avant toute attente et l'unique lecteur
+est amorce synchroniquement. Le mode local ne recoit aucun client STT/TTS ni
+callback de soumission chat et ignore les blobs avant tout travail de transport.
+Le sens historique de `routeToChat: false` reste D3 seul, sans amorce D5.
+Aucun harnais global supplementaire, route, stockage ou appel fournisseur
+n'est autorise. Le HTML commite reste `disabled`. D6.1 reste ouvert jusqu'a la
+preuve Safari iPhone ; D6.2 a D6.5 et Z restent non commences. D6.4 devra retirer
+explicitement le mecanisme de marqueur et activer le meme listener par le
+retrait commite de `disabled`, sans second wiring.
+
 Chaque lot doit demontrer: pas de capacite produit ajoutee, comportements
 legitimes preserves hors bug corrige, complexite stable ou reduite, ancien
 chemin retire quand il est remplace, et invariants utiles verrouilles par des

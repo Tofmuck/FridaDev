@@ -13,7 +13,8 @@ D1 puis au chat canonique dans le seul harnais synthétique ; D4 est fermé,
 poussé et livré après toutes les preuves et la vérification runtime. L'entrée
 produit reste désactivée. D5 est fermé, poussé et livré après vérification runtime :
 TTS frontend, lecteur possédé et réarmement après fin dans le seul harnais.
-D6 et les canaris réels restent non commencés.**
+D6.1 est ouvert : D6.1a prépare son préflight local sans transport ; la preuve
+Safari iPhone manque encore. D6.2 à D6.5, Z et les canaris réels restent non commencés.**
 
 ## Intention
 
@@ -185,8 +186,9 @@ aucune erreur ne réarme. Bruit rejeté, misfire ou fin dupliquée : aucun blob
 supplémentaire. Aucun buffer audio n'est conservé par le wiring visuel.
 
 Le chargement normal du chat ne demande aucun script, modèle, worklet, WASM ou
-MJS D3 et ne dépend d'aucun global VAD. Seul `openAndArm()` du harnais de test
-charge, une fois et dans l'ordre, les scripts locaux, puis initialise le VAD.
+MJS D3 et ne dépend d'aucun global VAD. L'ouverture explicite du harnais de test
+ou du préflight local D6.1a décrit ci-dessous charge, une fois et dans l'ordre,
+les scripts locaux, puis initialise le VAD.
 Un asset absent/refusé met uniquement D3 en erreur ; le chat clavier demeure
 utilisable. Pause ou fermeture pendant ce chargement ne déclenche aucun micro
 tardif. Le bouton produit reste littéralement `disabled`.
@@ -319,6 +321,61 @@ serveur ; l'invalidation locale reste donc indépendante de cette annulation.
 Aucun backend, modèle, voix, prompt, persistance, Whisper, VAD épinglé ou schéma
 `input_mode` n'est modifié. Aucun provider réel ni canari n'est exercé en D5.
 Les preuves et la livraison sont consignées dans la section D5 de la roadmap.
+
+## Préflight local D6.1a — 10 septembre 2026
+
+**Prérequis implémenté et testé ; livraison runtime à vérifier. D6.1 reste ouvert
+jusqu'à la preuve matérielle Safari iPhone. D6.2 reste non commencé.**
+
+Le blocage de vérification précédent est requalifié : le harnais D3 n'existe
+qu'avec les adaptateurs présents au bootstrap ; `routeToChat: false` exclut
+volontairement D4/D5, donc son absence d'amorce n'est pas un bug produit.
+
+`app.js` possède une seule fonction interne `openDialogueSession`, avec modes
+fermés `d3_local`, `full`, `local_preflight`. Le harnais synthétique conserve
+exactement son API et délègue `false` à `d3_local`, `true` à `full`.
+Le contrôleur visuel reste inchangé ; `entryButtonEl: null` réserve le bouton
+à l'unique listener applicatif.
+
+L'autorité produit est un booléen immuable capturé depuis l'attribut HTML
+`disabled` au bootstrap. Le bouton servi reste désactivé et ses attributs
+accessibles sont conservés. Retirer ensuite `disabled` dans Inspector ne donne
+aucune autorité produit : sans marqueur, aucun effet. Un marqueur malformé est
+supprimé, le bouton redésactivé, et l'ouverture refusée.
+
+Seul le marqueur exact `data-dialogue-preflight="local_preflight"` permet une
+préparation locale depuis Safari Inspector. Lors du clic physique, le listener
+supprime ce marqueur et redésactive le bouton avant toute attente. Il ouvre
+`local_preflight` dans la même pile synchrone, crée l'unique HTMLAudioElement
+et appelle l'amorce silencieuse D5 existante. Les événements synthétiques
+n'autorisent pas cette ouverture. Aucune URL, variable globale supplémentaire,
+route, cookie ou persistance ne sélectionne ce mode.
+
+Après réussite de l'amorce seulement, les assets D3 same-origin sont chargés et
+le recorder reçoit ce même lecteur avant d'acquérir son unique MediaStream.
+Le VAD et la capture partagent le flux. L'acquisition micro intervient après
+ce chargement ; la permission et le fonctionnement depuis ce seul geste
+restent à valider matériellement sur Safari iPhone.
+
+Le mode local utilise le contrôleur de session existant, sans seconde machine.
+Le wiring ne construit aucun client STT/TTS et ne transmet aucun callback chat.
+Le constructeur rejette un mode local muni de ces capacités. Les événements
+de parole projettent les états locaux ; un blob complet est ignoré avant
+`consumeBlob`, sans requête, soumission, object URL, seconde lecture ni conservation
+du contenu. Aucun transcript ou audio n'est affiché, persisté ou journalisé.
+Seuls les assets D3 autorisés nécessitent un chargement réseau.
+
+Pause arrête les pistes acquises ; seule Reprendre peut acquérir un autre flux.
+Terminer, fermeture, `pagehide`, changement de conversation et erreur neutralisent
+lecteur, capture et callbacks tardifs. `getUserMedia` en attente n'est pas
+annulable : un flux reçu après invalidation est immédiatement arrêté avant VAD.
+Aucune erreur ne réarme automatiquement.
+
+Les preuves unitaires, Chromium, mutations et frontières D1/D2 hermétiques
+figurent dans la section D6.1a de la roadmap. Elles ne constituent ni une preuve
+matérielle iPhone ni une autorisation fournisseur. D6.4 devra retirer
+explicitement le mécanisme de marqueur ; le retrait committé de `disabled`
+donnera alors l'autorité au bootstrap et au même listener vers `full`.
 
 ## Méthode obligatoire de choix du transport et des modèles
 
@@ -545,8 +602,10 @@ d'activer le bouton ni de lire le TTS. L'exception D4 explicitement approuvée
 le 9 septembre autorise seulement le raccord WAV → D1 → chat canonique décrit
 ci-dessus, dans le harnais synthétique. L'exception D5 distincte approuvée le
 9 septembre autorise uniquement la lecture et la boucle décrites ci-dessus,
-toujours sans provider réel ni activation produit. D6 exige encore une décision
-explicite distincte et reste non commencé.
+toujours sans provider réel ni activation produit. L'exception D6.1a approuvée
+le 10 septembre autorise uniquement le prérequis local décrit ci-dessus.
+D6.1 reste ouvert jusqu'à la preuve iPhone ; D6.2 à D6.5 et Z restent non
+commencés et exigent des décisions explicites distinctes.
 
 ## Roadmap d'implémentation
 

@@ -3,8 +3,12 @@
 // Owns the semi-duplex session; D3 owns capture and chat owns its canonical final.
 function createDialogueSessionController({
   capture, audioClient, getConversationId, isChatBusy, setState, submitCanonicalChatMessage,
-  ttsMediaElement: audio, urlApi = URL,
+  ttsMediaElement: audio, urlApi = URL, mode = 'full',
 }) {
+  if (!['full', 'local_preflight'].includes(mode)) throw new Error('dialogue_session_mode_invalid');
+  if (mode === 'local_preflight' && (audioClient !== undefined || submitCanonicalChatMessage !== undefined)) {
+    throw new Error('dialogue_local_transport_forbidden');
+  }
   let active = false;
   let session = 0;
   let generation = 0;
@@ -171,7 +175,8 @@ function createDialogueSessionController({
     // The recorder keeps this callback: an old recorder cannot target a new session.
     return (event) => {
       if (!active || owner !== session) return Promise.resolve();
-      if (event.type === 'blob') return consumeBlob(event.blob);
+      // Local preflight discards the blob before any full-session work or retention.
+      if (event.type === 'blob') return mode === 'full' ? consumeBlob(event.blob) : Promise.resolve();
       if (event.type === 'error') return fail();
       if (!pending && ['listening', 'user_speaking'].includes(phase)) {
         if (event.type === 'speech-start') project('user_speaking');

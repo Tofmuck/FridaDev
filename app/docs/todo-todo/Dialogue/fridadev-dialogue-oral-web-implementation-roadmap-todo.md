@@ -1134,6 +1134,56 @@ après une preuve de bout en bout, avec rollback ciblé prêt.
   choisi, routes STT/TTS présentes, absence de secret dans le bundle, UI mobile
   stable et chat clavier inchangé. En cas d'échec, ne pas appeler OpenRouter.
 
+  **Ouvert : prérequis D6.1a implémenté et testé ; livraison runtime puis preuve
+  Safari iPhone encore requises. Aucun appel fournisseur autorisé.**
+
+### D6.1a — raccord préparatoire approuvé le 10 septembre 2026
+
+- Baseline revalidée : `main`, HEAD/upstream
+  `62e09e4743c8156bb1ab1f7d8c6670c898fa59c9`, divergence `0/0`, worktree propre.
+- F1/F2 confirmés : le harnais dépend des adaptateurs au bootstrap et le
+  listener précédent ouvrait seulement la vue. F3 confirmé : `routeToChat: false`
+  conserve volontairement D3 seul, sans amorce D5. Ce contrat est préservé.
+- Une fonction interne unique ouvre `d3_local`, `full` ou `local_preflight`.
+  Le contrôleur visuel reste inchangé avec `entryButtonEl: null`. Le bouton
+  produit servi demeure littéralement `disabled`, sans changement accessible.
+- L'autorité produit est capturée une fois depuis le HTML servi. Une activation
+  DOM après bootstrap, sans marqueur ou avec marqueur malformé, n'ouvre aucune
+  session. Le marqueur exact `data-dialogue-preflight="local_preflight"` est
+  consommé au clic physique, avec redésactivation immédiate avant l'amorce
+  synchrone sur le lecteur unique transmis à D3.
+- Le préflight ne construit aucun client STT/TTS, ne reçoit aucun submit chat
+  et ignore le blob avant le travail de transport. Le constructeur refuse
+  explicitement des capacités de transport dans ce mode. Aucun nouveau harnais
+  global, route, paramètre, stockage, dépendance ou réglage audio.
+- Rouges causaux observés : ouverture visuelle indue après activation DOM sans
+  autorité ; zéro amorce dans le bootstrap normal et le futur clic complet ;
+  marqueur non consommé ; configuration locale permissive acceptée et blob
+  traité par le chemin complet au lieu d'être ignoré.
+- Verts : `281/281` tests unitaires frontend ; sélection Chromium `31/31`
+  (`14` scénarios hors sélection), incluant les six scénarios D6.1a,
+  D3–D5, clavier, Whisper, mobile et desktop. Tests D1/D2 et routes : `39/39`,
+  conteneur jetable sans réseau, checkout read-only, sans volumes opérateur.
+- Chromium sans adaptateurs de bootstrap : amorce native dans la pile du clic,
+  même lecteur dans D3, flux synthétique partagé, vrais assets ONNX/worklet/WASM
+  same-origin et une inférence locale. Le segmenter épinglé produit ensuite un
+  blob synthétique complet, sans client créé ni requête de transport. Cette
+  preuve n'est pas Safari iPhone et ne sollicite aucun microphone physique.
+- Pause, Terminer, fermeture, `pagehide`, permission refusée, assets/VAD refusés,
+  changement de conversation et callbacks tardifs couverts. Les pistes déjà
+  acquises s'arrêtent immédiatement ; une permission en attente ne peut ouvrir
+  un VAD après invalidation. La reprise reste explicite.
+- Mutations contrôlées : conservation du marqueur → témoin rouge sur sa
+  consommation ; orientation du mode local vers `full` → témoin rouge sur
+  un véritable essai HTTP intercepté par le test. Restauration exacte du fichier
+  après chaque mutation, vérifiée par SHA-256. Aucun transport fournisseur réel.
+- L'artefact `/tmp/fridadev-d61-reproduction.json` a été identifié comme le JSON
+  content-free de la reproduction précédente, supprimé seul et son absence
+  vérifiée. Aucun audio ou transcript n'est conservé dans les preuves.
+
+Le verdict matériel de Tof reste absent. Ne pas cocher D6.1 sur la base de
+Chromium. D6.2 à D6.5 et Z restent explicitement non commencés.
+
 - [ ] **D6.2 — Canari fournisseur borné hors voiture**
 
   Une seule parole courte puis une seule réponse Frida, en ouvrant la session
@@ -1157,7 +1207,10 @@ après une preuve de bout en bout, avec rollback ciblé prêt.
 
   Retirer `disabled`, conserver l'accessibilité clavier et tactile, puis rejouer
   les tests frontend, les deux routes backend, le smoke mobile et le chemin chat
-  clavier. Aucun autre contrôle ou écran n'est ajouté.
+  clavier. Retirer explicitement le mécanisme DOM `local_preflight` de D6.1a.
+  Le HTML servi actif donnera l'autorité au bootstrap : conserver exactement
+  le même listener et la même fonction d'ouverture vers `full`, sans second
+  wiring. Aucun autre contrôle ou écran n'est ajouté.
 
 - [ ] **D6.5 — Livrer avec rollback**
 

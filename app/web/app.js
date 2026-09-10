@@ -80,6 +80,8 @@
   const btnBiblioMode = $("#btnBiblioMode");
   const btnAgendaMode = $("#btnAgendaMode");
   const btnDialogueMode = $("#btnDialogueMode");
+  // Capture served HTML authority once. Inspector edits cannot grant product access.
+  const dialogueProductAuthorized = Boolean(btnDialogueMode && !btnDialogueMode.hasAttribute('disabled'));
   const btnNotesMode = $("#btnNotesMode");
   const adobeProductChoices = $("#adobeProductChoices");
   const btnExportConversation = $("#btnExportConversation");
@@ -164,7 +166,7 @@
   const dialogueD3TestAdapters = window.__FRIDA_DIALOGUE_D3_TEST_ADAPTERS__ || null;
   let dialogueD3Load = null;
   let dialogueD3Session = 0;
-  // This function is called only by the explicit, non-product D3 harness.
+  // Loaded only after an authorized explicit session opening.
   const loadDialogueD3 = () => {
     if (!dialogueD3Load) dialogueD3Load = (async () => {
       for (const source of [
@@ -204,13 +206,19 @@
 
   const handleDialogueD3UnexpectedError = () => {
     dialogueD3TerminalError = true;
+    const closing = dialogueD4Controller?.close();
+    const stopping = dialogueD3Recorder?.stop();
     if (dialogueModeController && dialogueModeController.isActive()) {
       dialogueModeController.setState('error');
     }
+    return Promise.all([closing, stopping]);
   };
 
   const trackDialogueD3Operation = (operation) => {
-    dialogueD3Operation = Promise.resolve(operation).catch(handleDialogueD3UnexpectedError);
+    const owner = dialogueD3Session;
+    dialogueD3Operation = Promise.resolve(operation).catch(() => {
+      if (dialogueD3Active && owner === dialogueD3Session) return handleDialogueD3UnexpectedError();
+    });
     return dialogueD3Operation;
   };
 
@@ -285,7 +293,7 @@
     screenEl: dialogueModeScreen,
     backgroundEl: document.querySelector('.main'),
     statusEl: dialogueModeStatus,
-    entryButtonEl: btnDialogueMode,
+    entryButtonEl: null,
     pauseButtonEl: dialogueModePause,
     pauseLabelEl: dialogueModePauseLabel,
     endButtonEl: dialogueModeEnd,
@@ -295,59 +303,78 @@
     onExit: stopDialogueD3Capture,
   });
   window.FridaDialogueModeController = dialogueModeController;
+  const openDialogueSession = (mode) => {
+    if (!['d3_local', 'full', 'local_preflight'].includes(mode)) throw new Error('dialogue_session_mode_invalid');
+    if (dialogueD3Active) return dialogueD3Operation;
+    dialogueD3Active = true;
+    dialogueD3TerminalError = false;
+    dialogueD3Events.length = 0;
+    const session = ++dialogueD3Session;
+    dialogueModeController.enter();
+    let d4Event = null;
+    let sessionController = null;
+    let ttsMediaElement = null;
+    if (mode !== 'd3_local') {
+      // Create and prepare the owned element in the initial gesture, before any await.
+      try {
+        ttsMediaElement = dialogueD3TestAdapters?.createTtsMediaElement
+          ? dialogueD3TestAdapters.createTtsMediaElement() : new Audio();
+        sessionController = window.FridaDialogueSessionController.createDialogueSessionController({
+          mode,
+          ttsMediaElement,
+          capture: {
+            pause: () => dialogueD3Recorder?.pause(),
+            stop: () => dialogueD3Recorder?.stop(),
+            resume: async (isCurrent) => {
+              await dialogueD3Operation;
+              if (!isCurrent()) return;
+              await dialogueD3Recorder?.arm();
+              if (!isCurrent()) return;
+              await dialogueD3Recorder?.resume();
+            },
+          },
+          getConversationId: () => getCurrentId(),
+          isChatBusy: () => chatRequestInFlight,
+          setState: (state) => dialogueModeController.setState(state),
+          // Local preflight receives no transport capabilities at all.
+          ...(mode === 'full' ? {
+            audioClient: window.FridaDialogueAudioClient.createDialogueAudioClient(),
+            submitCanonicalChatMessage: (text, inputMode) => submitCanonicalChatMessage(text, inputMode),
+          } : {}),
+        });
+        dialogueD4Controller = sessionController;
+        d4Event = sessionController.start();
+      } catch (_error) {
+        return handleDialogueD3UnexpectedError();
+      }
+    }
+    return queueDialogueD3Operation(async () => {
+      if (sessionController && !await sessionController.whenReady()) return;
+      if (!dialogueD3Active || session !== dialogueD3Session) return;
+      const runtime = await loadDialogueD3();
+      if (!dialogueD3Active || session !== dialogueD3Session) return;
+      const recorderToArm = createDialogueD3Recorder(runtime, d4Event, ttsMediaElement);
+      dialogueD3Recorder = recorderToArm;
+      if (dialogueModeController.getState() === 'listening') await recorderToArm.arm();
+    });
+  };
+  btnDialogueMode?.addEventListener('click', (event) => {
+    if (!event.isTrusted || btnDialogueMode.disabled) return;
+    // D6.1 only: one-shot DOM preparation, removed explicitly in D6.4.
+    const marker = btnDialogueMode.getAttribute('data-dialogue-preflight');
+    if (marker !== null) {
+      btnDialogueMode.removeAttribute('data-dialogue-preflight');
+      btnDialogueMode.disabled = true;
+      if (marker === 'local_preflight') void openDialogueSession('local_preflight');
+      return;
+    }
+    if (dialogueProductAuthorized) void openDialogueSession('full');
+  });
+  window.addEventListener('pagehide', () => dialogueModeController.exit());
   if (dialogueD3TestAdapters) {
     window.FridaDialogueD3Harness = Object.freeze({
       openAndArm({ routeToChat = false } = {}) {
-        if (dialogueD3Active) return dialogueD3Operation;
-        dialogueD3Active = true;
-        dialogueD3TerminalError = false;
-        dialogueD3Events.length = 0;
-        const session = ++dialogueD3Session;
-        dialogueModeController.enter();
-        let d4Event = null;
-        let sessionController = null;
-        let ttsMediaElement = null;
-        if (routeToChat) {
-          // Create and prepare the owned element in the initial gesture, before any await.
-          try {
-            ttsMediaElement = dialogueD3TestAdapters.createTtsMediaElement
-              ? dialogueD3TestAdapters.createTtsMediaElement() : new Audio();
-            sessionController = window.FridaDialogueSessionController.createDialogueSessionController({
-              ttsMediaElement,
-              capture: {
-                pause: () => dialogueD3Recorder?.pause(),
-                stop: () => dialogueD3Recorder?.stop(),
-                resume: async (isCurrent) => {
-                  await dialogueD3Operation;
-                  if (!isCurrent()) return;
-                  await dialogueD3Recorder?.arm();
-                  if (!isCurrent()) return;
-                  await dialogueD3Recorder?.resume();
-                },
-              },
-              audioClient: window.FridaDialogueAudioClient.createDialogueAudioClient(),
-              getConversationId: () => getCurrentId(),
-              isChatBusy: () => chatRequestInFlight,
-              setState: (state) => dialogueModeController.setState(state),
-              submitCanonicalChatMessage: (text, inputMode) => submitCanonicalChatMessage(text, inputMode),
-            });
-            dialogueD4Controller = sessionController;
-            d4Event = sessionController.start();
-          } catch (_error) {
-            void sessionController?.close();
-            handleDialogueD3UnexpectedError();
-            return Promise.resolve();
-          }
-        }
-        return queueDialogueD3Operation(async () => {
-          if (sessionController && !await sessionController.whenReady()) return;
-          if (!dialogueD3Active || session !== dialogueD3Session) return;
-          const runtime = await loadDialogueD3();
-          if (!dialogueD3Active || session !== dialogueD3Session) return;
-          const recorderToArm = createDialogueD3Recorder(runtime, d4Event, ttsMediaElement);
-          dialogueD3Recorder = recorderToArm;
-          if (dialogueModeController.getState() === 'listening') await recorderToArm.arm();
-        });
+        return openDialogueSession(routeToChat ? 'full' : 'd3_local');
       },
       events: () => [...dialogueD3Events],
       whenSettled: () => Promise.all([dialogueD3Operation, dialogueD4Operation]),
