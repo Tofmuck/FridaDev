@@ -157,11 +157,11 @@ function createDialogueSessionController({
     project('listening');
     const preparation = { url: null, listeners: [] };
     media = preparation;
-    // A fixed, one-sample silent PCM WAV. play() is invoked in the user gesture,
-    // on the very element subsequently owned by every TTS cycle.
+    // A fixed, eight-sample silent PCM WAV. Safari iPhone rejects the previous
+    // one-sample file; play() still runs on the element owned by every TTS cycle.
     try {
       audio.muted = false;
-      audio.src = 'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQIAAAAAAA==';
+      audio.src = 'data:audio/wav;base64,UklGRjQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YRAAAAAAAAAAAAAAAAAAAAAAAAAA';
       const playing = audio.play();
       ready = Promise.resolve(playing).then(() => {
         if (!active || owner !== session || media !== preparation) return false;

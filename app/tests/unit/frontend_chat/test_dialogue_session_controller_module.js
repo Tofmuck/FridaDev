@@ -72,6 +72,17 @@ test('D5 primes synchronously, consumes exact canonical final once and rearms on
   assert.deepEqual(f.revoked, f.urls);
 });
 
+test('D6.1 Safari primer contains eight complete PCM16 samples', () => {
+  const f = fixture();
+  const encoded = f.audio.src.split(',', 2)[1];
+  const wav = Buffer.from(encoded, 'base64');
+  assert.equal(wav.subarray(0, 4).toString('ascii'), 'RIFF');
+  assert.equal(wav.subarray(8, 12).toString('ascii'), 'WAVE');
+  assert.equal(wav.subarray(36, 40).toString('ascii'), 'data');
+  assert.equal(wav.readUInt32LE(40), 16, 'Safari iPhone rejects the previous one-sample WAV');
+  assert.equal(wav.length, 60);
+});
+
 // A permissive local mode would inherit all three full-session transports.
 test('D6.1a local preflight rejects transport capabilities before creating a session', () => {
   assert.throws(() => fixture({ mode: 'local_preflight' }), /dialogue_local_transport_forbidden/);
