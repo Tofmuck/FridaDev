@@ -17,7 +17,7 @@ D6.1 est fermé : le préflight local sans transport fonctionne sur Safari iPhon
 après remplacement du primer WAV d'un échantillon, rejeté par le décodeur, par
 un primer silencieux de huit échantillons. Le VAD matériel, la distinction
 parole/silence et la sortie de session ont été vérifiés sans appel fournisseur.
-D6.2a prépare l'entrée ponctuelle `full_canary` vers cette même chaîne.
+D6.2a est fermé et livré : entrée ponctuelle `full_canary` vers cette même chaîne.
 D6.2 reste ouvert, sans canari exécuté et sous `GO canari` distinct.
 D6.3 à D6.5 et Z restent non commencés.**
 
@@ -452,7 +452,7 @@ contrôlée termine ce témoin sans simuler une lecture réussie. Aucun audio,
 transcript ou réponse opérateur n'est collecté. Les mutations et résultats
 de livraison sont consignés dans la section D6.2a de la roadmap.
 
-**D6.2a est un prérequis technique ; D6.2 reste ouvert, sans appel fournisseur,
+**D6.2a est fermé et livré comme prérequis technique ; D6.2 reste ouvert, sans appel fournisseur,
 avec `GO canari` distinct requis. D6.3 à D6.5 et Z restent non commencés.**
 
 ## Méthode obligatoire de choix du transport et des modèles

@@ -1307,7 +1307,7 @@ service. Le micro-lot correctif distinct ci-dessous lui succède.
 
 ### D6.2a — entrée ponctuelle du canari — 10 septembre 2026
 
-- [x] **D6.2a — Prérequis technique implémenté et vérifié**
+- [x] **D6.2a — Prérequis technique fermé et livré**
 
   Le canari D6.2 reste ouvert et non exécuté. Sa préparation physique et son
   premier appel réel exigent encore un `GO canari` distinct. Aucun appel
@@ -1361,7 +1361,7 @@ service. Le micro-lot correctif distinct ci-dessous lui succède.
   JavaScript touchés et `git diff --check` réussissent.
 - L'exception bornée est consignée dans `AGENTS.md`, le contrat et le hub.
   D6.4 devra supprimer les deux valeurs et tout le mécanisme de marqueur.
-  La livraison ciblée est consignée séparément ci-dessous après vérification.
+  La livraison ciblée est vérifiée ci-dessous.
 
 Commandes complètes : `node --test app/tests/unit/frontend_chat/*.js`,
 `node --test --test-concurrency=1 app/tests/integration/frontend_browser/test_*.js`
@@ -1369,6 +1369,34 @@ et `python -B -m unittest tests.unit.chat.test_dialogue_stt_service
 tests.unit.chat.test_dialogue_tts_service
 tests.integration.chat.test_chat_dialogue_audio_routes` dans l'enveloppe
 hermétique décrite ci-dessus. Aucun temporaire de preuve n'est conservé.
+
+Livraison du 10 septembre 2026 à 14:42 UTC :
+
+- Commit applicatif `4c13966b925a3fd63d1e62b330204b278c8fedcc`, poussé sur
+  `main` ; HEAD = upstream, divergence `0/0`, worktree propre avant build.
+- Compose applicatif existant : build `--pull=false`, puis recréation du seul
+  service `fridadev` avec `--no-deps --force-recreate --no-build --pull never`.
+  Image livrée :
+  `sha256:3dd43f33b41f4cb35946b4bc42b96028a82eb34995054fce1f30e33b04d9a1d6`.
+- Image précédente conservée et vérifiée sous
+  `platform-fridadev-app:rollback-d62a-20260910T144203Z` :
+  `sha256:9c3a8f8c7ba8ceae15d456e76d5ba2e5000eb03718592eac02176b51c54a8bb5`.
+  Aucun rollback n'a été nécessaire.
+- `platform-fridadev` : `running/healthy`, restart `0`, OOM `false`.
+  Les 31 voisins ont les mêmes identités, images, états, dates de démarrage,
+  compteurs de restart et états OOM/health qu'avant le lot.
+- Douze empreintes de sources D1–D6.2a concordent entre checkout et conteneur ;
+  les sept fichiers Web concordent aussi avec les assets servis en HTTP `200`,
+  médias `text/html` et `application/javascript`. L'empreinte `app.js` est celle
+  vérifiée après mutations ci-dessus. HTML toujours `disabled`, sans marqueur.
+- HTTPS public : `302` vers la protection existante, vérification TLS `0`,
+  sans authentification ni contournement d'Authelia. Cette vérification serveur
+  ne constitue pas une preuve Safari iPhone du canari complet.
+- Aucun POST STT/chat/TTS vers le runtime, aucun appel fournisseur et aucun
+  geste iPhone demandé. Cette clôture documentaire ne déclenche aucun second
+  build ni restart. D6.2 reste ouvert, sous `GO canari` distinct.
+
+**D6.2a FERMÉ ET LIVRÉ — D6.2 OUVERT — AUCUN APPEL FOURNISSEUR — GO CANARI DISTINCT REQUIS.**
 
 - [ ] **D6.2 — Canari fournisseur borné hors voiture**
 
