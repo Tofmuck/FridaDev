@@ -1542,9 +1542,9 @@ Livraison vérifiée le 10 septembre 2026 à 16:39 UTC :
   temporaire supprimé. Le canari n'établit pas encore le comportement en
   voiture ; celui-ci reste réservé au retour d'usage D6.5.
 
-**D6.2 FERMÉ — D6.3 NON COMMENCÉ.**
+**D6.2 FERMÉ — D6.3-bis FERMÉ — D6.3 NON COMMENCÉ.**
 
-- [ ] **D6.3-bis — Stabiliser l'autorité de présentation téléphone**
+- [x] **D6.3-bis — Stabiliser l'autorité de présentation téléphone**
 
   **Défaut utilisateur reproduit le 11 septembre 2026.** Sur l'iPhone, la
   présentation `Alternative B — Dialogue vivant` est actuellement décidée par
@@ -1588,6 +1588,39 @@ Livraison vérifiée le 10 septembre 2026 à 16:39 UTC :
 
   D6.3-bis est exécuté avant l'activation produit D6.3 afin de stabiliser le
   contenant mobile ; il ne retire pas `disabled` et n'active aucun appel audio.
+
+  **Fermeture du 11 septembre 2026.** Le cadrage a été consigné avant le code
+  dans `fa4888b4cd4b3149b33f20f31c4bc43f2e2ec8b3`. Le rouge TDD a confirmé
+  l'absence d'autorité téléphone stable : trois témoins unitaires échouaient et
+  le scénario Chromium perdait la présentation en passant de `414 × 896` à
+  `896 × 414`. Le correctif `62388eeb92e5b71a8701b08be9e9f744d5609538`
+  centralise la décision dans `chat_theme.js` : petit côté d'écran borné,
+  capacité tactile ou mode standalone, breakpoint étroit conservé comme
+  fallback, sans sniffing User-Agent. `app.js` et les règles CSS consomment
+  cette seule autorité ; `pageshow` la resynchronise après navigation,
+  authentification ou restauration navigateur.
+
+  Après restauration du correctif exact, les tests unitaires frontend passent
+  `289/289` et les scénarios Chromium `53/53`, sans échec ni skip. La preuve
+  navigateur conserve la composition téléphone, l'écran Dialogue, le menu et
+  l'absence de débordement horizontal en portrait et paysage, puis restaure les
+  attributs de présentation sur `pageshow`. Le grand écran tactile reste en
+  bureau et le fallback responsive étroit est préservé. Le retour Authelia
+  réel n'a pas été rejoué matériellement dans ce lot : sa frontière frontend
+  est couverte par un chargement téléphone et par le témoin déterministe
+  `pageshow`, sans changement d'Authelia ou de Caddy.
+
+  Seul `platform-fridadev` a été reconstruit sans pull puis recréé avec
+  `--no-deps`. Image livrée :
+  `sha256:0e742e7d4f164afa87854120b9688ee1075e587fed772d1157840174d82fe6ee` ;
+  rollback : `platform-fridadev-app:rollback-d63bis-20260911T071721Z`.
+  Le service est `running/healthy`, HTTP interne `200`, restart `0`, OOM
+  `false`. Les empreintes de `app.js`, `chat_theme.js` et `styles.css`
+  concordent entre checkout, conteneur et HTTP servi ; les 31 voisins sont
+  inchangés. Le bouton Dialogue reste littéralement `disabled`. D6.3 n'est pas
+  commencé.
+
+  **D6.3-bis FERMÉ ET LIVRÉ — D6.3 NON COMMENCÉ.**
 
 - [ ] **D6.3 — Activer le bouton et rejouer les preuves**
 
