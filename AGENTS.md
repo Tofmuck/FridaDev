@@ -66,14 +66,15 @@ livre. Cette exception n'autorise ni nouveau workflow metier, ni STT/TTS en
 ligne, ni boucle de dialogue oral.
 
 Complement explicite decide par l'utilisateur le 11 septembre 2026 : le
-contexte telephone de cette composition ne depend plus de l'orientation ni de
-la seule largeur courante du viewport. Sur un telephone tactile de petite
-dimension, notamment l'iPhone 11, il reste actif en portrait et en paysage et
-se resynchronise au chargement comme au retour d'authentification ou de
-restauration navigateur. Le seuil etroit reste seulement un fallback responsive
-pour une fenetre reduite. Un terminal tactile plus grand et un ordinateur large
-restent hors de cette autorite. Ce correctif D6.3-bis ne modifie ni Authelia, ni
-Caddy, ni le backend, ni les routes, ni l'activation du bouton Dialogue.
+contexte telephone de cette composition ne doit dependre ni de l'orientation ni
+de la seule largeur courante du viewport. La stabilite portrait/paysage est
+livree sur un telephone tactile de petite dimension, notamment l'iPhone 11.
+La resynchronisation au premier retour d'authentification reste ouverte apres
+echec de la recette materielle, malgre les temoins synthetiques `pageshow`.
+Le seuil etroit reste seulement un fallback responsive pour une fenetre
+reduite. Un terminal tactile plus grand et un ordinateur large restent hors de
+cette autorite. D6.3-bis ne modifie ni Authelia, ni Caddy, ni le backend, ni les
+routes, ni l'activation du bouton Dialogue.
 
 Exception explicite et strictement bornee decidee par l'utilisateur le 9
 septembre 2026: l'ecran mobile Figma `Mode dialogue - Ecoute` peut etre integre

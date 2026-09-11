@@ -1542,9 +1542,9 @@ Livraison vérifiée le 10 septembre 2026 à 16:39 UTC :
   temporaire supprimé. Le canari n'établit pas encore le comportement en
   voiture ; celui-ci reste réservé au retour d'usage D6.5.
 
-**D6.2 FERMÉ — D6.3-bis FERMÉ — D6.3 NON COMMENCÉ.**
+**D6.2 FERMÉ — D6.3-bis OUVERT — D6.3 NON COMMENCÉ.**
 
-- [x] **D6.3-bis — Stabiliser l'autorité de présentation téléphone**
+- [ ] **D6.3-bis — Stabiliser l'autorité de présentation téléphone**
 
   **Défaut utilisateur reproduit le 11 septembre 2026.** Sur l'iPhone, la
   présentation `Alternative B — Dialogue vivant` est actuellement décidée par
@@ -1620,7 +1620,24 @@ Livraison vérifiée le 10 septembre 2026 à 16:39 UTC :
   inchangés. Le bouton Dialogue reste littéralement `disabled`. D6.3 n'est pas
   commencé.
 
-  **D6.3-bis FERMÉ ET LIVRÉ — D6.3 NON COMMENCÉ.**
+  **Recette matérielle du 11 septembre 2026 — réouverture.** Lors d'un lancement
+  iPhone exigeant une nouvelle authentification Authelia, le premier retour vers
+  FridaDev affiche encore la composition de bureau. Fermer complètement puis
+  relancer l'application, une fois authentifiée, affiche la bonne composition.
+  La rotation paysage conserve ensuite correctement cette composition : cette
+  moitié du correctif reste acquise.
+
+  Cette observation invalide la fermeture précédente et montre que le témoin
+  Chromium supprimant les attributs puis émettant artificiellement `pageshow`
+  ne reproduit pas le vrai cycle iOS/Authelia. Le code et les assets actifs sont
+  bien ceux du commit `62388eeb92e5b71a8701b08be9e9f744d5609538`, servis avec
+  `Cache-Control: no-cache` et des empreintes concordantes ; un cache HTTP banal
+  n'est donc pas établi comme cause. Le contexte de navigation effectivement
+  restitué par WebKit et les valeurs de détection qu'il expose au premier retour
+  restent à mesurer. Aucun second correctif ne doit être tenté avant cette
+  reproduction content-free.
+
+  **D6.3-bis ROUVERT — PAYSAGE CORRIGÉ — RETOUR AUTHELIA NON CORRIGÉ — D6.3 NON COMMENCÉ.**
 
 - [ ] **D6.3 — Activer le bouton et rejouer les preuves**
 
