@@ -143,12 +143,12 @@
     if (!currentConversationTitle) return;
     currentConversationTitle.textContent = String(thread?.title || 'Nouvelle conversation');
   };
-  chatTheme.createThemeController({ document, storage: localStorage });
-  const mobileLayoutQuery = window.matchMedia('(max-width: 640px)');
+  const themeController = chatTheme.createThemeController({ document, storage: localStorage });
+  const isPhoneLayout = () => themeController.isPhonePresentation();
   const syncSidebarAccessibility = () => {
     if (!sidebar) return;
     const isOpen = sidebar.classList.contains('open');
-    sidebar.setAttribute('aria-hidden', mobileLayoutQuery.matches && !isOpen ? 'true' : 'false');
+    sidebar.setAttribute('aria-hidden', isPhoneLayout() && !isOpen ? 'true' : 'false');
     if (btnMenu) btnMenu.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   };
   const openSidebar = () => {
@@ -413,7 +413,7 @@
     });
   }
   const setMobileToolsExpanded = (expanded) => {
-    const nextExpanded = Boolean(expanded && mobileLayoutQuery.matches);
+    const nextExpanded = Boolean(expanded && isPhoneLayout());
     if (ask) ask.classList.toggle('mobile-tools-expanded', nextExpanded);
     if (btnMobileTools) {
       btnMobileTools.setAttribute('aria-expanded', nextExpanded ? 'true' : 'false');
@@ -433,8 +433,11 @@
   [btnAdobeMode, btnBiblioMode, btnNotesMode, btnAgendaMode].forEach((button) => {
     if (button) button.addEventListener('click', () => setMobileToolsExpanded(false));
   });
-  const handleMobileLayoutChange = () => {
-    if (!mobileLayoutQuery.matches) {
+  const handlePresentationContextChange = (event) => {
+    if (!event || event.type !== chatTheme.PRESENTATION_CONTEXT_EVENT) {
+      themeController.syncPresentation();
+    }
+    if (!isPhoneLayout()) {
       dialogueModeController.exit();
       closeSidebar();
       setMobileToolsExpanded(false);
@@ -443,11 +446,9 @@
     }
     syncComposerHeight();
   };
-  if (typeof mobileLayoutQuery.addEventListener === 'function') {
-    mobileLayoutQuery.addEventListener('change', handleMobileLayoutChange);
-  } else if (typeof mobileLayoutQuery.addListener === 'function') {
-    mobileLayoutQuery.addListener(handleMobileLayoutChange);
-  }
+  window.addEventListener('resize', handlePresentationContextChange);
+  window.addEventListener('pageshow', handlePresentationContextChange);
+  document.addEventListener(chatTheme.PRESENTATION_CONTEXT_EVENT, handlePresentationContextChange);
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
     dialogueModeController.exit();

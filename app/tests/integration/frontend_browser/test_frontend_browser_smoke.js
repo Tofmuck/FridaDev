@@ -377,6 +377,15 @@ function dialogueD3MockScript() {
   `;
 }
 
+function iPhonePresentationScript() {
+  return `
+    Object.defineProperty(window.navigator, "maxTouchPoints", {
+      configurable: true,
+      get: () => 5,
+    });
+  `;
+}
+
 test('image generation tool opens, validates, calls its own route and keeps chat untouched', async () => {
   await openBrowserPage({
     mockScript: chatMockScript({ streamMode: 'done' }),
@@ -914,6 +923,35 @@ test('iPhone chat uses Figma Dialogue vivant without changing the stored desktop
     assert.equal(await page.locator('#btnTheme').isVisible(), true);
     assert.equal(await page.locator('#btnDialogueMode').isHidden(), true);
     assert.equal(await page.locator('#btnMobileTools').isHidden(), true);
+  });
+});
+
+test('iPhone keeps the phone presentation through landscape rotation and authentication return', async () => {
+  await openBrowserPage({
+    mockScript: `${iPhonePresentationScript()}\n${chatMockScript({ streamMode: 'done' })}`,
+    beforePage: (page) => page.setViewportSize({ width: 414, height: 896 }),
+  }, async (page) => {
+    await page.waitForSelector('#message:not([disabled])');
+    await page.waitForFunction(() => document.documentElement.dataset.presentationTheme === 'mobile-dialogue');
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.presentationContext), 'phone');
+
+    await page.evaluate(() => window.FridaDialogueModeController.enter());
+    await page.waitForSelector('#dialogueModeScreen:not([hidden])');
+    await page.setViewportSize({ width: 896, height: 414 });
+
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.presentationContext), 'phone');
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.presentationTheme), 'mobile-dialogue');
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.dialogueModeActive), 'true');
+    assert.equal(await page.locator('.btn-menu').isVisible(), true);
+    assert.equal(await page.locator('#dialogueModeScreen').isVisible(), true);
+
+    await page.evaluate(() => {
+      delete document.documentElement.dataset.presentationContext;
+      delete document.documentElement.dataset.presentationTheme;
+      window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+    });
+    await page.waitForFunction(() => document.documentElement.dataset.presentationTheme === 'mobile-dialogue');
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.presentationContext), 'phone');
   });
 });
 

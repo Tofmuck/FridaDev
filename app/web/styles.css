@@ -55,8 +55,7 @@ html, body { height: 100%; }
   display: none;
 }
 
-@media (max-width: 640px) {
-  :root[data-presentation-theme="mobile-dialogue"][data-dialogue-mode-active="true"] {
+:root[data-presentation-theme="mobile-dialogue"][data-dialogue-mode-active="true"] {
     overflow: hidden;
     background: #060913;
   }
@@ -456,7 +455,6 @@ html, body { height: 100%; }
       animation: none !important;
     }
   }
-}
 
 /* ===== Body ===== */
 body {
@@ -3785,8 +3783,7 @@ body {
   display: none;
 }
 
-@media (max-width: 640px) {
-  :root[data-presentation-theme="mobile-dialogue"] {
+:root[data-presentation-theme="mobile-dialogue"] {
     --sidebar-w: min(354px, calc(100vw - 24px));
     --topbar-h: 62px;
     --ask-h: 146px;
@@ -4601,4 +4598,3 @@ body {
     color: var(--fg);
     background: rgba(11, 19, 37, 0.98);
   }
-}

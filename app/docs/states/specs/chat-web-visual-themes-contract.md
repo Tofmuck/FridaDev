@@ -1,6 +1,6 @@
 # Contrat visuel du chat Web — bureau clair/sombre et iPhone
 
-Date d'autorité : 2026-09-09
+Date d'autorité : 2026-09-11
 Statut : livré dans le frontend Web courant
 
 Autorité Figma : fichier `FridaDev — Chat Web et dialogue oral`
@@ -28,15 +28,27 @@ La hauteur effective du compositeur alimente sa variable de layout à chaque
 redimensionnement. Les panneaux d'outil restent ainsi au-dessus de lui quand
 le viewport existant passe du bureau au format étroit.
 
-À `640 px` de large ou moins, le même DOM fonctionnel adopte la composition
-sombre dédiée `Dialogue vivant`. À `414 × 896`, la barre supérieure mesure
-`414 × 62 px` hors safe area iOS et le compositeur mesure `390 × 146 px`, à
-`12 px` des bords. Le thème de présentation mobile ne réécrit pas le choix
-desktop conservé : revenir à un viewport large restitue `light` ou `dark` tel
-qu'il était enregistré.
+Sur un téléphone tactile dont le petit côté d'écran ne dépasse pas `640 px`, le
+même DOM fonctionnel adopte la composition sombre dédiée `Dialogue vivant`, en
+portrait comme en paysage. `navigator.standalone` et `display-mode: standalone`
+complètent cette reconnaissance sans sniffing de chaîne User-Agent ; le
+breakpoint `max-width: 640px` subsiste seulement comme fallback responsive pour
+une fenêtre étroite. Un terminal tactile plus grand ne devient donc pas un
+téléphone par sa seule capacité tactile.
+
+À `414 × 896`, la barre supérieure mesure `414 × 62 px` hors safe area iOS et
+le compositeur mesure `390 × 146 px`, à `12 px` des bords. En paysage
+`896 × 414`, la même présentation téléphone et le même écran Dialogue restent
+actifs ; seules leurs dimensions internes s'adaptent. Le thème de présentation
+téléphone ne réécrit pas le choix desktop conservé. Une fenêtre de bureau
+réduite qui utilisait le fallback responsive restitue `light` ou `dark` en
+retrouvant une largeur normale.
 
 Le mode installé Safari respecte `viewport-fit=cover`, les safe areas et
-`100dvh`. Le document ne dessine ni barre d'état iOS ni indicateur d'accueil :
+`100dvh`. L'autorité téléphone est resynchronisée au chargement, lors des
+changements de présentation et sur `pageshow`, afin que le premier retour du
+parcours Authelia ou une restauration navigateur ne conserve pas une décision
+de layout périmée. Le document ne dessine ni barre d'état iOS ni indicateur d'accueil :
 ces éléments appartiennent au système. Le manifeste et le chrome mobile
 utilisent le fond `#060913` afin d'éviter un flash clair au démarrage. Le fil
 conversationnel est strictement vertical : son contenu ne dépasse pas la
@@ -145,6 +157,8 @@ node --test --test-name-pattern="iPhone chat uses Figma Dialogue vivant|iPhone n
   app/tests/integration/frontend_browser/test_frontend_browser_workspace_folders.js
 node --test --test-name-pattern="iPhone dialogue preview keeps the Figma layout" \
   app/tests/integration/frontend_browser/test_frontend_browser_smoke.js
+node --test --test-name-pattern="iPhone keeps the phone presentation" \
+  app/tests/integration/frontend_browser/test_frontend_browser_smoke.js
 ```
 
 La preuve navigateur doit comparer les rectangles du formulaire, du textarea
@@ -162,6 +176,13 @@ désactivé, ouverture/fermeture des outils secondaires, tiroir de navigation et
 présence effective des actions de répertoire. Elle vérifie aussi l'égalité des
 largeurs `scrollWidth/clientWidth` du document, de la zone principale et du fil,
 ainsi que son verrouillage tactile sur l'axe vertical.
+
+La preuve de contexte téléphone impose aussi la conservation de cette
+présentation après passage de `414 × 896` à `896 × 414`, sans fermeture de
+l'écran Dialogue, puis sa restauration sur un événement `pageshow`. Le même
+test vérifie que le menu reste visible et que le bouton Dialogue reste
+désactivé. Le témoin unitaire sépare le téléphone d'un grand écran tactile et
+conserve le fallback responsive étroit.
 
 La preuve de l'écran dialogue impose en plus les dimensions `414 × 896`, la
 topbar hors safe area à `82 px`, l'orbe `344 × 344`, le panneau inférieur
