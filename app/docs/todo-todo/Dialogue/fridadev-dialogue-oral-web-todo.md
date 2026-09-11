@@ -1,7 +1,7 @@
 # FridaDev — dialogue oral greffé sur le pipeline Web
 
 Date de cadrage initial : 7 septembre 2026.
-Dernière mise à jour de reconnaissance : 10 septembre 2026.
+Dernière mise à jour de reconnaissance : 11 septembre 2026.
 
 **Statut : contrat initial et reconnaissance technique iPhone consignés. Les
 choix V1 du VAD, du STT et du TTS sont retenus ; seule leur invalidation par le
@@ -18,8 +18,9 @@ après remplacement du primer WAV d'un échantillon, rejeté par le décodeur, p
 un primer silencieux de huit échantillons. Le VAD matériel, la distinction
 parole/silence et la sortie de session ont été vérifiés sans appel fournisseur.
 D6.2a est fermé et livré : entrée ponctuelle `full_canary` vers cette même chaîne.
-D6.2b est fermé et livré : choix VAD aligné sur V5. D6.2 reste ouvert jusqu'au nouveau canari
-matériel iPhone, distinct de ce micro-correctif sans fournisseur.
+D6.2b est fermé et livré : choix VAD aligné sur V5. D6.2 est fermé après un
+canari matériel iPhone complet : STT, chat canonique, TTS Soleil, réarmement,
+rejet d'un raclement de gorge et persistance après recharge ont été vérifiés.
 D6.3 à D6.5 et Z restent non commencés.**
 
 ## Intention
@@ -496,6 +497,34 @@ appel fournisseur ou canari n'est exercé dans ce correctif ; D6.2 reste ouvert.
 
 **D6.2b FERMÉ — D6.2 OUVERT — NOUVEAU CANARI IPHONE REQUIS.**
 
+## Canari fournisseur D6.2 — 11 septembre 2026
+
+Le canari ponctuel a été conduit dans l'application Web installée sur l'écran
+d'accueil d'un iPhone 11, sous Safari réel et avec le microphone matériel. Le
+marqueur exact `full_canary` a été consommé une seule fois ; le bouton produit
+servi est resté désactivé.
+
+Une parole courte a traversé exactement une fois chaque frontière : STT `200`
+en 1 063 ms, chat canonique `200` en 15 922 ms, puis TTS `200` en 1 418 ms.
+La voix `fr-FR-Soleil:MAI-Voice-2` a été entendue. Les états content-free ont
+suivi `listening`, `user_speaking`, `transcribing`, `thinking`, `tts_pending`,
+`tts_speaking`, `tts_pending`, puis `listening`. Aucun retry ni fallback n'a
+été observé.
+
+Après réarmement, un raclement de gorge isolé n'a déclenché ni nouvelle
+transition ni appel supplémentaire pendant les cinq secondes d'observation.
+Terminer a retiré l'état Dialogue. La recharge complète a conservé exactement
+les mêmes compteurs du fil, 204 tours utilisateur et 204 tours Frida : le tour
+du canari est donc réhydraté par le chemin conversationnel ordinaire. Le
+marqueur était absent, le bouton de nouveau désactivé et l'observateur
+temporaire retiré.
+
+Cette preuve ferme D6.2 hors voiture. Elle ne prouve ni le bruit de roulement,
+ni les pauses naturelles, ni les conditions radio et réseau automobiles : ces
+points appartiennent exclusivement à D6.3.
+
+**D6.2 FERMÉ — D6.3 NON COMMENCÉ.**
+
 ## Méthode obligatoire de choix du transport et des modèles
 
 Avant tout choix de modèle ou début d'implémentation, le lot devra lire
@@ -725,9 +754,10 @@ toujours sans provider réel ni activation produit. L'exception D6.1a approuvée
 le 10 septembre autorise uniquement le prérequis local décrit ci-dessus.
 D6.1 est fermé après la preuve iPhone et le correctif minimal du primer WAV.
 L'exception D6.2a du 10 septembre autorise seulement l'entrée ponctuelle
-`full_canary`, ses tests hermétiques et sa livraison applicative. D6.2 reste
-ouvert et son exécution fournisseur exige encore un `GO canari` distinct.
-D6.3 à D6.5 et Z restent non commencés et exigent des décisions explicites.
+`full_canary`, ses tests hermétiques et sa livraison applicative. Le `GO
+canari` distinct a été donné et D6.2 a été fermé par la preuve matérielle du
+11 septembre. D6.3 à D6.5 et Z restent non commencés et exigent des décisions
+explicites.
 
 ## Roadmap d'implémentation
 

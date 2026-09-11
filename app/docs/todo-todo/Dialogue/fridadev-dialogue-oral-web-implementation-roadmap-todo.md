@@ -1511,7 +1511,7 @@ Livraison vérifiée le 10 septembre 2026 à 16:39 UTC :
 
 **D6.2b FERMÉ — D6.2 OUVERT — NOUVEAU CANARI IPHONE REQUIS.**
 
-- [ ] **D6.2 — Canari fournisseur borné hors voiture**
+- [x] **D6.2 — Canari fournisseur borné hors voiture**
 
   Nouveau canari matériel après alignement V5 D6.2b : une seule parole courte
   puis une seule réponse Frida, en ouvrant la session
@@ -1522,6 +1522,25 @@ Livraison vérifiée le 10 septembre 2026 à 16:39 UTC :
   réarmement après fin.
   Budgéter explicitement le nombre maximum d'appels : un STT et un TTS, hors
   appel chat ordinaire déjà nécessaire.
+
+  **Fermé le 11 septembre 2026 sur Safari réel, iPhone 11 :** le marqueur
+  ponctuel `full_canary` a ouvert une session unique. Une parole courte a
+  produit exactement un STT `200` (1 063 ms), un chat canonique `200`
+  (15 922 ms) et un TTS `200` (1 418 ms), sans retry. La voix Soleil a été
+  entendue. La projection observée a suivi `listening → user_speaking →
+  transcribing → thinking → tts_pending → tts_speaking → tts_pending →
+  listening`, puis l'action Terminer a retiré l'état Dialogue.
+
+  Après réarmement, un raclement de gorge isolé suivi de cinq secondes
+  d'attente n'a produit ni transition supplémentaire ni nouvel appel STT,
+  chat ou TTS. La persistance a été contrôlée sans lire le contenu : avant et
+  après recharge complète, le fil contenait les mêmes 408 messages, répartis
+  en 204 tours utilisateur et 204 tours Frida. Après Terminer, le bouton était
+  de nouveau désactivé, le marqueur absent et l'observateur content-free
+  temporaire supprimé. Le canari n'établit pas encore le comportement en
+  voiture ; celui-ci reste réservé à D6.3.
+
+**D6.2 FERMÉ — D6.3 NON COMMENCÉ.**
 
 - [ ] **D6.3 — Canari automobile iPhone 11**
 
