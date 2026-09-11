@@ -1661,7 +1661,7 @@ Livraison vérifiée le 10 septembre 2026 à 16:39 UTC :
 
   **D6.3-bis FERMÉ — PORTRAIT/PAYSAGE ET PREMIER RETOUR AUTHELIA VALIDÉS — D6.3 NON COMMENCÉ.**
 
-- [ ] **D6.3 — Activer le bouton et rejouer les preuves**
+- [x] **D6.3 — Activer le bouton et rejouer les preuves**
 
   Retirer `disabled`, conserver l'accessibilité clavier et tactile, puis rejouer
   les tests frontend, les deux routes backend, le smoke mobile et le chemin chat
@@ -1671,13 +1671,21 @@ Livraison vérifiée le 10 septembre 2026 à 16:39 UTC :
   le même listener et la même fonction d'ouverture vers `full`, sans second
   wiring. Aucun autre contrôle ou écran n'est ajouté.
 
-- [ ] **D6.4 — Livrer avec rollback**
+  Livré le 11 septembre 2026 : le bouton est actif et ouvre directement la
+  chaîne `full` existante. Les marqueurs DOM temporaires et leur autorité
+  capturée au bootstrap ont été retirés ; aucun nouveau chemin audio n'a été
+  ajouté.
+
+- [x] **D6.4 — Livrer avec rollback**
 
   Reconstruire et recréer seulement `platform-fridadev`, sans pull implicite ni
   dépendance. Vérifier HTTP, health, restart, OOM, empreintes et voisins. Conserver
   l'image précédente pour rollback ciblé.
 
   Commit attendu : `feat(dialogue): activate mobile voice conversation`.
+
+  Livraison ciblée effectuée sur le seul service `fridadev`, avec image
+  précédente conservée pour rollback.
 
 - [ ] **D6.5 — Expérience réelle et retour utilisateur**
 

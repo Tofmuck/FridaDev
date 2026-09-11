@@ -3,25 +3,10 @@
 Date de cadrage initial : 7 septembre 2026.
 Dernière mise à jour de reconnaissance : 11 septembre 2026.
 
-**Statut : contrat initial et reconnaissance technique iPhone consignés. Les
-choix V1 du VAD, du STT et du TTS sont retenus ; seule leur invalidation par le
-test automobile réel peut les rouvrir. Le squelette visuel Figma et son
-contrôleur local d'états sont intégrés. Les frontières backend STT D1 et TTS D2
-sont implémentées et livrées. La capture locale D3 est corrigée, refermée et
-livrée avec pré-roll borné et assets optionnels. D4 raccorde désormais le WAV à
-D1 puis au chat canonique, initialement dans le harnais synthétique ; D4 est fermé,
-poussé et livré après toutes les preuves et la vérification runtime. L'entrée
-produit reste désactivée. D5 est fermé, poussé et livré après vérification runtime :
-TTS frontend, lecteur possédé et réarmement après fin, initialement dans le harnais.
-D6.1 est fermé : le préflight local sans transport fonctionne sur Safari iPhone
-après remplacement du primer WAV d'un échantillon, rejeté par le décodeur, par
-un primer silencieux de huit échantillons. Le VAD matériel, la distinction
-parole/silence et la sortie de session ont été vérifiés sans appel fournisseur.
-D6.2a est fermé et livré : entrée ponctuelle `full_canary` vers cette même chaîne.
-D6.2b est fermé et livré : choix VAD aligné sur V5. D6.2 est fermé après un
-canari matériel iPhone complet : STT, chat canonique, TTS Soleil, réarmement,
-rejet d'un raclement de gorge et persistance après recharge ont été vérifiés.
-D6.3 à D6.5 et Z restent non commencés.**
+**Statut : D1 à D6.4 sont fermés et livrés. Le bouton produit `Dialogue` est
+actif et ouvre la chaîne unique VAD/WAV → STT → chat canonique → TTS Soleil.
+Les entrées DOM temporaires de préflight et de canari ne sont plus exposées
+par le produit. D6.5 reste l'expérience réelle et le retour qualitatif de Tof.**
 
 ## Intention
 
@@ -756,12 +741,20 @@ D6.1 est fermé après la preuve iPhone et le correctif minimal du primer WAV.
 L'exception D6.2a du 10 septembre autorise seulement l'entrée ponctuelle
 `full_canary`, ses tests hermétiques et sa livraison applicative. Le `GO
 canari` distinct a été donné et D6.2 a été fermé par la preuve matérielle du
-11 septembre. D6.3 à D6.5 et Z restent non commencés et exigent des décisions
-explicites.
+11 septembre. L'activation produit D6.3 a été explicitement autorisée le
+11 septembre : le bouton servi est actif et les marqueurs DOM temporaires ont
+été retirés. D6.5 reste ouvert.
+
+## Activation produit D6.3 — 11 septembre 2026
+
+Le bouton `Dialogue` servi est actif, accessible au clavier et au toucher, et
+ouvre directement `openDialogueSession('full')`. Les marqueurs DOM ponctuels
+de D6.1a/D6.2a et leur autorité capturée au bootstrap ont été supprimés. La
+chaîne audio, ses modèles, ses bornes et son comportement restent inchangés.
 
 ## Roadmap d'implémentation
 
 La mise en œuvre est découpée dans la
 [roadmap du mode Dialogue oral Web](fridadev-dialogue-oral-web-implementation-roadmap-todo.md).
-Elle garde le bouton produit désactivé jusqu'au canari iPhone en voiture et
-interdit de recommencer les choix VAD, STT, TTS ou voix sans fait nouveau.
+Elle conserve D6.5 comme expérience réelle et interdit de recommencer les choix
+VAD, STT, TTS ou voix sans fait nouveau.

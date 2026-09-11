@@ -53,7 +53,7 @@ test('D6.2b manifest corrects the false legacy Safari calibration claim', () => 
   assert.match(manifest, /The explicitly selected model is `v5`/);
 });
 
-test('normal bootstrap has no VAD assets or required VAD global and product stays disabled', () => {
+test('normal bootstrap has no eager VAD assets while the product entry stays enabled', () => {
   const index = fs.readFileSync(path.join(WEB_DIR, 'index.html'), 'utf8');
   const scriptPaths = [
     'chat_dialogue_mode.js',
@@ -65,7 +65,7 @@ test('normal bootstrap has no VAD assets or required VAD global and product stay
     assert.ok(scriptIndex > previousIndex, `${scriptPath} must load in order`);
     previousIndex = scriptIndex;
   }
-  assert.match(index, /id="btnDialogueMode"[^>]*disabled/);
+  assert.doesNotMatch(index, /id="btnDialogueMode"[^>]*disabled/);
   assert.doesNotMatch(index, /<script[^>]+(?:vendor\/dialogue-vad\/|dialogue\/dialogue_vad_)/);
   assert.doesNotMatch(index, /https?:\/\/[^"']*dialogue-vad/i);
 });

@@ -899,8 +899,8 @@ test('iPhone chat uses Figma Dialogue vivant without changing the stored desktop
     assert.equal(submit.height, 56);
 
     assert.equal(await page.locator('#btnDialogueMode').isVisible(), true);
-    assert.equal(await page.locator('#btnDialogueMode').isDisabled(), true);
-    assert.match(String(await page.locator('#btnDialogueMode').getAttribute('title')), /pas encore disponible/i);
+    assert.equal(await page.locator('#btnDialogueMode').isDisabled(), false);
+    assert.match(String(await page.locator('#btnDialogueMode').getAttribute('title')), /Démarrer le mode Dialogue/i);
     for (const selector of ['#btnWebSearch', '#btnActiveDocument', '#btnImageGeneration', '#btnMobileTools']) {
       assert.equal(await page.locator(selector).isVisible(), true, `${selector} should stay directly visible`);
     }
@@ -1012,7 +1012,7 @@ test('iPhone dialogue preview keeps the Figma layout and honest animation states
     await page.waitForSelector('#message:not([disabled])');
     await page.waitForFunction(() => document.documentElement.dataset.presentationTheme === 'mobile-dialogue');
 
-    assert.equal(await page.locator('#btnDialogueMode').isDisabled(), true);
+    assert.equal(await page.locator('#btnDialogueMode').isDisabled(), false);
     await page.evaluate(() => window.FridaDialogueModeController.enter());
     await page.waitForSelector('#dialogueModeScreen:not([hidden])');
 
@@ -1105,7 +1105,7 @@ test('normal chat is isolated from missing or refused D3 assets and never reques
       await page.fill('#message', 'Message clavier synthétique');
       await page.click('#ask button[type="submit"]');
       await page.waitForFunction(() => window.__fridaBrowserState.chatRequests === 1);
-      assert.equal(await page.locator('#btnDialogueMode').isDisabled(), true);
+      assert.equal(await page.locator('#btnDialogueMode').isDisabled(), false);
       assert.equal(await page.evaluate(() => typeof window.vad), 'undefined');
     });
   }
@@ -1139,7 +1139,7 @@ test('D3 asset failures stay local to the explicit harness and never break norma
       await page.fill('#message', 'Clavier après panne D3');
       await page.click('#ask button[type="submit"]');
       await page.waitForFunction(() => window.__fridaBrowserState.chatRequests === 1);
-      assert.equal(await page.locator('#btnDialogueMode').isDisabled(), true);
+      assert.equal(await page.locator('#btnDialogueMode').isDisabled(), false);
     });
   }
 });
@@ -1208,7 +1208,7 @@ test('iPhone D3 harness captures locally, projects VAD truth and cleans every ex
     afterPage: (page) => page.setViewportSize({ width: 414, height: 896 }),
   }, async (page) => {
     await page.waitForSelector('#message:not([disabled])');
-    assert.equal(await page.locator('#btnDialogueMode').isDisabled(), true);
+    assert.equal(await page.locator('#btnDialogueMode').isDisabled(), false);
     assert.deepEqual(await page.evaluate(() => ({
       getUserMediaCalls: window.__fridaDialogueD3Fake.getUserMediaCalls,
       recorderCount: window.__fridaDialogueD3Fake.recorders.length,
@@ -1342,7 +1342,7 @@ test('iPhone D3 harness captures locally, projects VAD truth and cleans every ex
     await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
     assert.equal(await page.locator('#dialogueModeScreen').isHidden(), true);
     assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.streams[2].track.readyState), 'ended');
-    assert.equal(await page.locator('#btnDialogueMode').isDisabled(), true);
+    assert.equal(await page.locator('#btnDialogueMode').isDisabled(), false);
 
     await page.evaluate(() => {
       window.__fridaDialogueD3Fake.holdNextPermission();
@@ -4193,477 +4193,49 @@ const d4Animations = page => page.evaluate(() => ({
   microphoneEnded: window.__fridaDialogueD3Fake.streams.every(s => s.track.readyState === 'ended'),
 }));
 
-async function prepareLocalPreflight(page) {
-  await page.evaluate(() => {
-    const button = document.querySelector('#btnDialogueMode');
-    button.setAttribute('data-dialogue-preflight', 'local_preflight');
-    button.disabled = false;
-  });
-}
-async function observeDialogueCapabilities(page) {
-  await page.evaluate(() => {
-    window.__d61ClientCreations = 0;
-    const original = window.FridaDialogueAudioClient.createDialogueAudioClient;
-    window.FridaDialogueAudioClient = { createDialogueAudioClient(...args) {
-      window.__d61ClientCreations++;
-      return original(...args);
-    } };
-    window.__d61Clicks = [];
-    document.querySelector('#btnDialogueMode').addEventListener('click', event => {
-      const button = event.currentTarget;
-      window.__d61Clicks.push({ trusted: event.isTrusted, disabled: button.disabled,
-        marker: button.getAttribute('data-dialogue-preflight'),
-        plays: window.__fridaDialogueD3Fake?.audios.reduce((n, audio) => n + audio.playCalls.length, 0) || 0 });
-    });
-  });
-}
-
-test('D6.1a DOM enable cannot grant bootstrap product authority with absent or malformed marker', async () => {
-  await openBrowserPage({
-    mockScript: dialogueD4MockScript(),
-    beforePage: async page => { page.setDefaultTimeout(5000); await page.setViewportSize({ width: 390, height: 844 }); },
-  }, async page => {
-    await page.waitForSelector('#message:not([disabled])');
-    assert.equal(await page.locator('#btnDialogueMode').getAttribute('disabled'), '');
-    assert.equal(await page.locator('#btnDialogueMode').getAttribute('data-dialogue-preflight'), null);
-    const label = await page.locator('#btnDialogueMode').getAttribute('aria-label');
-    await observeDialogueCapabilities(page);
-    const box = await page.locator('#btnDialogueMode').boundingBox();
-    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-    assert.equal(await page.evaluate(() => window.FridaDialogueModeController.isActive()), false);
-    for (const marker of [null, '', 'full', 'local_preflight ', 'full_canary ', ' full_canary',
-      'FULL_CANARY', 'full_canary_extra', 'full-canary', 'full_canar']) {
-      await page.evaluate(marker => {
-        const button = document.querySelector('#btnDialogueMode');
-        if (marker === null) button.removeAttribute('data-dialogue-preflight');
-        else button.setAttribute('data-dialogue-preflight', marker);
-        button.disabled = false;
-      }, marker);
-      await page.click('#btnDialogueMode');
-      assert.equal(await page.evaluate(() => window.FridaDialogueModeController.isActive()), false,
-        'Inspector changes must not grant the authority absent from the served HTML');
-      assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.audioFactoryCalls), 0);
-      assert.equal(await page.evaluate(() => window.__d61ClientCreations), 0);
-      assert.equal(await page.evaluate(() => window.__fridaBrowserState.chatRequests), 0);
-    }
-    assert.equal(await page.locator('#btnDialogueMode').getAttribute('aria-label'), label);
-    await prepareLocalPreflight(page);
-    await page.evaluate(() => document.querySelector('#btnDialogueMode').dispatchEvent(new MouseEvent('click', { bubbles: true })));
-    assert.equal(await page.evaluate(() => window.FridaDialogueModeController.isActive()), false, 'synthetic event has no authority');
-  });
-});
-
-test('D6.1a exact marker is consumed before synchronous prime and complete local blob has no transports', async () => {
-  const requests = [];
-  await openBrowserPage({
-    mockScript: dialogueD4MockScript(),
-    beforePage: async page => {
-      page.setDefaultTimeout(5000); await page.setViewportSize({ width: 390, height: 844 });
-      await page.route('**/api/chat{,/dialogue/**}', route => { requests.push(route.request().url()); return route.abort(); });
-    },
-  }, async page => {
-    await page.waitForSelector('#message:not([disabled])');
-    await observeDialogueCapabilities(page);
-    await prepareLocalPreflight(page);
-    const buttonBox = await page.locator('#btnDialogueMode').boundingBox();
-    await page.click('#btnDialogueMode');
-    assert.deepEqual(await page.evaluate(() => window.__d61Clicks.at(-1)),
-      { trusted: true, disabled: true, marker: null, plays: 1 });
-    await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
-    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.getUserMediaCalls), 1);
-    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.vads[0].stream === window.__fridaDialogueD3Fake.streams[0]), true);
-    const before = await page.evaluate(() => window.__fridaBrowserState.fetchCalls.length);
-    await page.evaluate(() => { window.__fridaDialogueD3Fake.speechStart(); });
-    assert.equal(await page.evaluate(() => document.documentElement.dataset.dialogueState), 'user_speaking');
-    await page.evaluate(() => { window.__fridaDialogueD3Fake.speechEnd(); });
-    await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
-    assert.equal(await page.evaluate(() => window.FridaDialogueD3Harness.events().filter(e => e.type === 'blob' && e.sizeBytes === 24044).length), 1);
-    assert.equal(requests.length, 0, 'local speech must never reach an HTTP transport');
-    assert.equal(await page.evaluate(() => document.documentElement.dataset.dialogueState), 'listening');
-    assert.equal(await page.evaluate(() => window.__d61ClientCreations), 0);
-    assert.equal(await page.evaluate(() => window.__fridaBrowserState.fetchCalls.length), before);
-    assert.deepEqual(requests, []);
-    // A repeated physical click cannot start another reader or stream.
-    await page.mouse.click(buttonBox.x + buttonBox.width / 2, buttonBox.y + buttonBox.height / 2);
-    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.audioFactoryCalls), 1);
-    await page.click('#dialogueModePause');
-    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.streams[0].track.readyState), 'ended');
-    await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
-    await page.click('#dialogueModePause'); await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
-    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.getUserMediaCalls), 2);
-    await page.click('#dialogueModeEnd'); await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
-    await page.evaluate(() => { window.__fridaDialogueD3Fake.speechStart(); window.__fridaDialogueD3Fake.speechEnd(); });
-    assert.equal(await page.evaluate(() => window.FridaDialogueModeController.isActive()), false);
-    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.streams.every(s => s.track.readyState === 'ended')), true);
-    await page.evaluate(() => { document.querySelector('#btnDialogueMode').disabled = false; });
-    await page.click('#btnDialogueMode');
-    assert.equal(await page.evaluate(() => window.FridaDialogueModeController.isActive()), false, 'consumed marker cannot be reused');
-    assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.audioFactoryCalls), 1);
-    assert.deepEqual(requests, []);
-  });
-});
-
-test('D6.1a normal bootstrap without adapters opens local native primer and real same-origin VAD', async () => {
-  const assets = [], transports = [], browserAssets = [];
-  await openBrowserPage({
-    mockScript: chatMockScript({ streamMode: 'done' }) + `
-      window.__d61Native = { plays: 0, streams: [], vads: [], events: [] };
-      const nativePlay = HTMLMediaElement.prototype.play;
-      HTMLMediaElement.prototype.play = function () {
-        window.__d61Native.plays++; window.__d61Native.audio = this;
-        return nativePlay.call(this);
-      };
-      navigator.mediaDevices.getUserMedia = async () => {
-        const state = window.__d61Native;
-        state.context = new AudioContext();
-        const stream = state.context.createMediaStreamDestination().stream;
-        state.streams.push(stream); return stream;
-      };
-    `,
-    onServerRequest: path => { if (path.startsWith('/vendor/dialogue-vad/')) assets.push(path); },
-    beforePage: async page => {
-      page.setDefaultTimeout(10000); await page.setViewportSize({ width: 390, height: 844 });
-      page.on('request', request => {
-        const url = new URL(request.url());
-        if (url.pathname.startsWith('/vendor/dialogue-vad/') || url.pathname.startsWith('/dialogue/')) {
-          browserAssets.push({ origin: url.origin, sensitiveHeaderNames: Object.keys(request.headers())
-            .filter(name => /authorization|api[-_]key|credential/i.test(name)) });
-        }
-      });
-      const fs = require('node:fs/promises'), path = require('node:path');
-      const recorder = await fs.readFile(path.resolve(__dirname, '../../../web/dialogue/dialogue_vad_recorder.js'), 'utf8');
-      await page.route('**/dialogue/dialogue_vad_recorder.js', route => route.fulfill({ contentType: 'application/javascript', body: recorder + `
-        const nativeCreate = window.FridaDialogueVadRecorder.createDialogueVadRecorder;
-        window.FridaDialogueVadRecorder = { createDialogueVadRecorder(options) {
-          window.__d61Native.recorderAudio = options.ttsMediaElement;
-          const event = options.onEvent;
-          options.onEvent = value => {
-            window.__d61Native.events.push({ type: value.type, sizeBytes: value.sizeBytes });
-            event(value);
-          };
-          return nativeCreate(options);
-        } };
-        const nativeVad = window.vad.MicVAD.new;
-        window.vad.MicVAD.new = async function (options) {
-          const vad = await nativeVad.call(this, options); window.__d61Native.vads.push(vad); return vad;
-        };
-      ` }));
-      await page.route('**/api/chat{,/dialogue/**}', route => { transports.push('forbidden'); return route.abort(); });
-    },
-  }, async page => {
-    await page.waitForFunction(() => document.querySelector('.topbar .title').textContent === 'Thread navigateur');
-    assert.equal(await page.evaluate(() => typeof window.FridaDialogueD3Harness), 'undefined');
-    assert.deepEqual(assets, []);
-    await observeDialogueCapabilities(page);
-    await page.evaluate(() => {
-      document.querySelector('#btnDialogueMode').addEventListener('click', () => {
-        window.__d61Native.synchronousPlays = window.__d61Native.plays;
-      });
-    });
-    await prepareLocalPreflight(page); await page.click('#btnDialogueMode');
-    assert.equal(await page.evaluate(() => window.__d61Native.synchronousPlays), 1);
-    await page.waitForFunction(() => window.__d61Native.vads[0]?.listening === true);
-    assert.equal(await page.evaluate(() => window.__d61Native.audio === window.__d61Native.recorderAudio), true);
-    assert.equal(await page.evaluate(() => window.__d61Native.vads[0]._stream === window.__d61Native.streams[0]), true);
-    const before = await page.evaluate(() => window.__fridaBrowserState.fetchCalls.length);
-    await page.evaluate(async () => {
-      const raw = window.__d61Native.vads[0]; await raw._audioContext.suspend();
-      await raw.processFrame(new Float32Array(512)); // One real local inference.
-      raw.frameProcessor.modelProcessFunc = async frame => ({ isSpeech: frame[0] > 0 ? 0.9 : 0 });
-      for (let i = 0; i < 25; i++) await raw.processFrame(new Float32Array(512));
-      for (let i = 0; i < 15; i++) await raw.processFrame(new Float32Array(512).fill(0.5));
-      for (let i = 0; i < 43; i++) await raw.processFrame(new Float32Array(512));
-    });
-    assert.equal(await page.evaluate(() => window.__d61Native.events.some(e => e.type === 'blob' && e.sizeBytes > 44)), true);
-    assert.equal(await page.evaluate(() => document.documentElement.dataset.dialogueState), 'listening');
-    assert.equal(await page.evaluate(() => window.__d61ClientCreations), 0);
-    assert.equal(await page.evaluate(() => window.__fridaBrowserState.fetchCalls.length), before);
-    assert.deepEqual(transports, []);
-    assert.equal(browserAssets.every(r => r.origin === new URL(page.url()).origin), true);
-    assert.equal(browserAssets.every(r => r.sensitiveHeaderNames.length === 0), true);
-    for (const file of ['ort.wasm.min.js', 'bundle.min.js', 'silero_vad_v5.onnx',
-      'ort-wasm-simd-threaded.mjs', 'ort-wasm-simd-threaded.wasm', 'vad.worklet.bundle.min.js']) {
-      assert.equal(assets.filter(p => p === '/vendor/dialogue-vad/' + file).length, 1, file);
-    }
-    await page.click('#dialogueModeClose');
-    assert.equal(await page.evaluate(() => window.__d61Native.streams.every(s => s.getTracks().every(t => t.readyState === 'ended'))), true);
-    await page.waitForFunction(() => window.__d61Native.vads[0].initializationState === 'destroyed');
-    await page.evaluate(() => window.__d61Native.context.close());
-    assert.equal(await page.locator('#btnDialogueMode').isDisabled(), true);
-  });
-});
-
-test('D6.2a full_canary trusted click consumes once and reaches production D4-D5 without bootstrap adapters', async () => {
-  const posts = [], external = [];
-  await openBrowserPage({
-    mockScript: `window.__canaryFetch = window.fetch.bind(window);`
-      + chatMockScript({ streamMode: 'done' }) + `
-      window.__canary = { opens: [], plays: [], streams: [], vads: [], canonical: [] };
-      const chatFetch = window.fetch;
-      window.fetch = (input, init) => ['/api/chat', '/api/chat/dialogue/transcribe', '/api/chat/dialogue/speech'].includes(input)
-        ? window.__canaryFetch(input, init) : chatFetch(input, init);
-      const play = HTMLMediaElement.prototype.play;
-      HTMLMediaElement.prototype.play = function () {
-        const button = document.querySelector('#btnDialogueMode');
-        window.__canary.plays.push({ trusted: window.event?.isTrusted === true,
-          onEntryButton: window.event?.currentTarget === button,
-          disabled: button.disabled, marker: button.getAttribute('data-dialogue-preflight') });
-        window.__canary.audio = this;
-        return play.call(this);
-      };
-      navigator.mediaDevices.getUserMedia = async () => {
-        const state = window.__canary;
-        state.context = new AudioContext();
-        const stream = state.context.createMediaStreamDestination().stream;
-        state.streams.push(stream); return stream;
-      };
-    `,
-    beforePage: async page => {
-      await page.setViewportSize({ width: 390, height: 844 });
-      // Only the local static server can be contacted. Every API POST is intercepted below.
-      await page.route('**/*', route => {
-        const url = new URL(route.request().url());
-        if (url.hostname === '127.0.0.1') return route.fallback();
-        external.push(url.hostname); return route.fulfill({ status: 204, body: '' });
-      });
-      const fs = require('node:fs/promises'), path = require('node:path');
-      const source = await fs.readFile(path.resolve(__dirname, '../../../web/app.js'), 'utf8');
-      const instrumented = source.replace('const openDialogueSession = (mode) => {',
-        '$& window.__canary.opens.push(mode);').replace('async function submitCanonicalChatMessage(text, inputMode) {',
-        '$& window.__canary.canonical.push(inputMode);');
-      assert.notEqual(instrumented, source);
-      await page.route('**/app.js', route => route.fulfill({ contentType: 'application/javascript', body: instrumented }));
-      const recorder = await fs.readFile(path.resolve(__dirname, '../../../web/dialogue/dialogue_vad_recorder.js'), 'utf8');
-      await page.route('**/dialogue/dialogue_vad_recorder.js', route => route.fulfill({ contentType: 'application/javascript', body: recorder + `
-        const create = window.FridaDialogueVadRecorder.createDialogueVadRecorder;
-        window.FridaDialogueVadRecorder = { createDialogueVadRecorder(options) {
-          window.__canary.recorderAudio = options.ttsMediaElement; return create(options);
-        } };
-        const createVad = window.vad.MicVAD.new;
-        window.vad.MicVAD.new = async function (options) {
-          const vad = await createVad.call(this, options); window.__canary.vads.push(vad); return vad;
-        };
-      ` }));
-      await page.route('**/api/chat/dialogue/transcribe', async route => {
-        posts.push('stt');
-        const request = route.request(), body = request.postDataBuffer();
-        assert.equal(request.method(), 'POST');
-        assert.match(request.headers()['content-type'], /^multipart\/form-data; boundary=/);
-        assert.ok(body.includes(Buffer.from('name="audio"; filename="dialogue.wav"')));
-        assert.ok(body.includes(Buffer.from('Content-Type: audio/wav')));
-        assert.ok(body.includes(Buffer.from('RIFF')));
-        await route.fulfill({ json: { ok: true, text: 'Entrée synthétique', duration_ms: 1 } });
-      });
-      await page.route('**/api/chat', async route => {
-        posts.push('chat');
-        const payload = route.request().postDataJSON();
-        assert.equal(payload.input_mode, 'voice');
-        assert.equal(payload.conversation_id, 'conv-browser');
-        assert.equal(payload.message, 'Entrée synthétique');
-        await route.fulfill({ contentType: 'text/plain', body: '\x1e' + JSON.stringify({
-          kind: 'frida-stream-control', event: 'done', final_text: 'Final synthétique',
-          updated_at: '2026-09-10T00:00:00Z',
-        }) + '\n' });
-      });
-      await page.route('**/api/chat/dialogue/speech', async route => {
-        posts.push('tts');
-        assert.deepEqual(route.request().postDataJSON(), { text: 'Final synthétique' });
-        // A closed HTTP failure ends this transport witness without fabricated playback.
-        await route.fulfill({ status: 503, json: { ok: false, reason_code: 'dialogue_tts_provider_unavailable' } });
-      });
-    },
-  }, async page => {
-    await page.waitForFunction(() => document.querySelector('.topbar .title').textContent === 'Thread navigateur');
-    assert.equal(await page.evaluate(() => typeof window.__FRIDA_DIALOGUE_D3_TEST_ADAPTERS__), 'undefined');
-    assert.equal(await page.evaluate(() => typeof window.FridaDialogueD3Harness), 'undefined');
-    assert.equal(await page.locator('#btnDialogueMode').getAttribute('disabled'), '');
-    assert.equal(await page.locator('#btnDialogueMode').getAttribute('data-dialogue-preflight'), null);
-    await page.evaluate(() => {
-      const button = document.querySelector('#btnDialogueMode');
-      button.setAttribute('data-dialogue-preflight', 'full_canary'); button.disabled = false;
-      button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    });
-    assert.deepEqual(await page.evaluate(() => window.__canary.opens), []);
-    assert.deepEqual(await page.evaluate(() => window.__canary.plays), []);
-    assert.equal(await page.locator('#btnDialogueMode').getAttribute('data-dialogue-preflight'), 'full_canary');
-    await page.click('#btnDialogueMode');
-    assert.equal(await page.locator('#btnDialogueMode').getAttribute('data-dialogue-preflight'), null);
-    assert.equal(await page.locator('#btnDialogueMode').isDisabled(), true);
-    assert.deepEqual(await page.evaluate(() => window.__canary.opens), ['full'], 'consumed full_canary must open full once');
-    assert.deepEqual(await page.evaluate(() => window.__canary.plays),
-      [{ trusted: true, onEntryButton: true, disabled: true, marker: null }]);
-    await page.waitForFunction(() => window.__canary.vads[0]?.listening === true);
-    assert.equal(await page.evaluate(() => window.__canary.audio === window.__canary.recorderAudio), true);
-    await page.evaluate(async () => {
-      const raw = window.__canary.vads[0]; await raw._audioContext.suspend();
-      await raw.processFrame(new Float32Array(512));
-      raw.frameProcessor.modelProcessFunc = async frame => ({ isSpeech: frame[0] > 0 ? 0.9 : 0 });
-      for (let i = 0; i < 25; i++) await raw.processFrame(new Float32Array(512));
-      for (let i = 0; i < 15; i++) await raw.processFrame(new Float32Array(512).fill(0.5));
-      for (let i = 0; i < 43; i++) await raw.processFrame(new Float32Array(512));
-    });
-    await page.waitForFunction(() => document.documentElement.dataset.dialogueState === 'error');
-    assert.deepEqual(posts, ['stt', 'chat', 'tts']);
-    assert.deepEqual(await page.evaluate(() => window.__canary.canonical), ['dialogue']);
-    assert.equal(await page.evaluate(() => window.__canary.streams.every(s => s.getTracks().every(t => t.readyState === 'ended'))), true);
-    await page.click('#dialogueModePause'); await page.click('#dialogueModeEnd');
-    const box = await page.locator('#btnDialogueMode').boundingBox();
-    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-    await page.evaluate(() => { document.querySelector('#btnDialogueMode').disabled = false; });
-    await page.click('#btnDialogueMode'); // Inspector re-enable alone cannot reuse the consumed authority.
-    assert.deepEqual(await page.evaluate(() => window.__canary.opens), ['full']);
-    assert.equal(await page.locator('#dialogueModeScreen').isHidden(), true);
-    assert.deepEqual(posts, ['stt', 'chat', 'tts']);
-    assert.equal(await page.evaluate(() => window.__canary.streams.length), 1);
-    assert.equal(await page.evaluate(() => window.__canary.plays.length), 1);
-    assert.equal(external.every(host => ['fonts.googleapis.com', 'fonts.gstatic.com'].includes(host)), true);
-    await page.evaluate(() => window.__canary.context.close());
-  });
-});
-
-test('D6.1a local failures release reader and capture without transport or implicit resume', async () => {
-  for (const failure of ['primer', 'assets', 'permission', 'vad']) {
-    await openBrowserPage({
-      mockScript: dialogueD4MockScript(),
-      beforePage: async page => {
-        page.setDefaultTimeout(5000); await page.setViewportSize({ width: 390, height: 844 });
-        if (failure === 'assets') await page.route('**/vendor/dialogue-vad/ort.wasm.min.js', route => route.abort());
-      },
-    }, async page => {
-      await page.waitForSelector('#message:not([disabled])'); await observeDialogueCapabilities(page);
-      await page.evaluate(failure => {
-        const adapters = window.__FRIDA_DIALOGUE_D3_TEST_ADAPTERS__;
-        if (failure === 'primer') {
-          const create = adapters.createTtsMediaElement;
-          adapters.createTtsMediaElement = () => {
-            const audio = create(); window.__fridaDialogueD3Fake.audios.at(-1).rejectPlayCall = 1; return audio;
-          };
-        }
-        if (failure === 'permission') adapters.mediaDevices.getUserMedia = async () => { throw new DOMException('synthetic', 'NotAllowedError'); };
-        if (failure === 'vad') adapters.vadFactory = async () => { throw new Error('synthetic'); };
-      }, failure);
-      await prepareLocalPreflight(page); await page.click('#btnDialogueMode');
-      await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
-      assert.equal(await page.evaluate(() => document.documentElement.dataset.dialogueState), 'error', failure);
-      const calls = await page.evaluate(() => window.__fridaDialogueD3Fake.getUserMediaCalls);
-      await page.click('#dialogueModePause'); await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
-      assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.getUserMediaCalls), calls);
-      assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.streams.every(s => s.track.readyState === 'ended')), true);
-      assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.audios.every(a => a.element.paused && !a.element.getAttribute('src'))), true);
-      assert.equal(await page.evaluate(() => window.__d61ClientCreations), 0);
-      assert.equal(await page.evaluate(() => window.__fridaBrowserState.fetchCalls.some(c => c.method !== 'GET')), false);
-      await page.click('#dialogueModeClose');
-    });
-  }
-});
-
-test('D6.1a local pause exit pagehide and conversation change invalidate pending or active capture', async () => {
-  for (const [stage, action] of [
-    ['assets', 'pause'], ['assets', 'close'], ['assets', 'thread'],
-    ['permission', 'pause'], ['permission', 'end'],
-    ['listening', 'close'], ['listening', 'pagehide'], ['listening', 'thread'],
-  ]) {
-    const started = d4Deferred(), release = d4Deferred();
-    await openBrowserPage({
-      mockScript: dialogueD4MockScript() + `
-        const localThreadFetch = window.fetch;
-        window.fetch = async (input, init = {}) => {
-          if (input === '/api/conversations' && init.method === 'POST') return new Response(JSON.stringify({
-            ok: true, conversation: { id: 'conv-local-new', title: 'Local new' },
-          }), { headers: { 'Content-Type': 'application/json' } });
-          if (typeof input === 'string' && input.startsWith('/api/conversations/conv-local-new/')) return new Response(JSON.stringify({
-            ok: true, items: [], messages: [],
-          }), { headers: { 'Content-Type': 'application/json' } });
-          return localThreadFetch(input, init);
-        };
-      `,
-      beforePage: async page => {
-        page.setDefaultTimeout(5000); await page.setViewportSize({ width: 390, height: 844 });
-        if (stage === 'assets') await page.route('**/vendor/dialogue-vad/ort.wasm.min.js', async route => {
-          started.resolve(); await release.promise; await route.continue();
-        });
-      },
-    }, async page => {
-      await page.waitForFunction(() => document.querySelector('.topbar .title').textContent === 'Thread navigateur');
-      await observeDialogueCapabilities(page);
-      if (stage === 'permission') await page.evaluate(() => window.__fridaDialogueD3Fake.holdNextPermission());
-      await prepareLocalPreflight(page); await page.click('#btnDialogueMode');
-      if (stage === 'assets') await started.promise;
-      else if (stage === 'permission') await page.waitForFunction(() => window.__fridaDialogueD3Fake.getUserMediaCalls === 1);
-      else await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
-      if (action === 'pagehide') await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
-      else if (action === 'thread') {
-        await page.click('#dialogueModeNavigation'); await page.click('#newChat');
-        await page.waitForFunction(() => document.querySelector('.topbar .title').textContent === 'Local new');
-      } else await page.click({ pause: '#dialogueModePause', close: '#dialogueModeClose', end: '#dialogueModeEnd' }[action]);
-      if (stage !== 'permission') {
-        assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.streams.every(s => s.track.readyState === 'ended')), true,
-          `${stage}/${action}: acquired tracks must stop before pending operations settle`);
-      }
-      release.resolve();
-      if (stage === 'permission') await page.evaluate(() => window.__fridaDialogueD3Fake.releasePermission());
-      await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
-      // getUserMedia cannot be cancelled; a stream returned late is stopped before VAD creation.
-      if (stage === 'permission') assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.vads.length), 0);
-      const state = await page.evaluate(() => document.documentElement.dataset.dialogueState);
-      await page.evaluate(() => {
-        const f = window.__fridaDialogueD3Fake;
-        if (f.vads.length) { f.speechStart(); f.speechEnd(); }
-        f.audios[0].emit('playing'); f.audios[0].emit('ended');
-      });
-      assert.equal(await page.evaluate(() => document.documentElement.dataset.dialogueState), state);
-      assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.streams.every(s => s.track.readyState === 'ended')), true);
-      assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.vads.every(v => v.destroyCalls === 1)), true);
-      assert.equal(await page.evaluate(() => window.__d61ClientCreations), 0);
-      assert.equal(await page.evaluate(() => window.__fridaBrowserState.chatRequests), 0);
-      if (stage === 'assets') assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.getUserMediaCalls), 0);
-      if (action === 'pause') {
-        await page.click('#dialogueModePause'); await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
-        assert.equal(await page.evaluate(() => document.documentElement.dataset.dialogueState), 'listening');
-      }
-      await page.evaluate(() => window.FridaDialogueModeController.exit());
-      await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
-    });
-  }
-});
-
-test('D6.1a future served enabled button reaches full D3-D5 through the same click with fake transports only', async () => {
+test('D6.3 enabled Dialogue button opens the existing full voice pipeline without a marker', async () => {
   const posts = [];
   await openBrowserPage({
     mockScript: dialogueD4MockScript(),
     beforePage: async page => {
-      page.setDefaultTimeout(5000); await page.setViewportSize({ width: 390, height: 844 });
-      const fs = require('node:fs/promises'), path = require('node:path');
-      const html = await fs.readFile(path.resolve(__dirname, '../../../web/index.html'), 'utf8');
-      const future = html.replace(/(<button[^>]*id="btnDialogueMode"[^>]*) disabled>/, '$1>');
-      assert.notEqual(future, html);
-      await page.route('**/', route => route.fulfill({ contentType: 'text/html', body: future }));
+      await page.setViewportSize({ width: 390, height: 844 });
       await instrumentCanonicalSubmission(page);
       await page.route('**/api/chat/dialogue/transcribe', route => {
-        posts.push('stt'); return route.fulfill({ json: { ok: true, text: 'synthetic' } });
+        posts.push('stt');
+        return route.fulfill({ json: { ok: true, text: 'Entrée synthétique' } });
       });
       await page.route('**/api/chat', route => {
-        posts.push('chat'); return route.fulfill({ contentType: 'text/plain', body: 'synthetic\x1e' + JSON.stringify({
-          kind: 'frida-stream-control', event: 'done', final_text: 'synthetic final', updated_at: '2026-09-10T00:00:00Z',
+        posts.push('chat');
+        return route.fulfill({ contentType: 'text/plain', body: '\x1e' + JSON.stringify({
+          kind: 'frida-stream-control', event: 'done', final_text: 'Final synthétique',
+          updated_at: '2026-09-11T00:00:00Z',
         }) + '\n' });
       });
       await page.route('**/api/chat/dialogue/speech', route => {
-        posts.push('tts'); return route.fulfill({ contentType: 'audio/mpeg', body: Buffer.from('synthetic mp3') });
+        posts.push('tts');
+        return route.fulfill({ status: 200, contentType: 'audio/mpeg', body: Buffer.from('synthetic mp3') });
       });
     },
   }, async page => {
     await page.waitForFunction(() => document.querySelector('.topbar .title').textContent === 'Thread navigateur');
-    assert.equal(await page.locator('#btnDialogueMode').isEnabled(), true);
-    await observeDialogueCapabilities(page); await page.click('#btnDialogueMode');
-    assert.deepEqual(await page.evaluate(() => window.__d61Clicks.at(-1)),
-      { trusted: true, disabled: false, marker: null, plays: 1 });
+    const button = page.locator('#btnDialogueMode');
+    assert.equal(await button.isEnabled(), true);
+    assert.equal(await button.getAttribute('title'), 'Démarrer le mode Dialogue');
+    assert.equal(await button.getAttribute('data-dialogue-preflight'), null);
+
+    await button.click();
+    await page.waitForSelector('#dialogueModeScreen:not([hidden])');
     await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
-    await page.evaluate(() => { window.__fridaDialogueD3Fake.speechStart(); window.__fridaDialogueD3Fake.speechEnd(); });
+    await page.evaluate(() => {
+      window.__fridaDialogueD3Fake.speechStart();
+      window.__fridaDialogueD3Fake.speechEnd();
+    });
     await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
+
     assert.deepEqual(posts, ['stt', 'chat', 'tts']);
     assert.deepEqual(await page.evaluate(() => window.__canonicalCalls), ['dialogue']);
-    assert.equal(await page.evaluate(() => window.__d61ClientCreations), 1);
-    await page.click('#dialogueModeClose'); await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
+    await page.click('#dialogueModeClose');
+    await page.evaluate(() => window.FridaDialogueD3Harness.whenSettled());
   });
 });
 
@@ -4749,7 +4321,7 @@ test('D5 Chromium WAV → STT → canonical final → one TTS → ended rearms c
       revokedUrls: window.__fridaDialogueD3Fake.revokedUrls.length,
       sameElement: window.__fridaDialogueD3Fake.audios.length === 1,
     })), { audioFactoryCalls: 1, objectUrls: 1, revokedUrls: 1, sameElement: true });
-    assert.equal(await page.locator('#btnDialogueMode').getAttribute('disabled'), '');
+    assert.equal(await page.locator('#btnDialogueMode').getAttribute('disabled'), null);
     assert.equal(await page.evaluate(() => window.__fridaDialogueD3Fake.getUserMediaCalls), 2);
     assert.equal((await page.locator('#dialogueModeScreen').textContent()).includes('Transcript D4 synthétique'), false);
     assert.deepEqual(posts.filter(p => p.path.includes('transcribe')).map(p => p.path), ['/api/chat/dialogue/transcribe']);

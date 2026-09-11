@@ -197,6 +197,13 @@ D6.2a autorise tests hermetiques, documentation et livraison du seul service
 applicatif ; aucun appel fournisseur reel. D6.2 reste ouvert et son canari
 exige un `GO canari` distinct. D6.4 retirera tout le mecanisme de marqueur.
 
+Exception explicite et strictement bornee decidee par l'utilisateur le 11
+septembre 2026 : le bouton produit `Dialogue` est active et ouvre directement
+la chaine D3-D5 deja livree. Les marqueurs DOM temporaires de preflight et de
+canari sont retires. Cette decision n'autorise aucun nouveau protocole, modele,
+provider, controle ou comportement audio ; l'experience reelle et le retour
+qualitatif de Tof restent le seul lot ouvert.
+
 Chaque lot doit demontrer: pas de capacite produit ajoutee, comportements
 legitimes preserves hors bug corrige, complexite stable ou reduite, ancien
 chemin retire quand il est remplace, et invariants utiles verrouilles par des

@@ -96,8 +96,9 @@ test('dialogue controller projects state, pause and exit without audio side effe
   assert.equal(controller.isActive(), false);
 });
 
-test('dialogue screen is integrated as a hidden mobile surface without transcript', () => {
+test('dialogue screen is integrated with an enabled product entry and no transcript', () => {
   const indexHtml = fs.readFileSync(path.join(__dirname, '../../../web/index.html'), 'utf8');
+  const appSource = fs.readFileSync(path.join(__dirname, '../../../web/app.js'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '../../../web/styles.css'), 'utf8');
   const moduleIndex = indexHtml.indexOf('<script src="chat_dialogue_mode.js"></script>');
   const appIndex = indexHtml.indexOf('<script src="app.js"></script>');
@@ -114,7 +115,9 @@ test('dialogue screen is integrated as a hidden mobile surface without transcrip
   assert.ok(moduleIndex > 0 && moduleIndex < appIndex, 'dialogue module should load before app.js');
   assert.match(styles, /data-dialogue-voice-active="true"/);
   assert.match(styles, /data-dialogue-frida-speaking="true"/);
-  assert.match(indexHtml, /id="btnDialogueMode"[^>]*disabled/);
+  assert.doesNotMatch(indexHtml, /id="btnDialogueMode"[^>]*disabled/);
+  assert.match(indexHtml, /id="btnDialogueMode"[^>]*title="Démarrer le mode Dialogue"/);
+  assert.doesNotMatch(appSource, /data-dialogue-preflight|full_canary|dialogueProductAuthorized/);
 });
 
 test('D5 buffering stops both animations without turning Pause into Resume', () => {

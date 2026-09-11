@@ -125,18 +125,16 @@ chaque action ; l'iconographie ne retire donc ni fonction ni accessibilité.
 La composition mobile suit la direction B : fond bleu nuit en dégradé, halos
 cyan/indigo, bulles assistant et utilisateur de même famille lumineuse,
 topbar compacte avec identité Frida et compositeur flottant à deux niveaux.
-Le bouton `Dialogue` est présent pour rendre lisible la direction de design,
-mais il est désactivé et son nom accessible annonce explicitement que le mode
-dialogique n'est pas encore disponible. Il ne déclenche aucun appel, aucun
-état et aucune mutation produit.
+Le bouton `Dialogue` est actif. Son nom accessible, « Démarrer le mode
+Dialogue », décrit son action ; un clic utilisateur ouvre l'unique chaîne
+semi-duplex livrée.
 
-L'écran dialogue est déjà intégré comme couche mobile cachée. Il reprend la
-topbar, l'orbe Frida, le signal vocal, le statut et les deux commandes de la
-maquette Figma. Son contrôleur local n'est pilotable que par les tests tant que
-le bouton reste désactivé. Il projette des états synthétiques sans microphone,
-VAD, audio, STT, TTS, backend ni provider. Aucun transcript n'apparaît dans
-cette vue. L'onde ne s'anime que sur une parole déclarée active ; l'orbe ne
-s'anime que sur l'état distinct `tts_speaking`.
+L'écran dialogue est intégré comme couche mobile. Il reprend la topbar, l'orbe
+Frida, le signal vocal, le statut et les deux commandes de la maquette Figma.
+Il utilise la capture VAD/WAV, le STT, le chat canonique et le TTS livrés par
+D1 à D5. Aucun transcript n'apparaît dans cette vue. L'onde ne s'anime que sur
+une parole déclarée active ; l'orbe ne s'anime que sur l'état distinct
+`tts_speaking`.
 
 ## Limites
 
@@ -146,9 +144,8 @@ ce workflow et ce lot visuel n'ajoute pas de contrôle inerte ni de capacité
 produit. Les contours et ombres externes du cadre Figma appartiennent à sa
 présentation sur le canevas, pas au viewport Web.
 
-La composition mobile dédiée est livrée, mais pas le dialogue oral semi-duplex,
-un nouveau STT ou un nouveau TTS. Le bouton `Dialogue` ne doit être activé que
-par un lot produit ultérieur explicitement autorisé.
+La composition mobile et le dialogue oral semi-duplex sont livrés. Leur
+appréciation en usage réel demeure ouverte dans D6.5.
 
 ## Preuves minimales
 
@@ -179,7 +176,7 @@ déplacement de conversation.
 La preuve iPhone impose en plus : présentation mobile sombre sans écraser le
 thème desktop stocké, géométrie `414 × 62` et `390 × 146`, logo officiel,
 composer principal `textarea + micro + envoi`, rail bas, bouton Dialogue
-désactivé, ouverture/fermeture des outils secondaires, tiroir de navigation et
+actif, ouverture/fermeture des outils secondaires, tiroir de navigation et
 présence effective des actions de répertoire. Elle vérifie aussi l'égalité des
 largeurs `scrollWidth/clientWidth` du document, de la zone principale et du fil,
 ainsi que son verrouillage tactile sur l'axe vertical.
@@ -187,8 +184,8 @@ ainsi que son verrouillage tactile sur l'axe vertical.
 La preuve de contexte téléphone impose aussi la conservation de cette
 présentation après passage de `414 × 896` à `896 × 414`, sans fermeture de
 l'écran Dialogue, puis sa restauration sur un événement `pageshow`. Le même
-test vérifie que le menu reste visible et que le bouton Dialogue reste
-désactivé. Le témoin unitaire sépare le téléphone d'un grand écran tactile et
+test vérifie que le menu reste visible et que le bouton Dialogue reste actif.
+Le témoin unitaire sépare le téléphone d'un grand écran tactile et
 conserve le fallback responsive étroit.
 
 La preuve de l'écran dialogue impose en plus les dimensions `414 × 896`, la
