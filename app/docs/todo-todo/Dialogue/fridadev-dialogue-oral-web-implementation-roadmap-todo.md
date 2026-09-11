@@ -1702,6 +1702,11 @@ Livraison vérifiée le 10 septembre 2026 à 16:39 UTC :
   correctif. Il ne justifie ni changement de modèle, ni filtre sonore, ni
   fallback sans micro-lot et décision explicites.
 
+  **Correctif d'usage du 11 septembre 2026.** L'ouverture du clavier dans le
+  chat faisait zoomer Safari iPhone parce que le champ principal était calculé
+  à `14px`. Il est porté à `16px` uniquement dans la présentation téléphone ;
+  le viewport et le compositeur conservent leur largeur après focus.
+
 **Stop D6 :** si D6.3 révèle une régression d'activation ou si D6.4 échoue à
 livrer proprement, ne pas activer ou conserver la version concernée. Pendant
 D6.5, la sécurité de conduite prime absolument : aucune preuve technique n'est

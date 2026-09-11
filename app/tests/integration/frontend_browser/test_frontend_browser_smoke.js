@@ -926,6 +926,43 @@ test('iPhone chat uses Figma Dialogue vivant without changing the stored desktop
   });
 });
 
+test('iPhone keyboard-sized viewport keeps the chat scale and horizontal geometry fixed', async () => {
+  await openBrowserPage({
+    mockScript: chatMockScript({ streamMode: 'done' }),
+    afterPage: (page) => page.setViewportSize({ width: 414, height: 896 }),
+  }, async (page) => {
+    await page.waitForSelector('#message:not([disabled])');
+    await page.waitForFunction(() => document.documentElement.dataset.presentationTheme === 'mobile-dialogue');
+
+    await page.focus('#message');
+    await page.setViewportSize({ width: 414, height: 520 });
+
+    const layout = await page.evaluate(() => {
+      const composer = document.querySelector('#ask').getBoundingClientRect();
+      const textarea = document.querySelector('#message');
+      return {
+        fontSize: getComputedStyle(textarea).fontSize,
+        viewportWidth: document.documentElement.clientWidth,
+        documentWidth: document.documentElement.scrollWidth,
+        bodyWidth: document.body.scrollWidth,
+        composerLeft: Math.round(composer.left),
+        composerRight: Math.round(composer.right),
+        activeElement: document.activeElement?.id,
+      };
+    });
+
+    assert.deepEqual(layout, {
+      fontSize: '16px',
+      viewportWidth: 414,
+      documentWidth: 414,
+      bodyWidth: 414,
+      composerLeft: 12,
+      composerRight: 402,
+      activeElement: 'message',
+    });
+  });
+});
+
 test('iPhone keeps the phone presentation through landscape rotation and authentication return', async () => {
   await openBrowserPage({
     mockScript: `${iPhonePresentationScript()}\n${chatMockScript({ streamMode: 'done' })}`,

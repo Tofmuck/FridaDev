@@ -179,7 +179,9 @@ composer principal `textarea + micro + envoi`, rail bas, bouton Dialogue
 actif, ouverture/fermeture des outils secondaires, tiroir de navigation et
 présence effective des actions de répertoire. Elle vérifie aussi l'égalité des
 largeurs `scrollWidth/clientWidth` du document, de la zone principale et du fil,
-ainsi que son verrouillage tactile sur l'axe vertical.
+ainsi que son verrouillage tactile sur l'axe vertical. Le champ principal garde
+une taille calculée de `16px` au focus afin que Safari iPhone n'agrandisse pas
+automatiquement toute la page à l'ouverture du clavier.
 
 La preuve de contexte téléphone impose aussi la conservation de cette
 présentation après passage de `414 × 896` à `896 × 414`, sans fermeture de
