@@ -1,7 +1,7 @@
 # Contrat visuel du chat Web — bureau clair/sombre et iPhone
 
 Date d'autorité : 2026-09-11
-Statut : stabilité portrait/paysage livrée ; premier retour Authelia encore ouvert
+Statut : stabilité portrait/paysage et premier retour Authelia validés sur iPhone
 
 Autorité Figma : fichier `FridaDev — Chat Web et dialogue oral`
 (`OiGP7QIP4XiEKjm901DEvY`), vues complètes `18:3` pour le mode clair et
@@ -46,12 +46,16 @@ retrouvant une largeur normale.
 
 Le mode installé Safari respecte `viewport-fit=cover`, les safe areas et
 `100dvh`. L'autorité téléphone est resynchronisée au chargement, lors des
-changements de présentation et sur `pageshow`. Cette mécanique conserve bien
-la présentation en rotation, mais la recette matérielle du 11 septembre 2026 a
-montré que le premier retour du parcours Authelia peut encore afficher la
-composition de bureau ; fermer puis rouvrir l'application authentifiée rétablit
-la composition téléphone. Le témoin synthétique `pageshow` ne constitue donc
-pas la preuve de ce cycle réel. Le document ne dessine ni barre d'état iOS ni indicateur d'accueil :
+changements de présentation et sur `pageshow`. Cette mécanique conserve la
+présentation en rotation. Une première recette matérielle du 11 septembre 2026
+avait affiché la composition de bureau au premier retour Authelia, sans cause
+établie. La recette contrôlée de clôture a ensuite invalidé uniquement la
+session Authelia dans l'application installée, sans effacer cache ni stockage,
+puis a obtenu directement la composition téléphone au premier retour. Web
+Inspector a confirmé `navigator.standalone=true`, le mode d'affichage
+`standalone`, un écran `414 × 896`, un viewport `414 × 848` et les attributs
+`phone` / `mobile-dialogue`. Le témoin synthétique `pageshow` complète cette
+preuve réelle mais ne la remplace pas. Le document ne dessine ni barre d'état iOS ni indicateur d'accueil :
 ces éléments appartiennent au système. Le manifeste et le chrome mobile
 utilisent le fond `#060913` afin d'éviter un flash clair au démarrage. Le fil
 conversationnel est strictement vertical : son contenu ne dépasse pas la

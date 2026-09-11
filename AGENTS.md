@@ -69,8 +69,12 @@ Complement explicite decide par l'utilisateur le 11 septembre 2026 : le
 contexte telephone de cette composition ne doit dependre ni de l'orientation ni
 de la seule largeur courante du viewport. La stabilite portrait/paysage est
 livree sur un telephone tactile de petite dimension, notamment l'iPhone 11.
-La resynchronisation au premier retour d'authentification reste ouverte apres
-echec de la recette materielle, malgre les temoins synthetiques `pageshow`.
+La resynchronisation au premier retour d'authentification est validee par une
+recette materielle controlee dans l'application iPhone installee, apres
+deconnexion Authelia sans effacement du cache ni du stockage local. Un premier
+essai avait affiche la composition de bureau ; sa cause n'est pas etablie et ne
+doit pas etre inventee. Le rejouage a restitue directement la composition
+telephone et l'inspecteur a confirme l'autorite `phone` / `mobile-dialogue`.
 Le seuil etroit reste seulement un fallback responsive pour une fenetre
 reduite. Un terminal tactile plus grand et un ordinateur large restent hors de
 cette autorite. D6.3-bis ne modifie ni Authelia, ni Caddy, ni le backend, ni les

@@ -1542,9 +1542,9 @@ Livraison vérifiée le 10 septembre 2026 à 16:39 UTC :
   temporaire supprimé. Le canari n'établit pas encore le comportement en
   voiture ; celui-ci reste réservé au retour d'usage D6.5.
 
-**D6.2 FERMÉ — D6.3-bis OUVERT — D6.3 NON COMMENCÉ.**
+**D6.2 FERMÉ — D6.3-bis FERMÉ — D6.3 NON COMMENCÉ.**
 
-- [ ] **D6.3-bis — Stabiliser l'autorité de présentation téléphone**
+- [x] **D6.3-bis — Stabiliser l'autorité de présentation téléphone**
 
   **Défaut utilisateur reproduit le 11 septembre 2026.** Sur l'iPhone, la
   présentation `Alternative B — Dialogue vivant` est actuellement décidée par
@@ -1637,7 +1637,29 @@ Livraison vérifiée le 10 septembre 2026 à 16:39 UTC :
   restent à mesurer. Aucun second correctif ne doit être tenté avant cette
   reproduction content-free.
 
-  **D6.3-bis ROUVERT — PAYSAGE CORRIGÉ — RETOUR AUTHELIA NON CORRIGÉ — D6.3 NON COMMENCÉ.**
+  **Recette matérielle contrôlée du 11 septembre 2026 — fermeture.** La session
+  Authelia de l'application iPhone installée a été invalidée depuis son propre
+  contexte, sans effacement du cache ni du stockage local. La navigation vers
+  FridaDev a imposé une nouvelle authentification ; au tout premier retour, sans
+  fermeture ni rotation de l'application, la composition téléphone s'est
+  affichée directement.
+
+  La mesure content-free réalisée immédiatement par Web Inspector confirme :
+  `navigator.standalone=true`, `display-mode: standalone=true`, pointeur
+  `coarse`, écran `414 × 896`, viewport `414 × 848`, document `complete` et
+  attributs racine `data-presentation-context="phone"` /
+  `data-presentation-theme="mobile-dialogue"`. Aucun identifiant, cookie,
+  contenu de conversation ni donnée d'authentification n'a été lu. Aucun fichier
+  runtime, service, cache ou stockage navigateur n'a été modifié pour obtenir ce
+  résultat.
+
+  Le premier échec matériel reste un fait historique dont la cause n'est pas
+  établie ; il ne faut pas le réinterpréter comme un cache banal ou une cause
+  WebKit prouvée. Le rejouage contrôlé satisfait néanmoins le contrat utilisateur
+  demandé et ferme D6.3-bis sur le runtime déjà livré. Aucun nouveau test,
+  rebuild ni redémarrage n'est requis pour cette clôture documentaire.
+
+  **D6.3-bis FERMÉ — PORTRAIT/PAYSAGE ET PREMIER RETOUR AUTHELIA VALIDÉS — D6.3 NON COMMENCÉ.**
 
 - [ ] **D6.3 — Activer le bouton et rejouer les preuves**
 
