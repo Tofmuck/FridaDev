@@ -1544,6 +1544,51 @@ Livraison vérifiée le 10 septembre 2026 à 16:39 UTC :
 
 **D6.2 FERMÉ — D6.3 NON COMMENCÉ.**
 
+- [ ] **D6.3-bis — Stabiliser l'autorité de présentation téléphone**
+
+  **Défaut utilisateur reproduit le 11 septembre 2026.** Sur l'iPhone, la
+  présentation `Alternative B — Dialogue vivant` est actuellement décidée par
+  le seul prédicat CSS/JavaScript `max-width: 640px`. En paysage, la largeur
+  dépasse ce seuil et le navigateur rebascule vers la composition de bureau.
+  Après un lancement à froid suivi du parcours Authelia, le premier retour vers
+  FridaDev peut également présenter la composition de bureau ; fermer puis
+  relancer l'application avec la session authentifiée rétablit la composition
+  téléphone. Le premier défaut est reproduit automatiquement. Le mécanisme
+  précis du retour d'authentification reste à mesurer ; l'architecture actuelle
+  ne possède dans tous les cas aucune autorité stable « téléphone » à
+  resynchroniser après ce retour.
+
+  **Contrat attendu.** Sur un iPhone, la présentation téléphone reste active en
+  portrait comme en paysage. L'orientation ne choisit jamais entre téléphone et
+  bureau ; elle ne règle que la géométrie interne de la même présentation. Un
+  lancement à froid, le retour d'Authelia et une restauration par le navigateur
+  resynchronisent immédiatement cette autorité. Un navigateur de bureau reste
+  sur la présentation de bureau. Le thème de bureau persisté, les conversations,
+  répertoires, fichiers, notes, outils et le mode Dialogue ne changent pas.
+
+  **Correctif borné.** Définir une seule autorité frontend de contexte téléphone
+  dans `chat_theme.js`, sans branchement serveur ni sniffing de chaîne User-Agent,
+  puis la projeter sur la racine du document. Faire consommer cette même autorité
+  par le thème mobile, la sidebar, les outils mobiles, les sorties du mode
+  Dialogue et les règles CSS de la composition iPhone. Le breakpoint étroit ne
+  reste qu'un fallback responsive ; les media queries d'orientation ou de taille
+  ne règlent que la géométrie. Resynchroniser sur le chargement, les changements
+  pertinents et `pageshow`, notamment après retour d'authentification. Ne modifier
+  ni Authelia, ni Caddy, ni backend, ni route, ni persistance, ni D1–D5.
+
+  **Preuves obligatoires avant fermeture.** TDD rouge/vert sur : iPhone portrait,
+  le même iPhone en paysage, retour simulé d'authentification/restauration,
+  fallback responsive étroit et ordinateur large restant en bureau. Rejouer les
+  tests unitaires frontend concernés, le smoke Chromium mobile et les voisins du
+  chat clavier/Dialogue. Vérifier que la rotation ne ferme pas une session
+  Dialogue uniquement parce que la largeur franchit 640 px. Contre-auditer les
+  détecteurs concurrents, les règles CSS encore enfermées sous le breakpoint, la
+  perte de capacités de sidebar et toute divergence desktop. Livrer uniquement
+  `platform-fridadev` avec rollback si et seulement si les preuves sont vertes.
+
+  D6.3-bis est exécuté avant l'activation produit D6.3 afin de stabiliser le
+  contenant mobile ; il ne retire pas `disabled` et n'active aucun appel audio.
+
 - [ ] **D6.3 — Activer le bouton et rejouer les preuves**
 
   Retirer `disabled`, conserver l'accessibilité clavier et tactile, puis rejouer
