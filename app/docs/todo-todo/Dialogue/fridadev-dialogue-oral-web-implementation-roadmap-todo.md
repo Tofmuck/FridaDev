@@ -1120,10 +1120,12 @@ sont verts. Son activation appartient exclusivement à D6.
 
 ---
 
-## Lot D6 — activation contrôlée et canari iPhone en voiture
+## Lot D6 — activation contrôlée, livraison et retour automobile
 
-**Livrable :** le bouton Dialogue devient utilisable sur l'iPhone seulement
-après une preuve de bout en bout, avec rollback ciblé prêt.
+**Livrable :** après la preuve de bout en bout D6.2, le bouton Dialogue devient
+utilisable sur l'iPhone et la version est livrée avec rollback ciblé. L'usage
+automobile est ensuite apprécié qualitativement par Tof, sans inspection ni
+relevé pendant la conduite.
 
 **Fichiers :**
 
@@ -1365,7 +1367,7 @@ service. Le micro-lot correctif distinct ci-dessous lui succède.
   stockage, secret, route, harnais ou appel réel. `node --check` sur les trois
   JavaScript touchés et `git diff --check` réussissent.
 - L'exception bornée est consignée dans `AGENTS.md`, le contrat et le hub.
-  D6.4 devra supprimer les deux valeurs et tout le mécanisme de marqueur.
+  D6.3 devra supprimer les deux valeurs et tout le mécanisme de marqueur.
   La livraison ciblée est vérifiée ci-dessous.
 
 Commandes complètes : `node --test app/tests/unit/frontend_chat/*.js`,
@@ -1538,20 +1540,11 @@ Livraison vérifiée le 10 septembre 2026 à 16:39 UTC :
   en 204 tours utilisateur et 204 tours Frida. Après Terminer, le bouton était
   de nouveau désactivé, le marqueur absent et l'observateur content-free
   temporaire supprimé. Le canari n'établit pas encore le comportement en
-  voiture ; celui-ci reste réservé à D6.3.
+  voiture ; celui-ci reste réservé au retour d'usage D6.5.
 
 **D6.2 FERMÉ — D6.3 NON COMMENCÉ.**
 
-- [ ] **D6.3 — Canari automobile iPhone 11**
-
-  Radio et médias arrêtés avant écoute. Vérifier successivement : bruit de
-  roulement sans faux départ durable ; parole détectée sans appui supplémentaire ;
-  pause naturelle non coupée abusivement ; fin d'énoncé raisonnablement rapide ;
-  transcript acceptable dans le fil normal ; une seule réponse ; démarrage TTS
-  audible ; réarmement ; Pause ; Terminer ; reprise du chat écrit. Consigner
-  uniquement métriques et verdicts content-free.
-
-- [ ] **D6.4 — Activer le bouton et rejouer les preuves**
+- [ ] **D6.3 — Activer le bouton et rejouer les preuves**
 
   Retirer `disabled`, conserver l'accessibilité clavier et tactile, puis rejouer
   les tests frontend, les deux routes backend, le smoke mobile et le chemin chat
@@ -1561,7 +1554,7 @@ Livraison vérifiée le 10 septembre 2026 à 16:39 UTC :
   le même listener et la même fonction d'ouverture vers `full`, sans second
   wiring. Aucun autre contrôle ou écran n'est ajouté.
 
-- [ ] **D6.5 — Livrer avec rollback**
+- [ ] **D6.4 — Livrer avec rollback**
 
   Reconstruire et recréer seulement `platform-fridadev`, sans pull implicite ni
   dépendance. Vérifier HTTP, health, restart, OOM, empreintes et voisins. Conserver
@@ -1569,10 +1562,26 @@ Livraison vérifiée le 10 septembre 2026 à 16:39 UTC :
 
   Commit attendu : `feat(dialogue): activate mobile voice conversation`.
 
-**Stop D6 :** si le canari automobile échoue sur VAD, latence, transcript,
-lecture ou réarmement, le bouton reste désactivé. Corriger une seule cause dans
-un micro-lot distinct ; ne pas changer de modèle ni ajouter un fallback sans
-décision explicite.
+- [ ] **D6.5 — Expérience réelle et retour utilisateur**
+
+  Utiliser le mode Dialogue normalement sur l'iPhone, notamment en voiture,
+  radio et médias arrêtés pendant l'écoute. Aucun inspecteur, métrique, relevé
+  technique ni manipulation du téléphone n'est demandé pendant la conduite.
+  Après le trajet, Tof donne seulement son appréciation d'usage : faux départs
+  gênants, détection de la parole, coupures, délai ressenti, compréhension,
+  qualité de la voix, réarmement et confort général. Le fil écrit ordinaire
+  reste disponible après coup si une incompréhension doit être examinée.
+
+  Ce retour qualitatif ne prétend pas mesurer le système. Un défaut rapporté
+  est consigné comme symptôme d'usage, puis reproduit à l'arrêt avant tout
+  correctif. Il ne justifie ni changement de modèle, ni filtre sonore, ni
+  fallback sans micro-lot et décision explicites.
+
+**Stop D6 :** si D6.3 révèle une régression d'activation ou si D6.4 échoue à
+livrer proprement, ne pas activer ou conserver la version concernée. Pendant
+D6.5, la sécurité de conduite prime absolument : aucune preuve technique n'est
+collectée au volant. Corriger ensuite une seule cause reproductible dans un
+micro-lot distinct.
 
 ---
 
