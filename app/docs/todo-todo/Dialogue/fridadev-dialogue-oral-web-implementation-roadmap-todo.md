@@ -1707,6 +1707,20 @@ Livraison vérifiée le 10 septembre 2026 à 16:39 UTC :
   à `14px`. Il est porté à `16px` uniquement dans la présentation téléphone ;
   le viewport et le compositeur conservent leur largeur après focus.
 
+  **Retour réel hors voiture du 11 septembre 2026 :**
+
+  - [x] autorisation microphone Safari et armement opérationnels ;
+  - [x] boucle orale suffisamment fluide pour produire un dialogue vivant ;
+  - [x] qualité du STT jugée excellente, très supérieure au Whisper local dans
+    cet usage ;
+  - [x] latence ressentie non déstabilisante ;
+  - [x] retour au chat écrit et conservation du dialogue conformes ;
+  - [ ] expérience automobile, seul volet d'usage restant à évaluer.
+
+  Ce constat qualifie le STT OpenRouter pour le mode Dialogue. Il n'autorise pas
+  à lui seul le retrait ou le contournement global de Whisper : une telle
+  décision toucherait la dictée existante et constitue un lot séparé.
+
 **Stop D6 :** si D6.3 révèle une régression d'activation ou si D6.4 échoue à
 livrer proprement, ne pas activer ou conserver la version concernée. Pendant
 D6.5, la sécurité de conduite prime absolument : aucune preuve technique n'est
