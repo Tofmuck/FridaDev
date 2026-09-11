@@ -202,7 +202,8 @@ septembre 2026 : le bouton produit `Dialogue` est active et ouvre directement
 la chaine D3-D5 deja livree. Les marqueurs DOM temporaires de preflight et de
 canari sont retires. Cette decision n'autorise aucun nouveau protocole, modele,
 provider, controle ou comportement audio ; l'experience reelle et le retour
-qualitatif de Tof restent le seul lot ouvert.
+qualitatif de Tof ont ete valides hors voiture puis en usage automobile le
+11 septembre 2026. Le lot Z de reconciliation finale reste seul ouvert.
 
 Chaque lot doit demontrer: pas de capacite produit ajoutee, comportements
 legitimes preserves hors bug corrige, complexite stable ou reduite, ancien

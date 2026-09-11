@@ -23,6 +23,11 @@ manuel Safari sur iPhone 11.
 **Contrat :**
 [`fridadev-dialogue-oral-web-todo.md`](fridadev-dialogue-oral-web-todo.md).
 
+**Statut au 11 septembre 2026 : D0 à D6 sont fermés et livrés. Le mode
+Dialogue est validé sur Safari iPhone, hors voiture puis en usage automobile.
+Le lot Z de réconciliation finale est le seul lot restant et n'est pas
+commencé.**
+
 ## État initial autoritatif — 9 septembre 2026
 
 - [x] La composition Figma mobile sombre `106:4` est intégrée.
@@ -1687,7 +1692,7 @@ Livraison vérifiée le 10 septembre 2026 à 16:39 UTC :
   Livraison ciblée effectuée sur le seul service `fridadev`, avec image
   précédente conservée pour rollback.
 
-- [ ] **D6.5 — Expérience réelle et retour utilisateur**
+- [x] **D6.5 — Expérience réelle et retour utilisateur**
 
   Utiliser le mode Dialogue normalement sur l'iPhone, notamment en voiture,
   radio et médias arrêtés pendant l'écoute. Aucun inspecteur, métrique, relevé
@@ -1715,11 +1720,41 @@ Livraison vérifiée le 10 septembre 2026 à 16:39 UTC :
     cet usage ;
   - [x] latence ressentie non déstabilisante ;
   - [x] retour au chat écrit et conservation du dialogue conformes ;
-  - [ ] expérience automobile, seul volet d'usage restant à évaluer.
+  - [x] expérience automobile dans les conditions réelles visées.
 
   Ce constat qualifie le STT OpenRouter pour le mode Dialogue. Il n'autorise pas
   à lui seul le retrait ou le contournement global de Whisper : une telle
   décision toucherait la dictée existante et constitue un lot séparé.
+
+  **Retour automobile du 11 septembre 2026 :** Tof a utilisé normalement le
+  mode Dialogue sur l'iPhone pendant un trajet, sans manipulation ni collecte
+  technique au volant. Il ne rapporte aucun faux départ gênant, aucune coupure
+  de parole, aucune incompréhension notable, aucun défaut de réarmement et
+  aucune latence déstabilisante. La transcription est jugée aussi convaincante
+  qu'hors voiture. La seule interruption observée correspond aux zones blanches
+  où le téléphone ne dispose plus d'une liaison réseau exploitable ; aucun
+  fallback hors ligne n'est revendiqué par la V1.
+
+  La vérification serveur effectuée après le trajet, sans lire les paroles ni
+  les réponses, retrouve entre `16:15` et `16:32` sept cycles complets : sept
+  STT `200`, sept chats canoniques `200`, sept `persist_response/turn_end` en
+  état `ok` et sept TTS `200`. Aucun HTTP `4xx/5xx`, `ERROR`, `CRITICAL` ou
+  `Traceback` n'apparaît sur cette fenêtre. Les latences médianes observées sont
+  `1 209 ms` pour le STT, `36 715 ms` pour le tour canonique et `2 811 ms` pour
+  le TTS. Une perte de réseau qui empêche la requête d'atteindre FridaDev ne
+  produit logiquement aucun échec serveur ; la limite des zones blanches est
+  donc consignée comme dépendance réseau, pas comme défaut établi du pipeline.
+
+  Une anomalie distincte d'observabilité a été constatée : chaque tour produit
+  cinq avertissements `observability_payload_rejected` — un
+  `memory_chain_snapshot`, trois `llm_call` et un `biblio`. Le même motif était
+  déjà présent sur les vingt-quatre tours serveur antérieurs ; il n'est donc ni
+  propre au trajet ni causal dans le dialogue, dont les réponses et la
+  persistance sont vertes. Il devient un point d'entrée explicite du lot Z et
+  interdit seulement de déclarer l'observabilité finale entièrement propre
+  avant classification ou correction.
+
+  **D6.5 FERMÉ — LOT D6 FERMÉ — LOT Z NON COMMENCÉ.**
 
 **Stop D6 :** si D6.3 révèle une régression d'activation ou si D6.4 échoue à
 livrer proprement, ne pas activer ou conserver la version concernée. Pendant
@@ -1755,6 +1790,11 @@ second produit conversationnel.
   pistes résiduels, audio conservé, contenu brut loggé, secret frontend, CDN,
   fallback silencieux, transcript affiché dans le mode, animation décorative
   permanente, comportement desktop modifié et perte d'une capacité existante.
+  Classifier en outre le motif serveur actuel de cinq
+  `observability_payload_rejected` par tour (`memory_chain_snapshot`, trois
+  `llm_call`, `biblio`) : prouver s'il s'agit d'un contrat de garde obsolète,
+  d'un payload fautif ou d'un refus volontaire mal journalisé, sans mêler ce
+  raccord d'observabilité à la boucle orale déjà validée.
 
 - [ ] **Z.4 — Documentation et archivage**
 

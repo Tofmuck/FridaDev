@@ -3,10 +3,11 @@
 Date de cadrage initial : 7 septembre 2026.
 Dernière mise à jour de reconnaissance : 11 septembre 2026.
 
-**Statut : D1 à D6.4 sont fermés et livrés. Le bouton produit `Dialogue` est
+**Statut : D1 à D6 sont fermés et livrés. Le bouton produit `Dialogue` est
 actif et ouvre la chaîne unique VAD/WAV → STT → chat canonique → TTS Soleil.
 Les entrées DOM temporaires de préflight et de canari ne sont plus exposées
-par le produit. D6.5 reste l'expérience réelle et le retour qualitatif de Tof.**
+par le produit. L'expérience hors voiture et l'usage automobile sont validés ;
+le lot Z de réconciliation finale reste ouvert.**
 
 ## Intention
 
@@ -77,7 +78,8 @@ d'écoute du microphone.
   `microsoft/mai-voice-2-flash`, avec la voix
   `fr-FR-Soleil:MAI-Voice-2`. Ces deux choix ne sont pas remis en concurrence
   sans échec concret du test automobile ou changement du contrat fournisseur.
-- Le seuil `x` reste à éprouver par le canari automobile. L'autorité D3 courante
+- Le seuil de fin de parole courant est accepté par les essais réels hors
+  voiture et automobile. L'autorité D3 courante
   est un unique WAV `audio/wav`, PCM16 mono à 16 kHz, produit à partir du
   Float32 segmenté par le VAD. Il n'existe aucune préférence MP4/WebM/OGG,
   négociation de codec ni fallback automatique de format ou de modèle.
@@ -593,9 +595,10 @@ sans régression réelle ou changement du contrat OpenRouter.
   l'écoute. Le système n'a pas à identifier le locuteur au milieu d'une radio
   parlée.
 
-Conclusion V1 : le principe du VAD local est validé. La résistance au bruit de
-roulement reste à vérifier dans la voiture réelle ; elle ne justifie pas de
-recommencer les essais de bruit non vocal déjà réussis.
+Conclusion V1 : le principe du VAD local est validé. L'usage automobile réel du
+11 septembre 2026 n'a révélé aucun faux départ gênant ni coupure attribuable au
+bruit de roulement. Une réouverture exige désormais un défaut reproductible ;
+elle ne justifie pas de recommencer les essais de bruit non vocal déjà réussis.
 
 ### 3. Canari STT `MAI-Transcribe 2`
 
@@ -627,8 +630,8 @@ conservé dans le dépôt.
 
 Conclusion V1 : `microsoft/mai-transcribe-2` est le STT principal retenu. Ne
 pas lancer un nouveau benchmark général ni ajouter un fallback automatique.
-Le seul essai restant est un canari borné avec parole réelle et bruit de
-roulement dans la voiture.
+Le canari hors voiture et l'usage réel en voiture sont tous deux validés ; les
+zones blanches restent une limite de connectivité, pas un défaut STT établi.
 
 ### 4. Revalidation fournisseur pour D1 — 9 septembre 2026
 
@@ -743,7 +746,8 @@ L'exception D6.2a du 10 septembre autorise seulement l'entrée ponctuelle
 canari` distinct a été donné et D6.2 a été fermé par la preuve matérielle du
 11 septembre. L'activation produit D6.3 a été explicitement autorisée le
 11 septembre : le bouton servi est actif et les marqueurs DOM temporaires ont
-été retirés. D6.5 reste ouvert.
+été retirés. D6.5 est fermé par les retours hors voiture et automobile du
+11 septembre 2026. Le lot Z reste ouvert.
 
 ## Activation produit D6.3 — 11 septembre 2026
 
@@ -752,9 +756,19 @@ ouvre directement `openDialogueSession('full')`. Les marqueurs DOM ponctuels
 de D6.1a/D6.2a et leur autorité capturée au bootstrap ont été supprimés. La
 chaîne audio, ses modèles, ses bornes et son comportement restent inchangés.
 
+## Retour d'usage D6.5 — 11 septembre 2026
+
+Le mode Dialogue est validé sur Safari iPhone hors voiture puis en usage
+automobile réel. Tof juge le STT excellent, la boucle suffisamment fluide pour
+un dialogue vivant et la latence non déstabilisante. Le trajet n'a révélé aucun
+défaut de détection, de coupure, de compréhension ou de réarmement. Les zones
+blanches interrompent nécessairement le service en l'absence de réseau ; la V1
+ne possède aucun fallback hors ligne. La preuve technique content-free et ses
+limites sont consignées dans la roadmap d'implémentation.
+
 ## Roadmap d'implémentation
 
 La mise en œuvre est découpée dans la
 [roadmap du mode Dialogue oral Web](fridadev-dialogue-oral-web-implementation-roadmap-todo.md).
-Elle conserve D6.5 comme expérience réelle et interdit de recommencer les choix
-VAD, STT, TTS ou voix sans fait nouveau.
+Elle ferme D6.5 et conserve le lot Z comme réconciliation finale. Les choix VAD,
+STT, TTS ou voix ne sont pas recommencés sans fait nouveau.
