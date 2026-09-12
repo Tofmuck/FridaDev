@@ -26,7 +26,8 @@ manuel Safari sur iPhone 11.
 **Statut au 12 septembre 2026 : D0 à D6 sont fermés et livrés. Le mode
 Dialogue est validé sur Safari iPhone, hors voiture puis en usage automobile.
 Z.1 et Z.2 sont fermés après réconciliation des invariants puis exécution des
-sélections autoritatives ; Z.3 et Z.4 ne sont pas commencés.**
+sélections autoritatives. Le contre-audit Z.3 est exécuté mais reste ouvert sur
+un défaut classifié du raccord d'observabilité ; Z.4 n'est pas commencé.**
 
 ## État initial autoritatif — 9 septembre 2026
 
@@ -1815,7 +1816,7 @@ second produit conversationnel.
   | **H4 — transcript honnête — validé** | La vue Dialogue ne possède ni champ ni rendu de transcript. Le texte STT entre dans la soumission canonique, qui ajoute le message utilisateur normal, le met en cache puis le sauvegarde et le réhydrate par les routes ordinaires; `input_mode="voice"` n'ajoute qu'une provenance. | `dialogue screen... no transcript` dans `test_dialogue_mode_module.js`; smoke D5 vérifiant absence dans la vue, présence unique dans le fil et réhydratation; `test_api_chat_persists_voice_input_mode_in_user_message_meta`; tests de stockage/réhydratation de `test_conversations_store_save_result.py`. | D6.2 : fil réhydraté avec parité 204/204; D6.5 : sept `persist_response` et sept `turn_end`. | Aucun transcript ni message opérateur n'a été lu pendant Z.1. |
   | **H5 — TTS canonique — validé** | Le chemin courant est correct : `resolveStreamedAssistantText` verrouille `final_text`; seule une soumission `{ok: true, text non vide}` passe `result.text` sans réécriture à `audioClient.synthesize`. Brouillons SSE/DOM, erreurs, final vide et échecs fermés n'atteignent pas D2. | `test_stream_control_parser_module.js`, `test_canonical_chat_submission.js`, `D5 primes synchronously...`, `D5 empty final...` et les smokes D5 verrouillent le final canonique. Le témoin Python renommé `test_dialogue_frontend_has_active_button_and_single_expected_speech_consumer` impose le bouton D6 actif et l'unique consommateur attendu. | D6.2/D6.5 prouvent l'ordre chat puis TTS et l'absence de retry, sans exposer les textes; le code déployé est identique au HEAD. | Aucun provider ni runtime n'est rejoué : la micro-correction porte seulement sur la preuve statique devenue obsolète. |
   | **H6 — semi-duplex réel — validé** | `capture.pause()` précède STT; aucune reprise n'est appelée durant `transcribing`, `thinking`, `tts_pending` ou lecture. `playing`, `waiting` et `pause` ne réarment pas; un unique `ended` courant, après `played`, nettoie puis appelle une seule reprise gardée. Toute erreur invalide sans reprise. | Cas D4/D5 de `test_dialogue_session_controller_module.js`; `pause discards partial speech...` dans `test_dialogue_vad_recorder_module.js`; smokes `D5 audio events...` et `D5 empty final...`. | D6.2 a observé la séquence exacte jusqu'à `tts_pending`, `tts_speaking`, puis `listening`; D6.5 a répété sept cycles sans chevauchement signalé. | La répétition Safari réelle appartient aux recettes D6 déjà closes, pas à une nouvelle manipulation Z.1. |
-  | **H7 — animations factuelles — validé** | `chat_dialogue_mode.js` associe l'onde utilisateur seulement à `user_speaking` et l'orbe Frida seulement à `tts_speaking`; tous les autres états, dont `tts_pending`, `paused` et `error`, coupent les deux. Le contrôleur n'émet `tts_speaking` que sur `playing` valide. | `dialogue animation truth...` et `D5 buffering...` dans `test_dialogue_mode_module.js`; smokes D5 avant, pendant et après `playing`. | La séquence D6.2 corrèle `user_speaking` à la parole et `tts_speaking` à la lecture; l'attente et le retour à l'écoute restent distincts. | Pas de nouvelle capture visuelle dans ce lot. |
+  | **H7 — animations factuelles — validé** | `chat_dialogue_mode.js` associe le signal à ondes à la voix réellement active : `user_speaking` pour Tof et `tts_speaking` pour Frida. L'orbe Frida s'ajoute seulement sur `tts_speaking`; tous les autres états, dont `tts_pending`, `paused` et `error`, coupent les deux familles. Le contrôleur n'émet `tts_speaking` que sur `playing` valide. | `dialogue animation truth...` et `D5 buffering...` dans `test_dialogue_mode_module.js`; smokes D5 avant, pendant et après `playing`. | La séquence D6.2 corrèle `user_speaking` à la parole et `tts_speaking` à la lecture; l'attente et le retour à l'écoute restent distincts. | Pas de nouvelle capture visuelle dans ce lot. |
   | **H8 — cleanup complet — validé** | `invalidate` incrémente la génération, abort les requêtes, nettoie le média et pause/stop la capture. Le lecteur retire ses handlers, pause, retire `src`, appelle `load` et révoque l'object URL. Le recorder stoppe les pistes puis détruit VAD; le runtime attend start/inférence, déconnecte les nœuds, libère le modèle, ferme son `AudioContext` et vide les références/buffers. `Pause`, sortie/pagehide, `Terminer`, changement de conversation et erreur empruntent ces frontières, sans timer Dialogue. | Races/cleanup de `test_dialogue_session_controller_module.js`; `test_dialogue_vad_recorder_module.js`; `test_dialogue_vad_runtime_module.js`; smokes D3/D5 sur fermeture, permission tardive, object URLs, unique lecteur et toutes pistes `ended`. | D6.2 a observé la disparition du mode après `Terminer`; D6.5 a fermé proprement après sept cycles. | L'inspection du système ne mesure pas la mémoire du Safari historique; la preuve est comportementale et hermétique. |
   | **H9 — frontière unique et bornée — validé** | D3 ne contient ni fetch, MediaRecorder ni stockage; D4 envoie un seul WAV `audio/wav` de 1 à 24 000 000 octets; D1 borne le corps à 25 000 000 et le fichier à 24 000 000; D5/D2 bornent texte à 16 000 points de code/caractères et MP3 à 16 Mio + 1 octet de détection. Les services n'écrivent aucun audio; les logs audio ne portent que statuts, raisons, durées, tailles, MIME et longueurs. Les assets VAD sont locaux, versionnés et épinglés, sans CDN/fallback. Le frontend ne conserve que le transcript dans le fil canonique attendu, jamais le blob. | `test_dialogue_audio_client_module.js`; `test_chat_dialogue_audio_routes.py` hors cas obsolète; `test_dialogue_stt_service.py`; `test_dialogue_tts_service.py`; `test_dialogue_vad_vendor_contract.js`; test de non-persistance du recorder. | Routes D1/D2 présentes; manifestes checkout/conteneur/HTTP concordants; 32 succès STT et TTS, aucun échec audio courant. | Aucun provider n'a été appelé et aucun contenu de log n'a été lu. Les deux mentions globales `ERROR` et le motif `observability_payload_rejected` restent hors preuve Z.1 et relèvent du contre-audit Z.3 prévu. |
 
@@ -1928,6 +1929,92 @@ second produit conversationnel.
   `llm_call`, `biblio`) : prouver s'il s'agit d'un contrat de garde obsolète,
   d'un payload fautif ou d'un refus volontaire mal journalisé, sans mêler ce
   raccord d'observabilité à la boucle orale déjà validée.
+
+  **Contre-audit du 12 septembre 2026 — finding classifié, Z.3 reste
+  ouvert.** Baseline conforme avant audit : checkout
+  `/opt/platform/fridadev`, branche `main`, HEAD
+  `abfc522a994fc74ddbd608542216a38bec07eb1e`, upstream `origin/main`,
+  divergence `0/0`, worktree propre. Aucun `pull`, provider, microphone,
+  audio, dialogue opérateur, écriture DB, build, restart ou déploiement n'a
+  été effectué.
+
+  | Contrôle | Verdict | Preuve causale au HEAD |
+  |---|---|---|
+  | C1 — pipeline unique | vert | Un seul `openDialogueSession`, un seul `createDialogueSessionController`, un seul recorder VAD et un seul listener produit conduisent à `dialogue_audio_client.js`, puis à la soumission canonique commune. Les deux seules routes Dialogue sont enregistrées une fois dans `server.py`. Le `MediaRecorder` et `/api/chat/transcribe` appartiennent à Whisper, sans appel depuis Dialogue. Le harnais D3 n'existe que si l'adaptateur de test est injecté avant bootstrap. |
+  | C2 — effets uniques | vert | Un blob est fermé par `pending`, `rearming`, phase, génération, conversation, session et `WeakSet`; le client possède un `fetch` STT et un `fetch` TTS, sans retry ni fallback. Une seule soumission canonique est appelée. Les callbacks, `ended` dupliqués et résultats périmés sont inertes. |
+  | C3 — semi-duplex | vert | `capture.pause()` libère la capture avant STT. Aucun réarmement sous `transcribing`, `thinking`, `tts_pending` ou `tts_speaking`; seul `ended` du lecteur courant après un `playing` valide nettoie puis appelle une reprise unique. `play()`, `playing`, `waiting`, `pause`, erreur et callbacks périmés ne réarment pas. |
+  | C4 — cleanup | vert | Pause, Terminer, fermeture, `pagehide`, changement de conversation et erreur invalident la génération, abortent STT/TTS annulables, retirent les listeners, pausent et vident le lecteur, révoquent une fois l'Object URL, stoppent les pistes, détruisent VAD et buffers, libèrent le modèle et ferment l'`AudioContext` possédé. Aucun timer Dialogue n'existe; le `WeakSet` ne retient pas les blobs. Le chat déjà soumis peut finir et persister, mais son résultat tardif ne réactive pas la session. |
+  | C5 — données et secrets | vert | Aucun stockage audio ni API de persistance n'existe dans D1–D5. Le ring D3 ne garde que type, MIME, durée et taille, jamais le blob. La vue Dialogue ne possède aucun champ transcript; le texte STT rejoint uniquement le message utilisateur canonique. Les erreurs audio et logs serveur ne portent que codes, statuts, durées, tailles, MIME et longueurs. Aucun secret ou header fournisseur n'est exposé au frontend. |
+  | C6 — supply chain | vert pour la chaîne Dialogue | VAD `@ricky0123/vad-web@0.0.30`, ONNX Runtime `1.22.0`, modèle V5, worklet et scripts sont locaux, same-origin, listés dans `MANIFEST.md`; les dix empreintes SHA-256 concordent. Aucun asset VAD distant, CDN audio, modèle alternatif, codec négocié, retry ou fallback silencieux. Les trois liens Google Fonts communs de `index.html`, présents depuis mars 2026, ne sont ni un asset Dialogue ni une dépendance VAD et ne sont pas attribués à ce lot. |
+  | C7 — UI et non-régression | vert | Le signal à ondes suit seulement `user_speaking` ou la lecture `tts_speaking`; l'orbe Frida suit seulement `tts_speaking`, émis après `playing` valide. Attente, pause, fin, erreur et sortie coupent les animations. Le chat masqué n'est `inert` que pendant la session puis est restauré. Clavier, Whisper et Dialogue partagent la soumission canonique; présentation desktop, conversations, dossiers, fichiers, notes et outils restent sur le DOM et leurs callbacks existants. La phrase Z.1 qui disait à tort « onde seulement sur `user_speaking` » est corrigée ci-dessus conformément au contrat vivant. |
+  | C8 — rejets d'observabilité | rouge | Les cinq refus typiques ne sont pas intentionnels. Quatre relèvent d'une garde obsolète; `biblio` révèle d'abord une projection producteur de type contraire, puis des lacunes indépendantes de garde. Les payloads content-free attendus sont remplacés. Détail ci-dessous. |
+  | C9 — séparation des verdicts | vert | Le logger est best-effort et intervient hors des décisions de réponse et de sauvegarde. Les builders et `set_state` utiles au tour précèdent la garde; le résultat fournisseur ou mémoire existe déjà. Les réponses et la persistance conversationnelle ne sont pas affectées. En revanche, les événements persistés perdent les faits contractuels et dégradent réellement les read-models : succès Dialogue et santé d'observabilité restent deux verdicts distincts. |
+
+  **Matrice causale des cinq refus.** Les formes ci-dessous ne portent que des
+  noms de champs, chemins et types. Chaque reproduction passe par le builder
+  réel, le writer réel puis `guard_payload()` dans un conteneur éphémère
+  `--network none`, avec valeurs synthétiques.
+
+  | Ligne | Producteur et forme avant garde | Première frontière et classe | Remplacement persisté et fait perdu | Classification finale |
+  |---|---|---|---|---|
+  | `memory_chain_snapshot` | `chat_memory_flow.prepare_memory_context` → `build_memory_chain_snapshot_payload` → `emit_memory_chain_snapshot`. Racine : `schema_version/mode/status_schema_version:string`, `retrieval/basket/arbiter/injection:object`, `retrieved_candidates/basket_candidates:array<object>`, `truncated:bool`. | Premier chemin : `retrieved_candidates[].candidate_id:string` → `unknown_string_key`. Les autres chemins fautifs sont `retrieval_rank:int`, `source_lane:string`, `retrieval_score:number`, `retrieval_score_bucket:string`, `pre_arbiter_reason_code:string`, `prompt_injection_status:string`, puis leurs équivalents basket et `semantic_relevance/contextual_gain:number`, `redundant_with_recent:bool`. Un candidat synthétique donne 16 issues; les snapshots récents réels, plus fournis, donnent 88 à 128 issues. La même enveloppe sans candidats est acceptée. | Event `status=refused`; payload réduit à la forme de rejet commune. Perte de la chaîne retrieved → basket/dedup → arbitre → injection, des counts, sources, scores et identifiants/hashes attendus. Le read-model prend le remplacement non vide pour un snapshot et projette alors des compteurs nuls avec statut `refused`. | `guard_schema_obsolete` |
+  | `llm_call` — `stimmung_agent` | `stimmung_transport` → proxy `_RequestsChatLogProxy` → metadata OpenRouter → writer. Champs communs : `mode/model/provider/provider_caller/provider_title/provider_generation_id/provider_model/status_schema_version:string`, `timeout_s/response_chars/provider_*_tokens:int`. | `provider_generation_id:string` → `unsafe_string_value`; une seule issue. L'identifiant observé est opaque, content-free et contient des caractères admis par OpenRouter mais refusés par la regex minuscule générale. Sans ce champ, le payload réel est accepté. | Event `status=refused`; payload de rejet commun. Perte du caller Stimmung, du modèle/provider, des tokens et longueurs; métriques et read-model ne peuvent plus attribuer l'appel. | `guard_schema_obsolete` |
+  | `llm_call` — `validation_agent` | `validation_transport` → même proxy/builder/writer; même forme JSON content-free que ci-dessus. | `provider_generation_id:string` → `unsafe_string_value`; une seule issue. | Même remplacement; perte de la vérité provider de Validation et de ses métriques. | `guard_schema_obsolete` |
+  | `llm_call` — `llm` principal | `chat_llm_provider_exchange` → même proxy/builder/writer. Même forme, plus `stream_chunks:int` et `stream_terminal:string` pour le stream final. | `provider_generation_id:string` → `unsafe_string_value`; une seule issue. | Même remplacement; perte de l'attribution du modèle principal et des métriques. Depuis le démarrage courant, l'agrégat persistant classe ainsi 101/101 `llm_call` sous `unknown`, zéro sous `llm` ou les callers secondaires. | `guard_schema_obsolete` |
+  | `biblio` | `run_biblio_chat_turn` désactivé avec état conversationnel existant → `build_biblio_event_payload` → `emit_biblio_event` → writer. Racine : champs d'identité/statut `string`, `enabled/used:bool`, compteurs et `client/resolver/extractor/lane/state/state_transition/librarian_agent/passage_search/confidence/boundaries/redaction:object`. | Premier chemin : `state.persistence_mode:object` → `unknown_mapping_key`. Le sanitizer Biblio transforme plusieurs `string` légitimes de `BiblioConversationState.to_observability()` en `{present:bool, chars:int, sha256_12:string}` : notamment `persistence_mode`, `current_document_doc_id_short`, `last_passage_hash`, `last_result_*` et `last_intent`. La garde rejette aussi les positions `int/null`. La forme réelle produit 31 issues (`unknown_mapping_key`, `unknown_scalar_key`, `unknown_string_key`); le même payload sans `state` est accepté. | L'event conserve `status=disabled` et `guarded_original_status=disabled`, mais tout le payload devient la forme de rejet commune. Le statut de branche survit; motif de désactivation, état content-free, transition, compteurs et preuves Biblio disparaissent. | `writer_payload_invalid` au premier défaut de projection; après sa normalisation, les champs d'état scalaires non décrits prouvent aussi un reliquat `guard_schema_obsolete` à corriger avant fermeture. |
+
+  La forme de remplacement commune est exclusivement
+  `schema_version/reason_code/status_schema_version/guarded_original_status:string`,
+  `rejected_payload:bool`, `issue_count/issue_class_count:int`,
+  `issue_classes:array<string>` et les drapeaux `raw_*:bool` tous faux. Le
+  writer journalise en `warning` le rejet réel; ce n'est donc ni un refus
+  intentionnel ni une fausse alerte de niveau. La représentation est sûre mais
+  destructive pour l'observabilité attendue.
+
+  **Échantillons runtime content-free.** Sur huit tours complets récents entre
+  le 11 septembre `14:16:59Z` et `20:04:15Z`, sept ont exactement le motif
+  `1 memory_chain_snapshot + 3 llm_call + 1 biblio`; le huitième a `1+5+1`
+  parce qu'il comporte deux appels secondaires supplémentaires. Sur huit tours
+  complets antérieurs au mode Dialogue, entre le 10 septembre `04:51:05Z` et
+  `15:08:42Z`, les huit ont exactement `1+3+1`, avec les mêmes classes et
+  statuts. Les logs privés n'ont été réduits qu'à callers, stages, comptes,
+  classes, chemins et types; aucun payload ni contenu n'a été copié. Cette
+  antériorité réfute une causalité Dialogue sans rendre l'observabilité saine.
+
+  **Faux vert des preuves existantes.** La golden matrix couvre un
+  `llm_call` avec identifiant synthétique minuscule, un `biblio` minimal sans
+  état et aucun `memory_chain_snapshot`. Les tests producteurs vérifient les
+  objets avant le writer, tandis que les tests du writer vérifient un rejet
+  générique sans builder réel. Ils passent donc tous alors que le raccord
+  complet refuse les formes runtime.
+
+  Preuves ciblées exécutées, sans relancer P1–P4 :
+
+  - 130 tests Node Dialogue, soumission canonique et présentation ciblés :
+    130 succès, zéro échec/skip/annulation ;
+  - 72 tests Python garde, golden matrix, logger, Biblio et producteur mémoire :
+    72 succès ;
+  - 40 tests Python ciblés STT, TTS et routes audio : 40 succès ;
+  - vérification directe du manifeste VAD : 10 fichiers, 10 empreintes
+    conformes ;
+  - reproductions différentielles des cinq formes : cinq rejets attendus du
+    HEAD, sans réseau, et acceptation des trois formes réduites sans candidats,
+    identifiant de génération ou état Biblio.
+
+  **Micro-lot correctif minimal proposé, séparé de Z.3 : Z.3a — réalignement
+  producteurs/garde.** En TDD, exercer les builders et writers réels; ajouter
+  une validation explicitement bornée de l'identifiant provider opaque sans
+  relâcher la politique générale; décrire contextuellement les seuls champs
+  candidats Memory; préserver dans la projection Biblio les types content-free
+  de `to_observability()` puis borner les seuls champs `state` et
+  `state_transition` légitimes. Ne changer ni pipeline produit, ni payload
+  métier, ni read-model hors adaptation strictement nécessaire. Avant fermeture
+  de Z.3 : tests rouges puis verts sur les cinq lignes, absence de payload de
+  remplacement, conservation des refus réellement dangereux, read-model
+  Memory non nul/cohérent, attribution `llm`/Stimmung/Validation retrouvée,
+  état Biblio observable, puis preuve runtime content-free d'un tour ordinaire.
+
+  **Z.3 OUVERT — FINDING CLASSIFIÉ — Z.4 NON COMMENCÉ.**
 
 - [ ] **Z.4 — Documentation et archivage**
 

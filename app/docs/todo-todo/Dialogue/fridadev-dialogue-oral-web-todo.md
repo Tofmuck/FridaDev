@@ -8,7 +8,8 @@ actif et ouvre la chaîne unique VAD/WAV → STT → chat canonique → TTS Sole
 Les entrées DOM temporaires de préflight et de canari ne sont plus exposées
 par le produit. L'expérience hors voiture et l'usage automobile sont validés ;
 Z.1 et Z.2 sont fermés après réconciliation des invariants et exécution des
-sélections autoritatives. Z.3 et Z.4 restent non commencés.**
+sélections autoritatives. Le contre-audit Z.3 est exécuté mais reste ouvert sur
+un défaut classifié du raccord d'observabilité ; Z.4 reste non commencé.**
 
 ## Intention
 
@@ -748,7 +749,8 @@ canari` distinct a été donné et D6.2 a été fermé par la preuve matérielle
 11 septembre. L'activation produit D6.3 a été explicitement autorisée le
 11 septembre : le bouton servi est actif et les marqueurs DOM temporaires ont
 été retirés. D6.5 est fermé par les retours hors voiture et automobile du
-11 septembre 2026. Z.1 et Z.2 sont fermés ; Z.3 et Z.4 restent non commencés.
+11 septembre 2026. Z.1 et Z.2 sont fermés ; Z.3 reste ouvert après
+classification du défaut d'observabilité et Z.4 n'est pas commencé.
 
 ## Activation produit D6.3 — 11 septembre 2026
 
@@ -771,6 +773,7 @@ limites sont consignées dans la roadmap d'implémentation.
 
 La mise en œuvre est découpée dans la
 [roadmap du mode Dialogue oral Web](fridadev-dialogue-oral-web-implementation-roadmap-todo.md).
-Elle ferme D6.5, Z.1 puis Z.2 ; Z.3 et Z.4 restent les étapes de réconciliation
-finale non commencées. Les choix VAD, STT, TTS ou voix ne sont pas recommencés
-sans fait nouveau.
+Elle ferme D6.5, Z.1 puis Z.2. Z.3 a contre-audité la boucle sans trouver de
+second pipeline ni de régression produit, mais reste ouvert sur le raccord
+d'observabilité classifié ; Z.4 n'est pas commencé. Les choix VAD, STT, TTS ou
+voix ne sont pas recommencés sans fait nouveau.
