@@ -2,8 +2,14 @@ from __future__ import annotations
 
 from typing import Any
 
+from tests.support import observability_writer_cases as writer_cases
+
 
 ACCEPTED_STAGE_CASES: tuple[dict[str, Any], ...] = (
+    {'name': 'memory_chain_snapshot', 'stage': 'memory_chain_snapshot', 'payload': writer_cases.memory_payload()},
+    {'name': 'biblio_state', 'stage': 'biblio', 'payload': writer_cases.biblio_payload()},
+    {'name': 'prompt_parent_summary', 'stage': 'prompt_prepared',
+     'payload': {'memory_prompt_injection': writer_cases.prompt_memory_summary()}},
     {
         "name": "chat_response",
         "stage": "chat_response",
@@ -27,7 +33,8 @@ ACCEPTED_STAGE_CASES: tuple[dict[str, Any], ...] = (
             "provider_caller": "llm",
             "provider_title": "FridaDev/LLM",
             "provider_model": "openrouter/runtime-main-model",
-            "provider_generation_id": "generation_synthetic",
+            "provider_generation_id_present": True,
+            "provider_generation_id_sha256_12": "bb62465de5dd",
             "model": "openrouter/runtime-main-model",
         },
     },

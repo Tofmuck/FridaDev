@@ -110,7 +110,7 @@ def _emit_now(
         payload_json['error_code'] = str(error_code)
 
     guarded_original_status = status_norm
-    guard_decision = observability_payload_guard.guard_payload(payload_json)
+    guard_decision = observability_payload_guard.guard_payload(payload_json, stage=stage)
     if not guard_decision.accepted:
         payload_json = guard_decision.payload
         payload_json['status_schema_version'] = agentic_status.STATUS_SCHEMA_VERSION

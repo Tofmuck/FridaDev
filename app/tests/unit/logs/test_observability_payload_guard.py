@@ -417,12 +417,13 @@ class ObservabilityPayloadGuardTests(unittest.TestCase):
             "provider_caller": "llm",
             "provider_title": "FridaDev/LLM",
             "provider_model": "openrouter/runtime-main-model",
-            "provider_generation_id": "gen-stream",
+            "provider_generation_id_present": True,
+            "provider_generation_id_sha256_12": "bb62465de5dd",
             "model": "openrouter/runtime-main-model",
             "status_schema_version": "agentic_v1",
         }
 
-        decision = observability_payload_guard.guard_payload(payload)
+        decision = observability_payload_guard.guard_payload(payload, stage='llm_call')
 
         self.assertTrue(decision.accepted)
         self.assertEqual(decision.payload["stream_chunks"], 2)

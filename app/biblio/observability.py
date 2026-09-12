@@ -15,6 +15,7 @@ from . import catalogue_client
 from .passage_extractor import BiblioPassageResult, STATUS_EXTRACTED
 from .prompt_lane import BiblioPromptLane
 from observability import agentic_status
+from observability.observability_payload_guard_context_schema import BIBLIO_STATE, BIBLIO_TRANSITION
 
 
 SCHEMA_VERSION = "1"
@@ -228,8 +229,8 @@ def build_biblio_event_payload(
     resolver_projection = _object_projection(resolution)
     extractor_projection = _passage_result_projection(passage_result)
     lane_projection = _prompt_lane_projection(prompt_lane)
-    state_projection = _object_projection(biblio_state)
-    state_transition_projection = _object_projection(state_transition)
+    state_projection = _state_projection(biblio_state, BIBLIO_STATE)
+    state_transition_projection = _state_projection(state_transition, BIBLIO_TRANSITION)
     librarian_agent_projection = _object_projection(librarian_agent)
     passage_search_projection = _passage_search_projection(
         client_items=client_items,
@@ -303,7 +304,7 @@ def emit_biblio_event(payload: Mapping[str, Any], *, chat_turn_logger_module: An
     emitter = getattr(chat_turn_logger_module, "emit", None)
     if not callable(emitter):
         return False
-    clean_payload = _sanitize_mapping(payload)
+    clean_payload = _sanitize_mapping(payload, conversation_fields=True)
     return bool(
         emitter(
             EVENT_STAGE,
@@ -628,13 +629,33 @@ def _event_log_status(status: str) -> str:
     return agentic_status.STATUS_OK
 
 
-def _sanitize_mapping(value: Mapping[str, Any]) -> dict[str, Any]:
+def _state_projection(value: Any, schema: Mapping[str, Any]) -> dict[str, Any]:
+    if value is None:
+        return {}
+    try:
+        projector = getattr(value, 'to_observability', None)
+        projected = projector() if callable(projector) else value
+    except Exception:
+        # A known field with an invalid type survives repeated projection and
+        # forces the canonical guard to refuse, without leaking exception text.
+        return {'persistence_mode': None}
+    if not isinstance(projected, Mapping):
+        return {'persistence_mode': None}
+    # Copy only the declared facts, without coercion or hashing an existing hash.
+    # The canonical guard validates their exact types and values before storage.
+    return {key: child for key, child in projected.items() if key in schema}
+
+
+def _sanitize_mapping(value: Mapping[str, Any], *, conversation_fields: bool = False) -> dict[str, Any]:
     clean: dict[str, Any] = {}
     for key, raw_value in value.items():
         key_text = str(key or "").strip()
         if not key_text:
             continue
         if key_text.lower() in _DANGEROUS_KEYS:
+            continue
+        if conversation_fields and key_text in {'state', 'state_transition'}:
+            clean[key_text] = _state_projection(raw_value, BIBLIO_STATE if key_text == 'state' else BIBLIO_TRANSITION)
             continue
         clean[key_text] = _sanitize_value(raw_value, key=key_text)
     return clean

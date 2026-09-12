@@ -44,7 +44,7 @@ _GENERAL_TEXT_KEYS = set(
     persist_phase
     primary_read_filter primary_read_status primary_source_kind profile_policy_kind
     profile_policy_mode profile_source_evidence_policy_kind prompt_kind provider provider_caller
-    ancrage_temporel portee_temporelle provider_generation_id provider_model provider_role provider_title product_case_id product_method
+    ancrage_temporel portee_temporelle provider_model provider_role provider_title product_case_id product_method
     product_truth projected_judgment_posture
     proof_regime principe query_kind query_plan_kind query_preview read_state reason_code reason_short uncertainty_posture
     read_execution_reason_code read_execution_status regime_de_vigilance runtime_pipeline

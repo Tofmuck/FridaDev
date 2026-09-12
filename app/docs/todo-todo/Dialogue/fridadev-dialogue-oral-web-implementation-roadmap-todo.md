@@ -26,8 +26,9 @@ manuel Safari sur iPhone 11.
 **Statut au 12 septembre 2026 : D0 à D6 sont fermés et livrés. Le mode
 Dialogue est validé sur Safari iPhone, hors voiture puis en usage automobile.
 Z.1 et Z.2 sont fermés après réconciliation des invariants puis exécution des
-sélections autoritatives. Le contre-audit Z.3 est exécuté mais reste ouvert sur
-un défaut classifié du raccord d'observabilité ; Z.4 n'est pas commencé.**
+sélections autoritatives. Le contre-audit Z.3 reste ouvert. Son correctif Z.3a
+est prouvé hermétiquement ; livraison applicative et preuve sur tour réel
+restent à établir. Z.4 n'est pas commencé.**
 
 ## État initial autoritatif — 9 septembre 2026
 
@@ -2015,6 +2016,142 @@ second produit conversationnel.
   état Biblio observable, puis preuve runtime content-free d'un tour ordinaire.
 
   **Z.3 OUVERT — FINDING CLASSIFIÉ — Z.4 NON COMMENCÉ.**
+
+- [ ] **Z.3a — Réalignement borné producteurs/garde d'observabilité**
+
+  **Exécution du 12 septembre 2026 — correctif hermétiquement prouvé,
+  livraison et preuve réelle encore attendues à ce point de contrôle.**
+  Baseline : `/opt/platform/fridadev`, `main`, HEAD et `origin/main`
+  `b4151d2d19ac6d811f3e8fe6734e21ad7e28dee3`, divergence `0/0`, worktree
+  propre. Travail direct dans le checkout, sans SSH ni pull.
+
+  **Décision avant patch.** « Existe-t-il un meilleur plan, plus simple,
+  plus sûr et avec moins d'effets de bord ? » Oui, au même contrat produit :
+  conserver seulement les empreintes nécessaires aux lecteurs, projeter
+  explicitement l'état Biblio déjà content-free et valider par stage/chemin
+  dans l'unique garde. Aucun élargissement de `_SAFE_CODE_RE`, des containers
+  généraux ou de la collecte. Les trois stages rares relèvent de cette même
+  frontière et sont inclus ; aucun lot fonctionnel supplémentaire.
+
+  **Inventaire avant patch et classement des huit formes.** Lecture bornée
+  en read-only des événements depuis le démarrage du conteneur courant :
+  33/33 snapshots refusés, 101/101 appels LLM refusés, 33/33 Biblio remplacés,
+  3/33 `prompt_prepared`, 1/33 `web_search`, 1/33
+  `hermeneutic_node_insertion` refusés. Pour les rares, signatures respectives
+  de deux `unsafe_string_value`, huit `url_value` et huit `url_value`.
+  Aucun identifiant ou payload privé n'est reproduit. La garde ayant jeté les
+  formes originales, les valeurs historiques exactes ne sont pas
+  récupérables : les causes sont établies par les producteurs actuels et les
+  reproductions synthétiques de même signature, pas par une prétendue
+  relecture des champs supprimés.
+
+  | Forme | Chemins et types à la frontière initiale | Classe causale | Correctif et faits prouvés après garde/store fake/read-model |
+  |---|---|---|---|
+  | `memory_chain_snapshot` | `retrieved_candidates[]/basket_candidates[]:object`, identifiants `string`, rangs/compteurs `int`, scores `number/null`, décisions `bool/string` ; clés de candidats sans schéma | `guard_schema_obsolete` | Schéma exact, 24 candidats maximum, listes d'empreintes bornées à 8, maps de compteurs bornées, types exacts. IDs bruts du snapshot retirés ; hashes de corrélation conservés. Cas réel de builders : 2 retrieved → 1 basket → 1 kept → 1 injected, statut `ok` et read-model cohérents. |
+  | `llm_call` — `stimmung_agent` | `provider_generation_id:string` → `unsafe_string_value` | `guard_schema_obsolete` | Projection canonique commune `provider_generation_id_present:bool` + `provider_generation_id_sha256_12:string`. Caller, tokens, longueurs et statut `ok` persistent. |
+  | `llm_call` — `validation_agent` | Même chemin/type et classe | `guard_schema_obsolete` | Même frontière, sans branche spécifique à l'agent ; attribution secondaire restaurée. |
+  | `llm_call` — `llm` | Même chemin/type et classe ; variante stream conserve aussi `stream_chunks:int`, `stream_terminal:string` | `guard_schema_obsolete` | Même projection JSON/stream ; métriques du témoin : un appel principal, deux secondaires, zéro inconnu. Aucun identifiant opaque brut dans le store ni dans le log fournisseur standard. |
+  | `biblio` | `state.persistence_mode:object` au lieu de `string`, autres tokens/hashes compactés en mappings ; positions `int/null` non décrites | `writer_payload_invalid`, puis `guard_schema_obsolete` | Projection explicite partagée avec les seuls schémas `state`/`state_transition`. Types, positions optionnelles, état et transition persistent ; statut `disabled` et motif de branche préservés, read-model Biblio cohérent. Échec de projection : refus visible, jamais objet vide silencieux ni exception applicative. |
+  | `prompt_prepared` | `memory_prompt_injection.parent_summaries_injected[].start_ts/end_ts:string` | `guard_schema_obsolete` | Horodatages stricts et valides, avec séparateur `T` ou espace réellement émis par le reader SQL. Test via `get_summary_for_trace` avec curseur fake retournant des `datetime`, puis builder/proxy réels. Dates et compteur de résumés restaurés. |
+  | `web_search` | `source_material_summary[].source_domain:string`, `crawl4ai_extraction_summary[].source_domain:string` : hostname nu avec préfixe `www.` interprété comme URL | `guard_schema_obsolete` | Validation DNS locale à ces chemins (et au chemin voisin `web_pdf_read_summary` du même producteur). Aucun schéma, port, chemin, query ou userinfo accepté. Writer réel : quatre sources, huit occurrences ; statut et compteurs retrouvés. |
+  | `hermeneutic_node_insertion` | Mêmes chemins sous `inputs.web`, type `string`, huit `url_value` | `guard_schema_obsolete` | Même règle DNS, uniquement sous les chemins de ce stage ; insertion atteinte, faits Web, comptage de stage et projection content-free préservés. |
+
+  **Hypothèses H1–H10 tranchées.** H1/H5/H6/H7 sont confirmées par le
+  raccord complet : candidats non décrits, sanitizer Biblio fautif et golden
+  matrix initiale non représentative. H2 : les readers du snapshot utilisent
+  déjà `candidate_id_sha256_12`, donc aucun besoin de l'ID exact dans ce
+  snapshot ; les `injected_candidate_ids` de `prompt_prepared`, réellement
+  corrélés par d'autres readers Memory, restent des références pipeline
+  strictes (`cand-` + 16 hex ou `summary:` + UUID). Cette dernière variante
+  légitime, trouvée pendant le correctif, a son témoin rouge/vert propre.
+  H3/H4 : aucun reader ne requiert l'ID fournisseur exact ; seules présence
+  et empreinte courte sont conservées après validation locale de la forme
+  (160 caractères maximum, pas de contrôle/URL/chemin/base64/credential).
+  L'ancienne clé brute est retirée de l'allowlist d'écriture, pas seulement
+  omise par le nouveau writer. H8 : les cinq événements rares sont bien
+  présents et relèvent des trois lignes ci-dessus. H9 : perte d'observabilité
+  effective, sans modification de la réponse ni de la sauvegarde
+  conversationnelle. H10 : aucun fichier Dialogue, frontend, audio, prompt,
+  modèle, provider ou donnée opérateur n'est modifié.
+
+  **TDD rouge → vert.** Avant correction produit, les huit tests initiaux
+  traversant builders/writers → `chat_turn_logger` → garde → store fake
+  produisent neuf échecs (huit formes causales et une assertion d'agrégat
+  dépendante), sans erreur d'import. Les formes Memory, Biblio, prompt, Web,
+  insertion et les trois callers échouent sur le remplacement/statut refusé.
+  Le module final comporte 14 tests, incluant les contre-cas : clé inconnue,
+  mauvais type (notamment bool/int), listes/profondeur excessives, texte brut,
+  URL, chemin, XML, base64, token-like, credential, identifiant trop long et
+  caractères de contrôle. Les variantes SQL réelles, référence de résumé,
+  coercition d'ID avec contrôles et panne de projection ont également eu
+  leurs rouges avant correction. Golden matrix : 13 cas positifs, dont les
+  vrais builders Memory/état Biblio/résumé parent ; le test de proxy fournisseur
+  porte une classe synthétique mixte, jamais un ID runtime recopié.
+
+  **Tests exécutés ensemble après restauration des mutations : 358/358,
+  zéro échec, erreur ou skip.** Sélection explicite de 21 modules :
+
+  ```text
+  tests.unit.logs.test_observability_real_writers
+  tests.unit.logs.test_observability_payload_guard
+  tests.unit.logs.test_observability_payload_guard_golden_matrix
+  tests.unit.logs.test_observability_payload_guard_schema_boundaries
+  tests.unit.logs.test_chat_turn_logger_core_contract
+  tests.unit.biblio.test_observability
+  tests.unit.chat.test_chat_memory_flow_prepare_context_observability
+  tests.test_llm_client
+  tests.test_server_logs_phase3
+  tests.unit.logs.test_turn_pipeline_domain_summaries
+  tests.unit.logs.test_log_store_phase4
+  tests.unit.biblio.test_conversation_state
+  tests.unit.biblio.test_chat_runtime
+  tests.unit.memory.test_memory_pre_arbiter_basket_phase7b
+  tests.unit.chat.test_chat_llm_flow
+  tests.unit.core.test_stimmung_agent
+  tests.unit.core.hermeneutic_node.validation.test_validation_agent
+  tests.unit.logs.test_chat_turn_logger_web_search
+  tests.unit.web_search.test_web_search_runtime_events
+  tests.unit.memory.test_arbiter_phase4
+  tests.unit.memory.test_summarizer_phase4
+  ```
+
+  Exécution dans l'image applicative Python disponible, `--network none`,
+  `--read-only`, tmpfs `/tmp`, bytecode désactivé, checkout `app` monté
+  read-only. Les 137 tests du noyau et les 221 voisins sont aussi passés
+  séparément. Le module Validation importe un support sous `benchmark` :
+  montage de ce seul répertoire en lecture seule pour satisfaire cet import,
+  aucune campagne de benchmark. Arbitre/résumeur ajoutés uniquement parce
+  qu'ils appellent directement le helper provider modifié. Aucun P1–P4,
+  frontend complet, Chromium ou découverte globale relancé.
+
+  | Mutation contrôlée | Rouge causal | Restauration SHA-256 exacte |
+  |---|---|---|
+  | Retirer le schéma Memory | Témoin Memory : `refused` au lieu de `ok` | `e5bb1c8fa92c62f16010b38f514c2427c75dd649f29970d9848e95fc753ec02d` |
+  | Réintroduire la validation provider limitée aux minuscules | Trois callers refusés et agrégat dépendant vide | `5fd1ddaa8079bde773f17b2cb69715540e848ff886151dc667c834d5893cfd0d` |
+  | Rétablir le sanitizer Biblio générique à l'émission | Statut `disabled` préservé mais payload remplacé, témoin rouge | `3190084f4783c69a8a80c7efa102ed39a3adabb942799c12b3c11d0e1cd852ce` |
+
+  **Contre-audit.** Une seule garde et un seul dispatch contextuel par
+  stage/chemin ; aucune allowlist générale élargie, aucune suppression de
+  warning, aucun changement cosmétique de statut. Les refus dangereux gardent
+  la forme fermée et les drapeaux `raw_*` faux. Une revue indépendante a
+  détecté puis revalidé la correction de deux cas défensifs : score entier
+  gigantesque pouvant lever dans `isfinite`, projection Biblio défaillante
+  pouvant lever ou disparaître au second passage. Les nouveaux témoins les
+  verrouillent. Aucun finding vivant dans le périmètre relu. Les surfaces
+  admin gardent leur politique de minimisation existante : restaurer les
+  événements n'autorise pas une nouvelle exposition de leur contenu. C1–C7
+  et C9 de Z.3 ne changent pas ; C8 est corrigé hermétiquement, pas encore
+  prouvé sur un tour réel livré. Les anciennes lignes remplacées ne sont ni
+  réécrites ni reconstituées.
+
+  **Livraison et condition de fermeture.** Commit/push puis reconstruction
+  sans pull et recréation `--no-deps` du seul service FridaDev, avec rollback
+  conservé ; health/HTTP interne, restart/OOM, empreintes et identité/état
+  des voisins doivent être prouvés. Les mêmes tests seront rejoués depuis
+  l'image livrée sans montage du checkout applicatif. Z.3a reste ouvert tant
+  que ces preuves manquent. Z.3 restera ouvert jusqu'à un tour utilisateur
+  ordinaire post-déploiement, inspecté exclusivement en métadonnées ; aucun
+  message ni canari ne sera soumis au nom de Tof.
 
 - [ ] **Z.4 — Documentation et archivage**
 

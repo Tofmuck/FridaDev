@@ -71,7 +71,6 @@ def _sha256_12(value: Any) -> str:
 def _candidate_ref(candidate_id: Any) -> dict[str, str]:
     text = _text(candidate_id)
     return {
-        "candidate_id": text,
         "candidate_id_sha256_12": _sha256_12(text),
     }
 
@@ -199,7 +198,6 @@ def _retrieved_candidate_snapshot(
         "prompt_injection_status": prompt_injection_status,
     }
     if basket_candidate_id and basket_candidate_id != candidate_id:
-        out["basket_candidate_id"] = basket_candidate_id
         out["basket_candidate_id_sha256_12"] = _sha256_12(basket_candidate_id)
     return out
 

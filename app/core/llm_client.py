@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
+import hashlib
+import re
 from typing import Any, Mapping
 
 import config
 from admin import runtime_settings
 from core import main_llm_reasoning
+from observability.observability_payload_guard_safe_code_policy import _dangerous_value_class
 
 INTERNAL_PROVIDER_CALLER_HEADER = 'X-Frida-Caller'
 _KNOWN_PROVIDER_CALLERS = (
@@ -325,8 +328,8 @@ def extract_openrouter_provider_metadata(
     if model_fallback:
         metadata['provider_model'] = model_fallback
 
-    generation_id = str(data.get('id') or '').strip()
-    if generation_id:
+    generation_id = data.get('id')
+    if generation_id is not None and generation_id != '':
         metadata['provider_generation_id'] = generation_id
 
     provider_model = str(data.get('model') or '').strip()
@@ -361,8 +364,24 @@ def build_provider_observability_fields(
     title = resolve_provider_title(caller_value)
     if title:
         fields['provider_title'] = title
-    fields.update(dict(_mapping(provider_metadata)))
+    fields.update(_project_generation_metadata(provider_metadata))
     return fields
+
+
+def _project_generation_metadata(provider_metadata: Any) -> dict[str, Any]:
+    metadata = dict(_mapping(provider_metadata))
+    if 'provider_generation_id' not in metadata:
+        return metadata
+    generation_id = metadata.pop('provider_generation_id')
+    valid = (type(generation_id) is str
+             and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,159}', generation_id) is not None
+             and not _dangerous_value_class('provider_generation_id', generation_id))
+    metadata['provider_generation_id_present'] = bool(generation_id)
+    # Invalid inputs reach the closed guard as a type error, never as raw text or a secret hash.
+    metadata['provider_generation_id_sha256_12'] = (
+        hashlib.sha256(generation_id.encode('utf-8')).hexdigest()[:12] if valid else None
+    )
+    return metadata
 
 
 def _caller_from_provider_event_name(event_name: str) -> str:
@@ -392,7 +411,7 @@ def merge_openrouter_provider_metadata(
 
 
 def log_provider_metadata(logger: Any, event_name: str, provider_metadata: Any) -> None:
-    metadata = dict(_mapping(provider_metadata))
+    metadata = _project_generation_metadata(provider_metadata)
     log_info = getattr(logger, 'info', None)
     if not metadata or not callable(log_info):
         return
@@ -406,11 +425,12 @@ def log_provider_metadata(logger: Any, event_name: str, provider_metadata: Any) 
         if provider_title:
             metadata['provider_title'] = provider_title
     log_info(
-        '%s provider_caller=%s provider_title=%s provider_generation_id=%s provider_model=%s provider_prompt_tokens=%s provider_completion_tokens=%s provider_total_tokens=%s',
+        '%s provider_caller=%s provider_title=%s provider_generation_id_present=%s provider_generation_id_sha256_12=%s provider_model=%s provider_prompt_tokens=%s provider_completion_tokens=%s provider_total_tokens=%s',
         str(event_name or 'provider_response'),
         provider_caller,
         provider_title,
-        str(metadata.get('provider_generation_id') or ''),
+        bool(metadata.get('provider_generation_id_present')),
+        str(metadata.get('provider_generation_id_sha256_12') or ''),
         str(metadata.get('provider_model') or ''),
         metadata.get('provider_prompt_tokens'),
         metadata.get('provider_completion_tokens'),

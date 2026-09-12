@@ -23,6 +23,9 @@ from tests.support.observability_guard_golden_matrix import ACCEPTED_STAGE_CASES
 
 
 EXPECTED_STAGE_NAMES = (
+    "memory_chain_snapshot",
+    "biblio_state",
+    "prompt_parent_summary",
     "chat_response",
     "stream",
     "arbiter",
@@ -48,7 +51,7 @@ class ObservabilityPayloadGuardGoldenMatrixTests(unittest.TestCase):
             with self.subTest(stage=case["stage"], name=case["name"]):
                 payload = copy.deepcopy(case["payload"])
 
-                decision = observability_payload_guard.guard_payload(payload)
+                decision = observability_payload_guard.guard_payload(payload, stage=case['stage'])
 
                 self.assertTrue(decision.accepted, decision.payload)
                 self.assertEqual(decision.payload, payload)
@@ -60,7 +63,7 @@ class ObservabilityPayloadGuardGoldenMatrixTests(unittest.TestCase):
                 mutant = copy.deepcopy(case["payload"])
                 mutant["private_sentence"] = sentinel
 
-                decision = observability_payload_guard.guard_payload(mutant)
+                decision = observability_payload_guard.guard_payload(mutant, stage=case['stage'])
                 encoded = json.dumps(decision.payload, sort_keys=True)
 
                 self.assertFalse(decision.accepted)

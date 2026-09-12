@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping
 
+from observability.observability_payload_guard_context_schema import context_rule, valid_context_scalar
+
 from observability.observability_payload_guard_schema import (
     _AGENDA_CONTAINER_PAYLOAD_SCHEMAS,
     _AGENDA_CONTAINER_SCHEMAS,
@@ -202,7 +204,7 @@ def _inspect_general_scalar(key: str, value: Any, issues: dict[str, int]) -> Non
     _add_issue(issues, "unknown_value_type")
 
 
-def _inspect_general_list(key: str, values: list[Any], issues: dict[str, int], depth: int) -> None:
+def _inspect_general_list(key: str, values: list[Any], issues: dict[str, int], depth: int, *, stage: str = '', path: tuple[str, ...] = ()) -> None:
     if depth > _MAX_DEPTH:
         _add_issue(issues, "max_depth_exceeded")
         return
@@ -215,9 +217,9 @@ def _inspect_general_list(key: str, values: list[Any], issues: dict[str, int], d
         _add_issue(issues, "unknown_list_key")
     for value in values:
         if isinstance(value, Mapping):
-            _inspect_general(value, issues, key=key, depth=depth + 1)
+            _inspect_general(value, issues, key=key, depth=depth + 1, stage=stage, path=(*path, '[]'))
         elif isinstance(value, list):
-            _inspect_general_list(key, value, issues, depth + 1)
+            _inspect_general_list(key, value, issues, depth + 1, stage=stage, path=(*path, '[]'))
         else:
             _inspect_general_scalar(key, value, issues)
 
@@ -289,9 +291,42 @@ def _inspect_agenda_container(
             _add_issue(issues, "agenda_container_text")
 
 
-def _inspect_general(value: Any, issues: dict[str, int], *, key: str = "", depth: int = 0) -> None:
+def _inspect_context(value: Any, rule: Any, issues: dict[str, int], depth: int) -> None:
+    if depth > _MAX_DEPTH:
+        _add_issue(issues, 'max_depth_exceeded')
+    elif isinstance(rule, dict):
+        if not isinstance(value, Mapping):
+            _add_issue(issues, 'context_type')
+            return
+        for key, child in value.items():
+            if key not in rule:
+                _add_issue(issues, 'context_unknown_key')
+            else:
+                _inspect_context(child, rule[key], issues, depth + 1)
+    elif isinstance(rule, tuple) and rule[0] == 'list':
+        if not isinstance(value, list) or len(value) > rule[1]:
+            _add_issue(issues, 'context_list_bound')
+            return
+        for child in value:
+            _inspect_context(child, rule[2], issues, depth + 1)
+    elif rule in ('counts', 'arbiter_counts'):
+        if not isinstance(value, Mapping) or len(value) > 24:
+            _add_issue(issues, 'context_type')
+            return
+        for key, child in value.items():
+            if not valid_context_scalar('arbiter_status' if rule == 'arbiter_counts' else 'code', key) or not valid_context_scalar('int', child):
+                _add_issue(issues, 'context_type')
+    elif not valid_context_scalar(rule, value):
+        _add_issue(issues, 'context_value')
+
+
+def _inspect_general(value: Any, issues: dict[str, int], *, key: str = "", depth: int = 0, stage: str = '', path: tuple[str, ...] = ()) -> None:
     if depth > _MAX_DEPTH:
         _add_issue(issues, "max_depth_exceeded")
+        return
+    rule = context_rule(stage, path)
+    if rule is not None:
+        _inspect_context(value, rule, issues, depth)
         return
     if isinstance(value, Mapping):
         agenda_container_payload = (
@@ -303,6 +338,11 @@ def _inspect_general(value: Any, issues: dict[str, int], *, key: str = "", depth
             lower = child_key.lower()
             if not child_key:
                 _add_issue(issues, "empty_key")
+                continue
+            child_path = (*path, child_key)
+            rule = context_rule(stage, child_path)
+            if rule is not None:
+                _inspect_context(child, rule, issues, depth + 1)
                 continue
             if lower in _QUALIFIED_RAW_FLAGS:
                 if child is not False:
@@ -326,11 +366,11 @@ def _inspect_general(value: Any, issues: dict[str, int], *, key: str = "", depth
                     continue
                 if not _is_safe_general_container_key(lower):
                     _add_issue(issues, "unknown_mapping_key")
-                _inspect_general(child, issues, key=child_key, depth=depth + 1)
+                _inspect_general(child, issues, key=child_key, depth=depth + 1, stage=stage, path=child_path)
             elif isinstance(child, list):
                 if lower not in _GENERAL_SAFE_TEXT_LIST_KEYS and not _is_safe_general_container_key(lower):
                     _add_issue(issues, "unknown_list_key")
-                _inspect_general_list(lower, child, issues, depth + 1)
+                _inspect_general_list(lower, child, issues, depth + 1, stage=stage, path=child_path)
             else:
                 _inspect_general_scalar(lower, child, issues)
         return
@@ -359,13 +399,13 @@ def _build_rejection_payload(issues: dict[str, int]) -> dict[str, Any]:
     }
 
 
-def guard_payload(payload: Mapping[str, Any] | None) -> PayloadGuardDecision:
+def guard_payload(payload: Mapping[str, Any] | None, *, stage: str = '') -> PayloadGuardDecision:
     source = _mapping(payload)
     issues: dict[str, int] = {}
     if _is_main_payload_manifest(source):
         _inspect_manifest_mapping(source, issues, 0, "top")
     else:
-        _inspect_general(source, issues)
+        _inspect_general(source, issues, stage=stage)
     if not issues:
         return PayloadGuardDecision(accepted=True, payload=dict(source))
     return PayloadGuardDecision(accepted=False, payload=_build_rejection_payload(issues))

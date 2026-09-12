@@ -261,8 +261,11 @@ et ne possede aucune autorite Identity ou canonique.
   - legacy or missing `provider_caller` values must be classified explicitly as `unknown`, never merged into the main `llm` lane
   - optional provider truth fields when available from OpenRouter:
     - `provider_caller`, `provider_title`
-    - `provider_generation_id`, `provider_model`
+    - `provider_generation_id_present` (bool), `provider_generation_id_sha256_12` (12 lowercase hex characters), `provider_model`
     - `provider_prompt_tokens`, `provider_completion_tokens`, `provider_total_tokens`
+  - since Z.3a (2026-09-12), the canonical provider projection validates the opaque generation ID locally before hashing; raw `provider_generation_id` is forbidden at the event writer and is no longer printed by the standard provider metadata logger
+  - this does not widen the general safe-code policy; controls, URLs, paths, base64, credential markers and oversized IDs remain refused, without persisting a fingerprint of invalid input
+  - no current reader requires the exact provider ID; historical events are not rewritten and admin projection minimization remains unchanged
 
 - `arbiter`
   - `raw_candidates`, `kept_candidates`, `mode`

@@ -894,7 +894,8 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
             {
                 'provider_caller': 'identity_extractor',
                 'provider_title': 'FridaDev/IdentityExtractor',
-                'provider_generation_id': 'gen-42',
+                'provider_generation_id_present': True,
+                'provider_generation_id_sha256_12': 'e8119c8577b3',
                 'provider_total_tokens': 99,
             },
         )
@@ -946,6 +947,7 @@ class LlmClientRuntimeSettingsTests(unittest.TestCase):
                     'identity_periodic_agent_provider_response',
                     'identity_periodic_agent',
                     'FridaDev/IdentityPeriodic',
+                    False,
                     '',
                     'anthropic/claude-haiku-4.5',
                     None,

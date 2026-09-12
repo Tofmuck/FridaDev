@@ -13,6 +13,7 @@ if str(APP_DIR) not in sys.path:
 
 from core import chat_stream_control
 from tests.support.server_test_bootstrap import load_server_module_for_tests
+from tests.support.observability_writer_cases import GENERATION_ID
 
 
 class ServerLogsPhase3Tests(unittest.TestCase):
@@ -546,8 +547,8 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                 {'id': 'conv-prompt-memory-injection', 'messages': []},
                 'openrouter/runtime-main-model',
                 memory_traces=[
-                    {'candidate_id': 'cand-user', 'content': 'Je suis Christophe Muck', 'parent_summary': {'id': 'summary-1'}},
-                    {'candidate_id': 'cand-assistant', 'content': 'Nous travaillons sur FridaDev', 'parent_summary': {'id': 'summary-2'}},
+                    {'candidate_id': 'cand-0123456789abcdef', 'content': 'Je suis Christophe Muck', 'parent_summary': {'id': 'summary-1'}},
+                    {'candidate_id': 'cand-fedcba9876543210', 'content': 'Nous travaillons sur FridaDev', 'parent_summary': {'id': 'summary-2'}},
                 ],
                 context_hints=[
                     {'content': 'Christophe Muck'},
@@ -591,7 +592,7 @@ class ServerLogsPhase3Tests(unittest.TestCase):
                 'summary_context_injected_count': 2,
                 'memory_traces_injected': True,
                 'memory_traces_injected_count': 2,
-                'injected_candidate_ids': ['cand-user', 'cand-assistant'],
+                'injected_candidate_ids': ['cand-0123456789abcdef', 'cand-fedcba9876543210'],
                 'memory_context_injected': True,
                 'memory_context_summary_count': 2,
                 'injected_traces_with_summary_id_count': 2,
@@ -676,7 +677,8 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertEqual(payload.get('model'), 'openrouter/runtime-main-model')
         self.assertEqual(payload.get('provider_caller'), 'llm')
         self.assertEqual(payload.get('provider_title'), 'FridaDev / Main Chat')
-        self.assertEqual(payload.get('provider_generation_id'), 'gen-sync')
+        self.assertNotIn('provider_generation_id', payload)
+        self.assertEqual(payload.get('provider_generation_id_sha256_12'), hashlib.sha256(b'gen-sync').hexdigest()[:12])
         self.assertEqual(payload.get('provider_prompt_tokens'), 12)
         self.assertEqual(payload.get('provider_completion_tokens'), 5)
         self.assertEqual(payload.get('provider_total_tokens'), 17)
@@ -733,7 +735,8 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         payload = llm_events[0]['payload_json']
         self.assertEqual(payload.get('provider_caller'), 'validation_agent')
         self.assertEqual(payload.get('provider_title'), 'FridaDev / Validation Agent')
-        self.assertEqual(payload.get('provider_generation_id'), 'gen-validation')
+        self.assertNotIn('provider_generation_id', payload)
+        self.assertEqual(payload.get('provider_generation_id_sha256_12'), hashlib.sha256(b'gen-validation').hexdigest()[:12])
         self.assertEqual(payload.get('provider_model'), 'google/gemini-3.7-flash')
         self.assertEqual(payload.get('provider'), 'Google AI Studio')
         self.assertEqual(payload.get('provider_total_tokens'), 12)
@@ -793,7 +796,8 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         payload = llm_events[0]['payload_json']
         self.assertEqual(payload.get('provider_caller'), 'web_reformulation')
         self.assertEqual(payload.get('provider_title'), self.server.config.OR_TITLE_WEB_REFORMULATION)
-        self.assertEqual(payload.get('provider_generation_id'), 'gen-web-reformulation')
+        self.assertNotIn('provider_generation_id', payload)
+        self.assertEqual(payload.get('provider_generation_id_sha256_12'), hashlib.sha256(b'gen-web-reformulation').hexdigest()[:12])
         self.assertEqual(payload.get('provider_total_tokens'), 12)
 
     def test_requests_proxy_strips_internal_caller_header_before_upstream_request(self) -> None:
@@ -877,15 +881,15 @@ class ServerLogsPhase3Tests(unittest.TestCase):
             )
             self.server.chat_turn_logger.set_state(
                 'llm_provider_response_meta',
-                {
+                self.server.llm.build_provider_observability_fields(caller='llm', provider_metadata={
                     'provider_caller': 'llm',
                     'provider_title': 'FridaDev / Main Chat',
-                    'provider_generation_id': 'gen-stream',
+                    'provider_generation_id': GENERATION_ID,
                     'provider_model': 'openrouter/runtime-main-model',
                     'provider_prompt_tokens': 40,
                     'provider_completion_tokens': 2,
                     'provider_total_tokens': 42,
-                },
+                }),
             )
 
             def fake_stream():
@@ -931,7 +935,8 @@ class ServerLogsPhase3Tests(unittest.TestCase):
         self.assertEqual(payload.get('stream_chunks'), 2)
         self.assertEqual(payload.get('provider_caller'), 'llm')
         self.assertEqual(payload.get('provider_title'), 'FridaDev / Main Chat')
-        self.assertEqual(payload.get('provider_generation_id'), 'gen-stream')
+        self.assertNotIn('provider_generation_id', payload)
+        self.assertEqual(payload.get('provider_generation_id_sha256_12'), 'bb62465de5dd')
         self.assertEqual(payload.get('provider_prompt_tokens'), 40)
         self.assertEqual(payload.get('provider_completion_tokens'), 2)
         self.assertEqual(payload.get('provider_total_tokens'), 42)
