@@ -26,9 +26,9 @@ manuel Safari sur iPhone 11.
 **Statut au 12 septembre 2026 : D0 à D6 sont fermés et livrés. Le mode
 Dialogue est validé sur Safari iPhone, hors voiture puis en usage automobile.
 Z.1 et Z.2 sont fermés après réconciliation des invariants puis exécution des
-sélections autoritatives. Le contre-audit Z.3 reste ouvert. Son correctif Z.3a
-est prouvé hermétiquement ; livraison applicative et preuve sur tour réel
-restent à établir. Z.4 n'est pas commencé.**
+sélections autoritatives. Le correctif d'observabilité Z.3a est fermé et livré.
+Z.3 reste ouvert : PREUVE RUNTIME SUR TOUR RÉEL MANQUANTE. Z.4 n'est pas
+commencé.**
 
 ## État initial autoritatif — 9 septembre 2026
 
@@ -2017,10 +2017,10 @@ second produit conversationnel.
 
   **Z.3 OUVERT — FINDING CLASSIFIÉ — Z.4 NON COMMENCÉ.**
 
-- [ ] **Z.3a — Réalignement borné producteurs/garde d'observabilité**
+- [x] **Z.3a — Réalignement borné producteurs/garde d'observabilité**
 
-  **Exécution du 12 septembre 2026 — correctif hermétiquement prouvé,
-  livraison et preuve réelle encore attendues à ce point de contrôle.**
+  **Exécution du 12 septembre 2026 — correctif prouvé et livré ; Z.3a fermé
+  techniquement, Z.3 ouvert faute de tour réel post-déploiement.**
   Baseline : `/opt/platform/fridadev`, `main`, HEAD et `origin/main`
   `b4151d2d19ac6d811f3e8fe6734e21ad7e28dee3`, divergence `0/0`, worktree
   propre. Travail direct dans le checkout, sans SSH ni pull.
@@ -2071,8 +2071,8 @@ second produit conversationnel.
   omise par le nouveau writer. H8 : les cinq événements rares sont bien
   présents et relèvent des trois lignes ci-dessus. H9 : perte d'observabilité
   effective, sans modification de la réponse ni de la sauvegarde
-  conversationnelle. H10 : aucun fichier Dialogue, frontend, audio, prompt,
-  modèle, provider ou donnée opérateur n'est modifié.
+  conversationnelle. H10 : D1–D6, frontend et chaîne audio inchangés ; aucun
+  prompt, choix de modèle/provider ni donnée opérateur modifié.
 
   **TDD rouge → vert.** Avant correction produit, les huit tests initiaux
   traversant builders/writers → `chat_turn_logger` → garde → store fake
@@ -2144,14 +2144,58 @@ second produit conversationnel.
   prouvé sur un tour réel livré. Les anciennes lignes remplacées ne sont ni
   réécrites ni reconstituées.
 
-  **Livraison et condition de fermeture.** Commit/push puis reconstruction
-  sans pull et recréation `--no-deps` du seul service FridaDev, avec rollback
-  conservé ; health/HTTP interne, restart/OOM, empreintes et identité/état
-  des voisins doivent être prouvés. Les mêmes tests seront rejoués depuis
-  l'image livrée sans montage du checkout applicatif. Z.3a reste ouvert tant
-  que ces preuves manquent. Z.3 restera ouvert jusqu'à un tour utilisateur
-  ordinaire post-déploiement, inspecté exclusivement en métadonnées ; aucun
-  message ni canari ne sera soumis au nom de Tof.
+  **Livraison prouvée.** Commit applicatif
+  `437f05fa250045f9d8f94e95a26ad44a0d347040`, poussé sur `main` ; HEAD =
+  `origin/main`, divergence `0/0`, worktree propre avant livraison. Commandes
+  limitées au service `fridadev` de la sous-stack applicative existante :
+
+  ```text
+  docker compose -p fridadev-app -f /opt/platform/fridadev-app/docker-compose.yml build --pull=false fridadev
+  docker compose -p fridadev-app -f /opt/platform/fridadev-app/docker-compose.yml up -d --no-deps --no-build --pull never --force-recreate fridadev
+  ```
+
+  Ancienne image conservée sous `platform-fridadev-app:rollback-z3a-20260912`,
+  SHA-256 `f2ecb178b28dfb684683671603005a13541fa9d52e00ed903810b278132f0c8c`.
+  Rollback disponible, non exécuté : retaguer cette image en
+  `platform-fridadev-app:local`, puis la même commande `up` bornée ; aucune
+  donnée à restaurer, aucune migration ou mutation DB dans ce lot.
+
+  Nouvelle image SHA-256
+  `c98e5b34c9b38535fb4fa9a313945fc3e2fd6413383000ea31c32ea24f50b5bd`,
+  conteneur `5c0d411efa2671c379ac7b825e797e31072a22858397f389fdcd9026c825159d`,
+  démarré le `2026-09-12T12:42:23.463231087Z` : `running`, `healthy`, HTTP
+  interne `200`, restart `0`, OOM `false`. Les 31 voisins ont conservé
+  identité, image, démarrage, état/health, restart et OOM ; empreinte agrégée
+  identique avant/après :
+  `5a33d69dd28f5f48b8f4308888a19904fcb71d17111d67be583a8cb2550382db`.
+  Empreintes des 14 fichiers Python produit/tests du lot identiques entre
+  checkout et conteneur ; manifeste ordonné SHA-256
+  `74d48d519c9874c3705962aeb6c2e9173fccbef0671f33dd28b69b79c982b12f`.
+
+  Les **358 tests sont repassés depuis cette image immuable : 358 succès,
+  zéro échec, erreur ou skip**, sans montage de `/app` ni autre montage
+  writable du checkout. Seul le support importé `benchmark` est monté
+  read-only, réseau désactivé, rootfs read-only, tmpfs éphémère. Aucun
+  provider ni dialogue réel déclenché. Les 17 caches Python 3.13 préexistants
+  du 5–6 septembre ne sont pas issus du lot et n'ont pas été modifiés ni
+  ajoutés au commit ; les preuves utilisent Python 3.11 avec bytecode
+  désactivé. Les probes sous `mktemp -d` sont supprimées après lecture ;
+  aucun artefact privé ou temporaire n'est ajouté au dépôt.
+
+  **Preuve post-déploiement.** Inspection read-only bornée à 50 événements
+  par stage, depuis `2026-09-12T12:42:24Z`, réalisée à `12:43:17Z` puis
+  répétée à `12:45:29Z` : zéro
+  `chat_request`, zéro événement de chacune des six familles du correctif,
+  zéro `persist_response`. Cette absence ne prouve pas le bon fonctionnement
+  d'un tour réel. **PREUVE RUNTIME SUR TOUR RÉEL MANQUANTE.** Z.3 demeure
+  décoché jusqu'à un tour utilisateur ordinaire post-déploiement montrant,
+  en métadonnées seulement, callers/statuts/compteurs préservés et aucun des
+  rejets corrigés. Aucune soumission au nom de Tof, aucun canari inventé.
+  Toute réapparition systématique ou rare maintient Z.3 ouvert. Le dernier
+  commit de preuves est documentaire uniquement et ne nécessite pas de
+  nouvelle reconstruction.
+
+  **Z.3a FERMÉ — Z.3 OUVERT, PREUVE RUNTIME SUR TOUR RÉEL MANQUANTE — Z.4 NON COMMENCÉ.**
 
 - [ ] **Z.4 — Documentation et archivage**
 

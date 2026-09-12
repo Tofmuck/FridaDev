@@ -8,9 +8,9 @@ actif et ouvre la chaîne unique VAD/WAV → STT → chat canonique → TTS Sole
 Les entrées DOM temporaires de préflight et de canari ne sont plus exposées
 par le produit. L'expérience hors voiture et l'usage automobile sont validés ;
 Z.1 et Z.2 sont fermés après réconciliation des invariants et exécution des
-sélections autoritatives. Le contre-audit Z.3 reste ouvert ; son correctif
-d'observabilité Z.3a est prouvé hermétiquement, en attente de livraison et de
-preuve sur tour réel. Z.4 reste non commencé.**
+sélections autoritatives. Le correctif d'observabilité Z.3a est fermé et livré.
+Z.3 reste ouvert : PREUVE RUNTIME SUR TOUR RÉEL MANQUANTE. Z.4 reste non
+commencé.**
 
 ## Intention
 
@@ -750,9 +750,9 @@ canari` distinct a été donné et D6.2 a été fermé par la preuve matérielle
 11 septembre. L'activation produit D6.3 a été explicitement autorisée le
 11 septembre : le bouton servi est actif et les marqueurs DOM temporaires ont
 été retirés. D6.5 est fermé par les retours hors voiture et automobile du
-11 septembre 2026. Z.1 et Z.2 sont fermés ; Z.3 reste ouvert. Son correctif
-d'observabilité Z.3a est prouvé hermétiquement, en attente de livraison et de
-preuve sur tour réel ; Z.4 n'est pas commencé.
+11 septembre 2026. Z.1, Z.2 et le correctif d'observabilité Z.3a sont fermés.
+Z.3 reste ouvert : PREUVE RUNTIME SUR TOUR RÉEL MANQUANTE ; Z.4 n'est pas
+commencé.
 
 ## Activation produit D6.3 — 11 septembre 2026
 
@@ -777,6 +777,6 @@ La mise en œuvre est découpée dans la
 [roadmap du mode Dialogue oral Web](fridadev-dialogue-oral-web-implementation-roadmap-todo.md).
 Elle ferme D6.5, Z.1 puis Z.2. Z.3 a contre-audité la boucle sans trouver de
 second pipeline ni de régression produit, mais reste ouvert : le correctif
-d'observabilité Z.3a est prouvé hermétiquement, pas encore livré ni vérifié
+d'observabilité Z.3a est livré et prouvé hermétiquement, pas encore vérifié
 sur un tour réel post-déploiement. Z.4 n'est pas commencé. Les choix VAD, STT, TTS ou
 voix ne sont pas recommencés sans fait nouveau.
