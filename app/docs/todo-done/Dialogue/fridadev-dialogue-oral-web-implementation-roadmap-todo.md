@@ -20,15 +20,15 @@ WAV PCM16 local, VAD Silero local via `@ricky0123/vad-web`, endpoints audio
 OpenRouter, tests `unittest`, tests Node et smoke Chromium existant, puis canari
 manuel Safari sur iPhone 11.
 
-**Contrat :**
-[`fridadev-dialogue-oral-web-todo.md`](fridadev-dialogue-oral-web-todo.md).
+**Contrat et provenance :**
+[`fridadev-dialogue-oral-web-todo.md`](../../todo-todo/Dialogue/fridadev-dialogue-oral-web-todo.md).
 
-**Statut au 12 septembre 2026 : D0 à D6 sont fermés et livrés. Le mode
+**Statut final au 12 septembre 2026 : D0 à D6 et Z.1 à Z.4 sont fermés. Le mode
 Dialogue est validé sur Safari iPhone, hors voiture puis en usage automobile.
-Z.1 et Z.2 sont fermés après réconciliation des invariants puis exécution des
-sélections autoritatives. Le correctif d'observabilité Z.3a est fermé et livré.
-Z.3 reste ouvert : PREUVE RUNTIME SUR TOUR RÉEL MANQUANTE. Z.4 n'est pas
-commencé.**
+Le contre-audit, les sélections autoritatives, le correctif d'observabilité
+Z.3a et sa preuve sur un tour réel post-déploiement sont clos. Cette roadmap
+est archivée comme preuve historique ; la reconnaissance initiale demeure la
+provenance du chantier.**
 
 ## État initial autoritatif — 9 septembre 2026
 
@@ -1919,7 +1919,7 @@ second produit conversationnel.
 
   **Z.2 FERMÉ — Z.3 NON COMMENCÉ.**
 
-- [ ] **Z.3 — Contre-audit**
+- [x] **Z.3 — Contre-audit**
 
   Chercher : deuxième pipeline, double POST, réarmement sous TTS, microphone ou
   pistes résiduels, audio conservé, contenu brut loggé, secret frontend, CDN,
@@ -2015,12 +2015,13 @@ second produit conversationnel.
   Memory non nul/cohérent, attribution `llm`/Stimmung/Validation retrouvée,
   état Biblio observable, puis preuve runtime content-free d'un tour ordinaire.
 
-  **Z.3 OUVERT — FINDING CLASSIFIÉ — Z.4 NON COMMENCÉ.**
+  **Jalon historique Z.3 — finding classifié ; fermeture suspendue jusqu'au
+  correctif Z.3a et à sa preuve runtime.**
 
 - [x] **Z.3a — Réalignement borné producteurs/garde d'observabilité**
 
   **Exécution du 12 septembre 2026 — correctif prouvé et livré ; Z.3a fermé
-  techniquement, Z.3 ouvert faute de tour réel post-déploiement.**
+  techniquement, fermeture Z.3 alors suspendue à un tour réel post-déploiement.**
   Baseline : `/opt/platform/fridadev`, `main`, HEAD et `origin/main`
   `b4151d2d19ac6d811f3e8fe6734e21ad7e28dee3`, divergence `0/0`, worktree
   propre. Travail direct dans le checkout, sans SSH ni pull.
@@ -2187,11 +2188,11 @@ second produit conversationnel.
   répétée à `12:45:29Z` : zéro
   `chat_request`, zéro événement de chacune des six familles du correctif,
   zéro `persist_response`. Cette absence ne prouve pas le bon fonctionnement
-  d'un tour réel. **PREUVE RUNTIME SUR TOUR RÉEL MANQUANTE.** Z.3 demeure
-  décoché jusqu'à un tour utilisateur ordinaire post-déploiement montrant,
+  d'un tour réel. À ce jalon, la preuve runtime sur tour réel restait à
+  acquérir avant de cocher Z.3 : elle devait montrer,
   en métadonnées seulement, callers/statuts/compteurs préservés et aucun des
   rejets corrigés. Aucune soumission au nom de Tof, aucun canari inventé.
-  Toute réapparition systématique ou rare maintient Z.3 ouvert. Le dernier
+  Toute réapparition systématique ou rare aurait interdit la fermeture. Le dernier
   commit de preuves est documentaire uniquement et ne nécessite pas de
   nouvelle reconstruction.
 
@@ -2235,17 +2236,56 @@ second produit conversationnel.
   L'inspection read-only depuis `2026-09-12T14:18:51Z` trouve zéro
   `chat_request` et zéro `biblio` : elle confirme seulement qu'aucun tour réel
   postérieur à ce nouveau déploiement n'est disponible, jamais le comportement
-  d'un tour. Aucun message ni provider n'a été déclenché. Z.3 reste décoché :
-  **PREUVE RUNTIME SUR TOUR RÉEL MANQUANTE**.
+  d'un tour. Aucun message ni provider n'a été déclenché. À ce jalon, la preuve
+  runtime finale restait donc requise avant fermeture.
 
-  **Z.3a DÉFINITIVEMENT REFERMÉ — Z.3 OUVERT, PREUVE RUNTIME SUR TOUR RÉEL MANQUANTE — Z.4 NON COMMENCÉ.**
+  **Z.3a DÉFINITIVEMENT REFERMÉ — preuve runtime finale encore requise à ce jalon.**
 
-- [ ] **Z.4 — Documentation et archivage**
+  **Preuve runtime finale Z.3 — 12 septembre 2026.** Une lecture bornée du
+  store réellement configuré par l'image livrée
+  `sha256:e520f196c8c1c316a10eb9b50b25a0b20091b4230338224724b249e9e7e24afc`,
+  démarrée le `2026-09-12T14:18:50.487069761Z`, retrouve un tour utilisateur
+  complet strictement postérieur, dans l'intervalle exact
+  `2026-09-12T15:47:28+00:00`–`2026-09-12T15:47:55+00:00`.
+
+  Ce tour contient 30 événements : 26 `ok`, deux `skipped` et deux `disabled`.
+  Les huit formes Z.3a sont toutes émises et aucune n'est remplacée par
+  `observability_payload_rejected` : un `memory_chain_snapshot` `ok`, trois
+  `llm_call` `ok` attribués respectivement à `stimmung_agent`,
+  `validation_agent` et `llm`, un `biblio` `disabled`, un `prompt_prepared`
+  `ok`, un `web_search` `skipped` et un `hermeneutic_node_insertion` `ok`.
+  Aucune des trois formes rares n'est absente sur ce témoin.
+
+  Le snapshot Memory conserve sa structure contextuelle et ses compteurs :
+  huit candidats récupérés et six candidats basket, avec concordance exacte
+  du read-model. Biblio conserve un `state` non vide aux noms de champs et
+  types conformes ; `state_transition={}` représente ici l'absence légitime de
+  transition, sans filtrage d'une projection non vide. Le read-model consomme
+  les 30 événements, retrouve Memory, Biblio et Web, conserve les trois callers
+  LLM sans aucun `unknown`, et classe la persistance finale `saved`.
+
+  Cette inspection n'a lu ni exposé message, transcript, réponse, prompt,
+  résultat Biblio, URL, secret ou payload brut. Elle n'a créé aucun tour ni
+  déclenché de provider. Les invariants C1–C9 et la preuve réelle postérieure
+  au dernier déploiement Z.3a sont désormais réunis.
+
+  **Z.3 FERMÉ — Z.4 AUTORISÉ.**
+
+- [x] **Z.4 — Documentation et archivage**
 
   En cas de preuves toutes vertes, synchroniser le contrat et le hub, déplacer
   cette roadmap dans `app/docs/todo-done/Dialogue/` et conserver la reconnaissance
   initiale comme provenance. Sinon, garder la roadmap active avec la cause exacte
   et le lot suivant strictement borné.
+
+  **Clôture du 12 septembre 2026.** Le statut final est réconcilié dans cette
+  roadmap, la reconnaissance initiale et le hub mainteneur. La roadmap est
+  archivée sous `app/docs/todo-done/Dialogue/`; le document de reconnaissance
+  reste à son emplacement initial comme provenance historique, avec des liens
+  dirigés vers cette archive. Aucun code, test, fixture, configuration, donnée
+  ou runtime n'est modifié par Z.4.
+
+  **Z.3 ET Z.4 FERMÉS — ROADMAP DIALOGUE ARCHIVÉE.**
 
 ## Hors V1 et non bloquant
 
