@@ -25,8 +25,8 @@ manuel Safari sur iPhone 11.
 
 **Statut au 12 septembre 2026 : D0 à D6 sont fermés et livrés. Le mode
 Dialogue est validé sur Safari iPhone, hors voiture puis en usage automobile.
-Z.1 est fermé après réconciliation de la preuve d'intégration D1/D2 avec
-l'activation D6 ; Z.2 à Z.4 ne sont pas commencés.**
+Z.1 et Z.2 sont fermés après réconciliation des invariants puis exécution des
+sélections autoritatives ; Z.3 et Z.4 ne sont pas commencés.**
 
 ## État initial autoritatif — 9 septembre 2026
 
@@ -1838,13 +1838,84 @@ second produit conversationnel.
 
   **Z.1 FERMÉ — Z.2 NON COMMENCÉ.**
 
-- [ ] **Z.2 — Sélections de tests autoritatives**
+- [x] **Z.2 — Sélections de tests autoritatives**
 
   Exécuter les suites unitaires et intégrations audio, les tests frontend Node,
   le smoke Chromium complet et les voisins immédiats du chat, du streaming, de
   la sauvegarde et de la dictée Whisper existante. Une découverte globale n'est
   lancée que si elle est explicitement décidée et si son résultat peut être
   capturé intégralement.
+
+  **Preuve du 12 septembre 2026.** Baseline `main` au HEAD
+  `cf0034263c1b6e21c01d2ef562fffed5c357287c`, égal à `origin/main`, divergence
+  `0/0` et worktree propre. P1 et P2 ont utilisé l'image locale immuable
+  `platform-fridadev-app:local`
+  (`sha256:f2ecb178b28dfb684683671603005a13541fa9d52e00ed903810b278132f0c8c`)
+  dans un conteneur
+  jetable `--pull=never --network none --read-only`, checkout monté en lecture
+  seule, `/tmp` en tmpfs, aucun volume runtime et credentials provider/DB
+  explicitement vides. P3 et P4 ont utilisé Node `v20.19.2`, Playwright
+  `1.59.1` et le Chromium local déjà installé, sans installation ni réseau
+  fournisseur.
+
+  Commandes exactes, chacune exécutée une seule fois, sans filtre ni retry :
+
+  ```bash
+  docker run --rm --pull=never --network none --read-only \
+    --tmpfs /tmp:rw,nosuid,nodev,noexec,size=128m \
+    -v /opt/platform/fridadev/app:/app:ro -w /app \
+    -e PYTHONDONTWRITEBYTECODE=1 -e OPENROUTER_API_KEY= \
+    -e WHISPER_API_KEY= -e EMBED_TOKEN= -e CRAWL4AI_TOKEN= \
+    -e FRIDA_MEMORY_DB_DSN= -e FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY= \
+    --entrypoint python platform-fridadev-app:local -B -m unittest \
+    tests.unit.chat.test_dialogue_stt_service \
+    tests.unit.chat.test_dialogue_tts_service \
+    tests.integration.chat.test_chat_dialogue_audio_routes \
+    tests.test_server_multipart_upload_limits_contract \
+    tests.test_llm_client
+
+  docker run --rm --pull=never --network none --read-only \
+    --tmpfs /tmp:rw,nosuid,nodev,noexec,size=128m \
+    -v /opt/platform/fridadev/app:/app:ro -w /app \
+    -e PYTHONDONTWRITEBYTECODE=1 -e OPENROUTER_API_KEY= \
+    -e WHISPER_API_KEY= -e EMBED_TOKEN= -e CRAWL4AI_TOKEN= \
+    -e FRIDA_MEMORY_DB_DSN= -e FRIDA_RUNTIME_SETTINGS_CRYPTO_KEY= \
+    --entrypoint python platform-fridadev-app:local -B -m unittest \
+    tests.integration.chat.test_chat_input_mode_route \
+    tests.integration.frontend_chat.test_frontend_whisper_contract \
+    tests.unit.chat.test_whisper_transcription_service \
+    tests.unit.chat.test_chat_stream_control \
+    tests.unit.chat.test_assistant_output_contract \
+    tests.unit.chat.test_chat_llm_flow_boundaries \
+    tests.test_server_chat_route_transport_contract \
+    tests.test_server_chat_conversation_id_contract \
+    tests.unit.core.test_conversations_store_save_result
+
+  node --test app/tests/unit/frontend_chat/*.js
+  node --test --test-concurrency=1 app/tests/integration/frontend_browser/test_*.js
+  ```
+
+  | Sélection | Résultat autoritatif | Durée runner | Durée murale | Exit |
+  |---|---:|---:|---:|---:|
+  | P1 — frontières audio/HTTP Python, 5 modules | 83 tests, 83 succès, 0 échec, 0 erreur, 0 skip, 0 annulation, 0 TODO | 0,796 s | 2,057 s | 0 |
+  | P2 — pipeline chat et voisins Python, 9 modules | 67 tests, 67 succès, 0 échec, 0 erreur, 0 skip, 0 annulation, 0 TODO | 1,240 s | 2,604 s | 0 |
+  | P3 — frontend Node complet, 34 fichiers | 289 tests, 289 succès, 0 échec, 0 annulation, 0 skip, 0 TODO | 1,821 s | 1,972 s | 0 |
+  | P4 — Chromium complet séquentiel, 5 fichiers | 48 tests, 48 succès, 0 échec, 0 annulation, 0 skip, 0 TODO | 39,737 s | 39,871 s | 0 |
+
+  Les stdout, stderr, durées en nanosecondes et exits ont été capturés intégralement
+  dans un répertoire temporaire dédié hors dépôt, puis leurs résumés complets
+  et empreintes relus avant suppression. P3 et P4 ont un stderr vide. P4 ne
+  contient aucun `not ok`; les 48 tests passent, dont les gardes
+  `pageerror`, console et fetch inattendu définies par le runner. Tous les
+  logs content-free `chat_log_event_insert_failed` /
+  `RuntimeSettingsSecretRequiredError` de P2 résultent de la clé du store
+  explicitement neutralisée : ils ne constituent ni une erreur `unittest`, ni
+  le motif `observability_payload_rejected` réservé à Z.3. Tous les
+  transports Dialogue/chat restent simulés. Aucun provider, microphone, base
+  opérateur, audio ou conversation réels n'ont été sollicités. Aucune
+  découverte globale, relance ou augmentation de timeout n'a été effectuée.
+
+  **Z.2 FERMÉ — Z.3 NON COMMENCÉ.**
 
 - [ ] **Z.3 — Contre-audit**
 
