@@ -1,13 +1,14 @@
 # FridaDev — dialogue oral greffé sur le pipeline Web
 
 Date de cadrage initial : 7 septembre 2026.
-Dernière mise à jour de reconnaissance : 11 septembre 2026.
+Dernière mise à jour de reconnaissance : 12 septembre 2026.
 
 **Statut : D1 à D6 sont fermés et livrés. Le bouton produit `Dialogue` est
 actif et ouvre la chaîne unique VAD/WAV → STT → chat canonique → TTS Soleil.
 Les entrées DOM temporaires de préflight et de canari ne sont plus exposées
 par le produit. L'expérience hors voiture et l'usage automobile sont validés ;
-le lot Z de réconciliation finale reste ouvert.**
+Z.1 est fermé après réconciliation du témoin D2 avec l'activation D6. Z.2 à
+Z.4 restent non commencés.**
 
 ## Intention
 
@@ -747,7 +748,7 @@ canari` distinct a été donné et D6.2 a été fermé par la preuve matérielle
 11 septembre. L'activation produit D6.3 a été explicitement autorisée le
 11 septembre : le bouton servi est actif et les marqueurs DOM temporaires ont
 été retirés. D6.5 est fermé par les retours hors voiture et automobile du
-11 septembre 2026. Le lot Z reste ouvert.
+11 septembre 2026. Z.1 est fermé ; Z.2 à Z.4 restent non commencés.
 
 ## Activation produit D6.3 — 11 septembre 2026
 
@@ -770,5 +771,6 @@ limites sont consignées dans la roadmap d'implémentation.
 
 La mise en œuvre est découpée dans la
 [roadmap du mode Dialogue oral Web](fridadev-dialogue-oral-web-implementation-roadmap-todo.md).
-Elle ferme D6.5 et conserve le lot Z comme réconciliation finale. Les choix VAD,
-STT, TTS ou voix ne sont pas recommencés sans fait nouveau.
+Elle ferme D6.5 puis Z.1 ; Z.2 à Z.4 restent les étapes de réconciliation
+finale non commencées. Les choix VAD, STT, TTS ou voix ne sont pas recommencés
+sans fait nouveau.

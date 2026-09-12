@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import re
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -186,6 +187,33 @@ class ChatDialogueAudioRouteTests(unittest.TestCase):
                 return response.get_json(), status
         finally:
             self.server.request = original_request
+
+    def _assert_dialogue_frontend_speech_contract(self, web_dir: Path) -> None:
+        html_source = (web_dir / "index.html").read_text(encoding="utf-8")
+        button_match = re.search(
+            r'<button\b[^>]*\bid="btnDialogueMode"[^>]*>',
+            html_source,
+        )
+        self.assertIsNotNone(button_match, "Dialogue product button must exist")
+        button_tag = button_match.group(0) if button_match else ""
+        self.assertNotRegex(
+            button_tag,
+            r"\bdisabled\b",
+            "Dialogue product button must be enabled",
+        )
+
+        consumers = []
+        for javascript_path in web_dir.rglob("*.js"):
+            relative_path = javascript_path.relative_to(web_dir)
+            if "vendor" in relative_path.parts:
+                continue
+            if "/api/chat/dialogue/speech" in javascript_path.read_text(encoding="utf-8"):
+                consumers.append(relative_path.as_posix())
+        self.assertEqual(
+            sorted(consumers),
+            ["dialogue/dialogue_audio_client.js"],
+            "Dialogue TTS frontend consumer inventory drift",
+        )
 
     def _patch_tts_provider(self, fake_post):
         originals = []
@@ -389,21 +417,47 @@ class ChatDialogueAudioRouteTests(unittest.TestCase):
         self.assertEqual(tts_response.content_type, "audio/mpeg")
         self.assertEqual(tts_response.data, b"ID3 mp3")
 
-    def test_dialogue_frontend_has_no_speech_consumer_and_button_stays_disabled(self) -> None:
-        html_source = (APP_DIR / "web" / "index.html").read_text(encoding="utf-8")
-        button_match = re.search(
-            r'<button\b[^>]*\bid="btnDialogueMode"[^>]*>',
-            html_source,
+    def test_dialogue_frontend_has_active_button_and_single_expected_speech_consumer(self) -> None:
+        self._assert_dialogue_frontend_speech_contract(APP_DIR / "web")
+
+    def test_dialogue_frontend_contract_rejects_disabled_missing_or_second_speech_consumer(self) -> None:
+        cases = (
+            (
+                "disabled_button",
+                '<button id="btnDialogueMode" disabled></button>',
+                {"dialogue/dialogue_audio_client.js": "/api/chat/dialogue/speech"},
+                "Dialogue product button must be enabled",
+            ),
+            (
+                "missing_consumer",
+                '<button id="btnDialogueMode"></button>',
+                {
+                    "dialogue/dialogue_audio_client.js": "/api/chat/dialogue/transcribe",
+                    "vendor/dialogue-vad/ignored.js": "/api/chat/dialogue/speech",
+                },
+                "Dialogue TTS frontend consumer inventory drift",
+            ),
+            (
+                "second_consumer",
+                '<button id="btnDialogueMode"></button>',
+                {
+                    "dialogue/dialogue_audio_client.js": "/api/chat/dialogue/speech",
+                    "dialogue/second_consumer.js": "/api/chat/dialogue/speech",
+                },
+                "Dialogue TTS frontend consumer inventory drift",
+            ),
         )
 
-        self.assertIsNotNone(button_match)
-        self.assertRegex(button_match.group(0), r"\bdisabled\b")
-        for javascript_path in (APP_DIR / "web").glob("*.js"):
-            with self.subTest(javascript=javascript_path.name):
-                self.assertNotIn(
-                    "/api/chat/dialogue/speech",
-                    javascript_path.read_text(encoding="utf-8"),
-                )
+        for name, button_html, javascript_files, expected_error in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temp_dir:
+                web_dir = Path(temp_dir)
+                (web_dir / "index.html").write_text(button_html, encoding="utf-8")
+                for relative_path, source in javascript_files.items():
+                    javascript_path = web_dir / relative_path
+                    javascript_path.parent.mkdir(parents=True, exist_ok=True)
+                    javascript_path.write_text(source, encoding="utf-8")
+                with self.assertRaisesRegex(AssertionError, expected_error):
+                    self._assert_dialogue_frontend_speech_contract(web_dir)
 
     def test_success_and_empty_transcript_are_confirmed_honestly(self) -> None:
         for transcript in ("bonjour", ""):
