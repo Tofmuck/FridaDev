@@ -23,10 +23,11 @@ manuel Safari sur iPhone 11.
 **Contrat :**
 [`fridadev-dialogue-oral-web-todo.md`](fridadev-dialogue-oral-web-todo.md).
 
-**Statut au 11 septembre 2026 : D0 à D6 sont fermés et livrés. Le mode
+**Statut au 12 septembre 2026 : D0 à D6 sont fermés et livrés. Le mode
 Dialogue est validé sur Safari iPhone, hors voiture puis en usage automobile.
-Le lot Z de réconciliation finale est le seul lot restant et n'est pas
-commencé.**
+Z.1 a été audité mais reste ouvert à cause d'une preuve d'intégration D1/D2
+devenue contradictoire avec l'activation D6 ; Z.2 à Z.4 ne sont pas
+commencés.**
 
 ## État initial autoritatif — 9 septembre 2026
 
@@ -1775,6 +1776,60 @@ second produit conversationnel.
   seule conversation, une seule soumission par parole, absence de transcript
   dans la vue Dialogue, transcript consultable dans le fil, TTS limité au final
   canonique, semi-duplex, animations factuelles et cleanup complet.
+
+  **Audit du 12 septembre 2026 — Z.1 reste ouvert.** La baseline était `main`
+  à `fbea45cda55538589eb6e3f12183ac06c026eff3`, upstream `origin/main`,
+  divergence `0/0` et worktree propre. Le contrat vivant, les chemins runtime
+  et leurs tests ont été relus sans appel fournisseur, microphone, dialogue
+  réel ni accès à la base opérateur.
+
+  Preuves déployées content-free communes à la matrice :
+
+  - le service `platform-fridadev` était `running`, `healthy`, sans restart ni
+    OOM ; le bouton servi était actif et sans marqueur de preflight ;
+  - les `OPTIONS` internes des routes D1 et D2 annonçaient `POST` ; aucun corps
+    métier n'a été envoyé ;
+  - les quatorze sources autoritatives relues — `index.html`, les six modules
+    frontend Dialogue/chat, les trois frontières audio backend et les quatre
+    frontières chat/finalisation — avaient le même manifeste SHA-256 dans le
+    checkout et le conteneur :
+    `55bd5de578d137588997cd6ddb63a45c4ab8f09b189282650e28bf9982384d2d` ;
+  - `index.html`, ces six modules frontend et les cinq assets VAD utiles avaient
+    le même manifeste SHA-256 sur disque, dans le conteneur et par HTTP :
+    `ea67541c04aaff1167535d6ffa40683ebe7fe793430e07f91fa74ffe8058dc2f`.
+    Le sous-ensemble VAD seul concordait aussi avec le manifeste épinglé :
+    `b586cfea51a34608904a81b7e238a6de9d079be6d52ae4185a9ee58024918905` ;
+  - depuis le démarrage courant du service, l'agrégat privé filtré avant sortie
+    comptait 32 `dialogue_stt_completed`, 32 `dialogue_tts_completed`, aucun
+    échec STT/TTS et aucun traceback. Deux mentions globales `ERROR`, non
+    attribuées sans lire leur contenu, ne sont pas utilisées comme preuve Z.1 ;
+  - les recettes D6.2 et D6.5 déjà consignées ci-dessus apportent respectivement
+    un cycle `1 STT / 1 chat / 1 TTS` et sept cycles
+    `7 STT / 7 chat / 7 persist_response / 7 turn_end / 7 TTS`, ainsi que le
+    retour à l'écoute seulement après lecture et la fermeture par `Terminer`.
+
+  | Hypothèse et verdict | Fait vérifié et chemin runtime autoritatif | Preuve existante lue | Preuve runtime content-free | Limite ou inconnue |
+  |---|---|---|---|---|
+  | **H1 — pipeline unique — validé** | `app.js` injecte l'unique `submitCanonicalChatMessage` dans `createDialogueSessionController`; après `audioClient.transcribe`, le contrôleur l'appelle une fois avec `dialogue`. Cette fonction commune au formulaire et à Whisper appelle l'unique `sendToServer`, donc `POST /api/chat`; `chat_transport_routes.py` rejoint `chat_service` puis la finalisation centrale de `chat_llm_flow.py` / `chat_assistant_finalization.py`. Aucun autre transport chat n'existe dans les modules Dialogue. | `test_canonical_chat_submission.js`; `test_frontend_whisper_contract.py`; smoke `D6.3 enabled Dialogue button...` et `D5 Chromium WAV...`; `test_chat_llm_flow_boundaries.py`; tests de terminal/persistance de `test_server_chat_route_transport_contract.py`. | D6.2 : `1/1/1`; D6.5 : sept chaînes `STT/chat/persist_response/turn_end/TTS`; sources déployées identiques au HEAD. | La recette live n'est pas rejouée en Z.1 ; les preuves live D6 sont réutilisées sans contenu. |
+  | **H2 — conversation unique — validé** | `getConversationId` lit `getCurrentId`; l'opération capture conversation, génération et session. `isCurrentOperation` rend inerte tout résultat si l'un change; `onCurrentThreadChange` appelle `conversationChanged`, invalide, abort et cleanup. Le payload canonique reprend ce même `conversation_id`. | `D4 conversation changed during STT...`, `prior session callback...`, `closing during canonical chat...` dans `test_dialogue_session_controller_module.js`; smoke D5 vérifiant `conversation_id` et fin de session. | D6.2 a observé le tour dans la conversation active et une réhydratation inchangée de 204 tours utilisateur / 204 tours assistant. | Aucun changement de conversation réel n'a été rejoué dans ce lot en lecture seule. |
+  | **H3 — soumission unique par parole — validé** | Un seul `onSpeechEnd` produit le WAV; `pending`, `rearming`, la phase et un `WeakSet` de blobs consommés ferment doublons et callbacks tardifs. La capture est pausée avant l'unique STT, puis le chat est recontrôlé avant l'unique soumission. Seul `ended` peut ouvrir le cycle suivant. | `duplicate end ignored...` dans `test_dialogue_vad_recorder_module.js`; `duplicated blob...`, busy/races et reprise dans `test_dialogue_session_controller_module.js`; deux smokes D5 sur un seul POST et `ended` unique. | D6.2 : une parole, un STT et un chat; D6.5 : sept paroles utiles, sept de chaque, sans retry. | Aucun double clic physique n'a été rejoué en Z.1 ; les gardes et preuves D6 sont celles du code déployé identique. |
+  | **H4 — transcript honnête — validé** | La vue Dialogue ne possède ni champ ni rendu de transcript. Le texte STT entre dans la soumission canonique, qui ajoute le message utilisateur normal, le met en cache puis le sauvegarde et le réhydrate par les routes ordinaires; `input_mode="voice"` n'ajoute qu'une provenance. | `dialogue screen... no transcript` dans `test_dialogue_mode_module.js`; smoke D5 vérifiant absence dans la vue, présence unique dans le fil et réhydratation; `test_api_chat_persists_voice_input_mode_in_user_message_meta`; tests de stockage/réhydratation de `test_conversations_store_save_result.py`. | D6.2 : fil réhydraté avec parité 204/204; D6.5 : sept `persist_response` et sept `turn_end`. | Aucun transcript ni message opérateur n'a été lu pendant Z.1. |
+  | **H5 — TTS canonique — non prouvé** | Le chemin courant est correct : `resolveStreamedAssistantText` verrouille `final_text`; seule une soumission `{ok: true, text non vide}` passe `result.text` sans réécriture à `audioClient.synthesize`. Brouillons SSE/DOM, erreurs, final vide et échecs fermés n'atteignent pas D2. | Les tests positifs sont `test_stream_control_parser_module.js`, `test_canonical_chat_submission.js`, `D5 primes synchronously...`, `D5 empty final...` et les smokes D5. Mais `test_chat_dialogue_audio_routes.py::test_dialogue_frontend_has_no_speech_consumer_and_button_stays_disabled` affirme encore l'ancien contrat D2. | D6.2/D6.5 prouvent l'ordre chat puis TTS et l'absence de retry, sans exposer les textes; le code déployé est identique au HEAD. | La chaîne de preuve n'est pas cohérente : le témoin hermétique ciblé échoue sur l'attente `disabled`, et son scan `web/*.js` ne descend pas jusqu'au consommateur réel `web/dialogue/dialogue_audio_client.js`. Ce test obsolète doit être réconcilié dans un lot autorisé avant fermeture. |
+  | **H6 — semi-duplex réel — validé** | `capture.pause()` précède STT; aucune reprise n'est appelée durant `transcribing`, `thinking`, `tts_pending` ou lecture. `playing`, `waiting` et `pause` ne réarment pas; un unique `ended` courant, après `played`, nettoie puis appelle une seule reprise gardée. Toute erreur invalide sans reprise. | Cas D4/D5 de `test_dialogue_session_controller_module.js`; `pause discards partial speech...` dans `test_dialogue_vad_recorder_module.js`; smokes `D5 audio events...` et `D5 empty final...`. | D6.2 a observé la séquence exacte jusqu'à `tts_pending`, `tts_speaking`, puis `listening`; D6.5 a répété sept cycles sans chevauchement signalé. | La répétition Safari réelle appartient aux recettes D6 déjà closes, pas à une nouvelle manipulation Z.1. |
+  | **H7 — animations factuelles — validé** | `chat_dialogue_mode.js` associe l'onde utilisateur seulement à `user_speaking` et l'orbe Frida seulement à `tts_speaking`; tous les autres états, dont `tts_pending`, `paused` et `error`, coupent les deux. Le contrôleur n'émet `tts_speaking` que sur `playing` valide. | `dialogue animation truth...` et `D5 buffering...` dans `test_dialogue_mode_module.js`; smokes D5 avant, pendant et après `playing`. | La séquence D6.2 corrèle `user_speaking` à la parole et `tts_speaking` à la lecture; l'attente et le retour à l'écoute restent distincts. | Pas de nouvelle capture visuelle dans ce lot. |
+  | **H8 — cleanup complet — validé** | `invalidate` incrémente la génération, abort les requêtes, nettoie le média et pause/stop la capture. Le lecteur retire ses handlers, pause, retire `src`, appelle `load` et révoque l'object URL. Le recorder stoppe les pistes puis détruit VAD; le runtime attend start/inférence, déconnecte les nœuds, libère le modèle, ferme son `AudioContext` et vide les références/buffers. `Pause`, sortie/pagehide, `Terminer`, changement de conversation et erreur empruntent ces frontières, sans timer Dialogue. | Races/cleanup de `test_dialogue_session_controller_module.js`; `test_dialogue_vad_recorder_module.js`; `test_dialogue_vad_runtime_module.js`; smokes D3/D5 sur fermeture, permission tardive, object URLs, unique lecteur et toutes pistes `ended`. | D6.2 a observé la disparition du mode après `Terminer`; D6.5 a fermé proprement après sept cycles. | L'inspection du système ne mesure pas la mémoire du Safari historique; la preuve est comportementale et hermétique. |
+  | **H9 — frontière unique et bornée — validé** | D3 ne contient ni fetch, MediaRecorder ni stockage; D4 envoie un seul WAV `audio/wav` de 1 à 24 000 000 octets; D1 borne le corps à 25 000 000 et le fichier à 24 000 000; D5/D2 bornent texte à 16 000 points de code/caractères et MP3 à 16 Mio + 1 octet de détection. Les services n'écrivent aucun audio; les logs audio ne portent que statuts, raisons, durées, tailles, MIME et longueurs. Les assets VAD sont locaux, versionnés et épinglés, sans CDN/fallback. Le frontend ne conserve que le transcript dans le fil canonique attendu, jamais le blob. | `test_dialogue_audio_client_module.js`; `test_chat_dialogue_audio_routes.py` hors cas obsolète; `test_dialogue_stt_service.py`; `test_dialogue_tts_service.py`; `test_dialogue_vad_vendor_contract.js`; test de non-persistance du recorder. | Routes D1/D2 présentes; manifestes checkout/conteneur/HTTP concordants; 32 succès STT et TTS, aucun échec audio courant. | Aucun provider n'a été appelé et aucun contenu de log n'a été lu. Les deux mentions globales `ERROR` et le motif `observability_payload_rejected` restent hors preuve Z.1 et relèvent du contre-audit Z.3 prévu. |
+
+  **Écart bloquant précis.** Le test d'intégration
+  `test_chat_dialogue_audio_routes.py::test_dialogue_frontend_has_no_speech_consumer_and_button_stays_disabled`
+  est resté au contrat D2 inactif. Exécuté seul dans le conteneur jetable du
+  dépôt, checkout monté en lecture seule, réseau coupé et `/tmp` en tmpfs, il
+  échoue car le bouton servi n'a plus `disabled`, conformément à D6. Son second
+  garde-fou parcourt seulement `app/web/*.js` et ne pourrait donc pas voir le
+  consommateur D5 situé dans `app/web/dialogue/`. Il contredit les tests D5/D6
+  actuels et empêche une chaîne de preuve H5 cohérente. Z.1 demeure décoché ;
+  aucun test ni code produit n'est corrigé dans ce lot, et Z.2 n'est pas
+  commencé.
 
 - [ ] **Z.2 — Sélections de tests autoritatives**
 
