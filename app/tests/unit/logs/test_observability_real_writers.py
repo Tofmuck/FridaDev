@@ -200,6 +200,42 @@ class ObservabilityRealWritersTests(unittest.TestCase):
                     self.assertTrue(guard.is_guard_rejection_payload(event['payload_json']))
                     self.assertNotIn('synthetic private detail', json.dumps(event))
 
+    def test_unknown_biblio_state_keys_fail_closed_without_reaching_store(self):
+        unknown_key = 'synthetic_unknown_state_fact'
+        unknown_value = 'synthetic forbidden marker 9f3c'
+        cases_by_field = {
+            'biblio_state': ({'present': False}, 'state'),
+            'state_transition': ({'changed': False}, 'state_transition'),
+        }
+        for field, (legitimate, payload_key) in cases_by_field.items():
+            for include_legitimate in (False, True):
+                projected = dict(legitimate) if include_legitimate else {}
+                projected[unknown_key] = unknown_value
+                for value in (projected, SimpleNamespace(to_observability=lambda projected=projected: projected)):
+                    with self.subTest(field=field, include_legitimate=include_legitimate,
+                                      source=type(value).__name__):
+                        payload = biblio.build_biblio_event_payload(**{field: value})
+                        biblio.emit_biblio_event(payload, chat_turn_logger_module=logger)
+                        event = next(e for e in reversed(self.events) if e['stage'] == 'biblio')
+                        encoded = json.dumps(event, sort_keys=True)
+                        self.assertEqual(event['status'], 'disabled')
+                        self.assertTrue(guard.is_guard_rejection_payload(event['payload_json']))
+                        self.assertEqual(event['payload_json']['guarded_original_status'], 'disabled')
+                        self.assertFalse(event['payload_json']['raw_content_included'])
+                        self.assertNotIn(unknown_key, encoded)
+                        self.assertNotIn(unknown_value, encoded)
+                        self.assertNotIn(payload_key, event['payload_json'])
+
+    def test_empty_biblio_state_projections_remain_legitimate_absence(self):
+        for field, payload_key in (('biblio_state', 'state'),
+                                   ('state_transition', 'state_transition')):
+            for value in (None, {}):
+                with self.subTest(field=field, value=value):
+                    payload = biblio.build_biblio_event_payload(**{field: value})
+                    biblio.emit_biblio_event(payload, chat_turn_logger_module=logger)
+                    event = self.event('biblio', 'disabled')
+                    self.assertEqual(event['payload'][payload_key], {})
+
     def test_raw_generation_identifier_has_no_legacy_write_path(self):
         logger.emit('llm_call', payload={'provider_generation_id': 'gen-lowercase'})
         self.assert_rejection('llm_call')

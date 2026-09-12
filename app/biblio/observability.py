@@ -641,6 +641,8 @@ def _state_projection(value: Any, schema: Mapping[str, Any]) -> dict[str, Any]:
         return {'persistence_mode': None}
     if not isinstance(projected, Mapping):
         return {'persistence_mode': None}
+    if any(key not in schema for key in projected):
+        return {'persistence_mode': None}
     # Copy only the declared facts, without coercion or hashing an existing hash.
     # The canonical guard validates their exact types and values before storage.
     return {key: child for key, child in projected.items() if key in schema}

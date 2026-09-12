@@ -2195,6 +2195,31 @@ second produit conversationnel.
   commit de preuves est documentaire uniquement et ne nécessite pas de
   nouvelle reconstruction.
 
+  **Refermeture fail-closed Biblio du 12 septembre 2026.** Une reproduction
+  indépendante après la livraison initiale de Z.3a a révélé un dernier faux
+  vert : une projection `state` ou `state_transition` non vide contenant une
+  clé hors schéma était filtrée avant la garde et pouvait devenir l'absence
+  légitime `{}`. Le nouveau témoin traverse le builder Biblio, le writer,
+  `chat_turn_logger`, la garde et le store fake pour les deux champs, avec
+  mapping inconnue seule ou mêlée à une clé légitime, directement ou via
+  `to_observability()`. Les huit sous-cas étaient acceptés avant correction.
+  `_state_projection()` transforme désormais toute projection non vide ayant
+  une clé hors schéma en un unique marqueur content-free de type invalide déjà
+  refusé par les deux schémas contextuels ; ni le nom ni la valeur synthétique
+  inconnus n'atteignent le store. `None` et `{}` restent admis comme absence,
+  et l'état Biblio courant conserve ses types exacts.
+
+  Après correction, les cinq modules ciblés prescrits passent **83/83**, zéro
+  échec, erreur ou skip. La mutation retirant uniquement cette nouvelle branche
+  remet les huit sous-cas au rouge ; après restauration, l'empreinte SHA-256 de
+  `app/biblio/observability.py` est exactement
+  `a44791159f5c967b9e56398587c3ccebb4db8068b27b518ac00da2d9c8111e20`.
+  Aucun schéma, allowlist ou stage autre que la projection Biblio n'est
+  modifié. La livraison de ce micro-correctif et son rejeu depuis l'image sont
+  consignés ci-dessous dès qu'ils sont établis. Z.3 reste décoché : sa preuve
+  exige toujours un tour réel postérieur au nouveau déploiement, sans canari
+  automatique.
+
   **Z.3a FERMÉ — Z.3 OUVERT, PREUVE RUNTIME SUR TOUR RÉEL MANQUANTE — Z.4 NON COMMENCÉ.**
 
 - [ ] **Z.4 — Documentation et archivage**
