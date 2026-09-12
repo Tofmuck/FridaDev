@@ -2215,12 +2215,30 @@ second produit conversationnel.
   `app/biblio/observability.py` est exactement
   `a44791159f5c967b9e56398587c3ccebb4db8068b27b518ac00da2d9c8111e20`.
   Aucun schéma, allowlist ou stage autre que la projection Biblio n'est
-  modifié. La livraison de ce micro-correctif et son rejeu depuis l'image sont
-  consignés ci-dessous dès qu'ils sont établis. Z.3 reste décoché : sa preuve
-  exige toujours un tour réel postérieur au nouveau déploiement, sans canari
-  automatique.
+  modifié.
 
-  **Z.3a FERMÉ — Z.3 OUVERT, PREUVE RUNTIME SUR TOUR RÉEL MANQUANTE — Z.4 NON COMMENCÉ.**
+  Le commit applicatif `2dec51cfdf9f3619a73c6fcee27313b17fc1f879` est
+  poussé sur `main`. L'image précédente SHA-256 `c98e5b34c9b38535fb4fa9a313945fc3e2fd6413383000ea31c32ea24f50b5bd`
+  est conservée sous `platform-fridadev-app:rollback-z3a-biblio-20260912`.
+  Reconstruction sans pull puis recréation `--no-deps` du seul service
+  `fridadev` : nouvelle image SHA-256
+  `e520f196c8c1c316a10eb9b50b25a0b20091b4230338224724b249e9e7e24afc`,
+  conteneur `4a7bd509c352fded59512efb914f8d31ba5e5155f2a0a95ea83f765a7bd4ff41`,
+  démarré le `2026-09-12T14:18:50.487069761Z`, `running`, `healthy`, HTTP
+  interne `200`, restart `0`, OOM `false`. Les 31 voisins sont inchangés ;
+  empreinte d'identité/état agrégée avant/après
+  `5a33d69dd28f5f48b8f4308888a19904fcb71d17111d67be583a8cb2550382db`.
+  Les deux fichiers Python modifiés concordent entre checkout et conteneur.
+  Les cinq modules ciblés repassent **83/83** depuis l'image livrée, réseau
+  coupé, rootfs read-only et sans montage du checkout applicatif.
+
+  L'inspection read-only depuis `2026-09-12T14:18:51Z` trouve zéro
+  `chat_request` et zéro `biblio` : elle confirme seulement qu'aucun tour réel
+  postérieur à ce nouveau déploiement n'est disponible, jamais le comportement
+  d'un tour. Aucun message ni provider n'a été déclenché. Z.3 reste décoché :
+  **PREUVE RUNTIME SUR TOUR RÉEL MANQUANTE**.
+
+  **Z.3a DÉFINITIVEMENT REFERMÉ — Z.3 OUVERT, PREUVE RUNTIME SUR TOUR RÉEL MANQUANTE — Z.4 NON COMMENCÉ.**
 
 - [ ] **Z.4 — Documentation et archivage**
 
