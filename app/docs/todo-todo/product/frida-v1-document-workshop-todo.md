@@ -1,12 +1,14 @@
-# Atelier documentaire agentique Frida V1 — spécification proposée et roadmap
+# Atelier documentaire agentique Frida V1 — spécification validée et roadmap
 
 Date : 2026-09-29.
 
-Statut : **proposition à valider par Tof ; aucun lot applicatif commencé**.
+Statut : **spécification et choix architecturaux validés par Tof ; M0 est le
+prochain lot, non commencé ; aucun lot applicatif livré**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
-dialogue avec Tof. La création de ce fichier TODO est explicitement autorisée ;
-elle ne vaut pas validation de la spécification ni GO d'implémentation.
+dialogue avec Tof. Création documentaire committée dans `d6b63fd1`, puis validation
+explicite de la spécification et des six décisions amont par Tof le 2026-09-29.
+Ce correctif docs-only inscrit cette validation ; il ne démarre aucun lot applicatif.
 
 Les observations techniques ci-dessous sont rattachées au HEAD
 `a2483bf1aa6f5e93ba7ec2800b8ff053cc0af2c6`, branche `main`, checkout
@@ -16,17 +18,17 @@ l'exécution des lots concernés, sans recommencer une reconnaissance générale
 ## Lecture des cases et portes d'autorisation
 
 Une case cochée dans les décisions signifie « décidé par Tof », pas « livré ».
-Une case ouverte dans les critères ou les lots signifie « à valider, qualifier
-ou implémenter ». Les tests décrits sont des preuves futures, pas des tests déjà
-exécutés pour cet atelier.
+Une case ouverte dans les critères ou les lots signifie « à implémenter ou prouver ».
+Les inconnues factuelles sont isolées en section 11. Les tests décrits sont des
+preuves futures, pas des tests déjà exécutés pour cet atelier.
 
 - [x] Reconnaissance et proposition de design produites dans le dialogue.
 - [x] Création de cette TODO autorisée par Tof.
-- [ ] Spécification et choix architecturaux ci-dessous validés par Tof.
+- [x] Spécification et choix architecturaux ci-dessous validés par Tof le 2026-09-29.
 - [ ] Exception documentaire bornée inscrite dans le [AGENTS.md racine](../../../../AGENTS.md)
   dans un lot explicitement autorisé, avant tout patch applicatif.
 - [ ] Lot d'implémentation concerné explicitement autorisé.
-- [ ] GO distinct obtenu avant tout appel modèle réel de qualification.
+- [ ] GO distinct obtenu avant tout appel modèle réel de preuve.
 - [ ] GO distinct obtenu avant tout canari d'écriture Nextcloud.
 
 Le présent lot est docs-only. Il ne modifie ni application, ni tests, ni schéma,
@@ -44,8 +46,26 @@ DB/WebDAV, installation, build ou déploiement n'est nécessaire à sa création
   agentique ; aucun routeur de formulations, regex ou catalogue de phrases.
 - [x] Atelier spécialisé, avec fondation tool-ready ; aucune boucle tools générale
   ajoutée au modèle principal au premier palier.
-- [x] Modèle principal actuellement configuré, prompt documentaire distinct, un
+- [x] Modèle initial principal `openai/gpt-5.1`, prompt documentaire distinct, un
   appel documentaire par préparation, aucun fallback ni nouveau réglage Admin.
+- [x] Plafond documentaire dédié de 24 000 tokens de sortie ; chat normal inchangé
+  à 8 192 tokens ; fenêtre officielle 400 000 et sortie officielle 128 000 tokens.
+- [x] Admission mesurée avant appel, avec réservation de 24 000 tokens et marge
+  explicite d'enveloppe/raisonnement selon le transport réel.
+- [x] Document produit : A4, corps 12 points, interligne 1,5, marges 2,5 cm ;
+  canonical au plus 10 000 mots et 75 000 caractères Unicode, premier plafond atteint.
+- [x] DOCX/PDF rendus au plus 20 pages ; Markdown borné par mots/caractères,
+  sans pagination stable ; aucune sauvegarde partielle en cas de dépassement.
+- [x] Source de plus de 20 pages admise si elle tient intégralement dans l'entrée
+  avec dialogue, prompt, autres sources et réserve ; sinon réduction/sélection ou refus.
+- [x] Préparation sans deadline murale si progression effective projetée ; absence
+  de progression pendant 120 secondes : échec fermé ; annulation explicite possible.
+- [x] Pending sans expiration temporelle ; invalidation seulement par annulation,
+  remplacement, changement de répertoire/cible ou perte de fraîcheur/précondition.
+- [x] Chemins : Documents, au plus 8 niveaux, 180 caractères Unicode et 255 octets
+  UTF-8 par segment/nom de fichier, 1 024 octets UTF-8 pour le chemin relatif complet.
+- [x] Rendu local déterministe : Markdown depuis canonical, DOCX python-docx,
+  PDF ReportLab Platypus avec police Unicode embarquée/épinglée ; aucun rendu distant.
 - [x] La véritable demande reste une parole utilisateur canonique ; préparation
   d'une courte réponse Frida et d'une action pending sans double échange principal.
 - [x] Le document est distinct de la réponse ; la dernière bulle n'est jamais
@@ -79,8 +99,10 @@ DB/WebDAV, installation, build ou déploiement n'est nécessaire à sa création
   conversations ni canonical dans Memory, Identity, Summary, Biblio ou Stimmung.
 
 Les anciens OPEN « sous-répertoires », « adoption », « profil de rendu » et
-« modèle/stratégie agentique » sont fermés par ce design. Les propositions
-techniques ci-dessous restent à valider avec la spécification.
+« modèle/stratégie agentique » sont fermés par ce design. Volume, source longue,
+budget, progression/pending, chemins et pile de rendu sont également décidés.
+Les futurs lots implémentent ces décisions et en apportent les preuves ; ils ne
+choisissent plus la taille du produit ou le moteur.
 
 ## 2. Sources et faits de la reconnaissance
 
@@ -123,13 +145,15 @@ techniques ci-dessous restent à valider avec la spécification.
 | [token_counter.py](../../../core/token_counter.py) | Estimation heuristique, sans garantie de tokenisation du modèle. |
 
 Les preuves hermétiques déjà obtenues pendant la reconnaissance sont conservées.
-Elles ne prouvent pas les capacités futures décrites ici. La disponibilité
-observée de Stirling/LibreOffice ne prouve pas son contrat de conversion ;
-doc-pipeline n'est pas une API de composition documentaire qualifiée.
+Elles ne prouvent pas les capacités futures décrites ici. La présence historique
+de Stirling/LibreOffice et doc-pipeline ne les place pas dans la composition
+nominale : le renderer décidé est exclusivement applicatif et local. python-docx,
+ReportLab et la police épinglée ne sont pas encore livrés dans l'image actuelle.
 
-## 3. Spécification proposée
+## 3. Spécification validée
 
-Chaque rubrique distingue décision, existant, proposition et qualification.
+Chaque rubrique distingue décision utilisateur, existant du HEAD et architecture
+validée à implémenter. Les preuves à livrer ne sont pas des choix produit ouverts.
 Les cases ouvertes sont des critères futurs ; aucun n'est déclaré livré.
 
 ### 3.1. Finalité et non-objectifs
@@ -139,11 +163,11 @@ poursuivre ce travail dans la conversation.
 
 **Existant :** Documents, Notes, Exports et Images ont des responsabilités propres.
 
-**Proposition :** l'atelier possède préparation et exécution ; Notes conserve
+**Architecture validée :** l'atelier possède préparation et exécution ; Notes conserve
 l'append, Exports les snapshots. Pas de synchronisation globale, fusion concurrente,
 images incorporées, continuation automatique ou tools principaux au premier palier.
 
-**Qualification :** aucune inconnue de finalité produit.
+**Preuve à livrer :** aucune inconnue de finalité produit.
 
 - [ ] Préserver les responsabilités voisines dans les parcours et tests.
 
@@ -154,7 +178,7 @@ images incorporées, continuation automatique ou tools principaux au premier pal
 **Existant :** workspace_file représente un fichier inventorié, pas son brouillon
 ou sa confirmation.
 
-**Proposition :**
+**Architecture validée :**
 
 | Terme | Sens |
 | --- | --- |
@@ -167,7 +191,7 @@ ou sa confirmation.
 | update | Même cible, nom et workspace_file_id. |
 | copy | Nouveau fichier explicitement demandé à partir d'une source. |
 
-**Qualification :** aucune.
+**Preuve à livrer :** aucune.
 
 - [ ] Utiliser ce vocabulaire dans schémas, projections et contrats.
 
@@ -177,11 +201,11 @@ ou sa confirmation.
 
 **Existant :** bouton relié directement au picker et sélections persistantes.
 
-**Proposition :** un seul listener Fichier ; contexte serveur lié à conversation,
+**Architecture validée :** un seul listener Fichier ; contexte serveur lié à conversation,
 répertoire et cible éventuelle. Le contexte autorise la préparation ; seul le clic
 de confirmation autorise la mutation.
 
-**Qualification :** aucune nouvelle autorité produit.
+**Preuve à livrer :** aucune nouvelle autorité produit.
 
 - [ ] Conserver même DOM, contrôleur et callbacks sur desktop/mobile.
 - [ ] Garder une sélection de source distincte d'une cible d'update.
@@ -193,29 +217,32 @@ de confirmation autorise la mutation.
 **Existant :** soumission canonique et sauvegarde des messages/meta, sans transaction
 commune avec une action documentaire.
 
-**Proposition :** /api/chat unique, branche explicite, réservation avant appel,
+**Architecture validée :** /api/chat unique, branche explicite, réservation avant appel,
 sauvegarde utilisateur initiale, commit réponse/pending commun. Séquence en section 4.
 
-**Qualification :** preuve de concurrence SQL réelle isolée.
+**Preuve à livrer :** preuve de concurrence SQL réelle isolée.
 
 - [ ] Garantir zéro échange principal normal après sélection de la branche atelier.
 - [ ] Réhydrater un tour échoué sans inventer une réponse ou un succès.
 
 ### 3.5. Agent documentaire
 
-**Décision :** modèle principal configuré, prompt distinct, un appel documentaire,
-aucun fallback et aucun réglage Admin nouveau.
+**Décision :** modèle initial `openai/gpt-5.1`, prompt distinct, un appel documentaire
+avec plafond dédié de 24 000 tokens ; chat normal conservé à 8 192 tokens. Aucun
+fallback, continuation, chunking, réparation par second appel ou réglage Admin nouveau.
 
 **Existant :** modèle et budget résolus depuis les réglages runtime ; lecteur
 non streaming centré sur le texte extrait.
 
-**Proposition :** entrées typées : demande/tour, contexte dialogique partagé,
+**Architecture validée :** entrées typées : demande/tour, contexte dialogique partagé,
 répertoire autorisé, références explicites, sources et versions, capacités/budgets.
 Sortie stricte prepared, clarify ou refuse. Prepared contient réponse courte,
 opération, cible, canonical et limites ; les deux autres n'ont aucune action
 exécutable. Le modèle ne possède aucun client d'écriture.
 
-**Qualification :** limites du modèle, raisonnement, fin de génération et transport.
+**Preuve à livrer :** admission complète dans 400 000 tokens en réservant 24 000
+tokens et la marge explicite du transport/raisonnement ; limites de sortie de la
+section 7. Les chiffres sont décidés, leur application reste à implémenter.
 
 - [ ] Valider l'enveloppe sans routage linguistique déterministe.
 - [ ] Ne jamais relancer le modèle pour réparer automatiquement une sortie invalide.
@@ -227,19 +254,19 @@ exécutable. Le modèle ne possède aucun client d'écriture.
 **Existant :** message.meta existe ; identité DB des messages par conversation/seq ;
 liens Nextcloud sans contrat complet de chemin relatif/ETag.
 
-**Proposition :**
+**Architecture validée :**
 
-| Ensemble | Responsabilité proposée |
+| Ensemble | Responsabilité validée à implémenter |
 | --- | --- |
 | workspace_files | Inventaire unique ; auteur/source typés ; ID stable en update. |
 | workspace_file_nextcloud_links | Extension du lien : chemin relatif complet, identité, ETag, observation/fraîcheur. |
 | document_artifacts | Identité documentaire, fichier lié après exécution et révision courante validée. |
 | document_revisions | Canonical immutable, schéma, empreinte, rendu figé, empreinte/version renderer et correspondance distante. |
-| document_actions | Contexte, proposition, sources/tour, expiration, confirmation, état et journal. |
+| document_actions | Contexte, proposition, sources/tour, progression de préparation, motifs d'invalidation, confirmation, état et journal ; aucun expires_at temporel de pending. |
 | document_receipts | Résultat immutable, demande/confirmation, version et lien produit. |
-| conversation_turn_claims | Réservation durable d'un tour ou d'une confirmation, propriétaire et jeton de génération. |
+| conversation_turn_claims | Réservation durable d'un tour ou d'une confirmation, propriétaire, lease technique renouvelable et jeton de génération. |
 
-**Qualification :** identité DAV et environnement SQL de preuve.
+**Preuve à livrer :** identité DAV et environnement SQL de preuve.
 
 - [ ] Unicité des tours clients et d'une réservation active par conversation.
 - [ ] Au plus un reçu de succès par action et une identité distante par répertoire.
@@ -247,39 +274,64 @@ liens Nextcloud sans contrat complet de chemin relatif/ETag.
 - [ ] Migration ciblée des anciens liens seulement lorsque leur chemin est prouvé.
 - [ ] Référencer le tour utilisateur stable dans meta, sans dépendre du seul seq.
 
-### 3.7. Confirmation, expiration et idempotence
+### 3.7. Progression, invalidation, claim et idempotence
 
-**Décision :** bouton éphémère, aucune double écriture.
+**Décision :** bouton éphémère, aucune double écriture ; préparation active tant
+qu'une progression effective est observée et honnêtement projetée. Sans progression
+pendant 120 secondes : échec fermé. Annulation explicite possible. Aucune deadline
+murale supplémentaire tant que la progression continue. Pending sans expiration temporelle.
 
 **Existant :** Agenda fournit des concepts mais pas le claim documentaire durable
 et atomique requis.
 
-**Proposition :** editing → preparing → pending → executing → succeeded ; sorties
-expired, cancelled, superseded, failed ou remote_uncertain. Expiration proposée de
-30 minutes, fondée sur le précédent Agenda, à valider avec la spécification.
-Le claim compare état, expiration, propriétaire, conversation, répertoire, jeton
-et préconditions. Une répétition retourne l'état sans relancer modèle ou PUT.
+**Architecture validée :** editing → preparing → pending → executing → succeeded ;
+sorties cancelled, superseded, invalidated, failed ou remote_uncertain. Le pending
+devient invalide uniquement par annulation, remplacement/supersession, changement
+de répertoire ou cible, ou fraîcheur source/ETag/précondition différente de celle
+de préparation. La confirmation revérifie fraîcheur, ETag, scope et claim avant
+mutation. Une répétition retourne l'état sans relancer modèle ou PUT.
 
-**Qualification :** exclusion SQL et crashs DB/WebDAV.
+| Mécanisme | Effet et frontière |
+| --- | --- |
+| Inactivité de préparation | 120 secondes depuis la dernière progression effective, puis échec fermé ; aucune limite sur la durée totale si progression continue. |
+| Annulation utilisateur | Arrête/neutralise la préparation ou annule le pending ; aucun résultat tardif exécutable. |
+| Invalidation du pending | Liée aux seuls changements/événements décidés, jamais à son âge. |
+| Lease technique du claim | Exclusion et détection du détenteur perdu, renouvelable ; ne constitue ni TTL du pending ni deadline murale de préparation. |
+
+Une progression est un avancement vérifiable : nouvelle donnée utile reçue du
+provider, étape réellement terminée ou avancement de rendu. Un keepalive, polling
+d'état, animation, renouvellement de lease ou pourcentage inventé ne suffit pas.
+L'interface projette phase/avancement content-free sans aperçu du document.
+La perte d'un lease invalide le détenteur via son jeton ; elle ne relance pas
+automatiquement modèle ou écriture et ne supprime pas un pending valide.
+
+**Preuve à livrer :** exclusion SQL et crashs DB/WebDAV.
 
 - [ ] Ne jamais rendre automatiquement pending une exécution incertaine.
 - [ ] Refuser résultats tardifs et ancienne génération.
 - [ ] Invalider les contextes/pending lors d'un changement de répertoire pertinent.
+- [ ] Tester une progression réelle au-delà de 120 secondes de durée totale,
+  puis 120 secondes sans progression et les keepalives non probants.
+- [ ] Tester un pending ancien toujours confirmable si toutes ses préconditions
+  restent valides ; lease, annulation et invalidation ont des états distincts.
 
 ### 3.8. Chemins et collections
 
 **Décision :** créations et collections exclusivement sous Documents ; segments
-manquants affichés confirmés avec le fichier.
+manquants affichés confirmés avec le fichier. Au plus 8 niveaux de sous-répertoires
+sous Documents, 180 caractères Unicode et 255 octets UTF-8 par segment, 1 024 octets
+UTF-8 pour le chemin relatif complet ; le nom de fichier suit les limites de segment.
 
 **Existant :** sanitizers de noms insuffisants pour valider un chemin complet.
 
-**Proposition :** resolver serveur segment par segment ; refus chemins absolus,
-traversées, séparateurs déguisés, contrôles, normalisation ambiguë et sortie de
-racine. Bornes proposées : huit sous-répertoires, 180 points de code et 255 octets
-UTF-8 par segment, 1024 octets pour le chemin relatif complet. Chemin affiché,
-normalisation et clés de collision sont figés avant confirmation.
+**Architecture validée :** resolver serveur segment par segment ; refus segment
+vide, . ou .., chemin absolu, séparateur déguisé, contrôle, ambiguïté Unicode et
+sortie de racine. Aucun raccourcissement, renommage ou normalisation destructive
+silencieuse : clarification/refus avant action confirmable. Chemin affiché et clés
+de collision sont figés avant confirmation.
 
-**Qualification :** compatibilité de ces bornes avec la cible WebDAV.
+**Preuve à livrer :** application des valeurs décidées aux frontières locales et
+DAV ; leur compatibilité doit être prouvée, sans en refaire un choix produit.
 
 - [ ] Vérifier no-clobber local et distant ; ne jamais corriger le chemin au clic.
 - [ ] Créer seulement les collections bornées prévues, vérifier les collections
@@ -294,12 +346,12 @@ possibles et signalées.
 **Existant :** upload Nextcloud-first et compensation ETag, mais plusieurs
 transactions locales.
 
-**Proposition :** journaliser l'intention avant mutation ; après succès distant,
+**Architecture validée :** journaliser l'intention avant mutation ; après succès distant,
 publier fichier/lien, révision, reçu et état final dans une transaction commune.
 Compensation create uniquement avec propriété et ETag fort identique. Aucune
 réécriture compensatoire automatique pour update ; Versions reste l'autorité.
 
-**Qualification :** fenêtres de panne ; aucune atomicité distribuée supposée.
+**Preuve à livrer :** fenêtres de panne ; aucune atomicité distribuée supposée.
 
 - [ ] Journal durable avant PUT/MKCOL ; pas de publication locale prématurée.
 - [ ] Sans preuve de propriété, ne pas supprimer et conserver un état honnête.
@@ -307,16 +359,18 @@ réécriture compensatoire automatique pour update ; Versions reste l'autorité.
 
 ### 3.10. Lecture, adoption et fraîcheur
 
-**Décision :** adoption ciblée obligatoire, aucun scan global.
+**Décision :** adoption ciblée obligatoire, aucun scan global. La limite de 20 pages
+porte seulement sur le document produit ; une source plus longue reste admissible
+si elle tient intégralement dans l'entrée selon la section 7.
 
 **Existant :** inventaire local ; sélection lisant principalement la copie locale.
 
-**Proposition :** navigation paresseuse Depth: 1 de la collection explicitement
+**Architecture validée :** navigation paresseuse Depth: 1 de la collection explicitement
 ouverte sous Documents ; réponse/entrées bornées. Adoption après sélection,
 vérification identité/ETag, récupération admissible et commit fichier/lien.
 Fraîcheur vérifiée avant mobilisation documentaire ultérieure.
 
-**Qualification :** propriétés DAV, taille des réponses, téléchargement conditionnel.
+**Preuve à livrer :** propriétés DAV, taille des réponses, téléchargement conditionnel.
 
 - [ ] Distinguer déjà lié, adoptable, collision locale et cible incompatible.
 - [ ] Ne pas injecter automatiquement le contenu d'une ressource adoptée.
@@ -329,10 +383,10 @@ Fraîcheur vérifiée avant mobilisation documentaire ultérieure.
 **Existant :** Notes utilise GET frais/If-Match ; cela ne remplace pas la comparaison
 avec la version préparée.
 
-**Proposition :** ETag/empreinte figés à la préparation ; lecture fraîche et identité
+**Architecture validée :** ETag/empreinte figés à la préparation ; lecture fraîche et identité
 vérifiées juste avant PUT If-Match exact. Différence ou 412 termine en conflit.
 
-**Qualification :** Versions et préconditions effectives sur la chaîne déployée.
+**Preuve à livrer :** Versions et préconditions effectives sur la chaîne déployée.
 
 - [ ] Aucun update sans version établie.
 - [ ] Aucune fusion, copie, renommage ou nouvelle préparation automatique.
@@ -340,22 +394,32 @@ vérifiées juste avant PUT If-Match exact. Différence ou 412 termine en confli
 
 ### 3.12. Canonical et rendus
 
-**Décision :** profil fixé, aucune image, DOCX/PDF Frida issus du canonical.
+**Décision :** profil fixé sans images, DOCX/PDF Frida issus de la même révision
+canonical. Pile locale déterministe : Markdown direct, DOCX python-docx, PDF
+ReportLab Platypus et police Unicode embarquée/épinglée. Aucun service distant de
+rendu ou moteur de secours. A4, corps 12 points, interligne 1,5, marges 2,5 cm ;
+canonical au plus 10 000 mots et 75 000 caractères Unicode ; DOCX/PDF au plus 20 pages.
 
 **Existant :** renderer Exports minimal, profil complet non couvert.
 
-**Proposition :** titres, paragraphes, spans, listes, citations, liens, tableaux
+**Architecture validée :** titres, paragraphes, spans, listes, citations, liens, tableaux
 simples et sauts de page ; refus images, HTML actif, macros et références
 exécutables. Rendu préparé/figé avant action confirmable ; le clic écrit ces octets.
 Pagination/marges pour DOCX/PDF ; marqueur documenté pour sauts de page Markdown,
 dont la pagination dépend du lecteur.
 
-**Qualification :** un seul moteur retenu après comparaison, section 9.
+**Preuve à livrer :** pile décidée et pagination finale, section 9. Versions,
+licences, police et empreinte épinglées dans le lot applicatif ; aucune dépendance
+n'est encore livrée par ce correctif documentaire.
 
 - [ ] Même révision pour canonical, rendu, empreintes et version renderer.
 - [ ] Update Frida DOCX/PDF seulement si leur correspondance distante est établie.
 - [ ] DOCX externe : limites détectées affichées ; clarification/refus si incompatibles.
 - [ ] PDF externe : nouveau document proposé, pas d'update aveugle.
+- [ ] Refuser sortie tronquée, finish_reason=length, canonical incomplet ou rendu
+  de plus de 20 pages ; aucune sauvegarde partielle ou adaptation silencieuse des styles.
+- [ ] Vérifier la pagination réelle DOCX, pas seulement docProps, les sauts de page
+  ou le nombre de pages du PDF voisin ; sans preuve, ne pas rendre l'action confirmable.
 
 ### 3.13. Provenance et réhydratation
 
@@ -363,12 +427,12 @@ dont la pagination dépend du lecteur.
 
 **Existant :** meta réhydratable ; aucun reçu documentaire typé.
 
-**Proposition :** reçu avec action/artefact/fichier/révision, conversation/répertoire,
+**Architecture validée :** reçu avec action/artefact/fichier/révision, conversation/répertoire,
 nom/format/chemin, auteur de création et de révision, référence stable de demande,
 confirmation, date, ETag/version, empreintes et lien produit. Un adopté garde son
 origine externe même après révision Frida.
 
-**Qualification :** aucune inconnue produit.
+**Preuve à livrer :** aucune inconnue produit.
 
 - [ ] Réhydratation après réouverture et lien produit fonctionnel.
 - [ ] Référence de demande indépendante du seul seq.
@@ -381,12 +445,13 @@ origine externe même après révision Frida.
 **Existant :** facultés et fenêtre dialogique consomment les vraies paroles ; lanes
 tardives et manifeste du payload principal disponibles.
 
-**Proposition :** lane de reçus produite à la volée après construction des entrées
+**Architecture validée :** lane de reçus produite à la volée après construction des entrées
 des facultés ; jamais enregistrée comme message. Dernier reçu pertinent présent
 au tour suivant, historique supplémentaire borné. La vraie demande et la réponse
 courte restent dans le dialogue légitime.
 
-**Qualification :** budget de lane et preuves de séparation des payloads.
+**Preuve à livrer :** lane comptée dans l’admission complète de M0 et séparation
+des payloads, sans nouveau choix de budget produit.
 
 - [ ] Aucun canonical, rendu, journal ou reçu synthétique dans Memory, Identity,
   Summary, Biblio ou Stimmung.
@@ -399,12 +464,13 @@ courte restent dans le dialogue légitime.
 
 **Existant :** allowlists/projections content-free disponibles.
 
-**Proposition :** événements préparation, rejet, claim, expiration, conflit,
+**Architecture validée :** événements préparation, progression, inactivité, annulation,
+invalidation, claim, conflit,
 écriture, compensation, incertitude et reçu ; seulement IDs, états, codes, tailles,
 comptes, durées, empreintes et versions techniques. Projection produit autorisée
 distincte pour nom et chemin.
 
-**Qualification :** tous les sinks, manifestes et projections admin.
+**Preuve à livrer :** tous les sinks, manifestes et projections admin.
 
 - [ ] Aucun texte utilisateur/canonical, nom privé, chemin brut, URL distante ou
   exception de transport brute dans logs, JSONL et projections content-free.
@@ -415,12 +481,13 @@ distincte pour nom et chemin.
 
 **Existant :** lecteurs textuels avec limites ; copies locales potentiellement périmées.
 
-**Proposition :** refus avant pending exécutable pour cible hors scope, version
+**Architecture validée :** refus avant pending exécutable pour cible hors scope, version
 indéterminée, archive inadmissible, extraction incomplète, dépassement, sortie
 tronquée, canonical invalide ou rendu incomplet. Contenus documentaires non fiables
 et sans autorité ; renderer sans récupération des liens.
 
-**Qualification :** expansion d'archives, tailles, deadlines et corpus de refus.
+**Preuve à livrer :** expansion d'archives, tailles, inactivité de préparation et
+corpus de refus ; aucune deadline murale malgré une progression effective.
 
 - [ ] Gardes appliqués avant mutation, même contre requête HTTP construite hors UI.
 - [ ] Aucun appel OCR implicite ou perte de contenu silencieuse ajoutée par l'atelier.
@@ -431,11 +498,12 @@ et sans autorité ; renderer sans récupération des liens.
 
 **Existant :** preuves de briques acquises ; workflow futur non prouvé.
 
-**Proposition :** TDD causal par capacité, voisins et injections de panne ; preuve
+**Architecture validée :** TDD causal par capacité, voisins et injections de panne ; preuve
 SQL isolée pour concurrence ; corpus synthétiques pour rendus. Appel modèle réel
 et canari Nextcloud chacun sous GO distinct, preuves datées/content-free.
 
-**Qualification :** environnement isolé pour transactions et rendus.
+**Preuve à livrer :** environnement SQL isolé pour transactions ; tests du renderer
+local dans le lot applicatif, sans service de rendu plateforme.
 
 - [ ] Ne pas fermer un invariant réel avec une preuve uniquement mockée.
 - [ ] Ne pas présenter les tests projetés comme exécutés.
@@ -444,13 +512,15 @@ et canari Nextcloud chacun sous GO distinct, preuves datées/content-free.
 
 **Décision :** application Celebrimbor, plateforme Sauron.
 
-**Existant :** Stirling/LibreOffice disponible sans contrat requis qualifié ;
-doc-pipeline sans capacité de composition qualifiée.
+**Existant :** pile locale python-docx/ReportLab et police épinglée non livrées
+dans l'image actuelle. Les services partagés existants ne composent pas les documents
+de cet atelier.
 
-**Proposition :** services/UI/données/render applicatif/tests/observabilité à
+**Architecture validée :** services/UI/données/render applicatif/tests/observabilité à
 Celebrimbor ; contrats/services/ressources/permissions partagés à Sauron.
 
-**Qualification :** besoin Sauron selon preuves DAV et choix renderer.
+**Preuve à livrer :** besoin Sauron limité aux faits DAV/Versions et à l'environnement
+SQL isolé, si nécessaire ; aucun lot Sauron renderer.
 
 - [ ] Aucun changement de plateforme par proximité ou contournement applicatif.
 
@@ -460,25 +530,25 @@ Celebrimbor ; contrats/services/ressources/permissions partagés à Sauron.
 
 **Existant :** aucune boucle tools principale à étendre.
 
-**Proposition :** clôture sur create/adoption/read/copy/update, trois formats,
+**Architecture validée :** clôture sur create/adoption/read/copy/update, trois formats,
 confirmation, conflits, continuité et voisins préservés. Appel de service sans DOM
 pour prouver tool-ready, sans implémenter de tool principal. Images, continuation
 de documents longs et édition enrichie nécessiteraient d'autres projets.
 
-**Qualification :** aucune extension indispensable à la fermeture.
+**Preuve à livrer :** aucune extension indispensable à la fermeture.
 
 - [ ] Fermer par les critères du lot Z ; ne pas convertir les suites hors scope en
   condition permanente de clôture.
 
 ## 4. Raccordement conversationnel exact — L1
 
-### Choix recommandé
+### Raccord validé
 
 | Raccord réaliste | Évaluation |
 | --- | --- |
 | Chat normal puis préparation | Écarté : double génération principale et réponse normale sans rôle clair. |
 | Route et transcript documentaires indépendants | Écarté : duplication de sauvegarde/finalisation et risque de contourner les facultés. |
-| /api/chat unique avec branche documentaire explicite | Retenu comme proposition : transport/transcript réutilisés, échange principal normal remplacé. |
+| /api/chat unique avec branche documentaire explicite | Validé : transport/transcript réutilisés, échange principal normal remplacé. |
 
 ### Séquence à livrer
 
@@ -495,6 +565,9 @@ de documents longs et édition enrichie nécessiteraient d'autres projets.
 - [ ] Appeler une fois le modèle principal avec prompt documentaire ; jamais passer
   ensuite dans l'échange principal normal, même en cas d'erreur ou sortie vide.
 - [ ] Valider enveloppe, sources, opération, chemin, canonical, limites et rendu.
+- [ ] Suivre la progression effective pendant toute la préparation et la projeter
+  sans contenu ; watchdog d'inactivité de 120 secondes, sans deadline murale.
+- [ ] Permettre l'annulation explicite et neutraliser les résultats tardifs.
 - [ ] Commit commun réponse courte assistant, révision, pending et clôture du claim ;
   vérifier encore génération et répertoire ; remplacer explicitement l'ancien pending
   de ce contexte.
@@ -509,7 +582,11 @@ INSERT indépendants ni créer un second store de messages.
 L'override actuel ne sert pas tel quel au succès documentaire : provenance
 final_lock et commit streaming paresseux. La réponse du modèle documentaire garde
 une provenance main_model avec référence documentaire ; un refus imposé par un
-garde peut utiliser final_lock. Commit documentaire avant ouverture du flux.
+garde peut utiliser final_lock. Commit documentaire avant émission de la réponse
+courte et du terminal de succès. Pendant la préparation, le contexte expose
+phase/avancement et annulation ; leur projection ne contient pas le canonical.
+La lecture ciblée de cet état d'opération n'est pas une synchronisation de fichiers
+Nextcloud et ne déclenche aucun scan distant.
 
 - [ ] En panne après sauvegarde utilisateur, ne jamais annoncer un succès sans commit.
 - [ ] Persister une courte explication si possible ; sinon projeter un tour
@@ -532,10 +609,10 @@ séparément. Il n'est pas promis un seul appel HTTP tous agents confondus.
 | Menu ouvert | Deux choix exacts ; fermeture par sélection, Échap ou clic extérieur. |
 | Ajout existant | Input, callback change, upload et drag-and-drop actuels. |
 | Atelier ouvert | Répertoire, cible éventuelle, sources et demande dans le compositeur courant. |
-| Préparation | Garde de soumission, aucune confirmation disponible. |
+| Préparation | Garde de soumission, progression réelle content-free et annulation ; aucune confirmation disponible. |
 | Pending | Carte compacte sans aperçu complet. |
 | Confirmation engagée | Bouton retiré synchroniquement, état bref. |
-| Résultat | Lien, conflit, expiration ou erreur honnête. |
+| Résultat | Lien, conflit, invalidation, annulation ou erreur d'inactivité honnête. |
 
 - [ ] Déplacer seulement le listener Fichier ; ne pas perdre le callback change
   actuellement conditionné avec buttonEl/inputEl dans chat_active_documents.bind.
@@ -550,20 +627,20 @@ séparément. Il n'est pas promis un seul appel HTTP tous agents confondus.
 Un clic qui n'a jamais atteint le serveur ne peut être connu globalement. L'UI
 ne doit pas prétendre le contraire ; l'unicité d'exécution est garantie au serveur.
 
-## 6. Adoption et routes proposées — L3
+## 6. Adoption et routes à livrer — L3
 
-Ces routes ne sont pas livrées ; leurs noms restent des interfaces proposées.
+Ces interfaces sont validées dans la spécification et restent non livrées.
 
 | Interface | Responsabilité |
 | --- | --- |
 | POST /api/document-workshop/contexts | Contexte borné conversation/répertoire/cible. |
 | GET /api/workspace-folders/{id}/documents/remote | Collection explicitement ouverte sous Documents. |
 | POST /api/workspace-folders/{id}/documents/adopt | Adoption sélectionnée ; aucune écriture distante. |
-| GET /api/document-workshop/contexts/{id} | Réhydratation contexte/capacités. |
+| GET /api/document-workshop/contexts/{id} | Réhydratation contexte/capacités et progression effective content-free. |
 | POST /api/chat avec document_context_id | Préparation conversationnelle unique. |
 | GET /api/document-workshop/actions/{id} | État public de l'action. |
 | POST /api/document-workshop/actions/{id}/confirm | Claim et exécution confirmée. |
-| POST /api/document-workshop/actions/{id}/cancel | Annulation encore pending. |
+| POST /api/document-workshop/actions/{id}/cancel | Annulation de préparation ou pending ; neutralisation des résultats tardifs. |
 
 | Cas distant | Traitement |
 | --- | --- |
@@ -581,72 +658,161 @@ Ces routes ne sont pas livrées ; leurs noms restent des interfaces proposées.
 - [ ] Limite honnête si collection trop volumineuse.
 - [ ] Adoption sans injection automatique ; mobilisation ultérieure explicite.
 
-## 7. Bornes rectifiées — L4
+## 7. Bornes décidées et admission — L4
 
-La combinaison « 16000 tokens / 120000 caractères générés » est retirée.
+Les valeurs suivantes sont des décisions définitives. M0 les implémente et les
+prouve ; il ne choisit aucun volume produit ou budget de sortie.
 
-Faits : défaut response_max_tokens = 8192 ; FRIDA_MAX_TOKENS = 35000 est une
-estimation souple ; compteur heuristique sans rapport garanti tokens/caractères.
-Ces défauts ne prouvent pas les valeurs runtime actuelles ou les limites du modèle.
+### 7.1. Document produit
 
-### Contrat d'admission proposé
+| Borne | Valeur décidée et application |
+| --- | --- |
+| Canonical | Au plus 10 000 mots et 75 000 caractères Unicode ; premier plafond atteint. |
+| DOCX et PDF | Au plus 20 pages A4 dans le rendu final, en plus des deux bornes canoniques. |
+| Mise en page | Corps 12 points, interligne 1,5, marges de 2,5 cm. |
+| Markdown | 10 000 mots et 75 000 caractères Unicode ; aucune limite de pagination instable. |
+| Génération | Plafond documentaire dédié de 24 000 tokens de sortie, enveloppe et canonical compris selon le transport réel. |
 
-Avec T = plafond de sortie documentaire, W = fenêtre qualifiée, I = entrée complète,
-M = réserve qualifiée, Cmax = caractères canoniques et Bmax = octets de l'enveloppe :
+Ces plafonds sont simultanés, pas des équivalences ni des tailles garanties.
+24 000 tokens ne garantissent ni 10 000 mots ni 75 000 caractères ; ces volumes
+ne garantissent pas 20 pages. Titres, tableaux, sauts et styles influent sur la
+pagination. Le premier plafond atteint fait foi, sans augmenter les autres pour
+faire tenir la demande. Aucun ajustement silencieux de police, interligne ou marges.
+
+- [ ] Compter mots/caractères sur tout le contenu canonical, y compris titres,
+  listes, citations et tableaux ; méthode Unicode reproductible et testée.
+- [ ] Distinguer caractères Unicode et octets UTF-8 ; ne pas utiliser la longueur
+  UTF-16 navigateur comme compteur de points de code.
+- [ ] Exiger sortie complète, schéma valide et tous les plafonds respectés avant pending.
+- [ ] Toute troncature, finish_reason=length, canonical incomplet ou rendu de plus de
+  20 pages : refus honnête, aucun pending exécutable ni sauvegarde partielle.
+- [ ] Ne jamais rogner un document ou diminuer la mise en page pour contourner un refus.
+
+### 7.2. Source longue
+
+La limite de 20 pages concerne uniquement le document produit. Une source peut
+dépasser 20 pages si son contenu admissible tient réellement dans l'entrée du
+modèle, avec dialogue, prompt, autres sources et réserves. Le nombre de pages
+d'une source n'est pas un critère de refus de volume produit.
+
+- [ ] Admettre une source de plus de 20 pages lorsque l'ensemble tient dans la fenêtre.
+- [ ] Ne jamais tronquer, résumer ou échantillonner une source silencieusement.
+- [ ] Si elle ne tient pas, demander de réduire/sélectionner la source ou refuser
+  avant l'appel documentaire ; aucune réduction automatique de la fenêtre dialogique.
+
+### 7.3. Modèle et budget dédiés
+
+Modèle initial : `openai/gpt-5.1`, modèle principal courant décidé par Tof.
+Fenêtre officielle : 400 000 tokens ; sortie maximale officielle : 128 000 tokens.
+Le plafond local documentaire de 24 000 est volontaire. Le plafond du chat normal
+reste inchangé à 8 192 tokens.
+
+Références primaires conservées et vérifiées sur leurs pages publiques, sans appel modèle :
+
+- [OpenAI — GPT-5.1](https://developers.openai.com/api/docs/models/gpt-5.1).
+- [OpenRouter — openai/gpt-5.1](https://openrouter.ai/openai/gpt-5.1).
+
+Avec I = tokens de l'entrée complète, M_transport = marge explicite d'enveloppe
+et de raisonnement selon le transport réel, l'admission impose :
 
 ```text
-T = min(response_max_tokens runtime, 8192, plafond de sortie qualifié du modèle)
-I + T + M <= W
+T_document = 24 000
+T_chat_normal = 8 192
+W_modele = 400 000
+I + T_document + M_transport <= W_modele
 ```
 
-Le cap initial 8192 est une restriction proposée fondée sur le défaut existant.
-I comprend prompt, dialogue, sources et enveloppes. La qualification établit la
-place du raisonnement dans ces limites.
+I comprend prompt documentaire, dialogue, sources complètes et métadonnées
+injectées. Le calcul de M_transport doit être explicité et mesuré dans M0, en
+comptant correctement le raisonnement et l'enveloppe selon leur inclusion dans
+les tokens du transport. Masquer le raisonnement ne le rend pas gratuit. Cette
+preuve d'admission n'autorise aucune modification de T_document ou du volume produit.
+Les limites officielles ne constituent pas une mesure de runtime réalisée ici.
 
-Aucune égalité C = k × T n'est promise. Le canonical et son enveloppe partagent la
-sortie. Acceptation simultanée : génération complète, schéma valide, Cmax/Bmax
-respectés et limites du contrat token qualifié.
+Le compteur heuristique actuel ne suffit pas à garantir l'admission. M0 livre un
+décompte ou une borne conservatrice prouvée pour ce modèle et le payload complet,
+et refuse avant appel lorsque la place nécessaire ne peut être établie.
 
-- [ ] Fixer Cmax, Bmax, M et plafond d'entrée en M0 sur modèle effectif, tokenisation
-  et corpus synthétiques ; aucune valeur numérique inventée ici.
-- [ ] Conserver finish_reason et métadonnées utiles dans l'adapter documentaire.
-- [ ] Refuser finish_reason=length ou enveloppe incohérente même si JSON valide.
-- [ ] Refuser canonical excessif sans troncature.
-- [ ] Refuser source trop longue avant appel, sans extrait silencieux.
-- [ ] Refuser admission documentaire trop longue sans raccourcir arbitrairement la
-  fenêtre du dialogue normal.
-- [ ] Modèle nouveau non qualifié : atelier indisponible, aucun fallback.
-- [ ] Aucun chunking, continuation ou réparation par second appel caché.
+- [ ] Séparer le plafond documentaire du réglage du chat normal ; payload documentaire
+  à 24 000 et payload normal à 8 192, sans nouveau réglage Admin ni changement runtime normal.
+- [ ] Vérifier admission avant appel et conserver finish_reason/métadonnées utiles.
+- [ ] Borner l'enveloppe technique selon les plafonds décidés et le schéma, sans
+  introduire de plafond produit caché ou de troncature.
+- [ ] Un seul appel documentaire ; aucun fallback, continuation, chunking ou second
+  appel de réparation.
+- [ ] Un modèle hors contrat initial ne devient pas silencieusement une alternative.
+- [ ] Progression réelle projetée, 120 secondes d'inactivité puis échec fermé ;
+  aucune deadline murale supplémentaire tant que la progression continue.
 
 ## 8. Roadmap par micro-lots
 
-Tous les lots restent ouverts. La séquence est proposée ; la validation et les
-portes d'autorisation de début de fichier sont préalables à son exécution.
+Tous les lots restent ouverts et non commencés. Spécification et décisions amont
+sont validées ; M0 est le prochain lot. Les portes d'autorisation applicative de
+début de fichier restent préalables à l'exécution ; ce correctif n'en réalise aucune.
 UI construite tôt, contrats DOM/HTTP hermétiques ; aucun parcours d'écriture exposé
 comme fonctionnel avant livraison des protections et de la tranche complète.
 
-### M0 — Contrat autorisé et budgets qualifiés
+### Dépendances contrôlées
 
-**Objectif :** profil d'admission exploitable avant tout appel documentaire.
-**Dépendances :** validation et autorisation préalables ; prerequisite des autres lots.
-**Frontières :** réglages principaux, llm_client, compteur, contrat documentaire.
-**Interface :** profil interne lié au modèle, sans nouveau réglage Admin.
+| Lot | Dépendances et frontière de fermeture |
+| --- | --- |
+| M0 | Décisions validées et autorisation applicative ; gardes/admission/progression, sans prétendre livrer les rendus binaires. |
+| M1 | M0 ; entrée UI et upload préservé dès ce premier lot UI. |
+| M2 | M0–M1 ; adoption ciblée et fraîcheur des sources. |
+| M3 | M0–M2 ; réservation, lease technique et preuve SQL isolée. |
+| M4 | M0–M3 ; préparation Markdown et pending persistant. |
+| M5 | M4 et gardes M0/M3 ; confirmation/compensations hermétiques. |
+| M6 | M5 ; parcours Markdown complet, premier canari seulement avec GO distinct. |
+| M7 | M6 ; update Markdown, ETag et Versions. |
+| M8 | M0–M7 ; pile locale décidée et preuve de pagination, aucune sélection de moteur. |
+| M9 | M7–M8 ; raccord DOCX et preuve du fichier final. |
+| M10 | M9 et pile M8 ; raccord PDF et sa politique de source. |
+| Z | M0–M10 ; clôture finie et preuves des voisins. |
+
+L'ordre M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M10 → Z
+est conservé, sans cycle. M0 établit le contrat des 20 pages ; M8–M10 en livrent
+les preuves de rendu final. Cette répartition ne reporte aucun choix de volume.
+Le canari d'écriture reste après M5 et sous GO distinct ; aucun lot renderer Sauron.
+
+### M0 — Implémentation et preuve des bornes décidées
+
+**Objectif :** rendre applicables les bornes de volume, admission, chemin et
+inactivité déjà fixées ; aucune nouvelle décision de taille ou budget.
+**Dépendances :** spécification validée ; exception AGENTS.md et GO applicatif encore
+à obtenir/livrer. Préalable de M1 et des lots suivants.
+**Frontières :** contrat documentaire, adapter modèle, compteur/admission, gardes
+canoniques et de chemin, suivi de progression ; chat normal préservé.
+**Interface :** gpt-5.1, sortie documentaire 24 000, chat 8 192, fenêtre 400 000,
+réserve explicite ; canonical 10 000 mots/75 000 caractères ; profil A4/20 pages
+déclaré, compteur final fourni par le renderer M8–M10 ; watchdog 120 secondes.
 **Propriétaire :** Celebrimbor.
 
-- [ ] Rouge causal : entrée excessive, modèle non qualifié, fin tronquée avec JSON
-  syntaxiquement valide doivent être refusés.
-- [ ] Tests ciblés : corpus synthétiques et contrat d'admission ; voisins réglages/
-  raisonnement/parser existants.
-- [ ] Faux verts : confondre défaut et valeur effective, heuristique et tokenizer,
-  tokens visibles et raisonnement.
-- [ ] Interdire provider réel, fallback et changements de plafonds du chat normal.
-- [ ] Documenter valeurs, méthode et refus ; appel réel éventuel sous GO distinct.
-- [ ] Aucun déploiement produit ; fermer avec budgets et transport borné vérifiables.
+- [ ] Rouge causal : refus à 10 001 mots ou 75 001 caractères, JSON complet mais
+  finish_reason=length, entrée qui tient sans réserve mais dépasse avec elle ;
+  payload documentaire héritant par erreur de 8 192 ou payload normal porté à 24 000.
+- [ ] Prouver les limites exactes de chemin, y compris nom de fichier, octets/Unicode,
+  et refus sans normalisation destructive ; source >20 pages admise si elle tient.
+- [ ] Implémenter mesure d'entrée et marge explicite du transport/raisonnement,
+  validation de sortie et contrat de page_count ; aucune pagination binaire livrée
+  artificiellement avant son renderer.
+- [ ] Implémenter le suivi d'inactivité : progrès continu au-delà de 120 secondes
+  accepté, 120 secondes sans progrès refusées, keepalive seul non probant.
+- [ ] Tests ciblés synthétiques et transport fake ; voisins réglages/raisonnement/
+  parser/compteur/path validation, sans fournisseur ni DB opérateur.
+- [ ] Faux verts : heuristique présentée comme exacte, payload partiel mesuré,
+  raisonnement omis, mots/UTF-16 confondus, timer relancé par animation ou heartbeat.
+- [ ] Interdire provider réel, fallback, deadline murale pendant progrès, nouvelle
+  taille produit et modification du plafond normal de 8 192.
+- [ ] Synchroniser contrats bornes/transport/progression ; appel réel éventuel
+  sous GO distinct, jamais nécessaire pour décider les chiffres.
+- [ ] Aucun déploiement produit ; rebuild seulement lors de livraison applicative
+  explicitement autorisée. Fermer sur gardes et mesures hermétiquement prouvés,
+  en laissant pagination/rendus binaires aux lots M8–M10.
 
 ### M1 — Menu Fichier et contexte explicite
 
 **Objectif :** entrée commune dès le début, upload préservé.
-**Dépendances :** M0 pour le contrat.
+**Dépendances :** M0 pour les interfaces d'admission et de progression.
 **Fichiers :** app.js, index.html, chat_active_documents.js, contrôleur atelier,
 routes/contexte documentaire.
 **Interface :** contexte serveur editing et menu à deux choix.
@@ -656,6 +822,8 @@ routes/contexte documentaire.
   modèle ni écriture DAV.
 - [ ] Tests ciblés et voisins : DOM menu, active-documents, soumission canonique,
   desktop/mobile ; prouver binding réel change, pas uniquement callback isolé.
+- [ ] Projeter phases/progression/annulation depuis l'état réel, sans aperçu,
+  animation probante inventée ou perte du garde canonique de soumission.
 - [ ] Interdire deuxième input, listener mobile concurrent, perte drag-and-drop et
   autorité d'écriture via checkbox de lecture.
 - [ ] Synchroniser UX/atelier ; parcours synthétiques, aucun upload live nécessaire.
@@ -666,7 +834,7 @@ routes/contexte documentaire.
 ### M2 — Adoption et lecture distante ciblées
 
 **Objectif :** intégrer un dépôt direct dans l'inventaire commun.
-**Dépendances :** M1.
+**Dépendances :** M0–M1, notamment gardes chemin et admission des sources.
 **Fichiers :** liens Nextcloud, workspace_files_store, readers, client DAV,
 service d'adoption et navigateur UI.
 **Interface :** routes remote/adopt et lien identité/chemin/ETag.
@@ -676,6 +844,8 @@ service d'adoption et navigateur UI.
   PUT/MKCOL/DELETE.
 - [ ] Tests ingestion/sélection/projections voisins ; changement listing/GET,
   identité différente avec même nom, réponse excessive et atomicité locale.
+- [ ] Prouver qu'une source >20 pages n'est pas rejetée par la borne du produit ;
+  appliquer le budget d'entrée complet sans troncature silencieuse.
 - [ ] Faux verts : ne tester que noms identiques, ignorer ETag ou mocker un listing
   toujours petit/complet.
 - [ ] Interdire scan récursif caché, polling, URL frontend exécutée et origine Frida
@@ -688,10 +858,11 @@ service d'adoption et navigateur UI.
 ### M3 — Réservation durable et concurrence
 
 **Objectif :** empêcher double génération et commit tardif.
-**Dépendances :** M1–M2.
+**Dépendances :** M0–M2 ; suivi de progression de M0 et contexte de M1–M2.
 **Fichiers :** claims, transport chat, finalisation et primitive transactionnelle
 de snapshot.
-**Interface :** turn_id, réservation propriétaire et jeton de génération.
+**Interface :** turn_id, réservation propriétaire, lease technique renouvelable
+et jeton de génération ; aucun TTL temporel du pending.
 **Propriétaire :** Celebrimbor ; Sauron conditionnel pour environnement SQL isolé.
 
 - [ ] Rouge causal : même tour soumis deux fois → un démarrage ; concurrent normal
@@ -701,7 +872,10 @@ de snapshot.
 - [ ] Interdire transaction DB durant réseau, replay automatique et modification
   du contenu des réponses normales.
 - [ ] Synchroniser concurrence/états interrompus ; aucun provider live.
-- [ ] Rebuild requis à livraison ; fermer courses SQL, expiration et invalidation.
+- [ ] Distinguer lease perdu, inactivité de préparation, annulation et invalidation
+  pending ; progression continue sans expiration murale, aucun retry automatique.
+- [ ] Rebuild requis à livraison ; fermer courses SQL, lease/fencing et invalidation,
+  y compris pending ancien encore valide.
 
 ### M4 — Préparation Markdown dans un tour canonique
 
@@ -716,6 +890,8 @@ finalisation et UI.
   pending → aucun succès ; refresh → même action.
 - [ ] Tests final lock/persistance/stream/provenance voisins ; panne à chaque
   écriture, sortie tronquée valide et refus du fallthrough normal.
+- [ ] Tests de progression et annulation réelles, attente initiale sans événement,
+  données tardives après échec fermé et pending non expirant avec le temps.
 - [ ] Faux verts : absence d'assertion sur appels normaux, stores finalisés séparément
   mais toujours disponibles, generator jamais réellement consommé.
 - [ ] Interdire canonical dans transcript, aperçu, retry et contamination des facultés.
@@ -735,6 +911,8 @@ finalisation et UI.
   mutation ; publication locale échouée → compensation conditionnelle.
 - [ ] Tests compensation/ETag/upload/dossiers voisins ; headers réellement envoyés,
   collections existantes, ETag absent/changé et résultat réseau inconnu.
+- [ ] Revérifier fraîcheur, ETag, scope et claim au clic, même sur un pending ancien ;
+  refuser uniquement les invalidations/préconditions décidées, pas un âge limite.
 - [ ] Faux verts : tester seulement le validator, omettre les headers ou toujours
   simuler succès distant/rollback réussi.
 - [ ] Interdire DELETE sans propriété, rollback récursif, retry PUT incertain et
@@ -778,35 +956,53 @@ finalisation et UI.
 - [ ] Synchroniser update/Versions ; canari update sous GO distinct.
 - [ ] Rebuild requis ; fermer identité stable, conflits et réconciliation sans PUT.
 
-### M8 — Qualification bornée du renderer
+### M8 — Implémentation et preuve de la pile locale décidée
 
-**Objectif :** choisir un seul chemin couvrant le profil fixé.
-**Dépendances :** canonical stable de M4 ; séquencé après le premier parcours Markdown.
-**Frontières :** renderer Exports, canonical, candidate dédiée, capacité plateforme.
-**Interface :** canonical → rendered_revision.
-**Propriétaire :** Celebrimbor ; Sauron pour candidate plateforme.
+**Objectif :** livrer la pile locale déterministe et ses preuves de rendu, sans
+comparaison de moteurs ni nouvelle décision de dépendance.
+**Dépendances :** M0–M7 fermés ; canonical stable de M4, invariants de publication
+et update de M5–M7. Markdown est livré avant les formats binaires.
+**Frontières :** document_rendering/canonical, exigences de dépendances/image
+applicative et assets de police ; compatibilité Exports préservée.
+**Interface :** canonical + profil/version → rendered_revision + empreinte et
+preuve de pagination ; Markdown direct, DOCX python-docx, PDF ReportLab Platypus.
+**Propriétaire :** Celebrimbor exclusivement ; aucun lot Sauron renderer.
 
-- [ ] Rouge causal : renderer actuel insuffisant au profil ; corpus Unicode/styles/
-  tableaux multipages/isolation.
-- [ ] Tests génération Exports voisins ; contrôler structure et rendu, pas seulement
-  texte extrait, ouverture DOCX ou apparence sur une machine avec fonts implicites.
-- [ ] Interdire choix/dépendance avant preuve, provider, plateforme sans contrat,
-  second moteur de secours et changement du domaine Exports.
-- [ ] Synchroniser rapport synthétique et décision technique ; critères section 9.
-- [ ] Aucun déploiement produit ; fermer sur un seul chemin, limites et coûts établis.
+- [ ] Épingler versions python-docx/ReportLab et dépendances nécessaires, licences,
+  police Unicode embarquée, empreinte et versions du profil de rendu.
+- [ ] Implémenter depuis la même révision canonical : titres, paragraphes, gras/
+  italique, listes, citations, liens, tableaux simples et sauts de page, sans images.
+- [ ] Appliquer A4, corps 12 points, interligne 1,5, marges 2,5 cm et limite finale
+  de 20 pages ; refuser plutôt que changer silencieusement la mise en page.
+- [ ] Rouge causal : Unicode perdu, style/tableau mal rendu, 21e page, canonical
+  ou empreinte discordants et bytes non déterministes doivent être détectés.
+- [ ] Tests corpus synthétique et voisins génération/extraction Exports ; structure
+  OOXML, fonts, rendu PDF, pagination et absence de récupération réseau.
+- [ ] Faux verts : texte extrait seul, DOCX simplement ouvrable, fonts de l'hôte,
+  docProps ou sauts déclarés présentés comme pagination réelle ; PDF voisin utilisé
+  comme preuve automatique du DOCX.
+- [ ] Interdire service distant nominal, fallback, benchmark comparatif, images,
+  changement d'ownership Exports et toute modification de plateforme.
+- [ ] Synchroniser pile locale/profil/déterminisme/licences et preuves de la section 9.
+- [ ] Rebuild applicatif requis pour livrer bibliothèques/police, uniquement dans
+  ce futur lot autorisé ; aucun raccord nominal aux formats avant M9/M10.
+- [ ] Fermer sur pile locale, isolation, déterminisme et compteurs de pages prouvés ;
+  aucune dépendance n'est déclarée livrée par la validation documentaire.
 
 ### M9 — DOCX Frida et retravail externe
 
 **Objectif :** create/update DOCX et retravail externe honnête.
 **Dépendances :** M7–M8.
-**Fichiers :** moteur retenu, reader DOCX, révisions et projection des limites.
+**Fichiers :** python-docx via renderer local M8, reader DOCX, révisions et projection des limites.
 **Interface :** rendu lié au canonical et update à identité stable.
-**Propriétaire :** Celebrimbor ; Sauron conditionnel.
+**Propriétaire :** Celebrimbor.
 
 - [ ] Rouge causal : mismatch canonical/rendu → refus ; externe complexe → limite
   ou refus ; update → même ID.
 - [ ] Tests OOXML/styles/listes/tableaux/liens/pages et voisins extraction/Exports ;
   archives excessives, relations externes et pertes détectables.
+- [ ] Prouver le DOCX rendu <=20 pages avec le profil décidé ; si la pagination réelle
+  n'est pas établie, aucune action confirmable, sans autre moteur de secours.
 - [ ] Faux vert : valider uniquement le texte extrait ou l'ouverture du ZIP.
 - [ ] Interdire fidélité arbitraire promise, images incorporées et ownership Exports.
 - [ ] Synchroniser formats/fidélité ; preuve synthétique live sous autorisation.
@@ -816,14 +1012,17 @@ finalisation et UI.
 
 **Objectif :** rendu PDF ; update uniquement si canonical correspondant établi.
 **Dépendances :** M9.
-**Fichiers :** renderer PDF, reader, politique de cible et mapping des révisions.
+**Fichiers :** ReportLab Platypus via renderer local M8, reader PDF, politique de cible
+et mapping des révisions.
 **Interface :** PDF Frida lié ; PDF externe vers proposition de nouveau document.
-**Propriétaire :** Celebrimbor ; Sauron conditionnel.
+**Propriétaire :** Celebrimbor.
 
 - [ ] Rouge causal : externe à modifier → nouveau document ; Frida désynchronisé
   → aucun update aveugle.
 - [ ] Tests Unicode/visuel/fonts/pagination/tableaux/liens, PDF chiffré/scanné,
   canonical absent et octets distants changés ; voisins readers/Exports.
+- [ ] Vérifier <=20 pages A4, corps 12 points, interligne 1,5 et marges 2,5 cm
+  dans le PDF final ; 21e page ou source canonique excessive → refus sans partie sauvegardée.
 - [ ] Faux vert : texte présent sans pagination correcte, canonical retrouvé mais
   correspondant à une ancienne version.
 - [ ] Interdire édition arbitraire d'externe, OCR caché et pertes dissimulées.
@@ -847,38 +1046,51 @@ finalisation et UI.
   du modèle principal.
 - [ ] Rassembler preuves autorisées et limites ; retirer états transitoires remplacés.
 - [ ] Rebuild seulement pour correction effectivement livrée.
-- [ ] Fermer chaque critère prouvé ou explicitement qualifié, sans finding vivant
-  caché ; ne pas ouvrir une nouvelle capacité pour prolonger la clôture.
+- [ ] Fermer chaque critère par une preuve et les limites/refus du contrat testés,
+  sans finding vivant caché ; ne pas ouvrir une nouvelle capacité pour prolonger la clôture.
 
-## 9. Qualification comparative du renderer
+## 9. Pile locale de rendu décidée et preuves à livrer
 
-Profil décidé ; moteur non sélectionné. Aucun package/service choisi ou installé
-par la création de cette TODO.
+Le chemin architectural est arrêté : pile locale applicative déterministe, sans
+service distant de composition, fallback ou comparaison de moteurs. Les dépendances
+n'existent pas encore dans l'image actuelle ; leur livraison appartient à M8,
+pas à ce correctif documentaire.
 
-| Stratégie | Preuves requises | Coût/propriétaire |
+| Format | Implémentation décidée | Preuve requise |
 | --- | --- | --- |
-| Extraire/améliorer le local | Fonts Unicode PDF, structure DOCX, styles, tableaux, pagination, ressources et déterminisme. | Pas de service partagé ; charge réelle de composition. Celebrimbor. |
-| Dépendance applicative dédiée | Deux formats réellement couverts, licences, fonts embarquées, versions fixes, isolation et aucune récupération externe. | Maintenance packages/image. Celebrimbor. |
-| Adapter Stirling/LibreOffice | Endpoint/options, limites, auth serveur, timeout, isolation, cleanup et reproductibilité. | Disponibilité/réseau partagés ; contrat Sauron, adapter Celebrimbor. |
+| Markdown | Sérialisation directe du canonical. | Structure, liens et sauts documentés ; 10 000 mots/75 000 caractères, sans pagination stable. |
+| DOCX | python-docx. | Profil A4/12 points/interligne 1,5/marges 2,5 cm et pagination finale <=20 pages. |
+| PDF | ReportLab Platypus avec police Unicode embarquée et épinglée. | Même révision/profil, Unicode français et compte final <=20 pages. |
 
-- [ ] Corpus synthétique : accents, ligatures, espaces insécables, titres,
-  emphases/listes/citations/liens, tableaux multipages, sauts de page et marges.
-- [ ] Prouver fidélité du contenu et du rendu, reproductibilité de composition,
-  stabilité binaire ou normalisation des métadonnées volatiles.
-- [ ] Conserver empreinte des octets effectivement figés pour l'exécution.
-- [ ] Mesurer isolation/ressources/nettoyage et sécurité sans contenu privé/provider.
-- [ ] Un seul chemin sélectionné ; aucun fallback renderer.
-- [ ] Renderer sans choix de chemin Nextcloud ni publication de fichier.
-- [ ] Ne pas traiter doc-pipeline comme capacité de rendu sans contrat correspondant.
+DOCX/PDF sont issus de la même révision canonical. Le renderer fournit la version
+du profil, l'empreinte de ses entrées et celle des octets figés ; il ne choisit pas
+de chemin Nextcloud et ne publie pas le fichier. Dates de provenance et métadonnées
+volatiles ne doivent pas rendre les mêmes entrées non déterministes.
+
+- [ ] Épingler versions des bibliothèques/dépendances, licences, police, empreinte
+  et profil dans le lot applicatif ; pas d'utilisation de fonts implicites de l'hôte.
+- [ ] Corpus synthétique : accents/ligatures/espaces insécables, titres/paragraphes,
+  gras/italique/listes/citations/liens/tableaux simples/sauts et marges/pagination.
+- [ ] Tester A4, corps 12 points, interligne 1,5 et marges 2,5 cm ; aucun ajustement
+  silencieux pour faire entrer une 21e page.
+- [ ] Prouver le nombre réel de pages du DOCX final : python-docx écrit l'OOXML mais
+  ne fournit pas à lui seul une preuve de pagination rendue. Ni docProps, ni les
+  sauts déclarés, ni le PDF voisin ne suffisent. Sans preuve, refus avant pending.
+- [ ] Vérifier le nombre de pages du PDF final et refuser dépassement/incomplétude.
+- [ ] Prouver déterminisme, isolation, tailles/ressources/nettoyage et absence
+  d'accès réseau de composition sur contenu synthétique, sans provider réel.
+- [ ] Même canonical et empreintes concordantes ; aucun moteur de secours ou image.
+- [ ] Aucune composition nominale via Stirling/LibreOffice ou doc-pipeline ; leurs
+  responsabilités existantes hors composition restent préservées.
 
 ## 10. Matrice réutiliser / extraire / créer et propriétaires
 
 | Traitement | Frontières |
 | --- | --- |
 | Réutiliser | Inventaire workspace_files, sélections, extracteurs, liens produit, protocole terminal, clients DAV et éléments de compensation ETag. |
-| Extraire pour une responsabilité réelle | Primitive de snapshot transactionnelle ; renderer seulement si le chemin local gagne la qualification. |
+| Extraire pour une responsabilité réelle | Primitive de snapshot transactionnelle ; interfaces de rendu partageables seulement à invariants Exports préservés, sans changement de moteur décidé. |
 | Modifier | Transport/service/finalisation chat, projections, liens/store workspace, clients DAV bornés, manifestes/guards, binding Fichier et réhydratation. |
-| Créer | Services atelier/canonical/actions/reçus/claims/adoption/fraîcheur et contrôleur UI dédiés. |
+| Créer | Services atelier/canonical/actions/reçus/claims/adoption/fraîcheur et contrôleur UI dédiés ; renderer python-docx/ReportLab, profil et police épinglés. |
 
 Modules probables, noms proposés et non fichiers déjà livrés :
 
@@ -906,28 +1118,31 @@ ceux du HEAD de reconnaissance ; aucun refactor cosmétique n'est proposé.
 
 - [ ] Prouver identité DAV, préconditions, ETags et Versions si les preuves
   applicatives ne suffisent pas.
-- [ ] Prouver le contrat borné Stirling/LibreOffice si cette candidate est étudiée.
 - [ ] Fournir une preuve transactionnelle isolée si environnement SQL absent.
 
-Permissions, fonts partagées, ressources, réseau et modifications de service sont
-des lots Sauron distincts. Si le local satisfait le profil, aucun chantier de
-plateforme de rendu n'est nécessaire.
+Permissions DAV, réseau ou environnement SQL partagé relèvent de lots Sauron
+distincts si les faits les imposent. Les bibliothèques et la police du renderer
+sont embarquées dans l'application par Celebrimbor ; aucun lot Sauron renderer,
+font partagée ou service de conversion n'est prévu.
 
-## 11. Inconnues techniques restantes
+## 11. Faits externes restant à prouver
 
-Aucun ancien arbitrage produit ne reste OPEN.
+Toutes les décisions produit et architecturales amont sont fermées. Budgets,
+volume, source longue, progression/pending, chemins et moteur ne sont plus des
+inconnues ou des comparaisons. Leur implémentation et leurs tests restent ouverts.
 
-- [ ] M0 : fenêtre/sortie/tokenisation/raisonnement/transport du modèle effectif.
-- [ ] M8 : moteur satisfaisant le profil DOCX/PDF.
-- [ ] M2/M7 : identité DAV, préconditions et Versions effectivement disponibles.
-- [ ] M3 : environnement SQL concurrent isolé de preuve.
+- [ ] M2/M5/M7 : comportement DAV effectif, identité distante, préconditions/ETags
+  et Versions disponibles sur la chaîne déployée.
+- [ ] M3 : environnement SQL concurrent isolé de preuve si non établi par le HEAD.
 
-Expiration et bornes de chemins sont des recommandations à valider avec la
-spécification, pas des décisions utilisateur déjà acquises.
+Ces faits ne justifient pas de changer les décisions : précondition non prouvée
+→ refus fermé ; besoin de plateforme → lot Sauron ciblé et autorisé. Le calcul
+d'admission, la progression et la pagination sont des obligations d'implémentation
+et de preuve de M0/M4/M8–M10, pas des arbitrages repoussés.
 
 ## 12. Contre-audit et critères de clôture
 
-- [ ] Distinguer décisions utilisateur, faits du HEAD, recommandations et qualifications.
+- [ ] Distinguer décisions validées, faits du HEAD, implémentation future et preuves.
 - [ ] Ne conserver aucun ancien OPEN fermé par le design consolidé.
 - [ ] Une soumission, une vraie parole utilisateur, un échange documentaire.
 - [ ] Upload/picker/change/drag-and-drop conservés, sans duplication mobile.
@@ -940,8 +1155,23 @@ spécification, pas des décisions utilisateur déjà acquises.
 - [ ] Journal et remote_uncertain sans promesse d'exactly-once distribué.
 - [ ] Aucun DELETE sans propriété ni rollback récursif de collections.
 - [ ] DOCX externe et PDF externe traités avec fidélité honnête.
-- [ ] Moteur choisi sur preuves, sans dépendance plateforme supposée.
-- [ ] Appel documentaire unique, budgets qualifiés, aucun retry/fallback caché.
+- [ ] Pile locale décidée livrée/épinglée/prouvée, aucune dépendance plateforme de rendu.
+- [ ] Document produit <=10 000 mots et <=75 000 caractères Unicode ; DOCX/PDF
+  rendus <=20 pages A4, corps 12 points/interligne 1,5/marges 2,5 cm.
+- [ ] Markdown sans pagination stable ; aucun plafond de 20 pages appliqué aux sources.
+- [ ] Source longue admise si entrée complète admissible ; sinon réduction/sélection
+  ou refus avant appel, aucune troncature/résumé/échantillonnage silencieux.
+- [ ] Un appel documentaire gpt-5.1, plafond dédié 24 000, chat inchangé 8 192,
+  entrée mesurée avec réserve complète dans 400 000 ; aucune promesse d'équivalence
+  tokens/mots/caractères/pages.
+- [ ] Refus sur finish_reason=length, canonical incomplet ou dépassement ; aucune
+  sauvegarde partielle, réparation, continuation ou fallback.
+- [ ] Progression réelle honnêtement projetée ; 120 secondes sans progrès → échec
+  fermé ; aucune deadline murale tant que la progression continue.
+- [ ] Annulation utilisateur, invalidation pending et lease technique distingués ;
+  pending sans expiration temporelle et confirmation avec fraîcheur/ETag/scope/claim.
+- [ ] Bornes de chemin décidées appliquées localement/DAV et au nom de fichier,
+  sans raccourcissement/renommage/normalisation destructive silencieuse.
 - [ ] Memory/Identity/Summary/Biblio/Stimmung préservés et non contaminés.
 - [ ] Service tool-ready appelable sans DOM, aucun tool principal implémenté.
 - [ ] Tous les parcours create/read/adopt/update/copy et les trois formats prouvés.
@@ -951,8 +1181,9 @@ spécification, pas des décisions utilisateur déjà acquises.
 
 ## 13. Statut de publication documentaire
 
-Cette TODO conserve la proposition issue du dialogue sous forme de cases à cocher.
+Cette TODO conserve la spécification et les décisions validées par Tof sous forme
+de cases à cocher. M0 est le prochain lot et reste non commencé.
 Elle ne remplace pas les contrats vivants et ne lève pas l'invariant applicatif de
-consolidation. Aucune fonctionnalité, qualification ou preuve live n'est déclarée
-livrée par sa création. Aucun commit/push ni changement runtime n'est autorisé
-implicitement par son enregistrement.
+consolidation. Aucune fonctionnalité, dépendance ou preuve live n'est déclarée
+livrée par ce correctif docs-only. Commit/push sont explicitement autorisés pour
+la roadmap et son entrée de hub ; aucun changement runtime n'est autorisé.
