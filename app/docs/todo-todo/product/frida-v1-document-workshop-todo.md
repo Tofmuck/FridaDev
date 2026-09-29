@@ -3,12 +3,15 @@
 Date : 2026-09-29.
 
 Statut : **spécification et choix architecturaux validés par Tof ; M0 est le
-prochain lot, non commencé ; aucun lot applicatif livré**.
+prochain lot, non commencé ; architecture LibreOffice Writer/UNO réconciliée ;
+exception produit inscrite ; aucun lot applicatif ou renderer livré**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
 dialogue avec Tof. Création documentaire committée dans `d6b63fd1`, puis validation
 explicite de la spécification et des six décisions amont par Tof le 2026-09-29.
-Ce correctif docs-only inscrit cette validation ; il ne démarre aucun lot applicatif.
+Le commit `9f728998` a inscrit ces décisions. La réconciliation autoritative du
+29 septembre 2026 remplace le moteur par LibreOffice Writer headless/UNO isolé,
+ferme l'exception AGENTS.md et ne démarre aucun lot applicatif ou plateforme.
 
 Les observations techniques ci-dessous sont rattachées au HEAD
 `a2483bf1aa6f5e93ba7ec2800b8ff053cc0af2c6`, branche `main`, checkout
@@ -25,15 +28,16 @@ preuves futures, pas des tests déjà exécutés pour cet atelier.
 - [x] Reconnaissance et proposition de design produites dans le dialogue.
 - [x] Création de cette TODO autorisée par Tof.
 - [x] Spécification et choix architecturaux ci-dessous validés par Tof le 2026-09-29.
-- [ ] Exception documentaire bornée inscrite dans le [AGENTS.md racine](../../../../AGENTS.md)
-  dans un lot explicitement autorisé, avant tout patch applicatif.
+- [x] Exception produit bornée du 29 septembre 2026 inscrite dans le
+  [AGENTS.md racine](../../../../AGENTS.md) pour les lots M0–M10 et Z.
 - [ ] Lot d'implémentation concerné explicitement autorisé.
 - [ ] GO distinct obtenu avant tout appel modèle réel de preuve.
 - [ ] GO distinct obtenu avant tout canari d'écriture Nextcloud.
 
 Le présent lot est docs-only. Il ne modifie ni application, ni tests, ni schéma,
-ni AGENTS.md, ni runtime. Aucun provider, accès à des contenus privés, mutation
-DB/WebDAV, installation, build ou déploiement n'est nécessaire à sa création.
+ni runtime. Il modifie seulement cette roadmap, l'exception AGENTS.md et le
+résumé du hub. Aucun provider, contenu privé, mutation DB/WebDAV, installation,
+build ou déploiement ; aucun lot d'implémentation déclaré livré.
 
 ## 1. Décisions produit intégrées
 
@@ -54,7 +58,7 @@ DB/WebDAV, installation, build ou déploiement n'est nécessaire à sa création
   explicite d'enveloppe/raisonnement selon le transport réel.
 - [x] Document produit : A4, corps 12 points, interligne 1,5, marges 2,5 cm ;
   canonical au plus 10 000 mots et 75 000 caractères Unicode, premier plafond atteint.
-- [x] DOCX/PDF rendus au plus 20 pages ; Markdown borné par mots/caractères,
+- [x] DOCX/PDF rendus au plus 20 pages Writer épinglé ; Markdown borné par mots/caractères,
   sans pagination stable ; aucune sauvegarde partielle en cas de dépassement.
 - [x] Source de plus de 20 pages admise si elle tient intégralement dans l'entrée
   avec dialogue, prompt, autres sources et réserve ; sinon réduction/sélection ou refus.
@@ -64,8 +68,9 @@ DB/WebDAV, installation, build ou déploiement n'est nécessaire à sa création
   remplacement, changement de répertoire/cible ou perte de fraîcheur/précondition.
 - [x] Chemins : Documents, au plus 8 niveaux, 180 caractères Unicode et 255 octets
   UTF-8 par segment/nom de fichier, 1 024 octets UTF-8 pour le chemin relatif complet.
-- [x] Rendu local déterministe : Markdown depuis canonical, DOCX python-docx,
-  PDF ReportLab Platypus avec police Unicode embarquée/épinglée ; aucun rendu distant.
+- [x] Markdown sérialisé directement depuis le canonical ; DOCX enregistré et PDF
+  exporté par le même moteur LibreOffice Writer headless piloté par UNO, depuis
+  la même révision canonical. Service libre, auto-hébergé et isolé sur le même serveur.
 - [x] La véritable demande reste une parole utilisateur canonique ; préparation
   d'une courte réponse Frida et d'une action pending sans double échange principal.
 - [x] Le document est distinct de la réponse ; la dernière bulle n'est jamais
@@ -145,10 +150,41 @@ choisissent plus la taille du produit ou le moteur.
 | [token_counter.py](../../../core/token_counter.py) | Estimation heuristique, sans garantie de tokenisation du modèle. |
 
 Les preuves hermétiques déjà obtenues pendant la reconnaissance sont conservées.
-Elles ne prouvent pas les capacités futures décrites ici. La présence historique
-de Stirling/LibreOffice et doc-pipeline ne les place pas dans la composition
-nominale : le renderer décidé est exclusivement applicatif et local. python-docx,
-ReportLab et la police épinglée ne sont pas encore livrés dans l'image actuelle.
+Elles ne prouvent pas les capacités futures décrites ici. Exports reste propriétaire
+de ses snapshots et de son renderer minimal actuel : sa migration n'appartient
+pas à cet atelier. Aucun renderer concurrent ni fallback n'est ajouté à l'atelier.
+
+### Topologie revalidée en lecture seule au HEAD 9f728998
+
+| Source réelle | Fait et portée de la preuve |
+| --- | --- |
+| `/opt/platform/fridadev-app/docker-compose.yml`, métadonnées Docker | Sous-stack `fridadev-app`, conteneur `platform-fridadev`, image `platform-fridadev-app:local` ; build applicatif distinct du checkout. Réseaux actuels `platform_platform_net`, `platform_fridadev_db_net`, `platform_browsing_net`, `platform_crawl_net`. |
+| `/opt/platform/fridadev-db/docker-compose.yml` | PostgreSQL dans la sous-stack distincte `fridadev-db` ; aucune DB renderer à créer. |
+| `/opt/platform/docker-compose.yml` | Nextcloud et Stirling-PDF appartiennent à la stack plateforme ; leurs conteneurs sont présents. Le réseau partagé `platform_platform_net` n'est pas `internal` : le rejoindre ne prouverait pas l'isolation du renderer. |
+| [Dockerfile applicatif](../../../Dockerfile), [dépendances](../../../requirements.txt), recherche de binaires dans l'image active | Ni installation LibreOffice dans le Dockerfile ni `soffice`/`libreoffice` dans le PATH actif de FridaDev. Aucun lancement Writer effectué. |
+| Image active `platform-stirling-pdf`, interrogation de package seule | `soffice` présent, paquet Writer `4:26.2.0-1~bpo13+1` ; cela ne livre ni wrapper UNO ni contrat renderer Frida. Ce n'est pas le pin du futur service. |
+| `/opt/platform/homepage/services.yaml` | Entrée humaine Stirling PDF présente, décrite comme outils de fusion/découpe/conversion. Aucun outil UI n'est retiré ; aucune opération PDF exécutée pour valider cette liste. |
+| [client OCR](../../../core/active_document_ocr_client.py), [upload actif](../../../core/active_document_upload_service.py), [OCR workspace](../../../core/workspace_file_ocr_service.py) | Stirling sert aussi l'OCR existant, dont conversion image→PDF. Ce flux explicite est préservé ; aucune chaîne Writer→Stirling pour générer les documents. |
+| [client DAV](../../../core/workspace_document_nextcloud_client.py), contrats Folders/Documents | FridaDev résout ses capacités Nextcloud et assure le stockage conditionnel. Le renderer ne les reçoit pas. |
+| Conteneurs recensés et vérification des seuls emplacements standard d'apps | Aucun conteneur Collabora ni app `richdocuments`/`richdocumentscode` aux emplacements testés. Activation effective de l'éditeur humain non établie ; aucune configuration privée interrogée. Cela n'autorise pas son installation dans ce chantier. |
+
+Les lectures d'infrastructure ont porté sur champs structurels, métadonnées,
+présence de binaires/package et entrée UI ; aucun secret, log privé, contenu
+documentaire, appel DAV ou canari. Aucun nom de nouvelle stack/réseau n'est
+présenté comme existant.
+
+### Findings H1–H8 et décision de réconciliation
+
+| Hypothèse | Verdict et preuve |
+| --- | --- |
+| H1 | Confirmée sur la version `9f728998`, sections 1, 3.12, 9 et 10 : ancienne pile prescrite et exclusion nominale de LibreOffice. Ces prescriptions sont remplacées intégralement ici. |
+| H2 | Confirmée sur cette version, M8/M9/M10 et graphe de section 8 : dépendances et pagination supposent cette pile. Nouveau graphe ci-dessous. |
+| H3 | Confirmée sur cette version, M8 et section 10 : propriété exclusivement applicative et négation du lot Sauron renderer. Frontière corrigée. |
+| H4 | Confirmée par les AGENTS applicatif/plateforme et les sous-stacks observées : service isolé sous responsabilité Sauron, contrat/adaptateur métier sous Celebrimbor. |
+| H5 | Confirmée pour les rôles : stockage Nextcloud, édition humaine Collabora, utilitaire Stirling et OCR existant sont distincts. Disponibilité Collabora non prouvée ; aucune composition agentique confiée à ces surfaces humaines. |
+| H6 | Confirmée avec simplification : HTTP fermé sur socket Unix, UNO en pipe local dans le worker. Le même hôte permet `network_mode: none` sans réseau partagé ni nouveau port ; permissions/socket à prouver en M8-S. CLI distante, Docker exec depuis FridaDev et UNO brut sont écartés. |
+| H7 | Confirmée par le reader DOCX textuel et les limites Exports : création depuis canonical et import externe n'ont pas la même garantie. M9-A/M9-B séparent leurs preuves et leurs refus. |
+| H8 | Confirmée : docs officielles headless/UNO/filtres ci-dessous ; présence actuelle dans Stirling insuffisante. M8-S doit prouver les filtres/polices/layout de son image réellement livrée, sans API publique ni stockage direct. |
 
 ## 3. Spécification validée
 
@@ -261,7 +297,7 @@ liens Nextcloud sans contrat complet de chemin relatif/ETag.
 | workspace_files | Inventaire unique ; auteur/source typés ; ID stable en update. |
 | workspace_file_nextcloud_links | Extension du lien : chemin relatif complet, identité, ETag, observation/fraîcheur. |
 | document_artifacts | Identité documentaire, fichier lié après exécution et révision courante validée. |
-| document_revisions | Canonical immutable, schéma, empreinte, rendu figé, empreinte/version renderer et correspondance distante. |
+| document_revisions | Canonical immutable, schéma et empreinte ; manifeste de rendu immutable lié après confirmation, avec octets figés, empreintes/version Writer/profil/polices/pages et correspondance distante. Aucun ODT durable. |
 | document_actions | Contexte, proposition, sources/tour, progression de préparation, motifs d'invalidation, confirmation, état et journal ; aucun expires_at temporel de pending. |
 | document_receipts | Résultat immutable, demande/confirmation, version et lien produit. |
 | conversation_turn_claims | Réservation durable d'un tour ou d'une confirmation, propriétaire, lease technique renouvelable et jeton de génération. |
@@ -348,6 +384,10 @@ transactions locales.
 
 **Architecture validée :** journaliser l'intention avant mutation ; après succès distant,
 publier fichier/lien, révision, reçu et état final dans une transaction commune.
+Pour DOCX/PDF, confirmation/claim → canonical figé → renderer → validations Frida
+→ journal de mutation → MKCOL bornés/PUT conditionnel → publication locale/reçu.
+Un refus de rendu précède toute collection ou écriture distante. Le renderer ne
+participe jamais à la transaction de stockage ni à sa compensation.
 Compensation create uniquement avec propriété et ETag fort identique. Aucune
 réécriture compensatoire automatique pour update ; Versions reste l'autorité.
 
@@ -385,6 +425,11 @@ avec la version préparée.
 
 **Architecture validée :** ETag/empreinte figés à la préparation ; lecture fraîche et identité
 vérifiées juste avant PUT If-Match exact. Différence ou 412 termine en conflit.
+FridaDev récupère la cible au clic avec l'identité et l'ETag préparés, puis donne
+seulement ses octets temporaires au renderer si le format le nécessite. Après
+le rendu, FridaDev revérifie identité/fraîcheur et envoie If-Match de cette même
+version : une modification pendant Writer reste un conflit. Aucun accès DAV du
+renderer et aucune conservation de la source dans son espace éphémère.
 
 **Preuve à livrer :** Versions et préconditions effectives sur la chaîne déployée.
 
@@ -395,22 +440,26 @@ vérifiées juste avant PUT If-Match exact. Différence ou 412 termine en confli
 ### 3.12. Canonical et rendus
 
 **Décision :** profil fixé sans images, DOCX/PDF Frida issus de la même révision
-canonical. Pile locale déterministe : Markdown direct, DOCX python-docx, PDF
-ReportLab Platypus et police Unicode embarquée/épinglée. Aucun service distant de
-rendu ou moteur de secours. A4, corps 12 points, interligne 1,5, marges 2,5 cm ;
-canonical au plus 10 000 mots et 75 000 caractères Unicode ; DOCX/PDF au plus 20 pages.
+canonical et du même moteur Writer épinglé. Markdown direct ; DOCX enregistré,
+PDF exporté par LibreOffice Writer headless via UNO dans un service privé isolé
+sur le même serveur. Solution libre/auto-hébergée sans licence payante, cloud,
+filigrane ou moteur de secours. A4, corps 12 points, interligne 1,5, marges 2,5 cm ;
+canonical au plus 10 000 mots/75 000 caractères Unicode ; DOCX/PDF au plus 20 pages Writer.
 
 **Existant :** renderer Exports minimal, profil complet non couvert.
 
 **Architecture validée :** titres, paragraphes, spans, listes, citations, liens, tableaux
 simples et sauts de page ; refus images, HTML actif, macros et références
-exécutables. Rendu préparé/figé avant action confirmable ; le clic écrit ces octets.
-Pagination/marges pour DOCX/PDF ; marqueur documenté pour sauts de page Markdown,
-dont la pagination dépend du lecteur.
+exécutables. Canonical, cible, préconditions et profil renderer figés avant pending.
+Markdown peut être sérialisé à ce stade ; pour les binaires, le clic confirme
+l'exécution, puis le renderer produit des octets qui sont validés/figés avant PUT.
+La carte annonce la limite utile de 20 pages Writer et ne prétend pas que le
+rendu a déjà réussi. Échec de rendu après clic : erreur honnête, zéro écriture,
+aucune sauvegarde partielle. Aucun second appel modèle ou nouveau bouton rejouable.
+Marqueur documenté pour sauts de page Markdown, dont la pagination dépend du lecteur.
 
-**Preuve à livrer :** pile décidée et pagination finale, section 9. Versions,
-licences, police et empreinte épinglées dans le lot applicatif ; aucune dépendance
-n'est encore livrée par ce correctif documentaire.
+**Preuve à livrer :** contrat applicatif M8-C, service et pins M8-S, adaptateur M8-A,
+pagination/fidélité finales M9/M10, section 9. Aucun renderer encore livré.
 
 - [ ] Même révision pour canonical, rendu, empreintes et version renderer.
 - [ ] Update Frida DOCX/PDF seulement si leur correspondance distante est établie.
@@ -418,8 +467,11 @@ n'est encore livrée par ce correctif documentaire.
 - [ ] PDF externe : nouveau document proposé, pas d'update aveugle.
 - [ ] Refuser sortie tronquée, finish_reason=length, canonical incomplet ou rendu
   de plus de 20 pages ; aucune sauvegarde partielle ou adaptation silencieuse des styles.
-- [ ] Vérifier la pagination réelle DOCX, pas seulement docProps, les sauts de page
-  ou le nombre de pages du PDF voisin ; sans preuve, ne pas rendre l'action confirmable.
+- [ ] Recharger le DOCX final dans le même Writer épinglé et obtenir son layout
+  final ; exporter le PDF depuis ce même état, vérifier les comptes concordants.
+  Ni docProps ni sauts déclarés ne prouvent les pages ; sans preuve, zéro PUT.
+- [ ] Ne promettre aucune pagination identique à Microsoft Word sur toute machine.
+- [ ] Canonical seule source Frida durable ; tout ODT interne reste temporaire et nettoyé.
 
 ### 3.13. Provenance et réhydratation
 
@@ -465,7 +517,7 @@ des payloads, sans nouveau choix de budget produit.
 **Existant :** allowlists/projections content-free disponibles.
 
 **Architecture validée :** événements préparation, progression, inactivité, annulation,
-invalidation, claim, conflit,
+invalidation, claim, render job, refus/saturation/kill/cleanup renderer, conflit,
 écriture, compensation, incertitude et reçu ; seulement IDs, états, codes, tailles,
 comptes, durées, empreintes et versions techniques. Projection produit autorisée
 distincte pour nom et chemin.
@@ -483,8 +535,10 @@ distincte pour nom et chemin.
 
 **Architecture validée :** refus avant pending exécutable pour cible hors scope, version
 indéterminée, archive inadmissible, extraction incomplète, dépassement, sortie
-tronquée, canonical invalide ou rendu incomplet. Contenus documentaires non fiables
-et sans autorité ; renderer sans récupération des liens.
+tronquée ou canonical invalide. Après confirmation binaire, rendu incomplet,
+pagination excessive/non établie ou fidélité inadmissible : refus avant MKCOL/PUT.
+Contenus documentaires non fiables et sans autorité ; renderer sans récupération
+des liens, macros, code ou commandes contrôlés par le contenu.
 
 **Preuve à livrer :** expansion d'archives, tailles, inactivité de préparation et
 corpus de refus ; aucune deadline murale malgré une progression effective.
@@ -502,8 +556,10 @@ corpus de refus ; aucune deadline murale malgré une progression effective.
 SQL isolée pour concurrence ; corpus synthétiques pour rendus. Appel modèle réel
 et canari Nextcloud chacun sous GO distinct, preuves datées/content-free.
 
-**Preuve à livrer :** environnement SQL isolé pour transactions ; tests du renderer
-local dans le lot applicatif, sans service de rendu plateforme.
+**Preuve à livrer :** environnement SQL isolé pour transactions ; tests fake du
+contrat puis preuves synthétiques du service privé effectivement livré par Sauron.
+Rendu live, appel modèle et écriture Nextcloud sont trois autorisations distinctes ;
+ce lot n'en exécute aucune. Une présence binaire ne ferme pas une preuve UNO/layout.
 
 - [ ] Ne pas fermer un invariant réel avec une preuve uniquement mockée.
 - [ ] Ne pas présenter les tests projetés comme exécutés.
@@ -512,15 +568,17 @@ local dans le lot applicatif, sans service de rendu plateforme.
 
 **Décision :** application Celebrimbor, plateforme Sauron.
 
-**Existant :** pile locale python-docx/ReportLab et police épinglée non livrées
-dans l'image actuelle. Les services partagés existants ne composent pas les documents
-de cet atelier.
+**Existant :** LibreOffice absent du PATH FridaDev ; présent dans Stirling mais
+sans wrapper dédié prouvé. Aucun renderer Writer de cet atelier livré.
 
-**Architecture validée :** services/UI/données/render applicatif/tests/observabilité à
-Celebrimbor ; contrats/services/ressources/permissions partagés à Sauron.
+**Architecture validée :** Celebrimbor : canonical, contrat/adaptateur, UI, claims,
+orchestration, DAV, validations, persistance, reçus, tests applicatifs/observabilité.
+Sauron : image isolée, wrapper de processus UNO, ressources, pins Writer/filtres/
+polices, socket/permissions, confinement, health et exploitation. Contrat commun,
+preuves séparées ; aucun patch de la racine de l'autre.
 
-**Preuve à livrer :** besoin Sauron limité aux faits DAV/Versions et à l'environnement
-SQL isolé, si nécessaire ; aucun lot Sauron renderer.
+**Preuve à livrer :** M8-S obligatoire, M8-A raccord applicatif ; Sauron conditionnel
+pour DAV/Versions et environnement SQL seulement si leurs faits l'imposent.
 
 - [ ] Aucun changement de plateforme par proximité ou contournement applicatif.
 
@@ -539,6 +597,8 @@ de documents longs et édition enrichie nécessiteraient d'autres projets.
 
 - [ ] Fermer par les critères du lot Z ; ne pas convertir les suites hors scope en
   condition permanente de clôture.
+- [ ] Aucun moteur secondaire, suite bureautique supplémentaire ou pipeline PDF
+  parallèle sans nouvelle décision produit explicite ; Z ne les ouvre pas.
 
 ## 4. Raccordement conversationnel exact — L1
 
@@ -564,7 +624,8 @@ de documents longs et édition enrichie nécessiteraient d'autres projets.
   Web/Agenda/Biblio/append Notes.
 - [ ] Appeler une fois le modèle principal avec prompt documentaire ; jamais passer
   ensuite dans l'échange principal normal, même en cas d'erreur ou sortie vide.
-- [ ] Valider enveloppe, sources, opération, chemin, canonical, limites et rendu.
+- [ ] Valider enveloppe, sources, opération, chemin, canonical, limites et profil
+  renderer attendu ; serializer Markdown direct, sans lancer Writer avant le clic.
 - [ ] Suivre la progression effective pendant toute la préparation et la projeter
   sans contenu ; watchdog d'inactivité de 120 secondes, sans deadline murale.
 - [ ] Permettre l'annulation explicite et neutraliser les résultats tardifs.
@@ -612,6 +673,7 @@ séparément. Il n'est pas promis un seul appel HTTP tous agents confondus.
 | Préparation | Garde de soumission, progression réelle content-free et annulation ; aucune confirmation disponible. |
 | Pending | Carte compacte sans aperçu complet. |
 | Confirmation engagée | Bouton retiré synchroniquement, état bref. |
+| Rendu binaire confirmé | Claim actif, progression effective du worker ; validation des artefacts avant toute mutation distante. |
 | Résultat | Lien, conflit, invalidation, annulation ou erreur d'inactivité honnête. |
 
 - [ ] Déplacer seulement le listener Fichier ; ne pas perdre le callback change
@@ -668,7 +730,7 @@ prouve ; il ne choisit aucun volume produit ou budget de sortie.
 | Borne | Valeur décidée et application |
 | --- | --- |
 | Canonical | Au plus 10 000 mots et 75 000 caractères Unicode ; premier plafond atteint. |
-| DOCX et PDF | Au plus 20 pages A4 dans le rendu final, en plus des deux bornes canoniques. |
+| DOCX et PDF | Au plus 20 pages A4 calculées par le Writer effectivement épinglé, en plus des deux bornes canoniques. |
 | Mise en page | Corps 12 points, interligne 1,5, marges de 2,5 cm. |
 | Markdown | 10 000 mots et 75 000 caractères Unicode ; aucune limite de pagination instable. |
 | Génération | Plafond documentaire dédié de 24 000 tokens de sortie, enveloppe et canonical compris selon le transport réel. |
@@ -683,9 +745,11 @@ faire tenir la demande. Aucun ajustement silencieux de police, interligne ou mar
   listes, citations et tableaux ; méthode Unicode reproductible et testée.
 - [ ] Distinguer caractères Unicode et octets UTF-8 ; ne pas utiliser la longueur
   UTF-16 navigateur comme compteur de points de code.
-- [ ] Exiger sortie complète, schéma valide et tous les plafonds respectés avant pending.
+- [ ] Exiger sortie modèle complète, schéma valide et plafonds canoniques avant pending ;
+  contrôler le plafond final Writer après confirmation et avant toute mutation distante.
 - [ ] Toute troncature, finish_reason=length, canonical incomplet ou rendu de plus de
-  20 pages : refus honnête, aucun pending exécutable ni sauvegarde partielle.
+  20 pages : refus honnête, aucune sauvegarde partielle. Erreur modèle/canonical
+  bloque le pending ; erreur de rendu confirmé termine l'action sans mutation.
 - [ ] Ne jamais rogner un document ou diminuer la mise en page pour contourner un refus.
 
 ### 7.2. Source longue
@@ -747,8 +811,9 @@ et refuse avant appel lorsque la place nécessaire ne peut être établie.
 ## 8. Roadmap par micro-lots
 
 Tous les lots restent ouverts et non commencés. Spécification et décisions amont
-sont validées ; M0 est le prochain lot. Les portes d'autorisation applicative de
-début de fichier restent préalables à l'exécution ; ce correctif n'en réalise aucune.
+sont validées et l'exception produit est inscrite ; M0 est le prochain lot.
+Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
+ce correctif n'en réalise aucune.
 UI construite tôt, contrats DOM/HTTP hermétiques ; aucun parcours d'écriture exposé
 comme fonctionnel avant livraison des protections et de la tranche complète.
 
@@ -764,27 +829,33 @@ comme fonctionnel avant livraison des protections et de la tranche complète.
 | M5 | M4 et gardes M0/M3 ; confirmation/compensations hermétiques. |
 | M6 | M5 ; parcours Markdown complet, premier canari seulement avec GO distinct. |
 | M7 | M6 ; update Markdown, ETag et Versions. |
-| M8 | M0–M7 ; pile locale décidée et preuve de pagination, aucune sélection de moteur. |
-| M9 | M7–M8 ; raccord DOCX et preuve du fichier final. |
-| M10 | M9 et pile M8 ; raccord PDF et sa politique de source. |
-| Z | M0–M10 ; clôture finie et preuves des voisins. |
+| M8-C | M0–M7 ; contrat fermé canonical/Writer et client fake, Celebrimbor. |
+| M8-S | M8-C ; image/service Writer isolé, sécurité et preuves synthétiques, Sauron. |
+| M8-A | M8-S et M8-C ; adaptateur FridaDev, validation/cleanup et preuve interne, Celebrimbor. |
+| M9-A | M8-A et M7 ; DOCX Frida create/copy/update avec pagination Writer. |
+| M9-B | M9-A ; retravail DOCX externe et refus de fidélité séparés. |
+| M10 | M9-B ; PDF du même état Writer et PDF externe comme source. |
+| Z | M0–M7, tous les sous-lots M8/M9 et M10 ; clôture finie et voisins préservés. |
 
-L'ordre M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M10 → Z
-est conservé, sans cycle. M0 établit le contrat des 20 pages ; M8–M10 en livrent
-les preuves de rendu final. Cette répartition ne reporte aucun choix de volume.
-Le canari d'écriture reste après M5 et sous GO distinct ; aucun lot renderer Sauron.
+Ordre : M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8-C → M8-S → M8-A
+→ M9-A → M9-B → M10 → Z, sans cycle. Les sous-lots restent dans M8/M9, pas
+de nouveau projet ni seconde roadmap. M0 établit le contrat des 20 pages Writer ;
+M8-S prouve le moteur et M9/M10 prouvent les fichiers effectivement publiés.
+Markdown précède les binaires ; canari après M5, tranche hermétique fermée et GO
+distinct. M8-S n'exige ni modèle réel ni Nextcloud et ne dépend pas de M9/M10.
 
 ### M0 — Implémentation et preuve des bornes décidées
 
 **Objectif :** rendre applicables les bornes de volume, admission, chemin et
 inactivité déjà fixées ; aucune nouvelle décision de taille ou budget.
-**Dépendances :** spécification validée ; exception AGENTS.md et GO applicatif encore
-à obtenir/livrer. Préalable de M1 et des lots suivants.
+**Dépendances :** spécification validée et exception AGENTS.md inscrite ; GO de M0
+encore requis. Préalable de M1 et des lots suivants.
 **Frontières :** contrat documentaire, adapter modèle, compteur/admission, gardes
 canoniques et de chemin, suivi de progression ; chat normal préservé.
 **Interface :** gpt-5.1, sortie documentaire 24 000, chat 8 192, fenêtre 400 000,
 réserve explicite ; canonical 10 000 mots/75 000 caractères ; profil A4/20 pages
-déclaré, compteur final fourni par le renderer M8–M10 ; watchdog 120 secondes.
+déclaré, compteur final fourni par Writer M8-S puis validé en M8-A/M9/M10 ;
+watchdog d'inactivité 120 secondes, aucune installation renderer en M0.
 **Propriétaire :** Celebrimbor.
 
 - [ ] Rouge causal : refus à 10 001 mots ou 75 001 caractères, JSON complet mais
@@ -824,6 +895,8 @@ routes/contexte documentaire.
   desktop/mobile ; prouver binding réel change, pas uniquement callback isolé.
 - [ ] Projeter phases/progression/annulation depuis l'état réel, sans aperçu,
   animation probante inventée ou perte du garde canonique de soumission.
+- [ ] Faux verts : picker callback isolé sans listener change réel, bureau seul
+  testé, ancienne action upload masquée par le menu ou second binding mobile.
 - [ ] Interdire deuxième input, listener mobile concurrent, perte drag-and-drop et
   autorité d'écriture via checkbox de lecture.
 - [ ] Synchroniser UX/atelier ; parcours synthétiques, aucun upload live nécessaire.
@@ -901,7 +974,7 @@ finalisation et UI.
 
 ### M5 — Confirmation et exécution hermétiquement protégées
 
-**Objectif :** démontrer le moteur avant raccord réel d'écriture.
+**Objectif :** démontrer les protections d'exécution avant raccord réel d'écriture.
 **Dépendances :** M4.
 **Fichiers :** executor, paths, clients DAV bornés, journal et confirmation.
 **Interface :** claim confirmé et résultat typé ; services réels avec clients simulés.
@@ -917,6 +990,8 @@ finalisation et UI.
   simuler succès distant/rollback réussi.
 - [ ] Interdire DELETE sans propriété, rollback récursif, retry PUT incertain et
   écriture hors Documents.
+- [ ] Réserver la frontière binaire : renderer fake après confirmation/claim,
+  validation complète avant MKCOL/PUT ; panne/21e page/cleanup douteux → zéro mutation.
 - [ ] Synchroniser matrice de panne/compensation ; aucun canari.
 - [ ] Raccord client d'écriture réel interdit avant fermeture.
 - [ ] Fermer toutes les frontières de panne et le retrait synchrone du bouton.
@@ -956,83 +1031,180 @@ finalisation et UI.
 - [ ] Synchroniser update/Versions ; canari update sous GO distinct.
 - [ ] Rebuild requis ; fermer identité stable, conflits et réconciliation sans PUT.
 
-### M8 — Implémentation et preuve de la pile locale décidée
+### M8-C — Contrat Writer fermé et raccord simulé
 
-**Objectif :** livrer la pile locale déterministe et ses preuves de rendu, sans
-comparaison de moteurs ni nouvelle décision de dépendance.
-**Dépendances :** M0–M7 fermés ; canonical stable de M4, invariants de publication
-et update de M5–M7. Markdown est livré avant les formats binaires.
-**Frontières :** document_rendering/canonical, exigences de dépendances/image
-applicative et assets de police ; compatibilité Exports préservée.
-**Interface :** canonical + profil/version → rendered_revision + empreinte et
-preuve de pagination ; Markdown direct, DOCX python-docx, PDF ReportLab Platypus.
-**Propriétaire :** Celebrimbor exclusivement ; aucun lot Sauron renderer.
+**Objectif :** rendre le service isolé implémentable et le raccord testable sans moteur live.
+**Dépendances :** M0–M7 ; exception inscrite, GO de lot distinct.
+**Frontières :** document_renderer_contract.py, document_canonical.py,
+document_rendering.py, execution/actions et tests de contrat ; aucun fichier plateforme.
+**Interface :** render_request_v1 / render_result_v1, méthodes et bornes de section 9 ;
+canonical/révision/profil figés, source temporaire optionnelle, résultat fermé sans cible DAV.
+**Propriétaire :** Celebrimbor ; contrat remis à Sauron sans patch de sa racine.
 
-- [ ] Épingler versions python-docx/ReportLab et dépendances nécessaires, licences,
-  police Unicode embarquée, empreinte et versions du profil de rendu.
-- [ ] Implémenter depuis la même révision canonical : titres, paragraphes, gras/
-  italique, listes, citations, liens, tableaux simples et sauts de page, sans images.
-- [ ] Appliquer A4, corps 12 points, interligne 1,5, marges 2,5 cm et limite finale
-  de 20 pages ; refuser plutôt que changer silencieusement la mise en page.
-- [ ] Rouge causal : Unicode perdu, style/tableau mal rendu, 21e page, canonical
-  ou empreinte discordants et bytes non déterministes doivent être détectés.
-- [ ] Tests corpus synthétique et voisins génération/extraction Exports ; structure
-  OOXML, fonts, rendu PDF, pagination et absence de récupération réseau.
-- [ ] Faux verts : texte extrait seul, DOCX simplement ouvrable, fonts de l'hôte,
-  docProps ou sauts déclarés présentés comme pagination réelle ; PDF voisin utilisé
-  comme preuve automatique du DOCX.
-- [ ] Interdire service distant nominal, fallback, benchmark comparatif, images,
-  changement d'ownership Exports et toute modification de plateforme.
-- [ ] Synchroniser pile locale/profil/déterminisme/licences et preuves de la section 9.
-- [ ] Rebuild applicatif requis pour livrer bibliothèques/police, uniquement dans
-  ce futur lot autorisé ; aucun raccord nominal aux formats avant M9/M10.
-- [ ] Fermer sur pile locale, isolation, déterminisme et compteurs de pages prouvés ;
-  aucune dépendance n'est déclarée livrée par la validation documentaire.
+- [ ] Rouge causal : appel avant confirmation, canonical/hash discordants, profil inconnu,
+  source/format inadmissible, pages absentes/21, partie manquante ou résultat brut → refus.
+- [ ] Livrer schémas versionnés, client fake, validate_result et garde zéro mutation ;
+  conserver Markdown direct et refuser les formats binaires tant que M9/M10 sont inactifs.
+- [ ] Tests ciblés de contrat/action/executor, voisins M5–M7/Exports/readers ; assert
+  ordre claim→render→validate→DAV et nombre d'appels, pas seulement statut HTTP.
+- [ ] Faux verts : fake toujours complet, hash déclaré sans recalcul, canonical muté
+  pour correspondre au résultat, résultat PDF présenté comme compte DOCX.
+- [ ] Interdire provider/live renderer/Nextcloud, dépendance moteur dans FridaDev,
+  socket Docker, shell libre, fallback ou modification Exports.
+- [ ] Synchroniser contrat commun/profil/bornes/erreurs avec cette roadmap ; aucun
+  déploiement requis pour fermer le contrat hermétique, rebuild futur du code livré.
+- [ ] Fermer sur contrat consommable par M8-S et fake rejetant les contre-cas ;
+  aucune installation ou preuve de disponibilité déclarée accomplie.
 
-### M9 — DOCX Frida et retravail externe
+### M8-S — Service Writer/UNO isolé et preuve plateforme
 
-**Objectif :** create/update DOCX et retravail externe honnête.
-**Dépendances :** M7–M8.
-**Fichiers :** python-docx via renderer local M8, reader DOCX, révisions et projection des limites.
-**Interface :** rendu lié au canonical et update à identité stable.
-**Propriétaire :** Celebrimbor.
+**Objectif :** livrer un renderer privé disponible, confiné et capable de produire
+la paire DOCX/PDF sous le profil décidé, sans accès au stockage.
+**Dépendances :** M8-C fermé ; GO Sauron distinct pour installation/livraison et rendu synthétique.
+**Frontières :** Sauron gère la sous-stack réelle `/opt/platform/fridadev-app`,
+image/wrapper UNO/profil/font/socket/exploitation ; aucun patch du checkout FridaDev.
+**Interface :** HTTP sur socket Unix ; UNO en pipe interne ; manifestes de capacités
+et résultats selon section 9 ; aucun service existant présenté comme renderer livré.
+**Propriétaire :** Sauron. Celebrimbor vérifie seulement la conformité du contrat remis.
 
-- [ ] Rouge causal : mismatch canonical/rendu → refus ; externe complexe → limite
-  ou refus ; update → même ID.
-- [ ] Tests OOXML/styles/listes/tableaux/liens/pages et voisins extraction/Exports ;
-  archives excessives, relations externes et pertes détectables.
-- [ ] Prouver le DOCX rendu <=20 pages avec le profil décidé ; si la pagination réelle
-  n'est pas établie, aucune action confirmable, sans autre moteur de secours.
-- [ ] Faux vert : valider uniquement le texte extrait ou l'ouverture du ZIP.
-- [ ] Interdire fidélité arbitraire promise, images incorporées et ownership Exports.
-- [ ] Synchroniser formats/fidélité ; preuve synthétique live sous autorisation.
-- [ ] Rebuild requis ; fermer profil DOCX et correspondance canonique.
+- [ ] Rouge causal : image sans filtre/font, appelant hors permissions, second job,
+  macro/lien distant, sortie partielle, 21 pages ou LibreOffice bloqué → échec fermé.
+- [ ] Épingler image/digest, version LibreOffice/UNO, filtres DOCX/PDF, fichiers et
+  empreintes/licences des polices, locale et profil ; aucun pin hérité implicitement de Stirling.
+- [ ] Livrer utilisateur non privilégié, rootfs read-only et seules zones tmpfs/socket
+  nécessaires, network_mode none, caps retirées/no-new-privileges et ressources bornées.
+- [ ] Prouver socket Unix avec permissions dédiées, aucun port/routage public/UNO réseau,
+  aucun secret Nextcloud/DB/provider, aucune donnée opérateur montée, aucun Docker socket.
+- [ ] Une tâche active, zéro file d'attente ; saturation rejetée. Profil UNO temporaire
+  distinct, processus suivi/destructible et nettoyage succès/erreur/annulation/crash.
+- [ ] Tests synthétiques réels : Unicode, chaque style, tables multipages, sauts,
+  A4/12 points/1,5/2,5 cm ; rechargement DOCX et export PDF du même état Writer.
+- [ ] Prouver nombre de pages Writer stabilisé et concordance PDF, filtres réellement
+  présents, refus 21e page, aucune macro/update distant/extension ou dialogue bloquant.
+- [ ] Tests adverses de transport/archive/ressources/kill et seconde requête ; voisins
+  FridaDev/Nextcloud/Stirling uniquement status-only, pas de document privé.
+- [ ] Faux verts : binaire présent, headless sans layout évalué, DOCX ouvrable, font de
+  l'hôte, keepalive pris pour progrès, rootfs ro sans preuve du profil writable.
+- [ ] Interdire Caddy/Authelia/UI, cloud/payante, accès Nextcloud, fallback Stirling,
+  nouveau moteur, données réelles ou canari d'écriture.
+- [ ] Synchroniser runbook plateforme et preuve datée content-free ; rebuild du seul
+  service renderer autorisé dans ce futur lot, aucun restart voisin automatique.
+- [ ] Fermer sur capacités réelles, sécurité/ressources/cleanup et artefact synthétique
+  accepté par le contrat M8-C ; ne pas attendre M9 pour prouver le moteur.
 
-### M10 — PDF Frida et PDF externe comme source
+### M8-A — Adaptateur FridaDev, validations et nettoyage
 
-**Objectif :** rendu PDF ; update uniquement si canonical correspondant établi.
-**Dépendances :** M9.
-**Fichiers :** ReportLab Platypus via renderer local M8, reader PDF, politique de cible
-et mapping des révisions.
-**Interface :** PDF Frida lié ; PDF externe vers proposition de nouveau document.
-**Propriétaire :** Celebrimbor.
+**Objectif :** orchestrer le service livré sans capacité de stockage déléguée.
+**Dépendances :** M8-C et M8-S fermés ; configuration du socket livrée par Sauron.
+**Frontières :** document_renderer_client.py, document_rendering.py, execution,
+révisions/actions/observabilité ; pas de LibreOffice dans app/Dockerfile.
+**Interface :** submit/status/result/cancel-release, job ID et hash figés ; validation
+locale des types, bytes, pages Writer, version/profile/fonts et résultat terminal.
+**Propriétaire :** Celebrimbor ; Sauron seul raccorde le montage runtime de socket
+et ses permissions dans sa racine, avec livraison FridaDev coordonnée si nécessaire.
 
-- [ ] Rouge causal : externe à modifier → nouveau document ; Frida désynchronisé
-  → aucun update aveugle.
-- [ ] Tests Unicode/visuel/fonts/pagination/tableaux/liens, PDF chiffré/scanné,
-  canonical absent et octets distants changés ; voisins readers/Exports.
-- [ ] Vérifier <=20 pages A4, corps 12 points, interligne 1,5 et marges 2,5 cm
-  dans le PDF final ; 21e page ou source canonique excessive → refus sans partie sauvegardée.
-- [ ] Faux vert : texte présent sans pagination correcte, canonical retrouvé mais
-  correspondant à une ancienne version.
-- [ ] Interdire édition arbitraire d'externe, OCR caché et pertes dissimulées.
-- [ ] Synchroniser politique PDF/limites ; canari sous GO distinct.
-- [ ] Rebuild requis ; fermer les deux politiques PDF et le profil complet.
+- [ ] Rouge causal : résultat d'un autre job/révision, résultat tardif, transport perdu,
+  timeout sans progrès, cleanup non acquitté ou mismatch pages/hash → zéro PUT/MKCOL.
+- [ ] Tests serveur HTTP Unix fake et vraie consommation du transport ; voisins
+  claims/confirmation/compensation/projections/streaming/upload/Exports/OCR.
+- [ ] Transférer seulement canonical et octets admissibles ; persister le manifeste
+  de rendu immutable et les octets figés avant journal/écriture conditionnelle.
+- [ ] Tester confirmation doublée → un job et au plus un PUT ; perte de connexion
+  → lecture d'état, aucun nouvel ID/retry automatique ; perte de worker → échec fermé.
+- [ ] Projeter seulement progression réelle, 120 s d'inactivité puis annulation/kill ;
+  ne pas inventer de deadline murale pendant progrès ni de TTL pending.
+- [ ] Faux verts : client mocké hors transport, hashes non recalculés, résultat récupéré
+  mais jamais libéré, event tardif non exercé, statut ready sans tous les artefacts.
+- [ ] Interdire adresse/URL fournie par utilisateur, mount partagé de documents,
+  secrets envoyés, mutation avant validation et activation prématurée DOCX/PDF.
+- [ ] Synchroniser adapter/erreurs/observabilité ; preuve interne synthétique réelle
+  sous GO distinct, sans modèle ni Nextcloud. Rebuild FridaDev à livraison autorisée.
+- [ ] Fermer avec contrat M8-S réellement consommé, cleanup confirmé et invariants
+  M5 préservés ; aucune API renderer publique ni sortie partielle publiée.
+
+### M9-A — DOCX Frida create/copy/update et pagination Writer
+
+**Objectif :** publier le DOCX validé et préserver son identité/canonical lors d'un update.
+**Dépendances :** M7 et M8-A ; moteur/profil/filtres épinglés disponibles.
+**Frontières :** adapter Writer, révisions/manifeste, policy DOCX, content service frais,
+executor et projection de carte ; aucune logique UNO dans le pipeline principal.
+**Interface :** canonical Frida → DOCX final rechargé/paginé Writer ; source distante
+Frida récupérée/validée temporairement, update If-Match sur même ID/nom.
+**Propriétaire :** Celebrimbor ; Sauron traite seulement une non-conformité plateforme prouvée.
+
+- [ ] Rouge causal : canonical/source/empreinte non correspondants, 21e page, version
+  renderer différente ou ETag changé durant rendu → refus sans écriture.
+- [ ] Tests structure/styles/listes/tableaux/liens/pages, réponse/action/reçu/inventaire ;
+  voisins DOCX reader/Exports/Notes ETag ; succès → même workspace_file_id.
+- [ ] Prouver Writer rechargé sur les octets DOCX finaux, page_count stabilisé et
+  PDF de contrôle issu du même état, sans le publier si seul DOCX est demandé.
+- [ ] Faux verts : docProps ou PDF voisin seul, ancien canonical retrouvé, If-Match
+  absent de la requête finale, test de création présenté comme preuve d'update.
+- [ ] Interdire renommage/copie implicites, image, fidélité Word universelle et
+  écriture après échec de rendu ; conserver MD indépendant d'une panne Writer.
+- [ ] Synchroniser formats/pagination/continuité ; rendu synthétique et canari DOCX
+  ont chacun leur GO, canari uniquement après gardes/compensations hermétiques.
+- [ ] Rebuild applicatif à livraison ; fermer create/copy/update, conflits réels,
+  correspondance canonical/rendu et reçu au tour suivant.
+
+### M9-B — Retravail DOCX externe avec fidélité honnête
+
+**Objectif :** retravailler une cible externe explicitement mobilisée, sans promettre
+une conservation parfaite d'une mise en page arbitraire ou supprimer du contenu caché.
+**Dépendances :** M9-A ; garde d'adoption/fraîcheur M2, policy externe de section 9.5.
+**Frontières :** préflight OOXML, readers, canonical, mode source_docx du wrapper,
+validation source/résultat, carte de limites et executor stable-ID.
+**Interface :** octets source récupérés par FridaDev + hash/ETag préparés + canonical
+candidat ; import temporaire UNO, classification de fidélité puis rendu du profil V1.
+**Propriétaire :** Celebrimbor pour policy/tests ; Sauron livre dans son wrapper
+le mode fermé dans M8-S selon M8-C ; M9-B consomme ce mode déjà prouvé, sans
+nouvelle livraison plateforme requise. Toute correction reste dans sa racine,
+sans patch applicatif.
+
+- [ ] Rouge causal : macro, champ dynamique, contenu image/objet, révision suivie,
+  style/section non représentables, texte incomplet ou import réparé → refus honnête.
+- [ ] Tester sources simples admissibles et conversion/round-trip avec tables/styles ;
+  limites annoncées sur la carte avant clic, changement source avant/durant rendu.
+- [ ] Comparer inventaire de contenu admissible/source textuelle et sortie canonical ;
+  aucune perte détectée cachée, aucune copie automatique ; update même nom/ID/If-Match.
+- [ ] Faux verts : même texte mais champs/images effacés, extraction ZIP sans inventaire,
+  échantillon exclusivement créé par Frida présenté comme DOCX externe, limites non visibles.
+- [ ] Interdire fidélité complexe garantie, code actif, images ajoutées ou supprimées
+  silencieusement, import de n'importe quel format et ODT durable concurrent.
+- [ ] Synchroniser politique de fidélité/refus ; corpus externe exclusivement synthétique,
+  rendu réel et canari update sous GO séparés ; rebuild applicatif à livraison.
+- [ ] Fermer sur cas simple utile et cas complexes refusés causalement, avec provenance
+  externe conservée et révision Frida liée au même fichier après succès.
+
+### M10 — PDF Writer, source externe et intégration finale des formats
+
+**Objectif :** publier le PDF du même moteur/révision ; préserver la politique des PDF sources.
+**Dépendances :** M9-B, donc tous les sous-lots M8/M9 fermés ; zéro pipeline PDF parallèle.
+**Frontières :** export Writer via adapter, reader PDF existant, policy de cible,
+manifeste de rendus, confirmation/reçus et UI des trois formats.
+**Interface :** export writer_pdf_Export du même état Writer que le DOCX validé ;
+PDF Frida lié au canonical, PDF externe source vers nouveau document demandé.
+**Propriétaire :** Celebrimbor ; Sauron seulement pour non-conformité du service livré.
+
+- [ ] Rouge causal : externe pris comme cible update, PDF Frida désynchronisé,
+  export partiel/21 pages ou divergence de pages Writer/PDF → zéro mutation.
+- [ ] Tests Unicode/fonts/pagination/tableaux/liens, PDF chiffré/scanné, canonical
+  absent/octets modifiés ; voisins readers/Exports/OCR et read/copy/update inter-formats.
+- [ ] Vérifier <=20 pages Writer, A4/12 points/1,5/2,5 cm et le PDF final ; aucune
+  sauvegarde partielle, ODT caché, page réduite ou appel Stirling de composition.
+- [ ] Faux verts : texte présent sans layout, PDF compagnon d'une autre révision,
+  timestamp/hashes ignorés, PDF externe chargé dans Draw comme édition fidèle.
+- [ ] Interdire PDF externe édité en place, OCR implicite, image, fallback ou
+  désynchronisation canonical/rendus ; seul le format demandé est écrit.
+- [ ] Synchroniser politique PDF/provenance/refus ; preuve interne synthétique et
+  canari sous GO distincts ; rebuild FridaDev à livraison autorisée.
+- [ ] Fermer les trois formats et les deux politiques PDF, sécurité/cleanup et
+  continuité end-to-end ; moteur inchangé, aucun service bureautique supplémentaire.
 
 ### Z — Clôture bornée
 
 **Objectif :** fermer le premier palier sans chantier permanent.
-**Dépendances :** M0–M10.
+**Dépendances :** M0–M7, M8-C/M8-S/M8-A, M9-A/M9-B et M10.
 **Frontières :** parcours complets, preuves et contrats vivants.
 **Interface :** services appelables sans DOM ; aucun tool principal.
 **Propriétaire :** Celebrimbor.
@@ -1040,57 +1212,249 @@ et mapping des révisions.
 - [ ] Rouge causal : pending rejouable après refresh, cache obsolète, reçu perdu ou
   canonical contaminant une faculté doivent être détectés.
 - [ ] Matrice finale ciblée desktop/mobile/conversations croisées/crashs/formats ;
-  voisins upload/Notes/Exports/Images/Agenda/Biblio/pipeline.
+  voisins upload/Notes/Exports/Images/Agenda/Biblio/pipeline/OCR et entrée Stirling.
+- [ ] Inclure M8-C/M8-S/M8-A/M9-A/M9-B/M10 : sécurité réseau/secrets, filtres/fonts,
+  layout livré, saturation/kill/cleanup et paire Writer cohérente.
 - [ ] Faux vert : smoke nominal seul ou régression voisine non exercée.
 - [ ] Interdire nouvelle dépendance, extension d'édition, benchmark général et tools
   du modèle principal.
 - [ ] Rassembler preuves autorisées et limites ; retirer états transitoires remplacés.
+- [ ] Synchroniser contrats vivants/statuts/preuves avec le comportement livré,
+  puis archiver cette même TODO à fermeture ; aucune roadmap concurrente.
 - [ ] Rebuild seulement pour correction effectivement livrée.
 - [ ] Fermer chaque critère par une preuve et les limites/refus du contrat testés,
   sans finding vivant caché ; ne pas ouvrir une nouvelle capacité pour prolonger la clôture.
+- [ ] Aucun moteur secondaire, suite bureautique supplémentaire ou pipeline PDF
+  parallèle sans décision produit explicite ; aucun lot ajouté pour prolonger Z.
 
-## 9. Pile locale de rendu décidée et preuves à livrer
+## 9. Architecture serveur Writer/UNO et preuves à livrer
 
-Le chemin architectural est arrêté : pile locale applicative déterministe, sans
-service distant de composition, fallback ou comparaison de moteurs. Les dépendances
-n'existent pas encore dans l'image actuelle ; leur livraison appartient à M8,
-pas à ce correctif documentaire.
+### 9.1. Quatre rôles et autorité
 
-| Format | Implémentation décidée | Preuve requise |
-| --- | --- | --- |
-| Markdown | Sérialisation directe du canonical. | Structure, liens et sauts documentés ; 10 000 mots/75 000 caractères, sans pagination stable. |
-| DOCX | python-docx. | Profil A4/12 points/interligne 1,5/marges 2,5 cm et pagination finale <=20 pages. |
-| PDF | ReportLab Platypus avec police Unicode embarquée et épinglée. | Même révision/profil, Unicode français et compte final <=20 pages. |
+```text
+Utilisateur : geste documentaire explicite → demande canonique → confirmation humaine
+                                      |
+FridaDev (orchestrateur, canonical, claim, validation, seuls secrets/capacités DAV)
+  | HTTP privé sur socket Unix ; canonical + octets temporaires, IDs techniques
+  v
+Renderer isolé sur le même serveur : wrapper fermé → UNO en pipe local → Writer
+  | DOCX enregistré + PDF exporté + métadonnées ; aucun accès au stockage
+  v
+FridaDev : vérifications → écritures conditionnelles → transaction locale → reçu
+  | seul chemin de mutation de l'atelier
+  v
+Nextcloud : Documents du répertoire choisi + identité/ETag + historique Versions
+  ↔ Collabora/Nextcloud : éditeur humain des fichiers enregistrés
 
-DOCX/PDF sont issus de la même révision canonical. Le renderer fournit la version
-du profil, l'empreinte de ses entrées et celle des octets figés ; il ne choisit pas
-de chemin Nextcloud et ne publie pas le fichier. Dates de provenance et métadonnées
-volatiles ne doivent pas rendre les mêmes entrées non déterministes.
+Stirling-PDF : utilitaire humain séparé pour PDF existants ; entrée Homepage conservée
+             + OCR explicite existant de Frida préservé ; hors génération Writer
+```
 
-- [ ] Épingler versions des bibliothèques/dépendances, licences, police, empreinte
-  et profil dans le lot applicatif ; pas d'utilisation de fonts implicites de l'hôte.
-- [ ] Corpus synthétique : accents/ligatures/espaces insécables, titres/paragraphes,
-  gras/italique/listes/citations/liens/tableaux simples/sauts et marges/pagination.
-- [ ] Tester A4, corps 12 points, interligne 1,5 et marges 2,5 cm ; aucun ajustement
-  silencieux pour faire entrer une 21e page.
-- [ ] Prouver le nombre réel de pages du DOCX final : python-docx écrit l'OOXML mais
-  ne fournit pas à lui seul une preuve de pagination rendue. Ni docProps, ni les
-  sauts déclarés, ni le PDF voisin ne suffisent. Sans preuve, refus avant pending.
-- [ ] Vérifier le nombre de pages du PDF final et refuser dépassement/incomplétude.
-- [ ] Prouver déterminisme, isolation, tailles/ressources/nettoyage et absence
-  d'accès réseau de composition sur contenu synthétique, sans provider réel.
-- [ ] Même canonical et empreintes concordantes ; aucun moteur de secours ou image.
-- [ ] Aucune composition nominale via Stirling/LibreOffice ou doc-pipeline ; leurs
-  responsabilités existantes hors composition restent préservées.
+La flèche Collabora représente un rôle humain, pas une disponibilité démontrée
+par cette inspection. Ce chantier ne livre pas Collabora, n'installe pas Writer
+« dans Nextcloud » et ne remplace pas une UI Nextcloud. Stirling n'est ni supprimé
+ni chaîné derrière Writer. Fusion/découpe/conversion sont décrites par l'entrée
+humaine observée ; rotation/compression et autres fonctions ne sont pas déclarées
+prouvées sans recette. OCR existant : contrats actuels inchangés.
+
+### 9.2. Forme minimale compatible avec le serveur observé
+
+Service séparé à livrer par Sauron dans la sous-stack réelle FridaDev-app, avec
+image/worker distincts de `platform-fridadev`. Nom de service, chemin de socket et
+UID/GID seront des identifiants de livraison, pas des services prétendument présents.
+Un répertoire de socket dédié, accessible aux seuls comptes FridaDev/renderer,
+est monté dans les deux conteneurs ; aucun document, state/, secret, DB, volume
+Nextcloud ou socket Docker n'est partagé. FridaDev utilise un client HTTP AF_UNIX
+étroit de bibliothèque standard ; aucune dépendance bureautique dans son image.
+
+Le wrapper écoute seulement sur ce socket Unix et pilote UNO sur un pipe local
+au conteneur. Renderer en `network_mode: none` : aucune route entrante publique,
+aucun port publié, Caddy/Authelia/UI, DNS ou réseau Nextcloud. Les réseaux partagés
+observés ne sont pas réutilisés pour ce service. Les permissions du socket et
+l'isolement effectif sont prouvés en M8-S ; aucune hypothèse de sécurité fondée
+sur le seul mot « interne ». HTTP réseau privé ajouterait une frontière réseau
+inutile sur ce même hôte ; CLI/SSH/Docker exec depuis FridaDev donneraient des
+capacités d'exécution/plateforme disproportionnées. Aucun de ces chemins n'est livré.
+
+Sauron réalise les fichiers image/wrapper/runtime dans sa racine uniquement.
+Celebrimbor réalise protocole/adaptateur/orchestration dans le checkout uniquement.
+Aucune modification de stack dans ce correctif ; la future connexion du socket
+peut imposer une recréation ciblée FridaDev gérée par Sauron, pas un restart global.
+
+### 9.3. Protocole fermé et bornes techniques
+
+Schémas fermés versionnés, champs inconnus refusés. Interfaces internes seulement :
+
+| Méthode | Effet |
+| --- | --- |
+| GET /v1/capabilities | Version du contrat/image/Writer/UNO, filtres, profil/polices et limites ; aucun contenu ni secret. |
+| POST /v1/jobs | render_request_v1 : job_id, revision_id/hash, profil épinglé, format DOCX ou PDF, canonical validé, source_kind et octets/hash optionnels. Claim Frida confirmé requis côté orchestrateur. |
+| GET /v1/jobs/{id} | État et progression vérifiable, jamais canonical ou aperçu. |
+| GET /v1/jobs/{id}/result | Résultat terminal multipart borné : manifeste JSON et artefacts nommés techniquement par le wrapper, sans chemin opérateur. |
+| DELETE /v1/jobs/{id} | Annulation/destruction ou acquittement/libération d'espace éphémère ; ne touche jamais Nextcloud. |
+
+La source optionnelle est fermée : aucune, DOCX mobilisé, ou PDF Frida dont le
+canonical correspondant est établi. PDF Frida : octets pour contrôle de source,
+jamais import Writer/Draw destiné à éditer le PDF. Aucune URL/href comme adresse
+de source à télécharger, destination DAV, ETag secret, nom privé, instruction UNO
+libre, filtre libre, chemin absolu, commande, macro, template externe ou fetch
+arbitraire dans le protocole. Les liens hypertextes admissibles du canonical
+restent des données passives validées ; ils ne sont jamais chargés par le renderer.
+
+Profil technique initial de l'architecture proposée, distinct des plafonds
+produit de Tof : une tâche active, **zéro file** (busy → refus contrôlé), une source
+binaire au plus, 1 MiB pour le JSON canonical/enveloppe, source au plus 40 MiB
+(plafond upload actuel ; admission réelle/extraction peuvent être plus strictes),
+requête totale au plus 42 MiB, 16 MiB par artefact DOCX/PDF et 33 MiB pour le
+résultat complet. Expansion ZIP/XML cumulée au plus 64 MiB et au plus 4 096 entrées ;
+structures bornées par le schéma/admission M8-C. Aucun plafond n'autorise une
+troncature ; dépassement technique → refus explicite, jamais taille produit choisie.
+
+Sauron épingle à la livraison le profil d'exploitation : quota 1 vCPU, mémoire
+1 GiB, tmpfs de travail 256 MiB maximum, limite de processus et descripteurs
+explicites (64/256), aucun disque persistant documentaire. Ces gardes techniques
+sont à appliquer/prouver, pas des capacités mesurées de l'hôte ici. Si ce profil
+ne soutient pas un cas admissible, le lot rapporte l'écart avant sa fermeture ;
+il ne change pas les 20 pages/10 000 mots/75 000 caractères ni le moteur.
+
+Le temps est borné par **120 secondes sans progression effective** ; aucun
+watchdog absolu supplémentaire tant que la progression continue. Avancement :
+blocs réellement appliqués, import/layout/export achevés ou étape utile vérifiable ;
+ni pulse, poll, CPU consommé, animation ni lease ne réarment ce compteur. Frida
+projette cet état après clic. Un UNO bloqué est neutralisé par un superviseur
+hors de son appel bloquant : destruction du groupe de processus, nettoyage du
+profil/espace de travail, erreur terminale. Perte du worker/OOM : échec fermé
+et suppression de son espace éphémère à la reprise, aucun replay de mutation.
+
+render_result_v1 exige status, reason_code allowlisté, job/révision/hash d'entrée,
+version renderer/image/Writer/UNO/profil/filtres/polices, source hash si présente,
+et pour chaque artefact type, longueur, SHA-256, compte de pages Writer ; PDF
+également vérifié par son compteur final. ready seulement si tous les artefacts
+attendus sont complets ; sinon aucun artefact partiel consommable comme succès.
+Frida recalcule tailles/empreintes/types et vérifie les versions/pages avant PUT.
+
+États worker fermés : rendering, ready, refused, failed, cancelled ; inconnu/perdu
+est projeté lost par Frida et ne vaut jamais succès. Codes minimaux du contrat :
+renderer_ready, renderer_busy, renderer_input_invalid, renderer_source_unsupported,
+renderer_profile_mismatch, renderer_page_limit, renderer_incomplete,
+renderer_inactivity, renderer_resource_limit, renderer_cancelled,
+renderer_job_conflict, renderer_job_lost et renderer_cleanup_failed. Toute raison
+non reconnue est une erreur de protocole, sans exception brute. Les phases et
+comptes d'avancement sont monotones et bornés par les étapes/blocs réellement attendus.
+
+Même job_id et même hash : lecture de l'état/résultat, aucune seconde exécution ;
+job_id réutilisé avec autre hash : conflit. Dédoublonnage à durée de vie du worker,
+pas promesse exactly-once distribuée. Claim/journal durable Frida font autorité ;
+worker redémarré/job perdu → erreur honnête, aucun retry caché. Après récupération
+validée et persistance locale des octets/manifeste, Frida acquitte la libération.
+Profil, sources et ODT éventuel sont détruits sur tous les états ; reaper borné
+nettoie les résultats orphelins sans faire expirer un pending qui n'a pas encore
+lancé de job. Aucun store de fichiers concurrent dans le renderer.
+
+### 9.4. Composition, filtres et pagination Writer
+
+Writer est l'unique moteur nominal DOCX/PDF de cet atelier. Markdown reste
+sérialisé directement depuis canonical. Aspose, éditions payantes/filigranées
+d'ONLYOFFICE, cloud, second moteur et fallback sont exclus. Les contraintes suivantes sont
+prescrites, non encore implémentées :
+
+- [ ] Créer un modèle Writer contrôlé via UNO depuis le canonical : titres,
+  paragraphes, gras/italique, listes, citations, liens passifs, tableaux simples
+  et sauts de page ; aucune image ni contenu actif.
+- [ ] Épingler image/digest/version LibreOffice/UNO et disponibilité des filtres
+  `Office Open XML Text` pour DOCX et `writer_pdf_Export` pour PDF. Aucun filtre
+  commandé par le modèle ou document ; pas de conversion CLI nominale seule.
+- [ ] Épingler fichiers/polices normales/gras/italiques, licences, empreintes, locale,
+  profil A4/12 points/interligne 1,5/marges 2,5 cm ; absence de glyphes/font → refus.
+- [ ] Enregistrer DOCX, le recharger dans le même Writer sans mutation de son contenu
+  ou profil, forcer/stabiliser le layout et relever ses pages. Exporter le PDF
+  depuis ce même état rechargé ; vérifier compte PDF final et concordance Writer.
+  Une paire de validation interne ne crée pas deux fichiers produit : seul le
+  format confirmé est publié dans Nextcloud.
+- [ ] Prouver l'API de layout effectivement opérante en headless (p. ex. curseur de
+  pages UNO après layout), pas un champ docProps ou un compteur de sauts déclaré.
+  Export partiel, désaccord de pages, plus de 20 pages ou layout non établi : refus.
+- [ ] Le nombre de pages contractuel est celui de ce Writer épinglé, avec ces polices ;
+  aucune identité mathématique universelle avec Microsoft Word n'est revendiquée.
+- [ ] Canonical Frida seule source structurée durable ; DOCX/PDF liés à sa révision
+  et au manifeste de rendu. ODT éventuel strictement temporaire dans le job, jamais
+  adopté, inventorié ou promu en deuxième vérité.
+- [ ] Tests synthétiques Unicode français/styles/tableaux/sauts/pagination, stabilité
+  de layout/contenu sur répétition. Métadonnées volatiles fixées ou précisément
+  déclarées ; aucune promesse de SHA binaire universel si le moteur ne la tient pas.
+  L'exécution utilise toujours les octets effectivement figés et leur empreinte.
+
+### 9.5. Cibles existantes et garanties distinctes
+
+| Cas | Contrat de traitement |
+| --- | --- |
+| Création Frida DOCX/PDF | Canonical complet, profil contrôlé, paire Writer validée ; Frida choisit la cible Documents confirmée et fait PUT no-clobber. |
+| Update DOCX Frida | Frida récupère la cible/identité/ETag ; source temporaire remise au worker et correspondance canonical/hash prouvée ; révision candidate rendue, même ID/nom, If-Match de version préparée. |
+| Update PDF Frida | Même garde de correspondance source/canonical ; récupération temporaire, rendu depuis canonical via Writer, aucun import PDF éditable. If-Match exact et même ID/nom. |
+| DOCX externe | Frida récupère/inspecte complètement la source, la remet temporairement à UNO. Sous-ensemble V1 représentable seulement ; conversion/retravail et remise en forme du profil V1 annoncés avant clic. Aucun héritage universel de mise en page. |
+| PDF externe | Lecture avec les readers existants, jamais édition UNO en place ; demande de modification vers un nouveau document explicite. Aucun OCR implicite ou copie automatique de secours. |
+
+DOCX externe : préflight OOXML puis inspection UNO concordante, import sans
+réparation automatique. L'action préparée lie la source/ETag et les limites utiles
+avant confirmation. Contenu simple admissible : textes, styles V1, listes et
+tableaux simples ; transformations fondées sur le canonical candidat, inventaire
+source complet et contrôle du résultat. Style arbitraire, champs dynamiques,
+révisions suivies, sections complexes, cadres/objets/images ou contenu non
+représentable : clarification/refus, jamais suppression silencieuse. Aucun champ
+externe mis à jour ni code exécuté. Liens hypertextes passifs conservables ne sont
+pas des autorisations de chargement distant. La fidélité de création contrôlée
+et celle d'import externe ont des corpus et critères de clôture séparés M9-A/M9-B.
+
+Juste avant mutation, Frida revérifie toutes les préconditions après le temps
+passé dans Writer. Conflit → aucune fusion/écriture aveugle. Sauron ne reçoit
+ni cible DAV ni secret ; Nextcloud reste autorité de Versions. Le reçu relie
+résultat, identité stable, format, cible et révision, sans injecter le contenu.
+
+### 9.6. Confinement et exploitation à prouver
+
+- [ ] Utilisateur non privilégié, rootfs read-only compatible ; tmpfs writable
+  uniquement pour travail/tmp/profil, répertoire de socket séparé ; aucune
+  lecture arbitraire du filesystem, mount opérateur ou capability de commande.
+- [ ] Démarrage fixed argv headless/norestore avec UserInstallation éphémère par
+  exécution ; UNO acceptor en pipe interne ; aucune option fournie par l'appelant.
+- [ ] Macros `NEVER_EXECUTE`, liens `NO_UPDATE`, interaction handler refusant demandes
+  de chargement/mot de passe/réparation, extensions non nécessaires absentes ;
+  network none et tests de non-chargement remote, pas confiance dans Hidden seul.
+- [ ] Profil utilisateur séparé pour chaque job, fermeture/dispose document, destruction
+  processus bloqué et nettoyage enfin garanti, y compris crash/OOM/redémarrage.
+- [ ] Tests source hostile et extraction ZIP bornée, traversée interne/symlink,
+  chargements locaux externes, pertes de contenu, concurrence et saturation.
+- [ ] Aucun contenu brut, nom privé, source binaire, URL sensible ou exception brute
+  dans logs/health/rapports ; seules versions, tailles, phases et reason codes.
+- [ ] Health/capabilities sans ouverture de document ; preuve synthétique de rendu
+  séparée et autorisée. Disponibilité du service et qualité de layout sont deux preuves.
+
+### 9.7. Références primaires LibreOffice revalidées
+
+Liens officiels consultés en lecture publique seulement ; aucun document exécuté.
+La documentation `latest` décrit les API, pas un pin de livraison de notre service :
+M8-S fournit les pins et preuves correspondant à sa version réelle.
+
+- [Licence LibreOffice](https://www.libreoffice.org/licenses/) : logiciel libre,
+  MPL 2.0 avec composants sous autres licences ouvertes ; notices de l'image/polices à conserver.
+- [Démarrage headless, accept UNO et UserInstallation](https://help.libreoffice.org/latest/en-US/text/shared/guide/start_parameters.html).
+- [Filtres Writer DOCX et PDF](https://help.libreoffice.org/latest/en-US/text/shared/guide/convertfilters.html).
+- [API UNO XStorable](https://api.libreoffice.org/docs/idl/ref/interfacecom_1_1sun_1_1star_1_1frame_1_1XStorable.html) : storeAsURL pour enregistrement, storeToURL pour export.
+- [Paramètres d'export PDF](https://help.libreoffice.org/latest/en-US/text/shared/guide/pdf_params.html).
+- [Curseur de pages Writer](https://api.libreoffice.org/docs/idl/ref/interfacecom_1_1sun_1_1star_1_1text_1_1XPageCursor.html) : API de pages, dont l'utilisation effective headless reste à prouver.
+- [MediaDescriptor UNO](https://api.libreoffice.org/docs/idl/ref/servicecom_1_1sun_1_1star_1_1document_1_1MediaDescriptor.html) : chargement/contrôle de macros, liens et interactions.
+- [Macros NEVER_EXECUTE](https://api.libreoffice.org/docs/idl/ref/namespacecom_1_1sun_1_1star_1_1document_1_1MacroExecMode.html).
+- [Liens NO_UPDATE](https://api.libreoffice.org/docs/idl/ref/namespacecom_1_1sun_1_1star_1_1document_1_1UpdateDocMode.html).
 
 ## 10. Matrice réutiliser / extraire / créer et propriétaires
 
 | Traitement | Frontières |
 | --- | --- |
 | Réutiliser | Inventaire workspace_files, sélections, extracteurs, liens produit, protocole terminal, clients DAV et éléments de compensation ETag. |
-| Extraire pour une responsabilité réelle | Primitive de snapshot transactionnelle ; interfaces de rendu partageables seulement à invariants Exports préservés, sans changement de moteur décidé. |
+| Extraire pour une responsabilité réelle | Primitive de snapshot transactionnelle ; concepts de formats/validation sans extraire un second moteur ni modifier le renderer Exports livré. |
 | Modifier | Transport/service/finalisation chat, projections, liens/store workspace, clients DAV bornés, manifestes/guards, binding Fichier et réhydratation. |
-| Créer | Services atelier/canonical/actions/reçus/claims/adoption/fraîcheur et contrôleur UI dédiés ; renderer python-docx/ReportLab, profil et police épinglés. |
+| Créer côté application | Services atelier/canonical/actions/reçus/claims/adoption/fraîcheur, contrôleur UI et contrat/adaptateur Writer ; aucun moteur bureautique embarqué. |
+| Livrer côté plateforme | Service Writer/UNO isolé, wrapper fermé, image/filtres/profil/polices épinglés et exploitation par Sauron. |
 
 Modules probables, noms proposés et non fichiers déjà livrés :
 
@@ -1100,7 +1464,10 @@ Modules probables, noms proposés et non fichiers déjà livrés :
 - document_workshop_store.py : artefacts/révisions/actions/reçus et transactions.
 - document_workshop_execution.py : confirmation/journal/exécution.
 - document_workshop_routes.py : frontières HTTP.
-- document_canonical.py et document_rendering.py : modèle/rendu.
+- document_canonical.py : modèle structuré ; document_rendering.py : orchestration
+  du rendu et validation, sérialisation Markdown directe, aucun UNO embarqué.
+- document_renderer_contract.py : schémas fermés du service privé et capacités.
+- document_renderer_client.py : HTTP Unix borné, suivi/résultat/annulation/libération.
 - workspace_document_paths.py : racine/segments.
 - workspace_document_content_service.py : fraîcheur/lecture.
 - workspace_document_adoption_service.py : navigation/adoption.
@@ -1114,16 +1481,19 @@ Déjà plus grands : chat_service.py, conversations_store.py, chat_llm_flow.py,
 active_document_prompt_lane.py, app.js et chat_threads_sidebar.js. Ces comptes sont
 ceux du HEAD de reconnaissance ; aucun refactor cosmétique n'est proposé.
 
-### Lots Sauron conditionnels
+### Lot Sauron obligatoire et besoins conditionnels
 
+- [ ] M8-S : service Writer/UNO isolé, image/filtres/polices/profil/ressources/socket,
+  sécurité/cleanup/health et preuve synthétique ; voir section 8, aucune livraison ici.
 - [ ] Prouver identité DAV, préconditions, ETags et Versions si les preuves
   applicatives ne suffisent pas.
 - [ ] Fournir une preuve transactionnelle isolée si environnement SQL absent.
 
-Permissions DAV, réseau ou environnement SQL partagé relèvent de lots Sauron
-distincts si les faits les imposent. Les bibliothèques et la police du renderer
-sont embarquées dans l'application par Celebrimbor ; aucun lot Sauron renderer,
-font partagée ou service de conversion n'est prévu.
+M8-S est une vraie frontière plateforme, sans accès Nextcloud et sans surface
+publique. Permissions DAV ou environnement SQL partagé relèvent de besoins
+Sauron conditionnels distincts. Pins/bibliothèques/polices sont dans l'image du
+renderer, pas dans FridaDev. Sauron ne modifie pas ce checkout ; Celebrimbor ne
+modifie aucune stack, réseau, secret ou fichier sous sa racine plateforme.
 
 ## 11. Faits externes restant à prouver
 
@@ -1134,6 +1504,15 @@ inconnues ou des comparaisons. Leur implémentation et leurs tests restent ouver
 - [ ] M2/M5/M7 : comportement DAV effectif, identité distante, préconditions/ETags
   et Versions disponibles sur la chaîne déployée.
 - [ ] M3 : environnement SQL concurrent isolé de preuve si non établi par le HEAD.
+- [ ] M8-S/M8-A : disponibilité effective du service isolé, permissions de socket,
+  capacités/filtres/polices/layout du pin livré, ressources/confinement/cleanup.
+  Ce sont des preuves de livraison, aucun choix de moteur repoussé.
+- [ ] M9-A/M9-B/M10 : stabilité Writer réelle, import/round-trip externe admissible
+  et limites détectées du corpus synthétique ; aucune promesse Word universelle.
+
+Collabora n'est pas prouvé actif par la lecture non sensible de ce lot. Son rôle
+d'éditeur humain est conservé ; sa disponibilité n'est pas une dépendance de
+l'atelier et son installation ne devient pas un lot implicite de cette roadmap.
 
 Ces faits ne justifient pas de changer les décisions : précondition non prouvée
 → refus fermé ; besoin de plateforme → lot Sauron ciblé et autorisé. Le calcul
@@ -1148,16 +1527,24 @@ et de preuve de M0/M4/M8–M10, pas des arbitrages repoussés.
 - [ ] Upload/picker/change/drag-and-drop conservés, sans duplication mobile.
 - [ ] Navigation/adoption ciblées ; aucun synchroniseur global.
 - [ ] Aucune mutation distante avant confirmation et claim valides.
-- [ ] Canonical/rendu figés et correspondance distante vérifiée.
+- [ ] Canonical/profil/cible figés avant confirmation ; octets binaires/manifeste
+  figés et validés après claim, avant MKCOL/PUT ; correspondance distante vérifiée.
 - [ ] Reçu séparé des paroles et des tool results ; réhydratation durable.
 - [ ] Inventaire unique workspace_files, ID stable en update.
 - [ ] ETag frais et If-Match réellement envoyés ; aucun écrasement implicite.
 - [ ] Journal et remote_uncertain sans promesse d'exactly-once distribué.
 - [ ] Aucun DELETE sans propriété ni rollback récursif de collections.
 - [ ] DOCX externe et PDF externe traités avec fidélité honnête.
-- [ ] Pile locale décidée livrée/épinglée/prouvée, aucune dépendance plateforme de rendu.
+- [ ] Writer/UNO isolé livré/épinglé/prouvé par M8-S, adaptateur M8-A ; aucun moteur
+  concurrent, cloud/payante, fallback ou LibreOffice dans le conteneur FridaDev.
+- [ ] Nextcloud/Collabora/Stirling distincts ; entrée humaine et OCR Stirling préservés.
+- [ ] Aucun secret/capacité DAV dans le renderer, aucun UNO brut ni API publique,
+  socket restreint/network none et fichiers éphémères nettoyés, ODT jamais vérité durable.
+- [ ] Pagination réelle du DOCX final rechargé dans Writer et PDF du même état,
+  sans docProps fictif ou équivalence Word universelle.
+- [ ] Graphe M8-C→M8-S→M8-A→M9-A→M9-B→M10 sans dépendance circulaire.
 - [ ] Document produit <=10 000 mots et <=75 000 caractères Unicode ; DOCX/PDF
-  rendus <=20 pages A4, corps 12 points/interligne 1,5/marges 2,5 cm.
+  rendus <=20 pages Writer A4, corps 12 points/interligne 1,5/marges 2,5 cm.
 - [ ] Markdown sans pagination stable ; aucun plafond de 20 pages appliqué aux sources.
 - [ ] Source longue admise si entrée complète admissible ; sinon réduction/sélection
   ou refus avant appel, aucune troncature/résumé/échantillonnage silencieux.
@@ -1178,12 +1565,15 @@ et de preuve de M0/M4/M8–M10, pas des arbitrages repoussés.
 - [ ] Preuves live éventuelles explicitement autorisées et content-free.
 - [ ] Docs/limites/statuts synchronisés ; aucun finding vivant caché.
 - [ ] Lot Z fermé ; suites images/continuations/édition enrichie hors ce chantier.
+- [ ] Aucun moteur secondaire, suite bureautique supplémentaire ou pipeline PDF
+  parallèle sans nouvelle décision produit ; aucune extension opportuniste.
 
 ## 13. Statut de publication documentaire
 
 Cette TODO conserve la spécification et les décisions validées par Tof sous forme
 de cases à cocher. M0 est le prochain lot et reste non commencé.
-Elle ne remplace pas les contrats vivants et ne lève pas l'invariant applicatif de
-consolidation. Aucune fonctionnalité, dépendance ou preuve live n'est déclarée
-livrée par ce correctif docs-only. Commit/push sont explicitement autorisés pour
-la roadmap et son entrée de hub ; aucun changement runtime n'est autorisé.
+Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
+dans AGENTS.md ; l'invariant de consolidation reste applicable hors de cette
+exception. Aucune fonctionnalité, dépendance, service ou preuve live n'est déclaré
+livré par ce correctif docs-only. Commit/push sont obligatoires pour AGENTS.md,
+la même roadmap et son résumé de hub ; aucun changement runtime n'est autorisé.

@@ -205,9 +205,38 @@ provider, controle ou comportement audio ; l'experience reelle et le retour
 qualitatif de Tof ont ete valides hors voiture puis en usage automobile le
 11 septembre 2026. Le lot Z de reconciliation finale reste seul ouvert.
 
-Chaque lot doit demontrer: pas de capacite produit ajoutee, comportements
-legitimes preserves hors bug corrige, complexite stable ou reduite, ancien
-chemin retire quand il est remplace, et invariants utiles verrouilles par des
+Exception produit explicite et strictement bornee decidee par Tof le
+29 septembre 2026 : l'atelier documentaire Frida V1 est autorise selon la
+[roadmap active](app/docs/todo-todo/product/frida-v1-document-workshop-todo.md),
+lots M0 a M10 et Z. Cette exception couvre la lecture et l'adoption ciblees
+d'un fichier explicitement mobilise ; la preparation puis la creation,
+modification ou copie explicitement demandee de documents Markdown, DOCX et PDF
+apres la confirmation humaine prevue ; la creation bornee des sous-repertoires
+affiches et confirmes dans `<repertoire Frida selectionne>/Documents/...` ;
+le renderer LibreOffice Writer headless libre et auto-heberge pilote par UNO,
+isole du conteneur FridaDev ; et la continuite conversationnelle par recu
+structure durable apres mutation. Nextcloud reste le stockage autoritatif et
+FridaDev le seul detenteur des capacites Nextcloud de cet atelier.
+
+Sont explicitement interdits par cette exception : toute ecriture hors du
+sous-arbre Documents du repertoire selectionne, toute mutation sans la
+confirmation humaine du contrat, tout acces direct du renderer a Nextcloud ou
+a ses secrets, toute publication externe ou envoi, toute execution de code ou
+commande arbitraire depuis une demande ou un document, tout nouveau format
+produit au-dela de Markdown/DOCX/PDF, tout agent documentaire generaliste,
+autonomie ouverte ou extension opportuniste au-dela des lots M0-M10 et Z.
+Le pilotage UNO et les processus fixes necessaires au rendu ne donnent aucune
+capacite d'execution arbitraire au modele ou au document. Image, processus,
+ressources, reseau, polices et exploitation du renderer relevent de Sauron ;
+adaptateur, canonical, orchestration, validations, persistance et tests
+applicatifs relevent de Celebrimbor. Aucun agent ne modifie la racine de l'autre.
+Cette inscription ferme l'exception produit, sans demarrer M0 ni autoriser une
+installation, un changement runtime, un appel modele reel ou un canari dans le
+present lot documentaire ; chaque lot d'execution conserve son autorisation.
+
+Chaque lot doit demontrer: aucune capacite produit ajoutee hors exception
+explicite, comportements legitimes preserves hors bug corrige, complexite
+stable ou reduite, ancien chemin retire quand il est remplace, et invariants utiles verrouilles par des
 preuves adaptees.
 
 ## Invariant dialogique non negociable
