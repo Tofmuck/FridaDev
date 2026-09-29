@@ -14,6 +14,8 @@ Ne pas creer d'index concurrent sans besoin fort. Le README racine du repo donne
 
 ### Current-state
 
+- [Atelier documentaire agentique Frida V1 — spécification proposée et roadmap](todo-todo/product/frida-v1-document-workshop-todo.md) : design consolidé et micro-lots M0 à M10 puis Z, en cases à cocher. Proposition à valider ; aucun lot applicatif commencé, aucun GO d'implémentation ou de canari implicite.
+
 - [Contrat visuel du chat Web et de sa composition iPhone](states/specs/chat-web-visual-themes-contract.md) : deux thèmes de bureau sur une structure unique, puis `Alternative B — Dialogue vivant` sur téléphone. La stabilité portrait/paysage et le premier retour réel d'Authelia sont validés sur l'iPhone installé. Le choix desktop reste persistant et toutes les actions existantes demeurent accessibles.
 
 - [Reconnaissance historique du dialogue oral Web](todo-todo/Dialogue/fridadev-dialogue-oral-web-todo.md) : cadrage initial et provenance conservés pour la chaîne semi-duplex VAD local → STT OpenRouter → chat canonique → TTS Soleil, livrée et validée sur iPhone, hors voiture puis en usage automobile. D0 à D6 et Z.1 à Z.4 sont fermés.
