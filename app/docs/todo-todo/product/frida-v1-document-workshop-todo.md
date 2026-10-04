@@ -1146,8 +1146,12 @@ locale, défaut historique inchangé ; validation du chemin par M0, pas de copie
 
 POST/GET valident conversation/répertoire/cible côté serveur ; création SQL
 revalide/verrouille ces ressources et fixe chemin/référence. GET refuse scope,
-suppression ou identité distante changés. Le store prouvé est PostgreSQL,
-pas un dictionnaire ; seuls les inventaires sont remplacés dans le harnais Flask.
+suppression ou identité distante changés. Les routes Flask et le service sont
+éprouvés avec inventaires et store de contexte simulés. Une suite PostgreSQL
+isolée vérifie séparément la migration, le store réel, le commit et la relecture
+par une connexion indépendante ; un scénario y compose également le service
+avec ce store. Ces preuves ne sont pas présentées comme un parcours
+Flask–PostgreSQL de bout en bout.
 État réel `editing`, `prepare=false`, pas de préparation, aperçu, progression,
 `pending`, reçu, claim ou annulation fictive. Gardes frontend canonique et serveur
 `document_context_id` placés avant les effets du tour ; sortie locale explicite.
@@ -1308,6 +1312,11 @@ inchangé. Limites : aucune expérience live déduite des mocks, aucune activati
 migration opérateur, préparation M4 ou job d'annulation. M2 et suivants non commencés.
 M1 ferme menu/entrée et autorité du contexte `editing` avec gardes inactifs ; M2
 reste responsable du navigateur distant, de l'adoption et de la lecture fraîche.
+
+**Correction documentaire P3 du 4 octobre 2026 :** la description précédente
+du harnais Flask omettait le store de contexte simulé (`Mock` et `self.saved`).
+La distinction avec les cinq preuves PostgreSQL séparées est rétablie ci-dessus,
+sans changement de code, de tests ou des résultats historiques.
 
 ### M2 — Adoption et lecture distante ciblées
 
