@@ -1,10 +1,10 @@
 # Atelier documentaire agentique Frida V1 — spécification validée et roadmap
 
-Date : 2026-09-29.
+Date : 2026-09-29. Mise à jour M0 : 2026-10-04.
 
-Statut : **spécification et choix architecturaux validés par Tof ; M0 est le
-prochain lot, non commencé ; architecture LibreOffice Writer/UNO réconciliée ;
-exception produit inscrite ; aucun lot applicatif ou renderer livré**.
+Statut : **spécification et choix architecturaux validés par Tof ; M0 fermé sur
+composants et preuves internes, contre-audit corrigé sur `FridaV1-Document-Workshop-M0` ;
+M1–M10 et Z non commencés ; aucun raccord produit, déploiement ou renderer livré**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
 dialogue avec Tof. Création documentaire committée dans `d6b63fd1`, puis validation
@@ -12,6 +12,10 @@ explicite de la spécification et des six décisions amont par Tof le 2026-09-29
 Le commit `9f728998` a inscrit ces décisions. La réconciliation autoritative du
 29 septembre 2026 remplace le moteur par LibreOffice Writer headless/UNO isolé,
 ferme l'exception AGENTS.md et ne démarre aucun lot applicatif ou plateforme.
+Tof autorise M0 le 4 octobre 2026, puis recadre explicitement l'admission sur
+le compteur partagé existant et impose une branche dédiée avant toute édition.
+Ce recadrage est inscrit en §7.3 ; le premier arrêt avant patch sur l'exigence
+ancienne de framing ne reste pas un blocage du lot autorisé.
 
 Les observations techniques ci-dessous sont rattachées au HEAD
 `a2483bf1aa6f5e93ba7ec2800b8ff053cc0af2c6`, branche `main`, checkout
@@ -22,22 +26,23 @@ l'exécution des lots concernés, sans recommencer une reconnaissance générale
 
 Une case cochée dans les décisions signifie « décidé par Tof », pas « livré ».
 Une case ouverte dans les critères ou les lots signifie « à implémenter ou prouver ».
-Les inconnues factuelles sont isolées en section 11. Les tests décrits sont des
-preuves futures, pas des tests déjà exécutés pour cet atelier.
+Les inconnues factuelles sont isolées en section 11. Seules les preuves datées
+dans M0 décrivent des tests exécutés ; les autres lots restent des preuves futures.
 
 - [x] Reconnaissance et proposition de design produites dans le dialogue.
 - [x] Création de cette TODO autorisée par Tof.
 - [x] Spécification et choix architecturaux ci-dessous validés par Tof le 2026-09-29.
 - [x] Exception produit bornée du 29 septembre 2026 inscrite dans le
   [AGENTS.md racine](../../../../AGENTS.md) pour les lots M0–M10 et Z.
-- [ ] Lot d'implémentation concerné explicitement autorisé.
+- [x] M0 explicitement autorisé le 2026-10-04 sur la branche dédiée ; les GO des
+  autres lots restent requis séparément.
 - [ ] GO distinct obtenu avant tout appel modèle réel de preuve.
 - [ ] GO distinct obtenu avant tout canari d'écriture Nextcloud.
 
-Le présent lot est docs-only. Il ne modifie ni application, ni tests, ni schéma,
-ni runtime. Il modifie seulement cette roadmap, l'exception AGENTS.md et le
-résumé du hub. Aucun provider, contenu privé, mutation DB/WebDAV, installation,
-build ou déploiement ; aucun lot d'implémentation déclaré livré.
+Le lot de réconciliation du 29 septembre était docs-only : roadmap, exception
+AGENTS.md et résumé du hub. M0 ajoute uniquement les composants internes, tests
+et contrats décrits ci-dessous ; aucun provider réel, contenu privé, mutation
+DB/WebDAV, installation, build ou déploiement n'est autorisé par son mandat.
 
 ## 1. Décisions produit intégrées
 
@@ -52,10 +57,12 @@ build ou déploiement ; aucun lot d'implémentation déclaré livré.
   ajoutée au modèle principal au premier palier.
 - [x] Modèle initial principal `openai/gpt-5.1`, prompt documentaire distinct, un
   appel documentaire par préparation, aucun fallback ni nouveau réglage Admin.
-- [x] Plafond documentaire dédié de 24 000 tokens de sortie ; chat normal inchangé
-  à 8 192 tokens ; fenêtre officielle 400 000 et sortie officielle 128 000 tokens.
-- [x] Admission mesurée avant appel, avec réservation de 24 000 tokens et marge
-  explicite d'enveloppe/raisonnement selon le transport réel.
+- [x] Plafond documentaire dédié de 24 000 tokens de sortie ; défaut normal
+  inchangé à 8 192 avec ses overrides légitimes ; fenêtre officielle 400 000
+  et sortie officielle 128 000 tokens.
+- [x] Recadrage Tof du 2026-10-04 : admission estimée par le compteur partagé,
+  entrée complète plus 24 000 <=400 000 ; pas de seconde réserve de raisonnement
+  ni de marge de framing inventée. Ce n'est pas une mesure exacte fournisseur.
 - [x] Document produit : A4, corps 12 points, interligne 1,5, marges 2,5 cm ;
   canonical au plus 10 000 mots et 75 000 caractères Unicode, premier plafond atteint.
 - [x] DOCX/PDF rendus au plus 20 pages Writer épinglé ; Markdown borné par mots/caractères,
@@ -264,7 +271,7 @@ sauvegarde utilisateur initiale, commit réponse/pending commun. Séquence en se
 ### 3.5. Agent documentaire
 
 **Décision :** modèle initial `openai/gpt-5.1`, prompt distinct, un appel documentaire
-avec plafond dédié de 24 000 tokens ; chat normal conservé à 8 192 tokens. Aucun
+avec plafond dédié de 24 000 tokens ; défaut normal 8 192 et overrides conservés. Aucun
 fallback, continuation, chunking, réparation par second appel ou réglage Admin nouveau.
 
 **Existant :** modèle et budget résolus depuis les réglages runtime ; lecteur
@@ -276,9 +283,10 @@ Sortie stricte prepared, clarify ou refuse. Prepared contient réponse courte,
 opération, cible, canonical et limites ; les deux autres n'ont aucune action
 exécutable. Le modèle ne possède aucun client d'écriture.
 
-**Preuve à livrer :** admission complète dans 400 000 tokens en réservant 24 000
-tokens et la marge explicite du transport/raisonnement ; limites de sortie de la
-section 7. Les chiffres sont décidés, leur application reste à implémenter.
+**Preuve M0 :** admission estimée de l'entrée complète, par le compteur partagé,
+avec réserve de génération 24 000 dans 400 000 (§7.3) ; limites canoniques et
+terminaison du lecteur interne. Enveloppe prepared/clarify/refuse, réponse courte
+et transaction produit restent M4 ; aucun raccord au chat n'est livré par M0.
 
 - [ ] Valider l'enveloppe sans routage linguistique déterministe.
 - [ ] Ne jamais relancer le modèle pour réparer automatiquement une sortie invalide.
@@ -502,7 +510,7 @@ des facultés ; jamais enregistrée comme message. Dernier reçu pertinent prés
 au tour suivant, historique supplémentaire borné. La vraie demande et la réponse
 courte restent dans le dialogue légitime.
 
-**Preuve à livrer :** lane comptée dans l’admission complète de M0 et séparation
+**Preuve à livrer :** lane incluse dans l’estimation complète via M0 et séparation
 des payloads, sans nouveau choix de budget produit.
 
 - [ ] Aucun canonical, rendu, journal ou reçu synthétique dans Memory, Identity,
@@ -741,9 +749,9 @@ ne garantissent pas 20 pages. Titres, tableaux, sauts et styles influent sur la
 pagination. Le premier plafond atteint fait foi, sans augmenter les autres pour
 faire tenir la demande. Aucun ajustement silencieux de police, interligne ou marges.
 
-- [ ] Compter mots/caractères sur tout le contenu canonical, y compris titres,
+- [x] M0 : compter mots/caractères sur tout le contenu canonical, y compris titres,
   listes, citations et tableaux ; méthode Unicode reproductible et testée.
-- [ ] Distinguer caractères Unicode et octets UTF-8 ; ne pas utiliser la longueur
+- [x] M0 : distinguer caractères Unicode et octets UTF-8 ; ne pas utiliser la longueur
   UTF-16 navigateur comme compteur de points de code.
 - [ ] Exiger sortie modèle complète, schéma valide et plafonds canoniques avant pending ;
   contrôler le plafond final Writer après confirmation et avant toute mutation distante.
@@ -755,12 +763,12 @@ faire tenir la demande. Aucun ajustement silencieux de police, interligne ou mar
 ### 7.2. Source longue
 
 La limite de 20 pages concerne uniquement le document produit. Une source peut
-dépasser 20 pages si son contenu admissible tient réellement dans l'entrée du
-modèle, avec dialogue, prompt, autres sources et réserves. Le nombre de pages
+dépasser 20 pages si son contenu entier passe l'admission estimée de l'entrée du
+modèle, avec dialogue, prompt, autres sources et réserve de génération. Le nombre de pages
 d'une source n'est pas un critère de refus de volume produit.
 
-- [ ] Admettre une source de plus de 20 pages lorsque l'ensemble tient dans la fenêtre.
-- [ ] Ne jamais tronquer, résumer ou échantillonner une source silencieusement.
+- [x] M0 : admettre une source de plus de 20 pages si l'entrée entière passe la garde estimée.
+- [x] M0 : aucune troncature, résumé ou échantillonnage silencieux d'une source.
 - [ ] Si elle ne tient pas, demander de réduire/sélectionner la source ou refuser
   avant l'appel documentaire ; aucune réduction automatique de la fenêtre dialogique.
 
@@ -768,52 +776,71 @@ d'une source n'est pas un critère de refus de volume produit.
 
 Modèle initial : `openai/gpt-5.1`, modèle principal courant décidé par Tof.
 Fenêtre officielle : 400 000 tokens ; sortie maximale officielle : 128 000 tokens.
-Le plafond local documentaire de 24 000 est volontaire. Le plafond du chat normal
-reste inchangé à 8 192 tokens.
+Le plafond local documentaire de 24 000 est volontaire. Le défaut normal reste
+8 192 tokens, ainsi que les réglages et overrides normaux légitimes actuels.
 
 Références primaires conservées et vérifiées sur leurs pages publiques, sans appel modèle :
 
 - [OpenAI — GPT-5.1](https://developers.openai.com/api/docs/models/gpt-5.1).
 - [OpenRouter — openai/gpt-5.1](https://openrouter.ai/openai/gpt-5.1).
 
-Avec I = tokens de l'entrée complète, M_transport = marge explicite d'enveloppe
-et de raisonnement selon le transport réel, l'admission impose :
+**Recadrage explicite de Tof du 4 octobre 2026 :** réutiliser la structure de
+comptage du système. La décision initiale demandait un décompte exact ou une
+borne conservatrice avec marge de framing ; la première tentative s'est arrêtée
+avant patch faute de preuve de ce framing. Tof remplace cette exigence par
+l'estimation partagée, sans modifier modèle, volumes, budget, transport ou timeout :
 
 ```text
-T_document = 24 000
-T_chat_normal = 8 192
-W_modele = 400 000
-I + T_document + M_transport <= W_modele
+E = token_utils.estimate_tokens(entree_documentaire_complete, modele)
+estimated_input_tokens = E
+estimated_total_tokens = E + 24 000
+admission_estimee : estimated_total_tokens <= 400 000
 ```
 
-I comprend prompt documentaire, dialogue, sources complètes et métadonnées
-injectées. Le calcul de M_transport doit être explicité et mesuré dans M0, en
-comptant correctement le raisonnement et l'enveloppe selon leur inclusion dans
-les tokens du transport. Masquer le raisonnement ne le rend pas gratuit. Cette
-preuve d'admission n'autorise aucune modification de T_document ou du volume produit.
-Les limites officielles ne constituent pas une mesure de runtime réalisée ici.
+E utilise le callable injecté existant `core.token_utils.estimate_tokens` →
+`token_counter.estimate_message_tokens` → `estimate_text_tokens`, sans copie
+ni changement d'algorithme. Il reste heuristique et indépendant de l'identité
+du modèle dans son implémentation actuelle : aucune exactitude fournisseur ou
+borne mathématique complète n'est revendiquée. Aucun tokenizer ou coefficient
+documentaire supplémentaire, aucune recherche de marge de framing nécessaire.
 
-Le compteur heuristique actuel ne suffit pas à garantir l'admission. M0 livre un
-décompte ou une borne conservatrice prouvée pour ce modèle et le payload complet,
-et refuse avant appel lorsque la place nécessaire ne peut être établie.
+Le payload final est figé avant estimation : prompt spécialisé, dialogue,
+sources complètes, contexte, métadonnées injectées et instructions de schéma.
+Un `response_format` hors messages est représenté par un adaptateur explicite
+d'estimation avec le même callable. Headers/secrets et attribution HTTP ne sont
+pas du texte de prompt. Rien n'est ajouté au texte envoyé après admission.
+Une estimation absente, invalide ou en erreur refuse avant transport ; jamais zéro
+de secours, troncature, résumé ou réduction cachée de la fenêtre dialogique.
 
-- [ ] Séparer le plafond documentaire du réglage du chat normal ; payload documentaire
-  à 24 000 et payload normal à 8 192, sans nouveau réglage Admin ni changement runtime normal.
-- [ ] Vérifier admission avant appel et conserver finish_reason/métadonnées utiles.
-- [ ] Borner l'enveloppe technique selon les plafonds décidés et le schéma, sans
+Le raisonnement masqué consomme encore la génération : sur le transport
+OpenRouter Chat Completions choisi, il partage `max_tokens=24 000` avec le texte
+visible. Aucune seconde réserve n'est ajoutée. Effort et masquage restent résolus
+par les primitives serveur existantes. Les usages prompt/completion/total
+rapportés réutilisent l'extraction actuelle et restent distincts de E ; leur
+absence n'autorise aucune invention. Refus de contexte provider → échec sans
+document partiel, deuxième appel ou retour vers le chat normal. Les limites
+publiques et ces tests simulés ne constituent pas une mesure live.
+Le [contrat interne M0](../../states/specs/frida-v1-document-workshop-m0-contract.md)
+fixe les représentations, codes et frontières consommables par les prochains lots.
+
+- [x] M0 : séparer le plafond documentaire du réglage du chat normal ; payload documentaire
+  à 24 000, défaut normal à 8 192 et overrides préservés, sans réglage Admin nouveau.
+- [x] M0 : vérifier l'admission estimée avant appel et conserver finish_reason/usages utiles.
+- [x] M0 : borner l'enveloppe technique selon les plafonds décidés et le schéma, sans
   introduire de plafond produit caché ou de troncature.
-- [ ] Un seul appel documentaire ; aucun fallback, continuation, chunking ou second
+- [x] M0 : un seul appel documentaire ; aucun fallback, continuation, chunking ou second
   appel de réparation.
-- [ ] Un modèle hors contrat initial ne devient pas silencieusement une alternative.
-- [ ] Progression réelle projetée, 120 secondes d'inactivité puis échec fermé ;
-  aucune deadline murale supplémentaire tant que la progression continue.
+- [x] M0 : un modèle hors contrat initial ne devient pas silencieusement une alternative.
+- [x] M0 : états internes de progression effective, 120 secondes d'inactivité puis
+  échec fermé ; aucune deadline murale pendant progrès. Projection UI future M4.
 
 ## 8. Roadmap par micro-lots
 
-Tous les lots restent ouverts et non commencés. Spécification et décisions amont
-sont validées et l'exception produit est inscrite ; M0 est le prochain lot.
+M0 est fermé sur composants et preuves internes, contre-audit corrigé sur sa branche dédiée.
+M1–M10 et Z restent ouverts et non commencés. Spécification et décisions amont
+sont validées et l'exception produit est inscrite.
 Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
-ce correctif n'en réalise aucune.
+le GO M0 ne vaut pour aucun lot suivant ni déploiement.
 UI construite tôt, contrats DOM/HTTP hermétiques ; aucun parcours d'écriture exposé
 comme fonctionnel avant livraison des protections et de la tranche complète.
 
@@ -848,37 +875,206 @@ distinct. M8-S n'exige ni modèle réel ni Nextcloud et ne dépend pas de M9/M10
 
 **Objectif :** rendre applicables les bornes de volume, admission, chemin et
 inactivité déjà fixées ; aucune nouvelle décision de taille ou budget.
-**Dépendances :** spécification validée et exception AGENTS.md inscrite ; GO de M0
-encore requis. Préalable de M1 et des lots suivants.
+**Dépendances :** spécification validée, exception AGENTS.md et GO M0 du
+2026-10-04 avec recadrage compteur partagé et branche dédiée. Préalable de M1.
 **Frontières :** contrat documentaire, adapter modèle, compteur/admission, gardes
 canoniques et de chemin, suivi de progression ; chat normal préservé.
 **Interface :** gpt-5.1, sortie documentaire 24 000, chat 8 192, fenêtre 400 000,
-réserve explicite ; canonical 10 000 mots/75 000 caractères ; profil A4/20 pages
+estimation partagée E + réserve 24 000 ; canonical 10 000 mots/75 000 points de code ; profil A4/20 pages
 déclaré, compteur final fourni par Writer M8-S puis validé en M8-A/M9/M10 ;
 watchdog d'inactivité 120 secondes, aucune installation renderer en M0.
 **Propriétaire :** Celebrimbor.
+**Statut M0 :** critères internes prouvés et contre-audit corrigé le 2026-10-04 ;
+livraison Git sur branche dédiée requise, preuve d'alignement dans le retour de lot.
 
-- [ ] Rouge causal : refus à 10 001 mots ou 75 001 caractères, JSON complet mais
+- [x] Rouge causal : refus à 10 001 mots ou 75 001 caractères, JSON complet mais
   finish_reason=length, entrée qui tient sans réserve mais dépasse avec elle ;
   payload documentaire héritant par erreur de 8 192 ou payload normal porté à 24 000.
-- [ ] Prouver les limites exactes de chemin, y compris nom de fichier, octets/Unicode,
+- [x] Prouver les limites exactes de chemin, y compris nom de fichier, octets/Unicode,
   et refus sans normalisation destructive ; source >20 pages admise si elle tient.
-- [ ] Implémenter mesure d'entrée et marge explicite du transport/raisonnement,
+- [x] Implémenter estimation d'entrée par le compteur partagé sans marge ajoutée,
   validation de sortie et contrat de page_count ; aucune pagination binaire livrée
   artificiellement avant son renderer.
-- [ ] Implémenter le suivi d'inactivité : progrès continu au-delà de 120 secondes
+- [x] Implémenter le suivi d'inactivité : progrès continu au-delà de 120 secondes
   accepté, 120 secondes sans progrès refusées, keepalive seul non probant.
-- [ ] Tests ciblés synthétiques et transport fake ; voisins réglages/raisonnement/
+- [x] Tests ciblés synthétiques et transport fake ; voisins réglages/raisonnement/
   parser/compteur/path validation, sans fournisseur ni DB opérateur.
-- [ ] Faux verts : heuristique présentée comme exacte, payload partiel mesuré,
+- [x] Faux verts contrôlés : heuristique présentée comme exacte, payload partiel mesuré,
   raisonnement omis, mots/UTF-16 confondus, timer relancé par animation ou heartbeat.
-- [ ] Interdire provider réel, fallback, deadline murale pendant progrès, nouvelle
-  taille produit et modification du plafond normal de 8 192.
-- [ ] Synchroniser contrats bornes/transport/progression ; appel réel éventuel
+- [x] Interdire provider réel, fallback, deadline murale pendant progrès, nouvelle
+  taille produit et modification du défaut normal 8 192 ou des overrides légitimes.
+- [x] Synchroniser contrats bornes/transport/progression ; appel réel éventuel
   sous GO distinct, jamais nécessaire pour décider les chiffres.
-- [ ] Aucun déploiement produit ; rebuild seulement lors de livraison applicative
+- [x] Aucun déploiement produit ; rebuild seulement lors de livraison applicative
   explicitement autorisée. Fermer sur gardes et mesures hermétiquement prouvés,
   en laissant pagination/rendus binaires aux lots M8–M10.
+
+#### Exécution M0 du 4 octobre 2026
+
+Base revalidée : checkout `/opt/platform/fridadev`, `main` propre,
+HEAD = upstream `origin/main` = branche distante
+`e3e0d19290cb7ac275b3fd4b19c4b01dbc89f2cb`, divergence `0/0`, constat distant
+par `git ls-remote` sans lecture de credentials. Le nom de branche était libre
+localement et sur origin. `git switch -c FridaV1-Document-Workshop-M0` exécuté
+avant toute édition ; HEAD restait à la base, worktree propre. Aucun pull,
+second checkout, worktree, merge ou édition de main.
+
+Plan minimal retenu : isoler les six responsabilités internes suivantes ;
+ne toucher aucun coordinateur/caller existant et ne pas installer de dépendance.
+Le [contrat M0](../../states/specs/frida-v1-document-workshop-m0-contract.md)
+documente précisément formes, comptage Unicode, clés et codes de refus.
+
+| Fichier `app/core/` | Preuve effective |
+| --- | --- |
+| `document_workshop_contract.py` | Bornes fixes ; preuve page_count strictement entière 1–20 ; A4/12 pt/1,5/2,5 cm. Aucun rendu. |
+| `document_canonical.py` | Schéma fermé, titres/spans/listes/citations/cellules/liens comptés ; points de code et mots Unicode sans réécriture ; snapshot JSON. |
+| `document_workshop_admission.py` | Constructeur partagé à 24 000, modèle exact, effort inchangé/masqué, corps figé ; compteur partagé injecté et garde E + 24 000 <=400 000. |
+| `document_workshop_provider.py` | Un send simulé au plus, vrais lecteurs JSON/SSE conservant stop/modèle/usages ; aucun retour vers le chat, retry ou réparation. |
+| `document_workshop_progress.py` | Horloge monotone, surveillance indépendante des lectures/ouvertures bloquées, inactivité et annulation irréversibles. |
+| `workspace_document_paths.py` | Chemin original Documents-préfixé, bornes exactes, collision NFC/casefold séparée et encodage DAV segmentaire purement local. |
+
+La méthode de mots utilise lettres/nombres Unicode, marques attachées et
+apostrophes/tiret internes ; les spans d'une unité sont joints avant compte.
+Chaque unité et cible de lien contribue une fois, sans caractères séparateurs
+inventés. `len(str)` compte les points de code, distincts des graphèmes/UTF-16/
+UTF-8. Refus sans modification de l'entrée à 10 001 mots ou 75 001 points de code.
+Le plafond technique de JSON canonical 1 Mio est celui déjà décidé en §9.3,
+distinct des volumes produit ; il refuse la structure trop volumineuse sans
+troncature. Ni page_count fourni par le modèle, ni sauts, ni docProps ne prouvent
+la pagination finale : M8–M10 doivent fournir cette preuve Writer liée au rendu.
+
+Les callers futurs fournissent prompt, dialogue, contexte, sources intégrales
+et métadonnées documentaires en messages. Instructions de schéma ajoutées avant
+estimation ; schéma `response_format` hors messages via adaptateur d'estimation
+local avec le même callable. Attribution HTTP/headers/secrets hors texte modèle.
+La garde accepte E=376 000 et refuse 376 001 ; les 24 000 partagent génération
+visible et raisonnement, sans seconde réserve. Aucun compteur documentaire,
+framing supplémentaire, changement des réglages ou promesse d'exactitude.
+
+L'URL, secret, attribution et raisonnement sont résolus par `llm_client` existant,
+avec fixtures synthétiques et sans DB/runtime. Le payload normal réellement
+construit garde le défaut de seed 8 192 et un override synthétique 12 345.
+Le payload documentaire transmis au fake porte 24 000 et
+`provider.allow_fallbacks=false`, applicable au contrat public OpenRouter
+Chat Completions. Les lecteurs normaux restent inchangés : le non-streaming
+réduit au texte et le streaming chat ne fournissent pas ce résultat documentaire
+typé. Le sanitizer upload reste inchangé et n'est pas appelé pour une cible
+confirmable. Aucun ancien chemin documentaire produit à remplacer n'existait.
+
+La préparation démarre à construction de `DocumentPreparation`, avant le
+payload. Étapes finies non répétables et contenu provider accepté seuls réarment
+120 secondes. Première attente, send bloqué, read bloqué et contrôles SSE sont
+couverts par un superviseur async indépendant ; les étapes synchrones sont
+contrôlées avant/après. Le transport injecté doit fermer/abandonner promptement
+toute attente et envoyer les octets figés sans retry ; son adaptateur HTTP
+effectif et son raccord restent M4. Aucune deadline totale, TTL ou lease inventée.
+
+#### Commandes et résultats hermétiques
+
+Runner disponible et inspecté, sans pull : `fridadev-audit-py:latest`, image
+`sha256:486a8afeb2f62c7906194d3e1fee839387e55753bcad365120d18306502fafdc`.
+Les dépendances requises étaient déjà disponibles. Commande de la comparaison
+ciblée ; baseline avec les onze premiers sélecteurs, final avec les quatorze :
+
+```bash
+docker run --rm --pull never --network none --read-only \
+  --mount type=bind,src=/opt/platform/fridadev,dst=/workspace,readonly \
+  --tmpfs /tmp:rw,nosuid,nodev --workdir /workspace/app \
+  --entrypoint /usr/bin/env fridadev-audit-py:latest \
+  -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp PYTHONDONTWRITEBYTECODE=1 \
+  EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid \
+  SEARXNG_URL=https://search.invalid python -m unittest \
+  tests.test_llm_client \
+  tests.unit.chat.test_main_llm_reasoning \
+  tests.unit.chat.test_chat_llm_flow \
+  tests.unit.chat.test_chat_llm_flow_boundaries \
+  tests.unit.runtime_settings.test_runtime_settings \
+  tests.unit.runtime_settings.test_runtime_settings_validation \
+  tests.unit.runtime_settings.test_runtime_settings_validation_boundaries \
+  tests.unit.runtime_settings.test_runtime_settings_seed_bundles_and_plans \
+  tests.unit.core.test_workspace_documents_ingestion \
+  tests.unit.core.test_workspace_folder_documents \
+  tests.unit.core.test_workspace_folders_contract \
+  tests.unit.core.test_document_workshop_canonical_paths \
+  tests.unit.core.test_document_workshop_admission \
+  tests.unit.core.test_document_workshop_provider_progress
+```
+
+Sorties redirigées dans un répertoire temporaire de preuve hors checkout ; aucun
+contenu brut ou secret n'est repris ici. Les runs M0 seuls utilisent les trois
+derniers sélecteurs et n'ont pas besoin des trois URL synthétiques de voisins.
+
+| Exécution réellement observée | Résultat et qualification |
+| --- | --- |
+| Baseline avant patch, onze modules | 234/234, 0,185 s, exit 0. |
+| RED canonical/paths avant interfaces | 15 échecs, exit 1 : rouge du contrat M0 absent, aucune régression produit existante. |
+| GREEN canonical/paths | 15/15, 0,145 s, exit 0. |
+| RED admission avant interface | 9 échecs, exit 1 : interface absente. |
+| GREEN admission | 9/9, 6,199 s, exit 0. |
+| RED lecteur/progression avant interface | 22 échecs, exit 1 : interface absente. |
+| GREEN lecteur/progression | 22/22, 0,385 s, exit 0. |
+| Contre-cas adverses ajoutés | 51 tests, trois erreurs de type sur champs non hashables ; garde de type corrigée sans affaiblir les tests. |
+| GREEN M0 + mêmes voisins | 285/285 = 51 M0 + 234 voisins, 6,821 s, exit 0. |
+| Revue indépendante, M0 avant corrections | 51/51, 6,912 s, exit 0 ; probes supplémentaires découvrant deux findings importants. |
+| RED des findings de revue | Trois tests, dix échecs en sous-cas, 0,065 s, exit 1 : usages partiels/incohérents et séparateurs Unicode. |
+| GREEN de ces trois tests | 3/3, 0,061 s, exit 0. |
+| Final après corrections, mêmes voisins | 288/288 = 54 M0 + 234 voisins, 7,288 s, exit 0. Aucun échec, erreur ou skip. |
+
+Contre-cas exercés : 10 000/10 001 mots ; 75 000/75 001 points de code indépendants,
+français décomposé et hors BMP ; totalité titres/cellules/spans/liens ; schéma et
+JSON fermés, données intactes ; source synthétique >20 pages entière ; mêmes
+estimations que token_utils sur espaces/ponctuation/Unicode ; ajout réel de
+sources/métadonnées et adaptateur de schéma ; compteur absent/erroné/mutateur ;
+mutation caller après mesure ; JSON complet mais length, stop/DONE manquants,
+vide/refus/erreur/contexte/usages invalides, contrôle ou raisonnement seuls ;
+progrès utiles pendant 357 secondes virtuelles, inactivité exacte à 120,
+keepalives continus, lecture/ouverture bloquées, annulation, résultat tardif et
+fermeture ; chemins 8/9 niveaux, 180/181 points de code, 255/256 octets,
+1 024/1 025 octets préfixe inclus, extension et français préservés,
+traversées/encodages/confusables refusés ; pages 1/20/21 et preuves invalides.
+
+Les six modules sont nouveaux, inactifs et consommés seulement par leurs tests :
+aucune primitive commune ou route du chat modifiée. Clôture proportionnée par
+M0 et les mêmes 234 voisins avant/après ; aucune découverte générale ni
+comparaison différentielle complète supplémentaire nécessaire. Les tests ne
+dépendent ni d'un secret, de DB opérateur, de réseau ni d'un téléchargement et
+ne déduisent aucun comportement live de fournisseur, DAV ou Writer.
+
+#### Contre-audit et frontière de livraison
+
+Contre-audit indépendant effectué en lecture seule sur tout le lot, avec
+rejeu M0 et probes hermétiques. Deux findings importants reproduits et corrigés
+dans une passe causale ; aucun Critical ni Minor distinct, aucun finding M0
+vivant laissé ouvert :
+
+| Finding | Correction et preuve |
+| --- | --- |
+| Dépassement connu accepté sans total_tokens ou avec total incohérent | Contrôle du total et de la borne déductible prompt + max(completion, reasoning), sans double compte ni invention du total absent ; RED/GREEN via lecteur non-stream et usages SSE répartis. Seuil exact 400 000 accepté. |
+| U+2216/U+29F9 et U+2028/U+2029 admis dans un nom confirmable | Refus ciblé de ces séparateurs et catégories Zl/Zp ; RED/GREEN, témoins français admissibles et octets originaux conservés. |
+
+Registre de contre-audit : enveloppe technique 1 Mio décidée explicitement,
+aucune borne produit cachée ; messages/schema figés inclus dans l'estimation ;
+callable partagé, aucune fausse exactitude ni réserve de raisonnement doublée ;
+sanitizer upload absent du resolver ; superviseur bloqué/keepalives/résultat
+tardif éprouvé ; aucun test supprimé, affaibli ou désactivé ; aucun ancien
+chemin documentaire actif, pas de duplication du comptage/renderer ; voisins
+préservés et graphes de callers isolés ; aucun contenu/secret/log ajouté ;
+roadmap/contrat/hub synchronisés ; aucune capacité hors M0.
+
+Comportements examinés puis laissés aux lots décidés, sans être des findings M0
+omis : transport HTTP réel, interruption des sockets et plafonds réseau (M4) ;
+assemblage/fraîcheur des sources produit et transactions/concurrence durable
+(M1–M7) ; collisions et préconditions/mutations DAV (M2/M5/M7) ; pagination,
+rendu et fidélité Writer (M8–M10). L'exactitude fournisseur de l'estimation et
+le comportement OpenRouter live sont exclus par le recadrage ; aucune garantie
+n'en est déduite. Le mandat autorise le commit/push de la branche, pas un merge
+ou un déploiement ; alignement distant final à constater après push.
+
+M0 ne raccorde pas `/api/chat` ou UI, ne crée ni contexte produit, table/migration,
+claim, pending, reçu, client d'écriture ou renderer. M1 est le prochain lot,
+non commencé ; les transactions/contexte appartiennent à M1–M7, la pagination
+et les binaires effectivement rendus à M8–M10. Code publiable sur branche dédiée
+seulement : aucun merge main, déploiement ou activation produit.
 
 ### M1 — Menu Fichier et contexte explicite
 
@@ -1499,7 +1695,8 @@ modifie aucune stack, réseau, secret ou fichier sous sa racine plateforme.
 
 Toutes les décisions produit et architecturales amont sont fermées. Budgets,
 volume, source longue, progression/pending, chemins et moteur ne sont plus des
-inconnues ou des comparaisons. Leur implémentation et leurs tests restent ouverts.
+inconnues ou des comparaisons. M0 ferme leurs gardes internes ; raccordements,
+transactions, pagination et parcours produit restent aux lots concernés.
 
 - [ ] M2/M5/M7 : comportement DAV effectif, identité distante, préconditions/ETags
   et Versions disponibles sur la chaîne déployée.
@@ -1549,7 +1746,7 @@ et de preuve de M0/M4/M8–M10, pas des arbitrages repoussés.
 - [ ] Source longue admise si entrée complète admissible ; sinon réduction/sélection
   ou refus avant appel, aucune troncature/résumé/échantillonnage silencieux.
 - [ ] Un appel documentaire gpt-5.1, plafond dédié 24 000, chat inchangé 8 192,
-  entrée mesurée avec réserve complète dans 400 000 ; aucune promesse d'équivalence
+  entrée estimée par le compteur partagé plus 24 000 <=400 000 ; aucune promesse d'équivalence
   tokens/mots/caractères/pages.
 - [ ] Refus sur finish_reason=length, canonical incomplet ou dépassement ; aucune
   sauvegarde partielle, réparation, continuation ou fallback.
@@ -1571,9 +1768,12 @@ et de preuve de M0/M4/M8–M10, pas des arbitrages repoussés.
 ## 13. Statut de publication documentaire
 
 Cette TODO conserve la spécification et les décisions validées par Tof sous forme
-de cases à cocher. M0 est le prochain lot et reste non commencé.
+de cases à cocher. M0 ferme les composants internes avec tests hermétiques et
+contre-audit corrigé sur sa branche dédiée ; sa livraison Git est obligatoire,
+à constater dans le retour de lot. M1 reste non commencé.
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
 dans AGENTS.md ; l'invariant de consolidation reste applicable hors de cette
-exception. Aucune fonctionnalité, dépendance, service ou preuve live n'est déclaré
-livré par ce correctif docs-only. Commit/push sont obligatoires pour AGENTS.md,
-la même roadmap et son résumé de hub ; aucun changement runtime n'est autorisé.
+exception. Les seuls composants applicatifs livrables par M0 sont les frontières
+internes inactives et leurs preuves. Aucune dépendance, service ou preuve live
+n'est livré. Commit/push requis exclusivement sur `FridaV1-Document-Workshop-M0` ;
+aucun merge vers main, rebuild, restart ou déploiement n'est autorisé.
