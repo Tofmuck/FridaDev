@@ -222,9 +222,9 @@ function normalizeWorkspaceFileItem(item) {
   const id = String(item?.id || item?.file_id || '').trim();
   const folderId = normalizeWorkspaceFolderId(item?.workspace_folder_id);
   if (!id || !folderId) return null;
-  const displayName = String(item?.display_name || item?.original_filename || 'fichier')
-    .replace(/\s+/g, ' ')
-    .trim() || 'fichier';
+  const exactDocumentPath = typeof item?.document_relative_path === 'string' && item.document_relative_path.length > 0;
+  const normalizeName = value => exactDocumentPath ? String(value) : String(value).replace(/\s+/g, ' ').trim();
+  const displayName = normalizeName(item?.display_name || item?.original_filename || 'fichier') || 'fichier';
   const userProjection = normalizeWorkspaceDocumentUserProjection(item?.document_v1_user);
   const nextcloudSyncState = normalizeWorkspaceFileNextcloudState(
     userProjection?.nextcloud_sync_state || item?.document_nextcloud_sync_state,
@@ -233,7 +233,7 @@ function normalizeWorkspaceFileItem(item) {
     id,
     workspace_folder_id: folderId,
     display_name: displayName,
-    original_filename: String(item?.original_filename || displayName).replace(/\s+/g, ' ').trim(),
+    original_filename: normalizeName(item?.original_filename || displayName),
     content_kind: String(item?.content_kind || 'document').trim(),
     media_kind: String(item?.media_kind || 'text').trim(),
     mime_type: String(item?.mime_type || '').trim(),
@@ -256,6 +256,9 @@ function normalizeWorkspaceFileItem(item) {
     document_nextcloud_status_label: workspaceFileNextcloudStatusLabel({ document_nextcloud_sync_state: nextcloudSyncState }),
   };
   if (userProjection) file.document_v1_user = userProjection;
+  if (exactDocumentPath) file.document_relative_path = item.document_relative_path;
+  if (item?.document_origin === 'external') file.document_origin = 'external';
+  if (typeof item?.document_remote_delete_available === 'boolean') file.document_remote_delete_available = item.document_remote_delete_available;
   return file;
 }
 

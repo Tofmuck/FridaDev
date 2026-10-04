@@ -1,11 +1,13 @@
 # Atelier documentaire agentique Frida V1 — spécification validée et roadmap
 
-Date : 2026-09-29. Mise à jour M0/M1 : 2026-10-04.
+Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-04.
 
 Statut : **spécification et choix architecturaux validés par Tof ; M0 fermé sur
 composants et preuves internes, contre-audit corrigé sur `FridaV1-Document-Workshop-M0` ;
 M1 fermé sur menu, contexte `editing` et gardes, branche `FridaV1-Document-Workshop-M1` ;
-M2–M10 et Z non commencés ; préparation inactive, aucun déploiement ou renderer livré**.
+M2 fermé sur code et 536 preuves hermétiques, contre-revue finale du delta Approved ;
+livraison runtime ouverte ;
+M3–M10 et Z non commencés ; préparation inactive, aucun déploiement ou renderer livré**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
 dialogue avec Tof. Création documentaire committée dans `d6b63fd1`, puis validation
@@ -28,7 +30,8 @@ l'exécution des lots concernés, sans recommencer une reconnaissance générale
 Une case cochée dans les décisions signifie « décidé par Tof », pas « livré ».
 Une case ouverte dans les critères ou les lots signifie « à implémenter ou prouver ».
 Les inconnues factuelles sont isolées en section 11. Seules les preuves datées
-dans M0 et M1 décrivent des tests exécutés ; M2 et suivants restent des preuves futures.
+dans M0, M1 et M2 décrivent des tests exécutés ; M3 et suivants restent des preuves futures.
+Une clôture code/preuves M2 ne ferme pas migration opérateur, rebuild ou preuve DAV déployée.
 
 - [x] Reconnaissance et proposition de design produites dans le dialogue.
 - [x] Création de cette TODO autorisée par Tof.
@@ -38,6 +41,8 @@ dans M0 et M1 décrivent des tests exécutés ; M2 et suivants restent des preuv
 - [x] M0 explicitement autorisé le 2026-10-04 sur la branche dédiée ; les GO des
   autres lots restent requis séparément.
 - [x] M1 explicitement autorisé le 2026-10-04, sur une nouvelle branche issue de M0 audité.
+- [x] M2 explicitement autorisé le 2026-10-04, sur une branche issue de M1 corrigé ;
+  preuves hermétiques seulement, sans autorisation runtime ou canari implicite.
 - [ ] GO distinct obtenu avant tout appel modèle réel de preuve.
 - [ ] GO distinct obtenu avant tout canari d'écriture Nextcloud.
 
@@ -413,18 +418,22 @@ réécriture compensatoire automatique pour update ; Versions reste l'autorité.
 porte seulement sur le document produit ; une source plus longue reste admissible
 si elle tient intégralement dans l'entrée selon la section 7.
 
-**Existant :** inventaire local ; sélection lisant principalement la copie locale.
+**Existant :** inventaire local ; sélection du chat normal lisant la copie locale.
+M2 ajoute une lecture fraîche dédiée à l’atelier, sans modifier ce parcours normal.
 
 **Architecture validée :** navigation paresseuse Depth: 1 de la collection explicitement
 ouverte sous Documents ; réponse/entrées bornées. Adoption après sélection,
 vérification identité/ETag, récupération admissible et commit fichier/lien.
 Fraîcheur vérifiée avant mobilisation documentaire ultérieure.
 
-**Preuve à livrer :** propriétés DAV, taille des réponses, téléchargement conditionnel.
+**Preuves M2 acquises :** HTTP réel sur serveur synthétique, propriétés/taille/
+préconditions et publication SQL isolée ; comportement DAV déployé encore à prouver.
+Le [contrat M2](../../states/specs/frida-v1-document-workshop-m2-contract.md) fixe
+interfaces, bornes, identité, cache et limites ; l’exécution ci-dessous porte les résultats.
 
-- [ ] Distinguer déjà lié, adoptable, collision locale et cible incompatible.
-- [ ] Ne pas injecter automatiquement le contenu d'une ressource adoptée.
-- [ ] Signaler déplacement/disparition sans recherche globale.
+- [x] Distinguer déjà lié, adoptable, collision locale et cible incompatible.
+- [x] Ne pas injecter automatiquement le contenu d'une ressource adoptée.
+- [x] Signaler déplacement/disparition sans recherche globale.
 
 ### 3.11. Update, ETag et Versions
 
@@ -701,7 +710,10 @@ ne doit pas prétendre le contraire ; l'unicité d'exécution est garantie au se
 
 ## 6. Adoption et routes à livrer — L3
 
-Ces interfaces sont validées dans la spécification et restent non livrées.
+Les contextes POST/GET sont implémentés en M1, sans progression de préparation.
+Les routes remote/adopt sont implémentées et prouvées hermétiquement en M2 ;
+leur livraison runtime reste ouverte. `/api/chat` avec `document_context_id`
+refuse encore la préparation ; les routes d’actions restent futures.
 
 | Interface | Responsabilité |
 | --- | --- |
@@ -722,13 +734,13 @@ Ces interfaces sont validées dans la spécification et restent non livrées.
 | Incompatible | Raison précise : hors racine, collection, format, version indéterminée, autre garde. |
 | Déplacé/disparu | Signaler l'écart et permettre sélection explicite, sans recherche globale. |
 
-- [ ] Navigation Depth: 1, paresseuse et bornée ; aucun href/URL frontend directement
+- [x] Navigation Depth: 1, paresseuse et bornée ; aucun href/URL frontend directement
   exécuté comme cible DAV.
-- [ ] Références opaques vérifiées côté serveur et scope Documents effectif.
-- [ ] Pas de pseudo-pagination dissimulant un scan complet : DAV n'est pas supposé
+- [x] Références opaques vérifiées côté serveur et scope Documents effectif.
+- [x] Pas de pseudo-pagination dissimulant un scan complet : DAV n'est pas supposé
   fournir une pagination universelle.
-- [ ] Limite honnête si collection trop volumineuse.
-- [ ] Adoption sans injection automatique ; mobilisation ultérieure explicite.
+- [x] Limite honnête si collection trop volumineuse.
+- [x] Adoption sans injection automatique ; mobilisation ultérieure explicite.
 
 ## 7. Bornes décidées et admission — L4
 
@@ -840,10 +852,12 @@ fixe les représentations, codes et frontières consommables par les prochains l
 
 M0 est fermé sur composants et preuves internes, contre-audit corrigé sur sa branche dédiée.
 M1 est fermé sur menu/contexte `editing` et gardes inactifs, sur sa branche issue de M0.
-M2–M10 et Z restent ouverts et non commencés. Spécification et décisions amont
-sont validées et l'exception produit est inscrite.
+M2 dispose du code corrigé et des preuves hermétiques ; la contre-revue finale
+du delta reste en attente. Migration opérateur, rebuild et lecture DAV déployée
+restent ouverts. M3–M10 et Z ne sont pas commencés. Spécification et
+décisions amont sont validées et l'exception produit est inscrite.
 Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
-les GO M0 et M1 ne valent pour aucun lot suivant ni déploiement.
+les GO M0–M2 ne valent pour aucun lot suivant ni déploiement.
 UI construite tôt, contrats DOM/HTTP hermétiques ; aucun parcours d'écriture exposé
 comme fonctionnel avant livraison des protections et de la tranche complète.
 
@@ -1309,17 +1323,23 @@ Aucune capacité préparation/confirmation/progression/annulation annoncée à t
 Documentation synchronisée dans le contrat M1, active-documents, workspace-folders,
 Documents ingestion et hub ; lien informatif dans Nextcloud folders. M0 reste
 inchangé. Limites : aucune expérience live déduite des mocks, aucune activation,
-migration opérateur, préparation M4 ou job d'annulation. M2 et suivants non commencés.
+migration opérateur, préparation M4 ou job d'annulation. À la clôture M1, M2 et
+les suivants n’étaient pas commencés ; l’exécution M2 ci-dessous actualise ce statut.
 M1 ferme menu/entrée et autorité du contexte `editing` avec gardes inactifs ; M2
 reste responsable du navigateur distant, de l'adoption et de la lecture fraîche.
 
 **Correction documentaire P3 du 4 octobre 2026 :** la description précédente
 du harnais Flask omettait le store de contexte simulé (`Mock` et `self.saved`).
 La distinction avec les cinq preuves PostgreSQL séparées est rétablie ci-dessus,
-sans changement de code, de tests ou des résultats historiques.
+sans changement de code, de tests ou des résultats historiques. Livrée séparément
+sur M1 par `c6f648badba96a60f1474db8d3f7404f97a2dda7`, parent
+`8fb383b9aeb5cdb6f7f32338f60a57acdfa24ec5` ; branche, upstream et remote égaux,
+worktree propre, avance/retard 0/0 vérifiés avant création de M2.
 
 ### M2 — Adoption et lecture distante ciblées
 
+**Statut : code et 536 preuves fermés, contre-revue finale du delta Approved ;
+livraison runtime ouverte.**
 **Objectif :** intégrer un dépôt direct dans l'inventaire commun.
 **Dépendances :** M0–M1, notamment gardes chemin et admission des sources.
 **Fichiers :** liens Nextcloud, workspace_files_store, readers, client DAV,
@@ -1327,20 +1347,388 @@ service d'adoption et navigateur UI.
 **Interface :** routes remote/adopt et lien identité/chemin/ETag.
 **Propriétaire :** Celebrimbor ; Sauron seulement si contrat DAV manquant.
 
-- [ ] Rouge causal : même identité → même ID ; collision → refus ; adoption → zéro
+- [x] Rouge causal : même identité → même ID ; collision → refus ; adoption → zéro
   PUT/MKCOL/DELETE.
-- [ ] Tests ingestion/sélection/projections voisins ; changement listing/GET,
-  identité différente avec même nom, réponse excessive et atomicité locale.
-- [ ] Prouver qu'une source >20 pages n'est pas rejetée par la borne du produit ;
-  appliquer le budget d'entrée complet sans troncature silencieuse.
-- [ ] Faux verts : ne tester que noms identiques, ignorer ETag ou mocker un listing
-  toujours petit/complet.
-- [ ] Interdire scan récursif caché, polling, URL frontend exécutée et origine Frida
-  attribuée à une adoption.
-- [ ] Synchroniser Documents/fraîcheur ; preuve live de lecture ciblée seulement si
-  autorisée, sans noms privés dans l'artefact.
-- [ ] Rebuild applicatif requis pour livraison ; fermer les quatre catégories
-  d'adoption et la publication locale atomique.
+- [x] Tests ingestion/sélection/projections voisins ; changement listing/GET,
+  identité différente avec même nom, réponse excessive et visibilité locale atomique.
+- [x] Source >20 pages acceptée entière ; budget d'entrée complet appliqué sans
+  troncature, y compris refus d'un fichier admissible seul dans un payload trop grand.
+- [x] Faux verts exclus : vraies préconditions HTTP synthétiques, changements
+  d'identité/ETag, listing 256/257 enfants et PostgreSQL réel.
+- [x] Aucun scan récursif, polling, URL frontend exécutée ni origine Frida inventée.
+- [x] Documents/fraîcheur et contrats vivants synchronisés ; quatre catégories
+  d'adoption et publication SQL fichier/lien sur une seule transaction prouvées.
+- [ ] Appliquer les migrations opérateur M1/M2, puis rebuild du seul service
+  applicatif lors d'une livraison distinctement autorisée ; health/surface à prouver.
+- [ ] Lecture DAV déployée ciblée sous GO distinct, artefact content-free ; aucune
+  preuve live inférée des fixtures. M3–M10 et Z restent non commencés.
+
+#### Exécution M2 du 4 octobre 2026
+
+Checkout `/opt/platform/fridadev`, branche `FridaV1-Document-Workshop-M2`, créée
+avant toute édition depuis M1 corrigé `c6f648badba96a60f1474db8d3f7404f97a2dda7`.
+M0 `3eb2e34aa0622112ebb4a8700dbe0eec02e4a27a` et main
+`e3e0d19290cb7ac275b3fd4b19c4b01dbc89f2cb` n'ont pas été modifiés.
+La correction P3 M1 reste un commit distinct. Le contre-audit global a identifié
+G-R1–G-R4, corrigés dans une vague bornée puis fermés par la contre-revue du
+seul delta Approved. Le retour final porte le commit/push M2 et ses alignements.
+
+Le [contrat M2](../../states/specs/frida-v1-document-workshop-m2-contract.md)
+décrit les responsabilités livrées : lecteur DAV, extraction complète isolée,
+service d'adoption, store transactionnel, lecture fraîche interne et contrôleur
+UI existant. La roadmap reste l'unique spécification du chantier.
+
+Navigation `PROPFIND Depth: 1` limitée à une collection explicitement ouverte,
+XML 1 Mio plus détection, 256 enfants et self, source 40 Mio ; timeout réseau
+local de 12 secondes par requête. Un GET `If-Match` entre deux observations
+conditionnelles vérifie identité/version/taille/ETag et octets consommés.
+`oc:fileid` canonique et scope serveur sont distincts du chemin, de l'ETag et du
+SHA-256 observé. Références UUID opaques : FIFO 4 096, local au processus, sans
+TTL ni promesse durable. Aucun href/URL client exécuté, redirect, scan ou retry.
+
+Les gardes M0 partagés conservent Documents, 8 niveaux, 180 points de code et
+255 octets UTF-8 par segment, 1 024 octets pour le chemin ; collection sans
+extension fictive, sources TXT/MD/MARKDOWN/DOCX/ODT/PDF, formats produit inchangés.
+Extraction binaire : Python `-I -B`, environnement nettoyé, 512 Mio mémoire,
+20 secondes CPU, core dumps interdits, stderr jeté ; ZIP 64 Mio réellement
+développés/4 096 membres, texte UTF-8 complet 40 Mio. Ces bornes ne changent ni
+le watchdog M0 ni les durées editing/pending. Compatibilité conservatrice :
+contenu DOCX/ODT/PDF non couvert ou omis de façon détectable → refus, aucun OCR.
+Texte brut exact ; espaces binaires selon extracteurs historiques, sans fidélité
+universelle de mise en page. Après G-R2/G-R3, répétitions textuelles ODT non
+représentées et DOCX `mc:AlternateContent` sont refusés entièrement ; cellules
+ordinaires/unaires et répétitions ODT vides restent admises. Aucun moteur
+ODF/OOXML ajouté. Liens PDF passifs conservés comme données sans fetch.
+
+Migration explicite `workspace_document_adoption.sql`, jamais au startup :
+colonnes nullable chemin/collision/fileid/scope/ETag/observation/SHA-256/origine,
+unicité identité incluant tombstones, unicité chemin des liens liés et contrainte
+d'identité canonique ; `target_remote_identity` enrichit les contextes M1.
+Même identité → même ID, collision → refus ; ancien lien enrichi seulement après
+preuve du chemin et égalité des octets complets. Nouveau fichier externe, jamais
+Frida par déduction. GET service et INSERT M1 gardent chemin complet/identité.
+Le DELETE historique refuse les liens enrichis avant son writer par basename.
+
+Cache préparé sous UUID immuable avant publication SQL ; fichier/lien committés
+sur une transaction avec revalidation/verrous du scope. Pas d'atomicité distribuée
+filesystem/SQL. Échec certain : tentative de retrait du seul nouveau cache possédé
+(un échec filesystem peut laisser un orphelin). Commit incertain : cache conservé,
+`document_adoption_commit_unknown`, aucune répétition automatique. Anciennes
+révisions conservées, sans purge automatique ; aucune compensation DAV.
+
+La lecture fraîche exige la version persistée, refuse son ETag invalide avant
+transport, compare identité/taille/SHA-256 puis revalide le scope local. Elle ne
+cherche pas une source déplacée et ne remplace pas la lecture cache du chat
+normal. Une nouvelle version exige une adoption explicite. La preuve composée
+adopte/lit un PDF synthétique réel de 21 pages puis utilise le garde M0 inchangé
+et `token_utils.estimate_tokens` sur prompt, dialogue, toutes sources/métadonnées
+et instructions/schema canonical envoyés. `E + 24 000 <= 400 000`, réserve unique
+raisonnement compris ; un fichier admissible seul est refusé avec le reste du
+payload trop grand. Aucun nouvel appel, compteur, modèle, paramètre ou transport M4.
+
+UI paresseuse dans le même DOM et menu Fichier : quatre catégories distinctes,
+collections via références opaques, inventaire commun et aucune source/cible
+choisie automatiquement. Cible antérieure conservée après GET serveur valide.
+Générations/scope gardent aussi le cache partagé avant publication tardive.
+L'obligation de réconcilier les seuls IDs de répertoires affectés survit aux sorties
+locales, jusqu'à une lecture courante explicitement demandée et réussie ; aucun
+second inventaire/cache, polling ou replay POST. `editing`/`prepare:false` et
+soumission canonique interdite dans l'atelier restent inchangés. G-R1 ajoute les
+raisons fermées `document_remote_identity_invalid`, `document_remote_version_invalid`
+et `document_remote_size_invalid` (422), propagées dans le listing et le refus
+d'adoption. La table UI fixe distingue également format, limite, OCR, extraction,
+changement/disparition et commit incertain, dans lignes/navigation/adoption.
+Aucune raison brute, clé héritée ou HTML serveur rendu ; les inconnus gardent un
+fallback fixe. Une incompatibilité permanente n'invite plus à actualiser en vain.
+Les conditions d'admission, générations, sélections et interdiction du retry restent inchangées.
+
+#### Preuves finales différentielles et portée
+
+Baseline utile depuis `c6f648ba` : Python 290/290 en 15,648 s, plus voisin OCR
+5/5 en 0,001 s ; Node 69/69 en 0,304835 s plus frontières sidebar 10/10 en
+0,083262 s ; navigateur 56/56 en 35,242050701 s ; SQL M1 5/5 en 0,523 s.
+Tous exit 0, sans skip. Le voisin OCR a été identifié après les edits des deux
+getters/serializers : leurs seuls blobs immuables `c6f648ba` ont été montés en
+lecture seule aux chemins originaux, mêmes tests/image/runner, sans autre checkout.
+Les anciens comptes 362/M0 98 ne sont pas la baseline M2.
+
+La première comparaison après les trois gates initiaux a réellement passé
+**528/528** : Python 340/340 en 18,371 s ; SQL 27/27 en 17,787 s ; Node 80/80
+en 0,315777548 s ; navigateur 81/81 en 40,963524759 s, chaque exit 0 sans skip.
+Elle reste une preuve historique antérieure aux faux succès G-R2/G-R3 et aux
+lacunes G-R1/G-R4 ; elle ne ferme pas ces cas nouvellement établis. Leur
+correction justifie une unique reprise finale des mêmes familles utiles, avec
+le module navigateur de raisons ajouté ; aucune découverte générale répétée.
+
+| Suite finale après contre-audit | Résultat | Durée | Composition |
+| --- | --- | --- | --- |
+| Python | 344/344 | 35,973 s | 20 modules de baseline, voisin OCR et 3 modules M2 ; +49 cas M2. |
+| PostgreSQL réel isolé | 27/27 | 17,138 s | 22 M2 et 5 M1 ; mêmes sélecteurs, migration, commits, concurrence, rollback et lecture indépendante. |
+| Node | 80/80 | 0,506575391 s | 7 modules initiaux et frontières sidebar ; +1 cas de normalisation. |
+| Chromium monté | 85/85 | 46,271549201 s | 4 modules initiaux, adoption et raisons M2 ; +29 cas M2. |
+
+Total final **536/536**, baseline utile **435**, soit **101** nouvelles preuves ;
+chaque commande exit 0, aucun échec, skip ou annulation. Aucun code ni fixture
+modifié après cette comparaison. Le manifeste du lot passe de 44 à 45 fichiers
+par l'ajout du module navigateur des raisons. Seule cette documentation est
+ensuite réconciliée avant contre-revue finale du delta.
+Les diagnostics préexistants restent visibles : baseline/final conservent les
+mêmes familles/comptes `ERROR frida.log_store` 264, `WARNING frida.conv` 17,
+`ERROR frida.server` 3 ; INFO bootstrap attendus également conservés. Cela ne
+signifie pas des logs vides ou sans Warning/Error, ni un nouveau logging produit.
+
+Runners temporaires réellement exécutés : images existantes `--pull never`,
+`--network none`, rootfs et checkout read-only, `/tmp` tmpfs, entrée `/usr/bin/env -i`,
+HOME temporaire et aucun bytecode. Python : `fridadev-audit-py:latest`
+(image `486a8afeb2f6`) ; Node/Chromium :
+`mcr.microsoft.com/playwright:v1.54.0-jammy` (image `55dfaaa282c9`, cache navigateur
+existant read-only) ; PostgreSQL 16 Alpine (image `87e04d274d18`) sur socket Unix
+isolé, seules variables de socket de preuve, aucun DSN opérateur. Pas d'installation,
+download ou `.env` lu. L'absence de `app/.env` (fichier et symlink) a été vérifiée
+sans lecture de contenu pendant cette session. C'est une **précondition de
+reproduction** : `env -i` ne masque pas un fichier dotenv dans le checkout monté.
+Si cette précondition échoue, arrêter la preuve sans charger de configuration
+opérateur. Les images et le cache navigateur doivent déjà être disponibles et
+correspondre aux versions ci-dessus ; aucune installation ou récupération implicite.
+
+Les trois wrappers scratch utilisés sont retranscrits ci-dessous en fonctions
+Bash avec les mêmes options, arguments et environnement. Le sous-shell de chaque
+fonction conserve l'effet de `set -euo pipefail` du script d'origine. Python et
+SQL refusent explicitement un dotenv présent ou symlink avant Docker ; la
+précondition ne dépend plus d'un `test` isolé au niveau du shell appelant. Après
+cleanup du scratch, définir ces fonctions dans le shell de preuve suffit pour
+les invocations qui suivent ; aucun fichier runner permanent n'est nécessaire.
+
+```bash
+m2_python() (
+  set -euo pipefail
+  if test -e /opt/platform/fridadev/app/.env || test -L /opt/platform/fridadev/app/.env; then
+    printf "%s\n" "Precondition failed: checkout dotenv present." >&2
+    exit 1
+  fi
+  docker run --rm --pull never --network none --read-only --tmpfs /tmp:rw,nosuid,nodev --mount type=bind,src=/opt/platform/fridadev,dst=/workspace,readonly --workdir /workspace/app --entrypoint /usr/bin/env fridadev-audit-py:latest -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp PYTHONDONTWRITEBYTECODE=1 EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid SEARXNG_URL=https://search.invalid python -m unittest "$@"
+)
+m2_node() (
+  set -euo pipefail
+  docker run --rm --pull never --network none --read-only --tmpfs /tmp:rw,nosuid,nodev --mount type=bind,src=/opt/platform/fridadev,dst=/workspace,readonly --mount type=bind,src=/home/tof/.cache/ms-playwright,dst=/proof/browsers,readonly --workdir /workspace --entrypoint /usr/bin/env mcr.microsoft.com/playwright:v1.54.0-jammy -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp PLAYWRIGHT_BROWSERS_PATH=/proof/browsers node --test "$@"
+)
+m2_sql() (
+  set -euo pipefail
+  if test -e /opt/platform/fridadev/app/.env || test -L /opt/platform/fridadev/app/.env; then
+    printf "%s\n" "Precondition failed: checkout dotenv present." >&2
+    exit 1
+  fi
+  docker run --rm --pull never --network none --read-only --mount type=bind,src=/opt/platform/fridadev,dst=/workspace,readonly --mount type=bind,src=/tmp/fridadev-m2-proof/pg-socket,dst=/proof/sock,readonly --tmpfs /tmp:rw,nosuid,nodev --workdir /workspace/app --entrypoint /usr/bin/env fridadev-audit-py:latest -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp PYTHONDONTWRITEBYTECODE=1 M1_PROOF_PG_SOCKET=/proof/sock M2_PROOF_PG_SOCKET=/proof/sock EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid SEARXNG_URL=https://search.invalid python -m unittest "$@"
+)
+```
+
+Pour PostgreSQL, reprendre la préparation isolée M1 avec les seuls noms de
+conteneur/socket M2 ci-dessous. Base/utilisateur restent synthétiques `m1proof` ;
+le runner M2 expose **les deux** variables `M1_PROOF_PG_SOCKET` et
+`M2_PROOF_PG_SOCKET`, vers le même socket isolé. Le chemin socket doit être absent
+et le nom de conteneur libre avant préparation ; ne pas réutiliser une DB ou un
+socket existant. Le bloc unique refuse explicitement dotenv/socket présents,
+conteneur existant ou impossibilité d'établir son absence, avant mkdir, démarrage
+Docker et readiness. Seule la requête de liste de conteneur nécessaire à cette
+preuve précède ces mutations ; aucun arrêt ne repose uniquement sur `errexit`.
+Ces commandes documentent la reproduction ; la passe
+documentaire n'a démarré aucun conteneur ni relancé de test.
+
+```bash
+(
+  set -euo pipefail
+  if test -e /opt/platform/fridadev/app/.env || test -L /opt/platform/fridadev/app/.env; then
+    printf '%s\n' 'Precondition failed: checkout dotenv present.' >&2
+    exit 1
+  fi
+  if test -e /tmp/fridadev-m2-proof/pg-socket || test -L /tmp/fridadev-m2-proof/pg-socket; then
+    printf '%s\n' 'Precondition failed: proof socket path already exists.' >&2
+    exit 1
+  fi
+  if ! m2_existing_containers="$(docker container ls -a --filter 'name=^/fridadev-m2-proof-pg$' --format '{{.Names}}')"; then
+    printf '%s\n' 'Precondition failed: proof container absence is unverified.' >&2
+    exit 1
+  fi
+  if test -n "$m2_existing_containers"; then
+    printf '%s\n' 'Precondition failed: proof container already exists.' >&2
+    exit 1
+  fi
+  mkdir -p /tmp/fridadev-m2-proof/pg-socket || exit 1
+  chmod 777 /tmp/fridadev-m2-proof/pg-socket || exit 1
+  docker run -d --name fridadev-m2-proof-pg --pull never --network none --read-only \
+    --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev --tmpfs /tmp:rw,nosuid,nodev \
+    --mount type=bind,src=/tmp/fridadev-m2-proof/pg-socket,dst=/var/run/postgresql \
+    -e POSTGRES_USER=m1proof -e POSTGRES_DB=m1proof \
+    -e POSTGRES_HOST_AUTH_METHOD=trust postgres:16-alpine -c listen_addresses= || exit 1
+  docker exec fridadev-m2-proof-pg pg_isready -h /var/run/postgresql -U m1proof -d m1proof || exit 1
+)
+```
+
+Attendre le succès de `pg_isready` avant la commande SQL, puis exécuter les deux
+modules SQL en série dans cette invocation unique : ils réinitialisent le même
+schéma de preuve. Ne jamais les lancer en parallèle. Les invocations suivantes
+correspondent à la comparaison finale après G-R1–G-R3, par les wrappers scratch
+équivalents ; elles conservent tous les voisins de la première comparaison et
+ajoutent le module de raisons navigateur. La passe documentaire ne les relance pas.
+
+```sh
+m2_python \
+  tests.test_server_active_documents_contract \
+  tests.test_server_workspace_folders_contract \
+  tests.test_server_chat_route_transport_contract \
+  tests.test_server_chat_conversation_id_contract \
+  tests.test_server_chat_document_integrity_contract \
+  tests.integration.frontend_chat.test_frontend_chat_contract \
+  tests.unit.core.test_workspace_folders_contract \
+  tests.unit.chat.test_chat_llm_flow \
+  tests.unit.chat.test_chat_llm_flow_boundaries \
+  tests.unit.chat.test_chat_stream_control \
+  tests.unit.core.test_document_workshop_canonical_paths \
+  tests.unit.core.test_document_workshop_admission \
+  tests.unit.core.test_document_workshop_provider_progress \
+  tests.unit.core.test_workspace_documents_ingestion \
+  tests.test_server_document_workshop_contexts_contract \
+  tests.unit.core.test_workspace_folder_documents \
+  tests.unit.core.test_workspace_file_selection_prompt \
+  tests.unit.core.test_active_document_text_extraction \
+  tests.unit.core.test_document_upload_limits \
+  tests.unit.core.test_workspace_nextcloud_compensation_etag \
+  tests.unit.core.test_workspace_file_ocr_service \
+  tests.unit.core.test_workspace_document_read_client_m2 \
+  tests.unit.core.test_workspace_document_source_extraction_m2 \
+  tests.unit.core.test_workspace_document_adoption_m2
+```
+
+```sh
+m2_node \
+  app/tests/unit/frontend_chat/test_active_documents_module.js \
+  app/tests/unit/frontend_chat/test_canonical_chat_submission.js \
+  app/tests/unit/frontend_chat/test_lot9_load_order_golden.js \
+  app/tests/unit/frontend_chat/test_threads_folder_binding_module.js \
+  app/tests/unit/frontend_chat/test_threads_sidebar_module.js \
+  app/tests/unit/frontend_chat/test_workspace_folders_module.js \
+  app/tests/unit/frontend_chat/test_threads_list_renderer_module.js \
+  app/tests/unit/frontend_chat/test_workspace_folder_sidebar_boundaries.js
+```
+
+```sh
+m2_node \
+  app/tests/integration/frontend_browser/test_frontend_browser_active_documents.js \
+  app/tests/integration/frontend_browser/test_frontend_browser_workspace_folders.js \
+  app/tests/integration/frontend_browser/test_frontend_browser_smoke.js \
+  app/tests/integration/frontend_browser/test_frontend_browser_document_workshop.js \
+  app/tests/integration/frontend_browser/test_frontend_browser_document_adoption.js \
+  app/tests/integration/frontend_browser/test_frontend_browser_document_adoption_reasons.js
+```
+
+```sh
+m2_sql tests.integration.document_workshop.test_adoption_postgresql tests.integration.document_workshop.test_context_store_postgresql
+```
+
+Après les preuves SQL, retirer uniquement le conteneur et le socket de preuve
+possédés ; les données PG sont sur tmpfs. Le reste du scratch se retire après
+lecture et conservation des faits dans la documentation.
+
+```bash
+docker container stop --time 10 fridadev-m2-proof-pg
+docker container rm fridadev-m2-proof-pg
+rmdir /tmp/fridadev-m2-proof/pg-socket
+```
+
+Portée des preuves, sans confusion entre couches :
+
+- M1 Flask historique : inventaires **et** store contexte `Mock`/`self.saved` ;
+  cinq preuves PostgreSQL séparées, comme rétabli par P3.
+- M2 transport : vrai urllib/HTTP vers loopback synthétique dans le conteneur
+  sans réseau externe ; méthodes, Depth, If-Match et octets effectivement vérifiés.
+- M2 SQL : schéma de preuve minimal, migrations réelles répétées, stores réels ;
+  `_db_conn` de contexts/workspace_files/workspace_folders/adoption raccordé à
+  PostgreSQL isolé, stockage temporaire. Résumé conversation substitué par une
+  fonction du test qui lit réellement sa ligne SQL.
+- Cas Flask M2 composé : `load_server_module_for_tests` neutralise le bootstrap
+  DB/settings/secrets ; modules serveur remplacés par ces modules réels raccordés ;
+  factory `from_env` remplacée par le vrai lecteur configuré vers le serveur
+  synthétique. `app.test_client()` exerce GET remote, POST adopt et GET files,
+  avec publication fichier/lien SQL réelle. Aucun startup ni E2E production prouvé.
+- Navigateur : vrai index/app/DOM/Chromium avec `fetch` simulé ; clics, menu,
+  upload, sélection, concurrence et gardes inspectés. Géométries 1280×900 et
+  390×844, captures desktop clair et téléphone ; deux thèmes et deux compositions
+  exercés. Aucune recette matérielle Safari/iPhone, paysage/clavier ou DAV live.
+
+#### Dispositions du contre-audit et limites
+
+Les trois gates d'implémentation initiaux ont reçu un re-review **Approved**.
+Le contre-audit global suivant a conclu **Needs fixes** : 0 Critical, 3 Important
+(G-R1–G-R3), 1 Minor (G-R4). Une seule vague bornée a corrigé ces quatre findings ;
+la contre-revue finale du delta a conclu **Approved** : 0 Critical, 0 Important,
+0 Minor ouverts. Elle a vérifié les 12 fichiers du delta, les 45 empreintes du
+lot et les 36 empreintes du code/tests exécutés, sans seconde revue générale.
+Les rouges causaux précèdent
+leurs corrections ; les erreurs initiales de fixtures ne sont pas présentées
+comme régressions produit. Les résultats finaux incluent les corrections code/UI,
+sans masquer les diagnostics ni prétendre que 528/528 fermait les nouveaux cas.
+
+| Finding | Disposition et preuve retenue |
+| --- | --- |
+| T1 contrôles locaux avant revue | Corrigés : href IPv6 malformé, racine/texte DOCX non couverts, images PDF inline/XObject et XML auxiliaire vide. RED 28 tests / 3 assertions et 1 erreur, 6,590 s, puis deux probes 1/1 rouges en 0,215/0,529 s ; GREEN voisin 98/98, 6,892 s avant le round indépendant, puis final ci-dessus. |
+| T1 R1 DOCX, R2 ODT, R3 PDF, R4 href | Corrigés : éléments DOCX omis, texte ODT hors corps, actions PDF actives, query/fragment/userinfo vides. RED 35 tests / 28 sous-cas en échec, 9,370 s, exit 1 ; complément ODT 1/1 rouge, 0,403 s ; GREEN 35/35, 9,269 s, exit 0. R4 Minor explicitement fermé. |
+| T2 collision ordre/statut OCR | Corrigés, RED 7 tests / 2 assertions, 0,682 s, exit 1 ; inclus dans SQL et Python finaux. |
+| T2 fallback DELETE TypeError | Corrigé par retrait du retry sans métadonnées ; RED 1 test / 2 sous-cas, 0,001 s, exit 1 ; GREEN voisin 109/109, 0,496 s, puis final ci-dessus. |
+| T2 R1 ETag enregistré | Corrigé avant configuration/transport ; RED 2 tests / 10 sous-cas, 0,189 s, exit 1 ; GREEN 10/10, 0,874 s et SQL ciblé 4/4, 11,324 s, exit 0. |
+| T2 R2 Minor INFO bootstrap | Requalifié et accepté comme diagnostic hérité attendu, non supprimé ; aucune extension de collecte ni suppression de logs. |
+| W-BYTECODE | Hypothèse invalidée : snapshot initial déjà `-I -B`, probe des vrais flags positif ; probe `-I` seul ne représentait pas le code exécuté. |
+| Nettoyage cache sur échec certain | Formulation absolue requalifiée après lecture de `_discard` : `OSError` d'unlink est ignorée, donc résidu orphelin possible sans fichier SQL visible. Risque local explicite accepté dans la documentation ; aucune garantie de purge, aucun GC ajouté. |
+| T3 REREAD / INVENTORY / SIBLINGS | Corrigés : refus de cible visible, réconciliation explicite et frères conservés ; rouges chacun 1/1, respectivement 1,082/1,104/0,961 s, exit 1 ; inclus dans GREEN navigateur final. |
+| T3 R1 perte de réconciliation tardive, R2 fixture racine | Corrigés, y compris le Minor : RED 4/4 assertions, 3,661 s, exit 1 ; GREEN 25/25, 20,904 s, exit 0. Obligation conservée après sortie et références racine/parent fidèles. |
+| G-R1 — motifs API/UI perdus | Corrigé : identité/version/taille en codes fermés, explications fixes dans lignes/navigation/adoption et fallback sûr. Backend RED 3 tests / 26 sous-cas, 0,853 s, exit 1 → GREEN 11/11, 0,914 s ; UI RED 4/4 assertions, 2,674 s, exit 1 → GREEN 29/29, 21,828 s ; raffinement des seuls statuts HTTP de fixture puis 4/4, 9,293 s, exits 0. Les 536 finaux incluent cette dernière fixture. Contre-revue du delta Approved. |
+| G-R2 — occurrences ODT répétées perdues | Corrigé : refus entier des cellules/lignes textuelles répétées non représentées ; voisins ordinaires/unaires/vides préservés. RED commun G-R2/G-R3 : 3 tests / 3 assertions, 0,424 s, exit 1 → GREEN ciblé 7/7, 0,891 s, exit 0. Aucun développement ODF ajouté. Contre-revue du delta Approved. |
+| G-R3 — alternatives DOCX concaténées | Corrigé : refus de `mc:AlternateContent` avant extraction, sans sélection de branche ni changement du lecteur historique ; mêmes preuves causales ci-dessus, puis comparaison finale 536. Contre-revue du delta Approved. |
+| G-R4 — préconditions Bash non bloquantes | Corrigé dans les fonctions Python/SQL et le bloc PG unique : refus explicites dotenv/socket/conteneur avant mutation, y compris symlinks et échec de vérification. Probes mécaniques isolées décrites ci-dessous ; aucune suite/DB relancée. Minor explicitement fermé par la contre-revue du delta Approved. |
+
+
+Les premiers rouges d'interfaces absentes (lecteur 19/19 assertions, service 5/5,
+SQL 9/9) établissent les nouvelles capacités autorisées, pas une régression
+préexistante. Les refus nouveaux conservateurs de formats sont documentés au
+contrat M2. Aucun finding de ces gates n'est laissé sans correction, invalidation
+ou requalification. Les quatre findings globaux ont une correction et des preuves
+explicites ; leur contre-revue limitée au delta les ferme tous, sans nouvelle
+revue générale ni extension du lot.
+
+Preuve G-R4 distincte des 536 tests applicatifs : le probe de revue du bloc
+initial terminait exit 0 malgré un premier `test` faux, donc sa précondition
+n'était pas effective. Après correction, les trois corps de fonctions concordent
+exactement avec les wrappers utilisés, dont Python/SQL renforcés ; `bash -n`
+valide les sept blocs de commande sans les exécuter.
+
+Une sonde mécanique lit ces blocs puis remplace en mémoire les seuls chemins
+dotenv/socket par des sentinelles possédées sous un temporaire de preuve ;
+Docker, mkdir et chmod sont des stubs qui enregistrent les appels. **14/14 cas,
+0,046450 s, commande exit 0** : 11 refus attendus sortent 1 (fichier ou symlink
+dotenv, socket fichier/répertoire/symlink, nom de conteneur existant, échec de
+vérification de son absence) ; trois témoins sans obstacle sortent 0 et atteignent
+les seules commandes simulées attendues. Aucun démarrage/mkdir/chmod après refus ;
+les deux cas de vérification de conteneur n'effectuent que la liste simulée.
+Zéro Docker réel, test applicatif ou PG, aucun `.env` opérateur créé/lu ;
+sentinelles supprimées. Les six probes séparés des wrappers scratch par le parent
+sont également verts ; ces vérifications ne sont pas ajoutées au total 536.
+
+Après la première comparaison, puis de nouveau après les 27 preuves SQL finales
+post-correction, le PostgreSQL possédé a réellement été arrêté (`stop --time 10`)
+puis supprimé ; sa recréation intermédiaire utilisait les gardes explicites
+dotenv/socket/nom, jamais une DB existante. À la fin de chaque exécution :
+répertoire socket vérifié vide et retiré, aucun conteneur de ce nom restant.
+Données PG en tmpfs détruites ; autres runners `--rm`. Après contre-revue
+Approved et conservation des faits, le parent a retiré le scratch possédé
+`/tmp/fridadev-m2-proof` (234 fichiers) et ses deux auxiliaires P3. Absence du
+conteneur et du socket vérifiée avant ce retrait ; aucun temporaire de preuve
+restant ni ressource de production nettoyée.
+
+Limites ouvertes : migration DB opérateur, rebuild/health, comportement DAV
+réel et canari de lecture ciblée. Caches anciens/incertains retenus ; références
+et marqueurs de réconciliation locaux au processus ; aucune promesse de fidélité
+bureautique universelle ni de transaction distribuée. M3–M10/Z non commencés,
+préparation toujours indisponible. Aucune activation runtime, installation,
+mutation distante, renderer ou appel modèle réel effectué dans M2.
 
 ### M3 — Réservation durable et concurrence
 
@@ -1989,11 +2377,17 @@ Cette TODO conserve la spécification et les décisions validées par Tof sous f
 de cases à cocher. M0 ferme les composants internes avec tests hermétiques et
 contre-audit corrigé et livré sur sa branche dédiée (`3eb2e34a`). M1 est fermé sur
 menu/contexte `editing` et gardes inactifs sur sa branche issue de M0 ; livraison
-Git à constater dans le retour de lot. M2 et suivants restent non commencés.
+Git M1 corrigée par P3 `c6f648ba`, constatée avant création de M2. M2 dispose du
+code corrigé et de 536 preuves hermétiques après les findings G-R1–G-R4 ; les
+528 premiers restent historiques. La contre-revue finale du delta est Approved ;
+le retour final porte la livraison Git et ses alignements. M3 et suivants restent
+non commencés.
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
 dans AGENTS.md ; l'invariant de consolidation reste applicable hors de cette
 exception. Les seuls composants applicatifs livrables par M0 sont les frontières
 internes inactives et leurs preuves. M1 ajoute seulement entrée et contexte
-`editing`, avec préparation indisponible. Aucune dépendance nouvelle, service
-plateforme ou preuve live n'est livré. Pour M1, commit/push requis exclusivement sur `FridaV1-Document-Workshop-M1` ;
-aucun merge vers main, rebuild, restart ou déploiement n'est autorisé.
+`editing`, avec préparation indisponible. M2 ajoute exclusivement lecture/adoption ciblées et inventaire commun, avec
+préparation toujours indisponible. Aucune dépendance nouvelle, service
+plateforme ou preuve live n'est livré. La correction P3 M1 est séparée ; la
+livraison M2 reste limitée à `FridaV1-Document-Workshop-M2`. Aucun merge vers main,
+rebuild, restart, migration opérateur ou déploiement n'est autorisé par ces lots.

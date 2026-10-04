@@ -123,7 +123,8 @@ def get_link(
                     SELECT workspace_file_id, workspace_folder_id, nextcloud_sync_state,
                            nextcloud_document_ref, nextcloud_name_hash, nextcloud_target_name,
                            last_sync_at, last_sync_reason_code, last_sync_operation,
-                           created_at, updated_at
+                           created_at, updated_at,
+                           to_jsonb(workspace_file_nextcloud_links) AS exact_link
                     FROM workspace_file_nextcloud_links
                     WHERE workspace_file_id = %s::uuid
                     """,
@@ -137,6 +138,11 @@ def get_link(
                     result["nextcloud_target_name"] = row.get("nextcloud_target_name")
                     result["nextcloud_document_ref"] = row.get("nextcloud_document_ref")
                     result["nextcloud_sync_state"] = row.get("nextcloud_sync_state")
+                    exact = row.get("exact_link") or {}
+                    for key in ("nextcloud_relative_path", "nextcloud_collision_key", "nextcloud_file_id",
+                                "nextcloud_scope_key", "nextcloud_etag", "observed_at", "observed_sha256", "document_origin"):
+                        if exact.get(key) is not None:
+                            result[key] = exact[key]
                 return result
     except Exception as exc:
         _log(logger, "document_link_get_failed", file_id=normalized, error_type=type(exc).__name__)

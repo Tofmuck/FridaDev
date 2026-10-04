@@ -4616,7 +4616,7 @@ body {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px;
   border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px;
   font-size: 12px; color: var(--fg); background: var(--bg-base);
-  max-height: 180px; overflow-y: auto;
+  max-height: min(420px, calc(100dvh - 200px)); overflow-y: auto;
 }
 .document-workshop [role="status"] { flex-basis: 100%; }
 .document-workshop label { display: flex; gap: 6px; align-items: center; max-width: 100%; }
@@ -4626,6 +4626,13 @@ body {
 }
 .document-workshop select { max-width: 220px; }
 .document-workshop button:disabled { opacity: .55; }
+.document-remote-browser { flex-basis: 100%; min-width: 0; }
+.document-remote-browser[hidden] { display: none; }
+.document-remote-navigation { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.document-remote-resource { white-space: pre-wrap; overflow-wrap: anywhere; }
+#documentRemoteList { padding: 0; margin: 8px 0 0; max-height: 220px; overflow-y: auto; list-style: none; }
+#documentRemoteList li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 0; border-top: 1px solid var(--border); }
+#documentRemoteList .document-remote-resource { flex-basis: 100%; }
 
 :root[data-presentation-theme="mobile-dialogue"] .document-workshop,
 :root[data-presentation-theme="mobile-dialogue"] .document-file-menu {

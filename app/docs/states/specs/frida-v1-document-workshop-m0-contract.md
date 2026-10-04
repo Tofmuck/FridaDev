@@ -192,8 +192,15 @@ La projection encode séparément les segments originaux avec `quote(..., safe="
 `dav_segments` préfixe uniquement le mapping de dossier fourni par le serveur ;
 racine DAV et utilisateur restent à la frontière du client Nextcloud existant.
 Aucun préfixe Documents n'est retiré pour faire passer la borne. Cette projection
-pure ne contacte pas DAV et n'accorde aucune autorité d'écriture. Les préconditions,
-collections, collisions distantes et mutations seront raccordées par M2/M5/M7.
+pure ne contacte pas DAV et n'accorde aucune autorité d'écriture. Le
+[contrat M2](frida-v1-document-workshop-m2-contract.md) raccorde la lecture DAV
+conditionnelle et les collisions d'adoption ; créations/écritures restent M5/M7.
+
+Depuis M2, `validate_document_collection_path` et `validate_document_source_path`
+partagent ces mêmes gardes : une collection `Documents[/sous-répertoire]` n'exige
+aucune extension fictive ; une source accepte TXT/MD/MARKDOWN/DOCX/ODT/PDF.
+`validate_document_path` reste limité aux formats produit Markdown/DOCX/PDF.
+Ces extractions ne changent ni les comptes, ni les bornes, ni l'admission M0.
 
 ## Preuves et portée
 

@@ -51,19 +51,38 @@ class DocumentTargetPath:
         return (_validate_segment(server_folder_name), *self.segments)
 
 
-def validate_document_path(relative_path: object, *, format: str) -> DocumentTargetPath:
-    if type(relative_path) is not str or type(format) is not str or format not in DOCUMENT_EXTENSIONS:
+def _validate_document_relative_path(relative_path: object, *, is_collection: bool) -> DocumentTargetPath:
+    """One segment authority for product targets and remote source inventory."""
+    if type(relative_path) is not str:
         raise DocumentWorkshopError("document_path_invalid")
     parts = relative_path.split("/")
-    if len(parts) < 2 or parts[0] != "Documents":
+    if len(parts) < (1 if is_collection else 2) or parts[0] != "Documents":
         raise DocumentWorkshopError("document_path_invalid")
     for segment in parts:
         _validate_segment(segment)
-    if len(parts) - 2 > 8:
+    if len(parts) - (1 if is_collection else 2) > 8:
         raise DocumentWorkshopError("document_path_depth_limit")
-    if not parts[-1].lower().endswith(DOCUMENT_EXTENSIONS[format]):
-        raise DocumentWorkshopError("document_path_invalid")
     if len(relative_path.encode("utf-8")) > 1024:
         raise DocumentWorkshopError("document_path_byte_limit")
     collision_key = unicodedata.normalize("NFC", relative_path).casefold()
     return DocumentTargetPath(relative_path, collision_key, tuple(parts))
+
+
+def validate_document_collection_path(relative_path: object) -> DocumentTargetPath:
+    return _validate_document_relative_path(relative_path, is_collection=True)
+
+
+def validate_document_source_path(relative_path: object) -> DocumentTargetPath:
+    path = _validate_document_relative_path(relative_path, is_collection=False)
+    if not path.segments[-1].lower().endswith((".txt", ".md", ".markdown", ".docx", ".odt", ".pdf")):
+        raise DocumentWorkshopError("document_type_unsupported")
+    return path
+
+
+def validate_document_path(relative_path: object, *, format: str) -> DocumentTargetPath:
+    if type(format) is not str or format not in DOCUMENT_EXTENSIONS:
+        raise DocumentWorkshopError("document_path_invalid")
+    path = _validate_document_relative_path(relative_path, is_collection=False)
+    if not path.segments[-1].lower().endswith(DOCUMENT_EXTENSIONS[format]):
+        raise DocumentWorkshopError("document_path_invalid")
+    return path

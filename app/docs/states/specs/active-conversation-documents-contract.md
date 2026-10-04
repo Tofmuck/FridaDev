@@ -921,3 +921,18 @@ ni DAV. Les sources actives ne deviennent pas une cible d'édition. En contexte
 M1 ouvert, la soumission canonique est refusée avant tout faux tour/perte de
 brouillon ; Retour au chat restaure le chemin habituel. Aucune activation runtime
 ou préparation documentaire livrée par ce lot Git.
+
+## Adoption atelier M2 et sources actives (2026-10-04)
+
+Le [contrat M2](frida-v1-document-workshop-m2-contract.md) ajoute dans le même
+panneau d'édition la navigation Nextcloud paresseuse et l'adoption explicitement
+demandée. Le document rejoint l'inventaire workspace, jamais automatiquement
+l'état `active_document`, une sélection de lecture ou une cible d'édition.
+Ouvrir le contexte seul reste sans DAV ; naviguer/adopter est une action séparée.
+
+Menu Fichier à deux choix, picker/change unique, uploads séquentiels et
+drag-and-drop conservent ce contrat. M2 ne modifie ni leurs formats ni leur OCR
+ni la lane prompt normale. Sa lecture fraîche complète est une frontière
+interne destinée à M4, sans injection raccordée ici ; le cache historique du
+chat ne devient pas une preuve de fraîcheur atelier. Préparation indisponible,
+brouillon conservé et retour au chat inchangés dans les deux compositions UI.

@@ -764,8 +764,16 @@
     statusEl: $("#documentWorkshopStatus"), folderEl: $("#documentWorkshopFolder"),
     bindFolderEl: $("#documentWorkshopBindFolder"), targetEl: $("#documentWorkshopTarget"),
     reloadEl: $("#documentWorkshopReload"), exitEl: $("#documentWorkshopExit"),
+    browseEl: $("#documentWorkshopBrowse"), remoteEl: $("#documentRemoteBrowser"),
+    remoteStatusEl: $("#documentRemoteStatus"), remotePathEl: $("#documentRemotePath"),
+    remoteListEl: $("#documentRemoteList"), remoteRootEl: $("#documentRemoteRoot"),
+    remoteBackEl: $("#documentRemoteBack"), remoteRefreshEl: $("#documentRemoteRefresh"),
     fetchFn: fetch, getThread: () => getThreadById(getCurrentId()),
     getFolders: threadsLifecycle.getWorkspaceFolders, getFiles: threadsLifecycle.getWorkspaceFiles,
+    refreshFiles: async (folderId, isCurrent) => {
+      await threadsLifecycle.refreshWorkspaceFiles(folderId, isCurrent);
+      if (isCurrent()) renderThreads();
+    },
     createConversation: activateIf => newThread({ activateIf }),
     bindFolder: async (conversationId, folderId, isCurrent) => {
       const updated = await threadsLifecycle.moveConversationToWorkspaceFolderOnServer(conversationId, folderId);

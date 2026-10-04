@@ -167,7 +167,7 @@ class _FakeWorkspaceFiles:
         self.file_bytes[item["id"]] = bytes(content)
         return item
 
-    def get_nextcloud_link(self, file_id, *, fail_closed=False):
+    def get_nextcloud_link(self, file_id, *, fail_closed=False, preserve_target_identity=False):
         link = self.links.get(file_id)
         return dict(link) if link else None
 

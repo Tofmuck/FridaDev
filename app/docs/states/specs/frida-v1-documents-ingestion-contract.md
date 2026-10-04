@@ -814,8 +814,47 @@ Preuves livrees:
 Le [contrat M1 atelier](frida-v1-document-workshop-m1-contract.md) réutilise le
 registre/liens persistés, sans DAV ni extraction. Le getter partagé conserve
 son défaut historique ; l'option explicite `preserve_target_identity=True`
-retourne nom/référence/état exacts pour le seul resolver de contexte, validés par
-les gardes M0. La sanitation de l'upload et les projections existantes ne sont
-pas changées. Ni nom ni URL client ne désignent une cible ; la checkbox de lecture
-ne donne aucune autorité d'édition. Identité/chemin figés et revalidés à GET,
-préparation indisponible, fraîcheur/adoption distante réservées à M2.
+retourne nom/référence/état exacts et, depuis M2, les métadonnées enrichies
+présentes, validées par les gardes partagés M0. La sanitation historique de
+l'upload reste inchangée. Ni nom ni URL client ne désignent une cible ; la
+checkbox de lecture ne donne aucune autorité d'édition. Identité/chemin complets
+figés et revalidés au service GET et à l'INSERT SQL ; préparation indisponible.
+
+## Adoption ciblée atelier M2 (2026-10-04)
+
+Le [contrat M2](frida-v1-document-workshop-m2-contract.md) ajoute une navigation
+explicite `Depth: 1` sous Documents et l'adoption d'un fichier distant sélectionné
+dans ce même inventaire. Elle n'est ni un upload ni une synchronisation globale :
+aucun PUT/MKCOL/DELETE et aucune compensation distante. Le nouveau fichier est
+`source_kind=nextcloud_adoption`, `document_origin=external` ; un ancien lien
+dont l'origine est inconnue ne devient pas Frida par adoption.
+
+L'adoption conserve exactement les noms/chemins enrichis, ne sélectionne aucune
+source/cible et n'injecte aucun contenu dans le chat. L'inventaire commun expose
+`document_relative_path`, l'origine externe si prouvée et la capacité de
+suppression distante fausse. Le DELETE historique par basename refuse les liens
+enrichis ; échec du getter → refus sans fallback non vérifié. Les suppressions
+historiques non enrichies et le writer/rollback d'upload gardent leur contrat.
+
+La publication fichier/lien est transactionnelle SQL après préparation d'un
+cache local immuable ; ce n'est pas une transaction distribuée filesystem/SQL.
+Anciennes révisions et cache d'un commit incertain restent conservés ; seul le
+nettoyage des nouveaux octets possédés d'un échec certain est tenté, sans retry.
+Un échec d'unlink peut laisser un cache orphelin, sans fichier visible en SQL.
+Migration explicite sans backfill ni initialisation startup ; DB opérateur non
+migrée dans M2. Les bornes et limites de stockage figurent au contrat M2.
+
+Pour l'atelier futur, `read_workspace_document_source` revérifie conditionnellement
+la version enregistrée et l'intégralité des octets avant extraction ; le vieux
+cache ne fait pas preuve de fraîcheur. Version différente, déplacement ou absence
+→ refus et nouvelle sélection/adoption explicite, sans recherche globale. Le
+chat ordinaire conserve sa lecture locale existante, ses sélections et son OCR.
+L'extraction M2 est volontairement conservative et ne lance aucun OCR ; les
+formats sources TXT/Markdown/DOCX/ODT/PDF restent distincts des trois formats
+produit de l'atelier. Les répétitions textuelles ODT non développées et les
+alternatives DOCX `mc:AlternateContent` sont refusées entièrement. Les motifs
+fixes distinguent identité/version/taille non vérifiables, format, limite,
+OCR/extraction, changement/disparition et commit incertain jusque dans l'UI ;
+aucun diagnostic brut ni actualisation prescrite pour une incompatibilité
+permanente. Les preuves M2 sont hermétiques ; aucun live ou déploiement
+ne se déduit de la clôture historique Documents V1.

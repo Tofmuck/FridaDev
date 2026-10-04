@@ -1417,4 +1417,19 @@ identités et associations locales de ce socle pour un contexte `editing`.
 Ouvrir/relire ce contexte ne fait aucun probe DAV, création de répertoire ou
 mutation Nextcloud ; un répertoire local-only ne prouve aucune disponibilité
 pour une future préparation. Mapping distant et mutations de ce contrat restent
-inchangés ; adoption/lecture fraîche du nouvel atelier appartiennent à M2.
+inchangés.
+
+## Lecture explicite atelier M2 (2026-10-04)
+
+Le [contrat M2](frida-v1-document-workshop-m2-contract.md) réutilise le mapping
+serveur d'un répertoire `linked` pour une collection explicitement ouverte sous
+Documents : `PROPFIND Depth: 1` borné, puis adoption/lecture conditionnelle
+d'une ressource choisie. Il n'étend pas les probes status-only du socle Folders
+en parcours global. Aucune DB Nextcloud directe, recherche récursive, mutation
+distante, nouveau secret ou accès renderer. Les hrefs ne construisent jamais
+les cibles ; les références opaques restent liées au scope serveur.
+
+L'identité `oc:fileid`, les ETags forts et la publication locale sont prouvés en
+HTTP synthétique/SQL isolé seulement. Les anciennes preuves live du socle ne
+prouvent pas M2 déployé. Migration opérateur, rebuild et lecture live ciblée
+restent ouverts sous autorisation distincte ; M3 et suivants non commencés.

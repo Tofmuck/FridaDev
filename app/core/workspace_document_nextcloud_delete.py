@@ -44,6 +44,8 @@ def prepare_workspace_document_delete_nextcloud_first(
                 "http_status_class": "none",
             },
         }
+    if any(link.get(key) is not None for key in ("nextcloud_relative_path", "nextcloud_file_id", "nextcloud_scope_key")):
+        return _delete_failure("folder_document_remote_delete_unavailable", status=409, delete_state="blocked")
     if str(link.get("nextcloud_sync_state") or "") == file_nextcloud_links.NEXTCLOUD_FILE_SYNC_DELETED:
         return {
             "ok": True,
@@ -132,12 +134,7 @@ def _get_nextcloud_link(workspace_files_module: Any, file_id: str) -> dict[str, 
     if not callable(getter):
         return None
     try:
-        return getter(file_id, fail_closed=True)
-    except TypeError:
-        try:
-            return getter(file_id)
-        except Exception:
-            return _LINK_LOOKUP_FAILED
+        return getter(file_id, fail_closed=True, preserve_target_identity=True)
     except Exception:
         return _LINK_LOOKUP_FAILED
 

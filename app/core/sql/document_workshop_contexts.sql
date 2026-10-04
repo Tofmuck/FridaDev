@@ -11,3 +11,6 @@ CREATE TABLE IF NOT EXISTS document_workshop_contexts (
     CHECK ((target_file_id IS NULL AND target_relative_path IS NULL AND target_document_ref IS NULL)
         OR (target_file_id IS NOT NULL AND target_relative_path IS NOT NULL AND target_document_ref IS NOT NULL))
 );
+
+-- Frozen optional M2 identity; legacy targets remain unknown.
+ALTER TABLE document_workshop_contexts ADD COLUMN IF NOT EXISTS target_remote_identity TEXT;

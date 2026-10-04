@@ -41,7 +41,7 @@ def _attach_content_free_nextcloud_link(
     if not file_id or not callable(get_link):
         return payload
     try:
-        link = get_link(file_id, fail_closed=True)
+        link = get_link(file_id, fail_closed=True, preserve_target_identity=True)
     except Exception:
         _log_link_lookup_failed(workspace_files_module, payload)
         payload["document_nextcloud_link"] = {
@@ -51,6 +51,11 @@ def _attach_content_free_nextcloud_link(
         return payload
     if not link:
         return payload
+    if link.get("nextcloud_relative_path") is not None:
+        payload["document_relative_path"] = link["nextcloud_relative_path"]
+        payload["document_remote_delete_available"] = False
+        if link.get("document_origin") == "external":
+            payload["document_origin"] = "external"
     payload["document_nextcloud_link"] = {
         "lookup_state": "ok",
         "nextcloud_sync_state": link.get("nextcloud_sync_state"),

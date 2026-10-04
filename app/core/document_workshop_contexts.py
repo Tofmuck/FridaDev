@@ -9,7 +9,7 @@ from admin import runtime_settings
 from . import runtime_db_bootstrap
 
 _SCHEMA = Path(__file__).with_name('sql') / 'document_workshop_contexts.sql'
-_COLUMNS = 'id, conversation_id, workspace_folder_id, target_file_id, target_relative_path, target_document_ref, state, created_at'
+_COLUMNS = 'id, conversation_id, workspace_folder_id, target_file_id, target_relative_path, target_document_ref, target_remote_identity, state, created_at'
 
 
 def _db_conn():
@@ -34,7 +34,7 @@ def _record(row):
 
 
 def create_context(*, conversation_id, workspace_folder_id, target_file_id=None,
-                   target_relative_path=None, target_document_ref=None):
+                   target_relative_path=None, target_document_ref=None, target_remote_identity=None):
     # Recheck and lock resource rows inside the INSERT transaction. A move or
     # tombstone between service validation and registration cannot admit stale scope.
     with _db_conn() as conn:
@@ -50,17 +50,18 @@ def create_context(*, conversation_id, workspace_folder_id, target_file_id=None,
                       AND wf.status='active' AND wf.content_kind='document' AND wf.media_kind='text'
                       AND wf.source_extension IN ('.md','.docx') AND l.workspace_folder_id=wf.workspace_folder_id
                       AND l.nextcloud_sync_state='linked' AND l.nextcloud_document_ref=%s
-                      AND 'Documents/' || l.nextcloud_target_name=%s
+                      AND COALESCE(to_jsonb(l)->>'nextcloud_relative_path', 'Documents/' || l.nextcloud_target_name)=%s
+                      AND ((to_jsonb(l)->>'nextcloud_scope_key') || ':' || (to_jsonb(l)->>'nextcloud_file_id')) IS NOT DISTINCT FROM %s
                     FOR SHARE OF wf, l
                 )
                 INSERT INTO document_workshop_contexts
-                    (id, conversation_id, workspace_folder_id, target_file_id, target_relative_path, target_document_ref)
-                SELECT %s::uuid, id, %s::uuid, %s::uuid, %s, %s FROM scope
+                    (id, conversation_id, workspace_folder_id, target_file_id, target_relative_path, target_document_ref, target_remote_identity)
+                SELECT %s::uuid, id, %s::uuid, %s::uuid, %s, %s, %s FROM scope
                 WHERE %s::uuid IS NULL OR EXISTS (SELECT 1 FROM target)
                 RETURNING {_COLUMNS}
                 ''', (conversation_id, workspace_folder_id, target_file_id, workspace_folder_id,
-                      target_document_ref, target_relative_path, str(uuid4()), workspace_folder_id,
-                      target_file_id, target_relative_path, target_document_ref, target_file_id))
+                      target_document_ref, target_relative_path, target_remote_identity, str(uuid4()), workspace_folder_id,
+                      target_file_id, target_relative_path, target_document_ref, target_remote_identity, target_file_id))
             return _record(cur.fetchone())
 
 

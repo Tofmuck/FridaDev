@@ -88,7 +88,8 @@ function createWorkspaceFolderFileRowsRenderer({
 
       const name = doc.createElement('span');
       name.className = 'workspace-folder-file-name';
-      name.textContent = file.display_name || 'fichier';
+      name.textContent = file.document_relative_path || file.display_name || 'fichier';
+      if (file.document_relative_path) { name.title = file.document_relative_path; name.style.whiteSpace = 'pre-wrap'; }
       row.appendChild(name);
 
       const meta = doc.createElement('span');
@@ -110,7 +111,8 @@ function createWorkspaceFolderFileRowsRenderer({
       del.type = 'button';
       del.className = 'workspace-folder-file-delete';
       WorkspaceFolderFileRowSidebarIcons?.setSidebarButtonIcon?.(del, doc, 'trash-2');
-      del.title = 'Supprimer le fichier';
+      del.disabled = file.document_remote_delete_available === false;
+      del.title = del.disabled ? 'Suppression distante indisponible pour ce document' : 'Supprimer le fichier';
       del.setAttribute('aria-label', del.title);
       del.addEventListener('click', (event) => {
         event.stopPropagation();

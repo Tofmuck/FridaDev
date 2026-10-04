@@ -898,7 +898,7 @@ admin_hermeneutics_routes.register_admin_hermeneutics_routes(
     config_module=config,
 )
 
-# M1 contexts require the supplied SQL migration at a separately authorized deployment.
+# M1 contexts and M2 adoption require explicit SQL migrations at an authorized deployment.
 # Registration/import has no schema mutation side effect.
 document_workshop_routes.register_document_workshop_routes(
     app,

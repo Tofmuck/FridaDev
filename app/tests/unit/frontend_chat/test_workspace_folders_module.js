@@ -461,3 +461,18 @@ test("workspace file selection usage labels distinguish non-ready document state
   assert.equal(selections[1].selected, false);
   assert.equal(selections[1].usage_status_label, "Trop volumineux");
 });
+
+test('M2 enriched names and paths retain exact Unicode and whitespace without changing old uploads', () => {
+  const name = 'E\u0301tude  française.md';
+  const base = { id: 'external', workspace_folder_id: 'folder', display_name: name, original_filename: name, source_kind: 'upload' };
+  const enriched = normalizeWorkspaceFileItem({ ...base, document_relative_path: `Documents/Sous  dossier/${name}`,
+    document_origin: 'external', document_remote_delete_available: false });
+  assert.equal(enriched.display_name, name);
+  assert.equal(enriched.original_filename, name);
+  assert.equal(enriched.document_relative_path, `Documents/Sous  dossier/${name}`);
+  assert.equal(enriched.document_origin, 'external');
+  assert.equal(enriched.document_remote_delete_available, false);
+  const old = normalizeWorkspaceFileItem(base);
+  assert.equal(old.display_name, 'E\u0301tude française.md');
+  assert.equal(Object.hasOwn(old, 'document_relative_path'), false);
+});

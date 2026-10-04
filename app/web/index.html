@@ -111,6 +111,17 @@
           <span>Les documents sélectionnés pour lecture restent des sources.</span>
           <button type="button" id="documentWorkshopReload">Relire le contexte</button>
           <button type="button" id="documentWorkshopExit">Retour au chat</button>
+          <button type="button" id="documentWorkshopBrowse">Parcourir les documents Nextcloud</button>
+          <section id="documentRemoteBrowser" class="document-remote-browser" aria-label="Documents Nextcloud" hidden>
+            <div class="document-remote-navigation">
+              <button type="button" id="documentRemoteRoot">Documents</button>
+              <button type="button" id="documentRemoteBack">Répertoire parent</button>
+              <button type="button" id="documentRemoteRefresh">Actualiser la collection</button>
+            </div>
+            <div id="documentRemotePath" class="document-remote-resource"></div>
+            <div id="documentRemoteStatus" role="status"></div>
+            <ul id="documentRemoteList" aria-label="Ressources de la collection"></ul>
+          </section>
         </section>
         <div id="composerContextRow" class="composer-context-row" aria-label="Contexte du message">
           <div id="activeDocumentsBar" class="active-documents-bar" hidden>

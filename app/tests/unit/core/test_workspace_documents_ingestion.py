@@ -175,7 +175,7 @@ class _FakeWorkspaceFiles:
         self.links[fields["workspace_file_id"]] = link
         return dict(link)
 
-    def get_nextcloud_link(self, file_id, *, fail_closed=False):
+    def get_nextcloud_link(self, file_id, *, fail_closed=False, preserve_target_identity=False):
         if self.fail_link_lookup:
             raise RuntimeError("redacted")
         link = self.links.get(file_id)

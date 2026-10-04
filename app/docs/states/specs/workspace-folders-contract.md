@@ -600,6 +600,28 @@ uniquement l'identité et le scope d'un contexte `editing`, pas un message.
 La sélection de lecture reste une source : seule une cible inventoriée .md/.docx
 admissible explicitement choisie peut être liée au contexte. Suppression ou
 changement de scope est refusé à la relecture ; le déplacement courant notifie
-immédiatement la projection d'édition avant les inventaires différés. M2 reste
-responsable de l'adoption et de la lecture distante fraîche. Aucune préparation,
+immédiatement la projection d'édition avant les inventaires différés. Aucune préparation,
 confirmation, mutation DAV ou migration opérateur dans M1.
+
+## Inventaire et adoption atelier M2 (2026-10-04)
+
+Le [contrat M2](frida-v1-document-workshop-m2-contract.md) relie explicitement
+une source Nextcloud choisie à l'inventaire `workspace_files` existant, après
+lecture complète et publication SQL fichier/lien. L'inventaire rend disponible
+un fichier ; la checkbox reste l'autorité de lecture du chat ; la cible .md/.docx
+du contexte M1 reste un troisième choix explicite. Aucune de ces autorités ne
+découle automatiquement d'une adoption, y compris pour un PDF source.
+
+Le chemin enrichi exact et l'origine externe prouvée sont visibles dans la
+sidebar commune. Son propriétaire rafraîchit l'inventaire avec un garde de
+scope avant cache/rendu ; les réponses tardives ne publient pas dans une autre
+conversation. Les répertoires affectés par une adoption incertaine restent à
+réconcilier pendant la vie du contrôleur, uniquement lors d'une lecture
+explicitement demandée ; aucun replay du POST. Anciennes sélections et cible
+valide sont conservées. Le DELETE distant des liens enrichis est indisponible.
+
+La frontière fraîche M2 est réservée à la future préparation M4 ; elle ne
+réécrit pas le chemin de cache du chat ordinaire, l'upload, l'OCR ou les autres
+lanes. `editing`/`prepare:false` et les gardes de soumission restent actifs.
+Preuves de code/SQL/DOM hermétiques acquises ; migration opérateur et livraison
+runtime restent distinctes et ouvertes.

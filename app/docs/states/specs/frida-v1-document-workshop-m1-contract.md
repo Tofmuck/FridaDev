@@ -3,7 +3,9 @@
 Date : 2026-10-04. Statut : code et preuves hermétiques M1 ; activation différée.
 La [roadmap autoritative](../../todo-todo/product/frida-v1-document-workshop-todo.md)
 reste l'unique spécification du chantier. Le [contrat M0](frida-v1-document-workshop-m0-contract.md)
-reste inchangé : aucun nouveau compte, budget, modèle ou transport de préparation.
+conserve ses comptes, budgets, modèle et transport de préparation. Le
+[contrat M2](frida-v1-document-workshop-m2-contract.md) précise désormais les
+chemins sources/collections partagés et la lecture/adoption ciblées.
 
 ## Entrée et compositeur
 
@@ -57,18 +59,22 @@ M1 accepte sans cible un répertoire existant associé côté serveur, y compris
 local-only : cela ne prouve aucune disponibilité DAV. Une cible est un fichier
 inventorié actif de ce même répertoire, document texte `.md` ou `.docx`, lié
 Nextcloud `linked`. Un PDF existant ne possède pas encore la provenance/canonical
-Frida exigée pour update ; sa lecture ou copie distante reste M2, sa production
-M8–M10. TXT/ODT/images restent des sources possibles par les parcours existants,
+Frida exigée pour update ; sa lecture/adoption appartient à M2, sa copie et sa
+production restent aux lots ultérieurs. TXT/ODT/images restent des sources possibles par les parcours existants,
 pas de nouveaux formats de cible produit.
 
 Le nom distant vient du lien serveur. L'option ciblée
 `get_nextcloud_link(..., fail_closed=True, preserve_target_identity=True)`
 conserve exactement nom, référence et état persistés ; le défaut de lecture
 historique et ses projections restent inchangés. M1 ne réutilise pas la sanitation
-historique comme resolver. La cible est validée par **l'unique garde M0** sur
-`Documents/<nom exact>` ; aucune troncature/basename/normalisation de son identité.
-Nom et référence sont figés dans le contexte. Leur changement, une suppression,
-un déplacement ou un lien impropre invalident sa relecture.
+historique comme resolver. Depuis M2, la cible est validée par **l'unique garde
+produit M0** sur le chemin complet `nextcloud_relative_path`, sous-répertoires
+compris ; pour un lien historique non enrichi, `Documents/<nom exact>` reste
+la représentation. Aucune troncature/basename/normalisation de son identité.
+Chemin, référence et identité distante optionnelle `scope_key:file_id` sont
+figés dans le contexte. Leur changement, une suppression, un déplacement ou
+un lien impropre invalident la relecture GET. Cette identité interne n'est pas
+exposée au navigateur ; l'option du getter conserve aussi les champs M2 présents.
 
 Aucune conversation : `newThread` reste le mécanisme de création ; il retourne
 l'identité réellement obtenue ou null. Son option locale `activateIf` refuse une
@@ -92,13 +98,17 @@ serveur existante. La migration idempotente
 `app/core/sql/document_workshop_contexts.sql` crée seulement
 `document_workshop_contexts` : identité, conversation, répertoire, cible
 optionnelle, chemin/référence serveur figés, état fermé `editing`, date.
+L'extension idempotente M2 ajoute `target_remote_identity` nullable ; la
+migration M2 porte également cette extension pour une installation M1 existante.
 Aucun contenu, faux message, artifact, revision, receipt, claim ou journal futur.
 FK avec suppression en cascade sur suppression physique des ressources ; les
 soft deletes et déplacements sont réévalués par le service.
 
 L'INSERT revalide et verrouille les lignes conversation/répertoire et cible/lien
 avec `FOR SHARE`, dans sa transaction. Une modification entre validation service
-et insertion refuse le contexte. Cela ne remplace ni les claims ni le fencing M3.
+et insertion refuse le contexte. Depuis M2, ce contrôle couvre aussi chemin
+complet et identité distante enrichis, avec résolution `to_jsonb` des colonnes
+optionnelles du lien historique. Cela ne remplace ni les claims ni le fencing M3.
 
 La migration et `init_db()` sont livrés **sans application automatique à
 l'import/startup**. Une livraison runtime distinctement autorisée devra appliquer
@@ -124,8 +134,9 @@ locks finaux et persistance. Aucun protocole de claims/tours clients livré ici.
 
 L'ouverture/relecture n'appelle aucun modèle, préparation simulée produit,
 extracteur, renderer ou client DAV. Ni préparation ni confirmation exécutable.
-M4 raccordera la préparation ; M3 gèrera réservation/concurrence ; M2 doit encore
-livrer navigateur distant, adoption ciblée et lecture fraîche.
+M4 raccordera la préparation ; M3 gèrera réservation/concurrence. M2 ajoute
+navigateur distant, adoption ciblée et lecture fraîche seulement sur action
+explicite ; l'ouverture/relecture du contexte seule reste sans DAV ni extraction.
 
 ## Preuves et réserves
 

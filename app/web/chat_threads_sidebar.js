@@ -782,11 +782,12 @@ function createChatThreadsSidebar({
     bindConversationDropTarget,
   } = conversationFolderBinding;
 
-  const refreshWorkspaceFiles = async (folderId) => {
+  const refreshWorkspaceFiles = async (folderId, isCurrent = () => true) => {
     const normalized = WorkspaceFolders?.normalizeWorkspaceFolderId(folderId);
     if (!normalized) return [];
     try {
       const files = await listWorkspaceFilesFromServer(normalized);
+      if (!isCurrent()) return [];
       workspaceFilesState.set(normalized, files);
       workspaceFilesStatusState.set(normalized, {
         status: "ok",
@@ -794,6 +795,7 @@ function createChatThreadsSidebar({
       });
       return files;
     } catch (err) {
+      if (!isCurrent()) return [];
       workspaceFilesState.set(normalized, []);
       workspaceFilesStatusState.set(normalized, {
         status: "error",
@@ -1282,6 +1284,7 @@ function createChatThreadsSidebar({
     syncThreadFromServer,
     refreshThreadsFromServer,
     refreshWorkspaceExports,
+    refreshWorkspaceFiles,
     refreshWorkspaceGeneratedImages,
     refreshWorkspaceNotes,
     refreshWorkspaceFileSelections,

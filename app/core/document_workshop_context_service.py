@@ -28,7 +28,7 @@ def _scope(fields, *, conversations, folders, files):
         raise DocumentWorkshopError('document_context_scope_mismatch')
     target_id = fields.get('target_file_id')
     if not target_id:
-        return dict(target_file_id=None, target_relative_path=None, target_document_ref=None)
+        return dict(target_file_id=None, target_relative_path=None, target_document_ref=None, target_remote_identity=None)
     target = files.get_workspace_file_storage_row(fields['workspace_folder_id'], target_id)
     if not target or target.get('deleted_at'):
         raise DocumentWorkshopError('document_context_target_missing')
@@ -43,12 +43,19 @@ def _scope(fields, *, conversations, folders, files):
             or not link['nextcloud_document_ref']:
         raise DocumentWorkshopError('document_context_target_ineligible')
     # Raw verified inventory metadata, never display-name sanitizer or frontend URL.
-    name = link.get('nextcloud_target_name')
-    if type(name) is not str or '/' in name:
-        raise DocumentWorkshopError('document_context_target_ineligible')
-    path = validate_document_path('Documents/' + name, format='markdown' if extension == '.md' else 'docx')
+    relative_path = link.get('nextcloud_relative_path')
+    if relative_path is None:
+        name = link.get('nextcloud_target_name')
+        if type(name) is not str or '/' in name:
+            raise DocumentWorkshopError('document_context_target_ineligible')
+        relative_path = 'Documents/' + name
+    path = validate_document_path(relative_path, format='markdown' if extension == '.md' else 'docx')
+    identity = None
+    if link.get('nextcloud_file_id') is not None or link.get('nextcloud_scope_key') is not None:
+        from .workspace_document_adoption_store import remote_identity
+        identity = remote_identity(link.get('nextcloud_scope_key'), link.get('nextcloud_file_id'))
     return dict(target_file_id=target_id, target_relative_path=path.relative_path,
-                target_document_ref=link['nextcloud_document_ref'])
+                target_document_ref=link['nextcloud_document_ref'], target_remote_identity=identity)
 
 
 def _public(record):
@@ -93,7 +100,7 @@ def get_context(context_id, *, store, conversations, folders, files):
         if not record:
             return _failure('document_context_missing', 404)
         scope = _scope(record, conversations=conversations, folders=folders, files=files)
-        if record['state'] != 'editing' or any(scope[key] != record[key] for key in scope):
+        if record['state'] != 'editing' or any(scope[key] != record.get(key) for key in scope):
             return _failure('document_context_scope_changed', 409)
         return {'ok': True, 'context': _public(record)}, 200
     except DocumentWorkshopError as exc:
