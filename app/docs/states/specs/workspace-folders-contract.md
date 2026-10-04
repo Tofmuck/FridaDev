@@ -587,3 +587,19 @@ Decision Lot 2:
 - leur usage conversationnel reste document entier ou absent: aucune
   troncature, le tour continue apres exclusion et Frida recoit le signal qui lui
   permet de dire honnetement que le fichier n'a pas ete injecte.
+
+
+## Contexte d'édition explicite M1 (2026-10-04)
+
+Le [contrat M1 atelier](frida-v1-document-workshop-m1-contract.md) réutilise le
+catalogue des conversations, les répertoires/inventaires existants et le PATCH
+d'association explicite. Le serveur exige la même conversation/répertoire actif ;
+M1 n'affecte pas silencieusement un répertoire, ne crée aucun répertoire distant
+et n'ajoute aucun contexte/prompt de projet. La persistance dédiée conserve
+uniquement l'identité et le scope d'un contexte `editing`, pas un message.
+La sélection de lecture reste une source : seule une cible inventoriée .md/.docx
+admissible explicitement choisie peut être liée au contexte. Suppression ou
+changement de scope est refusé à la relecture ; le déplacement courant notifie
+immédiatement la projection d'édition avant les inventaires différés. M2 reste
+responsable de l'adoption et de la lecture distante fraîche. Aucune préparation,
+confirmation, mutation DAV ou migration opérateur dans M1.

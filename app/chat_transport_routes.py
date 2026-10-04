@@ -43,6 +43,9 @@ def register_chat_route(
     def api_chat():
         current_request = get_request()
         data = current_request.get_json(force=True, silent=True) or {}
+        if isinstance(data, dict) and "document_context_id" in data:
+            return jsonify_func({"ok": False, "reason_code": "document_preparation_unavailable",
+                            "error": "La préparation documentaire est indisponible."}), 409
         user_msg = str(data.get('message') or '')
         web_search_on = bool(data.get('web_search'))
         conversation_id_hint = conv_store_module.normalize_conversation_id(data.get('conversation_id'))

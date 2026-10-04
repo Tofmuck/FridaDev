@@ -14,6 +14,7 @@ from flask import Flask, Response, jsonify, request, send_from_directory, stream
 from werkzeug.exceptions import RequestEntityTooLarge
 
 import chat_transport_routes
+import document_workshop_routes
 import chat_dialogue_audio_routes
 import chat_transcription_routes
 import config
@@ -28,6 +29,7 @@ from tools import web_search as ws
 from core import assistant_turn_state
 from core import chat_stream_control
 from core import conv_store
+from core import document_workshop_contexts
 from core import active_conversation_documents
 from core import active_document_upload_service
 from core import chat_service
@@ -895,6 +897,17 @@ admin_hermeneutics_routes.register_admin_hermeneutics_routes(
     admin_logs_module=admin_logs,
     config_module=config,
 )
+
+# M1 contexts require the supplied SQL migration at a separately authorized deployment.
+# Registration/import has no schema mutation side effect.
+document_workshop_routes.register_document_workshop_routes(
+    app,
+    get_store=lambda: document_workshop_contexts,
+    get_conversations=lambda: conv_store,
+    get_folders=lambda: workspace_folders,
+    get_files=lambda: workspace_files,
+)
+
 
 # ── /api/workspace-folders* ───────────────────────────────────────────────────
 

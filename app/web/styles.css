@@ -4598,3 +4598,36 @@ body {
     color: var(--fg);
     background: rgba(11, 19, 37, 0.98);
   }
+
+/* M1: the same file menu and editing context on desktop and phone. */
+.document-file-menu[hidden], .document-workshop[hidden] { display: none; }
+.document-file-menu {
+  position: absolute; right: 14px; bottom: 64px; z-index: 30;
+  display: grid; padding: 6px; max-width: calc(100% - 28px);
+  border: 1px solid var(--border-strong); border-radius: 8px;
+  background: var(--bg-base); color: var(--fg); box-shadow: 0 8px 28px var(--border);
+}
+.document-file-menu button {
+  text-align: left; border: 0; padding: 12px; background: transparent; color: inherit; cursor: pointer;
+}
+.document-file-menu button:hover, .document-file-menu button:focus-visible { background: var(--surface-active); }
+.document-workshop {
+  position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); z-index: 26;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px;
+  border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px;
+  font-size: 12px; color: var(--fg); background: var(--bg-base);
+  max-height: 180px; overflow-y: auto;
+}
+.document-workshop [role="status"] { flex-basis: 100%; }
+.document-workshop label { display: flex; gap: 6px; align-items: center; max-width: 100%; }
+.document-workshop select, .document-workshop button {
+  max-width: 100%; min-width: 0; padding: 6px; font: inherit; color: inherit;
+  border: 1px solid var(--border); border-radius: 4px; background: var(--surface);
+}
+.document-workshop select { max-width: 220px; }
+.document-workshop button:disabled { opacity: .55; }
+
+:root[data-presentation-theme="mobile-dialogue"] .document-workshop,
+:root[data-presentation-theme="mobile-dialogue"] .document-file-menu {
+  background: #0b1428; color: #eef4ff; border-color: rgba(105, 161, 246, .34);
+}

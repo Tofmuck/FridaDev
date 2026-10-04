@@ -665,6 +665,7 @@
     buttonEl: btnNotesMode,
   });
 
+  let documentWorkshopController = null;
   const threadsLifecycle = chatThreadsSidebar.createChatThreadsSidebar({
     threadsUl,
     logEl: log,
@@ -677,6 +678,7 @@
     consoleObj: console,
     onCurrentThreadChange: (thread) => {
       syncCurrentConversationTitle(thread);
+      documentWorkshopController?.scopeChanged();
       dialogueD4Controller?.conversationChanged();
     },
   });
@@ -754,6 +756,28 @@
       }
     },
     consoleObj: console,
+  });
+
+  documentWorkshopController = window.FridaDocumentWorkshop.createDocumentWorkshopController({
+    buttonEl: btnActiveDocument, inputEl: activeDocumentFileInput,
+    menuEl: $("#documentFileMenu"), panelEl: $("#documentWorkshop"), sourceBarEl: activeDocumentsBar,
+    statusEl: $("#documentWorkshopStatus"), folderEl: $("#documentWorkshopFolder"),
+    bindFolderEl: $("#documentWorkshopBindFolder"), targetEl: $("#documentWorkshopTarget"),
+    reloadEl: $("#documentWorkshopReload"), exitEl: $("#documentWorkshopExit"),
+    fetchFn: fetch, getThread: () => getThreadById(getCurrentId()),
+    getFolders: threadsLifecycle.getWorkspaceFolders, getFiles: threadsLifecycle.getWorkspaceFiles,
+    createConversation: activateIf => newThread({ activateIf }),
+    bindFolder: async (conversationId, folderId, isCurrent) => {
+      const updated = await threadsLifecycle.moveConversationToWorkspaceFolderOnServer(conversationId, folderId);
+      if (!isCurrent()) return null;
+      // The PATCH was explicitly requested. Apply its verified identity without
+      // allowing a response for a departed conversation to select another one.
+      if (updated?.id !== conversationId || updated.workspace_folder_id !== folderId) return null;
+      threadsLifecycle.syncThreadFromServer(updated);
+      renderThreads();
+      return updated;
+    },
+    closeMobileTools: () => setMobileToolsExpanded(false),
   });
 
   const refreshActiveDocuments = (options = {}) => activeDocumentsController.refresh(options);
@@ -855,6 +879,10 @@
 
   async function submitCanonicalChatMessage(text, inputMode) {
     if (chatRequestInFlight) return { ok: false, reason: "busy" };
+    if (documentWorkshopController?.blocksSubmission()) {
+      documentWorkshopController.refuseSubmission();
+      return { ok: false, reason: "document_preparation_unavailable" };
+    }
     text = typeof text === "string" ? text.trim() : "";
     if (!text) return { ok: false, reason: "empty" };
     const isDialogue = inputMode === "dialogue";

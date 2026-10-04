@@ -853,9 +853,10 @@ Contrat de retour:
 
 Surface chat:
 
-- le controle visible est nomme et pense comme `document actif de conversation`, pas comme bouton generique `Documents`;
+- les sources actives restent nommees `documents actifs de conversation`; depuis
+  M1, leur ajout passe par le menu Fichier décrit ci-dessous;
 - le drag-and-drop sur la surface chat active les fichiers supportes;
-- le controle pres du composer ouvre le selecteur de fichiers;
+- Ajouter un fichier existant dans le menu Fichier ouvre le selecteur unique;
 - la liste affiche nom, type/extension, taille, longueur et statut compact;
 - pendant un upload PDF, l'UI affiche un etat discret de type `OCR si necessaire`, sans faux pourcentage;
 - lorsqu'un document actif a `ocr_applied=true`, la liste affiche une mention discrete `OCRise`;
@@ -905,3 +906,18 @@ Cette spec devra etre revisee si:
 - l'architecture OCR V1, ses limites ou son moteur changent.
 
 Sans decision explicite, cette spec interdit la fusion entre documents actifs et Biblio native.
+
+
+## Entrée Fichier depuis M1 (2026-10-04)
+
+Le [contrat M1 atelier](frida-v1-document-workshop-m1-contract.md) livre un seul
+bouton Fichier et deux choix : Ajouter un fichier existant / Créer ou modifier
+un document. Le premier conserve l'input multiple, le listener change unique,
+l'upload séquentiel, les formats, erreurs, retrait et drag-and-drop de ce contrat.
+Seul le clic picker quitte `chat_active_documents.bind` pour le contrôleur du menu ;
+le bouton reste fourni au render. Aucun nouveau parcours d'upload ou extraction.
+Le deuxième ouvre un contexte `editing`, sans upload, lecture implicite, modèle
+ni DAV. Les sources actives ne deviennent pas une cible d'édition. En contexte
+M1 ouvert, la soumission canonique est refusée avant tout faux tour/perte de
+brouillon ; Retour au chat restaure le chemin habituel. Aucune activation runtime
+ou préparation documentaire livrée par ce lot Git.

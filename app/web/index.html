@@ -99,6 +99,19 @@
       <div id="log" class="log"></div>
 
       <form id="ask" class="ask">
+        <div id="documentFileMenu" class="document-file-menu" role="menu" aria-label="Fichier" hidden>
+          <button type="button" role="menuitem" data-file-action="upload">Ajouter un fichier existant</button>
+          <button type="button" role="menuitem" data-file-action="workshop">Créer ou modifier un document</button>
+        </div>
+        <section id="documentWorkshop" class="document-workshop" aria-label="Atelier documentaire" hidden>
+          <div id="documentWorkshopStatus" role="status" tabindex="-1"></div>
+          <label>Répertoire <select id="documentWorkshopFolder" aria-label="Répertoire documentaire"></select></label>
+          <button type="button" id="documentWorkshopBindFolder">Associer ce répertoire à la conversation</button>
+          <label>Cible explicite <select id="documentWorkshopTarget" aria-label="Cible documentaire explicite"></select></label>
+          <span>Les documents sélectionnés pour lecture restent des sources.</span>
+          <button type="button" id="documentWorkshopReload">Relire le contexte</button>
+          <button type="button" id="documentWorkshopExit">Retour au chat</button>
+        </section>
         <div id="composerContextRow" class="composer-context-row" aria-label="Contexte du message">
           <div id="activeDocumentsBar" class="active-documents-bar" hidden>
             <div class="active-documents-label">Documents actifs de conversation</div>
@@ -153,7 +166,7 @@
                 <polyline points="5 12 12 5 19 12"></polyline>
               </svg>
             </button>
-            <button type="button" id="btnActiveDocument" class="btn-active-document" title="Ajouter un document actif de conversation" aria-label="Ajouter un document actif de conversation">
+            <button type="button" id="btnActiveDocument" class="btn-active-document" title="Fichier" aria-label="Fichier" aria-haspopup="menu" aria-expanded="false" aria-controls="documentFileMenu">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M21.44 11.05 12 20.49a6 6 0 0 1-8.49-8.49l9.9-9.9a4 4 0 0 1 5.66 5.66l-9.9 9.9a2 2 0 0 1-2.83-2.83l8.49-8.49"/>
               </svg>
@@ -370,6 +383,7 @@
   <script src="chat_threads_list_renderer.js"></script>
   <script src="chat_threads_sidebar.js"></script>
   <script src="chat_active_documents.js"></script>
+  <script src="chat_document_workshop.js"></script>
   <script src="chat_copy_export.js"></script>
   <script src="main_reasoning_control.js"></script>
   <script src="chat_adobe_mode.js"></script>

@@ -202,8 +202,7 @@ function createActiveDocumentController({
   };
 
   const bind = () => {
-    if (buttonEl && inputEl) {
-      buttonEl.addEventListener('click', () => inputEl.click());
+    if (inputEl) {
       inputEl.addEventListener('change', () => {
         void uploadFiles(inputEl.files);
       });

@@ -1,10 +1,11 @@
 # Atelier documentaire agentique Frida V1 — spécification validée et roadmap
 
-Date : 2026-09-29. Mise à jour M0 : 2026-10-04.
+Date : 2026-09-29. Mise à jour M0/M1 : 2026-10-04.
 
 Statut : **spécification et choix architecturaux validés par Tof ; M0 fermé sur
 composants et preuves internes, contre-audit corrigé sur `FridaV1-Document-Workshop-M0` ;
-M1–M10 et Z non commencés ; aucun raccord produit, déploiement ou renderer livré**.
+M1 fermé sur menu, contexte `editing` et gardes, branche `FridaV1-Document-Workshop-M1` ;
+M2–M10 et Z non commencés ; préparation inactive, aucun déploiement ou renderer livré**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
 dialogue avec Tof. Création documentaire committée dans `d6b63fd1`, puis validation
@@ -27,7 +28,7 @@ l'exécution des lots concernés, sans recommencer une reconnaissance générale
 Une case cochée dans les décisions signifie « décidé par Tof », pas « livré ».
 Une case ouverte dans les critères ou les lots signifie « à implémenter ou prouver ».
 Les inconnues factuelles sont isolées en section 11. Seules les preuves datées
-dans M0 décrivent des tests exécutés ; les autres lots restent des preuves futures.
+dans M0 et M1 décrivent des tests exécutés ; M2 et suivants restent des preuves futures.
 
 - [x] Reconnaissance et proposition de design produites dans le dialogue.
 - [x] Création de cette TODO autorisée par Tof.
@@ -36,6 +37,7 @@ dans M0 décrivent des tests exécutés ; les autres lots restent des preuves fu
   [AGENTS.md racine](../../../../AGENTS.md) pour les lots M0–M10 et Z.
 - [x] M0 explicitement autorisé le 2026-10-04 sur la branche dédiée ; les GO des
   autres lots restent requis séparément.
+- [x] M1 explicitement autorisé le 2026-10-04, sur une nouvelle branche issue de M0 audité.
 - [ ] GO distinct obtenu avant tout appel modèle réel de preuve.
 - [ ] GO distinct obtenu avant tout canari d'écriture Nextcloud.
 
@@ -837,10 +839,11 @@ fixe les représentations, codes et frontières consommables par les prochains l
 ## 8. Roadmap par micro-lots
 
 M0 est fermé sur composants et preuves internes, contre-audit corrigé sur sa branche dédiée.
-M1–M10 et Z restent ouverts et non commencés. Spécification et décisions amont
+M1 est fermé sur menu/contexte `editing` et gardes inactifs, sur sa branche issue de M0.
+M2–M10 et Z restent ouverts et non commencés. Spécification et décisions amont
 sont validées et l'exception produit est inscrite.
 Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
-le GO M0 ne vaut pour aucun lot suivant ni déploiement.
+les GO M0 et M1 ne valent pour aucun lot suivant ni déploiement.
 UI construite tôt, contrats DOM/HTTP hermétiques ; aucun parcours d'écriture exposé
 comme fonctionnel avant livraison des protections et de la tranche complète.
 
@@ -1071,8 +1074,9 @@ n'en est déduite. Le mandat autorise le commit/push de la branche, pas un merge
 ou un déploiement ; alignement distant final à constater après push.
 
 M0 ne raccorde pas `/api/chat` ou UI, ne crée ni contexte produit, table/migration,
-claim, pending, reçu, client d'écriture ou renderer. M1 est le prochain lot,
-non commencé ; les transactions/contexte appartiennent à M1–M7, la pagination
+claim, pending, reçu, client d'écriture ou renderer. À la clôture M0, M1 restait
+non commencé ; son exécution est décrite ci-dessous. Les transactions/contexte
+appartiennent à M1–M7, la pagination
 et les binaires effectivement rendus à M8–M10. Code publiable sur branche dédiée
 seulement : aucun merge main, déploiement ou activation produit.
 
@@ -1085,20 +1089,225 @@ routes/contexte documentaire.
 **Interface :** contexte serveur editing et menu à deux choix.
 **Propriétaire :** Celebrimbor.
 
-- [ ] Rouge causal : ajout ouvre une fois le picker/upload ; atelier n'appelle ni
+- [x] Rouge causal : ajout ouvre une fois le picker/upload ; atelier n'appelle ni
   modèle ni écriture DAV.
-- [ ] Tests ciblés et voisins : DOM menu, active-documents, soumission canonique,
+- [x] Tests ciblés et voisins : DOM menu, active-documents, soumission canonique,
   desktop/mobile ; prouver binding réel change, pas uniquement callback isolé.
-- [ ] Projeter phases/progression/annulation depuis l'état réel, sans aperçu,
-  animation probante inventée ou perte du garde canonique de soumission.
-- [ ] Faux verts : picker callback isolé sans listener change réel, bureau seul
+- [x] Projeter `editing` et les capacités réelles ; préparation indisponible, sans
+  aperçu, progression ou annulation de job inventées, garde canonique conservé.
+- [x] Faux verts : picker callback isolé sans listener change réel, bureau seul
   testé, ancienne action upload masquée par le menu ou second binding mobile.
-- [ ] Interdire deuxième input, listener mobile concurrent, perte drag-and-drop et
+- [x] Interdire deuxième input, listener mobile concurrent, perte drag-and-drop et
   autorité d'écriture via checkbox de lecture.
-- [ ] Synchroniser UX/atelier ; parcours synthétiques, aucun upload live nécessaire.
-- [ ] Activation atelier différée ; aucun déploiement requis pour fermer les tests.
-- [ ] Fermer lorsque les deux entrées utilisent leurs bonnes autorités et que
+- [x] Synchroniser UX/atelier ; parcours synthétiques, aucun upload live nécessaire.
+- [x] Activation atelier différée ; aucun déploiement requis pour fermer les tests.
+- [x] Fermer lorsque les deux entrées utilisent leurs bonnes autorités et que
   l'upload conserve toutes ses capacités.
+
+#### Exécution M1 du 4 octobre 2026
+
+Mandat distinct : menu et contexte explicite `editing`, tests/docs/contre-audit,
+commit/push M1 uniquement. Racine revalidée `/opt/platform/fridadev`. Départ propre :
+M0 HEAD = upstream = distant `3eb2e34aa0622112ebb4a8700dbe0eec02e4a27a`,
+parent/main/origin-main/distant `e3e0d19290cb7ac275b3fd4b19c4b01dbc89f2cb`,
+divergence `0/0`. M1 absent localement et distant. Avant toute édition :
+
+```bash
+git switch -c FridaV1-Document-Workshop-M1 3eb2e34aa0622112ebb4a8700dbe0eec02e4a27a
+git branch --show-current
+git rev-parse HEAD
+git status --short --branch
+```
+
+Branche M1 constatée, HEAD à M0, worktree propre. Aucun pull/stash/reset,
+checkout supplémentaire, worktree, merge ou modification de M0/main.
+
+Plan minimal : contrôleur menu/édition isolé, input conservé dans active-documents,
+création/association existantes réutilisées, routes fines/service de scope/store
+SQL limité. [Contrat M1](../../states/specs/frida-v1-document-workshop-m1-contract.md)
+pour les formes, refus, garanties et frontières. Aucun besoin de nouveau calcul
+de tokens ni de dépendance ; les six primitives M0 restent inchangées.
+
+Composants livrés : `chat_document_workshop.js`, wiring `app.js`/`index.html`,
+styles ciblés et ordre de scripts vérifié ; `document_workshop_routes.py`,
+`document_workshop_context_service.py`, `document_workshop_contexts.py` et migration
+`core/sql/document_workshop_contexts.sql`. Cette migration, exclue par le motif
+historique `*.sql`, est ajoutée explicitement au lot, sans changer le gitignore.
+Aucun bootstrap automatique de table à l'import/startup ; aucune DB opérateur
+initialisée. Son application runtime exige une livraison ultérieure autorisée.
+
+Un seul menu à deux choix, input multiple/change et drag-and-drop conservés.
+L'ancien clic direct picker est retiré du contrôleur d'upload, son render conserve
+le bouton. `newThread` expose réussite/identité et une garde d'activation tardive ;
+création sans répertoire suivie d'un choix et d'une association **explicites**,
+sans MKCOL ni réaffectation à l'ouverture. Cibles inventoriées `.md`/`.docx`
+actives et liées, distinctes des sources cochées. Lecture exacte du lien via option
+locale, défaut historique inchangé ; validation du chemin par M0, pas de copie.
+
+POST/GET valident conversation/répertoire/cible côté serveur ; création SQL
+revalide/verrouille ces ressources et fixe chemin/référence. GET refuse scope,
+suppression ou identité distante changés. Le store prouvé est PostgreSQL,
+pas un dictionnaire ; seuls les inventaires sont remplacés dans le harnais Flask.
+État réel `editing`, `prepare=false`, pas de préparation, aperçu, progression,
+`pending`, reçu, claim ou annulation fictive. Gardes frontend canonique et serveur
+`document_context_id` placés avant les effets du tour ; sortie locale explicite.
+
+**Runners revalidés et commandes reproductibles.** Host Node `20.19.2`, package
+Playwright existant `1.59.1`, Chromium cache `chromium-1217`. Preuves dans l'image
+existante `mcr.microsoft.com/playwright:v1.54.0-jammy`, Node `22.17.0`, ID
+`sha256:55dfaaa282c98d5f4d328676e36eca5203b6494b97d9ef3ba0608d9e939e9523`,
+avec package/cache du checkout déjà disponibles. Python :
+`fridadev-audit-py:latest`, ID
+`sha256:486a8afeb2f62c7906194d3e1fee839387e55753bcad365120d18306502fafdc`.
+Pas de téléchargement/installation ; mounts checkout et cache en lecture seule,
+rootfs readonly, temporaires tmpfs, environnement vidé, réseau Docker `none`.
+Le serveur statique Playwright reste en loopback **dans** le conteneur isolé.
+L'unshare réseau hôte était indisponible ; ce runner Docker conserve l'isolation.
+
+Invocations utilisées (stdout/stderr conservés seulement sous
+`/tmp/fridadev-m1-proof`, jamais copiés en documentation) :
+
+```bash
+m1_node() {
+  docker run --rm --pull never --network none --read-only \
+    --tmpfs /tmp:rw,nosuid,nodev \
+    --mount type=bind,src=/opt/platform/fridadev,dst=/workspace,readonly \
+    --mount type=bind,src=/home/tof/.cache/ms-playwright,dst=/proof/browsers,readonly \
+    --workdir /workspace --entrypoint /usr/bin/env \
+    mcr.microsoft.com/playwright:v1.54.0-jammy \
+    -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp \
+    PLAYWRIGHT_BROWSERS_PATH=/proof/browsers node --test "$@"
+}
+m1_python() {
+  docker run --rm --pull never --network none --read-only \
+    --mount type=bind,src=/opt/platform/fridadev,dst=/workspace,readonly \
+    --tmpfs /tmp:rw,nosuid,nodev --workdir /workspace/app \
+    --entrypoint /usr/bin/env fridadev-audit-py:latest \
+    -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp PYTHONDONTWRITEBYTECODE=1 \
+    EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid \
+    SEARXNG_URL=https://search.invalid python -m unittest "$@"
+}
+m1_node_neighbors=(
+  app/tests/unit/frontend_chat/test_active_documents_module.js
+  app/tests/unit/frontend_chat/test_canonical_chat_submission.js
+  app/tests/unit/frontend_chat/test_lot9_load_order_golden.js
+  app/tests/unit/frontend_chat/test_threads_folder_binding_module.js
+  app/tests/unit/frontend_chat/test_threads_sidebar_module.js
+  app/tests/unit/frontend_chat/test_workspace_folders_module.js
+  app/tests/unit/frontend_chat/test_threads_list_renderer_module.js
+)
+m1_browser_neighbors=(
+  app/tests/integration/frontend_browser/test_frontend_browser_active_documents.js
+  app/tests/integration/frontend_browser/test_frontend_browser_workspace_folders.js
+  app/tests/integration/frontend_browser/test_frontend_browser_smoke.js
+)
+m1_python_neighbors=(
+  tests.test_server_active_documents_contract
+  tests.test_server_workspace_folders_contract
+  tests.test_server_chat_route_transport_contract
+  tests.test_server_chat_conversation_id_contract
+  tests.test_server_chat_document_integrity_contract
+  tests.integration.frontend_chat.test_frontend_chat_contract
+  tests.unit.core.test_workspace_folders_contract
+  tests.unit.chat.test_chat_llm_flow
+  tests.unit.chat.test_chat_llm_flow_boundaries
+  tests.unit.chat.test_chat_stream_control
+  tests.unit.core.test_document_workshop_canonical_paths
+  tests.unit.core.test_document_workshop_admission
+  tests.unit.core.test_document_workshop_provider_progress
+  tests.unit.core.test_workspace_documents_ingestion
+)
+m1_node "${m1_node_neighbors[@]}"
+m1_node "${m1_browser_neighbors[@]}" \
+  app/tests/integration/frontend_browser/test_frontend_browser_document_workshop.js
+m1_python "${m1_python_neighbors[@]}" \
+  tests.test_server_document_workshop_contexts_contract
+```
+
+**Comparaison avant/après complète sur ces arbres utiles.** Avant patch : Node
+66/66 (`0,175 s`), navigateur 45/45 (`31,963 s`), Python 195/195 (`13,675 s`)
+sans ingestion. La lecture exacte touche ensuite le getter partagé : ajout des
+29 voisins ingestion, baseline élargie 224/224 (`15,495 s`, code 0).
+Pour cette extension, les seuls fichiers de frontière modifiés sont projetés depuis
+`git show 3eb2e34a:<fichier>` dans le même checkout readonly du conteneur ; aucun
+second checkout ni changement de branche. Même runner, fixtures et sélecteurs.
+Après : Node 69/69 (`0,158 s`), navigateur 56/56 (`36,230 s`), Python 232/232 (`15,688 s`),
+codes 0, zéro skip. Les 54 preuves M0 sont incluses et vertes. Pas de suite générale
+répétée : les voisins sélectionnés exercent transport, streaming, final locks,
+persistance, intégrité documentaire, conversation/folder/upload et sérialisation
+historique réellement partagés ; les paramètres du chat normal ne changent pas.
+
+**SQL réel isolé**, image locale `postgres:16-alpine`, PostgreSQL `16.12`, ID
+`sha256:87e04d274d186c7331d0e13c7c90c8b9f63b0d7ae94476c98a229a94d62c9745`.
+Base/utilisateur synthétiques `m1proof`, aucun DSN opérateur. Exemple exact de
+préparation retenue, après adaptation de l'essai initial de socket personnalisé
+incompatible avec l'entrypoint de cette image :
+
+```bash
+mkdir -p /tmp/fridadev-m1-proof/pg-socket
+chmod 777 /tmp/fridadev-m1-proof/pg-socket
+docker run -d --name fridadev-m1-proof-pg --pull never --network none --read-only \
+  --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev --tmpfs /tmp:rw,nosuid,nodev \
+  --mount type=bind,src=/tmp/fridadev-m1-proof/pg-socket,dst=/var/run/postgresql \
+  -e POSTGRES_USER=m1proof -e POSTGRES_DB=m1proof \
+  -e POSTGRES_HOST_AUTH_METHOD=trust postgres:16-alpine -c listen_addresses=
+docker exec fridadev-m1-proof-pg pg_isready -h /var/run/postgresql -U m1proof -d m1proof
+docker run --rm --pull never --network none --read-only \
+  --mount type=bind,src=/opt/platform/fridadev,dst=/workspace,readonly \
+  --mount type=bind,src=/tmp/fridadev-m1-proof/pg-socket,dst=/proof/sock,readonly \
+  --tmpfs /tmp:rw,nosuid,nodev --workdir /workspace/app \
+  --entrypoint /usr/bin/env fridadev-audit-py:latest \
+  -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp PYTHONDONTWRITEBYTECODE=1 \
+  M1_PROOF_PG_SOCKET=/proof/sock \
+  python -m unittest tests.integration.document_workshop.test_context_store_postgresql
+docker stop fridadev-m1-proof-pg
+docker rm fridadev-m1-proof-pg
+```
+
+5/5 (`0,527 s`), code 0, zéro skip : migration idempotente, commit/relecture par
+connexion indépendante, FK et état fermé, recheck après modification SQL,
+identité française/doubles espaces préservés sans changer le getter historique,
+traversée du lien refusée. Données uniquement éphémères ; aucune installation ou
+mutation plateforme/production. L'absence de socket en suite ordinaire entraîne
+un skip explicite et ne vaut jamais preuve SQL.
+
+**Rouges et faux verts.** Routes nouvelles absentes (POST 405), store absent
+(import refusé), garde documentaire absent (trois provenances produisant déjà un
+message/transport), menu monté absent (0 choix au lieu de 2), codes 1 sur baseline.
+Le RED canonique final vérifie les effets immédiatement, sans promise pendante
+utilisée comme preuve. Le premier essai browser attendait un thread sous un
+répertoire replié : erreur de sélecteur requalifiée, remplacée par attente bootstrap
+et parcours réel du répertoire. Le RED menu est ensuite reproduit avec les fichiers
+M0 readonly. Le vrai clic a aussi détecté un ancien binding picker encore actif ;
+retiré avant clôture. Une attente UI interceptée par le contrôle raisonnement a
+fait corriger le placement du panneau, sans forcer les clics ni affaiblir le test.
+
+**Contre-audit indépendant et corrections dans M1.** P2 : déplacement courant
+changeait le scope mais n'invalidait l'atelier qu'après les inventaires ; PATCH
+réussi/inventaire volontairement bloqué reproduit le panneau résiduel (`5,892 s`,
+code 1). Notification immédiate avant refresh, puis GREEN. P3 : association
+proposée après échec de création ; controls attendus disabled reproduits rouges
+(`1,390 s`, code 1), garde UI et callback ajoutés, puis GREEN. Revalidation
+indépendante des deux scénarios 2/2, code 0 ; suite M1 navigateur complète 11/11.
+Aucun finding vivant retenu par ce contre-audit. Relance finale M1 11/11
+(`9,757 s`, code 0, zéro skip) avec comptage des vrais bindings input/button
+et vérification du focus/flèches/Home/Échap, sans modification du code produit.
+
+Vérifications causales finales : unique picker/change, deux uploads ordonnés avant
+libération du premier, erreur conservée puis drop/retrait ; bureaux clair/sombre
+et téléphone avec les deux préférences, contrôles mobiles préservés, zéro erreur
+JavaScript ; source cochée ≠ cible ; création échouée ≠ contexte ; double clic,
+POST/GET/création et changement de répertoire différés ≠ rattachement tardif ;
+modèle/DAV/client d'écriture à zéro dans les routes montées ; IDs/états/URL client
+refusés ; brouillon/transcript/normal chat gardés ; SQL durable démontré hors mocks.
+Aucune capacité préparation/confirmation/progression/annulation annoncée à tort.
+
+Documentation synchronisée dans le contrat M1, active-documents, workspace-folders,
+Documents ingestion et hub ; lien informatif dans Nextcloud folders. M0 reste
+inchangé. Limites : aucune expérience live déduite des mocks, aucune activation,
+migration opérateur, préparation M4 ou job d'annulation. M2 et suivants non commencés.
+M1 ferme menu/entrée et autorité du contexte `editing` avec gardes inactifs ; M2
+reste responsable du navigateur distant, de l'adoption et de la lecture fraîche.
 
 ### M2 — Adoption et lecture distante ciblées
 
@@ -1769,11 +1978,13 @@ et de preuve de M0/M4/M8–M10, pas des arbitrages repoussés.
 
 Cette TODO conserve la spécification et les décisions validées par Tof sous forme
 de cases à cocher. M0 ferme les composants internes avec tests hermétiques et
-contre-audit corrigé sur sa branche dédiée ; sa livraison Git est obligatoire,
-à constater dans le retour de lot. M1 reste non commencé.
+contre-audit corrigé et livré sur sa branche dédiée (`3eb2e34a`). M1 est fermé sur
+menu/contexte `editing` et gardes inactifs sur sa branche issue de M0 ; livraison
+Git à constater dans le retour de lot. M2 et suivants restent non commencés.
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
 dans AGENTS.md ; l'invariant de consolidation reste applicable hors de cette
 exception. Les seuls composants applicatifs livrables par M0 sont les frontières
-internes inactives et leurs preuves. Aucune dépendance, service ou preuve live
-n'est livré. Commit/push requis exclusivement sur `FridaV1-Document-Workshop-M0` ;
+internes inactives et leurs preuves. M1 ajoute seulement entrée et contexte
+`editing`, avec préparation indisponible. Aucune dépendance nouvelle, service
+plateforme ou preuve live n'est livré. Pour M1, commit/push requis exclusivement sur `FridaV1-Document-Workshop-M1` ;
 aucun merge vers main, rebuild, restart ou déploiement n'est autorisé.

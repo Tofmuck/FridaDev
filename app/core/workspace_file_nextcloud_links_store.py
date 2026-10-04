@@ -110,6 +110,7 @@ def get_link(
     db_conn_func: Callable[[], Any],
     logger: Any,
     fail_closed: bool = False,
+    preserve_target_identity: bool = False,
 ) -> Optional[dict[str, Any]]:
     normalized = normalize_workspace_file_id(workspace_file_id)
     if not normalized:
@@ -128,7 +129,15 @@ def get_link(
                     """,
                     (normalized,),
                 )
-                return serialize_link_row(cur.fetchone())
+                row = cur.fetchone()
+                result = serialize_link_row(row)
+                if result is not None and preserve_target_identity:
+                    # Confirmable identities must retain persisted spelling.
+                    # Legacy callers keep their existing display serialization.
+                    result["nextcloud_target_name"] = row.get("nextcloud_target_name")
+                    result["nextcloud_document_ref"] = row.get("nextcloud_document_ref")
+                    result["nextcloud_sync_state"] = row.get("nextcloud_sync_state")
+                return result
     except Exception as exc:
         _log(logger, "document_link_get_failed", file_id=normalized, error_type=type(exc).__name__)
         if fail_closed:

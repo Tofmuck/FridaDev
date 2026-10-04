@@ -756,7 +756,12 @@ function createChatThreadsSidebar({
     if ((thread.workspace_folder_id || null) === nextFolderId) return;
     try {
       const updated = await moveConversationToWorkspaceFolderOnServer(thread.id, nextFolderId);
-      if (updated) syncThreadFromServer(updated);
+      if (updated) {
+        const synced = syncThreadFromServer(updated);
+        if (synced?.id === getCurrentId() && typeof onCurrentThreadChange === "function") {
+          onCurrentThreadChange(synced);
+        }
+      }
       await refreshWorkspaceFileSelections(thread.id);
       await refreshThreadsFromServer({ keepSelection: true });
       renderThreads();
@@ -1098,7 +1103,7 @@ function createChatThreadsSidebar({
     input.addEventListener("blur", () => void commit());
   }
 
-  const newThread = async () => {
+  const newThread = async ({ activateIf = () => true } = {}) => {
     try {
       const created = await createConversationOnServer("Nouvelle conversation");
       const normalized = normalizeThread(created);
@@ -1106,6 +1111,7 @@ function createChatThreadsSidebar({
         throw new Error("Conversation invalide");
       }
 
+      if (!activateIf(normalized)) return null;
       messageCache.set(normalized.id, []);
       syncThreadFromServer(normalized);
       setCurrentId(normalized.id);
@@ -1113,9 +1119,11 @@ function createChatThreadsSidebar({
       await setHero();
       renderThreads();
       closeSidebar();
+      return normalized;
     } catch (err) {
       logger.warn("Création conversation échouée", err);
       setThreadStatus("Impossible de créer une conversation.", true);
+      return null;
     }
   };
 

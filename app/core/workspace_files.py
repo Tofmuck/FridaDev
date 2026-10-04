@@ -135,12 +135,13 @@ def delete_workspace_files_for_folder(folder_id: str) -> dict[str, Any]:
     )
 
 
-def get_nextcloud_link(file_id: str, *, fail_closed: bool = False) -> Optional[dict[str, Any]]:
+def get_nextcloud_link(file_id: str, *, fail_closed: bool = False, preserve_target_identity: bool = False) -> Optional[dict[str, Any]]:
     return workspace_file_nextcloud_links_store.get_link(
         file_id,
         db_conn_func=_db_conn,
         logger=logger,
         fail_closed=fail_closed,
+        preserve_target_identity=preserve_target_identity,
     )
 
 

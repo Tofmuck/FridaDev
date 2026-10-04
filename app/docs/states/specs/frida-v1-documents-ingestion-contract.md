@@ -807,3 +807,15 @@ Preuves livrees:
   local.
 - Pas de Biblio, Notes, Exports, Images, Agenda, Mail, Memory/RAG global ou
   TTS/SMS.
+
+
+## Lecture d'identité pour l'atelier M1 (2026-10-04)
+
+Le [contrat M1 atelier](frida-v1-document-workshop-m1-contract.md) réutilise le
+registre/liens persistés, sans DAV ni extraction. Le getter partagé conserve
+son défaut historique ; l'option explicite `preserve_target_identity=True`
+retourne nom/référence/état exacts pour le seul resolver de contexte, validés par
+les gardes M0. La sanitation de l'upload et les projections existantes ne sont
+pas changées. Ni nom ni URL client ne désignent une cible ; la checkbox de lecture
+ne donne aucune autorité d'édition. Identité/chemin figés et revalidés à GET,
+préparation indisponible, fraîcheur/adoption distante réservées à M2.

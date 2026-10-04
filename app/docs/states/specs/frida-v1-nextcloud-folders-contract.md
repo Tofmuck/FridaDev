@@ -1408,3 +1408,13 @@ Dette architecture:
 - tout futur lot qui modifie la reconciliation doit extraire une responsabilite
   avant d'etendre `app/core/workspace_folder_nextcloud_reconcile.py`;
 - Lot 12 ne modifie pas ce fichier et ne change pas le comportement runtime.
+
+
+## Frontière informative atelier M1 (2026-10-04)
+
+Le [contrat M1 atelier](frida-v1-document-workshop-m1-contract.md) réutilise les
+identités et associations locales de ce socle pour un contexte `editing`.
+Ouvrir/relire ce contexte ne fait aucun probe DAV, création de répertoire ou
+mutation Nextcloud ; un répertoire local-only ne prouve aucune disponibilité
+pour une future préparation. Mapping distant et mutations de ce contrat restent
+inchangés ; adoption/lecture fraîche du nouvel atelier appartiennent à M2.

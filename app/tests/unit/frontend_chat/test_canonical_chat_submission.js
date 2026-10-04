@@ -22,6 +22,7 @@ function fixture({ terminal = { event: 'done', updated_at: '2026-09-09T10:00:00Z
     ...streaming, TextDecoder, Response, JSON, console: { error() {} },
     ask: { addEventListener: (_, handler) => { f.form = handler; } },
     message: { value: '' }, currentDraftInputMode: 'keyboard', chatRequestInFlight: false,
+    documentWorkshopController: null,
     getCurrentId: () => f.threadId,
     getThreadById: id => ({ conversation_id: id, workspace_folder_id: '' }),
     addMsg: makeNode, createMessageNode: makeNode,
@@ -144,3 +145,20 @@ test('D4 canonical HTTP failure returns failure; missing timestamp still forces 
   assert.equal(g.hydrations.length, 1);
   assert.deepEqual(g.loads, ['thread-A']);
 });
+
+for (const mode of ['keyboard', 'voice', 'dialogue']) {
+  test(`M1 ${mode}: documentary guard precedes transcript, draft clearing and transport`, async () => {
+    const f = fixture(); let notices = 0;
+    f.context.documentWorkshopController = { blocksSubmission: () => true, refuseSubmission: () => { notices += 1; } };
+    f.context.message.value = 'Brouillon synthétique intact';
+    const pending = f.submit('Brouillon synthétique intact', mode);
+    assert.deepEqual(f.nodes, []); assert.deepEqual(f.cache, []); assert.deepEqual(f.requests, []);
+    const result = await pending;
+    assert.deepEqual(plain(result), { ok: false, reason: 'document_preparation_unavailable' });
+    assert.equal(f.context.message.value, 'Brouillon synthétique intact');
+    assert.equal(notices, 1); assert.deepEqual(f.nodes, []); assert.deepEqual(f.cache, []); assert.deepEqual(f.requests, []);
+    f.context.documentWorkshopController = null;
+    const normal = f.submit('Retour chat', mode); f.release();
+    assert.equal((await normal).ok, true); assert.equal(f.requests.length, 1);
+  });
+}
