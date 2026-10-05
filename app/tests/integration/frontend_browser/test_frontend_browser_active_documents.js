@@ -38,6 +38,12 @@ function activeDocumentsMockScript() {
           body: typeof init.body === "string" ? init.body : "",
         });
 
+        if (url.pathname === "/api/workspace-folders" && method === "GET") {
+          return new Response(JSON.stringify({ ok: true, items: [] }), {
+            status: 200, headers: { "Content-Type": "application/json" },
+          });
+        }
+
         if (url.pathname === "/api/conversations" && method === "GET") {
           state.conversationFetches += 1;
           const limit = Number.parseInt(url.searchParams.get("limit") || "", 10);

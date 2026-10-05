@@ -77,6 +77,7 @@ function createChatThreadsSidebar({
   let editingThreadId = null;
   let threadsState = [];
   let foldersState = [];
+  let workspaceFoldersLoaded = false;
   const workspaceFilesState = new Map();
   const workspaceFilesStatusState = new Map();
   const workspaceFilesRequests = new Map();
@@ -128,6 +129,7 @@ function createChatThreadsSidebar({
   const getWorkspaceFolders = () => foldersState;
   const saveWorkspaceFolders = (arr) => {
     foldersState = Array.isArray(arr) ? arr : [];
+    workspaceFoldersLoaded = true;
     const ids = new Set(foldersState.map(folder => folder.id));
     // Removal also invalidates in-flight reads, even if the same ID returns later.
     for (const state of [workspaceFilesState, workspaceFilesStatusState, workspaceFilesRequests]) {
@@ -291,7 +293,22 @@ function createChatThreadsSidebar({
   async function listWorkspaceFoldersFromServer() {
     const res = await httpFetch("/api/workspace-folders");
     const data = await parseServerResponse(res);
-    return WorkspaceFolders?.normalizeWorkspaceFoldersPayload(data) || [];
+    if (
+      data.ok !== true
+      || !Array.isArray(data.items)
+      || data.items.some(item => (
+        typeof item?.id !== "string" || !item.id.trim()
+        || typeof item?.display_name !== "string" || !item.display_name.trim()
+      ))
+    ) {
+      throw makeContentFreeListError("workspace_folders_lookup_failed");
+    }
+    const folders = WorkspaceFolders?.normalizeWorkspaceFoldersPayload(data);
+    // Dropped rows mean unknown membership, never a confirmed deletion.
+    if (!Array.isArray(folders) || folders.length !== data.items.length) {
+      throw makeContentFreeListError("workspace_folders_lookup_failed");
+    }
+    return folders;
   }
 
   async function listWorkspaceFilesFromServer(folderId) {
@@ -615,10 +632,7 @@ function createChatThreadsSidebar({
     try {
       const [items, folders] = await Promise.all([
         listConversationsFromServer(),
-        listWorkspaceFoldersFromServer().catch((err) => {
-          logger.warn("Impossible de charger les répertoires", err);
-          return [];
-        }),
+        listWorkspaceFoldersFromServer(),
       ]);
       if (!isCurrent()) return false;
       const mapped = [];
@@ -984,12 +998,12 @@ function createChatThreadsSidebar({
 
     try {
       await deleteConversationOnServer(threadId);
-      await refreshThreadsFromServer({ keepSelection: true });
+      const refreshed = await refreshThreadsFromServer({ keepSelection: true });
       renderThreads();
 
       const selected = getCurrentId();
       if (selected) {
-        await loadThread(selected);
+        await loadThread(selected, { preserveStatus: !refreshed });
       } else {
         logEl.innerHTML = "";
         await setHero();
@@ -1020,7 +1034,12 @@ function createChatThreadsSidebar({
       WorkspaceFolders?.groupThreadsByWorkspaceFolder(threads, folders)
       || { byFolder: new Map(), outside: threads }
     ),
-    workspaceFolderRenderer,
+    workspaceFolderRenderer: {
+      ...workspaceFolderRenderer,
+      appendNoFoldersEmpty: () => {
+        if (workspaceFoldersLoaded) workspaceFolderRenderer.appendNoFoldersEmpty();
+      },
+    },
     folderBinding: conversationFolderBinding,
     formatTimestamp,
     isEditingThread: () => Boolean(editingThreadId),
@@ -1185,7 +1204,7 @@ function createChatThreadsSidebar({
     return sanitized;
   };
 
-  const loadThread = async (id) => {
+  const loadThread = async (id, { preserveStatus = false } = {}) => {
     const requestEpoch = ++threadLoadEpoch;
     const isCurrentRequest = () => requestEpoch === threadLoadEpoch && getCurrentId() === id;
     const t = getThreadById(id);
@@ -1199,7 +1218,7 @@ function createChatThreadsSidebar({
       if (!isCurrentRequest()) return;
       await refreshWorkspaceFileSelections(id);
       if (!isCurrentRequest()) return;
-      setThreadStatus("");
+      if (!preserveStatus) setThreadStatus("");
     } catch (err) {
       if (!isCurrentRequest()) return;
       logger.warn("Chargement conversation échoué", err);

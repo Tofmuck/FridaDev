@@ -1,9 +1,10 @@
 # Atelier documentaire Frida V1 — contrat M2
 
 Date : 2026-10-05. Statut : P2-M2-01 corrigé sur code/preuves, comparaison
-567/567 ; succès historique 536/536 et revue G-R1–G-R4 Approved conservés.
-Deux findings frontend hérités P2-M2-02/P2-M2-03 restent ouverts hors de ce
-correctif ; livraison runtime ouverte. Le retour final porte la livraison Git dédiée.
+historique 567/567 ; succès historique 536/536 et revue G-R1–G-R4 Approved conservés.
+P2-M2-03 corrigé séparément sur la frontière frontend du listing ; P2-M2-02
+reste ouvert et explicitement exclu, P2-M2-04 backend indépendant ouvert hors lot ;
+livraison runtime ouverte. Le retour final porte la livraison Git dédiée.
 La [roadmap](../../todo-todo/product/frida-v1-document-workshop-todo.md#m2--adoption-et-lecture-distante-ciblées)
 reste l'unique spécification et porte les commandes, résultats et dispositions
 des contre-audits. M2 part de M1 corrigé `c6f648ba`. Migration opérateur,
@@ -237,8 +238,8 @@ d’une Map reconstruite. B supersédé avant son tour n’effectue aucun I/O.
 Un epoch du refresh global refuse ses anciennes listes de répertoires et ses
 étapes tardives. La sauvegarde des répertoires retire fichiers/statut/token des
 IDs absents ; une réponse de l’ancienne existence ne ressuscite pas un ID supprimé,
-même réintroduit ensuite. Le traitement historique des erreurs de listing des
-répertoires reste le finding indépendant P2-M2-03 ci-dessous.
+même réintroduit ensuite. P2-M2-03 corrige ensuite la conversion des erreurs
+de listing observables en faux inventaire vide, sans modifier cette coordination.
 
 Contrat de retour de `refreshWorkspaceFiles` :
 
@@ -292,7 +293,8 @@ série, sans changer fixture ni assertion. Les commandes exactes, durées, codes
 de sortie, contre-audit et nettoyage figurent dans la
 [correction P2-M2-01](../../todo-todo/product/frida-v1-document-workshop-todo.md#correction-indépendante-p2-m2-01--5-octobre-2026).
 
-Deux findings frontend hérités restent ouverts **hors de ce correctif** :
+À la livraison P2-M2-01, deux findings frontend hérités restaient ouverts
+**hors de ce correctif**, avant le lot P2-M2-03 décrit ci-dessous :
 P2-M2-02, publications Exports/Images/Notes encore non coordonnées (probe causal
 Exports, autres familles inspectées statiquement) ; P2-M2-03, erreur courante du
 listing des répertoires convertie en liste vide puis succès. Deux probes isolés
@@ -300,3 +302,64 @@ reproduisent ces défauts sur les blobs initiaux `24233ce8` comme après correct
 deux rouges à chaque passe, exits 1, sans skip. Ces preuves supplémentaires sont
 séparées des 567 cas de comparaison et ne justifient aucune extension du patch.
 Aucun finding vivant n’est retiré par l’annonce de fermeture de P2-M2-01.
+
+
+### Listing des répertoires — P2-M2-03
+
+Une erreur de `GET /api/workspace-folders` ne constitue plus une liste vide.
+La frontière locale exige l'enveloppe de la route existante (`ok:true`, `items`
+tableau), les champs de projection `id` et `display_name` chaînes non blanches,
+et aucune ligne perdue par normalisation. HTTP en erreur, rejet réseau, JSON
+illisible, `ok:false`, enveloppe ou lignes invalides provoquent un échec ; le
+parseur et les normalizers partagés sont inchangés.
+
+Le global attend les deux listings avant toute sauvegarde : une erreur courante
+retourne `false` et affiche le statut existant « Mode hors ligne. », sans écrire
+répertoires, conversations, inventaires Files/Exports/Images/Notes ou leurs statuts,
+ni sélection/conversation courante. L'appartenance inconnue ne devient pas une
+suppression. Un garde local indique seulement si les répertoires ont été connus :
+au premier échec, aucun libellé « Aucun répertoire » ni création automatique du
+bootstrap ; aucune donnée inventée ni cache documentaire supplémentaire. Le dernier état
+connu, même vide, reste le dernier état connu.
+
+Un vrai `200 {ok:true,items:[]}` reste un succès : suppressions et invalidations
+Files de P2-M2-01 sont appliquées, les autres Maps gardent leur traitement global
+historique. Les epochs refusent une ancienne erreur après succès et une ancienne
+liste après suppression confirmée ; une erreur de listing ne supersède pas les
+tokens individuels Files en vol. Les courses internes Exports/Images/Notes ne
+sont pas coordonnées par ce correctif et restent P2-M2-02.
+
+`refreshThreadsFromServer` reste booléen : `true` pour son parcours réussi,
+`false` pour échec courant ou lecture globale supersédée. Son traitement des
+erreurs propres aux inventaires n'est pas changé. `syncAndRender`, déplacement
+et bootstrap conservent le statut sans rejouer de mutation. Les rechargements
+après chat ou suppression de conversation confirmés passent `preserveStatus`
+à `loadThread` lorsque le refresh a retourné `false` ; leur réussite de lecture
+de conversation n'efface plus cette panne de listing et leur mutation n'est
+pas requalifiée en échec. Un rafraîchissement ultérieur réussi reprend
+normalement, sans retry autonome, polling ou replay. Le contrat tableau/null/rejet
+Files et la réconciliation explicite M2 demeurent inchangés.
+
+Comparaison du lot : **594/594 = 344 Python + 124 Node + 99 Chromium + 27
+PostgreSQL isolé**, les 567 historiques conservés plus 23 Node/4 Chromium,
+41 sélecteurs inchangés, chaque exit 0, zéro skip.
+Les nouveaux tests passent par le propriétaire et le vrai navigateur monté,
+avec HTTP simulé ; les deux anciennes fixtures chat/documents actifs qui ne
+simulaient pas ce listing ajoutent seulement sa réponse nominale vide valide.
+Le cas chat temporisé conserve timers et assertions, ainsi que le résultat
+historique 94/95 dans la provenance P2-M2-01. Résultats, sélecteurs, durées,
+exits et contre-audit figurent dans la
+[correction P2-M2-03](../../todo-todo/product/frida-v1-document-workshop-todo.md#correction-indépendante-p2-m2-03--5-octobre-2026).
+
+**Findings ouverts et limite de contrat serveur.** P2-M2-02 reste ouvert et
+exclu. P2-M2-04 est un finding backend distinct :
+`workspace_folders_store.list_workspace_folders` intercepte une exception
+DB/sérialisation et retourne `[]` ; le service émet ensuite `ok:true,items:[]`,
+que la route projette en HTTP 200. Un probe isolé sur les vrais store/service,
+connexion défaillante simulée, confirme ce payload (un rouge attendu) ; il ne
+prouve aucune panne DB opérateur ni perte SQL/DAV. Cette réponse valide est
+indiscernable d'une vraie liste vide côté frontend. P2-M2-03 ferme les erreurs
+HTTP/réseau et réponses invalides observables, sans promettre la conservation
+face à cette erreur déjà masquée par le serveur. Aucun changement backend n'est
+absorbé ; correction séparée requise. Migrations opérateur, livraison runtime
+et DAV live restent ouverts ; M3 reste non commencé.

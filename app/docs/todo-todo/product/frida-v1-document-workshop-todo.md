@@ -6,8 +6,9 @@ Statut : **spécification et choix architecturaux validés par Tof ; M0 fermé s
 composants et preuves internes, contre-audit corrigé sur `FridaV1-Document-Workshop-M0` ;
 M1 fermé sur menu, contexte `editing` et gardes, branche `FridaV1-Document-Workshop-M1` ;
 M2 : succès historique 536/536 et revue G-R1–G-R4 Approved conservés ;
-P2-M2-01 corrigé, comparaison 567/567 ; deux findings frontend hérités distincts
-P2-M2-02/P2-M2-03 ouverts hors correctif ; livraison runtime ouverte ;
+P2-M2-01 corrigé, comparaison historique 567/567 ; P2-M2-03 corrigé séparément
+sur sa frontière frontend ; P2-M2-02 ouvert et explicitement exclu,
+P2-M2-04 backend indépendant ouvert hors lot ; livraison runtime ouverte ;
 M3–M10 et Z non commencés ; préparation inactive, aucun déploiement ou renderer livré**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
@@ -854,8 +855,9 @@ fixe les représentations, codes et frontières consommables par les prochains l
 M0 est fermé sur composants et preuves internes, contre-audit corrigé sur sa branche dédiée.
 M1 est fermé sur menu/contexte `editing` et gardes inactifs, sur sa branche issue de M0.
 M2 conserve la contre-revue historique G-R1–G-R4 Approved et le succès 536/536.
-Le correctif indépendant P2-M2-01 du 5 octobre passe 567/567 ; P2-M2-02/P2-M2-03
-hérités restent ouverts hors de ce lot. Migration opérateur, rebuild et lecture DAV déployée
+Le correctif indépendant P2-M2-01 du 5 octobre passe historiquement 567/567.
+P2-M2-03 est corrigé dans un lot frontend distinct ci-dessous ; P2-M2-02 reste
+ouvert et exclu, P2-M2-04 backend indépendant ouvert hors lot. Migration opérateur, rebuild et lecture DAV déployée
 restent ouverts. M3–M10 et Z ne sont pas commencés. Spécification et
 décisions amont sont validées et l'exception produit est inscrite.
 Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
@@ -1340,9 +1342,10 @@ worktree propre, avance/retard 0/0 vérifiés avant création de M2.
 
 ### M2 — Adoption et lecture distante ciblées
 
-**Statut : P2-M2-01 corrigé sur code/preuves (567/567), après le succès historique
-536/536 et G-R1–G-R4 Approved ; deux findings hérités P2-M2-02/P2-M2-03 ouverts
-hors correctif ; livraison runtime ouverte.**
+**Statut : P2-M2-01 corrigé sur code/preuves (comparaison historique 567/567),
+après le succès historique 536/536 et G-R1–G-R4 Approved ; P2-M2-03 corrigé
+séparément en frontend ; P2-M2-02 exclu et ouvert, P2-M2-04 backend ouvert
+hors lot ; livraison runtime ouverte.**
 **Objectif :** intégrer un dépôt direct dans l'inventaire commun.
 **Dépendances :** M0–M1, notamment gardes chemin et admission des sources.
 **Fichiers :** liens Nextcloud, workspace_files_store, readers, client DAV,
@@ -1915,7 +1918,9 @@ inspectés et couverts par les preuves adaptées. La revue indépendante du delt
 ne relève aucun finding introduit dans Files. Les contradictions courantes de
 clôture sont réconciliées, la provenance G-R1–G-R4 reste inchangée.
 
-Deux findings hérités **restent ouverts**, sans être absorbés dans ce patch :
+À la livraison P2-M2-01, deux findings hérités **restaient ouverts**, sans être
+absorbés dans ce patch. Ce registre conserve cette provenance ; P2-M2-03 est
+ensuite corrigé dans le lot séparé ci-dessous, P2-M2-02 reste ouvert :
 
 | Finding distinct | Preuve et disposition |
 | --- | --- |
@@ -1939,6 +1944,190 @@ fraîcheur serveur universelle, ne coordonne pas d’autres onglets et ne prouve
 pas l’état DAV. Migrations opérateur M1/M2, livraison runtime/rebuild/health et
 preuve DAV live restent ouverts. M3–M10/Z non commencés, préparation inactive ;
 aucun déploiement, provider, renderer ou appel modèle réel.
+
+#### Correction indépendante P2-M2-03 — 5 octobre 2026
+
+**Disposition : corrigé sur la frontière frontend ; livraison Git dédiée puis
+arrêt du lot.** Base revérifiée : `/opt/platform/fridadev`, branche
+`FridaV1-Document-Workshop-M2`, HEAD = upstream = M2 distant
+`c8275d7d39672560e84bd89ea66c6daae8ba8cb3`, parent exact
+`24233ce86d2c02a4648b8b901258a533dce2f375`, worktree propre, divergence `0/0`.
+`git ls-remote --heads` revalide M1 `c6f648badba96a60f1474db8d3f7404f97a2dda7`,
+M0 `3eb2e34aa0622112ebb4a8700dbe0eec02e4a27a` et main
+`e3e0d19290cb7ac275b3fd4b19c4b01dbc89f2cb`. Le retour final porte SHA/parent,
+push et alignement ; aucun merge, changement de branche ou livraison runtime.
+Le succès historique 536/536, G-R1–G-R4 Approved et la correction P2-M2-01
+567/567 restent conservés avec leur provenance. **P2-M2-02 est explicitement
+exclu et reste ouvert ; M3 reste non commencé.**
+
+**Cause et rouge.** Le global interceptait l'erreur de
+`listWorkspaceFoldersFromServer`, la transformait en `[]`, sauvegardait cette
+fausse appartenance, reconstruisait les autres inventaires puis retournait
+`true`. Sur cette base, l'annexe établit deux répertoires et un fichier de A par
+un premier chargement valide. Le second 503 retourne `true`, répertoires `0`,
+fichiers de A `0` : rouge causal. Le contrôle `200 {ok:true,items:[]}` est vert,
+avec ces mêmes zéros légitimes. Aucune suppression SQL/DAV inférée.
+
+**Correctif minimal.** Le propriétaire attend ses deux listings avant toute
+publication, sans convertir l'erreur du listing des répertoires en vide. Son
+catch existant renvoie `false` et affiche « Mode hors ligne. » ; l'epoch ignore
+les erreurs anciennes sans toucher le succès récent. Avant normalisation, cette
+seule frontière exige `ok:true`, un tableau `items`, des champs `id` et
+`display_name` chaînes non blanches, puis aucune ligne perdue. Le contrat réel
+est vérifié dans la route, le service et `serialize_workspace_folder_row` ;
+parseur et normalizers partagés inchangés. Des objets coercibles ne peuvent plus
+inventer une appartenance. Toute liste invalide est refusée intégralement.
+
+Une erreur laisse le dernier état connu des répertoires, conversations,
+sélections, Files/Exports/Images/Notes et de leurs statuts. Elle ne lance pas leurs
+lectures ni n'invalide les tokens Files individuels en vol. Le garde
+`workspaceFoldersLoaded` porte seulement la connaissance de la liste : un premier
+échec n'annonce pas « Aucun répertoire ». Le bootstrap `loaded=false` existant
+ne crée aucune conversation ni répertoire. Une liste réellement vide conserve
+la publication et la suppression des seuls IDs absents ; les tokens Files de
+P2-M2-01 restent invalidés, sans résurrection tardive. L'ancienne liste globale
+est refusée après une suppression confirmée plus récente.
+
+Les appelants sont inspectés via `rg` : `syncAndRender` et déplacement rendent
+le dernier état sans effacer le statut ; bootstrap s'arrête sur `false`.
+Après chat et suppression de conversation confirmés, les trois rechargements
+passent `preserveStatus` à `loadThread` si le refresh a échoué ou été ignoré.
+Ils rendent toujours les messages légitimes, sans fausse synchronisation,
+rollback du succès serveur ou replay de mutation. Une actualisation ultérieure
+réussie reprend normalement ; aucun retry, polling, second cache ou route.
+La coordination Files/Status, ses tokens, son tableau/null/rejet, les gardes M2
+et la réconciliation explicite sont inchangés. **Aucune coordination nouvelle
+des publications Exports/Images/Notes** n'est ajoutée.
+
+Fichiers du lot : `app/web/chat_threads_sidebar.js`, raccord `app/web/app.js`,
+`app/tests/unit/frontend_chat/test_threads_sidebar_module.js`, navigateur
+`test_frontend_browser_document_inventory_publication.js`, deux fixtures
+nominales dans `test_frontend_browser_active_documents.js` et
+`test_frontend_browser_smoke.js`, cette roadmap, contrat M2 et hub (son affirmation
+sur les P2 ouverts était affectée). Aucun backend, SQL/DAV, admission/tokens,
+modèle, renderer, dépendance ou DOM produit ajouté.
+
+**Preuves réelles.** Mêmes images/runners et empreintes documentés plus haut,
+revalidés avant exécution ; aucune installation ou pull. Réseau `none`, rootfs,
+checkout et cache navigateur read-only, `/tmp` tmpfs, `/usr/bin/env -i`, HOME
+scratch et bytecode Python interdit. Absence de dotenv et symlink vérifiée sans
+lecture. Scratch possédé `/tmp/fridadev-p2-m2-03-vlhaexy1` ; PostgreSQL dédié
+`fridadev-p2-m2-03-proof-pg`, chemin socket et nom initialement absents.
+Bind du socket sur `/var/run/postgresql` dès l'initialisation, `pg_isready` exit 0
+après 1,787 s avant SQL ; deux modules SQL **en série**, aucun accès DB opérateur.
+
+| Passe | Résultat | Durée | Exit |
+| --- | --- | --- | --- |
+| Baseline Node, 8 fichiers | 101/101 | 0,336609683 s | 0 |
+| Baseline Chromium, 7 fichiers en série | 95/95 | 84,814360234 s | 0 |
+| Annexe avant patch, `P2-M2-03 distinguishes` | 1 contrôle vert / 1 rouge 503 | 0,086841903 s | 1 |
+| Frontières Node initiales, `P2-M2-03` | 19 : 4 verts / 15 rouges | 0,115242922 s | 1 |
+| Suppression confirmée avant patch, `P2-M2-03 confirmed conversation deletion` | 1 rouge, statut effacé | 0,305417237 s | 1 |
+| Premier harnais navigateur, `P2-M2-03` | 3 rouges produit / 1 timeout de harnais | 7,863537457 s | 1 |
+| Harnais chat corrigé avant patch, `P2-M2-03 confirmed chat result` | 1 rouge, statut vide | 0,830085960 s | 1 |
+| Complément premier échec, `P2-M2-03 first load failure`, avant garde connaissance | 1 rouge, faux libellé vide | 0,075184198 s | 1 |
+| Complément `P2-M2-03 object folder`, avant validation des types | 2 rouges | 0,109757766 s | 1 |
+| Ciblé intermédiaire Node / navigateur, avant garde connaissance | 41/41 / 14/14 | 0,330119819 / 12,477527803 s | 0 / 0 |
+| Ciblé intermédiaire après garde connaissance | 41/41 / 14/14 | 0,323399066 / 12,547268590 s | 0 / 0 |
+| Ciblé final Node, `P2-M2-0[13]` | 44/44, dont 23 nouveaux | 0,342456045 s | 0 |
+| Ciblé final Chromium : publication, documents actifs, chat nominal | 16/16, dont les 10 P2-M2-01 et 4 nouveaux | 14,959756687 s | 0 |
+| Comparaison Python, 24 modules | 344/344 | 18,867 s | 0 |
+| Comparaison Node avant derniers types | 121/121 | 0,460533920 s | 0 |
+| Première comparaison Chromium, avant complétude des deux mocks de listing | 85/99 ; 14 échecs | 240,023095224 s | 1 |
+| Comparaison finale Node, 8 fichiers | 124/124 | 0,415412187 s | 0 |
+| Comparaison finale Chromium, 7 fichiers en série | 99/99 | 87,716477599 s | 0 |
+| PostgreSQL isolé, 2 modules en série | 27/27 | 18,090 s | 0 |
+
+Comparaison finale **344 + 124 + 99 + 27 = 594/594** : les **567 historiques
+conservés**, plus **23 Node et 4 Chromium** dans les modules existants, mêmes
+**41 sélecteurs**, chaque exit 0, zéro skip ou annulation. Les quatre probes
+originaux P2-M2-01 et leurs six frontières restent verts. Les 23 nouveaux cas
+Node couvrent 503/réseau, JSON/enveloppe/lignes invalides, conservation de toutes
+les familles et statuts, sélections/conversation, premier échec, reprise,
+lecture Files indépendante, suppression partielle et anciennes générations.
+Les quatre navigateurs prouvent panne visible, inventaire et fichier adopté
+conservés, réouverture avec cible proposée mais non choisie, brouillon/sélection,
+reprise explicite, POST d'adoption unique et statut conservé après chat confirmé.
+Aucune instrumentation d'audit n'est livrée au produit.
+
+Les essais imparfaits ne sont pas des rouges causaux : le premier harnais chat
+attendait un sélecteur inexistant et ne simulait pas les messages persistés
+après sa réponse. Il a été corrigé **avant patch**, puis donne le rouge d'assertion
+ci-dessus. La première comparaison Chromium révèle que deux fixtures historiques
+ne simulaient pas du tout `GET /api/workspace-folders` et levaient `Unexpected
+fetch` ; l'ancien fallback masquait cette erreur. Les deux seuls ajouts de mock
+sont maintenant `200 {ok:true,items:[]}`, conforme au serveur et à leur scénario
+nominal sans répertoire. Ni timer ni assertion ne change, notamment dans le cas
+chat temporisé ; les modes 503/réseau des nouveaux tests restent réellement en
+erreur. La fragilité et le résultat historique **94/95** de P2-M2-01 sont conservés.
+Seuls Node/Chromium sont repris après derniers types/fixtures ; Python et SQL,
+non affectés, ne sont pas répétés. Diagnostics Python hérités : 264
+`ERROR:frida.log_store`, 17 `WARNING:frida.conv`, trois `ERROR:frida.server`,
+mêmes familles/comptes ; aucune nouvelle collecte produit.
+
+Commandes ciblées exactes, avec les wrappers/préconditions ci-dessus :
+
+```sh
+m2_node --test-name-pattern='P2-M2-03 distinguishes' app/tests/unit/frontend_chat/test_threads_sidebar_module.js
+m2_node --test-name-pattern='P2-M2-03' app/tests/unit/frontend_chat/test_threads_sidebar_module.js
+m2_node --test-name-pattern='P2-M2-03 confirmed conversation deletion' app/tests/unit/frontend_chat/test_threads_sidebar_module.js
+m2_node --test-name-pattern='P2-M2-03 first load failure' app/tests/unit/frontend_chat/test_threads_sidebar_module.js
+m2_node --test-name-pattern='P2-M2-03 object folder' app/tests/unit/frontend_chat/test_threads_sidebar_module.js
+m2_node --test-name-pattern='P2-M2-03' app/tests/integration/frontend_browser/test_frontend_browser_document_inventory_publication.js
+m2_node --test-name-pattern='P2-M2-03 confirmed chat result' app/tests/integration/frontend_browser/test_frontend_browser_document_inventory_publication.js
+m2_node --test-name-pattern='P2-M2-0[13]' app/tests/unit/frontend_chat/test_threads_sidebar_module.js
+m2_node --test-concurrency=1 --test-name-pattern='P2-M2-0[13]|active conversation documents upload|chat stream nominal' app/tests/integration/frontend_browser/test_frontend_browser_document_inventory_publication.js app/tests/integration/frontend_browser/test_frontend_browser_active_documents.js app/tests/integration/frontend_browser/test_frontend_browser_smoke.js
+```
+
+Les 41 sélecteurs exacts de comparaison sont ceux retranscrits dans M2 :
+les **24 modules `m2_python`**, les **huit fichiers `m2_node`** et l'invocation
+unique **`m2_sql tests.integration.document_workshop.test_adoption_postgresql
+tests.integration.document_workshop.test_context_store_postgresql`**, inchangés ;
+les **sept fichiers Chromium** sont ceux de la commande P2-M2-01 avec
+`--test-concurrency=1`, inchangés. Aucun fichier ou cas supprimé pour atteindre
+un total ; les nouveaux cas sont dans les deux modules existants. Les preuves
+frontend utilisent le vrai propriétaire et Chromium avec fetch simulé ; Python
+inclut le transport HTTP loopback synthétique historique ; PostgreSQL est réel
+mais isolé. Aucune preuve DAV, modèle ou produit live déduite.
+
+**Contre-audit final.** Tous les appels listing/refresh et écrivains Files sont
+recensés ; pas de fallback en liste vide, publication avant succès ou remplacement
+Files destructeur réintroduit. Statut de l'échec conservé chez les trois
+rechargements concernés ; mutation confirmée non rejouée. Vrai vide accepté,
+seuls absents invalidés ; erreur périmée non publiée ; tokens/contexte, bootstrap,
+chat/upload, brouillon, gardes M2, thèmes et DOM desktop/mobile conservés.
+Pas de normalizer commun modifié, second cache, nouvelle collecte, duplication
+ou extension de P2-M2-02/M3. Le skill `requesting-code-review` a fourni une
+contre-revue statique indépendante : types corrigés après deux rouges, puis
+aucun nouveau finding dans le delta final ; aucun test hôte ou runner exécuté
+par le reviewer. Les contradictions courantes de statut sont réconciliées sans
+réécriture des revues historiques.
+
+**Findings vivants hors lot.** P2-M2-02 reste ouvert et exclu : son rouge causal
+Exports et l'inspection Images/Notes consignés dans P2-M2-01 restent inchangés,
+séparés de la comparaison. Aucun de ces rouges n'est caché ou réparé ici.
+**P2-M2-04 — erreur backend de listing convertie en succès vide**, nouveau finding
+indépendant ouvert : `workspace_folders_store.py` intercepte exception
+DB/sérialisation et retourne `[]` ; `workspace_folders_service.py` ajoute
+`ok:true`, route HTTP 200 par inspection. Un probe scratch appelle les vrais
+store/service avec une fonction de connexion synthétique qui lève : warning
+appelé une fois, `items:[]`, `ok:true`, **1/1 rouge attendu, 0,001 s, exit 1**
+(0,508 s murales Docker). Assertion attendue : l'erreur ne doit pas être un succès.
+Le probe est séparé des 594 et ne prouve ni DB réelle défaillante ni perte SQL/DAV.
+Cette erreur déjà masquée côté serveur est indiscernable d'un vrai vide côté UI ;
+aucun correctif backend n'est absorbé. Une première invocation exploratoire du
+probe avec un sélecteur Python inexistant avait été refusée (exit 1), exclue de
+cette preuve ; la bonne invocation isolée charge le script scratch read-only par
+`python -c`/`runpy`, mêmes préconditions et environnement que `m2_python`.
+
+**Nettoyage et limites.** Conteneur PostgreSQL possédé arrêté/supprimé après
+succès SQL, socket vide retiré et absence vérifiée ; données tmpfs détruites.
+Autres runners `--rm`. Scratch possédé retiré après conservation des faits,
+aucun artefact d'autrui supprimé. La cohérence reste locale à l'instance frontend,
+sans coordination inter-onglets ni preuve universelle de fraîcheur serveur.
+Migrations opérateur, livraison runtime/rebuild/health et DAV live restent
+ouverts. M3–M10/Z non commencés ; arrêt après vérification du commit/push,
+aucun enchaînement vers P2-M2-02, aucun merge ni livraison runtime.
 
 ### M3 — Réservation durable et concurrence
 
@@ -2590,8 +2779,9 @@ menu/contexte `editing` et gardes inactifs sur sa branche issue de M0 ; livraiso
 Git M1 corrigée par P3 `c6f648ba`, constatée avant création de M2. M2 dispose du
 succès historique 536/536 après G-R1–G-R4, dont la contre-revue du delta est
 Approved ; les 528 premiers restent historiques. Le 5 octobre, P2-M2-01 est
-corrigé et la comparaison passe 567/567 ; P2-M2-02/P2-M2-03 hérités restent
-ouverts hors correctif. Le retour final porte la livraison Git et ses alignements. M3 et suivants restent
+corrigé et la comparaison historique passe 567/567. P2-M2-03 est ensuite
+corrigé séparément en frontend ; P2-M2-02 reste ouvert et exclu,
+P2-M2-04 backend indépendant reste ouvert hors lot. Le retour final porte la livraison Git et ses alignements. M3 et suivants restent
 non commencés.
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
 dans AGENTS.md ; l'invariant de consolidation reste applicable hors de cette

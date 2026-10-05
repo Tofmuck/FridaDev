@@ -953,11 +953,11 @@
       if (!hasReplyUpdatedAt && requestThreadId) {
         await hydrateThreadMessages(requestThreadId, { force: true });
       }
-      await refreshThreadsFromServer({ keepSelection: true });
+      const refreshed = await refreshThreadsFromServer({ keepSelection: true });
       renderThreads();
       updateExportConversationButton();
       if (!hasReplyUpdatedAt && requestThreadId && getCurrentId() === requestThreadId) {
-        await loadThread(requestThreadId);
+        await loadThread(requestThreadId, { preserveStatus: !refreshed });
       } else if (shouldStickToBottom) {
         scrollToBottom(true);
       }
@@ -982,11 +982,11 @@
       } else if (requestThreadId && errorTerminal && errorTerminal.event === "error") {
         try {
           await hydrateThreadMessages(requestThreadId, { force: true });
-          await refreshThreadsFromServer({ keepSelection: true });
+          const refreshed = await refreshThreadsFromServer({ keepSelection: true });
           renderThreads();
           updateExportConversationButton();
           if (getCurrentId() === requestThreadId) {
-            await loadThread(requestThreadId);
+            await loadThread(requestThreadId, { preserveStatus: !refreshed });
             rehydratedAfterUnpersistedTerminalError = true;
           }
         } catch (hydrateErr) {

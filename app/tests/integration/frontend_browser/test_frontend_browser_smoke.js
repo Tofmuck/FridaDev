@@ -81,6 +81,12 @@ function chatMockScript({ streamMode, imageMode = 'success', chatDelayMs = 0 }) 
           body,
         });
 
+        if (url.pathname === "/api/workspace-folders" && method === "GET") {
+          return new Response(JSON.stringify({ ok: true, items: [] }), {
+            status: 200, headers: { "Content-Type": "application/json" },
+          });
+        }
+
         if (method === "GET" && url.origin === window.location.origin
             && url.pathname.startsWith("/vendor/dialogue-vad/")) {
           return nativeFetch(input, init);

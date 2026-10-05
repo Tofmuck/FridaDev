@@ -895,6 +895,234 @@ function assertInventory(sidebar, id, status = 'ok') {
   });
 }
 
+for (const failure of [false, true]) {
+  test(`P2-M2-03 distinguishes ${failure ? '503 error' : 'valid empty list'}`, async () => {
+    const folders = ['folder-a', 'folder-b'].map(id => ({
+      id, display_name: id, nextcloud_sync_state: 'linked',
+    }));
+    let second = false;
+    const { sidebar, threadsUl } = buildSidebarWithFetch(async url => {
+      if (url.startsWith('/api/conversations?')) return conversationPage([], 0);
+      if (url === '/api/workspace-folders') {
+        if (!second) return response(200, { ok: true, items: folders });
+        return failure
+          ? response(503, { ok: false, reason_code: 'synthetic_folders_unavailable' })
+          : response(200, { ok: true, items: [] });
+      }
+      if (url.endsWith('/files')) return response(200, {
+        ok: true, items: [{
+          id: 'file-a', workspace_folder_id: url.split('/')[3],
+          display_name: 'synthetic.md', content_kind: 'document',
+          media_kind: 'text', status: 'active',
+        }],
+      });
+      return response(200, { ok: true, items: [] });
+    });
+    assert.equal(await sidebar.refreshThreadsFromServer(), true);
+    assert.equal(sidebar.getWorkspaceFolders().length, 2);
+    assert.equal(sidebar.getWorkspaceFiles('folder-a').length, 1);
+    second = true;
+    const accepted = await sidebar.refreshThreadsFromServer();
+    console.log(JSON.stringify({ finding: 'P2-M2-03', failure, accepted,
+      folders: sidebar.getWorkspaceFolders().length, files: sidebar.getWorkspaceFiles('folder-a').length }));
+    assert.equal(accepted, !failure);
+    assert.equal(sidebar.getWorkspaceFolders().length, failure ? 2 : 0);
+    assert.equal(sidebar.getWorkspaceFiles('folder-a').length, failure ? 1 : 0);
+    sidebar.renderThreads();
+    if (!failure) assert.ok(firstByClass(threadsUl, 'workspace-folder-empty-global'));
+  });
+}
+
+// This harness changes HTTP responses only; all reads/publications use the owner.
+function folderListingHarness() {
+  const folders = ['folder-a', 'folder-b'].map(id => ({ id, display_name: id, nextcloud_sync_state: 'linked' }));
+  const state = { listing: () => response(200, { ok: true, items: folders }), calls: [], onFiles: null };
+  const built = buildSidebarWithFetch(async (url, init = {}) => {
+    state.calls.push({ url, method: init.method || 'GET' });
+    if (url.startsWith('/api/conversations?')) return conversationPage([
+      { id: 'conv-a', title: 'A', workspace_folder_id: 'folder-a' },
+      { id: 'conv-b', title: 'B', workspace_folder_id: 'folder-b' },
+    ], 2);
+    if (url === '/api/workspace-folders') return state.listing();
+    if (url.endsWith('/messages')) return response(200, { ok: true, messages: [] });
+    if (url.endsWith('/workspace-file-selections')) return response(200, { ok: true, items: [
+      { file_id: 'file-a', conversation_id: url.split('/')[3], workspace_folder_id: 'folder-a', selected: true },
+    ] });
+    const folderId = url.split('/')[3];
+    if (url.endsWith('/files')) return state.onFiles ? state.onFiles(folderId) : inventoryFileResponse('file-a', folderId);
+    return response(200, { ok: true, items: [{
+      id: `${url.split('/').pop()}-${folderId}`, workspace_folder_id: folderId,
+      title: 'Synthetic', display_name: 'Synthetic', format: 'md', status: 'active',
+    }] });
+  });
+  return { ...built, state, folders, status: built.threadsUl.parentElement.children[0] };
+}
+
+function folderListingSnapshot(sidebar) {
+  return {
+    folders: sidebar.getWorkspaceFolders(), threads: sidebar.getThreads(), current: sidebar.getCurrentId(),
+    selections: sidebar.getWorkspaceFileSelections(sidebar.getCurrentId()),
+    inventories: ['folder-a', 'folder-b'].map(id => [
+      sidebar.getWorkspaceFiles(id), sidebar.getWorkspaceFilesStatus(id),
+      sidebar.getWorkspaceExports(id), sidebar.getWorkspaceExportsStatus(id),
+      sidebar.getWorkspaceGeneratedImages(id), sidebar.getWorkspaceGeneratedImagesStatus(id),
+      sidebar.getWorkspaceNotes(id), sidebar.getWorkspaceNotesStatus(id),
+    ]),
+  };
+}
+
+const invalidFolderListings = [
+  ['503', () => response(503, { ok: false, reason_code: 'synthetic_folders_unavailable' })],
+  ['network rejection', () => Promise.reject(new Error('Synthetic network failure'))],
+  ['unreadable JSON', () => ({ ok: true, status: 200, json: async () => { throw new SyntaxError('Synthetic JSON failure'); } })],
+  ['ok false', () => response(200, { ok: false, items: [] })],
+  ['ok absent', () => response(200, { items: [] })],
+  ['ok nonboolean', () => response(200, { ok: 'true', items: [] })],
+  ['items absent', () => response(200, { ok: true })],
+  ['items null', () => response(200, { ok: true, items: null })],
+  ['items object', () => response(200, { ok: true, items: {} })],
+  ['array payload', () => response(200, [])],
+  ['unusable folder row', () => response(200, { ok: true, items: [{ id: 'folder-a' }] })],
+  ['object folder id', () => response(200, { ok: true, items: [{ id: {}, display_name: 'Synthetic' }] })],
+  ['object folder name', () => response(200, { ok: true, items: [{ id: 'folder-a', display_name: {} }] })],
+  ['partially unusable rows', () => response(200, { ok: true, items: [{ id: 'folder-a', display_name: 'A' }, null] })],
+];
+for (const [label, listing] of invalidFolderListings) {
+  test(`P2-M2-03 ${label} preserves known memberships, every inventory, status and selection`, async () => {
+    const { sidebar, state, status } = folderListingHarness();
+    assert.equal(await sidebar.refreshThreadsFromServer(), true);
+    sidebar.setCurrentId('conv-b');
+    await sidebar.refreshWorkspaceFileSelections('conv-b');
+    const before = folderListingSnapshot(sidebar);
+    assert.equal(before.inventories[0].filter(Array.isArray).every(items => items.length === 1), true);
+    const calls = state.calls.length;
+    state.listing = listing;
+    assert.equal(await sidebar.refreshThreadsFromServer(), false);
+    assert.deepEqual(folderListingSnapshot(sidebar), before);
+    assert.equal(status.textContent, 'Mode hors ligne.');
+    assert.equal(status.style.display, 'block');
+    assert.equal(status.style.color, '#b85050');
+    assert.equal(state.calls.slice(calls).length, 2, 'Failed membership read must not reload inventories or selections');
+  });
+}
+
+test('P2-M2-03 first load failure publishes no conversations or invented memberships', async () => {
+  const { sidebar, state, status, threadsUl } = folderListingHarness();
+  state.listing = invalidFolderListings[0][1];
+  assert.equal(await sidebar.refreshThreadsFromServer({ keepSelection: false }), false);
+  assert.deepEqual(sidebar.getThreads(), []);
+  assert.deepEqual(sidebar.getWorkspaceFolders(), []);
+  assert.equal(sidebar.getCurrentId(), null);
+  assert.equal(sidebar.getWorkspaceFilesStatus('folder-a').status, 'unknown');
+  assert.equal(status.textContent, 'Mode hors ligne.');
+  assert.equal(state.calls.some(call => call.method !== 'GET'), false);
+  sidebar.renderThreads();
+  assert.equal(firstByClass(threadsUl, 'workspace-folder-empty-global'), null);
+});
+
+test('P2-M2-03 explicit successful refresh resumes and clears the failure', async () => {
+  const { sidebar, state, status, folders } = folderListingHarness();
+  assert.equal(await sidebar.refreshThreadsFromServer(), true);
+  state.listing = invalidFolderListings[0][1];
+  assert.equal(await sidebar.refreshThreadsFromServer(), false);
+  assert.equal(status.style.display, 'block');
+  state.listing = () => response(200, { ok: true, items: folders });
+  assert.equal(await sidebar.refreshThreadsFromServer(), true);
+  assert.equal(sidebar.getWorkspaceFolders().length, 2);
+  assert.equal(status.style.display, 'none');
+  assert.equal(state.calls.some(call => call.method !== 'GET'), false);
+});
+
+test('P2-M2-03 failed listing does not invalidate an independent in-flight Files read', async () => {
+  const { sidebar, state } = folderListingHarness();
+  await sidebar.refreshThreadsFromServer();
+  const held = deferred(), started = deferred();
+  const captured = inventoryFileResponse('new-file');
+  state.onFiles = () => { started.resolve(); return held.promise; };
+  const files = sidebar.refreshWorkspaceFiles('folder-a');
+  await started.promise;
+  state.listing = invalidFolderListings[0][1];
+  const accepted = await sidebar.refreshThreadsFromServer();
+  held.resolve(captured);
+  assert.equal(accepted, false);
+  assert.ok(Array.isArray(await files));
+  assertInventory(sidebar, 'new-file');
+});
+
+test('P2-M2-03 confirmed removal drops only absent inventories and invalidates their pending Files reads', async () => {
+  const { sidebar, state, folders } = folderListingHarness();
+  await sidebar.refreshThreadsFromServer();
+  const beforeB = folderListingSnapshot(sidebar).inventories[1];
+  const held = deferred(), started = deferred();
+  const captured = inventoryFileResponse('old-a');
+  state.onFiles = id => id === 'folder-a' ? (started.resolve(), held.promise) : inventoryFileResponse('file-a', id);
+  const old = sidebar.refreshWorkspaceFiles('folder-a');
+  await started.promise;
+  state.listing = () => response(200, { ok: true, items: [folders[1]] });
+  assert.equal(await sidebar.refreshThreadsFromServer(), true);
+  held.resolve(captured);
+  assert.equal(await old, null);
+  assert.deepEqual(sidebar.getWorkspaceFolders().map(folder => folder.id), ['folder-b']);
+  assert.deepEqual(sidebar.getWorkspaceFiles('folder-a'), []);
+  for (const getStatus of ['getWorkspaceFilesStatus', 'getWorkspaceExportsStatus', 'getWorkspaceGeneratedImagesStatus', 'getWorkspaceNotesStatus']) {
+    assert.equal(sidebar[getStatus]('folder-a').status, 'unknown');
+  }
+  for (const getItems of ['getWorkspaceExports', 'getWorkspaceGeneratedImages', 'getWorkspaceNotes']) {
+    assert.deepEqual(sidebar[getItems]('folder-a'), []);
+  }
+  assert.deepEqual(folderListingSnapshot(sidebar).inventories[1], beforeB);
+});
+
+for (const oldFailure of [false, true]) {
+  test(`P2-M2-03 old listing ${oldFailure ? 'error after success' : 'success after confirmed empty'} has no publication authority`, async () => {
+    const { sidebar, state, status, folders } = folderListingHarness();
+    await sidebar.refreshThreadsFromServer();
+    const held = deferred(), started = deferred();
+    const captured = oldFailure ? invalidFolderListings[0][1]() : response(200, { ok: true, items: folders });
+    state.listing = () => { started.resolve(); return held.promise; };
+    const old = sidebar.refreshThreadsFromServer();
+    await started.promise;
+    state.listing = () => response(200, { ok: true, items: oldFailure ? folders : [] });
+    assert.equal(await sidebar.refreshThreadsFromServer(), true);
+    const before = folderListingSnapshot(sidebar);
+    held.resolve(captured);
+    assert.equal(await old, false);
+    assert.deepEqual(folderListingSnapshot(sidebar), before);
+    assert.equal(status.style.display, 'none');
+  });
+}
+
+test('P2-M2-03 confirmed conversation deletion retains refresh failure through reload without replay or rollback', async () => {
+  let conversations = [
+    { id: 'conv-a', title: 'A', workspace_folder_id: 'folder-a' },
+    { id: 'conv-b', title: 'B', workspace_folder_id: 'folder-a' },
+  ];
+  let deleted = false, deletes = 0;
+  const { sidebar, threadsUl } = buildSidebarWithFetch(async (url, init = {}) => {
+    if (init.method === 'DELETE') {
+      deletes++;
+      deleted = true;
+      conversations = conversations.filter(item => item.id !== 'conv-a');
+      return response(200, { ok: true });
+    }
+    if (url.startsWith('/api/conversations?')) return conversationPage(conversations, conversations.length);
+    if (url === '/api/workspace-folders') return deleted ? invalidFolderListings[0][1]() : response(200, {
+      ok: true, items: [{ id: 'folder-a', display_name: 'A', nextcloud_sync_state: 'linked' }],
+    });
+    return response(200, { ok: true, items: [], messages: [] });
+  });
+  await sidebar.refreshThreadsFromServer();
+  sidebar.renderThreads();
+  expandFirstFolder(threadsUl);
+  const button = firstByClass(threadsUl, 'thread-del');
+  assert.ok(button);
+  await button.events.get('click')[0]({ stopPropagation() {} });
+  assert.equal(deletes, 1);
+  assert.equal(sidebar.getCurrentId(), 'conv-b');
+  assert.deepEqual(sidebar.getThreads().map(thread => thread.id), ['conv-b']);
+  assert.equal(threadsUl.parentElement.children[0].textContent, 'Mode hors ligne.');
+});
+
 for (const mode of ['individual', 'global']) for (const error of [false, true]) {
   test(`P2-M2-01 older ${mode} ${error ? 'error' : 'success'} cannot replace a newer publication`, async () => {
     const held = deferred(), started = deferred();
