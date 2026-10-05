@@ -58,10 +58,10 @@ function createWorkspaceFolderExportsPanelRenderer({
   };
 
   const refreshExportsAndRender = async (folder) => {
-    if (typeof refreshWorkspaceExports === 'function') {
-      await refreshWorkspaceExports(folder.id);
-    }
+    const result = typeof refreshWorkspaceExports === 'function'
+      ? await refreshWorkspaceExports(folder.id) : null;
     renderThreads();
+    return Array.isArray(result);
   };
 
   const requestCreateConversationExport = async (folder) => {
@@ -87,13 +87,16 @@ function createWorkspaceFolderExportsPanelRenderer({
       exportFormat: format,
       title,
     });
+    let confirmed = false;
     try {
       await createWorkspaceExportOnServer(folder.id, payload);
-      await refreshExportsAndRender(folder);
-      setThreadStatus('Export créé dans le répertoire.');
+      confirmed = true;
+      const published = await refreshExportsAndRender(folder);
+      setThreadStatus(published ? 'Export créé dans le répertoire.' : 'Export créé dans le répertoire. Inventaire non actualisé.', !published);
     } catch (err) {
       logger.warn('Création export répertoire échouée', err);
-      setThreadStatus(WorkspaceFolderExportsPanelUi.workspaceExportUserError(err?.payload || err), true);
+      setThreadStatus(confirmed ? 'Export créé dans le répertoire. Inventaire non actualisé.' : WorkspaceFolderExportsPanelUi.workspaceExportUserError(err?.payload || err), true);
+      if (confirmed) renderThreads();
     }
   };
 
@@ -119,13 +122,16 @@ function createWorkspaceFolderExportsPanelRenderer({
       exportFormat: format,
       title,
     });
+    let confirmed = false;
     try {
       await createWorkspaceExportOnServer(folder.id, payload);
-      await refreshExportsAndRender(folder);
-      setThreadStatus('Export réutilisé comme source.');
+      confirmed = true;
+      const published = await refreshExportsAndRender(folder);
+      setThreadStatus(published ? 'Export réutilisé comme source.' : 'Export réutilisé comme source. Inventaire non actualisé.', !published);
     } catch (err) {
       logger.warn('Réutilisation export échouée', err);
-      setThreadStatus(WorkspaceFolderExportsPanelUi.workspaceExportUserError(err?.payload || err), true);
+      setThreadStatus(confirmed ? 'Export réutilisé comme source. Inventaire non actualisé.' : WorkspaceFolderExportsPanelUi.workspaceExportUserError(err?.payload || err), true);
+      if (confirmed) renderThreads();
     }
   };
 

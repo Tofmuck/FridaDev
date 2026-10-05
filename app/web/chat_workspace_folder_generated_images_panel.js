@@ -71,10 +71,10 @@ function createWorkspaceFolderGeneratedImagesPanelRenderer({
   };
 
   const refreshImagesAndRender = async (folder) => {
-    if (typeof refreshWorkspaceGeneratedImages === 'function') {
-      await refreshWorkspaceGeneratedImages(folder.id);
-    }
+    const result = typeof refreshWorkspaceGeneratedImages === 'function'
+      ? await refreshWorkspaceGeneratedImages(folder.id) : null;
     renderThreads();
+    return Array.isArray(result);
   };
 
   const requestCreateImage = async (folder) => {
@@ -88,13 +88,16 @@ function createWorkspaceFolderGeneratedImagesPanelRenderer({
     }
     const payload = promptImageRequest();
     if (!payload) return;
+    let confirmed = false;
     try {
       await createWorkspaceGeneratedImageOnServer(folder.id, payload);
-      await refreshImagesAndRender(folder);
-      setThreadStatus('Image créée dans le répertoire.');
+      confirmed = true;
+      const published = await refreshImagesAndRender(folder);
+      setThreadStatus(published ? 'Image créée dans le répertoire.' : 'Image créée dans le répertoire. Inventaire non actualisé.', !published);
     } catch (err) {
       logger.warn('Création image répertoire échouée', err);
-      setThreadStatus(WorkspaceGeneratedImagesPanelUi.workspaceGeneratedImageUserError(err?.payload || err), true);
+      setThreadStatus(confirmed ? 'Image créée dans le répertoire. Inventaire non actualisé.' : WorkspaceGeneratedImagesPanelUi.workspaceGeneratedImageUserError(err?.payload || err), true);
+      if (confirmed) renderThreads();
     }
   };
 
@@ -131,13 +134,16 @@ function createWorkspaceFolderGeneratedImagesPanelRenderer({
       ? window.confirm(`Supprimer l’image "${imageItem.display_name || 'Image'}" du répertoire ?`)
       : false;
     if (!ok) return;
+    let confirmed = false;
     try {
       await deleteWorkspaceGeneratedImageOnServer(folder.id, imageItem.id);
-      await refreshImagesAndRender(folder);
-      setThreadStatus('Image supprimée du répertoire.');
+      confirmed = true;
+      const published = await refreshImagesAndRender(folder);
+      setThreadStatus(published ? 'Image supprimée du répertoire.' : 'Image supprimée du répertoire. Inventaire non actualisé.', !published);
     } catch (err) {
       logger.warn('Suppression image répertoire échouée', err);
-      setThreadStatus(WorkspaceGeneratedImagesPanelUi.workspaceGeneratedImageUserError(err?.payload || err), true);
+      setThreadStatus(confirmed ? 'Image supprimée du répertoire. Inventaire non actualisé.' : WorkspaceGeneratedImagesPanelUi.workspaceGeneratedImageUserError(err?.payload || err), true);
+      if (confirmed) renderThreads();
     }
   };
 

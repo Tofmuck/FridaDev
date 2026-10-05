@@ -7,7 +7,8 @@ composants et preuves internes, contre-audit corrigé sur `FridaV1-Document-Work
 M1 fermé sur menu, contexte `editing` et gardes, branche `FridaV1-Document-Workshop-M1` ;
 M2 : succès historique 536/536 et revue G-R1–G-R4 Approved conservés ;
 P2-M2-01 corrigé, comparaison historique 567/567 ; P2-M2-03 corrigé séparément
-sur sa frontière frontend ; P2-M2-02 ouvert et explicitement exclu,
+sur sa frontière frontend (594/594 historiques) ; P2-M2-02 corrigé séparément
+sur Exports/Images/Notes,
 P2-M2-04 backend indépendant ouvert hors lot ; livraison runtime ouverte ;
 M3–M10 et Z non commencés ; préparation inactive, aucun déploiement ou renderer livré**.
 
@@ -856,8 +857,8 @@ M0 est fermé sur composants et preuves internes, contre-audit corrigé sur sa b
 M1 est fermé sur menu/contexte `editing` et gardes inactifs, sur sa branche issue de M0.
 M2 conserve la contre-revue historique G-R1–G-R4 Approved et le succès 536/536.
 Le correctif indépendant P2-M2-01 du 5 octobre passe historiquement 567/567.
-P2-M2-03 est corrigé dans un lot frontend distinct ci-dessous ; P2-M2-02 reste
-ouvert et exclu, P2-M2-04 backend indépendant ouvert hors lot. Migration opérateur, rebuild et lecture DAV déployée
+P2-M2-03 est corrigé dans un lot frontend distinct (594/594 historiques) ;
+P2-M2-02 est ensuite corrigé sur les trois familles ci-dessous, P2-M2-04 backend indépendant ouvert hors lot. Migration opérateur, rebuild et lecture DAV déployée
 restent ouverts. M3–M10 et Z ne sont pas commencés. Spécification et
 décisions amont sont validées et l'exception produit est inscrite.
 Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
@@ -1344,7 +1345,8 @@ worktree propre, avance/retard 0/0 vérifiés avant création de M2.
 
 **Statut : P2-M2-01 corrigé sur code/preuves (comparaison historique 567/567),
 après le succès historique 536/536 et G-R1–G-R4 Approved ; P2-M2-03 corrigé
-séparément en frontend ; P2-M2-02 exclu et ouvert, P2-M2-04 backend ouvert
+séparément en frontend (594/594 historiques) ; P2-M2-02 corrigé séparément
+sur les trois familles, P2-M2-04 backend ouvert
 hors lot ; livraison runtime ouverte.**
 **Objectif :** intégrer un dépôt direct dans l'inventaire commun.
 **Dépendances :** M0–M1, notamment gardes chemin et admission des sources.
@@ -1920,7 +1922,8 @@ clôture sont réconciliées, la provenance G-R1–G-R4 reste inchangée.
 
 À la livraison P2-M2-01, deux findings hérités **restaient ouverts**, sans être
 absorbés dans ce patch. Ce registre conserve cette provenance ; P2-M2-03 est
-ensuite corrigé dans le lot séparé ci-dessous, P2-M2-02 reste ouvert :
+ensuite corrigé dans son lot séparé ; P2-M2-02 est corrigé ultérieurement
+dans le lot dédié ci-dessous. Registre historique à la livraison P2-M2-01 :
 
 | Finding distinct | Preuve et disposition |
 | --- | --- |
@@ -1958,7 +1961,8 @@ M0 `3eb2e34aa0622112ebb4a8700dbe0eec02e4a27a` et main
 push et alignement ; aucun merge, changement de branche ou livraison runtime.
 Le succès historique 536/536, G-R1–G-R4 Approved et la correction P2-M2-01
 567/567 restent conservés avec leur provenance. **P2-M2-02 est explicitement
-exclu et reste ouvert ; M3 reste non commencé.**
+exclu et restait ouvert à cette livraison ; sa correction dédiée ultérieure
+figure ci-dessous. M3 reste non commencé.**
 
 **Cause et rouge.** Le global interceptait l'erreur de
 `listWorkspaceFoldersFromServer`, la transformait en `[]`, sauvegardait cette
@@ -2103,7 +2107,8 @@ aucun nouveau finding dans le delta final ; aucun test hôte ou runner exécuté
 par le reviewer. Les contradictions courantes de statut sont réconciliées sans
 réécriture des revues historiques.
 
-**Findings vivants hors lot.** P2-M2-02 reste ouvert et exclu : son rouge causal
+**Findings hors lot à la livraison P2-M2-03.** P2-M2-02 restait ouvert et exclu
+(il est corrigé dans le lot dédié ultérieur ci-dessous) : son rouge causal
 Exports et l'inspection Images/Notes consignés dans P2-M2-01 restent inchangés,
 séparés de la comparaison. Aucun de ces rouges n'est caché ou réparé ici.
 **P2-M2-04 — erreur backend de listing convertie en succès vide**, nouveau finding
@@ -2128,6 +2133,181 @@ sans coordination inter-onglets ni preuve universelle de fraîcheur serveur.
 Migrations opérateur, livraison runtime/rebuild/health et DAV live restent
 ouverts. M3–M10/Z non commencés ; arrêt après vérification du commit/push,
 aucun enchaînement vers P2-M2-02, aucun merge ni livraison runtime.
+
+#### Correction indépendante P2-M2-02 — 5 octobre 2026
+
+**Disposition : corrigé séparément pour Exports, Images générées et Notes.**
+Base revalidée : `pwd` et `git rev-parse --show-toplevel` donnent
+`/opt/platform/fridadev` ; branche `FridaV1-Document-Workshop-M2`, propre,
+divergence `0/0`, HEAD = upstream = M2 distant
+`c057d286b0e7a35d2ce8e0f3c43eaf8200edd131`, parent `c8275d7d`.
+`git ls-remote --heads` confirme M1 `c6f648ba`, M0 `3eb2e34a`, main `e3e0d19`.
+Le commit de ce lot a pour parent exact `c057d286` ; son SHA, push et alignement
+sont fournis dans le retour final. Pas de merge, changement de branche ou runtime.
+Les succès historiques 536/567/594, revues G-R1–G-R4 et échecs intermédiaires
+restent conservés avec leur provenance. P2-M2-01/03 restent fermés dans leur
+périmètre ; **P2-M2-04 backend reste ouvert et exclu ; M3–M10/Z non commencés**.
+
+**Cause et preuves distinctes.** Chez le propriétaire, les lecteurs individuels
+publiaient directement données/statut sans coordination. Le global collectait
+A, attendait B puis remplaçait six Maps entières : anciens résultats et omissions
+pouvaient écraser une publication récente. Exports est reproduit à nouveau ;
+Images et Notes sont maintenant reproduits séparément, avec les vraies enveloppes
+`exports`, `generated_images` et `items`. Pour chaque famille, le contrôle
+(global terminé avant lecture individuelle) est vert et la livraison globale
+après publication individuelle est rouge. Les trois tests Chromium montés
+capturent A ancien avant l'attente de B, utilisent les vrais boutons, contrôleurs
+et normalizers, puis observent `old-folder-a` à la place de `new-a`, statut `ok`
+périmé, avec **un seul POST de création confirmé par cas**. Aucun mock de cache,
+payload reconstruit après l'attente, sommeil arbitraire ou instrumentation produit.
+
+**Choix minimal.** La question préalable « Existe-t-il un meilleur plan, plus
+simple, plus sûr et avec moins d'effets de bord ? » conduit à reprendre la
+coordination locale Files éprouvée, séparément pour chaque famille et répertoire.
+Les seules Maps existantes restent chez le propriétaire. Trois Maps de tokens
+opaques et trois lecteurs communs global/individuel contrôlent autorité avant I/O,
+après réponse et avant erreur. Chaque publication données/statut est synchrone.
+Les six setters de remplacement complet sont retirés : ignorer A ne peut pas
+l'effacer indirectement. Ancien succès/erreur, erreur récente, vide réel et
+`not_applicable` gardent leur traitement honnête ; pas de sérialisation générale,
+verrou UI, cache parallèle, retry/polling, dépendance ou mécanisme futur générique.
+
+L'epoch global est acquis à l'entrée. Les tokens d'inventaire sont réservés
+**après les deux listings réussis et l'epoch validé**, pour tous les répertoires
+et les quatre familles, sans attente avant le premier I/O Files. Ils ne sont
+jamais réacquis à la reprise des phases Exports/Images/Notes. Une requête plus
+récente de A conserve donc son autorité pendant l'attente de B ou d'une autre
+famille ; les phases supersédées ne lancent pas d'I/O. Les générations globales
+refusent les phases et listings anciens. La suppression confirmée d'un ID retire
+données/statut/token de chaque famille ; réintroduire cet ID ne rend pas son
+autorité à une ancienne réponse. Une erreur de listing P2-M2-03 ne réserve ni
+n'invalide ces tokens et conserve le dernier état connu.
+
+Retour individuel : tableau, même vide, pour publication effective ; `null`
+pour absence/autorité perdue/supersession, y compris erreur périmée ; rejet après
+publication `[]`/`error` pour erreur courante. Les trois panneaux vérifient ce
+retour pour création/réutilisation d'export, création/suppression d'image et
+création de note. Un rechargement ignoré/échoué après mutation confirmée affiche
+la confirmation puis « Inventaire non actualisé. » sur le statut existant et
+rend l'inventaire/statut courant. Il n'invite pas à rejouer la mutation. La note
+créée explicitement reste sélectionnée. Erreurs de mutation et actions
+ouverture/téléchargement/préparation restent inchangées. Le global conserve son
+retour historique de parcours : `true` ne garantit pas tous les statuts `ok`.
+Files P2-M2-01 et sa réconciliation explicite M2 ne sont pas refondus ; le listing
+et le bootstrap/chat P2-M2-03 sont conservés.
+
+Fichiers : `app/web/chat_threads_sidebar.js`, les trois panneaux
+`chat_workspace_folder_exports_panel.js`, `chat_workspace_folder_generated_images_panel.js`,
+`chat_workspace_folder_notes_panel.js`, les deux tests sidebar/navigateur existants,
+cette roadmap, le contrat M2 et l'affirmation courante du hub. Aucun backend,
+SQL/DAV, admission/tokens, provider, renderer, DOM ou nouvelle capacité produit.
+
+**Preuves et exécution.** Images existantes et empreintes revalidées, mêmes
+wrappers `m2_python`, `m2_node`, `m2_sql` ci-dessus : `--pull never`, réseau `none`,
+rootfs/checkout/cache navigateur read-only, scratch possédé,
+`/usr/bin/env -i`, HOME temporaire et bytecode Python interdit. Aucun dotenv
+présent, y compris symlink. Scratch `/tmp/fridadev-p2-m2-02-drbbnotl`, socket
+`pg-socket` et conteneur `fridadev-p2-m2-02-proof-pg` initialement absents,
+préconditions vérifiées avant création. Socket bindé sur `/var/run/postgresql`
+dès initialisation, readiness `pg_isready` exit 0 en 1,317 s, puis les deux modules
+SQL en série, jamais la DB opérateur. Aucune installation/pull ou preuve hôte.
+
+| Passage | Résultat réel | Durée runner | Exit |
+| --- | --- | --- | --- |
+| Baseline huit fichiers Node | 124/124 | 0,462676001 s | 0 |
+| Baseline sept fichiers Chromium, concurrence 1 | 99/99 | 86,917549054 s | 0 |
+| Contrôles/rouges principaux Node, trois familles | 6 : 3 verts / 3 rouges | 0,094872622 s | 1 |
+| Matrice causale Node avant patch, harnais corrigé | 72 : 15 verts / 57 rouges | 0,185072351 s | 1 |
+| Appelants confirmés avant patch | 10/10 rouges | 0,105339582 s | 1 |
+| Courses montées Chromium avant patch, capture A prouvée | 3/3 rouges | 2,657898017 s | 1 |
+| Ciblé Node après correction | 82/82 | 0,167578514 s | 0 |
+| Ciblé Node après assertion du rendu d'erreur et adaptation des panneaux | 82/82 | 0,189718859 s | 0 |
+| Ciblé Chromium après correction | 3/3 | 3,106376756 s | 0 |
+| Comparaison Python, 24 modules | 344/344 | 24,350 s | 0 |
+| Comparaison Node, huit fichiers | 206/206 | 0,525733652 s | 0 |
+| Comparaison Chromium, sept fichiers, concurrence 1 | 102/102 | 89,822881720 s | 0 |
+| Comparaison PostgreSQL isolé, deux modules en série | 27/27 | 23,670 s | 0 |
+
+Les passages de preuve retenus n'ont aucun skip/cancel. **Comparaison finale :
+344 + 206 + 102 + 27 = 679/679**, soit les **594 historiques conservés + 82 Node
+et 3 Chromium nouveaux**. Diagnostics Python hérités inchangés : 264 ERROR
+`frida.log_store`, 17 WARNING `frida.conv`, 3 ERROR `frida.server` issus des
+scénarios négatifs, sans nouvelle journalisation. Les quatre scénarios originaux
+P2-M2-01 restent verts, ainsi que les gardes M2 et P2-M2-03, upload/chat,
+multisélection, drag-and-drop, sélection explicite et compositions/themes.
+
+Échecs intermédiaires conservés, exclus des preuves causales retenues : premier
+harnais Node 72 cas, 4 verts/19 échecs/49 cancel (0,179013896 s, exit 1), car son
+cas d'autorité attendait une lecture bloquée avant de libérer sa promesse ;
+libération avant assertion corrige le harnais, sans modifier l'attendu. Le test
+`not_applicable` doit aussi fournir le même état non lié au listing global.
+Premier Chromium : trois timeouts sur un champ de brouillon inexistant
+(17,235830333 s, exit 1), remplacé par le vrai compositeur `#message`.
+Puis trois verts non causaux (3,164862373 s, exit 0) : le tri « Autre »/« Recherche »
+faisait lire B avant A. Une assertion de capture A révèle trois erreurs de harnais
+(2,363254890 s, exit 1). Les seuls libellés synthétiques A/B imposent ensuite
+l'ordre attendu et l'assertion de capture est conservée : trois vrais rouges.
+Aucun timer ou assertion historique n'est affaibli. Deux commandes d'édition
+ont été refusées (`python` absent, exit 127) ; reprises par `python3` stdlib,
+sans imports applicatifs hôte. Le ciblé lancé sur cette édition partielle donne
+10 échecs/72 cancel (0,148344214 s, exit 1), exclu ; après édition complète les
+82 passent. Les anciens 94/95 et 85/99 restent consignés dans leurs lots.
+
+Commandes ciblées exactes (même module, jamais suppression d'un cas) :
+
+```sh
+m2_node --test-name-pattern='P2-M2-02.*collected A' \
+  app/tests/unit/frontend_chat/test_threads_sidebar_module.js
+m2_node --test-name-pattern='P2-M2-02 confirmed' \
+  app/tests/unit/frontend_chat/test_threads_sidebar_module.js
+m2_node --test-name-pattern='P2-M2-02' \
+  app/tests/unit/frontend_chat/test_threads_sidebar_module.js
+m2_node --test-concurrency=1 --test-name-pattern='P2-M2-02 mounted' \
+  app/tests/integration/frontend_browser/test_frontend_browser_document_inventory_publication.js
+```
+
+Les **41 sélecteurs exacts de comparaison** restent ceux retranscrits dans M2
+et P2-M2-01/03 : les 24 modules de `m2_python`, les huit fichiers de `m2_node`,
+les sept fichiers de `m2_node --test-concurrency=1`, et
+`m2_sql tests.integration.document_workshop.test_adoption_postgresql
+ tests.integration.document_workshop.test_context_store_postgresql` (une
+invocation séquentielle). Aucun sélecteur supprimé/ajouté : les cas nouveaux
+sont dans les deux modules existants. Wrappers inchangés, seuls chemin socket
+et nom PostgreSQL adaptés mécaniquement à ce scratch. Aucun passage vert répété
+sans changement ou incertitude nouvelle. Node/Chromium sont à fetch simulé,
+Python inclut les preuves HTTP loopback historiques, PostgreSQL est réel isolé ;
+aucun de ces niveaux ne constitue une preuve DAV ou produit live.
+
+**Contre-audit.** `rg` recense tous les écrivains, setters, lecteurs et appelants
+réels : aucune publication ancienne restante, six remplacements complets retirés,
+données/statut atomiques, pas d'omission destructrice ni collision de famille.
+Suppression/réintroduction, ancien succès/erreur, erreur récente, vrai vide,
+`not_applicable`, reprise, A/B indépendants, phases différées Files et famille
+précédente, globaux concurrents et erreur de listing sont couverts par le vrai
+propriétaire. Les dix cas d'appelants observent les POST/DELETE réels simulés,
+le retour réel, le statut visible et le rendu d'erreur, sans replay ; les trois
+cas montés observent aussi brouillon, sélection de fichier et note créée.
+La contre-revue indépendante via `requesting-code-review` ne relève aucun
+nouveau finding dans le code/tests ni dans la revue documentaire complémentaire ;
+57 références documentaires locales et leurs ancres sont vérifiées (exit 0).
+La revue est statique, aucun test hôte ou
+runner exécuté par le reviewer. Pas de second cache, nouvelle collecte,
+secret/contenu ajouté, abstraction future, backend ou élargissement M3.
+Documents courants réconciliés, provenance historique conservée.
+
+**Finding vivant et limites.** P2-M2-04 reste ouvert, son rouge historique
+séparé n'est ni rejoué ni corrigé dans ce lot : une erreur DB déjà transformée
+en `200 {ok:true,items:[]}` est indiscernable d'un vrai vide côté UI. Aucun
+résultat 679/679 ne ferme ce finding. Cohérence locale au contrôleur, sans
+coordination inter-onglets ni garantie de fraîcheur serveur/DAV. Migration
+opérateur, livraison runtime/rebuild/health et DAV live restent ouverts ;
+M3–M10/Z non commencés. Arrêt après vérification de livraison Git, sans
+enchaînement P2-M2-04 ou M3.
+
+**Nettoyage.** Le seul PostgreSQL possédé est arrêté puis supprimé après SQL ;
+socket vide retiré et absence vérifiée, données tmpfs détruites. Autres runners
+`--rm`. Scratch possédé retiré après conservation des faits et revue finale ;
+aucun artefact d'autrui ou runtime opérateur supprimé.
 
 ### M3 — Réservation durable et concurrence
 
@@ -2780,7 +2960,8 @@ Git M1 corrigée par P3 `c6f648ba`, constatée avant création de M2. M2 dispose
 succès historique 536/536 après G-R1–G-R4, dont la contre-revue du delta est
 Approved ; les 528 premiers restent historiques. Le 5 octobre, P2-M2-01 est
 corrigé et la comparaison historique passe 567/567. P2-M2-03 est ensuite
-corrigé séparément en frontend ; P2-M2-02 reste ouvert et exclu,
+corrigé séparément en frontend (594/594 historiques) ; P2-M2-02 est ensuite
+corrigé séparément sur Exports/Images/Notes,
 P2-M2-04 backend indépendant reste ouvert hors lot. Le retour final porte la livraison Git et ses alignements. M3 et suivants restent
 non commencés.
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée

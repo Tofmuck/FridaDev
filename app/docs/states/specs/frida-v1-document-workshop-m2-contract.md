@@ -2,8 +2,9 @@
 
 Date : 2026-10-05. Statut : P2-M2-01 corrigé sur code/preuves, comparaison
 historique 567/567 ; succès historique 536/536 et revue G-R1–G-R4 Approved conservés.
-P2-M2-03 corrigé séparément sur la frontière frontend du listing ; P2-M2-02
-reste ouvert et explicitement exclu, P2-M2-04 backend indépendant ouvert hors lot ;
+P2-M2-03 corrigé séparément sur la frontière frontend du listing (594/594
+historiques) ; P2-M2-02 corrigé séparément sur Exports/Images/Notes,
+P2-M2-04 backend indépendant ouvert hors lot ;
 livraison runtime ouverte. Le retour final porte la livraison Git dédiée.
 La [roadmap](../../todo-todo/product/frida-v1-document-workshop-todo.md#m2--adoption-et-lecture-distante-ciblées)
 reste l'unique spécification et porte les commandes, résultats et dispositions
@@ -261,7 +262,8 @@ sans promettre une réconciliation M2.
 
 Cette coordination est locale au contrôleur frontend, sans garantie entre
 onglets ni preuve de fraîcheur DAV ou serveur universelle. Elle porte sur les
-Maps Files/Status, pas sur les familles Exports/Images/Notes.
+Maps Files/Status ; le lot distinct P2-M2-02 ci-dessous étend ensuite la
+coordination aux familles Exports/Images/Notes sans modifier Files.
 
 ## Portée des preuves
 
@@ -323,11 +325,12 @@ bootstrap ; aucune donnée inventée ni cache documentaire supplémentaire. Le d
 connu, même vide, reste le dernier état connu.
 
 Un vrai `200 {ok:true,items:[]}` reste un succès : suppressions et invalidations
-Files de P2-M2-01 sont appliquées, les autres Maps gardent leur traitement global
-historique. Les epochs refusent une ancienne erreur après succès et une ancienne
+Files de P2-M2-01 sont appliquées. À la livraison P2-M2-03, les autres Maps
+gardaient leur traitement global historique ; P2-M2-02 les coordonne ensuite. Les epochs refusent une ancienne erreur après succès et une ancienne
 liste après suppression confirmée ; une erreur de listing ne supersède pas les
 tokens individuels Files en vol. Les courses internes Exports/Images/Notes ne
-sont pas coordonnées par ce correctif et restent P2-M2-02.
+sont pas coordonnées par ce correctif P2-M2-03 ; leur correction relève du lot
+P2-M2-02 décrit ci-dessous.
 
 `refreshThreadsFromServer` reste booléen : `true` pour son parcours réussi,
 `false` pour échec courant ou lecture globale supersédée. Son traitement des
@@ -351,8 +354,8 @@ historique 94/95 dans la provenance P2-M2-01. Résultats, sélecteurs, durées,
 exits et contre-audit figurent dans la
 [correction P2-M2-03](../../todo-todo/product/frida-v1-document-workshop-todo.md#correction-indépendante-p2-m2-03--5-octobre-2026).
 
-**Findings ouverts et limite de contrat serveur.** P2-M2-02 reste ouvert et
-exclu. P2-M2-04 est un finding backend distinct :
+**Finding ouvert et limite de contrat serveur.** P2-M2-02 est corrigé dans son
+lot dédié ci-dessous. P2-M2-04 reste un finding backend distinct ouvert :
 `workspace_folders_store.list_workspace_folders` intercepte une exception
 DB/sérialisation et retourne `[]` ; le service émet ensuite `ok:true,items:[]`,
 que la route projette en HTTP 200. Un probe isolé sur les vrais store/service,
@@ -363,3 +366,78 @@ HTTP/réseau et réponses invalides observables, sans promettre la conservation
 face à cette erreur déjà masquée par le serveur. Aucun changement backend n'est
 absorbé ; correction séparée requise. Migrations opérateur, livraison runtime
 et DAV live restent ouverts ; M3 reste non commencé.
+
+
+### Publications Exports, Images générées et Notes — P2-M2-02
+
+Les trois hypothèses sont confirmées séparément au parent `c057d286` par le
+vrai propriétaire : ancien résultat A collecté, attente B, publication
+individuelle récente de A, fin du global qui restaurait l'ancien A. Trois
+contrôles où le global termine avant l'individuel restent verts. Les payloads
+suivent les routes existantes : `exports`, `generated_images`, `items` pour
+Notes. Trois preuves Chromium montées exercent les vrais boutons de création,
+le POST simulé unique et le rendu final ; aucune preuve Images/Notes n'est
+inférée de la seule inspection Exports. Résultats et commandes sont dans la
+[correction P2-M2-02](../../todo-todo/product/frida-v1-document-workshop-todo.md#correction-indépendante-p2-m2-02--5-octobre-2026).
+
+Chaque famille conserve ses Maps de données/statut chez `chat_threads_sidebar`.
+Un token opaque par famille ET répertoire coordonne le lecteur individuel et
+le global. Chacun des trois `readWorkspace…` est l'unique publication de sa
+famille : autorité vérifiée avant I/O, après réponse et avant erreur ; données
+et statut écrits ensemble, sans attente. A et B sont indépendants, comme Files,
+Exports, Images et Notes entre eux. Les six setters qui reconstruisaient les
+Maps après collecte sont retirés ; aucun résultat ignoré n'omet indirectement
+une publication récente. Une ancienne réussite ne masque pas une erreur récente,
+et une erreur ancienne ne vide pas un inventaire récent.
+
+Le global capture son epoch à l'entrée. Après succès des deux listings et
+validation de cet epoch, il sauvegarde l'appartenance connue puis réserve,
+sans attente, les tokens de TOUS les répertoires et des QUATRE familles avant
+la première lecture Files. Il conserve ces tokens dans chaque phase ultérieure,
+sans réacquisition après attente Files/Exports/Images ou d'un autre répertoire.
+Une phase supersédée ne lance pas son I/O. Un global supersédé s'arrête et
+retourne `false` ; une phase déjà publiée avant la supersession reste publiée
+jusqu'à un remplacement valide ou une suppression confirmée. L'autorité de
+l'inventaire global est donc acquise après le listing validé, pas avant sa
+réponse ni à l'entrée d'une phase différée. Cela coordonne les publications
+locales ; aucun token ne prouve la version effective des données serveur.
+
+`saveWorkspaceFolders` retire données, statut ET tokens de toutes les familles
+pour les seuls IDs confirmés absents. Une ancienne lecture ne peut ressusciter
+le répertoire ni son statut, même si le même ID réapparaît. Une erreur du listing
+protégée par P2-M2-03 ne sauvegarde aucune appartenance, ne réserve aucun token
+et ne supersède pas une lecture individuelle légitime en vol.
+
+Les trois lecteurs individuels utilisent le même retour que Files : tableau
+(y compris `[]`) pour une publication effective ; `null` pour absence, autorité
+invalide, supersession ou erreur périmée ; rejet après publication `[]`/`error`
+pour une erreur courante. Un répertoire connu non lié publie `[]` et
+`not_applicable`, avec sa raison historique, sans HTTP. Le garde optionnel de
+contexte est vérifié avant réservation et avant publication. Vrai vide, erreur
+courante et reprise explicite conservent leur sens ; aucun retry ou polling.
+
+Les panneaux Exports (création/réutilisation), Images (création/suppression) et
+Notes (création) vérifient le tableau de retour. Après mutation confirmée, un
+rechargement ignoré/échoué conserve la confirmation et affiche sur le statut
+existant « Inventaire non actualisé. », avec rendu du cache/statut courant.
+Il n'annonce ni publication effective ni échec de la mutation, et ne rejoue
+aucun POST/DELETE. La note explicitement créée reste sélectionnée. Les erreurs
+de mutation gardent leur traitement antérieur ; ouvrir/télécharger/préparer
+une note ne changent pas. Le global garde son booléen de parcours historique,
+avec les erreurs courantes propres aux familles dans leurs statuts ; `true`
+ne promet pas que tous les inventaires sont `ok`.
+
+La coordination Files P2-M2-01, sa réconciliation M2 explicite, le listing
+P2-M2-03, le chat, l'upload, les sélections/brouillons et le DOM des thèmes sont
+préservés. Aucun second cache, verrou d'interface, sérialisation générale,
+normalizer partagé, backend ou capacité produit ajouté. Cohérence locale au
+contrôleur seulement : onglets, runtime livré, versions serveur et DAV live
+restent hors preuve. P2-M2-04 reste ouvert et hors lot, avec son rouge historique
+séparé ; M3–M10/Z restent non commencés.
+
+Comparaison dédiée finale : **679/679 = 344 Python + 206 Node + 102 Chromium +
+27 PostgreSQL isolé**, les 594 historiques conservés plus 82 Node et trois
+Chromium nouveaux, exits 0 sans skip. Baseline frontend 124/99 verte ; six
+contrôles/rouges Node donnent trois verts et trois rouges, puis trois rouges
+montés propres aux familles. Les échecs de harnais et corrections causales,
+durées, sélecteurs exacts, contre-audit et nettoyage restent dans la roadmap.

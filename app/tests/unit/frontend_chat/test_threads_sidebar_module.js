@@ -2,6 +2,439 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const ThreadsSidebarModule = require("../../../web/chat_threads_sidebar.js");
+
+// Transport payloads deliberately follow each family's own server contract.
+const artifactFamilies = [
+  { name: 'Exports', path: 'exports', key: 'exports', ok: 'workspace_exports_list_ok' },
+  { name: 'GeneratedImages', path: 'generated-images', key: 'generated_images', ok: 'workspace_generated_images_list_ok' },
+  { name: 'Notes', path: 'notes', key: 'items', ok: 'workspace_notes_list_ok' },
+];
+function artifactItem(id, folder = 'folder-a') {
+  return { id, workspace_folder_id: folder, title: id, display_name: id, format: 'md',
+    status: 'available', can_open: true, can_download: true, can_delete: true, can_reuse_as_source: true };
+}
+
+const artifactActions = [
+  { family: artifactFamilies[0], module: 'exports', factory: 'Exports', append: 'Export', css: 'export-create', label: 'Export créé dans le répertoire.' },
+  { family: artifactFamilies[0], module: 'exports', factory: 'Exports', append: 'Export', css: 'export-action-reuse', label: 'Export réutilisé comme source.' },
+  { family: artifactFamilies[1], module: 'generated_images', factory: 'GeneratedImages', append: 'GeneratedImage', css: 'generated-image-create', label: 'Image créée dans le répertoire.' },
+  { family: artifactFamilies[1], module: 'generated_images', factory: 'GeneratedImages', append: 'GeneratedImage', css: 'generated-image-action-delete', label: 'Image supprimée du répertoire.' },
+  { family: artifactFamilies[2], module: 'notes', factory: 'Notes', append: 'Note', css: 'note-create', label: 'Note créée.' },
+];
+for (const action of artifactActions) for (const outcome of ['ignored', 'error']) {
+  test('P2-M2-02 confirmed ' + action.css + ' with ' + outcome + ' reload does not invite mutation replay', async () => {
+    const family = action.family, started = deferred(), release = deferred(), finished = deferred();
+    let mutated = false, first = true, selected = null;
+    const notesModeController = { setSelectedNote(note) { selected = note.id; } };
+    const { sidebar, folders, calls, threadsUl } = artifactHarness((readFamily, folder, init) => {
+      if (init.method === 'POST' || init.method === 'DELETE') {
+        mutated = true;
+        const single = family.name === 'Exports' ? 'export' : family.name === 'GeneratedImages' ? 'generated_image' : 'note';
+        return response(201, {ok:true, [single]:artifactItem('created', folder)});
+      }
+      if (!mutated) return artifactResponse(readFamily, 'original', folder);
+      if (outcome === 'error') return artifactError();
+      if (first) {
+        first = false;
+        const captured = artifactResponse(readFamily, 'created', folder);
+        started.resolve();
+        return release.promise.then(() => captured);
+      }
+      return artifactResponse(readFamily, 'newer', folder);
+    }, { notesModeController });
+    // Image DELETE uses the real HTTP mutation implementation, too.
+    const fetchDelete = sidebar.deleteWorkspaceGeneratedImageOnServer;
+    const previousWindow = global.window;
+    global.window = {
+      prompt(message, fallback) { return message === 'Prompt image' ? 'Synthetic image'
+        : message.includes('Titre') ? 'Synthetic title' : fallback; },
+      confirm() { return true; },
+    };
+    try {
+      await sidebar['refreshWorkspace' + family.name]('folder-a');
+      const module = require('../../../web/chat_workspace_folder_' + action.module + '_panel.js');
+      let panel;
+      const render = () => {
+        threadsUl.innerHTML = '';
+        panel['append' + action.append + 'Rows'](folders[0]);
+      };
+      panel = module['createWorkspaceFolder' + action.factory + 'PanelRenderer']({
+        threadsUl, getCurrentThread: () => ({id:'conv-a', workspace_folder_id:'folder-a'}),
+        ['getWorkspace' + family.name]: sidebar['getWorkspace' + family.name],
+        ['getWorkspace' + family.name + 'Status']: sidebar['getWorkspace' + family.name + 'Status'],
+        ['refreshWorkspace' + family.name]: sidebar['refreshWorkspace' + family.name],
+        createWorkspaceExportOnServer: sidebar.createWorkspaceExportOnServer,
+        createWorkspaceGeneratedImageOnServer: sidebar.createWorkspaceGeneratedImageOnServer,
+        createWorkspaceNoteOnServer: sidebar.createWorkspaceNoteOnServer,
+        deleteWorkspaceGeneratedImageOnServer: fetchDelete,
+        renderThreads: render, notesModeController, consoleObj: {warn() {}},
+        setThreadStatus: (message, isError) => finished.resolve({message, isError}),
+      });
+      render();
+      const button = firstByClass(threadsUl, 'workspace-folder-' + action.css);
+      assert.ok(button);
+      button.click();
+      if (outcome === 'ignored') {
+        await started.promise;
+        await sidebar['refreshWorkspace' + family.name]('folder-a');
+        release.resolve();
+      }
+      const status = await finished.promise;
+      assert.equal(status.message, action.label + ' Inventaire non actualisé.');
+      assert.equal(status.isError, true);
+      if (outcome === 'error') assert.equal(byClass(threadsUl, 'workspace-folder-' + action.append.toLowerCase().replace('generatedimage', 'generated-image') + '-error').length, 1);
+      assert.equal(calls.filter(call => call.method === 'POST' || call.method === 'DELETE').length, 1);
+      assertArtifact(sidebar, family, outcome === 'ignored' ? 'newer' : null, outcome === 'ignored' ? 'ok' : 'error');
+      if (family.name === 'Notes') assert.equal(selected, 'created');
+    } finally {
+      if (previousWindow === undefined) delete global.window;
+      else global.window = previousWindow;
+    }
+  });
+}
+function artifactResponse(family, id, folder = 'folder-a') {
+  return response(200, { ok: true, [family.key]: id ? [{...artifactItem(id, folder),
+    format: family.name === 'GeneratedImages' ? 'png' : 'md'}] : [] });
+}
+function artifactError() {
+  return response(503, { ok: false, reason_code: 'synthetic_artifact_unavailable' });
+}
+function artifactHarness(onRead, { onFiles, onFolders, notesModeController } = {}) {
+  const folders = ['folder-a', 'folder-b'].map(id => ({
+    id, display_name: id, nextcloud_sync_state: 'linked',
+  }));
+  const calls = [];
+  const built = buildSidebarWithFetch(async (url, init = {}) => {
+    calls.push({ url, method: init.method || 'GET' });
+    if (url.startsWith('/api/conversations?')) return conversationPage([], 0);
+    if (url === '/api/workspace-folders') return onFolders
+      ? onFolders() : response(200, { ok: true, items: folders });
+    if (url.endsWith('/files') && onFiles) return onFiles(url.split('/')[3]);
+    const family = artifactFamilies.find(item => url.endsWith('/' + item.path)
+      || (init.method === 'DELETE' && url.includes('/' + item.path + '/')));
+    if (family) return onRead(family, url.split('/')[3], init);
+    return response(200, { ok: true, items: [] });
+  }, notesModeController);
+  built.sidebar.saveWorkspaceFolders(folders);
+  return { ...built, calls, folders };
+}
+function assertArtifact(sidebar, family, id, status = 'ok', folder = 'folder-a') {
+  assert.deepEqual(sidebar['getWorkspace' + family.name](folder).map(item => item.id), id ? [id] : []);
+  const actual = sidebar['getWorkspace' + family.name + 'Status'](folder);
+  assert.equal(actual.status, status);
+  if (status === 'ok') assert.equal(actual.reason_code, family.ok);
+  if (status === 'error') assert.equal(actual.reason_code, 'synthetic_artifact_unavailable');
+}
+
+for (const family of artifactFamilies) {
+  for (const releaseBefore of [true, false]) {
+    test('P2-M2-02 ' + family.name + ' collected A waits for B; release ' + (releaseBefore ? 'before' : 'after') + ' individual A', async () => {
+      const waitingB = deferred(), releaseB = deferred();
+      let current = 'old-a', held = false;
+      const { sidebar } = artifactHarness((readFamily, folder) => {
+        if (readFamily !== family) return artifactResponse(readFamily, null);
+        if (folder === 'folder-b' && !held) {
+          held = true;
+          const captured = artifactResponse(family, 'old-b', folder);
+          waitingB.resolve();
+          return releaseB.promise.then(() => captured);
+        }
+        return artifactResponse(family, current, folder);
+      });
+      const global = sidebar.refreshThreadsFromServer();
+      await waitingB.promise;
+      if (releaseBefore) { releaseB.resolve(); assert.equal(await global, true); }
+      current = 'new-a';
+      await sidebar['refreshWorkspace' + family.name]('folder-a');
+      assertArtifact(sidebar, family, 'new-a');
+      if (!releaseBefore) { releaseB.resolve(); assert.equal(await global, true); }
+      assertArtifact(sidebar, family, 'new-a');
+    });
+  }
+
+  for (const newer of ['individual', 'global']) for (const oldError of [false, true]) {
+    test('P2-M2-02 ' + family.name + ' old individual ' + (oldError ? 'error' : 'success') + ' after newer ' + newer, async () => {
+      const started = deferred(), release = deferred();
+      let first = true;
+      const { sidebar } = artifactHarness((readFamily, folder) => {
+        if (readFamily !== family || folder !== 'folder-a') return artifactResponse(readFamily, null);
+        if (first) {
+          first = false;
+          const captured = oldError ? artifactError() : artifactResponse(family, 'old');
+          started.resolve();
+          return release.promise.then(() => captured);
+        }
+        return artifactResponse(family, 'new');
+      });
+      const old = sidebar['refreshWorkspace' + family.name]('folder-a');
+      await started.promise;
+      if (newer === 'global') assert.equal(await sidebar.refreshThreadsFromServer(), true);
+      else await sidebar['refreshWorkspace' + family.name]('folder-a');
+      release.resolve();
+      assert.equal(await old, null);
+      assertArtifact(sidebar, family, 'new');
+    });
+  }
+
+  for (const newer of ['individual', 'global']) {
+    test('P2-M2-02 ' + family.name + ' old success cannot mask newer ' + newer + ' error', async () => {
+      const started = deferred(), release = deferred();
+      let first = true;
+      const { sidebar } = artifactHarness((readFamily, folder) => {
+        if (readFamily !== family || folder !== 'folder-a') return artifactResponse(readFamily, null);
+        if (first) {
+          first = false;
+          const captured = artifactResponse(family, 'old');
+          started.resolve();
+          return release.promise.then(() => captured);
+        }
+        return artifactError();
+      });
+      const old = sidebar['refreshWorkspace' + family.name]('folder-a');
+      await started.promise;
+      if (newer === 'global') assert.equal(await sidebar.refreshThreadsFromServer(), true);
+      else await assert.rejects(sidebar['refreshWorkspace' + family.name]('folder-a'));
+      release.resolve();
+      assert.equal(await old, null);
+      assertArtifact(sidebar, family, null, 'error');
+    });
+  }
+
+  test('P2-M2-02 ' + family.name + ' old global error waiting B cannot erase newer A success', async () => {
+    const waitingB = deferred(), releaseB = deferred();
+    let newer = false, held = false;
+    const { sidebar } = artifactHarness((readFamily, folder) => {
+      if (readFamily !== family) return artifactResponse(readFamily, null);
+      if (folder === 'folder-a') return newer ? artifactResponse(family, 'new') : artifactError();
+      if (!held) {
+        held = true;
+        const captured = artifactResponse(family, null);
+        waitingB.resolve();
+        return releaseB.promise.then(() => captured);
+      }
+      return artifactResponse(family, null);
+    });
+    const global = sidebar.refreshThreadsFromServer();
+    await waitingB.promise;
+    newer = true;
+    await sidebar['refreshWorkspace' + family.name]('folder-a');
+    releaseB.resolve();
+    assert.equal(await global, true);
+    assertArtifact(sidebar, family, 'new');
+  });
+
+  for (const phase of ['Files', 'own-family']) {
+    test('P2-M2-02 ' + family.name + ' older global paused in ' + phase + ' cannot reacquire authority', async () => {
+      const started = deferred(), release = deferred();
+      let blocked = false;
+      const hold = captured => {
+        blocked = true;
+        started.resolve();
+        return release.promise.then(() => captured);
+      };
+      const { sidebar, calls } = artifactHarness((readFamily, folder) => {
+        const captured = artifactResponse(readFamily, 'global-old', folder);
+        if (phase === 'own-family' && readFamily === family && folder === 'folder-a' && !blocked) return hold(captured);
+        return artifactResponse(readFamily, blocked ? 'new' : 'global-old', folder);
+      }, {
+        onFiles: folder => phase === 'Files' && folder === 'folder-a' && !blocked
+          ? hold(response(200, { ok: true, items: [] })) : response(200, { ok: true, items: [] }),
+      });
+      const old = sidebar.refreshThreadsFromServer();
+      await started.promise;
+      await sidebar['refreshWorkspace' + family.name]('folder-a');
+      const before = calls.filter(c => c.url === '/api/workspace-folders/folder-a/' + family.path).length;
+      release.resolve();
+      assert.equal(await old, true);
+      assertArtifact(sidebar, family, 'new');
+      assert.equal(calls.filter(c => c.url === '/api/workspace-folders/folder-a/' + family.path).length, before,
+        'A superseded deferred phase must not launch a new read');
+    });
+  }
+
+  test('P2-M2-02 ' + family.name + ' overlapping globaux preserve the latest generation', async () => {
+    const started = deferred(), release = deferred();
+    let first = true;
+    const { sidebar } = artifactHarness((readFamily, folder) => {
+      if (readFamily === family && folder === 'folder-a' && first) {
+        first = false;
+        const captured = artifactResponse(family, 'old');
+        started.resolve();
+        return release.promise.then(() => captured);
+      }
+      return artifactResponse(readFamily, 'new', folder);
+    });
+    const old = sidebar.refreshThreadsFromServer();
+    await started.promise;
+    assert.equal(await sidebar.refreshThreadsFromServer(), true);
+    release.resolve();
+    assert.equal(await old, false);
+    for (const readFamily of artifactFamilies) assertArtifact(sidebar, readFamily, 'new');
+  });
+
+  test('P2-M2-02 ' + family.name + ' A is independent of B, other families and Files', async () => {
+    const started = deferred(), release = deferred();
+    const { sidebar } = artifactHarness((readFamily, folder) => {
+      const captured = artifactResponse(readFamily, 'kept', folder);
+      if (readFamily === family && folder === 'folder-a') {
+        started.resolve();
+        return release.promise.then(() => captured);
+      }
+      return captured;
+    });
+    const pending = sidebar['refreshWorkspace' + family.name]('folder-a');
+    await started.promise;
+    await sidebar['refreshWorkspace' + family.name]('folder-b');
+    for (const other of artifactFamilies.filter(item => item !== family)) await sidebar['refreshWorkspace' + other.name]('folder-a');
+    await sidebar.refreshWorkspaceFiles('folder-a');
+    release.resolve();
+    assert.ok(Array.isArray(await pending));
+    assertArtifact(sidebar, family, 'kept');
+    assertArtifact(sidebar, family, 'kept', 'ok', 'folder-b');
+    for (const other of artifactFamilies.filter(item => item !== family)) assertArtifact(sidebar, other, 'kept');
+    assert.equal(sidebar.getWorkspaceFilesStatus('folder-a').status, 'ok');
+  });
+
+  for (const reappear of [false, true]) for (const oldError of [false, true]) {
+    test('P2-M2-02 ' + family.name + ' removed lifetime rejects old ' + (oldError ? 'error' : 'success') + (reappear ? ' after reappearance' : ''), async () => {
+      const started = deferred(), release = deferred();
+      const { sidebar, folders } = artifactHarness((readFamily, folder) => {
+        if (readFamily !== family || folder !== 'folder-a') return artifactResponse(readFamily, null);
+        const captured = oldError ? artifactError() : artifactResponse(family, 'old');
+        started.resolve();
+        return release.promise.then(() => captured);
+      });
+      const old = sidebar['refreshWorkspace' + family.name]('folder-a');
+      await started.promise;
+      sidebar.saveWorkspaceFolders(folders.filter(folder => folder.id !== 'folder-a'));
+      if (reappear) sidebar.saveWorkspaceFolders(folders);
+      release.resolve();
+      assert.equal(await old, null);
+      assertArtifact(sidebar, family, null, 'unknown');
+    });
+  }
+
+  test('P2-M2-02 ' + family.name + ' confirmed empty global invalidates pending read', async () => {
+    const started = deferred(), release = deferred();
+    const { sidebar } = artifactHarness((readFamily, folder) => {
+      const captured = artifactResponse(readFamily, 'old', folder);
+      started.resolve();
+      return release.promise.then(() => captured);
+    }, { onFolders: () => response(200, { ok: true, items: [] }) });
+    const old = sidebar['refreshWorkspace' + family.name]('folder-a');
+    await started.promise;
+    assert.equal(await sidebar.refreshThreadsFromServer(), true);
+    release.resolve();
+    assert.equal(await old, null);
+    assertArtifact(sidebar, family, null, 'unknown');
+  });
+
+  test('P2-M2-02 ' + family.name + ' empty, current error, explicit recovery and not_applicable', async () => {
+    let state = 'empty';
+    const { sidebar, folders, calls } = artifactHarness((readFamily, folder) =>
+      readFamily === family && state === 'error' ? artifactError() : artifactResponse(readFamily, state === 'new' ? 'new' : null, folder));
+    assert.deepEqual(await sidebar['refreshWorkspace' + family.name]('folder-a'), []);
+    assertArtifact(sidebar, family, null);
+    state = 'error';
+    await assert.rejects(sidebar['refreshWorkspace' + family.name]('folder-a'));
+    assertArtifact(sidebar, family, null, 'error');
+    state = 'new';
+    assert.equal((await sidebar['refreshWorkspace' + family.name]('folder-a'))[0].id, 'new');
+    assertArtifact(sidebar, family, 'new');
+    for (const folder of folders) folder.nextcloud_sync_state = 'local_only';
+    sidebar.saveWorkspaceFolders(folders);
+    const before = calls.length;
+    assert.deepEqual(await sidebar['refreshWorkspace' + family.name]('folder-a'), []);
+    assertArtifact(sidebar, family, null, 'not_applicable');
+    assert.equal(calls.length, before);
+    assert.equal(await sidebar.refreshThreadsFromServer(), true);
+    assertArtifact(sidebar, family, null, 'not_applicable');
+  });
+
+  test('P2-M2-02 ' + family.name + ' listing failure preserves an individual read authority', async () => {
+    const started = deferred(), release = deferred();
+    const { sidebar } = artifactHarness((readFamily, folder) => {
+      const captured = artifactResponse(readFamily, 'kept', folder);
+      started.resolve();
+      return release.promise.then(() => captured);
+    }, { onFolders: () => response(503, { ok: false, reason_code: 'synthetic_folders_unavailable' }) });
+    const pending = sidebar['refreshWorkspace' + family.name]('folder-a');
+    await started.promise;
+    assert.equal(await sidebar.refreshThreadsFromServer(), false);
+    release.resolve();
+    assert.ok(Array.isArray(await pending));
+    assertArtifact(sidebar, family, 'kept');
+    assert.equal(sidebar.getWorkspaceFolders().length, 2);
+  });
+
+  test('P2-M2-02 ' + family.name + ' absent folder refuses publication', async () => {
+    const { sidebar, calls } = artifactHarness((readFamily, folder) => artifactResponse(readFamily, 'unexpected', folder));
+    assert.equal(await sidebar['refreshWorkspace' + family.name]('absent'), null);
+    assertArtifact(sidebar, family, null, 'unknown', 'absent');
+    assert.equal(calls.length, 0);
+  });
+
+  test('P2-M2-02 ' + family.name + ' a previous family phase cannot supersede its newer individual read', async () => {
+    const started = deferred(), release = deferred();
+    const previous = artifactFamilies[artifactFamilies.indexOf(family) - 1];
+    let held = false;
+    const hold = captured => { held = true; started.resolve(); return release.promise.then(() => captured); };
+    const { sidebar, calls } = artifactHarness((readFamily, folder) => {
+      const captured = artifactResponse(readFamily, 'global-old', folder);
+      if (readFamily === previous && folder === 'folder-b' && !held) return hold(captured);
+      return artifactResponse(readFamily, held ? 'new' : 'global-old', folder);
+    }, { onFiles: folder => !previous && folder === 'folder-b' && !held
+      ? hold(response(200, {ok:true, items:[]})) : response(200, {ok:true, items:[]}) });
+    const global = sidebar.refreshThreadsFromServer();
+    await started.promise;
+    await sidebar['refreshWorkspace' + family.name]('folder-a');
+    const count = calls.filter(call => call.url.endsWith('/folder-a/' + family.path)).length;
+    release.resolve();
+    assert.equal(await global, true);
+    assert.equal(calls.filter(call => call.url.endsWith('/folder-a/' + family.path)).length, count);
+    assertArtifact(sidebar, family, 'new');
+  });
+
+  test('P2-M2-02 ' + family.name + ' collected global success must preserve a newer error', async () => {
+    const started = deferred(), release = deferred();
+    let newer = false;
+    const { sidebar } = artifactHarness((readFamily, folder) => {
+      const captured = readFamily === family && folder === 'folder-a' && newer
+        ? artifactError() : artifactResponse(readFamily, 'old', folder);
+      if (readFamily === family && folder === 'folder-b' && !newer) {
+        started.resolve(); return release.promise.then(() => captured);
+      }
+      return captured;
+    });
+    const global = sidebar.refreshThreadsFromServer();
+    await started.promise;
+    newer = true;
+    await assert.rejects(sidebar['refreshWorkspace' + family.name]('folder-a'));
+    release.resolve();
+    assert.equal(await global, true);
+    assertArtifact(sidebar, family, null, 'error');
+  });
+
+  test('P2-M2-02 ' + family.name + ' context guard cannot invalidate or publish another valid read', async () => {
+    const started = deferred(), release = deferred();
+    const { sidebar, calls } = artifactHarness((readFamily, folder) => {
+      started.resolve();
+      const captured = artifactResponse(readFamily, 'kept', folder);
+      return release.promise.then(() => captured);
+    });
+    let current = true;
+    const pending = sidebar['refreshWorkspace' + family.name]('folder-a', () => current);
+    await started.promise;
+    const refused = sidebar['refreshWorkspace' + family.name]('folder-a', () => false);
+    const count = calls.length;
+    current = false;
+    release.resolve();
+    assert.equal(await refused, null);
+    assert.equal(count, 1);
+    assert.equal(await pending, null);
+    assertArtifact(sidebar, family, null, 'unknown');
+  });
+}
 const {
   THREADS_PAGE_SIZE,
   MAX_TITLE_LENGTH,
@@ -128,7 +561,7 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
-function buildSidebarWithFetch(fetchFn) {
+function buildSidebarWithFetch(fetchFn, notesModeController = {}) {
   installDom();
   const wrapper = makeElement("div");
   const threadsUl = makeElement("ul");
@@ -143,7 +576,7 @@ function buildSidebarWithFetch(fetchFn) {
     closeSidebar: () => {},
     renderConversationMessage: () => {},
     scrollToBottom: () => {},
-    notesModeController: {},
+    notesModeController,
     consoleObj: { warn() {} },
   });
   const originalSetStatus = sidebar.setThreadStatus;

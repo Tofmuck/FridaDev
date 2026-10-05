@@ -5,6 +5,104 @@ const { openBrowserPage } = require('./helpers/browser_test_helpers.js');
 const { adoptionScript, exactPath } = require('./helpers/document_adoption_fixture.js');
 const { mockScript, openWorkshop, showFolder, closeSidebar } = require('./helpers/document_workshop_fixture.js');
 
+const mountedFamilies = [
+  { name: 'Exports', path: 'exports', key: 'exports', single: 'export', css: 'export' },
+  { name: 'GeneratedImages', path: 'generated-images', key: 'generated_images', single: 'generated_image', css: 'generated-image' },
+  { name: 'Notes', path: 'notes', key: 'items', single: 'note', css: 'note' },
+];
+function mountedArtifactScript(family) {
+  return mockScript() + `(() => {
+    const family = ${JSON.stringify(family)};
+    const state = window.__artifacts = { calls: [], fresh: false, armed: false };
+    const base = window.fetch;
+    const json = data => new Response(JSON.stringify(data), {status:200, headers:{'Content-Type':'application/json'}});
+    const item = (id, folder) => ({id, workspace_folder_id:folder, title:id, display_name:id,
+      format:family.name === 'Exports' ? 'md' : 'png', status:'available',
+      can_open:true, can_download:true, can_delete:true, can_reuse_as_source:true});
+    window.fetch = async (input, init={}) => {
+      const path = new URL(input, location.origin).pathname, method = init.method || 'GET';
+      if (path === '/api/workspace-folders') return json({ok:true, items:[
+        {id:'folder-a', display_name:'A Recherche', nextcloud_sync_state:'linked'},
+        {id:'folder-b', display_name:'B Autre', nextcloud_sync_state:'linked'},
+      ]});
+      if (!path.endsWith('/' + family.path)) return base(input, init);
+      const folder = path.split('/')[3];
+      state.calls.push({path, method});
+      if (method === 'POST') {
+        state.fresh = true;
+        return json({ok:true, [family.single]:item('new-a', folder)});
+      }
+      // Snapshot the actual old payload before the controlled delivery wait.
+      const response = json({ok:true, [family.key]:[item(folder === 'folder-a' && state.fresh ? 'new-a' : 'old-' + folder, folder)]});
+      if (state.armed && folder === 'folder-a') state.capturedA = await response.clone().json();
+      if (state.armed && folder === 'folder-b') {
+        state.armed = false;
+        state.captured = await response.clone().json();
+        await new Promise(resolve => state.release = resolve);
+      }
+      return response;
+    };
+  })();`;
+}
+
+for (const family of mountedFamilies) {
+  test('P2-M2-02 mounted ' + family.name + ' global collected A cannot undo confirmed creation', async () => {
+    await openBrowserPage({
+      mockScript: mountedArtifactScript(family) + instrumentation,
+      beforePage: async page => page.setDefaultTimeout(5000),
+    }, async page => {
+      await page.waitForFunction(() => window.__m1.calls.some(c => c.path === '/api/conversations/conv-a/active-documents'));
+      await openWorkshop(page);
+      await page.waitForSelector('#documentWorkshop[data-state=editing]');
+      await page.click('#documentWorkshopExit');
+      await page.fill('#message', 'Brouillon synthétique conservé');
+      await showFolder(page, 'folder-a');
+      const checkbox = page.locator('.workspace-folder-file-select').first();
+      await checkbox.check();
+      await page.waitForFunction(() => window.__m1.selections.includes('file-a'));
+      await page.evaluate(() => {
+        window.__artifacts.armed = true;
+        window.__artifacts.pending = window.__auditSidebar.refreshThreadsFromServer();
+      });
+      await page.waitForFunction(() => Boolean(window.__artifacts.release));
+      assert.equal(await page.evaluate(key => window.__artifacts.captured[key][0].id, family.key), 'old-folder-b');
+      assert.equal(await page.evaluate(key => window.__artifacts.capturedA[key][0].id, family.key), 'old-folder-a');
+      page.on('dialog', async dialog => {
+        const message = dialog.message();
+        await dialog.accept(message === 'Prompt image' ? 'Image synthétique'
+          : message.includes('Titre') || message.startsWith('Nom affiché') ? 'new-a' : dialog.defaultValue());
+      });
+      await page.locator('.workspace-folder-' + family.css + '-create').first().click();
+      await page.waitForFunction(name => window.__auditSidebar['getWorkspace' + name]('folder-a').some(item => item.id === 'new-a'), family.name);
+      await page.evaluate(async () => {
+        window.__artifacts.release();
+        window.__artifacts.accepted = await window.__artifacts.pending;
+        window.__auditSidebar.renderThreads();
+      });
+      const state = await page.evaluate(name => ({
+        ids: window.__auditSidebar['getWorkspace' + name]('folder-a').map(item => item.id),
+        status: window.__auditSidebar['getWorkspace' + name + 'Status']('folder-a').status,
+        posts: window.__artifacts.calls.filter(call => call.method === 'POST').length,
+        accepted: window.__artifacts.accepted,
+      }), family.name);
+      console.log(JSON.stringify({family:family.name, ...state}));
+      assert.deepEqual(state.ids, ['new-a']);
+      assert.equal(state.status, 'ok');
+      assert.equal(state.posts, 1);
+      assert.equal(state.accepted, true);
+      assert.equal(await page.locator('.workspace-folder-' + family.css + '-name').filter({hasText:'new-a'}).count(), 1);
+      assert.equal(await page.locator('.workspace-folder-file-select').first().isChecked(), true);
+      if (family.name === 'Notes') assert.equal(await page.locator('.workspace-folder-note.selected').count(), 1);
+      await closeSidebar(page);
+      await openWorkshop(page);
+      await page.waitForSelector('#documentWorkshop[data-state=editing]');
+      await page.click('#documentWorkshopExit');
+      assert.equal(await page.locator('#message').inputValue(), 'Brouillon synthétique conservé');
+      assert.equal(await page.evaluate(() => window.__m1.calls.filter(c => c.path.endsWith('/adopt') || c.path === '/api/chat').length), 0);
+    });
+  });
+}
+
 // Only the harness exposes the real inventory owner. Capture the response
 // before holding it, so adoption cannot change the old payload retroactively.
 const instrumentation = `(() => {

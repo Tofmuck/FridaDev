@@ -66,17 +66,20 @@ function createWorkspaceFolderNotesPanelRenderer({
       ? String(window.prompt('Titre de la note') || '').trim()
       : '';
     if (!title) return;
+    let confirmed = false;
     try {
       const note = await createWorkspaceNoteOnServer(folder.id, { title, markdown: '' });
+      confirmed = true;
       if (note && notesModeController?.setSelectedNote) {
         notesModeController.setSelectedNote(note, folder);
       }
-      await refreshWorkspaceNotes(folder.id);
+      const result = await refreshWorkspaceNotes(folder.id);
       rerender();
-      status('Note créée et prête pour le mode Notes.');
+      const published = Array.isArray(result);
+      status(published ? 'Note créée et prête pour le mode Notes.' : 'Note créée. Inventaire non actualisé.', !published);
     } catch (err) {
       warn('Création note répertoire échouée', err);
-      status('Création de la note impossible.', true);
+      status(confirmed ? 'Note créée. Inventaire non actualisé.' : 'Création de la note impossible.', true);
       rerender();
     }
   };
