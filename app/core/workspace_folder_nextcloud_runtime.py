@@ -21,11 +21,14 @@ def create_workspace_folder_nextcloud_first(
     client: Any | None = None,
     folder_id: str | None = None,
 ) -> dict[str, Any]:
-    existing = workspace_folders_store.list_workspace_folders(
-        include_deleted=False,
-        db_conn_func=db_conn_func,
-        logger=logger,
-    )
+    try:
+        existing = workspace_folders_store.list_workspace_folders(
+            include_deleted=False,
+            db_conn_func=db_conn_func,
+            logger=logger,
+        )
+    except workspace_folders_store.WorkspaceFolderListError:
+        return _error(workspace_folders_store.REASON_LIST_FAILED, status=503)
     validation = workspace_folders_store.validate_workspace_folder_name(
         display_name,
         existing_folders=existing,
@@ -117,11 +120,14 @@ def rename_workspace_folder_nextcloud_first(
     if existing_folder.get("nextcloud_sync_state") != nextcloud_links.NEXTCLOUD_SYNC_LINKED:
         return _error(nextcloud_client.REASON_TARGET_MISSING, status=409, sync_state=nextcloud_links.NEXTCLOUD_SYNC_ERROR)
 
-    existing = workspace_folders_store.list_workspace_folders(
-        include_deleted=False,
-        db_conn_func=db_conn_func,
-        logger=logger,
-    )
+    try:
+        existing = workspace_folders_store.list_workspace_folders(
+            include_deleted=False,
+            db_conn_func=db_conn_func,
+            logger=logger,
+        )
+    except workspace_folders_store.WorkspaceFolderListError:
+        return _error(workspace_folders_store.REASON_LIST_FAILED, status=503)
     validation = workspace_folders_store.validate_workspace_folder_name(
         display_name,
         existing_folders=existing,
@@ -449,6 +455,8 @@ def _error(
 
 
 def _message_for_reason(reason_code: str) -> str:
+    if reason_code == workspace_folders_store.REASON_LIST_FAILED:
+        return "lecture des repertoires indisponible"
     if reason_code == nextcloud_client.REASON_CONFLICT:
         return "conflit Nextcloud sur ce nom"
     if reason_code == nextcloud_client.REASON_AUTH_FAILED:

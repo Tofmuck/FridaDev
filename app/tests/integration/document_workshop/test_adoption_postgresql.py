@@ -76,6 +76,43 @@ class AdoptionPostgresqlTests(unittest.TestCase):
                 cur.execute('SELECT wf.*,to_jsonb(l) AS link FROM workspace_files wf LEFT JOIN workspace_file_nextcloud_links l ON l.workspace_file_id=wf.id')
                 return cur.fetchall()
 
+    def test_folder_listing_keeps_order_projection_and_deleted_filter(self):
+        with self.connection() as conn:
+            conn.execute('UPDATE workspace_folders SET sort_order=CASE WHEN id=%s THEN 1 ELSE 2 END', (OTHER,))
+        folders = workspace_folders.list_workspace_folders()
+        self.assertEqual([item['id'] for item in folders], [OTHER, FOLDER])
+        self.assertEqual(folders[1]['nextcloud_sync_state'], 'linked')
+        self.assertEqual(folders[1]['display_name'], 'Scope')
+        with self.connection() as conn:
+            conn.execute('UPDATE workspace_folders SET deleted_at=now() WHERE id=%s', (OTHER,))
+        self.assertEqual([item['id'] for item in workspace_folders.list_workspace_folders()], [FOLDER])
+        self.assertEqual([item['id'] for item in workspace_folders.list_workspace_folders(include_deleted=True)], [OTHER, FOLDER])
+
+    def test_real_sql_listing_error_is_explicit_and_recovers_without_retry(self):
+        from core.workspace_folders_store import WorkspaceFolderListError, REASON_LIST_FAILED
+        from tests.support.server_test_bootstrap import load_server_module_for_tests
+        server = load_server_module_for_tests()
+        # Only this dedicated proof schema is changed. The normal SELECT now
+        # raises PostgreSQL UndefinedColumn, rather than a mocked service result.
+        with self.connection() as conn:
+            conn.execute('ALTER TABLE workspace_folders RENAME COLUMN sort_order TO unreadable_sort_order')
+        with self.assertRaises(WorkspaceFolderListError) as failure:
+            workspace_folders.list_workspace_folders()
+        self.assertIsInstance(failure.exception.__cause__, psycopg.errors.UndefinedColumn)
+        with patch.object(server, 'workspace_folders', workspace_folders):
+            response = server.app.test_client().get('/api/workspace-folders')
+            self.assertEqual(response.status_code, 503)
+            self.assertFalse(response.get_json()['ok'])
+            self.assertEqual(response.get_json()['reason_code'], REASON_LIST_FAILED)
+            self.assertNotIn('items', response.get_json())
+            self.assertNotIn('sort_order', response.get_data(as_text=True))
+            with self.connection() as conn:
+                conn.execute('ALTER TABLE workspace_folders RENAME COLUMN unreadable_sort_order TO sort_order')
+            recovered = server.app.test_client().get('/api/workspace-folders')
+        self.assertEqual(recovered.status_code, 200)
+        self.assertTrue(recovered.get_json()['ok'])
+        self.assertEqual({item['id'] for item in recovered.get_json()['items']}, {FOLDER, OTHER})
+
     def test_complete_transport_adoption_and_fresh_read_use_one_identity(self):
         fresh = self.responses(include_listing=False)
         responses = self.responses() + self.responses() + [fresh[0]] + fresh

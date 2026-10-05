@@ -100,11 +100,20 @@ def ensure_standard_subfolders_for_linked_folders(
     logger: Any,
     client: Any | None = None,
 ) -> dict[str, Any]:
-    folders = workspace_folders_store.list_workspace_folders(
-        include_deleted=False,
-        db_conn_func=db_conn_func,
-        logger=logger,
-    )
+    try:
+        folders = workspace_folders_store.list_workspace_folders(
+            include_deleted=False,
+            db_conn_func=db_conn_func,
+            logger=logger,
+        )
+    except workspace_folders_store.WorkspaceFolderListError:
+        return _summary([_record(
+            "LOT11_INVENTORY_LINKED_FOLDERS",
+            verdict="failed",
+            operation="inventory",
+            reason_code=workspace_folders_store.REASON_LIST_FAILED,
+            http_status_class="5xx",
+        )], None)
     linked = [
         folder
         for folder in folders
@@ -317,7 +326,7 @@ def _folder_counts(folders: list[Mapping[str, Any]]) -> dict[str, int]:
     }
 
 
-def _summary(records: list[dict[str, Any]], folders: list[Mapping[str, Any]]) -> dict[str, Any]:
+def _summary(records: list[dict[str, Any]], folders: list[Mapping[str, Any]] | None) -> dict[str, Any]:
     ok = not any(record.get("verdict") == "failed" for record in records)
     return {
         "ok": ok,
@@ -326,7 +335,7 @@ def _summary(records: list[dict[str, Any]], folders: list[Mapping[str, Any]]) ->
         else _first_failure_reason(records),
         "records": records,
         "counts": _counts(records),
-        "folder_counts": _folder_counts(folders),
+        "folder_counts": _folder_counts(folders) if folders is not None else None,
         "standard_subfolders": list(STANDARD_SUBFOLDERS),
     }
 

@@ -1,0 +1,59 @@
+{
+  "empty": {
+    "status": 200,
+    "payload": {
+      "icon_keys": [
+        "book",
+        "feather",
+        "star",
+        "leaf",
+        "folder",
+        "moon",
+        "circle",
+        "fragment",
+        "archive",
+        "search",
+        "note",
+        "image",
+        "map",
+        "dialog",
+        "spark"
+      ],
+      "items": [],
+      "observability": {
+        "content_free": true,
+        "kind": "frida_v1_workspace_folder",
+        "operation": "list",
+        "raw_content_included": false,
+        "reason_code": "workspace_folder_list_ok",
+        "remote_url_included": false,
+        "secret_included": false,
+        "server_path_included": false,
+        "status": "ok",
+        "status_class": "2xx"
+      },
+      "ok": true
+    }
+  },
+  "error": {
+    "status": 503,
+    "payload": {
+      "error": "lecture des repertoires indisponible",
+      "observability": {
+        "content_free": true,
+        "error_ref": "d899205a2046",
+        "kind": "frida_v1_workspace_folder",
+        "operation": "list",
+        "raw_content_included": false,
+        "reason_code": "workspace_folder_list_failed",
+        "remote_url_included": false,
+        "secret_included": false,
+        "server_path_included": false,
+        "status": "error",
+        "status_class": "5xx"
+      },
+      "ok": false,
+      "reason_code": "workspace_folder_list_failed"
+    }
+  }
+}

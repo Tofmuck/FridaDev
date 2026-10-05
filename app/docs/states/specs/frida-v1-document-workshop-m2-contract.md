@@ -4,7 +4,8 @@ Date : 2026-10-05. Statut : P2-M2-01 corrigé sur code/preuves, comparaison
 historique 567/567 ; succès historique 536/536 et revue G-R1–G-R4 Approved conservés.
 P2-M2-03 corrigé séparément sur la frontière frontend du listing (594/594
 historiques) ; P2-M2-02 corrigé séparément sur Exports/Images/Notes,
-P2-M2-04 backend indépendant ouvert hors lot ;
+P2-M2-04 backend corrigé séparément (713/713) ; P2-M2-05 signalé sur inspection
+et ouvert hors lot ;
 livraison runtime ouverte. Le retour final porte la livraison Git dédiée.
 La [roadmap](../../todo-todo/product/frida-v1-document-workshop-todo.md#m2--adoption-et-lecture-distante-ciblées)
 reste l'unique spécification et porte les commandes, résultats et dispositions
@@ -354,18 +355,14 @@ historique 94/95 dans la provenance P2-M2-01. Résultats, sélecteurs, durées,
 exits et contre-audit figurent dans la
 [correction P2-M2-03](../../todo-todo/product/frida-v1-document-workshop-todo.md#correction-indépendante-p2-m2-03--5-octobre-2026).
 
-**Finding ouvert et limite de contrat serveur.** P2-M2-02 est corrigé dans son
-lot dédié ci-dessous. P2-M2-04 reste un finding backend distinct ouvert :
-`workspace_folders_store.list_workspace_folders` intercepte une exception
-DB/sérialisation et retourne `[]` ; le service émet ensuite `ok:true,items:[]`,
-que la route projette en HTTP 200. Un probe isolé sur les vrais store/service,
-connexion défaillante simulée, confirme ce payload (un rouge attendu) ; il ne
-prouve aucune panne DB opérateur ni perte SQL/DAV. Cette réponse valide est
-indiscernable d'une vraie liste vide côté frontend. P2-M2-03 ferme les erreurs
-HTTP/réseau et réponses invalides observables, sans promettre la conservation
-face à cette erreur déjà masquée par le serveur. Aucun changement backend n'est
-absorbé ; correction séparée requise. Migrations opérateur, livraison runtime
-et DAV live restent ouverts ; M3 reste non commencé.
+**Limite serveur constatée à la livraison P2-M2-03.** P2-M2-04 restait
+ouvert : le store convertissait une exception DB/sérialisation en `[]`, puis
+service/route annonçaient `200 {ok:true,items:[]}`. Le probe historique isolé
+(un rouge attendu) est conservé dans la roadmap ; il ne démontrait aucune panne
+opérateur ou perte SQL/DAV. Le frontend ne pouvait distinguer ce payload d'un
+vrai vide. La correction backend séparée P2-M2-04 ci-dessous ferme maintenant
+ce contrat d'erreur ; aucun backend n'avait été absorbé dans P2-M2-03.
+Migrations opérateur, livraison runtime et DAV live restent ouverts ; M3 non commencé.
 
 
 ### Publications Exports, Images générées et Notes — P2-M2-02
@@ -432,8 +429,9 @@ P2-M2-03, le chat, l'upload, les sélections/brouillons et le DOM des thèmes so
 préservés. Aucun second cache, verrou d'interface, sérialisation générale,
 normalizer partagé, backend ou capacité produit ajouté. Cohérence locale au
 contrôleur seulement : onglets, runtime livré, versions serveur et DAV live
-restent hors preuve. P2-M2-04 reste ouvert et hors lot, avec son rouge historique
-séparé ; M3–M10/Z restent non commencés.
+restent hors preuve. À cette livraison, P2-M2-04 restait ouvert et hors lot, avec
+son rouge historique séparé ; il est corrigé ensuite ci-dessous. M3–M10/Z restent
+non commencés.
 
 Comparaison dédiée finale : **679/679 = 344 Python + 206 Node + 102 Chromium +
 27 PostgreSQL isolé**, les 594 historiques conservés plus 82 Node et trois
@@ -441,3 +439,69 @@ Chromium nouveaux, exits 0 sans skip. Baseline frontend 124/99 verte ; six
 contrôles/rouges Node donnent trois verts et trois rouges, puis trois rouges
 montés propres aux familles. Les échecs de harnais et corrections causales,
 durées, sélecteurs exacts, contre-audit et nettoyage restent dans la roadmap.
+
+### Lecture backend des répertoires — P2-M2-04
+
+Le finding est confirmé au parent `0a5b4b55` dans Flask : vraie route/service/
+wrapper/store, seule connexion DB remplacée. Lecture vide valide et connexion
+en erreur produisaient le même HTTP 200, `ok:true,items:[]` et observation de
+succès. Le contrôle vide passait, l'assertion de refus échouait. Les historiques
+536/567/594/679 et le rouge initial P2-M2-04 conservent leur provenance.
+
+`workspace_folders_store.list_workspace_folders` renvoie une liste complètement
+lue/sérialisée ou lève `WorkspaceFolderListError`, raison stable
+`workspace_folder_list_failed`. Connexion, exécution/fetch SQL et exception après
+une ligne valide ne deviennent ni liste vide ni inventaire partiel. Le warning
+privé existant est conservé sans collecte nouvelle ; la cause reste interne.
+Tri, `include_deleted`, projections et icônes ne changent pas. Les getters
+indépendants et leurs fallbacks restent hors lot.
+
+Le service renvoie `(payload,status)` et le registrar transmet ce statut :
+HTTP **503**, JSON `ok:false`, raison stable et message fixe « lecture des
+repertoires indisponible ». Aucun `items`, compteur de répertoires inventé, détail
+SQL/DSN ou exception brute dans la réponse. L'observation existante indique
+`error/5xx` et la même raison, jamais `workspace_folder_list_ok`. Le 503 suit la
+convention de lecture de stockage indisponible ; aucun retry implicite. Un vrai
+vide conserve HTTP 200, `ok:true,items:[]`, icônes et observation nominale.
+
+La validation de nom du wrapper propage l'exception ; create/patch du service et
+les lectures initiales Nextcloud-first refusent avant écriture SQL/DAV. Les
+relectures de nom dans create/update du store conservent leur retour de mutation
+`None` : après une mutation distante déjà engagée, les branches existantes de
+persistance partielle et compensation s'exécutent sans replay. MKCOL n'acquiert
+pas une autorité nouvelle de suppression ; rollback MOVE réussi ou échoué garde
+son résultat explicite et son statut 500 de persistance partielle.
+
+La réconciliation signale l'échec d'inventaire initial ou final par `ok:false`,
+raison stable et record existant `failed`/`partial`. `counts_before`,
+`counts_after` ou exemples inconnus valent `None` ; les actions déjà réalisées
+restent dans les records. Les sous-répertoires standards refusent l'échec initial,
+avec `folder_counts:None`, sans faux `not_applicable` ; leur synthèse nominale
+reste fondée sur le snapshot initial, sans nouvelle relecture. Le consommateur
+Documents dynamique conserve sa frontière d'erreur existante
+`folder_document_existing_inventory_failed`, avant DAV ; son test est renforcé
+avec le vrai wrapper/store. Tous les appelants recensés sont décrits dans la
+[correction P2-M2-04](../../todo-todo/product/frida-v1-document-workshop-todo.md#correction-indépendante-p2-m2-04--5-octobre-2026).
+
+Le frontend P2-M2-03 reste inchangé. Une fixture capturée du vrai Flask/store est
+comparée aux réponses réelles par le test Python puis utilisée par Chromium :
+erreur backend refusée, répertoires et quatre inventaires/statuts/sélection/
+contexte/brouillon conservés ; vrai vide accepté et invalidations légitimes ;
+reprise explicite et un seul POST d'adoption. Pas de preuve HTTP bout en bout
+navigateur→Flask, pas de DAV live. PostgreSQL dédié exerce aussi un vrai
+`UndefinedColumn`, sa projection HTTP 503 et la reprise explicite, sans DB
+opérateur ni mutation de plateforme.
+
+Comparaison finale : **713/713 = 374 Python + 206 Node + 104 Chromium + 29
+PostgreSQL isolé**, les 679 historiques conservés, 22 nouveaux cas et 12 cas du
+voisin renommage, 43 sélecteurs (41 historiques + deux modules Python), exits 0
+sans skip. Chromium reste en `--test-concurrency=1`, modules SQL en série.
+Résultats intermédiaires, commandes, durées et nettoyage figurent dans la roadmap.
+
+**P2-M2-05 reste ouvert hors lot**, signalé sur inspection du parent et du delta :
+une liste finale réellement vide peut conserver des exemples présents issus du
+snapshot initial (`after or before`), malgré `counts_after.active=0`. Aucune
+reproduction dynamique exécutée, aucune correction absorbée. Les erreurs de
+lecture de ce lot sont explicitement inconnues et ne passent pas par ce fallback.
+Migrations opérateur, livraison runtime/health et DAV live restent ouverts ;
+M3–M10/Z non commencés. Arrêt après commit/push vérifié, aucun déploiement.

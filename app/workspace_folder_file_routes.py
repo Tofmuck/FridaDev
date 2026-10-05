@@ -17,11 +17,11 @@ def register_workspace_folder_file_routes(
 ) -> None:
     def api_list_workspace_folders():
         workspace_folders_module = get_workspace_folders_module()
-        payload = workspace_folders_service_module.list_workspace_folders(
+        payload, status = workspace_folders_service_module.list_workspace_folders(
             request.args,
             workspace_folders_module=workspace_folders_module,
         )
-        return jsonify(payload)
+        return jsonify(payload), status
 
     def api_create_workspace_folder():
         data = request.get_json(silent=True) or {}

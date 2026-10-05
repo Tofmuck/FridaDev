@@ -993,14 +993,19 @@ class DocumentsV1IngestionTests(unittest.TestCase):
         self.assertNotIn("remote.php", encoded)
 
     def test_existing_file_inventory_folder_failure_fails_closed(self) -> None:
+        from unittest.mock import patch
+        from core import workspace_folders
+        from tests.support.workspace_folder_listing_fixture import ListingDatabase
         files = _FakeWorkspaceFiles()
         nextcloud = _FakeNextcloud()
+        database = ListingDatabase(failure="connect")
 
-        result = workspace_document_existing_files.reconcile_existing_workspace_documents(
-            workspace_folders_module=_FakeFolders(linked=True, fail_list=True),
-            workspace_files_module=files,
-            nextcloud=nextcloud,
-        )
+        with patch.object(workspace_folders, "_db_conn", database.connect):
+            result = workspace_document_existing_files.reconcile_existing_workspace_documents(
+                workspace_folders_module=workspace_folders,
+                workspace_files_module=files,
+                nextcloud=nextcloud,
+            )
 
         self.assertFalse(result["ok"])
         self.assertEqual(result["verdict"], "failed")
@@ -1011,6 +1016,8 @@ class DocumentsV1IngestionTests(unittest.TestCase):
         self.assertEqual(nextcloud.put_calls, [])
         self.assertEqual(nextcloud.deleted, [])
         self.assertNotIn("redacted", str(result))
+        self.assertEqual(database.connections, 1)
+        self.assertEqual(database.queries, [])
 
     def test_existing_file_inventory_file_failure_fails_closed(self) -> None:
         files = _FakeWorkspaceFiles(fail_list=True)

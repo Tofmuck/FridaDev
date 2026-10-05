@@ -1,9 +1,120 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { readFileSync } = require('node:fs');
 const { openBrowserPage } = require('./helpers/browser_test_helpers.js');
 const { adoptionScript, exactPath } = require('./helpers/document_adoption_fixture.js');
 const { mockScript, openWorkshop, showFolder, closeSidebar } = require('./helpers/document_workshop_fixture.js');
+
+function backendListingScript(response) {
+  return `(() => {
+    const response = ${JSON.stringify(response)};
+    const state = window.__backendListing = { enabled: false, reads: 0 };
+    const base = window.fetch;
+    window.fetch = async (input, init={}) => {
+      const path = new URL(input, location.origin).pathname;
+      if (path === '/api/workspace-folders' && state.enabled) {
+        state.reads += 1;
+        return new Response(JSON.stringify(response.payload), {
+          status:response.status, headers:{'Content-Type':'application/json'},
+        });
+      }
+      const family = path.endsWith('/exports') ? 'exports'
+        : path.endsWith('/generated-images') ? 'generated_images'
+        : path.endsWith('/notes') ? 'items' : null;
+      if (family && (init.method || 'GET') === 'GET') {
+        const folder = path.split('/')[3];
+        return new Response(JSON.stringify({ok:true, [family]:[{
+          id:family + '-' + folder, workspace_folder_id:folder,
+          display_name:'Synthetic ' + family, title:'Synthetic ' + family,
+          format:family === 'exports' ? 'md' : 'png', status:'available',
+        }]}), {status:200, headers:{'Content-Type':'application/json'}});
+      }
+      return base(input, init);
+    };
+  })();`;
+}
+
+async function sharedInventorySnapshot(page) {
+  return page.evaluate(() => {
+    const owner = window.__auditSidebar;
+    return {
+      folders: owner.getWorkspaceFolders(),
+      inventories: ['Files','Exports','GeneratedImages','Notes'].map(family => ({
+        items:owner['getWorkspace' + family]('folder-a'),
+        status:owner['getWorkspace' + family + 'Status']('folder-a'),
+      })),
+      selections:owner.getWorkspaceFileSelections('conv-a'),
+      current:owner.getCurrentId(), contexts:window.__m1.contexts,
+    };
+  });
+}
+
+for (const label of ['error', 'empty']) {
+  test('P2-M2-04 actual backend ' + label + ' response composes with P2-M2-03', async () => {
+    // Captured from the real Flask route/service/wrapper/store. The Python
+    // contract test compares both responses to this fixture on every run.
+    const captured = JSON.parse(readFileSync(require.resolve('../../support/workspace_folder_listing_responses.json'), 'utf8'))[label];
+    assert.equal(captured.status, label === 'error' ? 503 : 200);
+    assert.equal(captured.payload.ok, label !== 'error');
+    if (label === 'error') {
+      assert.equal(captured.payload.reason_code, 'workspace_folder_list_failed');
+      assert.equal(Object.hasOwn(captured.payload, 'items'), false);
+    } else assert.deepEqual(captured.payload.items, []);
+    await openBrowserPage({ ...setup(), mockScript:adoptionScript() + backendListingScript(captured) + instrumentation }, async page => {
+      await editing(page);
+      await nested(page);
+      await adopt(page);
+      await page.click('#documentWorkshopExit');
+      await page.fill('#message', 'Brouillon conservé après lecture backend');
+      await showFolder(page, 'folder-a');
+      await page.locator('.workspace-folder-file').filter({hasText:'Ébauche.md'}).first().locator('input[type=checkbox]').check();
+      await page.waitForFunction(() => window.__auditSidebar.getWorkspaceFileSelections('conv-a').length === 1);
+      const before = await sharedInventorySnapshot(page);
+      assert.ok(before.inventories.every(inventory => inventory.items.length > 0 && inventory.status.status === 'ok'));
+      const accepted = await page.evaluate(async () => {
+        window.__backendListing.enabled = true;
+        const result = await window.__auditSidebar.refreshThreadsFromServer();
+        window.__auditSidebar.renderThreads();
+        return result;
+      });
+      assert.equal(accepted, label !== 'error');
+      assert.equal(await page.evaluate(() => window.__backendListing.reads), 1);
+      if (label === 'error') {
+        assert.deepEqual(await sharedInventorySnapshot(page), before);
+        assert.equal(await page.locator('.threads-status').textContent(), 'Mode hors ligne.');
+        assert.equal(await page.locator('.threads-status').isVisible(), true);
+        assert.equal(await page.locator('.workspace-folder-row').count(), 2);
+        assert.equal(await page.locator('.workspace-folder-file').filter({hasText:exactPath}).count(), 1);
+        assert.equal(await page.locator('.workspace-folder-file').filter({hasText:'Ébauche.md'}).first().locator('input[type=checkbox]').isChecked(), true);
+      } else {
+        const after = await sharedInventorySnapshot(page);
+        assert.deepEqual(after.folders, []);
+        assert.ok(after.inventories.every(inventory => inventory.items.length === 0 && inventory.status.status === 'unknown'));
+        assert.equal(await page.locator('.workspace-folder-row').count(), 0);
+        assert.equal(await page.locator('.threads-status').textContent(), '');
+      }
+      await closeSidebar(page);
+      assert.equal(await page.locator('#message').inputValue(), 'Brouillon conservé après lecture backend');
+      const recovered = await page.evaluate(async () => {
+        window.__backendListing.enabled = false;
+        const result = await window.__auditSidebar.refreshThreadsFromServer();
+        window.__auditSidebar.renderThreads();
+        return result;
+      });
+      assert.equal(recovered, true);
+      assert.equal(await page.locator('.threads-status').textContent(), '');
+      await openWorkshop(page);
+      await page.waitForSelector('#documentWorkshop[data-state=editing]');
+      assert.equal(await page.locator('#documentWorkshopTarget option[value="adopted-file"]').count(), 1);
+      assert.equal(await page.locator('#documentWorkshopTarget').inputValue(), '');
+      await page.click('#documentWorkshopExit');
+      assert.equal(await page.locator('#message').inputValue(), 'Brouillon conservé après lecture backend');
+      assert.equal(await page.evaluate(() => window.__m2.calls.filter(call => call.path.endsWith('/adopt')).length), 1);
+      assert.equal(await page.evaluate(() => window.__m1.calls.filter(call => call.path === '/api/chat').length), 0);
+    });
+  });
+}
 
 const mountedFamilies = [
   { name: 'Exports', path: 'exports', key: 'exports', single: 'export', css: 'export' },

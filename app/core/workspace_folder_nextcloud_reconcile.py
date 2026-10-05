@@ -29,11 +29,14 @@ def reconcile_existing_workspace_folders(
     logger: Any,
     client: Any | None = None,
 ) -> dict[str, Any]:
-    before = workspace_folders_store.list_workspace_folders(
-        include_deleted=False,
-        db_conn_func=db_conn_func,
-        logger=logger,
-    )
+    try:
+        before = workspace_folders_store.list_workspace_folders(
+            include_deleted=False,
+            db_conn_func=db_conn_func,
+            logger=logger,
+        )
+    except workspace_folders_store.WorkspaceFolderListError:
+        return _listing_failure([], before=None, operation="inventory")
     records = [_inventory_record(before)]
     if not before:
         records.append(
@@ -54,11 +57,14 @@ def reconcile_existing_workspace_folders(
     except nextcloud_client.NextcloudFolderClientError as exc:
         for folder in before:
             records.append(_record_error(folder, exc, operation="status_existing"))
-        after = workspace_folders_store.list_workspace_folders(
-            include_deleted=False,
-            db_conn_func=db_conn_func,
-            logger=logger,
-        )
+        try:
+            after = workspace_folders_store.list_workspace_folders(
+                include_deleted=False,
+                db_conn_func=db_conn_func,
+                logger=logger,
+            )
+        except workspace_folders_store.WorkspaceFolderListError:
+            return _listing_failure(records, before=before, operation="final_state")
         records.append(
             _record(
                 "LOT9_FINAL_STATE",
@@ -82,11 +88,14 @@ def reconcile_existing_workspace_folders(
             )
         )
 
-    after = workspace_folders_store.list_workspace_folders(
-        include_deleted=False,
-        db_conn_func=db_conn_func,
-        logger=logger,
-    )
+    try:
+        after = workspace_folders_store.list_workspace_folders(
+            include_deleted=False,
+            db_conn_func=db_conn_func,
+            logger=logger,
+        )
+    except workspace_folders_store.WorkspaceFolderListError:
+        return _listing_failure(records, before=before, operation="final_state")
     final_verdict = (
         "met"
         if not any(record.get("verdict") in {"failed", "partial"} for record in records)
@@ -493,13 +502,35 @@ def _record(
     return payload
 
 
-def _summary(records: list[dict[str, Any]], before: list[Mapping[str, Any]], after: list[Mapping[str, Any]]) -> dict[str, Any]:
+def _listing_failure(
+    records: list[dict[str, Any]],
+    *,
+    before: list[Mapping[str, Any]] | None,
+    operation: str,
+) -> dict[str, Any]:
+    records.append(_record(
+        "LOT9_INVENTORY_ACTIVE_FOLDERS" if operation == "inventory" else "LOT9_FINAL_STATE",
+        verdict="failed" if before is None else "partial",
+        operation=operation,
+        reason_code=workspace_folders_store.REASON_LIST_FAILED,
+        http_status_class="5xx",
+    ))
+    result = _summary(records, before, None)
+    result["reason_code"] = workspace_folders_store.REASON_LIST_FAILED
+    return result
+
+
+def _summary(
+    records: list[dict[str, Any]],
+    before: list[Mapping[str, Any]] | None,
+    after: list[Mapping[str, Any]] | None,
+) -> dict[str, Any]:
     return {
         "ok": not any(record.get("verdict") in {"failed", "partial"} for record in records),
         "records": records,
-        "counts_before": _counts(before),
-        "counts_after": _counts(after),
-        "examples": _example_status(after or before),
+        "counts_before": _counts(before) if before is not None else None,
+        "counts_after": _counts(after) if after is not None else None,
+        "examples": _example_status(after or before or []) if after is not None else None,
     }
 
 

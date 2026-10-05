@@ -11,6 +11,7 @@ OBSERVABILITY_KIND = "frida_v1_workspace_folder"
 _HASH12_RE = re.compile(r"^[0-9a-f]{12}$")
 
 REASON_LIST_OK = "workspace_folder_list_ok"
+REASON_LIST_FAILED = "workspace_folder_list_failed"
 REASON_CREATE_OK = "workspace_folder_create_ok"
 REASON_RENAME_OK = "workspace_folder_rename_ok"
 REASON_DELETE_OK = "workspace_folder_delete_ok"
@@ -34,6 +35,7 @@ SUCCESS_REASON_BY_OPERATION = {
 REASON_CODE_CATALOG = frozenset(
     {
         REASON_LIST_OK,
+        REASON_LIST_FAILED,
         REASON_CREATE_OK,
         REASON_RENAME_OK,
         REASON_DELETE_OK,

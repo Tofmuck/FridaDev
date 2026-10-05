@@ -1859,7 +1859,8 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertNotIn("Projet Tulu", str(created["observability"]))
         self.assertNotIn("/Frida", str(created["observability"]))
 
-        listed = workspace_folders_service.list_workspace_folders({}, workspace_folders_module=folders_module)
+        listed, list_status = workspace_folders_service.list_workspace_folders({}, workspace_folders_module=folders_module)
+        self.assertEqual(list_status, 200)
         self.assertEqual(len(listed["items"]), 1)
         self.assertEqual(listed["items"][0]["nextcloud_share_state"], "expected")
         self.assertEqual(listed["observability"]["reason_code"], "workspace_folder_list_ok")

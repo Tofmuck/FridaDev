@@ -55,6 +55,16 @@ WORKSPACE_FOLDER_ICON_KEYS = (
     "spark",
 )
 
+REASON_LIST_FAILED = "workspace_folder_list_failed"
+
+
+class WorkspaceFolderListError(RuntimeError):
+    """The folder inventory is unknown; no empty/partial list may be published."""
+    reason_code = REASON_LIST_FAILED
+
+    def __init__(self):
+        super().__init__(self.reason_code)
+
 
 def _cursor(conn: Any):
     if dict_row is None:
@@ -282,7 +292,7 @@ def list_workspace_folders(
         return [item for item in (serialize_workspace_folder_row(row) for row in rows) if item]
     except Exception as exc:
         logger.warning("workspace_folders_list_failed err=%s", exc)
-        return []
+        raise WorkspaceFolderListError() from exc
 
 
 def get_workspace_folder(
@@ -346,7 +356,11 @@ def create_workspace_folder(
     normalized_id = normalize_workspace_folder_id(folder_id) or str(uuid.uuid4())
     safe_icon = normalize_icon_key(icon_key) or DEFAULT_ICON_KEY
     safe_description = sanitize_description(description)
-    existing_folders = list_workspace_folders(include_deleted=False, db_conn_func=db_conn_func, logger=logger)
+    try:
+        existing_folders = list_workspace_folders(include_deleted=False, db_conn_func=db_conn_func, logger=logger)
+    except WorkspaceFolderListError:
+        # Keep this mutation's failure return so Nextcloud-first compensation runs.
+        return None
     name_validation = validate_workspace_folder_name(display_name, existing_folders=existing_folders)
     if not name_validation.get("ok"):
         logger.warning("workspace_folder_create_rejected reason_code=%s", name_validation.get("reason_code"))
@@ -392,7 +406,10 @@ def update_workspace_folder(
     assignments: list[str] = []
     params: list[Any] = []
     if display_name is not None:
-        existing_folders = list_workspace_folders(include_deleted=False, db_conn_func=db_conn_func, logger=logger)
+        try:
+            existing_folders = list_workspace_folders(include_deleted=False, db_conn_func=db_conn_func, logger=logger)
+        except WorkspaceFolderListError:
+            return None
         name_validation = validate_workspace_folder_name(
             display_name,
             existing_folders=existing_folders,

@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import unittest
 import uuid
+from unittest import mock
 from io import BytesIO
 from pathlib import Path
 
@@ -20,6 +21,97 @@ OTHER_FOLDER_ID = "22222222-2222-4222-8222-222222222222"
 CONV_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
 OTHER_CONV_ID = "bbbbbbbb-bbbb-4ccc-8ddd-ffffffffffff"
 FILE_ID = "99999999-9999-4999-8999-999999999999"
+
+
+class ServerWorkspaceFoldersListingFailureTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.server = load_server_module_for_tests()
+        from core import workspace_folders
+        cls.real_folders = workspace_folders
+
+    def listing(self, database):
+        with mock.patch.object(self.server, "workspace_folders", self.real_folders), mock.patch.object(self.real_folders, "_db_conn", database.connect):
+            return self.server.app.test_client().get("/api/workspace-folders")
+
+    def test_p2_m2_04_control_successful_empty_listing_is_200(self):
+        from tests.support.workspace_folder_listing_fixture import ListingDatabase
+        response = self.listing(ListingDatabase())
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()["ok"])
+        self.assertEqual(response.get_json()["items"], [])
+        self.assertEqual(response.get_json()["observability"]["status"], "ok")
+
+    def test_p2_m2_04_browser_fixture_matches_actual_backend_responses(self):
+        import json
+        from tests.support.workspace_folder_listing_fixture import backend_listing_responses
+        fixture = Path(__file__).parent / "support" / "workspace_folder_listing_responses.json"
+        self.assertEqual(backend_listing_responses(), json.loads(fixture.read_text()))
+
+    def test_p2_m2_04_db_failure_is_explicit_json_through_real_chain(self):
+        from tests.support.workspace_folder_listing_fixture import ListingDatabase, DIAGNOSTIC
+        database = ListingDatabase(failure="connect")
+        response = self.listing(database)
+        self.assertEqual(response.status_code, 503)
+        self.assertTrue(response.is_json)
+        payload = response.get_json()
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["reason_code"], "workspace_folder_list_failed")
+        self.assertNotIn("items", payload)
+        self.assertEqual(payload["observability"]["status"], "error")
+        self.assertEqual(payload["observability"]["status_class"], "5xx")
+        self.assertEqual(payload["observability"]["reason_code"], payload["reason_code"])
+        self.assertNotIn("folder_count", payload["observability"])
+        self.assertNotIn(DIAGNOSTIC, response.get_data(as_text=True))
+        self.assertEqual(database.connections, 1)
+
+    def test_p2_m2_04_execution_fetch_and_serialization_failures_are_explicit(self):
+        from tests.support.workspace_folder_listing_fixture import ListingDatabase, folder_row, DIAGNOSTIC
+        for label, database in [
+            ("execute", ListingDatabase(failure="execute")),
+            ("fetch", ListingDatabase(failure="fetch")),
+            ("serialize", ListingDatabase([folder_row(), {**folder_row(), "sort_order": "invalid"}])),
+        ]:
+            with self.subTest(failure=label):
+                response = self.listing(database)
+                self.assertEqual(response.status_code, 503)
+                payload = response.get_json()
+                self.assertFalse(payload["ok"])
+                self.assertEqual(payload["reason_code"], "workspace_folder_list_failed")
+                self.assertNotIn("items", payload)
+                self.assertNotIn(DIAGNOSTIC, response.get_data(as_text=True))
+
+    def test_p2_m2_04_name_validation_failure_prevents_create_and_rename(self):
+        from tests.support.workspace_folder_listing_fixture import ListingDatabase
+        for operation in ["create", "rename"]:
+            with self.subTest(operation=operation):
+                database = ListingDatabase(failure="connect")
+                name = "create_workspace_folder_nextcloud_first" if operation == "create" else "rename_workspace_folder_nextcloud_first"
+                with mock.patch.object(self.server, "workspace_folders", self.real_folders), mock.patch.object(self.real_folders, "_db_conn", database.connect), mock.patch.object(self.real_folders, name, return_value=None) as mutate:
+                    client = self.server.app.test_client()
+                    response = client.post("/api/workspace-folders", json={"display_name":"Synthetic new"}) if operation == "create" else client.patch("/api/workspace-folders/" + FOLDER_ID, json={"display_name":"Synthetic new"})
+                self.assertEqual(response.status_code, 503)
+                self.assertEqual(response.get_json()["reason_code"], "workspace_folder_list_failed")
+                self.assertEqual(response.get_json()["observability"]["status"], "error")
+                mutate.assert_not_called()
+                self.assertEqual(database.connections, 1)
+
+    def test_p2_m2_04_explicit_recovery_and_private_diagnostic_observation(self):
+        from tests.support.workspace_folder_listing_fixture import ListingDatabase, DIAGNOSTIC
+        from core import workspace_folders_service
+        database = ListingDatabase(failure="connect")
+        with mock.patch.object(workspace_folders_service.logger, "info") as observation:
+            response = self.listing(database)
+        self.assertEqual(response.status_code, 503)
+        observation.assert_called_once()
+        self.assertIn("reason_code=workspace_folder_list_failed", observation.call_args.args[1])
+        self.assertNotIn("workspace_folder_list_ok", observation.call_args.args[1])
+        self.assertNotIn(DIAGNOSTIC, observation.call_args.args[1])
+        database.failure = None
+        response = self.listing(database)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["items"], [])
+        self.assertEqual(database.connections, 2)
 
 
 class _FakeWorkspaceFolders:

@@ -9,7 +9,8 @@ M2 : succès historique 536/536 et revue G-R1–G-R4 Approved conservés ;
 P2-M2-01 corrigé, comparaison historique 567/567 ; P2-M2-03 corrigé séparément
 sur sa frontière frontend (594/594 historiques) ; P2-M2-02 corrigé séparément
 sur Exports/Images/Notes,
-P2-M2-04 backend indépendant ouvert hors lot ; livraison runtime ouverte ;
+P2-M2-04 backend corrigé séparément, comparaison 713/713 ; P2-M2-05 signalé
+sur inspection et ouvert hors lot ; livraison runtime ouverte ;
 M3–M10 et Z non commencés ; préparation inactive, aucun déploiement ou renderer livré**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
@@ -858,7 +859,9 @@ M1 est fermé sur menu/contexte `editing` et gardes inactifs, sur sa branche iss
 M2 conserve la contre-revue historique G-R1–G-R4 Approved et le succès 536/536.
 Le correctif indépendant P2-M2-01 du 5 octobre passe historiquement 567/567.
 P2-M2-03 est corrigé dans un lot frontend distinct (594/594 historiques) ;
-P2-M2-02 est ensuite corrigé sur les trois familles ci-dessous, P2-M2-04 backend indépendant ouvert hors lot. Migration opérateur, rebuild et lecture DAV déployée
+P2-M2-02 est ensuite corrigé sur les trois familles ci-dessous, puis P2-M2-04
+sur le contrat backend de listing (713/713). P2-M2-05 reste ouvert, signalé
+sur inspection. Migration opérateur, rebuild et lecture DAV déployée
 restent ouverts. M3–M10 et Z ne sont pas commencés. Spécification et
 décisions amont sont validées et l'exception produit est inscrite.
 Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
@@ -1346,8 +1349,8 @@ worktree propre, avance/retard 0/0 vérifiés avant création de M2.
 **Statut : P2-M2-01 corrigé sur code/preuves (comparaison historique 567/567),
 après le succès historique 536/536 et G-R1–G-R4 Approved ; P2-M2-03 corrigé
 séparément en frontend (594/594 historiques) ; P2-M2-02 corrigé séparément
-sur les trois familles, P2-M2-04 backend ouvert
-hors lot ; livraison runtime ouverte.**
+sur les trois familles (679/679 historiques) ; P2-M2-04 corrigé sur le backend
+(713/713), P2-M2-05 ouvert hors lot ; livraison runtime ouverte.**
 **Objectif :** intégrer un dépôt direct dans l'inventaire commun.
 **Dépendances :** M0–M1, notamment gardes chemin et admission des sources.
 **Fichiers :** liens Nextcloud, workspace_files_store, readers, client DAV,
@@ -2112,7 +2115,8 @@ réécriture des revues historiques.
 Exports et l'inspection Images/Notes consignés dans P2-M2-01 restent inchangés,
 séparés de la comparaison. Aucun de ces rouges n'est caché ou réparé ici.
 **P2-M2-04 — erreur backend de listing convertie en succès vide**, nouveau finding
-indépendant ouvert : `workspace_folders_store.py` intercepte exception
+indépendant ouvert à cette livraison, corrigé ensuite dans son lot ci-dessous :
+`workspace_folders_store.py` intercepte exception
 DB/sérialisation et retourne `[]` ; `workspace_folders_service.py` ajoute
 `ok:true`, route HTTP 200 par inspection. Un probe scratch appelle les vrais
 store/service avec une fonction de connexion synthétique qui lève : warning
@@ -2146,7 +2150,8 @@ Le commit de ce lot a pour parent exact `c057d286` ; son SHA, push et alignement
 sont fournis dans le retour final. Pas de merge, changement de branche ou runtime.
 Les succès historiques 536/567/594, revues G-R1–G-R4 et échecs intermédiaires
 restent conservés avec leur provenance. P2-M2-01/03 restent fermés dans leur
-périmètre ; **P2-M2-04 backend reste ouvert et exclu ; M3–M10/Z non commencés**.
+périmètre ; **à cette livraison, P2-M2-04 backend restait ouvert et exclu ;
+sa correction séparée figure ensuite. M3–M10/Z non commencés**.
 
 **Cause et preuves distinctes.** Chez le propriétaire, les lecteurs individuels
 publiaient directement données/statut sans coordination. Le global collectait
@@ -2295,7 +2300,8 @@ runner exécuté par le reviewer. Pas de second cache, nouvelle collecte,
 secret/contenu ajouté, abstraction future, backend ou élargissement M3.
 Documents courants réconciliés, provenance historique conservée.
 
-**Finding vivant et limites.** P2-M2-04 reste ouvert, son rouge historique
+**Finding vivant à la livraison P2-M2-02 et limites.** P2-M2-04 restait ouvert
+(il est corrigé dans le lot séparé ci-dessous), son rouge historique
 séparé n'est ni rejoué ni corrigé dans ce lot : une erreur DB déjà transformée
 en `200 {ok:true,items:[]}` est indiscernable d'un vrai vide côté UI. Aucun
 résultat 679/679 ne ferme ce finding. Cohérence locale au contrôleur, sans
@@ -2308,6 +2314,259 @@ enchaînement P2-M2-04 ou M3.
 socket vide retiré et absence vérifiée, données tmpfs détruites. Autres runners
 `--rm`. Scratch possédé retiré après conservation des faits et revue finale ;
 aucun artefact d'autrui ou runtime opérateur supprimé.
+
+#### Correction indépendante P2-M2-04 — 5 octobre 2026
+
+**Disposition : corrigé sur code et preuves, livraison runtime ouverte.**
+Base revalidée : `/opt/platform/fridadev`, branche
+`FridaV1-Document-Workshop-M2`, propre, divergence `0/0`, HEAD/upstream/M2 distant
+`0a5b4b553a20e0230991be34fd7b23354885395e`, parent
+`c057d286b0e7a35d2ce8e0f3c43eaf8200edd131`. `git ls-remote --heads`
+confirme M1 `c6f648badba96a60f1474db8d3f7404f97a2dda7`, M0
+`3eb2e34aa0622112ebb4a8700dbe0eec02e4a27a`, main
+`e3e0d19290cb7ac275b3fd4b19c4b01dbc89f2cb`. Aucun changement de branche,
+pull/reset/stash, merge, installation ou déploiement. Les historiques
+536/567/594/679 et G-R1–G-R4 Approved restent des preuves de leurs lots,
+pas une fermeture rétroactive de P2-M2-04.
+
+**Cause et preuve avant patch.** Le store interceptait toute exception de
+connexion, SQL, lecture ou sérialisation et renvoyait `[]` ; wrapper inchangé,
+service `ok:true`, GET HTTP 200 et observation `workspace_folder_list_ok`.
+La reproduction Flask utilise la vraie route enregistrée par `server.py`,
+le vrai service, wrapper et store ; seule la connexion DB est remplacée.
+Lecture réussie sans ligne : `200,ok:true,items:[]`, contrôle vert.
+Connexion synthétique refusée : même réponse, rouge `200 != 503`, exit 1.
+Aucune panne opérateur ni suppression SQL/DAV n'est déduite de cette injection.
+La sérialisation est aussi exercée après une première ligne valide ; aucun
+inventaire partiel n'est admis dans les assertions.
+
+« Existe-t-il un meilleur plan, plus simple, plus sûr et avec moins d'effets
+de bord ? » Le pas retenu est une exception dédiée de listing chez le store,
+traduite aux frontières existantes, sans nouveau cache ou retry. `503` suit
+la convention de lecture de stockage indisponible des services documentaires ;
+il ne promet pas une panne transitoire ni une reprise automatique. `500`
+reste le résultat historique de persistance partielle après mutation distante.
+
+**Contrat et appelants.** `WorkspaceFolderListError` porte la raison fixe
+`workspace_folder_list_failed`. Le listing renvoie seulement un tableau
+entièrement lu/sérialisé, ou lève cette exception. Tri, filtre `include_deleted`,
+projections, icônes et vraie liste vide restent inchangés. Le warning privé
+existant est conservé sans collecte supplémentaire ; cause technique chaînée
+en interne, jamais exposée par HTTP ou les projections d'observabilité.
+Le service renvoie maintenant `(payload,status)` comme ses autres opérations ;
+le registrar GET transmet le statut. Échec : JSON `ok:false`, raison stable,
+message fixe « lecture des repertoires indisponible », observation `error/5xx`,
+aucun `items` ni `folder_count` inventé, aucun succès de listing.
+
+Recensement `rg` du nom de méthode, y compris le consommateur dynamique
+`getattr`, puis inspection de ses appels :
+
+| Frontière affectée | Traitement de la lecture impossible |
+| --- | --- |
+| `workspace_folders.py` : wrapper et validation de nom | Propagation de l'exception dédiée ; service create/patch refuse en JSON 503 avant mutation. |
+| `workspace_folders_store.py` : create et update avec nom | Refus `None` selon leur contrat de mutation existant, sans SQL d'écriture. Ce retour laisse les compensations Nextcloud-first s'exécuter si DAV a déjà eu lieu. Aucun `catch → []` déplacé. |
+| `workspace_folder_nextcloud_runtime.py` : inventaire initial create/rename | Refus explicite 503 avant mutation SQL/DAV. Relecture après MKCOL/MOVE : branches de persistance partielle et compensation existantes conservées, sans replay ni nouvelle suppression distante. |
+| `workspace_folder_nextcloud_reconcile.py` : inventaire initial et deux lectures finales | `ok:false`, record existant `failed` initial ou `partial` final, raison stable, classe `5xx`. Compteurs inconnus et exemples finaux inconnus valent `None`, pas zéro. Les records d'actions déjà accomplies sont conservés. |
+| `workspace_folder_standard_subfolders.py` : inventaire initial | Échec explicite, `folder_counts:None`, pas `not_applicable` sur la panne. Sa synthèse nominale utilise déjà le snapshot initial ; aucune nouvelle relecture finale ajoutée. |
+| `workspace_document_existing_inventory.py` → `workspace_document_existing_files.py` | Catch existant adapté : erreur d'inventaire `folder_document_existing_inventory_failed`, verdict failed avant DAV ; aucun changement produit nécessaire. Le test historique utilise désormais le vrai wrapper/store avec panne de connexion. |
+
+Les getters indépendants et leurs fallbacks ne sont pas modifiés. Le seul
+appelant du service de listing est le registrar GET ; un ancien test direct
+adapte son unpacking et affirme HTTP 200, sans supprimer ses assertions.
+Les compensations vérifiées conservent leurs limites existantes : après MKCOL,
+le dossier distant reste présent faute de preuve d'ownership pour le supprimer ;
+après MOVE, rollback réussi ou échoué reste explicitement représenté.
+
+**Préconditions et séparation des preuves.** Images existantes, sans pull :
+`fridadev-audit-py:latest`, `mcr.microsoft.com/playwright:v1.54.0-jammy`,
+`postgres:16-alpine`, empreintes vérifiées. Checkout et rootfs read-only,
+réseau `none`, environnement vidé par `/usr/bin/env -i`, bytecode désactivé,
+valeurs de providers `.invalid`, scratch possédé
+`/tmp/fridadev-p2-m2-04-i8udp379`. Absence de `app/.env` et de son symlink
+vérifiée sans lecture ; présence du cache navigateurs vérifiée.
+Wrappers `m2_python`, `m2_node`, `m2_sql` ci-dessus conservés ; seul le chemin
+SQL du socket est adapté à ce scratch. PostgreSQL dédié
+`fridadev-p2-m2-04-proof-pg`, conteneur/socket initialement absents,
+`/var/run/postgresql` monté dès initialisation, données tmpfs, aucun TCP,
+readiness `pg_isready` exit 0 en 1,631 s ; les deux modules SQL sont exécutés
+en série et ne touchent jamais la DB opérateur.
+
+Le nouveau test PostgreSQL renomme temporairement une colonne dans le seul
+schéma synthétique de preuve : le vrai SELECT lève `UndefinedColumn`, puis le
+GET réel renvoie le JSON 503. Rétablissement explicite du schéma et GET suivant
+réussis, sans retry. Le test voisin confirme ordre, projection et filtre supprimé
+avec et sans `include_deleted`. Les DAV des autres tests sont simulés ou HTTP
+loopback dans le runner, sans accès DAV live.
+
+La composition frontend réutilise une capture JSON du vrai Flask/store,
+`tests/support/workspace_folder_listing_responses.json`, produite avec :
+
+```sh
+docker run --rm --pull never --network none --read-only \
+  --tmpfs /tmp:rw,nosuid,nodev \
+  --mount type=bind,src=/opt/platform/fridadev,dst=/workspace,readonly \
+  --workdir /workspace/app --entrypoint /usr/bin/env fridadev-audit-py:latest \
+  -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp PYTHONDONTWRITEBYTECODE=1 \
+  EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid \
+  SEARXNG_URL=https://search.invalid \
+  python -m tests.support.workspace_folder_listing_fixture
+```
+
+Exit 0, 1,698 s murales. Le test Python
+`test_p2_m2_04_browser_fixture_matches_actual_backend_responses` compare à
+chaque passe les deux réponses réelles à cette capture intégrale. Les deux cas
+Chromium lisent cette fixture du dépôt : aucune env supplémentaire obligatoire,
+aucun store simulant le correctif. Seul le transport est simulé. Échec : retour
+frontend false, statut « Mode hors ligne. » visible, quatre inventaires non
+vides et leurs statuts conservés, répertoires/sélection/contexte/brouillon
+préservés ; reprise explicite réussie, cible adoptée encore proposée sans
+sélection automatique, un seul POST d'adoption. Vrai vide : succès et
+invalidation des quatre familles selon P2-M2-01/02/03, puis reprise explicite.
+Cette composition relie le backend corrigé à P2-M2-03 ; elle ne constitue pas
+un test HTTP bout en bout navigateur→Flask ni une preuve runtime déployé.
+
+**Résultats réels, sans skip.** Durées internes des runners, sauf mention murale :
+
+| Passe | Résultat | Exit | Durée |
+| --- | --- | --- | --- |
+| Baseline Python, quatre modules concernés/voisins au parent | 82/82 | 0 | 0,392 s |
+| Rouge causal GET réel + contrôle vide avant patch | 1 vert, 1 rouge sur 2 | 1 | 0,722 s |
+| Premiers huit cas store avant patch | 2 méthodes vertes, 6 échouées ; 11 assertions/subtests rouges | 1 | 0,007 s |
+| Matrice étendue avant patch, 17 méthodes | 3 méthodes vertes, 14 échouées ; 23 assertions/subtests rouges | 1 | 0,844 s |
+| Même matrice après patch | 17/17 | 0 | 0,731 s |
+| Ciblé avec module voisin renommage | 29/29 | 0 | 1,239 s |
+| PostgreSQL ciblé nominal/erreur réelle/reprise | 2/2 | 0 | 1,600 s |
+| Chromium ciblé capture backend | 2/2 | 0 | 2,723529681 s |
+| Comparaison initiale Python | 373/373 | 0 | 25,688 s |
+| Comparaison Node finale | 206/206 | 0 | 0,548504314 s |
+| Comparaison Chromium initiale | 104/104 | 0 | 92,434611003 s |
+| Comparaison PostgreSQL finale | 29/29 | 0 | 25,467 s |
+| Test capture réelle ↔ fixture conservée | 1/1 | 0 | 0,774 s |
+| Comparaison Python après ajout de ce contrat | 374/374 | 0 | 24,814 s |
+| Comparaison Python finale, test Documents renforcé | 374/374 | 0 | 23,667 s |
+| Comparaison Chromium finale, fixture du dépôt | 104/104 | 0 | 91,758688560 s |
+
+L'intermédiaire vert **712/712** utilisait une capture scratch injectée par env
+dans les deux nouveaux cas navigateur. Le contre-audit a détecté que la commande
+publique navigateur n'avait pas cette précondition : le harnais est corrigé par
+la fixture du dépôt et son test Python de provenance, sans affaiblir les
+assertions ni modifier le produit. Seuls Python/Chromium modifiés sont renouvelés ;
+Node/SQL verts ne le sont pas. Une dernière passe Python suit le renforcement du
+cas Documents existant pour exercer le vrai store, pas un faux listing qui lève.
+Aucun échec après patch ; tous les échecs causaux avant patch sont conservés.
+
+Comparaison finale : **374 + 206 + 104 + 29 = 713/713**, soit les **679 historiques
+conservés**, 22 nouveaux cas (18 Python, deux Chromium, deux SQL), plus les
+12 cas existants du module voisin renommage ajouté à la commande. Les
+**41 sélecteurs historiques + deux modules Python = 43 sélecteurs** sont :
+
+```sh
+m2_python \
+  tests.test_server_active_documents_contract \
+  tests.test_server_workspace_folders_contract \
+  tests.test_server_chat_route_transport_contract \
+  tests.test_server_chat_conversation_id_contract \
+  tests.test_server_chat_document_integrity_contract \
+  tests.integration.frontend_chat.test_frontend_chat_contract \
+  tests.unit.core.test_workspace_folders_contract \
+  tests.unit.chat.test_chat_llm_flow \
+  tests.unit.chat.test_chat_llm_flow_boundaries \
+  tests.unit.chat.test_chat_stream_control \
+  tests.unit.core.test_document_workshop_canonical_paths \
+  tests.unit.core.test_document_workshop_admission \
+  tests.unit.core.test_document_workshop_provider_progress \
+  tests.unit.core.test_workspace_documents_ingestion \
+  tests.test_server_document_workshop_contexts_contract \
+  tests.unit.core.test_workspace_folder_documents \
+  tests.unit.core.test_workspace_file_selection_prompt \
+  tests.unit.core.test_active_document_text_extraction \
+  tests.unit.core.test_document_upload_limits \
+  tests.unit.core.test_workspace_nextcloud_compensation_etag \
+  tests.unit.core.test_workspace_file_ocr_service \
+  tests.unit.core.test_workspace_document_read_client_m2 \
+  tests.unit.core.test_workspace_document_source_extraction_m2 \
+  tests.unit.core.test_workspace_document_adoption_m2 \
+  tests.unit.core.test_workspace_folders_listing_failure \
+  tests.unit.core.test_workspace_folder_rename_commit_projection
+
+m2_node \
+  app/tests/unit/frontend_chat/test_active_documents_module.js \
+  app/tests/unit/frontend_chat/test_canonical_chat_submission.js \
+  app/tests/unit/frontend_chat/test_lot9_load_order_golden.js \
+  app/tests/unit/frontend_chat/test_threads_folder_binding_module.js \
+  app/tests/unit/frontend_chat/test_threads_sidebar_module.js \
+  app/tests/unit/frontend_chat/test_workspace_folders_module.js \
+  app/tests/unit/frontend_chat/test_threads_list_renderer_module.js \
+  app/tests/unit/frontend_chat/test_workspace_folder_sidebar_boundaries.js
+
+m2_node --test-concurrency=1 \
+  app/tests/integration/frontend_browser/test_frontend_browser_active_documents.js \
+  app/tests/integration/frontend_browser/test_frontend_browser_workspace_folders.js \
+  app/tests/integration/frontend_browser/test_frontend_browser_smoke.js \
+  app/tests/integration/frontend_browser/test_frontend_browser_document_workshop.js \
+  app/tests/integration/frontend_browser/test_frontend_browser_document_adoption.js \
+  app/tests/integration/frontend_browser/test_frontend_browser_document_adoption_reasons.js \
+  app/tests/integration/frontend_browser/test_frontend_browser_document_inventory_publication.js
+
+m2_sql tests.integration.document_workshop.test_adoption_postgresql tests.integration.document_workshop.test_context_store_postgresql
+
+```
+
+Commandes ciblées/baseline effectivement exécutées avec les mêmes wrappers :
+
+```sh
+m2_python tests.unit.core.test_workspace_folders_contract \
+  tests.test_server_workspace_folders_contract \
+  tests.unit.core.test_workspace_folder_rename_commit_projection \
+  tests.unit.core.test_workspace_nextcloud_compensation_etag
+m2_python \
+  tests.test_server_workspace_folders_contract.ServerWorkspaceFoldersListingFailureTests.test_p2_m2_04_control_successful_empty_listing_is_200 \
+  tests.test_server_workspace_folders_contract.ServerWorkspaceFoldersListingFailureTests.test_p2_m2_04_db_failure_is_explicit_json_through_real_chain
+m2_python tests.unit.core.test_workspace_folders_listing_failure
+m2_python tests.unit.core.test_workspace_folders_listing_failure \
+  tests.test_server_workspace_folders_contract.ServerWorkspaceFoldersListingFailureTests
+m2_python tests.unit.core.test_workspace_folders_listing_failure \
+  tests.test_server_workspace_folders_contract.ServerWorkspaceFoldersListingFailureTests \
+  tests.unit.core.test_workspace_folder_rename_commit_projection
+m2_sql \
+  tests.integration.document_workshop.test_adoption_postgresql.AdoptionPostgresqlTests.test_folder_listing_keeps_order_projection_and_deleted_filter \
+  tests.integration.document_workshop.test_adoption_postgresql.AdoptionPostgresqlTests.test_real_sql_listing_error_is_explicit_and_recovers_without_retry
+m2_node --test-concurrency=1 --test-name-pattern='P2-M2-04' \
+  app/tests/integration/frontend_browser/test_frontend_browser_document_inventory_publication.js
+m2_python \
+  tests.test_server_workspace_folders_contract.ServerWorkspaceFoldersListingFailureTests.test_p2_m2_04_browser_fixture_matches_actual_backend_responses
+```
+
+**Contre-audit.** Aucun écrivain/frontend modifié, aucun autre getter corrigé.
+Les appels de listing directs et dynamiques sont recensés. Erreur absorbée en
+vide, publication partielle, compteur/succès faux, exception non traitée,
+validation de conflit permissive, compensation interrompue, replay et détail
+HTTP ont été inspectés et couverts aux frontières correspondantes. Les gardes
+P2-M2-01/02/03 et leurs probes navigateur restent dans la comparaison, avec chat,
+upload, thème et DOM. Revue indépendante statique par le skill
+`requesting-code-review` : aucun nouveau finding dans le delta final ; le reviewer
+n'a exécuté aucun runner ni modifié le checkout.
+
+**Finding indépendant P2-M2-05, ouvert hors lot.** Inspection du parent
+`0a5b4b55` et du delta : `_summary` de la réconciliation utilise déjà
+`_example_status(after or before)`. Si une lecture finale réussit réellement
+avec `[]` après un snapshot initial contenant un exemple, `counts_after.active`
+vaut zéro mais `examples` peut conserver `present_reconciled`/`present_pending`
+issus de l'ancien snapshot. Ce point concerne un succès vide réel, pas la lecture
+impossible P2-M2-04 désormais représentée par `None`. Constat statique, aucune
+reproduction dynamique exécutée ; pas de perte SQL/DAV inférée. Correction et
+preuve causale demandent un lot distinct ; il n'est ni réparé ni clos ici.
+
+**Nettoyage et livraison.** PostgreSQL possédé arrêté/supprimé après les suites
+SQL (exits 0, 0,173 s murales), socket vide retiré et absence vérifiée, données
+tmpfs détruites. Autres runners `--rm`, scratch possédé retiré après consignation
+des preuves (31 fichiers), absence vérifiée. Aucun artefact d'autrui supprimé.
+Diff et périmètre vérifiés, 58 liens locaux valides, `git diff --check` exit 0
+avant commit ; le retour final atteste SHA/parent, push, worktree propre,
+HEAD/upstream/M2 distant égaux, divergence `0/0` et M1/M0/main inchangés.
+Aucun déploiement, migration opérateur, rebuild/restart, modèle ou DAV live.
+Livraison runtime/health et DAV live restent ouverts ; M3–M10/Z non commencés.
+Arrêt après vérification Git, sans enchaînement P2-M2-05 ou M3.
 
 ### M3 — Réservation durable et concurrence
 
@@ -2962,7 +3221,9 @@ Approved ; les 528 premiers restent historiques. Le 5 octobre, P2-M2-01 est
 corrigé et la comparaison historique passe 567/567. P2-M2-03 est ensuite
 corrigé séparément en frontend (594/594 historiques) ; P2-M2-02 est ensuite
 corrigé séparément sur Exports/Images/Notes,
-P2-M2-04 backend indépendant reste ouvert hors lot. Le retour final porte la livraison Git et ses alignements. M3 et suivants restent
+P2-M2-04 backend est corrigé séparément (713/713). P2-M2-05 est signalé sur
+inspection, ouvert et hors lot. Le retour final porte la livraison Git et ses
+alignements. M3 et suivants restent
 non commencés.
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
 dans AGENTS.md ; l'invariant de consolidation reste applicable hors de cette

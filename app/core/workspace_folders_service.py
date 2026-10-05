@@ -4,6 +4,7 @@ import logging
 from typing import Any, Mapping, Tuple
 
 from observability import workspace_folders_observability
+from . import workspace_folders_store
 
 
 logger = logging.getLogger("frida.workspace_folders")
@@ -15,6 +16,7 @@ _CONFLICT_REASONS = {
     "workspace_folder_name_conflict_case",
 }
 _VALIDATION_ERROR_MESSAGES = {
+    workspace_folders_store.REASON_LIST_FAILED: "lecture des repertoires indisponible",
     "workspace_folder_name_required": "display_name requis",
     "workspace_folder_name_invalid": "nom de repertoire invalide",
     "workspace_folder_name_too_long": "nom de repertoire trop long",
@@ -23,6 +25,7 @@ _VALIDATION_ERROR_MESSAGES = {
     "workspace_folder_name_conflict_case": "un repertoire actif utilise deja ce nom avec une casse differente",
 }
 _RUNTIME_ERROR_MESSAGES = {
+    workspace_folders_store.REASON_LIST_FAILED: "lecture des repertoires indisponible",
     "workspace_folder_nextcloud_conflict": "conflit Nextcloud sur ce nom",
     "workspace_folder_nextcloud_unavailable": "Nextcloud indisponible",
     "workspace_folder_nextcloud_auth_failed": "authentification Nextcloud impossible",
@@ -40,14 +43,22 @@ def list_workspace_folders(
     _args: Mapping[str, Any],
     *,
     workspace_folders_module: Any,
-) -> dict[str, Any]:
-    items = workspace_folders_module.list_workspace_folders()
+) -> Tuple[dict[str, Any], int]:
+    try:
+        items = workspace_folders_module.list_workspace_folders()
+    except workspace_folders_store.WorkspaceFolderListError:
+        return _response(
+            {"ok": False, "error": "lecture des repertoires indisponible",
+             "reason_code": workspace_folders_store.REASON_LIST_FAILED},
+            operation="list",
+            status=503,
+        )
     payload = {
         "ok": True,
         "items": items,
         "icon_keys": list(workspace_folders_module.WORKSPACE_FOLDER_ICON_KEYS),
     }
-    return _with_observability(payload, operation="list", status=200)
+    return _response(payload, operation="list", status=200)
 
 
 def create_workspace_folder(
@@ -236,7 +247,10 @@ def _validate_display_name(
 ) -> dict[str, Any]:
     validator = getattr(workspace_folders_module, "validate_workspace_folder_display_name", None)
     if callable(validator):
-        return validator(value, current_folder_id=current_folder_id)
+        try:
+            return validator(value, current_folder_id=current_folder_id)
+        except workspace_folders_store.WorkspaceFolderListError:
+            return {"ok": False, "reason_code": workspace_folders_store.REASON_LIST_FAILED}
 
     display_name = workspace_folders_module.sanitize_display_name(value)
     if not display_name:
@@ -246,7 +260,7 @@ def _validate_display_name(
 
 def _folder_name_error_response(validation: Mapping[str, Any], *, operation: str) -> Tuple[dict[str, Any], int]:
     reason_code = str(validation.get("reason_code") or "workspace_folder_name_invalid")
-    status = 409 if reason_code in _CONFLICT_REASONS else 400
+    status = 503 if reason_code == workspace_folders_store.REASON_LIST_FAILED else 409 if reason_code in _CONFLICT_REASONS else 400
     payload = {
         "ok": False,
         "error": _VALIDATION_ERROR_MESSAGES.get(reason_code, "nom de repertoire invalide"),
