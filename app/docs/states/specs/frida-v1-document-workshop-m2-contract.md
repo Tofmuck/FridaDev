@@ -4,8 +4,8 @@ Date : 2026-10-05. Statut : P2-M2-01 corrigé sur code/preuves, comparaison
 historique 567/567 ; succès historique 536/536 et revue G-R1–G-R4 Approved conservés.
 P2-M2-03 corrigé séparément sur la frontière frontend du listing (594/594
 historiques) ; P2-M2-02 corrigé séparément sur Exports/Images/Notes,
-P2-M2-04 backend corrigé séparément (713/713) ; P2-M2-05 signalé sur inspection
-et ouvert hors lot ;
+P2-M2-04 backend corrigé séparément (713/713 historiques) ; P2-M2-05 corrigé
+séparément sur le résumé de réconciliation (716/716) ;
 livraison runtime ouverte. Le retour final porte la livraison Git dédiée.
 La [roadmap](../../todo-todo/product/frida-v1-document-workshop-todo.md#m2--adoption-et-lecture-distante-ciblées)
 reste l'unique spécification et porte les commandes, résultats et dispositions
@@ -498,10 +498,50 @@ voisin renommage, 43 sélecteurs (41 historiques + deux modules Python), exits 0
 sans skip. Chromium reste en `--test-concurrency=1`, modules SQL en série.
 Résultats intermédiaires, commandes, durées et nettoyage figurent dans la roadmap.
 
-**P2-M2-05 reste ouvert hors lot**, signalé sur inspection du parent et du delta :
+**À la livraison P2-M2-04, P2-M2-05 restait ouvert hors lot**, signalé seulement
+sur inspection du parent et du delta :
 une liste finale réellement vide peut conserver des exemples présents issus du
 snapshot initial (`after or before`), malgré `counts_after.active=0`. Aucune
 reproduction dynamique exécutée, aucune correction absorbée. Les erreurs de
 lecture de ce lot sont explicitement inconnues et ne passent pas par ce fallback.
 Migrations opérateur, livraison runtime/health et DAV live restent ouverts ;
 M3–M10/Z non commencés. Arrêt après commit/push vérifié, aucun déploiement.
+
+### Cohérence des exemples de réconciliation — P2-M2-05
+
+Le finding hérité est confirmé dynamiquement au parent `6b891eb3` par la vraie
+entrée de réconciliation et le vrai store : l'inventaire initial contient
+un exemple synthétique lié, puis une observation distante simulée vide les
+lignes de la relecture finale. `counts_after.active=0` et exemples du record final absents,
+mais l'ancien résumé conservait `present_reconciled`. Le contrôle où le dossier
+reste présent est vert. Cette restitution incohérente ne prouve aucune perte
+SQL/DAV ni panne opérateur. Le constat seulement statique à la livraison
+P2-M2-04 garde sa provenance historique ci-dessus.
+
+`_summary` utilise désormais exclusivement `_example_status(after)` quand
+`after is not None`. Une liste finale valide `[]` exprime l'absence des exemples ;
+un état final non vide différent reflète ses propres catégories et statuts.
+Une lecture finale échouée garde `examples:None`, compteurs finaux inconnus,
+verdicts et raison de P2-M2-04. Compteurs initiaux, records historiques, record
+final et calcul de `ok` ne changent pas. Aucun I/O, action de réconciliation,
+création, compensation ou reprise ajouté, aucun frontend modifié.
+
+Trois nouveaux cas Python verrouillent causal vide, contrôle présent et état
+final différent. Le vide initial historique est renforcé avec le vrai store ;
+les deux gardes existantes de lecture finale échouée sont réutilisées. Assertions
+résumé/record final et historique initial, deux SELECT et cinq observations
+DAV simulées sans mutation pour le scénario causal ; un SELECT et zéro DAV
+pour le vide initial. Pas de mock du résumé ni de nouvelle abstraction produit.
+
+Comparaison **716/716 = 377 Python + 206 Node + 104 Chromium + 29 PostgreSQL
+isolé**, zéro skip, 43 sélecteurs inchangés : 713 historiques conservés (dont
+12 cas préexistants du voisin renommage), trois cas Python ajoutés. Avant patch,
+contrôle vert et rouge causal ; après patch, six cas ciblés et 103 voisins verts.
+Commandes exactes, durées, résultats et nettoyage dans la
+[correction P2-M2-05](../../todo-todo/product/frida-v1-document-workshop-todo.md#correction-indépendante-p2-m2-05--5-octobre-2026).
+
+P2-M2-05 est fermé sur code/preuves ; aucun finding indépendant ajouté au lot.
+Les DB/DAV du ciblé sont synthétiques, PostgreSQL de comparaison est réel et
+isolé, Chromium à transport simulé. Runtime opérateur et DAV live ne sont pas
+prouvés. Migrations opérateur, livraison runtime/health et DAV live restent
+ouverts ; M3–M10/Z non commencés. Arrêt après livraison Git vérifiée, aucun déploiement.

@@ -1387,12 +1387,14 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
         self.assertIn("LOT9_LINKED_TARGET_MISSING", str(result))
 
     def test_nextcloud_reconcile_inventory_marks_expected_examples_absent(self) -> None:
-        with mock.patch.object(workspace_folders_store, "list_workspace_folders", return_value=[]):
-            result = workspace_folder_nextcloud_reconcile.reconcile_existing_workspace_folders(
-                db_conn_func=lambda: None,
-                logger=_CaptureLogger(),
-                client=_FakeNextcloudFolderClient(),
-            )
+        from tests.support.workspace_folder_listing_fixture import ListingDatabase
+        database = ListingDatabase()
+        client = _FakeNextcloudFolderClient()
+        result = workspace_folder_nextcloud_reconcile.reconcile_existing_workspace_folders(
+            db_conn_func=database.connect,
+            logger=_CaptureLogger(),
+            client=client,
+        )
 
         self.assertTrue(result["ok"])
         self.assertEqual(result["counts_before"]["active"], 0)
@@ -1404,6 +1406,14 @@ class WorkspaceFoldersContractTests(unittest.TestCase):
             },
         )
         self.assertIn("LOT9_INVENTORY_ACTIVE_FOLDERS", str(result))
+        self.assertEqual(result["counts_after"]["active"], 0)
+        self.assertEqual(result["examples"], result["records"][-1]["examples"])
+        self.assertEqual(database.connections, 1)
+        self.assertEqual(len(database.queries), 1)
+        self.assertTrue(database.queries[0].startswith("SELECT"))
+        self.assertEqual(database.commits, 0)
+        self.assertEqual(client.status_checked + client.path_status_checked, [])
+        self.assertEqual(client.created + client.created_paths + client.moved + client.deleted, [])
 
     def test_folder_nextcloud_persisted_link_redacts_unknown_reason_and_raw_refs(self) -> None:
         row = workspace_folders_store.serialize_workspace_folder_row(

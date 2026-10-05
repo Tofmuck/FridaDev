@@ -16,6 +16,74 @@ class WorkspaceFoldersListingFailureTests(unittest.TestCase):
     def setUp(self):
         self.logger = Mock()
 
+    def reconcile_after_remote_observation(self, final_rows):
+        from tests.unit.core.test_workspace_folders_contract import _FakeNextcloudFolderClient
+        initial = {**folder_row(link_workspace_folder_id=FOLDER_ID,
+                               link_nextcloud_sync_state="linked",
+                               link_nextcloud_folder_ref="workspace-folder:test",
+                               link_nextcloud_name_hash="abc123def456"),
+                   "display_name": "Philosophie"}
+        database = ListingDatabase([initial])
+        client = _FakeNextcloudFolderClient()
+        client.statuses["Philosophie"] = 207
+        for name in ["Documents", "Notes", "Exports", "Images"]:
+            client.path_statuses[("Philosophie", name)] = 207
+        status = client.folder_status
+        def status_then_change_inventory(name):
+            observed = status(name)
+            database.rows = [initial] if final_rows is None else final_rows
+            return observed
+        client.folder_status = status_then_change_inventory
+        result = reconcile.reconcile_existing_workspace_folders(
+            db_conn_func=database.connect, logger=self.logger, client=client)
+        self.assertEqual(database.connections, 2)
+        self.assertEqual(len(database.queries), 2)
+        self.assertTrue(all(query.startswith("SELECT") for query in database.queries))
+        self.assertEqual(database.commits, 0)
+        self.assertEqual(client.status_checked, ["Philosophie"])
+        self.assertEqual(client.path_status_checked, [("Philosophie", name)
+            for name in ["Documents", "Notes", "Exports", "Images"]])
+        self.assertEqual(client.created + client.created_paths + client.moved + client.deleted, [])
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["counts_before"]["active"], 1)
+        initial_record, final_record = result["records"][0], result["records"][-1]
+        self.assertEqual(initial_record["case_id"], "LOT9_INVENTORY_ACTIVE_FOLDERS")
+        self.assertEqual(initial_record["examples"]["philosophie"], "present_reconciled")
+        self.assertEqual(initial_record["counts_before"], result["counts_before"])
+        self.assertEqual(final_record["case_id"], "LOT9_FINAL_STATE")
+        self.assertEqual(final_record["verdict"], "met")
+        self.assertEqual(final_record["counts_after"], result["counts_after"])
+        return result, final_record
+
+    def test_p2_m2_05_final_empty_does_not_reuse_initial_examples(self):
+        result, final_record = self.reconcile_after_remote_observation([])
+        self.assertEqual(result["counts_after"]["active"], 0)
+        self.assertEqual(final_record["examples"], {
+            "philosophie": "expected_example_absent", "conflit_lycee": "expected_example_absent"})
+        self.assertEqual(result["examples"], final_record["examples"])
+
+    def test_p2_m2_05_present_final_inventory_control(self):
+        result, final_record = self.reconcile_after_remote_observation(None)
+        self.assertEqual(result["counts_after"]["active"], 1)
+        self.assertEqual(result["examples"], final_record["examples"])
+        self.assertEqual(result["examples"]["philosophie"], "present_reconciled")
+
+    def test_p2_m2_05_different_nonempty_final_inventory_is_authoritative(self):
+        for state, expected in [("linked", "present_reconciled"),
+                                ("local_only", "present_pending"),
+                                ("conflict", "present_no_go"), ("error", "present_no_go")]:
+            with self.subTest(state=state):
+                final = {**folder_row(link_workspace_folder_id=FOLDER_ID,
+                                     link_nextcloud_sync_state=state,
+                                     link_nextcloud_folder_ref="workspace-folder:test",
+                                     link_nextcloud_name_hash="abc123def456"),
+                         "display_name": "Conflit lycée"}
+                result, final_record = self.reconcile_after_remote_observation([final])
+                self.assertEqual(result["counts_after"]["active"], 1)
+                self.assertEqual(result["examples"], final_record["examples"])
+                self.assertEqual(result["examples"], {
+                    "philosophie": "expected_example_absent", "conflit_lycee": expected})
+
     def test_successful_empty_is_a_real_list(self):
         database = ListingDatabase()
         self.assertEqual(self.listing(database), [])

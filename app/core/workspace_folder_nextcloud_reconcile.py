@@ -530,7 +530,7 @@ def _summary(
         "records": records,
         "counts_before": _counts(before) if before is not None else None,
         "counts_after": _counts(after) if after is not None else None,
-        "examples": _example_status(after or before or []) if after is not None else None,
+        "examples": _example_status(after) if after is not None else None,
     }
 
 

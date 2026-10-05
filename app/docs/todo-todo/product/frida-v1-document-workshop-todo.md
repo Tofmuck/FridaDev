@@ -9,8 +9,9 @@ M2 : succès historique 536/536 et revue G-R1–G-R4 Approved conservés ;
 P2-M2-01 corrigé, comparaison historique 567/567 ; P2-M2-03 corrigé séparément
 sur sa frontière frontend (594/594 historiques) ; P2-M2-02 corrigé séparément
 sur Exports/Images/Notes,
-P2-M2-04 backend corrigé séparément, comparaison 713/713 ; P2-M2-05 signalé
-sur inspection et ouvert hors lot ; livraison runtime ouverte ;
+P2-M2-04 backend corrigé séparément, comparaison historique 713/713 ;
+P2-M2-05 corrigé séparément sur le résumé de réconciliation, comparaison
+716/716 ; livraison runtime ouverte ;
 M3–M10 et Z non commencés ; préparation inactive, aucun déploiement ou renderer livré**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
@@ -860,8 +861,8 @@ M2 conserve la contre-revue historique G-R1–G-R4 Approved et le succès 536/53
 Le correctif indépendant P2-M2-01 du 5 octobre passe historiquement 567/567.
 P2-M2-03 est corrigé dans un lot frontend distinct (594/594 historiques) ;
 P2-M2-02 est ensuite corrigé sur les trois familles ci-dessous, puis P2-M2-04
-sur le contrat backend de listing (713/713). P2-M2-05 reste ouvert, signalé
-sur inspection. Migration opérateur, rebuild et lecture DAV déployée
+sur le contrat backend de listing (713/713 historiques). P2-M2-05 est corrigé
+dans le lot de résumé ci-dessous (716/716). Migration opérateur, rebuild et lecture DAV déployée
 restent ouverts. M3–M10 et Z ne sont pas commencés. Spécification et
 décisions amont sont validées et l'exception produit est inscrite.
 Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
@@ -1350,7 +1351,8 @@ worktree propre, avance/retard 0/0 vérifiés avant création de M2.
 après le succès historique 536/536 et G-R1–G-R4 Approved ; P2-M2-03 corrigé
 séparément en frontend (594/594 historiques) ; P2-M2-02 corrigé séparément
 sur les trois familles (679/679 historiques) ; P2-M2-04 corrigé sur le backend
-(713/713), P2-M2-05 ouvert hors lot ; livraison runtime ouverte.**
+(713/713 historiques), P2-M2-05 corrigé séparément sur le résumé (716/716) ;
+livraison runtime ouverte.**
 **Objectif :** intégrer un dépôt direct dans l'inventaire commun.
 **Dépendances :** M0–M1, notamment gardes chemin et admission des sources.
 **Fichiers :** liens Nextcloud, workspace_files_store, readers, client DAV,
@@ -2547,7 +2549,8 @@ upload, thème et DOM. Revue indépendante statique par le skill
 `requesting-code-review` : aucun nouveau finding dans le delta final ; le reviewer
 n'a exécuté aucun runner ni modifié le checkout.
 
-**Finding indépendant P2-M2-05, ouvert hors lot.** Inspection du parent
+**Finding indépendant P2-M2-05, ouvert hors lot à la livraison P2-M2-04.**
+Sa reproduction et correction séparées figurent ensuite ci-dessous. Inspection du parent
 `0a5b4b55` et du delta : `_summary` de la réconciliation utilise déjà
 `_example_status(after or before)`. Si une lecture finale réussit réellement
 avec `[]` après un snapshot initial contenant un exemple, `counts_after.active`
@@ -2567,6 +2570,129 @@ HEAD/upstream/M2 distant égaux, divergence `0/0` et M1/M0/main inchangés.
 Aucun déploiement, migration opérateur, rebuild/restart, modèle ou DAV live.
 Livraison runtime/health et DAV live restent ouverts ; M3–M10/Z non commencés.
 Arrêt après vérification Git, sans enchaînement P2-M2-05 ou M3.
+
+#### Correction indépendante P2-M2-05 — 5 octobre 2026
+
+**Disposition : corrigé sur code et preuves ; livraison runtime ouverte.**
+Base revalidée dans l'IDE : `pwd` et toplevel `/opt/platform/fridadev`, branche
+`FridaV1-Document-Workshop-M2`, worktree propre, divergence `0/0`, HEAD/upstream/
+M2 distant `6b891eb39b39069116302f9fdfba047f445fbf16`, parent
+`0a5b4b553a20e0230991be34fd7b23354885395e`. M1/M0/main correspondent aux SHA
+consignés dans le lot précédent ; aucune modification de ces branches.
+Les historiques 536/567/594/679/713 et G-R1–G-R4 restent conservés. À la livraison
+P2-M2-04, ce finding était seulement statique et ouvert : cette provenance n'est
+pas remplacée par la preuve dynamique du présent lot.
+
+**Cause, rouge et contrôle.** L'expression
+`_example_status(after or before or [])` réutilisait l'inventaire initial lorsque
+la liste finale était connue mais vide. La reproduction passe par la vraie
+entrée `reconcile_existing_workspace_folders`, le vrai store et ses deux SELECT,
+avec `ListingDatabase` et le client DAV synthétique existant. L'état initial
+contient l'exemple synthétique « Philosophie » lié ; la racine et ses quatre
+sous-répertoires ont des réponses distantes simulées valides. Pendant
+`folder_status`, le harnais vide les lignes destinées à la relecture SQL finale.
+Avant patch : `counts_after.active=0`, record final `expected_example_absent`,
+mais résumé `present_reconciled` ; un rouge d'assertion sur l'accord des deux.
+Contrôle identique où les lignes restent présentes : vert. Aucun sommeil,
+remplacement du résumé ou mutation de données opérateur.
+
+« Existe-t-il un meilleur plan, plus simple, plus sûr et avec moins d'effets
+de bord ? » Le correctif retient une seule expression :
+`_example_status(after) if after is not None else None`. Le snapshot final connu,
+vide ou non vide, fait exclusivement autorité pour les exemples du résumé.
+Après échec de lecture, exemples et compteurs finaux restent `None`, avec verdicts
+et raison de P2-M2-04 inchangés. Compteurs initiaux, records historiques, record
+final, catégories d'exemples et calcul de `ok` sont conservés. Aucune lecture,
+mutation, compensation, reprise ou action de réconciliation ajoutée.
+
+**Fichiers et preuves ciblées.** Produit :
+`app/core/workspace_folder_nextcloud_reconcile.py`, une ligne. Trois nouveaux
+cas dans `app/tests/unit/core/test_workspace_folders_listing_failure.py` : vide
+final causal, contrôle présent et état final non vide différent (sous-cas linked,
+local_only, conflict, error). Ils affirment résumé = record final, historique
+initial conservé, exactement deux connexions/deux SELECT, aucune écriture SQL,
+une observation racine et quatre observations des sous-répertoires, zéro
+MKCOL/MOVE/DELETE. Le contrôle vide initial existant de
+`app/tests/unit/core/test_workspace_folders_contract.py` utilise désormais le
+vrai store, conserve ses anciennes assertions et vérifie une seule lecture,
+zéro DAV/mutation et cohérence du record final. Les deux erreurs finales connues
+P2-M2-04 sont réutilisées, sans nouvelle assertion permissive ni nouveau cache.
+Documentation : même roadmap, contrat M2 et affirmation courante du hub.
+
+**Runners et résultats.** Les fonctions `m2_python`, `m2_node`, `m2_sql` et les
+quatre invocations exactes des **43 sélecteurs** de la
+[comparaison P2-M2-04](#correction-indépendante-p2-m2-04--5-octobre-2026)
+sont exécutées sans changement de sélection. Seul le chemin du socket SQL est
+adapté au scratch possédé `/tmp/fridadev-p2-m2-05-dhgjv91v`. Images existantes
+vérifiées (`fridadev-audit-py:latest`, Playwright v1.54.0-jammy, postgres:16-alpine),
+sans pull/installation, réseau coupé, rootfs/checkout read-only, env vidée,
+bytecode Python désactivé, cache navigateur existant, dotenv/symlink absents.
+PostgreSQL dédié `fridadev-p2-m2-05-proof-pg`, socket/conteneur initialement absents,
+mount `/var/run/postgresql` dès initialisation, tmpfs et aucun TCP ; readiness
+`pg_isready` exit 0 en 1,380 s murales avant runner SQL. Les deux modules SQL
+s'exécutent en série sur ce seul schéma synthétique.
+
+| Passe | Résultat | Exit | Durée interne |
+| --- | --- | --- | --- |
+| Baseline Python ciblée au parent | 63/63 | 0 | 0,039 s |
+| Contrôle présent + causal vide avant patch | 1 vert, 1 rouge sur 2 | 1 | 0,598 s |
+| Ciblé après patch, mêmes cas et frontières | 6/6 | 0 | 0,004 s |
+| Cinq modules voisins | 103/103 | 0 | 0,471 s |
+| Comparaison Python | 377/377 | 0 | 25,770 s |
+| Comparaison Node | 206/206 | 0 | 0,575470003 s |
+| Comparaison Chromium, concurrence 1 | 104/104 | 0 | 91,944391365 s |
+| Comparaison PostgreSQL isolé, modules en série | 29/29 | 0 | 25,230 s |
+
+Comparaison finale : **377 + 206 + 104 + 29 = 716/716**, zéro skip. Les **713 cas
+historiques sont conservés**, avec leurs 12 cas préexistants du voisin renommage ;
+**trois cas Python seulement sont ajoutés**, aucun nouveau sélecteur. Le test vide
+initial est renforcé, pas remplacé par un faux résultat attendu. Aucun échec
+intermédiaire autre que le rouge causal avant patch ; aucune relance de suite
+verte, exclusion ou modification frontend/harness navigateur.
+
+Commandes ciblées exactes avec les mêmes wrappers :
+
+```sh
+m2_python tests.unit.core.test_workspace_folders_contract \
+  tests.unit.core.test_workspace_folders_listing_failure
+m2_python \
+  tests.unit.core.test_workspace_folders_listing_failure.WorkspaceFoldersListingFailureTests.test_p2_m2_05_present_final_inventory_control \
+  tests.unit.core.test_workspace_folders_listing_failure.WorkspaceFoldersListingFailureTests.test_p2_m2_05_final_empty_does_not_reuse_initial_examples
+m2_python \
+  tests.unit.core.test_workspace_folders_listing_failure.WorkspaceFoldersListingFailureTests.test_p2_m2_05_present_final_inventory_control \
+  tests.unit.core.test_workspace_folders_listing_failure.WorkspaceFoldersListingFailureTests.test_p2_m2_05_final_empty_does_not_reuse_initial_examples \
+  tests.unit.core.test_workspace_folders_listing_failure.WorkspaceFoldersListingFailureTests.test_p2_m2_05_different_nonempty_final_inventory_is_authoritative \
+  tests.unit.core.test_workspace_folders_contract.WorkspaceFoldersContractTests.test_nextcloud_reconcile_inventory_marks_expected_examples_absent \
+  tests.unit.core.test_workspace_folders_listing_failure.WorkspaceFoldersListingFailureTests.test_final_reconciliation_failure_keeps_completed_actions_and_unknown_final_counts \
+  tests.unit.core.test_workspace_folders_listing_failure.WorkspaceFoldersListingFailureTests.test_final_reconciliation_listing_failure_after_client_failure_is_also_unknown
+m2_python tests.unit.core.test_workspace_folders_contract \
+  tests.unit.core.test_workspace_folders_listing_failure \
+  tests.test_server_workspace_folders_contract \
+  tests.unit.core.test_workspace_folder_rename_commit_projection \
+  tests.unit.core.test_workspace_nextcloud_compensation_etag
+```
+
+**Contre-audit et limites.** Tous les appels de `_summary` sont inspectés : vide
+initial, état final connu des deux branches de relecture et `_listing_failure`
+avec `None`. Aucun repli vers les données anciennes, historique réécrit,
+régression des erreurs P2-M2-04, I/O/action ajouté, duplication de chemin produit
+ou extension du lot. Revue statique indépendante via `requesting-code-review` :
+aucun nouveau finding dans le delta ; reviewer sans exécution de runner ni édition.
+La réconciliation réelle est exercée avec DB/DAV synthétiques ; la comparaison
+SQL utilise PostgreSQL réel isolé et les tests DAV loopback existants. Les cas
+Chromium restent à transport simulé ; aucune preuve runtime opérateur,
+DAV live, perte SQL/DAV ou parcours HTTP navigateur→Flask n'est déduite.
+
+**Nettoyage et livraison.** Seul PostgreSQL possédé arrêté/supprimé après SQL
+(exits 0, 0,174 s murales), socket vide retiré et absence vérifiée, données tmpfs
+détruites ; autres runners `--rm`. Scratch possédé retiré après consignation des
+preuves (18 fichiers), absence vérifiée, aucun artefact d'autrui supprimé.
+Diff/périmètre vérifiés, 60 liens locaux valides, `git diff --check` exit 0 avant
+commit. Le retour final porte commit/parent, push et alignement propre `0/0`,
+HEAD/upstream/M2 distant égaux, M1/M0/main inchangés. Aucun merge, nouveau lot,
+migration opérateur, rebuild/restart, installation, modèle/DAV live ou déploiement.
+Migrations opérateur, livraison runtime/health et DAV live restent ouverts.
+M3–M10/Z non commencés ; arrêt après vérification Git.
 
 ### M3 — Réservation durable et concurrence
 
@@ -3221,8 +3347,8 @@ Approved ; les 528 premiers restent historiques. Le 5 octobre, P2-M2-01 est
 corrigé et la comparaison historique passe 567/567. P2-M2-03 est ensuite
 corrigé séparément en frontend (594/594 historiques) ; P2-M2-02 est ensuite
 corrigé séparément sur Exports/Images/Notes,
-P2-M2-04 backend est corrigé séparément (713/713). P2-M2-05 est signalé sur
-inspection, ouvert et hors lot. Le retour final porte la livraison Git et ses
+P2-M2-04 backend est corrigé séparément (713/713 historiques). P2-M2-05 est
+ensuite corrigé sur le résumé de réconciliation (716/716). Le retour final porte la livraison Git et ses
 alignements. M3 et suivants restent
 non commencés.
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
