@@ -771,8 +771,9 @@
     fetchFn: fetch, getThread: () => getThreadById(getCurrentId()),
     getFolders: threadsLifecycle.getWorkspaceFolders, getFiles: threadsLifecycle.getWorkspaceFiles,
     refreshFiles: async (folderId, isCurrent) => {
-      await threadsLifecycle.refreshWorkspaceFiles(folderId, isCurrent);
-      if (isCurrent()) renderThreads();
+      const files = await threadsLifecycle.refreshWorkspaceFiles(folderId, isCurrent);
+      if (isCurrent() && files !== null) renderThreads();
+      return files;
     },
     createConversation: activateIf => newThread({ activateIf }),
     bindFolder: async (conversationId, folderId, isCurrent) => {

@@ -77,8 +77,9 @@ function createChatThreadsSidebar({
   let editingThreadId = null;
   let threadsState = [];
   let foldersState = [];
-  let workspaceFilesState = new Map();
-  let workspaceFilesStatusState = new Map();
+  const workspaceFilesState = new Map();
+  const workspaceFilesStatusState = new Map();
+  const workspaceFilesRequests = new Map();
   let workspaceExportsState = new Map();
   let workspaceExportsStatusState = new Map();
   let workspaceGeneratedImagesState = new Map();
@@ -88,6 +89,7 @@ function createChatThreadsSidebar({
   let workspaceFileSelectionsState = new Map();
   let currentThreadId = null;
   let threadLoadEpoch = 0;
+  let threadsRefreshEpoch = 0;
   const messageCache = new Map();
 
   const threadStatus = document.createElement("div");
@@ -126,6 +128,11 @@ function createChatThreadsSidebar({
   const getWorkspaceFolders = () => foldersState;
   const saveWorkspaceFolders = (arr) => {
     foldersState = Array.isArray(arr) ? arr : [];
+    const ids = new Set(foldersState.map(folder => folder.id));
+    // Removal also invalidates in-flight reads, even if the same ID returns later.
+    for (const state of [workspaceFilesState, workspaceFilesStatusState, workspaceFilesRequests]) {
+      for (const id of state.keys()) if (!ids.has(id)) state.delete(id);
+    }
   };
   const getWorkspaceFiles = (folderId) => workspaceFilesState.get(String(folderId || "")) || [];
   const getWorkspaceFilesStatus = (folderId) =>
@@ -142,12 +149,6 @@ function createChatThreadsSidebar({
     workspaceNotesStatusState.get(String(folderId || "")) || { status: "unknown", reason_code: "workspace_notes_not_loaded" };
   const getWorkspaceFileSelections = (conversationId) =>
     workspaceFileSelectionsState.get(String(conversationId || "")) || [];
-  const saveWorkspaceFilesEntries = (entries) => {
-    workspaceFilesState = new Map(Array.isArray(entries) ? entries : []);
-  };
-  const saveWorkspaceFilesStatusEntries = (entries) => {
-    workspaceFilesStatusState = new Map(Array.isArray(entries) ? entries : []);
-  };
   const saveWorkspaceExportsEntries = (entries) => {
     workspaceExportsState = new Map(Array.isArray(entries) ? entries : []);
   };
@@ -608,6 +609,8 @@ function createChatThreadsSidebar({
   };
 
   const refreshThreadsFromServer = async ({ keepSelection = true } = {}) => {
+    const epoch = ++threadsRefreshEpoch;
+    const isCurrent = () => epoch === threadsRefreshEpoch;
     const previousCurrent = keepSelection ? getCurrentId() : null;
     try {
       const [items, folders] = await Promise.all([
@@ -617,6 +620,7 @@ function createChatThreadsSidebar({
           return [];
         }),
       ]);
+      if (!isCurrent()) return false;
       const mapped = [];
       for (const item of items) {
         const normalized = normalizeThread(item);
@@ -624,27 +628,19 @@ function createChatThreadsSidebar({
       }
       saveThreads(mapped);
       saveWorkspaceFolders(folders);
-      const fileEntries = [];
-      const fileStatusEntries = [];
-      for (const folder of folders) {
+      // Reserve the entire inventory batch before I/O. A newer individual read
+      // of A or B must retain authority while this global refresh waits elsewhere.
+      const fileRequests = folders.map(folder => [folder.id, beginWorkspaceFilesRequest(folder.id)]);
+      for (const [folderId, request] of fileRequests) {
+        if (!isCurrent()) return false;
         try {
-          fileEntries.push([folder.id, await listWorkspaceFilesFromServer(folder.id)]);
-          fileStatusEntries.push([folder.id, {
-            status: "ok",
-            reason_code: "workspace_files_list_ok",
-          }]);
+          await readWorkspaceFiles(folderId, request, isCurrent);
         } catch (err) {
           const reason = listErrorReason(err, "workspace_files_lookup_failed");
           logger.warn("Impossible de charger les fichiers du répertoire", { reason_code: reason });
-          fileEntries.push([folder.id, []]);
-          fileStatusEntries.push([folder.id, {
-            status: "error",
-            reason_code: reason,
-          }]);
         }
       }
-      saveWorkspaceFilesEntries(fileEntries);
-      saveWorkspaceFilesStatusEntries(fileStatusEntries);
+      if (!isCurrent()) return false;
       const exportEntries = [];
       const exportStatusEntries = [];
       for (const folder of folders) {
@@ -672,6 +668,7 @@ function createChatThreadsSidebar({
           }]);
         }
       }
+      if (!isCurrent()) return false;
       saveWorkspaceExportsEntries(exportEntries);
       saveWorkspaceExportsStatusEntries(exportStatusEntries);
       const generatedImageEntries = [];
@@ -701,6 +698,7 @@ function createChatThreadsSidebar({
           }]);
         }
       }
+      if (!isCurrent()) return false;
       saveWorkspaceGeneratedImagesEntries(generatedImageEntries);
       saveWorkspaceGeneratedImagesStatusEntries(generatedImageStatusEntries);
       const noteEntries = [];
@@ -730,6 +728,7 @@ function createChatThreadsSidebar({
           }]);
         }
       }
+      if (!isCurrent()) return false;
       saveWorkspaceNotesEntries(noteEntries);
       saveWorkspaceNotesStatusEntries(noteStatusEntries);
       if (previousCurrent && mapped.some((x) => x.id === previousCurrent)) {
@@ -740,9 +739,11 @@ function createChatThreadsSidebar({
       if (getCurrentId()) {
         await refreshWorkspaceFileSelections(getCurrentId());
       }
+      if (!isCurrent()) return false;
       setThreadStatus("");
       return true;
     } catch (err) {
+      if (!isCurrent()) return false;
       logger.warn("Impossible de charger les conversations", err);
       setThreadStatus("Mode hors ligne.", true);
       return false;
@@ -782,12 +783,17 @@ function createChatThreadsSidebar({
     bindConversationDropTarget,
   } = conversationFolderBinding;
 
-  const refreshWorkspaceFiles = async (folderId, isCurrent = () => true) => {
-    const normalized = WorkspaceFolders?.normalizeWorkspaceFolderId(folderId);
-    if (!normalized) return [];
+  const beginWorkspaceFilesRequest = (folderId) => {
+    const request = {};
+    workspaceFilesRequests.set(folderId, request);
+    return request;
+  };
+  const readWorkspaceFiles = async (normalized, request, isCurrent) => {
+    const mayPublish = () => isCurrent() && workspaceFilesRequests.get(normalized) === request;
+    if (!mayPublish()) return null;
     try {
       const files = await listWorkspaceFilesFromServer(normalized);
-      if (!isCurrent()) return [];
+      if (!mayPublish()) return null;
       workspaceFilesState.set(normalized, files);
       workspaceFilesStatusState.set(normalized, {
         status: "ok",
@@ -795,7 +801,7 @@ function createChatThreadsSidebar({
       });
       return files;
     } catch (err) {
-      if (!isCurrent()) return [];
+      if (!mayPublish()) return null;
       workspaceFilesState.set(normalized, []);
       workspaceFilesStatusState.set(normalized, {
         status: "error",
@@ -803,6 +809,13 @@ function createChatThreadsSidebar({
       });
       throw err;
     }
+  };
+  // Array (including []) = effective publication; null = ignored; current
+  // errors publish the error status and reject. No repair or retry is implicit.
+  const refreshWorkspaceFiles = async (folderId, isCurrent = () => true) => {
+    const normalized = WorkspaceFolders?.normalizeWorkspaceFolderId(folderId);
+    if (!normalized || !isCurrent() || !getWorkspaceFolders().some(folder => folder.id === normalized)) return null;
+    return readWorkspaceFiles(normalized, beginWorkspaceFilesRequest(normalized), isCurrent);
   };
 
   const refreshWorkspaceExports = async (folderId) => {

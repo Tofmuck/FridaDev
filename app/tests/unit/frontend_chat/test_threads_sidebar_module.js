@@ -860,3 +860,210 @@ test("threads sidebar treats malformed exports and images payloads as load error
     "folder_generated_image_lookup_failed",
   );
 });
+
+// Publication ordering uses controlled responses, never wall-clock sleeps.
+function inventoryFileResponse(id, folderId = 'folder-a') {
+  return response(200, { ok: true, items: id ? [{
+    id, workspace_folder_id: folderId, display_name: `${id}.md`,
+    source_extension: '.md', status: 'active', content_kind: 'document', media_kind: 'text',
+  }] : [] });
+}
+function inventoryErrorResponse() {
+  return response(503, { ok: false, reason_code: 'workspace_files_lookup_failed' });
+}
+function inventoryHarness(onFiles, onFolders) {
+  const folders = ['folder-a', 'folder-b'].map(id => ({ id, display_name: id, nextcloud_sync_state: 'linked' }));
+  const calls = [];
+  const { sidebar } = buildSidebarWithFetch(async url => {
+    const path = String(url);
+    if (path.startsWith('/api/conversations?')) return conversationPage([], 0);
+    if (path === '/api/workspace-folders') return onFolders ? onFolders() : response(200, { ok: true, items: folders });
+    if (path.endsWith('/files')) {
+      const folderId = path.split('/')[3];
+      calls.push(folderId);
+      return onFiles(folderId);
+    }
+    return response(200, { ok: true, items: [] });
+  });
+  sidebar.saveWorkspaceFolders(folders);
+  return { sidebar, folders, calls };
+}
+function assertInventory(sidebar, id, status = 'ok') {
+  assert.deepEqual(sidebar.getWorkspaceFiles('folder-a').map(file => file.id), id ? [id] : []);
+  assert.deepEqual(sidebar.getWorkspaceFilesStatus('folder-a'), {
+    status, reason_code: status === 'ok' ? 'workspace_files_list_ok' : 'workspace_files_lookup_failed',
+  });
+}
+
+for (const mode of ['individual', 'global']) for (const error of [false, true]) {
+  test(`P2-M2-01 older ${mode} ${error ? 'error' : 'success'} cannot replace a newer publication`, async () => {
+    const held = deferred(), started = deferred();
+    let first = true;
+    const { sidebar } = inventoryHarness(folderId => {
+      if (folderId !== 'folder-a') return inventoryFileResponse(null, folderId);
+      if (first) { first = false; started.resolve(); return held.promise; }
+      return inventoryFileResponse('adopted-file');
+    });
+    const oldPayload = error ? inventoryErrorResponse() : inventoryFileResponse('old-file');
+    const oldRead = mode === 'individual' ? sidebar.refreshWorkspaceFiles('folder-a') : sidebar.refreshThreadsFromServer();
+    await started.promise;
+    await sidebar.refreshWorkspaceFiles('folder-a');
+    held.resolve(oldPayload);
+    const result = await oldRead;
+    assertInventory(sidebar, 'adopted-file');
+    if (mode === 'individual') assert.equal(result, null, 'Ignored inventory reads must not acknowledge publication');
+  });
+}
+
+for (const oldError of [false, true]) {
+  test(`P2-M2-01 global result A collected before B waits cannot replace newer A (${oldError ? 'error' : 'success'})`, async () => {
+    const heldB = deferred(), startedB = deferred();
+    let firstA = true;
+    const { sidebar } = inventoryHarness(folderId => {
+      if (folderId === 'folder-b') { startedB.resolve(); return heldB.promise; }
+      if (firstA) { firstA = false; return oldError ? inventoryErrorResponse() : inventoryFileResponse('old-file'); }
+      return inventoryFileResponse('adopted-file');
+    });
+    const globalRead = sidebar.refreshThreadsFromServer();
+    await startedB.promise; // A's result is already consumed, before publication of the original global batch.
+    await sidebar.refreshWorkspaceFiles('folder-a');
+    heldB.resolve(inventoryFileResponse(null, 'folder-b'));
+    await globalRead;
+    assertInventory(sidebar, 'adopted-file');
+  });
+}
+
+for (const newMode of ['individual', 'global']) for (const newError of [false, true]) {
+  test(`P2-M2-01 newer ${newMode} ${newError ? 'error' : 'success'} remains authoritative over older individual success`, async () => {
+    const held = deferred();
+    let first = true;
+    const { sidebar } = inventoryHarness(folderId => {
+      if (folderId !== 'folder-a') return inventoryFileResponse(null, folderId);
+      if (first) { first = false; return held.promise; }
+      return newError ? inventoryErrorResponse() : inventoryFileResponse('current-file');
+    });
+    const oldRead = sidebar.refreshWorkspaceFiles('folder-a');
+    if (newMode === 'global') await sidebar.refreshThreadsFromServer();
+    else if (newError) await assert.rejects(sidebar.refreshWorkspaceFiles('folder-a'));
+    else await sidebar.refreshWorkspaceFiles('folder-a');
+    held.resolve(inventoryFileResponse('old-file'));
+    await oldRead;
+    assertInventory(sidebar, newError ? null : 'current-file', newError ? 'error' : 'ok');
+  });
+}
+
+for (const mode of ['individual', 'global']) {
+  test(`P2-M2-01 current ${mode} error and empty inventory keep their real status`, async () => {
+    let next = inventoryFileResponse('current-file');
+    const { sidebar } = inventoryHarness(folderId => folderId === 'folder-a' ? next : inventoryFileResponse(null, folderId));
+    const refresh = () => mode === 'individual' ? sidebar.refreshWorkspaceFiles('folder-a') : sidebar.refreshThreadsFromServer();
+    await refresh();
+    assertInventory(sidebar, 'current-file');
+    next = inventoryErrorResponse();
+    if (mode === 'individual') await assert.rejects(refresh(), err => err.payload?.reason_code === 'workspace_files_lookup_failed');
+    else assert.equal(await refresh(), true);
+    assertInventory(sidebar, null, 'error');
+    next = inventoryFileResponse(null);
+    const result = await refresh();
+    if (mode === 'individual') assert.deepEqual(result, [], 'A published empty inventory is successful');
+    assertInventory(sidebar, null);
+  });
+}
+
+for (const error of [false, true]) {
+  test(`P2-M2-01 context invalidation ignores late ${error ? 'error' : 'success'} without changing files or status`, async () => {
+    const held = deferred();
+    let slow = false, current = true;
+    const { sidebar } = inventoryHarness(() => slow ? held.promise : inventoryFileResponse('current-file'));
+    await sidebar.refreshWorkspaceFiles('folder-a');
+    slow = true;
+    const read = sidebar.refreshWorkspaceFiles('folder-a', () => current);
+    current = false;
+    held.resolve(error ? inventoryErrorResponse() : inventoryFileResponse('old-file'));
+    assert.equal(await read, null);
+    assertInventory(sidebar, 'current-file');
+  });
+}
+
+test('P2-M2-01 a B error does not invalidate A and an already invalid caller cannot supersede it', async () => {
+  const heldA = deferred();
+  const { sidebar, calls } = inventoryHarness(folderId => folderId === 'folder-a' ? heldA.promise : inventoryErrorResponse());
+  const readA = sidebar.refreshWorkspaceFiles('folder-a');
+  const invalidRead = sidebar.refreshWorkspaceFiles('folder-a', () => false);
+  await assert.rejects(sidebar.refreshWorkspaceFiles('folder-b'));
+  heldA.resolve(inventoryFileResponse('current-file'));
+  assert.equal(await invalidRead, null);
+  assert.equal((await readA)[0].id, 'current-file');
+  assertInventory(sidebar, 'current-file');
+  assert.equal(sidebar.getWorkspaceFilesStatus('folder-b').status, 'error');
+  assert.deepEqual(calls, ['folder-a', 'folder-b']);
+});
+
+for (const mode of ['individual', 'global']) {
+  test(`P2-M2-01 deleting A while ${mode} waits cannot resurrect its files or status`, async () => {
+    const held = deferred(), started = deferred();
+    const { sidebar, folders } = inventoryHarness(folderId => {
+      if (folderId !== 'folder-a') return inventoryFileResponse(null, folderId);
+      started.resolve(); return held.promise;
+    });
+    const read = mode === 'individual' ? sidebar.refreshWorkspaceFiles('folder-a') : sidebar.refreshThreadsFromServer();
+    await started.promise;
+    sidebar.saveWorkspaceFolders(folders.filter(folder => folder.id !== 'folder-a'));
+    held.resolve(inventoryFileResponse('old-file'));
+    await read;
+    assert.deepEqual(sidebar.getWorkspaceFiles('folder-a'), []);
+    assert.equal(sidebar.getWorkspaceFilesStatus('folder-a').status, 'unknown');
+    const before = sidebar.getWorkspaceFolders();
+    assert.equal(await sidebar.refreshWorkspaceFiles('folder-a'), null);
+    assert.deepEqual(sidebar.getWorkspaceFolders(), before);
+  });
+}
+
+test('P2-M2-01 a newer global folder deletion wins over an older folder listing', async () => {
+  const oldFolders = deferred(), started = deferred();
+  let first = true;
+  const { sidebar, folders, calls } = inventoryHarness(() => inventoryFileResponse('old-file'), () => {
+    if (first) { first = false; started.resolve(); return oldFolders.promise; }
+    return response(200, { ok: true, items: [] });
+  });
+  const oldRead = sidebar.refreshThreadsFromServer();
+  await started.promise;
+  assert.equal(await sidebar.refreshThreadsFromServer(), true);
+  oldFolders.resolve(response(200, { ok: true, items: folders }));
+  assert.equal(await oldRead, false);
+  assert.deepEqual(sidebar.getWorkspaceFolders(), []);
+  assert.deepEqual(sidebar.getWorkspaceFiles('folder-a'), []);
+  assert.equal(sidebar.getWorkspaceFilesStatus('folder-a').status, 'unknown');
+  assert.deepEqual(calls, [], 'Obsolete folder membership must not start an inventory read');
+});
+
+test('P2-M2-01 a deleted and reintroduced A cannot accept a previous lifetime response', async () => {
+  const held = deferred();
+  const { sidebar, folders } = inventoryHarness(() => held.promise);
+  const oldRead = sidebar.refreshWorkspaceFiles('folder-a');
+  sidebar.saveWorkspaceFolders([]);
+  sidebar.saveWorkspaceFolders(folders);
+  held.resolve(inventoryFileResponse('old-file'));
+  assert.equal(await oldRead, null);
+  assert.deepEqual(sidebar.getWorkspaceFiles('folder-a'), []);
+  assert.equal(sidebar.getWorkspaceFilesStatus('folder-a').status, 'unknown');
+});
+
+for (const error of [false, true]) {
+  test(`P2-M2-01 global batch waiting on A ${error ? 'error' : 'success'} must not start an obsolete B read`, async () => {
+    const heldA = deferred(), startedA = deferred();
+    const { sidebar, calls } = inventoryHarness(folderId => {
+      if (folderId === 'folder-a') { startedA.resolve(); return heldA.promise; }
+      return inventoryFileResponse('new-b', folderId);
+    });
+    const globalRead = sidebar.refreshThreadsFromServer();
+    await startedA.promise;
+    await sidebar.refreshWorkspaceFiles('folder-b');
+    heldA.resolve(error ? inventoryErrorResponse() : inventoryFileResponse('new-a'));
+    await globalRead;
+    assertInventory(sidebar, error ? null : 'new-a', error ? 'error' : 'ok');
+    assert.deepEqual(sidebar.getWorkspaceFiles('folder-b').map(file => file.id), ['new-b']);
+    assert.equal(sidebar.getWorkspaceFilesStatus('folder-b').status, 'ok');
+    assert.deepEqual(calls, ['folder-a', 'folder-b'], 'The superseded global B request must not perform I/O');
+  });
+}

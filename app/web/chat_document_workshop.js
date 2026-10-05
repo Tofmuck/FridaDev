@@ -274,8 +274,9 @@ function createDocumentWorkshopController({
       // A user-requested refresh can reconcile an uncertain publication or a
       // failed inventory read; it never replays the adoption POST.
       if (inventoriesToRefresh.has(expected.workspace_folder_id)) {
-        await refreshFiles(expected.workspace_folder_id, () => remoteCurrent(token, expected, contextId, navigation));
+        const files = await refreshFiles(expected.workspace_folder_id, () => remoteCurrent(token, expected, contextId, navigation));
         if (!remoteCurrent(token, expected, contextId, navigation)) return;
+        if (files === null) throw new Error('workspace_inventory_not_published');
         inventoriesToRefresh.delete(expected.workspace_folder_id);
         populateTargets(expected.workspace_folder_id, context.target_file_id || '');
         if (context.target_file_id) {
@@ -319,8 +320,9 @@ function createDocumentWorkshopController({
         return;
       }
       published = true;
-      await refreshFiles(expected.workspace_folder_id, isCurrent);
+      const files = await refreshFiles(expected.workspace_folder_id, isCurrent);
       if (!isCurrent()) return;
+      if (files === null) throw new Error('workspace_inventory_not_published');
       inventoriesToRefresh.delete(expected.workspace_folder_id);
       populateTargets(expected.workspace_folder_id, targetId || '');
       remoteStatusEl.textContent = 'Adoption enregistrée. Inventaire actualisé ; aucune source ni cible sélectionnée automatiquement.';

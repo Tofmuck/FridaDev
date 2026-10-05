@@ -1,7 +1,9 @@
 # Atelier documentaire Frida V1 — contrat M2
 
-Date : 2026-10-04. Statut : code et 536 preuves fermés, contre-revue finale du delta
-Approved ; livraison runtime ouverte. Le retour final porte la livraison Git dédiée.
+Date : 2026-10-05. Statut : P2-M2-01 corrigé sur code/preuves, comparaison
+567/567 ; succès historique 536/536 et revue G-R1–G-R4 Approved conservés.
+Deux findings frontend hérités P2-M2-02/P2-M2-03 restent ouverts hors de ce
+correctif ; livraison runtime ouverte. Le retour final porte la livraison Git dédiée.
 La [roadmap](../../todo-todo/product/frida-v1-document-workshop-todo.md#m2--adoption-et-lecture-distante-ciblées)
 reste l'unique spécification et porte les commandes, résultats et dispositions
 des contre-audits. M2 part de M1 corrigé `c6f648ba`. Migration opérateur,
@@ -207,12 +209,58 @@ Fichier à deux choix. Navigation/adoption uniquement après clic explicite ;
 inventaire commun rafraîchi par son propriétaire existant, sans nouveau cache.
 Ni checkbox source ni cible ne sont choisies automatiquement. Une cible déjà
 choisie est conservée seulement après relecture du contexte serveur. Génération,
-scope et opération gardent aussi la publication tardive dans le cache partagé.
+scope et opération gardent les publications du contrôleur M2. Ces gardes seuls
+ne coordonnaient pas les lecteurs historiques : P2-M2-01, reproduit après le
+succès historique 536/536, corrige cet ordre de publication chez le propriétaire.
 Une adoption en vol reste unique après sortie ; aucun POST rejoué. Les seuls
 IDs de répertoires à réconcilier survivent aux sorties/changements de contexte
-pendant la vie du contrôleur ; une lecture explicite courante réussie les efface.
+pendant la vie du contrôleur ; seule une lecture explicite courante effectivement
+publiée les efface. Une lecture ignorée n’acquitte pas la réconciliation, même
+si un lecteur concurrent plus récent a réussi.
 Erreur/incertitude → motif fixe utile ; aucune adoption rejouée automatiquement.
 Les nouvelles tentatives et réconciliations restent des actions explicites.
+
+### Cohérence des publications Files — P2-M2-01
+
+`chat_threads_sidebar.js` conserve l’unique inventaire Files partagé. Un token
+opaque de requête par répertoire lie le résultat à son autorité de publication ;
+`readWorkspaceFiles` vérifie à la fois ce token et le garde `isCurrent` avant
+lecture/publication. Fichiers et statut sont écrits sans attente entre les deux,
+pour le succès comme pour l’erreur. Un appel déjà sans autorité ne supersède pas
+une lecture valide. Une lecture de B n’invalide pas celle de A.
+
+Le global réserve les tokens de tous les répertoires avant ses lectures
+séquentielles ; chaque résultat passe par la même fonction de publication. Les
+setters qui reconstruisaient les Maps Files/Status après collecte sont retirés.
+A déjà lu ne peut plus écraser un A plus récent lorsque B termine, ni être omis
+d’une Map reconstruite. B supersédé avant son tour n’effectue aucun I/O.
+Un epoch du refresh global refuse ses anciennes listes de répertoires et ses
+étapes tardives. La sauvegarde des répertoires retire fichiers/statut/token des
+IDs absents ; une réponse de l’ancienne existence ne ressuscite pas un ID supprimé,
+même réintroduit ensuite. Le traitement historique des erreurs de listing des
+répertoires reste le finding indépendant P2-M2-03 ci-dessous.
+
+Contrat de retour de `refreshWorkspaceFiles` :
+
+| Résultat | Effet et consommateur |
+| --- | --- |
+| Tableau, y compris `[]` | Publication effective `ok` ; un inventaire courant vide est accepté. |
+| `null` | Répertoire absent/invalide, autorité perdue ou lecture supersédée ; aucun effet sur fichiers/statut. Une erreur périmée est également ignorée. |
+| Rejet | Erreur courante : inventaire `[]`, statut `error` et raison prévue publiés, puis erreur transmise. Le global conserve son affichage d’erreur Files et continue ses autres lectures. |
+
+Le raccord `refreshFiles` d’`app.js` transmet ce retour. Les lecteurs d’adoption
+et de réconciliation M2 vérifient `null` après leur garde de contexte et avant de
+supprimer le marqueur. Ils conservent alors l’invitation à actualiser et ne
+présentent pas cette réponse ignorée comme « Inventaire actualisé » ou comme
+collection réconciliée. La prochaine lecture explicite réussie résout le marqueur ;
+aucun polling, retry, replay POST, verrou global, cache documentaire concurrent
+ou nouvelle dépendance. Les lecteurs historiques upload/suppression/OCR rendent
+le même cache partagé ; leurs annonces portent sur leur mutation confirmée,
+sans promettre une réconciliation M2.
+
+Cette coordination est locale au contrôleur frontend, sans garantie entre
+onglets ni preuve de fraîcheur DAV ou serveur universelle. Elle porte sur les
+Maps Files/Status, pas sur les familles Exports/Images/Notes.
 
 ## Portée des preuves
 
@@ -231,5 +279,24 @@ La première comparaison 528/528 reste historique : elle précédait les quatre
 findings G-R1–G-R4 et ne les fermait pas. Après leur vague de correction, la
 comparaison utile finale passe 536/536 sans skip, contre 435 en baseline ;
 diagnostics hérités conservés. La contre-revue finale limitée au delta est
-Approved, sans finding Critical/Important/Minor ouvert ; commandes, dispositions
-et limites figurent dans la roadmap.
+Approved, sans finding Critical/Important/Minor ouvert dans cette revue historique.
+Le finding indépendant P2-M2-01 du 5 octobre a ensuite été reproduit : quatre
+probes Chromium, deux contrôles verts et deux rouges, sans skip, un seul POST
+d’adoption par cas. Capture de la réponse avant adoption, fichier absent et zéro
+cible après publication ancienne ; aucune perte SQL revendiquée. Le correctif
+passe 21 cas Node et dix cas navigateur nouveaux, puis la comparaison complète
+**567/567 = 344 Python + 101 Node + 95 Chromium + 27 PostgreSQL isolé**, chaque
+exit 0, zéro skip. La première comparaison Chromium 94/95 (garde chat dépendant
+d’une temporisation de fixture) reste documentée ; reprise des mêmes modules en
+série, sans changer fixture ni assertion. Les commandes exactes, durées, codes
+de sortie, contre-audit et nettoyage figurent dans la
+[correction P2-M2-01](../../todo-todo/product/frida-v1-document-workshop-todo.md#correction-indépendante-p2-m2-01--5-octobre-2026).
+
+Deux findings frontend hérités restent ouverts **hors de ce correctif** :
+P2-M2-02, publications Exports/Images/Notes encore non coordonnées (probe causal
+Exports, autres familles inspectées statiquement) ; P2-M2-03, erreur courante du
+listing des répertoires convertie en liste vide puis succès. Deux probes isolés
+reproduisent ces défauts sur les blobs initiaux `24233ce8` comme après correction,
+deux rouges à chaque passe, exits 1, sans skip. Ces preuves supplémentaires sont
+séparées des 567 cas de comparaison et ne justifient aucune extension du patch.
+Aucun finding vivant n’est retiré par l’annonce de fermeture de P2-M2-01.

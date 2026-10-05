@@ -1,12 +1,13 @@
 # Atelier documentaire agentique Frida V1 — spécification validée et roadmap
 
-Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-04.
+Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-05.
 
 Statut : **spécification et choix architecturaux validés par Tof ; M0 fermé sur
 composants et preuves internes, contre-audit corrigé sur `FridaV1-Document-Workshop-M0` ;
 M1 fermé sur menu, contexte `editing` et gardes, branche `FridaV1-Document-Workshop-M1` ;
-M2 fermé sur code et 536 preuves hermétiques, contre-revue finale du delta Approved ;
-livraison runtime ouverte ;
+M2 : succès historique 536/536 et revue G-R1–G-R4 Approved conservés ;
+P2-M2-01 corrigé, comparaison 567/567 ; deux findings frontend hérités distincts
+P2-M2-02/P2-M2-03 ouverts hors correctif ; livraison runtime ouverte ;
 M3–M10 et Z non commencés ; préparation inactive, aucun déploiement ou renderer livré**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
@@ -852,8 +853,9 @@ fixe les représentations, codes et frontières consommables par les prochains l
 
 M0 est fermé sur composants et preuves internes, contre-audit corrigé sur sa branche dédiée.
 M1 est fermé sur menu/contexte `editing` et gardes inactifs, sur sa branche issue de M0.
-M2 dispose du code corrigé et des preuves hermétiques ; la contre-revue finale
-du delta reste en attente. Migration opérateur, rebuild et lecture DAV déployée
+M2 conserve la contre-revue historique G-R1–G-R4 Approved et le succès 536/536.
+Le correctif indépendant P2-M2-01 du 5 octobre passe 567/567 ; P2-M2-02/P2-M2-03
+hérités restent ouverts hors de ce lot. Migration opérateur, rebuild et lecture DAV déployée
 restent ouverts. M3–M10 et Z ne sont pas commencés. Spécification et
 décisions amont sont validées et l'exception produit est inscrite.
 Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
@@ -1338,8 +1340,9 @@ worktree propre, avance/retard 0/0 vérifiés avant création de M2.
 
 ### M2 — Adoption et lecture distante ciblées
 
-**Statut : code et 536 preuves fermés, contre-revue finale du delta Approved ;
-livraison runtime ouverte.**
+**Statut : P2-M2-01 corrigé sur code/preuves (567/567), après le succès historique
+536/536 et G-R1–G-R4 Approved ; deux findings hérités P2-M2-02/P2-M2-03 ouverts
+hors correctif ; livraison runtime ouverte.**
 **Objectif :** intégrer un dépôt direct dans l'inventaire commun.
 **Dépendances :** M0–M1, notamment gardes chemin et admission des sources.
 **Fichiers :** liens Nextcloud, workspace_files_store, readers, client DAV,
@@ -1429,7 +1432,9 @@ payload trop grand. Aucun nouvel appel, compteur, modèle, paramètre ou transpo
 UI paresseuse dans le même DOM et menu Fichier : quatre catégories distinctes,
 collections via références opaques, inventaire commun et aucune source/cible
 choisie automatiquement. Cible antérieure conservée après GET serveur valide.
-Générations/scope gardent aussi le cache partagé avant publication tardive.
+Les gardes de génération/scope M2 empêchaient ses propres publications tardives,
+mais ne coordonnaient pas les lecteurs historiques ; P2-M2-01 corrige cette course
+chez le propriétaire de l’inventaire, comme décrit ci-dessous.
 L'obligation de réconcilier les seuls IDs de répertoires affectés survit aux sorties
 locales, jusqu'à une lecture courante explicitement demandée et réussie ; aucun
 second inventaire/cache, polling ou replay POST. `editing`/`prepare:false` et
@@ -1660,8 +1665,10 @@ Portée des preuves, sans confusion entre couches :
 Les trois gates d'implémentation initiaux ont reçu un re-review **Approved**.
 Le contre-audit global suivant a conclu **Needs fixes** : 0 Critical, 3 Important
 (G-R1–G-R3), 1 Minor (G-R4). Une seule vague bornée a corrigé ces quatre findings ;
-la contre-revue finale du delta a conclu **Approved** : 0 Critical, 0 Important,
-0 Minor ouverts. Elle a vérifié les 12 fichiers du delta, les 45 empreintes du
+la contre-revue finale du delta G-R1–G-R4 a conclu historiquement **Approved** :
+0 Critical, 0 Important, 0 Minor ouverts dans cette revue. Les findings
+indépendants du 5 octobre sont consignés dans la section P2-M2-01 ci-dessous
+et ne sont pas couverts par cette décision historique. Elle a vérifié les 12 fichiers du delta, les 45 empreintes du
 lot et les 36 empreintes du code/tests exécutés, sans seconde revue générale.
 Les rouges causaux précèdent
 leurs corrections ; les erreurs initiales de fixtures ne sont pas présentées
@@ -1729,6 +1736,209 @@ et marqueurs de réconciliation locaux au processus ; aucune promesse de fidéli
 bureautique universelle ni de transaction distribuée. M3–M10/Z non commencés,
 préparation toujours indisponible. Aucune activation runtime, installation,
 mutation distante, renderer ou appel modèle réel effectué dans M2.
+
+#### Correction indépendante P2-M2-01 — 5 octobre 2026
+
+**Disposition : corrigé ; lot borné arrêté après livraison Git dédiée.** Le parent
+exact du correctif est M2 `24233ce86d2c02a4648b8b901258a533dce2f375`, initialement
+HEAD = upstream = M2 distant, worktree propre et divergence `0/0`. `pwd` et
+`git rev-parse --show-toplevel` confirment `/opt/platform/fridadev`. M1 `c6f648ba`,
+M0 `3eb2e34a` et main `e3e0d19` sont revalidés par `git ls-remote --heads`.
+Le retour final porte le nouveau hash, le push et l’alignement après livraison ;
+aucun merge, changement de branche ou démarrage M3. La preuve du 4 octobre
+536/536 et la revue G-R1–G-R4 demeurent historiques, sans prétendre couvrir ce P2.
+
+**Cause et revalidation.** `chat_threads_sidebar.js` publiait les fichiers et
+statuts depuis la lecture individuelle, et depuis deux setters remplaçant les
+Maps après collecte globale. Le garde `isCurrent` M2 ne coordonnait pas les
+requêtes historiques (upload, suppression, OCR et `syncAndRender`). Une réponse
+capturée avant adoption pouvait ainsi restaurer l’ancien inventaire après sa
+publication réussie. Les quatre probes de l’annexe, intégrés dans
+`test_frontend_browser_document_inventory_publication.js`, reproduisent les deux
+chemins réels : contrôles livrés avant adoption verts, réponses livrées après
+adoption rouges. Deux contrôles conservent le fichier et une cible ; les deux
+rouges observent fichier absent, zéro cible à la réouverture et **un seul POST**
+d’adoption. La capture JSON précède l’attente ; aucune reconstruction du payload
+après adoption, aucun sommeil arbitraire ni global d’audit livré au produit.
+
+**Coordination retenue.** Le propriétaire garde ses seules Maps Files existantes.
+Un token de requête opaque par répertoire coordonne tous leurs écrivains ;
+`readWorkspaceFiles` est l’unique publication fichiers/statut, sans `await` entre
+les deux. Le global réserve tous ses tokens avant les lectures séquentielles et
+publie chaque résultat par cette même fonction. Les deux setters de remplacement
+complet sont retirés : A déjà lu ne peut plus être réécrit par un batch retardé
+par B, ni disparaître indirectement d’une Map reconstruite. Une lecture B ne
+supersède pas A ; un B déjà supersédé avant son tour global ne fait aucun I/O.
+Un epoch des rafraîchissements globaux refuse les anciennes listes de répertoires
+avant publication et arrête leurs étapes tardives. `saveWorkspaceFolders` retire
+fichiers, statut et token pour les seuls IDs absents : une réponse de l’ancienne
+existence ne peut ressusciter un répertoire supprimé, même réintroduit ensuite.
+
+Le token **et** le garde d’autorité de l’appelant sont requis avant lecture et
+publication. Un appel déjà sans autorité ne supersède aucune requête valide.
+Le retour individuel est un tableau, même vide, pour une publication effective,
+`null` pour une lecture ignorée/refusée, et un rejet pour l’erreur courante après
+publication de `[]`/`error`. Les erreurs périmées ne publient ni fichiers ni
+statut, et ne rejettent pas. Les erreurs courantes restent visibles ; le global
+continue son traitement historique des erreurs Files après publication du statut.
+`app.js` transmet ce retour. Les deux lecteurs M2 (adoption et réconciliation)
+conservent le marqueur et l’invitation à actualiser si le retour est `null` ; ils
+n’annoncent pas « Inventaire actualisé » et n’effacent pas le besoin de reprise.
+Même une publication concurrente plus récente réussie ne suffit pas à acquitter
+la lecture M2 ignorée : une reprise explicite reste nécessaire et prouvée.
+Fermeture, conversation/répertoire/contexte, navigation et générations M2
+conservent leurs gardes ; aucun retry ni second POST implicite.
+
+Fichiers du correctif : `app/web/chat_threads_sidebar.js`,
+`app/web/chat_document_workshop.js`, raccord `app/web/app.js`, tests sidebar
+existants et nouveau module navigateur ci-dessus, cette roadmap, contrat M2 et
+entrée du hub (sa mention de clôture globale était affectée). Aucun changement
+backend, SQL, DAV, admission, modèle, renderer, route ou dépendance. Les Maps
+Exports/Images/Notes ne sont pas étendues par ce correctif.
+
+**Résultats réels et commandes.** Les wrappers `m2_python`, `m2_node`, `m2_sql`
+et leurs préconditions ci-dessus restent ceux exécutés : mêmes trois images et
+empreintes, `--pull never`, réseau `none`, rootfs/checkout/cache navigateur en
+lecture seule, `/tmp` tmpfs, `/usr/bin/env -i`, HOME temporaire et bytecode interdit.
+Aucun dotenv présent ou symlink, aucune installation/pull. Le socket SQL seul
+est adapté au scratch possédé `/tmp/fridadev-p2-m2-01-wfq8m36z/pg-socket`, et le
+conteneur à `fridadev-p2-m2-01-proof-pg`, tous deux initialement absents. Le bind
+couvre `/var/run/postgresql` dès l’initialisation ; readiness `pg_isready` positive
+avant tout runner dépendant. Les deux modules SQL sont exécutés **en série** dans
+l’unique invocation `m2_sql` documentée. Les sorties ci-dessous sont celles des
+runners isolés ; les essais hôte du reviewer sont exclus des preuves autoritatives.
+
+| Passe | Résultat | Durée | Exit |
+| --- | --- | --- | --- |
+| Baseline HEAD M2, 8 sélecteurs Node | 80/80 | 0,342314123 s | 0 |
+| Baseline HEAD M2, 6 sélecteurs Chromium | 85/85 | 44,821106461 s | 0 |
+| Annexe seule avant patch (`--test-name-pattern='response released'`) | 4 : 2 verts / 2 rouges causaux | 3,523457069 s | 1 |
+| Frontières Node avant patch (`--test-name-pattern='P2-M2-01'`) | 19 : 2 verts / 17 rouges | 0,110041567 s | 1 |
+| Annexe et frontières navigateur avant patch | 8 : 2 verts / 6 rouges | 6,525287437 s | 1 |
+| Complément batch A/B, sources produit initiales montées read-only | 2 : 2 rouges | 0,187000390 s | 1 |
+| Complément sortie M2, mêmes sources initiales read-only | 2 : 2 rouges | 4,047852997 s | 1 |
+| Ciblé Node après correction | 21/21 | 0,112226368 s | 0 |
+| Ciblé Chromium après correction | 10/10 | 9,745947258 s | 0 |
+| Comparaison Python, 24 modules inchangés | 344/344 | 39,250 s | 0 |
+| Comparaison Node, 8 fichiers inchangés + 21 cas | 101/101 | 0,443754923 s | 0 |
+| Première comparaison Chromium, 7 modules | 94/95 ; garde chat temporisé en échec | 58,573066379 s | 1 |
+| Même garde chat isolé, code courant / sources initiales | 1/1 puis 1/1 | 1,002837133 / 1,015734117 s | 0 / 0 |
+| Comparaison Chromium reprise avec modules en série, avant raffinement final du harnais | 95/95 | 84,726869380 s | 0 |
+| Erreurs tardives, réponse construite et capturée avant attente, sources initiales read-only | 2 : 2 rouges | 2,251983309 s | 1 |
+| Même harnais final, ciblé Chromium | 10/10 | 9,807948247 s | 0 |
+| Comparaison Chromium finale après raffinement du seul harnais | 95/95 | 84,424016836 s | 0 |
+| Comparaison PostgreSQL réel, 2 modules inchangés en série | 27/27 | 39,131 s | 0 |
+
+Zéro skip, annulation ou erreur de runner dans ces passes causales/finales.
+Un premier essai de harnais Node était mal ordonné (17 cas, deux verts, dix
+échecs et cinq annulations) : l’attente d’un appel déjà sans autorité bloquait
+la libération de sa réponse. Le harnais a été corrigé avant la passe causale
+19 cas ; aucune modification produit n’a servi à masquer cette erreur.
+Les 19 cas verts intermédiaires passent en 0,102686620 s, exit 0 ; les huit
+navigateurs intermédiaires en 7,724056135 s, exit 0. Les compléments montent les
+**trois blobs produit exacts de `24233ce8`**, sans revert ni autre checkout.
+
+La dernière relecture a resserré le seul harnais des erreurs tardives : leur
+réponse fixe est désormais construite **et capturée avant l’attente**, comme les
+succès ; aucun payload n’est fabriqué après libération. Les deux erreurs restent
+rouges sur les blobs initiaux (`--test-name-pattern='late .* error'`), puis les dix
+cas passent sur le correctif. Seule la comparaison navigateur est renouvelée
+après cette modification de harnais ; code produit, Python, Node et SQL restent
+identiques à leurs preuves finales ci-dessus.
+
+La première comparaison Chromium n’est pas omise :
+`test_frontend_browser_smoke.js`, cas `chat submit keeps the second draft while
+one request is in flight and accepts it after completion`, compte deux requêtes
+à une assertion qui en attend une. Sa fixture diffère le premier résultat de
+120 ms puis attend encore 30 ms après des actions navigateur, sans verrouiller
+l’état « en vol ». Le cas repasse isolément sur les deux codes. Cette dépendance
+aux durées permet un faux diagnostic si le premier tour s’achève entre les
+actions ; la cause temporelle exacte de cette exécution n’a pas été tracée.
+La reprise ne modifie **ni fixture ni assertion**, mais utilise
+`--test-concurrency=1` pour les sept modules ; l’herméticité et les sélecteurs
+sont conservés. La fragilité de cette temporisation reste une limite de preuve,
+pas une régression chat déclarée ni une correction opportuniste dans ce lot.
+
+Comparaison finale : **344 + 101 + 95 + 27 = 567/567**, soit les **40 sélecteurs
+historiques et un fichier navigateur ajouté**, 31 nouveaux cas, chaque exit 0.
+Diagnostics Python hérités conservés : 264 `ERROR:frida.log_store`, 17
+`WARNING:frida.conv`, trois `ERROR:frida.server`, mêmes familles/comptes que
+la passe historique ; aucun nouveau logging produit.
+Les 24 modules Python, huit fichiers Node et deux modules SQL sont exactement
+ceux des commandes du 4 octobre ci-dessus. Les sélecteurs ciblés sont :
+
+```sh
+m2_node --test-name-pattern='P2-M2-01' app/tests/unit/frontend_chat/test_threads_sidebar_module.js
+m2_node app/tests/integration/frontend_browser/test_frontend_browser_document_inventory_publication.js
+```
+
+Les rouges complémentaires emploient `m2_node_original`, même wrapper Node avec
+les trois blobs initiaux `git show 24233ce86d2c02a4648b8b901258a533dce2f375:app/web/{chat_threads_sidebar.js,chat_document_workshop.js,app.js}`
+montés en lecture seule par-dessus leurs chemins `/workspace/app/web/` :
+
+```sh
+m2_node_original --test-name-pattern='global batch waiting' app/tests/unit/frontend_chat/test_threads_sidebar_module.js
+m2_node_original --test-name-pattern='exit during M2' app/tests/integration/frontend_browser/test_frontend_browser_document_inventory_publication.js
+```
+
+La commande finale navigateur, seule adaptation d’ordonnancement après l’échec :
+
+```sh
+m2_node --test-concurrency=1 \
+  app/tests/integration/frontend_browser/test_frontend_browser_active_documents.js \
+  app/tests/integration/frontend_browser/test_frontend_browser_workspace_folders.js \
+  app/tests/integration/frontend_browser/test_frontend_browser_smoke.js \
+  app/tests/integration/frontend_browser/test_frontend_browser_document_workshop.js \
+  app/tests/integration/frontend_browser/test_frontend_browser_document_adoption.js \
+  app/tests/integration/frontend_browser/test_frontend_browser_document_adoption_reasons.js \
+  app/tests/integration/frontend_browser/test_frontend_browser_document_inventory_publication.js
+```
+
+Les 21 cas Node verrouillent aussi erreur/succès plus récent, inventaire vide,
+indépendance A/B, résultats A déjà consommés avant attente B, suppression et
+réintroduction, anciennes listes de répertoires et autorité invalide. Les dix
+cas navigateur prouvent projection commune, cible proposée à la réouverture,
+aucune sélection automatique, POST unique, réponses capturées avant adoption,
+erreurs tardives et maintien/effacement justifié du marqueur de réconciliation.
+Les 85 cas historiques sont conservés : upload multisélection/drag-and-drop,
+brouillon, cibles/sources explicites, chat et préparation inactive, thèmes et
+compositions desktop/mobile. Ce n’est ni un parcours upload intégral des probes,
+ni une perte SQL démontrée, ni une preuve DAV/produit live.
+
+**Contre-audit et findings distincts.** Inventaire des écrivains via `rg` :
+Maps Files et Status déclarées chez le propriétaire, suppression dans
+`saveWorkspaceFolders`, publications `ok`/`error` exclusivement dans
+`readWorkspaceFiles`, appels global/individuel communs ; aucun setter complet
+résiduel. Statut obsolète, omission indirecte de A, faux accusé M2, erreur courante
+masquée, autorité du contexte, upload/chat, duplication et élargissement ont été
+inspectés et couverts par les preuves adaptées. La revue indépendante du delta
+ne relève aucun finding introduit dans Files. Les contradictions courantes de
+clôture sont réconciliées, la provenance G-R1–G-R4 reste inchangée.
+
+Deux findings hérités **restent ouverts**, sans être absorbés dans ce patch :
+
+| Finding distinct | Preuve et disposition |
+| --- | --- |
+| P2-M2-02 — publications Exports/Images/Notes | Global conserve les anciens résultats avant remplacement de Maps ; refresh individuel de ces familles sans token. Probe isolé Exports : ancien A collecté, attente B, refresh A publie un nouvel export, fin B restaure l’ancien A. Reproduit au code initial et au correctif ; Images/Notes ont le même chemin statique, sans reproduction propre de ces deux familles. Appelants : `chat_workspace_folder_exports_panel.js` et `chat_workspace_folder_notes_panel.js`. Ouvert, correction séparément autorisée requise. |
+| P2-M2-03 — erreur du listing des répertoires acceptée comme vide | `listWorkspaceFoldersFromServer().catch(... return [])` puis sauvegarde/retour `true` : erreur 503 simulée retire les deux répertoires et est acceptée comme succès. Même comportement au code initial et au correctif. Ouvert, correction séparée ; aucune suppression SQL ou DAV inférée. |
+
+Ces deux probes scratch supplémentaires utilisent le même runner Node isolé et
+le vrai contrôleur, HTTP simulé : **2/2 rouges en 0,143056453 s sur les blobs
+initiaux, 2/2 rouges en 0,108830140 s après correction, exits 1, zéro skip**.
+Ils sont distincts de la comparaison 567 et prouvent leur antériorité ; leurs
+assertions attendent la conservation du nouvel export et le refus du faux succès
+de listing. Aucun correctif ni fixture produit ne leur est associé dans ce lot.
+
+**Nettoyage et limites.** Après SQL, arrêt/suppression du seul conteneur possédé,
+socket vérifié vide puis retiré ; données PG tmpfs détruites. Tous les autres
+runners sont `--rm`. Les deux scratches possédés (runners, logs synthétiques, probes et
+blobs initiaux) sont retirés après conservation des faits et contre-audit ; absence
+vérifiée avant commit. Aucun artefact d’autrui ou ressource opérateur supprimé.
+La coordination est locale à l’instance frontend : elle ne garantit pas une
+fraîcheur serveur universelle, ne coordonne pas d’autres onglets et ne prouve
+pas l’état DAV. Migrations opérateur M1/M2, livraison runtime/rebuild/health et
+preuve DAV live restent ouverts. M3–M10/Z non commencés, préparation inactive ;
+aucun déploiement, provider, renderer ou appel modèle réel.
 
 ### M3 — Réservation durable et concurrence
 
@@ -2378,9 +2588,10 @@ de cases à cocher. M0 ferme les composants internes avec tests hermétiques et
 contre-audit corrigé et livré sur sa branche dédiée (`3eb2e34a`). M1 est fermé sur
 menu/contexte `editing` et gardes inactifs sur sa branche issue de M0 ; livraison
 Git M1 corrigée par P3 `c6f648ba`, constatée avant création de M2. M2 dispose du
-code corrigé et de 536 preuves hermétiques après les findings G-R1–G-R4 ; les
-528 premiers restent historiques. La contre-revue finale du delta est Approved ;
-le retour final porte la livraison Git et ses alignements. M3 et suivants restent
+succès historique 536/536 après G-R1–G-R4, dont la contre-revue du delta est
+Approved ; les 528 premiers restent historiques. Le 5 octobre, P2-M2-01 est
+corrigé et la comparaison passe 567/567 ; P2-M2-02/P2-M2-03 hérités restent
+ouverts hors correctif. Le retour final porte la livraison Git et ses alignements. M3 et suivants restent
 non commencés.
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
 dans AGENTS.md ; l'invariant de consolidation reste applicable hors de cette
