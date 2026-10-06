@@ -61,6 +61,7 @@ function createDocumentWorkshopController({
   const doc = documentObj || document;
   const storage = storageObj || doc.defaultView.sessionStorage;
   const attemptKey = 'frida.document-workshop.attempt';
+  const confirmationKey = 'frida.document-workshop.confirmations';
   let generation = 0;
   let visible = false;
   let busy = false;
@@ -77,6 +78,22 @@ function createDocumentWorkshopController({
   let actionReadSerial = 0;
   const cancellationGenerations = new Map();
   const cards = new Map();
+  // Local evidence of an attempted click only; it grants no server authority.
+  // Keep every consumed action through navigation/refresh, including a POST
+  // that never reached the server. Reads may establish state, never replay it.
+  const confirmations = new Map();
+  let confirmationStorageAvailable = true;
+  try {
+    const records = JSON.parse(storage.getItem(confirmationKey));
+    if (Array.isArray(records)) for (const record of records) {
+      const keys = ['action_id', 'context_id', 'conversation_id', 'workspace_folder_id', 'revision_id', 'request_id', 'state'];
+      if (record && keys.every(key => typeof record[key] === 'string' && record[key].length <= 128)
+          && Object.keys(record).length === keys.length && ['attempted', 'unknown', 'observed'].includes(record.state)) {
+        confirmations.set(record.action_id, record);
+      }
+    }
+    storage.setItem(confirmationKey, JSON.stringify([...confirmations.values()]));
+  } catch { confirmationStorageAvailable = false; }
   // A departed/uncertain adoption can still publish. Keep only the affected
   // folder IDs until an explicit read refreshes their existing shared inventory.
   const inventoriesToRefresh = new Set();
@@ -99,11 +116,15 @@ function createDocumentWorkshopController({
     if (pollTimer !== null) doc.defaultView.clearTimeout(pollTimer);
     pollTimer = null;
   }
+  function saveConfirmations() {
+    try { storage.setItem(confirmationKey, JSON.stringify([...confirmations.values()])); return true; }
+    catch { confirmationStorageAvailable = false; return false; }
+  }
   function validAction(record, expected, contextId, actionId) {
     return record && record.id === actionId && record.context_id === contextId
       && signature(scope(record)) === signature(expected)
       && ['preparing', 'pending', 'clarify', 'refuse', 'failed', 'cancelled', 'invalidated',
-        'superseded', 'interrupted', 'lost'].includes(record.state);
+        'superseded', 'interrupted', 'lost', 'executing', 'succeeded', 'remote_uncertain'].includes(record.state);
   }
   function renderAction(container, record) {
     container.replaceChildren();
@@ -114,21 +135,45 @@ function createDocumentWorkshopController({
     const status = doc.createElement('div'); status.setAttribute('role', 'status');
     status.textContent = record.state === 'preparing'
       ? preparationLabel(record)
-      : ({ pending: 'Document préparé', cancelled: 'Préparation annulée', failed: 'Préparation échouée',
+      : record.state === 'pending' && confirmations.has(record.id)
+        ? confirmations.get(record.id).state === 'attempted'
+          ? 'Confirmation engagée · état à vérifier.'
+          : 'Confirmation non établie côté serveur. Aucun nouvel envoi automatique.'
+      : ({ pending: 'Document préparé', cancelled: 'Préparation annulée', failed: confirmations.has(record.id) || record.confirmation_turn_id ? 'Exécution documentaire échouée' : 'Préparation échouée',
         invalidated: 'Préparation invalidée', superseded: 'Préparation remplacée', interrupted: 'Tour interrompu',
-        lost: 'Préparation perdue', clarify: 'Précision nécessaire', refuse: 'Préparation refusée' })[record.state];
+        lost: 'Préparation perdue', clarify: 'Précision nécessaire', refuse: 'Préparation refusée',
+        executing: 'Exécution engagée', succeeded: 'Document créé', remote_uncertain: 'Résultat distant incertain. Aucun nouvel envoi automatique.' })[record.state];
     card.appendChild(status);
+    if (['failed', 'remote_uncertain'].includes(record.state)) {
+      const count = record.created_collections_count;
+      let notice = '';
+      if (Number.isInteger(count) && count > 0) {
+        notice = `Création${count > 1 ? 's observées' : ' observée'} : ${count} sous-répertoire${count > 1 ? 's' : ''}. Des sous-répertoires peuvent subsister, éventuellement vides ; leur état reste à vérifier.`;
+      } else if (record.state === 'remote_uncertain' && count == null && record.collections?.length) {
+        notice = 'Des sous-répertoires peuvent subsister ; leur création n’a pas pu être vérifiée.';
+      } else if (record.state === 'remote_uncertain' && count === 0 && record.collections?.length) {
+        notice = 'Des sous-répertoires peuvent subsister ; leur état reste à vérifier.';
+      }
+      if (notice) {
+        const detail = doc.createElement('div'); detail.textContent = notice; card.appendChild(detail);
+      }
+    }
     if (record.state === 'pending') {
       const limitations = (record.limitations || []).map(code => DOCUMENT_WORKSHOP_LIMITATION_LABELS[code] || 'Limite documentaire non précisée.');
-      for (const value of [record.name, record.format, record.relative_path, ...limitations]) {
+      for (const value of [record.name, record.format, record.relative_path,
+        ...(record.collections || []).map(path => `Sous-répertoire susceptible d’être créé : ${path}`), ...limitations]) {
         if (typeof value !== 'string' || !value) continue;
         const detail = doc.createElement('div'); detail.textContent = value; card.appendChild(detail);
       }
-      const confirm = doc.createElement('button'); confirm.type = 'button'; confirm.disabled = true;
-      confirm.dataset.documentConfirm = ''; confirm.textContent = 'Écriture indisponible';
-      card.appendChild(confirm);
+      if (!confirmations.has(record.id)) {
+        const available = record.capabilities?.confirm === true && confirmationStorageAvailable;
+        const confirm = doc.createElement('button'); confirm.type = 'button'; confirm.disabled = !available;
+        confirm.dataset.documentConfirm = ''; confirm.textContent = available ? 'Confirmer la création' : 'Écriture indisponible';
+        if (available) confirm.addEventListener('click', () => void confirmAction(record));
+        card.appendChild(confirm);
+      }
     }
-    if (['preparing', 'pending'].includes(record.state) && record.capabilities?.cancel === true) {
+    if (['preparing', 'pending', 'executing'].includes(record.state) && record.capabilities?.cancel === true) {
       const cancel = doc.createElement('button'); cancel.type = 'button'; cancel.dataset.documentCancel = '';
       cancel.textContent = 'Annuler la préparation'; cancel.disabled = cancellationInFlight;
       cancel.addEventListener('click', () => void cancelAction(record)); card.appendChild(cancel);
@@ -136,6 +181,10 @@ function createDocumentWorkshopController({
     container.appendChild(card);
   }
   function publishAction(record) {
+    const marker = confirmations.get(record.id);
+    if (marker && record.state !== 'pending') {
+      marker.state = 'observed'; saveConfirmations();
+    }
     if (context?.id === record.context_id && action?.id === record.id) {
       action = record; saveAttempt();
     }
@@ -144,6 +193,68 @@ function createDocumentWorkshopController({
       if (reference.action_id === record.id) renderAction(container, record);
     }
     render();
+  }
+  async function confirmAction(record) {
+    const expected = currentScope();
+    if (record.state !== 'pending' || record.capabilities?.confirm !== true || !confirmationStorageAvailable || confirmations.has(record.id)
+        || signature(scope(record)) !== signature(expected) || typeof record.revision_id !== 'string') return;
+    const token = generation;
+    const marker = { action_id: record.id, context_id: record.context_id, ...expected,
+      revision_id: record.revision_id, request_id: doc.defaultView.crypto.randomUUID(), state: 'attempted' };
+    confirmations.set(record.id, marker);
+    const markerSaved = saveConfirmations();
+    cancellationGenerations.set(record.id, (cancellationGenerations.get(record.id) || 0) + 1);
+    const cancellation = cancellationGenerations.get(record.id);
+    if (action?.id === record.id) {
+      actionReadSerial += 1;
+      stopPolling();
+    }
+    // Consume every card synchronously before fetch, including detached buttons
+    // retained by a double-click/keyboard event and later pending re-renders.
+    for (const [container, reference] of cards) {
+      if (reference.action_id === record.id && container.isConnected) renderAction(container, record);
+    }
+    if (action?.id === record.id) render();
+    if (!markerSaved) {
+      marker.state = 'unknown';
+      if (visible) render('Confirmation non envoyée : stockage de tentative indisponible.');
+      return;
+    }
+    const stillHere = () => token === generation && signature(currentScope()) === signature(expected)
+      && cancellation === cancellationGenerations.get(record.id);
+    try {
+      const response = await fetchFn(`/api/document-workshop/actions/${encodeURIComponent(record.id)}/confirm`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context_id: marker.context_id, conversation_id: marker.conversation_id,
+          workspace_folder_id: marker.workspace_folder_id, revision_id: marker.revision_id, request_id: marker.request_id }),
+      });
+      const payload = await response.json();
+      if (!stillHere()) return;
+      if (!response.ok || payload?.ok !== true || !validAction(payload.action, expected, record.context_id, record.id)) {
+        throw new Error('document_confirmation_unavailable');
+      }
+      marker.state = payload.action.state === 'pending' ? 'unknown' : 'observed'; saveConfirmations();
+      publishAction(payload.action);
+    } catch {
+      marker.state = 'unknown'; saveConfirmations();
+      if (!stillHere()) return;
+      // This read is deliberately independent of workshop visibility: a card
+      // in the canonical transcript may be confirmed after the panel is closed.
+      try {
+        const response = await fetchFn(`/api/document-workshop/actions/${encodeURIComponent(record.id)}`);
+        const payload = await response.json();
+        if (stillHere() && response.ok && payload?.ok === true
+            && validAction(payload.action, expected, record.context_id, record.id)) {
+          publishAction(payload.action); return;
+        }
+      } catch { /* Unknown remains unknown; there is no POST retry. */ }
+      if (stillHere()) {
+        for (const [container, reference] of cards) {
+          if (reference.action_id === record.id && container.isConnected) renderAction(container, record);
+        }
+        if (visible && action?.id === record.id) render('Confirmation non confirmée. Relisez l’état ; aucun nouvel envoi automatique.');
+      }
+    }
   }
   async function readAction() {
     if (!context || !action || !visible) return;
@@ -185,7 +296,7 @@ function createDocumentWorkshopController({
     }
   }
   async function cancelAction(record) {
-    if (cancellationInFlight || !['preparing', 'pending'].includes(record.state)) return;
+    if (cancellationInFlight || !['preparing', 'pending', 'executing'].includes(record.state)) return;
     const token = generation, expected = currentScope();
     cancellationGenerations.set(record.id, (cancellationGenerations.get(record.id) || 0) + 1);
     if (action?.id === record.id) stopPolling();
@@ -280,9 +391,9 @@ function createDocumentWorkshopController({
     positionPanel();
   }
   function contextControls() {
-    targetEl.disabled = busy || !context || adoptionInFlight || action?.state === 'preparing';
+    targetEl.disabled = busy || !context || adoptionInFlight || ['preparing', 'executing'].includes(action?.state);
     reloadEl.disabled = busy || !context || adoptionInFlight;
-    browseEl.disabled = busy || !context || adoptionInFlight || listing || action?.state === 'preparing';
+    browseEl.disabled = busy || !context || adoptionInFlight || listing || ['preparing', 'executing'].includes(action?.state);
   }
   function populateFolders() {
     folderEl.replaceChildren();
@@ -595,7 +706,7 @@ function createDocumentWorkshopController({
         return { ok: false, reason: 'document_mode_incompatible',
           message: 'Mode incompatible : désactivez les autres outils pour préparer le document. Votre brouillon est conservé.' };
       }
-      if (busy || adoptionInFlight || !context || context.capabilities.prepare !== true || action?.state === 'preparing') {
+      if (busy || adoptionInFlight || !context || context.capabilities.prepare !== true || ['preparing', 'executing'].includes(action?.state)) {
         return { ok: false, reason: 'document_preparation_unavailable' };
       }
       if (context.target_file_id && context.capabilities.update !== true) {

@@ -1,5 +1,17 @@
 # Atelier documentaire Frida V1 — contrat interne M0
 
+## Évolution M5 — 6 octobre 2026
+
+Le [contrat M5](frida-v1-document-workshop-m5-contract.md) décrit la confirmation
+liée durablement à l'action, le claim distinct, le journal avant effet et la
+publication atomique minimale, éprouvés avec PostgreSQL réel et transport DAV
+synthétique. Code et preuves hermétiques M5 fermés ; relevé et contre-audit
+indépendant dans ce contrat. Aucun client mutateur
+n'est raccordé au runtime : confirmation publique indisponible, migrations
+opérateur et livraison runtime ouvertes, M6 et suivants non commencés.
+Les sections M0–M4 ci-dessous conservent leurs résultats et limites historiques ;
+leurs mentions de lots futurs sont datées, pas le statut courant de M5.
+
 ## Évolution M4 — 6 octobre 2026
 
 Le lecteur M0 et son builder utilisent désormais une seule enveloppe fermée `prepared/clarify/refuse`, réutilisant le canonical et les preuves de fin/usages. Le transport HTTP réel, annulable et borné est livré par M4 ; les résultats M0 ci-dessous restent historiques.

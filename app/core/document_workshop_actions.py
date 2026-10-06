@@ -40,13 +40,21 @@ def _public(row):
     result = {k: (str(row[k]) if isinstance(row[k], UUID) else row[k].isoformat() if hasattr(row[k], 'isoformat') else row[k]) for k in keys}
     result['turn_id'] = result['id']
     result['name'] = row['relative_path'].split('/')[-1] if row['relative_path'] else None
-    result['capabilities'] = dict(confirm=False, cancel=row['state'] in ('preparing','pending'))
+    for key in ('confirmation_turn_id','confirmed_at','created_collections_count','workspace_file_id'):
+        if key in row:
+            value=row[key]
+            result[key]=str(value) if isinstance(value,UUID) else value.isoformat() if hasattr(value,'isoformat') else value
+    result['capabilities'] = dict(confirm=False, cancel=row['state'] in ('preparing','pending','executing'))
     return result
 
 
 def get_action(action_id):
     with _db_conn() as conn:
         row = _read(conn, action_id)
+    if row and row['state']=='executing':
+        from . import document_workshop_execution_store as execution
+        execution.reconcile(action_id)
+        with _db_conn() as conn:row=_read(conn,action_id)
     if row and row['state'] == 'preparing':
         claim = claims.read(str(row['id']))
         if claim and claim['state'] != 'active':
@@ -205,7 +213,7 @@ def cancel(action_id, context_id):
         row = _read(conn, action_id)
         if not row or str(row['context_id']) != context_id:
             raise DocumentWorkshopError('document_action_missing')
-        if row['state'] not in ('preparing','pending'):
+        if row['state'] not in ('preparing','pending','executing'):
             return _public(row)
         current = claims._conversation(conn, str(row['conversation_id']))
         claims._scope(conn, current, context_id)
@@ -215,17 +223,27 @@ def cancel(action_id, context_id):
         row = _read(conn, action_id)
         if row and row['state'] == 'preparing':
             conn.execute('SELECT turn_id FROM conversation_turn_claims WHERE turn_id=%s::uuid FOR UPDATE NOWAIT', (action_id,))
+        elif row and row['state']=='executing':
+            conn.execute('SELECT turn_id FROM conversation_turn_claims WHERE turn_id=%s::uuid FOR UPDATE NOWAIT',(row['confirmation_turn_id'],))
         row = _read(conn, action_id, lock=True)
         if not row:
             raise DocumentWorkshopError('document_action_missing')
-        if row['state'] not in ('preparing','pending'):
+        if row['state'] not in ('preparing','pending','executing'):
             return _public(row)
         if row['state'] == 'preparing':
             conn.execute("""UPDATE conversation_turn_claims SET state='cancelled',reason_code=NULL,
                 finished_at=clock_timestamp() WHERE turn_id=%s::uuid AND conversation_id=%s::uuid
                 AND context_id=%s::uuid AND kind='preparation' AND state='active'""",
                 (action_id,str(row['conversation_id']),context_id))
-        conn.execute("""UPDATE document_actions SET state='cancelled',reason_code='document_preparation_cancelled',
+        if row['state']=='executing':
+            conn.execute("""UPDATE conversation_turn_claims SET state='cancelled',outcome='interrupted',finished_at=clock_timestamp()
+                WHERE turn_id=%s::uuid AND conversation_id=%s::uuid AND context_id=%s::uuid
+                AND kind='confirmation' AND state='active' AND lease_until>clock_timestamp()""",
+                (row['confirmation_turn_id'],str(row['conversation_id']),context_id))
+            intended=conn.execute('SELECT 1 FROM document_execution_journal WHERE action_id=%s::uuid LIMIT 1',(action_id,)).fetchone()
+            conn.execute("UPDATE document_actions SET state=%s,phase='cancelled',reason_code='document_execution_cancelled',updated_at=clock_timestamp() WHERE id=%s::uuid",
+                ('remote_uncertain' if intended else 'cancelled',action_id))
+        else:conn.execute("""UPDATE document_actions SET state='cancelled',reason_code='document_preparation_cancelled',
             updated_at=clock_timestamp() WHERE id=%s::uuid AND context_id=%s::uuid
             AND state IN ('preparing','pending')""", (action_id,context_id))
     return get_action(action_id)

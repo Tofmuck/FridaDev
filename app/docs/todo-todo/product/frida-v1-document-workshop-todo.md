@@ -1,6 +1,6 @@
 # Atelier documentaire agentique Frida V1 — spécification validée et roadmap
 
-Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-05 ; M3/M4 : 2026-10-06.
+Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-05 ; M3/M4/M5 : 2026-10-06.
 
 Statut : **spécification et choix architecturaux validés par Tof ; M0 fermé sur
 composants et preuves internes, contre-audit corrigé sur `FridaV1-Document-Workshop-M0` ;
@@ -18,7 +18,8 @@ M4 livré sur code, P2-M4-01 et P2-M4-02 fermés après contre-audits indépenda
 P3-M4-03 corrigé par erratum documentaire (1 198 déclarés conservés et rectifiés,
 sélection publiée à 1 414, 21 identifiants réutilisables validés) ;
 M4 non intégralement fermé ;
-M5–M10 et Z non commencés, aucun déploiement ou renderer livré**.
+M5 fermé sur code/preuves hermétiques et contre-audit ; M6–M10 et Z non commencés,
+aucun déploiement ou renderer livré**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
 dialogue avec Tof. Création documentaire committée dans `d6b63fd1`, puis validation
@@ -42,7 +43,7 @@ Une case cochée dans les décisions signifie « décidé par Tof », pas « liv
 Une case ouverte dans les critères ou les lots signifie « à implémenter ou prouver ».
 Les inconnues factuelles sont isolées en section 11. Seules les preuves datées
 dans M0–M4 décrivent des tests exécutés ou des déclarations historiques explicitement
-qualifiées ; M5 et suivants restent des preuves futures. L'erratum P3-M4-03
+qualifiées ; M5 dispose de son relevé daté hermétique, M6 et suivants restent des preuves futures. L'erratum P3-M4-03
 ci-dessous distingue les nouveaux rejeux des résultats antérieurs.
 Une clôture code/preuves ne ferme pas migration opérateur, rebuild ou preuve DAV déployée.
 
@@ -63,6 +64,10 @@ Une clôture code/preuves ne ferme pas migration opérateur, rebuild ou preuve D
   Aucun GO runtime, provider/DAV live ou M5.
 - [x] P3-M4-03 explicitement autorisé le 2026-10-06 sur M4 : rectification
   documentaire, vérifications isolées, contre-audit et commit/push seulement.
+- [x] M5 explicitement autorisé le 2026-10-06 depuis M4 exact `cc72aa963366660a6a135b66d206e39671556e8b`,
+  pour confirmation, exécution injectée, migrations isolées, preuves, contre-audit,
+  documentation et commit/push sur `FridaV1-Document-Workshop-M5` seulement.
+  Aucun démarrage M6, raccord réel de mutation, runtime ou canari.
 - [ ] GO distinct obtenu avant tout appel modèle réel de preuve.
 - [ ] GO distinct obtenu avant tout canari d'écriture Nextcloud.
 
@@ -730,10 +735,12 @@ ne doit pas prétendre le contraire ; l'unicité d'exécution est garantie au se
 
 ## 6. Adoption et routes à livrer — L3
 
-Les contextes POST/GET sont implémentés en M1, sans progression de préparation.
+Les contextes POST/GET sont implémentés en M1, historiquement sans progression de préparation.
 Les routes remote/adopt sont implémentées et prouvées hermétiquement en M2 ;
 leur livraison runtime reste ouverte. `/api/chat` avec `document_context_id`
-refuse encore la préparation ; les routes d’actions restent futures.
+raccorde depuis M4 la préparation Markdown, avec GET/cancel des actions durables.
+M5 ajoute la confirmation à exécuteur injecté pour ses preuves hermétiques ;
+sans exécuteur runtime, la capacité reste indisponible et aucun POST ne mute DAV.
 
 | Interface | Responsabilité |
 | --- | --- |
@@ -744,7 +751,7 @@ refuse encore la préparation ; les routes d’actions restent futures.
 | POST /api/chat avec document_context_id | Préparation conversationnelle unique. |
 | GET /api/document-workshop/actions/{id} | État public de l'action. |
 | POST /api/document-workshop/actions/{id}/confirm | Claim et exécution confirmée. |
-| POST /api/document-workshop/actions/{id}/cancel | Annulation de préparation ou pending ; neutralisation des résultats tardifs. |
+| POST /api/document-workshop/actions/{id}/cancel | Annulation ciblée de préparation, pending ou exécution ; avec intention, résultat distant incertain et neutralisation des résultats tardifs. |
 
 | Cas distant | Traitement |
 | --- | --- |
@@ -3419,7 +3426,7 @@ L'unique arbre temporaire P3, ses archives/programmes et les deux nouveaux TAP
 ont été retirés ; inventaires du préfixe temporaire et des conteneurs P3 vides.
 Aucune DB de preuve ni socket DB créée dans ce lot.
 
-État courant : **P2-M4-01 et P2-M4-02 fermés après contre-audits indépendants ;
+État à la clôture documentaire P3-M4-03, avant le mandat M5 : **P2-M4-01 et P2-M4-02 fermés après contre-audits indépendants ;
 P3-M4-03 corrigé documentairement ; livraison runtime ouverte ; confirmation
 et écriture inactives ; M5 non commencé**. La limite `response_format` sous
 builder synthétique reste inchangée, le builder courant n'émettant pas ce champ.
@@ -3428,27 +3435,56 @@ restent des obligations distinctes. Ce lot ne vaut pas autorisation de M5.
 
 ### M5 — Confirmation et exécution hermétiquement protégées
 
+**Statut au 6 octobre 2026 :** code et preuves hermétiques fermés.
+Le [contrat M5](../../states/specs/frida-v1-document-workshop-m5-contract.md)
+porte les propriétaires, la matrice de panne, l'autorité durable et les limites.
+La confirmation reste indisponible dans le parcours public ; seul le harnais
+injecte l'exécuteur et le transport synthétique. M6 reste non commencé.
+
 **Objectif :** démontrer les protections d'exécution avant raccord réel d'écriture.
 **Dépendances :** M4.
 **Fichiers :** executor, paths, clients DAV bornés, journal et confirmation.
 **Interface :** claim confirmé et résultat typé ; services réels avec clients simulés.
 **Propriétaire :** Celebrimbor.
 
-- [ ] Rouge causal : double confirmation → un PUT ; collision/chemin hostile → zéro
+- [x] Rouge causal : double confirmation → un PUT ; collision/chemin hostile → zéro
   mutation ; publication locale échouée → compensation conditionnelle.
-- [ ] Tests compensation/ETag/upload/dossiers voisins ; headers réellement envoyés,
+- [x] Tests compensation/ETag/upload/dossiers voisins ; headers réellement envoyés,
   collections existantes, ETag absent/changé et résultat réseau inconnu.
-- [ ] Revérifier fraîcheur, ETag, scope et claim au clic, même sur un pending ancien ;
+- [x] Revérifier fraîcheur, ETag, scope et claim au clic, même sur un pending ancien ;
   refuser uniquement les invalidations/préconditions décidées, pas un âge limite.
-- [ ] Faux verts : tester seulement le validator, omettre les headers ou toujours
+- [x] Faux verts : tester seulement le validator, omettre les headers ou toujours
   simuler succès distant/rollback réussi.
-- [ ] Interdire DELETE sans propriété, rollback récursif, retry PUT incertain et
+- [x] Interdire DELETE sans propriété, rollback récursif, retry PUT incertain et
   écriture hors Documents.
-- [ ] Réserver la frontière binaire : renderer fake après confirmation/claim,
+- [x] Réserver la frontière binaire : renderer fake après confirmation/claim,
   validation complète avant MKCOL/PUT ; panne/21e page/cleanup douteux → zéro mutation.
-- [ ] Synchroniser matrice de panne/compensation ; aucun canari.
-- [ ] Raccord client d'écriture réel interdit avant fermeture.
-- [ ] Fermer toutes les frontières de panne et le retrait synchrone du bouton.
+- [x] Synchroniser matrice de panne/compensation ; aucun canari.
+- [x] Raccord client d'écriture réel interdit avant fermeture.
+- [x] Fermer toutes les frontières de panne et le retrait synchrone du bouton.
+
+**Preuves exécutées le 6 octobre 2026 :**
+[relevé M5](../../states/baselines/document-workshop/frida-v1-document-workshop-m5-20261006.json).
+Baseline avant patch : 1 447/1 447 selon `final.selections` P2-M4-02 ;
+comparaison finale V2 : mêmes 1 447 + 76 nouveaux = **1 523/1 523**,
+exits 0, zéro skip, mêmes IDs historiques, collecte nouvelle concordante et
+128 empreintes stables. Nouveautés : 31 Python (3 route, 28 DAV loopback),
+28 PostgreSQL réels et 17 Chromium montés à fetch simulé. Les 74 voisins
+DAV/upload/dossiers recoupent la baseline ; les 70 voisins Exports/Images/Notes
+hors comparaison sont verts et séparés des totaux. Les 953 IDs Python chargent
+un cas chacun ; les 570 registrations frontend sont distinctes par fichier/rang/nom.
+La première comparaison verte, antérieure à la correction des 3xx, reste intermédiaire.
+
+Confirmation liée une fois à l'action, claim M3 distinct, journal avant effets,
+PUT `If-None-Match: *`, publication minimale atomique et DELETE conditionnel
+seulement avec preuve de création/ETag fort d'origine. Pannes, perte de lease,
+commit incertain et absence de preuve ne réarment jamais l'action. Les findings
+introduits d'autorité, compensation/classification distante et UI sont corrigés
+avec rouges causaux et contre-lecture indépendante, détaillés dans le contrat.
+La migration M5 est versionnée et testée deux fois depuis M4 avec actions
+existantes, **non appliquée à l'opérateur**. Aucun client mutateur par défaut :
+POST public 503 avant mutation. Cette fermeture n'autorise pas le raccord réel
+réservé à M6 ; aucune preuve de rendu, de DAV live ou de déploiement.
 
 ### M6 — Markdown create/copy, reçu et continuité
 
@@ -4043,7 +4079,8 @@ historique explicitement rectifiée par P3-M4-03 ; les identifiants réutilisabl
 sont corrigés. P2-M4-01 et P2-M4-02 sont fermés après leurs contre-audits
 indépendants, avec leurs résultats conservés ci-dessus ; P3-M4-03 est corrigé
 documentairement, sans fermer la livraison runtime de M4 ;
-M5–M10/Z restent non commencés et les obligations runtime restent ouvertes.
+M5 est fermé sur code/preuves hermétiques et contre-audit ; M6–M10/Z restent
+non commencés et les obligations runtime restent ouvertes.
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
 dans AGENTS.md ; l'invariant de consolidation reste applicable hors de cette
 exception. Les seuls composants applicatifs livrables par M0 sont les frontières

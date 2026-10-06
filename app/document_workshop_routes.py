@@ -1,4 +1,4 @@
-"""Workshop contexts, M2 adoption and M4 durable preparation projections."""
+"""Workshop contexts, adoption, durable actions and injection-only confirmation."""
 from flask import jsonify, request
 from core import document_workshop_context_service as service
 from core import workspace_document_adoption_service as adoption
@@ -6,13 +6,26 @@ from core import document_workshop_actions as actions
 from core.document_workshop_contract import DocumentWorkshopError
 
 
-def register_document_workshop_routes(app, *, get_store, get_conversations, get_folders, get_files):
+def register_document_workshop_routes(app, *, get_store, get_conversations, get_folders, get_files,
+                                      get_executor=None):
+    # M5 proof injection only. server.py supplies no mutator or execution factory.
+    def executor():
+        return get_executor() if get_executor is not None else None
+
+    def project_action(record):
+        if not record:
+            return record
+        from core.document_workshop_execution_service import project_action as project
+        return project(record, executor=executor())
+
     def dependencies():
         return dict(store=get_store(), conversations=get_conversations(), folders=get_folders(), files=get_files())
 
     @app.post('/api/document-workshop/contexts')
     def create_document_workshop_context():
         payload, status = service.create_context(request.get_json(silent=True), **dependencies())
+        if status == 201:
+            payload['context']['capabilities']['confirm'] = executor() is not None
         return jsonify(payload), status
 
     @app.get('/api/document-workshop/contexts/<context_id>')
@@ -20,7 +33,8 @@ def register_document_workshop_routes(app, *, get_store, get_conversations, get_
         payload, status = service.get_context(context_id, **dependencies())
         if status == 200:
             try:
-                payload['context']['preparation'] = actions.latest(payload['context']['id'])
+                payload['context']['preparation'] = project_action(actions.latest(payload['context']['id']))
+                payload['context']['capabilities']['confirm'] = executor() is not None
             except Exception:
                 return jsonify(ok=False, reason_code='document_action_storage_unavailable'), 503
         return jsonify(payload), status
@@ -35,7 +49,7 @@ def register_document_workshop_routes(app, *, get_store, get_conversations, get_
             action = actions.cancel(action_id, service._id(data['context_id'])) if cancel else actions.get_action(action_id)
             if not action:
                 return jsonify(ok=False, reason_code='document_action_missing'), 404
-            return jsonify(ok=True, action=action), 200
+            return jsonify(ok=True, action=project_action(action)), 200
         except DocumentWorkshopError as exc:
             return jsonify(ok=False, reason_code=exc.reason_code), 404 if exc.reason_code == 'document_action_missing' else 409
         except Exception:
@@ -48,6 +62,15 @@ def register_document_workshop_routes(app, *, get_store, get_conversations, get_
     @app.post('/api/document-workshop/actions/<action_id>/cancel')
     def cancel_document_workshop_action(action_id):
         return action_response(action_id, cancel=True)
+
+    @app.post('/api/document-workshop/actions/<action_id>/confirm')
+    def confirm_document_workshop_action(action_id):
+        available = executor()
+        if available is None:
+            return jsonify(ok=False, reason_code='document_execution_unavailable'), 503
+        from core.document_workshop_execution_service import confirm
+        payload, status = confirm(action_id, request.get_json(silent=True), executor=available)
+        return jsonify(payload), status
 
     @app.get('/api/workspace-folders/<folder_id>/documents/remote')
     def list_remote_workspace_documents(folder_id):

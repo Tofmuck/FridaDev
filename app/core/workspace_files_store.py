@@ -213,8 +213,8 @@ def serialize_workspace_file_row(
     return {
         "id": str(row.get("id") or ""),
         "workspace_folder_id": str(row.get("workspace_folder_id") or ""),
-        "display_name": row.get("display_name") if row.get("source_kind") == "nextcloud_adoption" else sanitize_display_name(row.get("display_name")),
-        "original_filename": row.get("original_filename") if row.get("source_kind") == "nextcloud_adoption" else sanitize_original_filename(row.get("original_filename")),
+        "display_name": row.get("display_name") if row.get("source_kind") in ("nextcloud_adoption", "document_workshop") else sanitize_display_name(row.get("display_name")),
+        "original_filename": row.get("original_filename") if row.get("source_kind") in ("nextcloud_adoption", "document_workshop") else sanitize_original_filename(row.get("original_filename")),
         "content_kind": _safe_text(row.get("content_kind") or CONTENT_KIND_DOCUMENT, 40),
         "media_kind": _safe_text(row.get("media_kind") or MEDIA_KIND_TEXT, 40),
         "mime_type": _safe_text(row.get("mime_type"), 120),

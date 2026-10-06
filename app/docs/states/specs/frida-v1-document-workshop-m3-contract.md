@@ -1,5 +1,17 @@
 # Atelier documentaire Frida V1 — contrat M3
 
+## Évolution M5 — 6 octobre 2026
+
+Le [contrat M5](frida-v1-document-workshop-m5-contract.md) décrit la confirmation
+liée durablement à l'action, le claim distinct, le journal avant effet et la
+publication atomique minimale, éprouvés avec PostgreSQL réel et transport DAV
+synthétique. Code et preuves hermétiques M5 fermés ; relevé et contre-audit
+indépendant dans ce contrat. Aucun client mutateur
+n'est raccordé au runtime : confirmation publique indisponible, migrations
+opérateur et livraison runtime ouvertes, M6 et suivants non commencés.
+Les sections M0–M4 ci-dessous conservent leurs résultats et limites historiques ;
+leurs mentions de lots futurs sont datées, pas le statut courant de M5.
+
 ## Évolution M4 — 6 octobre 2026
 
 La préparation M4 réutilise les claims communs et le snapshot transactionnel M3. Sauvegarde utilisateur/action initiale, puis réponse courte/révision/pending/supersession/clôture finale sont atomiques. Le pending libère le claim et n’expire pas. Le correctif golden M3 distinct est `9f10531ae9c799f4afc769c97ea2d48659f1c3d3`, poussé et vérifié avant la branche M4.
