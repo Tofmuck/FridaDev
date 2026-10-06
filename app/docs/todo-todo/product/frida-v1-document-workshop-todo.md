@@ -1,6 +1,6 @@
 # Atelier documentaire agentique Frida V1 — spécification validée et roadmap
 
-Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-05 ; M3 : 2026-10-06.
+Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-05 ; M3/M4 : 2026-10-06.
 
 Statut : **spécification et choix architecturaux validés par Tof ; M0 fermé sur
 composants et preuves internes, contre-audit corrigé sur `FridaV1-Document-Workshop-M0` ;
@@ -14,7 +14,9 @@ P2-M2-05 corrigé séparément sur le résumé de réconciliation, comparaison
 716/716 ; livraison runtime ouverte ;
 M3 fermé sur code/preuves hermétiques et contre-audit, branche `FridaV1-Document-Workshop-M3`, livraison runtime ouverte ;
 P3-M3-baseline-route-golden corrigé séparément le 2026-10-06 (tests/docs-only) ;
-M4–M10 et Z non commencés ; préparation inactive, aucun déploiement ou renderer livré**.
+M4 livré sur code, contre-audit ouvert avec P2-M4-01 seul correctif autorisé,
+P2-M4-02 et P3-M4-03 ouverts ; M4 non intégralement fermé ;
+M5–M10 et Z non commencés, aucun déploiement ou renderer livré**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
 dialogue avec Tof. Création documentaire committée dans `d6b63fd1`, puis validation
@@ -3055,7 +3057,8 @@ finalisation et UI.
 
 #### Exécution M4 du 6 octobre 2026
 
-Code et preuves hermétiques fermés. Base exacte : correctif P3
+Relevé de la livraison initiale conservé ; contre-audit M4 ouvert ci-dessous.
+Base exacte : correctif P3
 `9f10531ae9c799f4afc769c97ea2d48659f1c3d3`, poussé/vérifié propre sur M3 avant
 création de `FridaV1-Document-Workshop-M4`. Les deux livraisons ont des commits
 séparés ; le hash M4 et les contrôles distants sont fournis au retour final.
@@ -3103,7 +3106,8 @@ et revalidés indépendamment. Le dernier contre-audit a corrigé le refus d'une
 préparation Markdown par un PNG non mobilisé, tout en conservant NFC/casefold.
 Il a aussi rétabli la propagation des interruptions de processus après nettoyage
 de la réservation : rouge causal KeyboardInterrupt, puis 39/39 SQL verts.
-Aucun finding confirmé vivant dans le delta. La conformité sémantique d'une
+La revue initiale concluait sans finding confirmé vivant ; le contre-audit
+postérieur ci-dessous remplace cette conclusion comme état courant. La conformité sémantique d'une
 prose arbitraire reste une obligation du prompt, sans preuve fournisseur live.
 
 Migration M4 versionnée et testée uniquement dans PostgreSQL dédiés isolés.
@@ -3117,6 +3121,91 @@ créées par ce lot nettoyées avant livraison ; résultat technique durable con
 - [ ] Migration opérateur, rebuild/restart/déploiement, health et recette runtime.
 - [ ] Provider/DAV live sous GO distinct et recette matérielle Safari.
 - [ ] Confirmation/exécution M5, parcours complet Markdown/reçu M6.
+
+#### Contre-audit M4 — correctif borné P2-M4-01 du 6 octobre 2026
+
+Base vérifiée : `2cbeb7fa59be5751502079a1eb6857c2f9977ef2`, HEAD/upstream/distant
+égaux, worktree propre et divergence 0/0 ; parent et M3 distant exacts
+`9f10531ae9c799f4afc769c97ea2d48659f1c3d3`. Correction sur la même branche M4.
+
+| Finding | État courant |
+| --- | --- |
+| P2-M4-01 | Fermé : cancel A pending annulait aussi B preparing ; correctif ciblé prouvé sur Flask/PostgreSQL et contre-audité indépendamment. |
+| P2-M4-02 | Ouvert : provenance perdue lors du gel du payload ; aucune modification de provenance, modèle, compteur ou budgets dans ce lot. |
+| P3-M4-03 | Ouvert : sélecteurs/comptes historiques non concordants ; ancien relevé et artefact conservés, sans les prétendre corrigés. |
+
+Ordre utilisateur avant M5 : P2-M4-01 puis contre-audit ; P2-M4-02 puis contre-audit ;
+P3-M4-03 puis contrôle documentaire. Seul P2-M4-01 est autorisé ici.
+Le [contrat M4](../../states/specs/frida-v1-document-workshop-m4-contract.md)
+distingue l'annulation d'action de la fermeture globale du contexte M3.
+L'[artefact P2-M4-01](../../states/baselines/document-workshop/frida-v1-document-workshop-p2-m4-01-20261006.json)
+porte les listes exactes, comptes réellement exécutés, commandes/exits/durées,
+adaptations de fixtures, sous-ensembles non additifs et nettoyage.
+
+Baseline avant toute édition du dépôt : **1 414/1 414**, zéro skip, exits 0 :
+739 Python (235,979 s), 121 SQL (56,311 s), 2 pgvector (1,536 s),
+424 Node (1,467138683 s), 107 Chromium historiques (93,664197308 s),
+21 Chromium M4 (16,756157819 s). Les listes sont développées, sans wildcard
+ni recouvrement de sélecteurs ; ce relevé propre au lot ne ferme pas P3-M4-03.
+
+Rouge causal avant patch : 2 cas, 1 échec (2,055 s, exit 1) ; contexte/A/B/claim B
+cancelled, B HTTP503, exactement deux préparations/deux appels documentaires,
+zéro échange principal normal. Contrôle seul sans cancel : 1/1 (1,484 s, exit 0),
+B HTTP200/pending, A superseded. Requêtes Flask/stores réels, connexions SQL
+indépendantes et rendez-vous explicite du provider, sans temporisation seule.
+
+Le correctif modifie uniquement `document_workshop_actions.cancel` : transaction
+courte, ordre conversation → ressources/contexte → claim ciblé si preparing → action,
+relectures après verrouillage, révocation ciblée puis annulation de la seule action.
+Pending n'a aucune écriture/verrou sur son claim historique. Contexte, successeur,
+révision et transcript restent intacts. Helpers M3 et triggers globaux inchangés,
+aucune migration nouvelle ni route, retry ou tour automatique ajouté.
+
+Comparaison complète finale : **1 436/1 436**, zéro skip, exits 0 :
+
+| Sélection exacte développée dans l'artefact | Cas | Durée | Exit |
+| --- | ---: | ---: | ---: |
+| Python, 57 modules | 739 | 233,545 s | 0 |
+| PostgreSQL dédié, 9 modules | 142 | 79,250 s | 0 |
+| pgvector dédié, 1 module | 2 | 1,284 s | 0 |
+| Node, 34 fichiers | 424 | 1,305917226 s | 0 |
+| Chromium historique, 9 fichiers | 107 | 95,431059486 s | 0 |
+| Chromium M4, 1 fichier | 22 | 19,121124928 s | 0 |
+
+La baseline de ce lot et la comparaison ont les mêmes sélections, sauf le nouveau
+module SQL de 21 cas ; le fichier navigateur M4 gagne un cas net. Delta total :
+**21 SQL + 1 navigateur**, sans autre extension de sélection. Le ciblé SQL 21/21
+(21,195 s, exit 0) et les deux probes navigateur (3,126736087 s, exit 0) se
+recouvrent avec la comparaison : aucun ajout aux 1 436.
+
+Matrice SQL/HTTP : A pending + B preparing, contrôle nominal, annulation de B
+avec fermeture physique HTTP et résultat tardif neutralisé, chat normal concurrent,
+répétitions, états terminaux/absence/mauvais contexte, lease perdu, les deux ordres
+annulation/commit, panne sur chacune des deux écritures et rollback, verrous NOWAIT,
+scope/source collectifs conservés, nouvelle préparation explicite sans replay.
+Le frontend produit n'a pas changé : le harnais conserve la carte et les identités
+de B quand A est annulée, puis progression/pending/refresh ; annuler B préserve A
+et refuse les réponses tardives. Les probes sont liées aux scénarios SQL réels,
+sans présenter le faux fetch comme preuve de l'autorité backend.
+
+Adaptations de fixtures documentées : deux erreurs de sonde SQL sous concurrence
+de supervision, contrôle NOWAIT d'inspection déplacé après la fin du provider,
+contrôle d'absence de transaction pendant le réseau conservé. Trois tests de verrou
+externe diffèrent seulement la supervision concurrente jusqu'au rendez-vous puis
+délèguent au store réel. Deux timeouts navigateur attendaient un GET non déclenché ;
+le test déclenche maintenant le reload explicitement. Le faux backend utilise
+ensuite GET/cancel par identité exacte, registre complet au refresh, révisions
+distinctes et erreur 503/phase conformes à la chaîne réelle. Les échecs de harnais
+restent distincts du rouge causal du produit.
+
+Revue indépendante finale favorable à la fermeture de **P2-M4-01 seulement**,
+sans nouveau finding confirmé sur ce delta : annulation collatérale, claim
+historique/courant, ordre des verrous, panne entre écritures, course commit,
+lease/successeur, invalidations collectives et projections navigateur vérifiés.
+Nettoyage vérifié : les deux conteneurs SQL dédiés, leurs sockets et les trois
+arbres temporaires du correctif ont disparu ; aucun reste sous leur préfixe.
+M4 demeure ouvert sur P2-M4-02/P3-M4-03. M5 non commencé ; écriture/confirmation,
+DB opérateur, provider/DAV live et runtime hors de ce correctif.
 
 ### M5 — Confirmation et exécution hermétiquement protégées
 
@@ -3730,7 +3819,8 @@ corrigé séparément sur Exports/Images/Notes,
 P2-M2-04 backend est corrigé séparément (713/713 historiques). P2-M2-05 est
 ensuite corrigé sur le résumé de réconciliation (716/716). Le retour final porte la livraison Git et ses
 alignements. M3 est fermé sur code/preuves/Git ; son P3 golden a été corrigé
-séparément avant M4. M4 est fermé sur code et preuves hermétiques ci-dessus ;
+séparément avant M4. La livraison initiale M4 est conservée ; son contre-audit
+reste ouvert sur P2-M4-02/P3-M4-03 après le seul correctif autorisé P2-M4-01 ;
 M5–M10/Z restent non commencés et les obligations runtime restent ouvertes.
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
 dans AGENTS.md ; l'invariant de consolidation reste applicable hors de cette

@@ -209,11 +209,25 @@ def cancel(action_id, context_id):
             return _public(row)
         current = claims._conversation(conn, str(row['conversation_id']))
         claims._scope(conn, current, context_id)
-        conn.execute('SELECT turn_id FROM conversation_turn_claims WHERE turn_id=%s::uuid FOR UPDATE NOWAIT',(action_id,))
+        # Finalization may have won the conversation lock since the first read.
+        # A pending proposal no longer owns a live treatment: leave its successful
+        # historical claim, and any other turn in this context, untouched.
+        row = _read(conn, action_id)
+        if row and row['state'] == 'preparing':
+            conn.execute('SELECT turn_id FROM conversation_turn_claims WHERE turn_id=%s::uuid FOR UPDATE NOWAIT', (action_id,))
         row = _read(conn, action_id, lock=True)
+        if not row:
+            raise DocumentWorkshopError('document_action_missing')
         if row['state'] not in ('preparing','pending'):
             return _public(row)
-        conn.execute("UPDATE document_workshop_contexts SET state='cancelled' WHERE id=%s::uuid", (context_id,))
+        if row['state'] == 'preparing':
+            conn.execute("""UPDATE conversation_turn_claims SET state='cancelled',reason_code=NULL,
+                finished_at=clock_timestamp() WHERE turn_id=%s::uuid AND conversation_id=%s::uuid
+                AND context_id=%s::uuid AND kind='preparation' AND state='active'""",
+                (action_id,str(row['conversation_id']),context_id))
+        conn.execute("""UPDATE document_actions SET state='cancelled',reason_code='document_preparation_cancelled',
+            updated_at=clock_timestamp() WHERE id=%s::uuid AND context_id=%s::uuid
+            AND state IN ('preparing','pending')""", (action_id,context_id))
     return get_action(action_id)
 
 

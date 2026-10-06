@@ -10,11 +10,11 @@ function preparationScript({ delayed = false, initial404 = false } = {}) {
     const baseFetch=window.fetch;
     const state=window.__m4={calls:[],messages:[],actions:{},action:null,normalCalls:0,documentaryCalls:0,delayed:${delayed},initial404:${initial404},reads404:0};
     let restorePromise;
-    const restore=()=>restorePromise||(restorePromise=Promise.resolve().then(async()=>{const snapshot=typeof window.__m4ReadServer==='function'?await window.__m4ReadServer():null;if(snapshot){window.__m1.contexts=snapshot.contexts;state.action=snapshot.action;state.messages=snapshot.messages;}}));
+    const restore=()=>restorePromise||(restorePromise=Promise.resolve().then(async()=>{const snapshot=typeof window.__m4ReadServer==='function'?await window.__m4ReadServer():null;if(snapshot){window.__m1.contexts=snapshot.contexts;state.actions=snapshot.actions||(snapshot.action?{[snapshot.action.id]:snapshot.action}:{});state.action=state.actions[snapshot.action?.id]||null;state.messages=snapshot.messages;}}));
     const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json'}});
     const caps={prepare:true,confirm:false,formats:['markdown'],operations:['create','copy'],update:false};
-    const actionCaps=()=>({confirm:false,cancel:['preparing','pending'].includes(state.action?.state)});
-    const publicAction=()=>({...state.action,capabilities:actionCaps()});
+    const actionCaps=record=>({confirm:false,cancel:['preparing','pending'].includes(record?.state)});
+    const publicAction=(record=state.action)=>({...record,capabilities:actionCaps(record)});
     window.fetch=async(input,init={})=>{
       await restore();
       const path=new URL(input,location.origin).pathname,method=init.method||'GET';
@@ -33,23 +33,25 @@ function preparationScript({ delayed = false, initial404 = false } = {}) {
           document_workshop:{context_id:context.id,action_id:body.client_turn_id,revision_id:null}}});
         if(state.failChat){Object.assign(state.action,{state:'failed',phase:'failed',reason_code:'document_preparation_failed'});throw new TypeError('synthetic offline');}
         if(state.delayed) await new Promise(resolve=>state.release=resolve);
-        if(state.action.state==='cancelled') return json({ok:false,error:'Préparation annulée'},409);
-        Object.assign(state.action,{state:'pending',phase:'prepared',received_content_codepoints:83,revision_id:'revision-a',artifact_id:'artifact-a',
+        if(state.action.state==='cancelled') return json({ok:false,reason_code:'conversation_claim_lost',error:'Préparation documentaire non confirmée.'},503);
+        Object.assign(state.action,{state:'pending',phase:'prepared',received_content_codepoints:83,revision_id:'revision-'+state.action.id,artifact_id:'artifact-'+state.action.id,
           operation:'create',format:'markdown',name:'Synthèse.md',relative_path:'Documents/Synthèse.md',limitations:['markdown_pagination_reader_dependent','markdown_style_reader_dependent','write_confirmation_unavailable','docx_pdf_unavailable','update_unavailable']});
         const answer='Le document est préparé. L’écriture reste indisponible.';
-        state.messages.push({role:'assistant',content:answer,timestamp:'2026-10-06T10:01:00Z',meta:{document_workshop:{context_id:context.id,action_id:body.client_turn_id,revision_id:'revision-a'}}});
+        state.messages.push({role:'assistant',content:answer,timestamp:'2026-10-06T10:01:00Z',meta:{document_workshop:{context_id:context.id,action_id:body.client_turn_id,revision_id:state.action.revision_id}}});
         return new Response(answer+'\\x1e'+JSON.stringify({kind:'frida-stream-control',event:'done',updated_at:'2026-10-06T10:01:00Z'})+'\\n',{headers:{'Content-Type':'text/plain'}});
       }
       if(path.startsWith('/api/document-workshop/actions/')){
         if(path.endsWith('/cancel')){
           if(state.failCancel)return json({ok:false,reason_code:'document_cancel_unavailable'},503);
-          const target=state.actions[path.split('/')[4]]||state.action;
-          Object.assign(target,{state:'cancelled',phase:'cancelled',reason_code:'document_preparation_cancelled'});
+          const target=state.actions[path.split('/')[4]];
+          if(!target || target.context_id!==body?.context_id)return json({ok:false,reason_code:'document_action_not_found'},404);
+          Object.assign(target,{state:'cancelled',reason_code:'document_preparation_cancelled'});
           return json({ok:true,action:{...target,capabilities:{confirm:false,cancel:false}}});
         }
         if(state.blockPendingReads && state.action?.state==='pending'){state.blockedReads=(state.blockedReads||0)+1;await new Promise(()=>{});}
         if(state.initial404 && !state.reads404++){return json({ok:false,reason_code:'document_action_not_found'},404);}
-        const snapshot=state.action?publicAction():null;
+        const target=state.actions[path.split('/')[4]];
+        const snapshot=target?publicAction(target):null;
         if(state.delayActionRead){state.delayActionRead=false;await new Promise(resolve=>state.releaseActionRead=resolve);}
         return snapshot?json({ok:true,action:snapshot}):json({ok:false},404);
       }
@@ -236,20 +238,102 @@ test('M4 network failure after durable user rereads transcript references withou
   });
 });
 
-test('M4 cancelling a historical pending does not replace the current preparation',async()=>{
-  await openBrowserPage({mockScript:preparationScript()},async page=>{
+// These mounted tests prove browser projections, not database authority. Their
+// state transitions correspond to the real HTTP/PostgreSQL chain in
+// test_action_cancellation_postgresql.ActionCancellationPostgresqlTests:
+// test_cancel_old_pending_preserves_preparing_successor_authority_and_result
+// and test_cancel_preparing_successor_preserves_old_pending_and_fences_late_result.
+test('P2-M4-01 historical A cancellation preserves B progress, pending and identities after refresh',async()=>{
+  let snapshot=null;
+  await openBrowserPage({mockScript:preparationScript(),beforePage:page=>page.exposeFunction('__m4ReadServer',()=>snapshot)},async page=>{
     await ready(page);await openWorkshop(page);await send(page);
     const oldCard=page.locator('#log .document-action-card[data-state="pending"]').last();await oldCard.waitFor();
-    const firstId=await page.evaluate(()=>window.__m4.action.id);
+    const first=await page.evaluate(()=>window.__m4.action);
     await page.evaluate(()=>window.__m4.delayed=true);await send(page,'Seconde préparation');
     await page.waitForSelector('#documentWorkshop .document-action-card[data-state="preparing"]');
-    const secondId=await page.evaluate(()=>window.__m4.action.id);assert.notEqual(firstId,secondId);
+    const second=await page.evaluate(()=>window.__m4.action);assert.notEqual(first.id,second.id);
+    assert.equal(second.context_id,first.context_id);
+    const identity={context_id:second.context_id,conversation_id:'conv-a',workspace_folder_id:'folder-a',action_id:second.id};
+    await page.evaluate(()=>window.__m4.delayActionRead=true);
+    await page.click('#documentWorkshopReload');
+    await page.waitForFunction(()=>typeof window.__m4.releaseActionRead==='function');
     await oldCard.locator('[data-document-cancel]').focus();await page.keyboard.press('Enter');
-    await page.waitForFunction(id=>window.__m4.actions[id].state==='cancelled',firstId);
-    await page.waitForTimeout(100);
+    await page.waitForSelector('#log .document-action-card[data-state="cancelled"]');
     assert.equal(await page.locator('#documentWorkshop').getAttribute('data-action-state'),'preparing');
-    assert.equal(await page.evaluate(()=>JSON.parse(sessionStorage.getItem('frida.document-workshop.attempt')).action_id),secondId);
+    const attempt=await page.evaluate(()=>JSON.parse(sessionStorage.getItem('frida.document-workshop.attempt')));
+    assert.deepEqual(attempt,{...identity,state:'preparing'});
+    const cancels=await page.evaluate(()=>window.__m4.calls.filter(c=>c.path.endsWith('/cancel')));
+    assert.deepEqual(cancels.map(({path,method,body})=>({path,method,body})),[
+      {path:`/api/document-workshop/actions/${first.id}/cancel`,method:'POST',body:{context_id:first.context_id}},
+    ]);
+    // A late read of B remains a read of B; cancelling A grants no authority to
+    // replace the current action. The next synthetic provider input advances B.
+    await page.evaluate(()=>{Object.assign(window.__m4.action,{phase:'provider_content',received_content_codepoints:17});window.__m4.releaseActionRead();});
+    await page.waitForFunction(()=>document.querySelector('#documentWorkshopStatus').textContent.includes('17 caractères reçus'));
+    await page.click('#documentWorkshopReload');
+    await page.waitForFunction(()=>document.querySelector('#documentWorkshop').dataset.state==='editing'
+      && document.querySelector('#documentWorkshopStatus').textContent.includes('17 caractères reçus'));
+    assert.deepEqual(await page.evaluate(()=>JSON.parse(sessionStorage.getItem('frida.document-workshop.attempt'))),{...identity,state:'preparing'});
     await page.evaluate(()=>window.__m4.release());
+    await page.waitForSelector('#log .document-action-card[data-state="pending"]');
+    await page.waitForFunction(()=>document.querySelector('#documentWorkshop').dataset.actionState==='pending');
+    assert.equal(await page.locator('#log .document-action-card[data-state="cancelled"]').count(),1);
+    assert.equal(await page.locator('#log .document-action-card[data-state="pending"]').count(),1);
+    assert.deepEqual(await page.evaluate(()=>JSON.parse(sessionStorage.getItem('frida.document-workshop.attempt'))),{...identity,state:'pending'});
+    const submits=await page.evaluate(()=>window.__m4.calls.filter(c=>c.path==='/api/chat'));
+    assert.deepEqual(submits.map(c=>c.body.client_turn_id),[first.id,second.id]);
+    assert.equal(submits.every(c=>c.body.document_context_id===first.context_id),true);
+    assert.equal(await page.evaluate(()=>window.__m4.normalCalls),0);
+    assert.equal(await page.locator('#log .msg.me').count(),2);
+    snapshot=await page.evaluate(()=>({contexts:window.__m1.contexts,actions:window.__m4.actions,action:window.__m4.action,messages:window.__m4.messages}));
+    await page.reload();await ready(page);
+    await page.waitForSelector('#documentWorkshop .document-action-card[data-state="pending"]');
+    await page.waitForSelector('#log .document-action-card[data-state="cancelled"]');
+    assert.equal(await page.locator('#log .document-action-card[data-state="pending"]').count(),1);
+    assert.deepEqual(await page.evaluate(()=>JSON.parse(sessionStorage.getItem('frida.document-workshop.attempt'))),{...identity,state:'pending'});
+    assert.deepEqual(await page.evaluate(()=>window.__m4.calls.filter(c=>c.method==='POST')),[],'refresh must replay no turn, context creation or cancellation');
+    assert.equal(await page.locator('#documentWorkshop').getAttribute('data-state'),'editing');
+  });
+});
+
+test('P2-M4-01 current B cancellation preserves historical A pending and rejects late responses after refresh',async()=>{
+  let snapshot=null;
+  await openBrowserPage({mockScript:preparationScript(),beforePage:page=>page.exposeFunction('__m4ReadServer',()=>snapshot)},async page=>{
+    await ready(page);await openWorkshop(page);await send(page);
+    await page.waitForSelector('#log .document-action-card[data-state="pending"]');
+    const first=await page.evaluate(()=>window.__m4.action);
+    await page.evaluate(()=>window.__m4.delayed=true);await send(page,'Seconde préparation');
+    await page.waitForSelector('#documentWorkshop .document-action-card[data-state="preparing"]');
+    const second=await page.evaluate(()=>window.__m4.action);assert.notEqual(first.id,second.id);
+    const identity={context_id:first.context_id,conversation_id:'conv-a',workspace_folder_id:'folder-a',action_id:second.id};
+    await page.evaluate(()=>window.__m4.delayActionRead=true);
+    await page.click('#documentWorkshopReload');
+    await page.waitForFunction(()=>typeof window.__m4.releaseActionRead==='function');
+    await page.locator('#documentWorkshop [data-document-cancel]').click();
+    await page.waitForFunction(()=>document.querySelector('#documentWorkshop').dataset.actionState==='cancelled');
+    assert.equal(await page.locator('#log .document-action-card[data-state="pending"]').count(),1);
+    assert.deepEqual(await page.evaluate(()=>JSON.parse(sessionStorage.getItem('frida.document-workshop.attempt'))),{...identity,state:'cancelled'});
+    const cancels=await page.evaluate(()=>window.__m4.calls.filter(c=>c.path.endsWith('/cancel')));
+    assert.deepEqual(cancels.map(({path,method,body})=>({path,method,body})),[
+      {path:`/api/document-workshop/actions/${second.id}/cancel`,method:'POST',body:{context_id:first.context_id}},
+    ]);
+    await page.evaluate(()=>{window.__m4.releaseActionRead();window.__m4.release();});
+    await page.waitForSelector('#log .document-action-card[data-state="cancelled"]');
+    assert.equal(await page.locator('#documentWorkshop').getAttribute('data-action-state'),'cancelled');
+    assert.equal(await page.locator('#documentWorkshop').getAttribute('data-state'),'editing');
+    assert.equal(await page.locator('#log .document-action-card[data-state="pending"]').count(),1);
+    assert.equal(await page.locator('#log .document-action-card[data-state="preparing"]').count(),0);
+    assert.equal(await page.locator('#log .msg.me').count(),2);
+    const submits=await page.evaluate(()=>window.__m4.calls.filter(c=>c.path==='/api/chat'));
+    assert.deepEqual(submits.map(c=>c.body.client_turn_id),[first.id,second.id]);
+    assert.equal(await page.evaluate(()=>window.__m4.normalCalls),0);
+    snapshot=await page.evaluate(()=>({contexts:window.__m1.contexts,actions:window.__m4.actions,action:window.__m4.action,messages:window.__m4.messages}));
+    await page.reload();await ready(page);
+    await page.waitForSelector('#documentWorkshop .document-action-card[data-state="cancelled"]');
+    await page.waitForSelector('#log .document-action-card[data-state="pending"]');
+    assert.equal(await page.locator('#log .document-action-card[data-state="cancelled"]').count(),1);
+    assert.deepEqual(await page.evaluate(()=>JSON.parse(sessionStorage.getItem('frida.document-workshop.attempt'))),{...identity,state:'cancelled'});
+    assert.deepEqual(await page.evaluate(()=>window.__m4.calls.filter(c=>c.method==='POST')),[],'refresh must replay no turn, context creation or cancellation');
   });
 });
 

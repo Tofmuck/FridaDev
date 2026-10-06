@@ -1,6 +1,8 @@
 # Atelier documentaire Frida V1 — contrat M4
 
-Date : 2026-10-06. Statut : code et preuves hermétiques fermés ; livraison runtime ouverte.
+Date : 2026-10-06. Statut : livraison initiale conservée ; contre-audit M4 ouvert.
+Le lot courant corrige uniquement P2-M4-01. P2-M4-02 et P3-M4-03 restent ouverts,
+sans correction dans ce lot ; M4 n'est pas intégralement fermé et M5 reste non commencé.
 Base exacte : correctif P3 `9f10531ae9c799f4afc769c97ea2d48659f1c3d3`, poussé
 sur M3 et vérifié propre, HEAD = upstream = distant, divergence `0/0`, avant
 création de `FridaV1-Document-Workshop-M4`. Le hash M4 et les contrôles du push
@@ -111,8 +113,22 @@ une courte interruption lorsque l'autorité et le stockage le permettent ; sinon
 l'état interrompu/perdu est relisible. Répétition identique : relecture technique,
 aucun replay ; réutilisation incompatible refusée, même après clôture du contexte.
 
-Les triggers M3 et M4 synchronisent contexte/action après annulation ou mutation
-locale pertinente de cible/répertoire/source. Les sources/version privées restent
+L'annulation d'une action M4 ne ferme pas son contexte. Dans une transaction
+courte, elle valide l'identité/le scope, verrouille conversation puis ressources/
+contexte, relit l'action, verrouille son claim seulement si preparing, puis l'action
+(verrous downstream NOWAIT). Preparing devient cancelled avec révocation de son
+seul claim encore actif, identifié par tour/conversation/contexte/type preparation.
+Pending devient cancelled sans verrouiller ni réécrire son claim réussi, sa révision
+ou le transcript. Un autre tour, son propriétaire, sa génération et son lease
+restent intacts. Une panne rollback les deux écritures ; aucun verrou ne traverse
+le provider. Les relectures sous verrou sérialisent annulation/finalisation :
+annulation gagnante interdit la finalisation ; commit gagnant conserve son succès
+historique et permet d'annuler ensuite la seule proposition créée.
+
+Le helper interne M3 `conversation_turn_claims.cancel` conserve son contrat global
+de fermeture du contexte ; l'endpoint M4 ne l'appelle pas. Les triggers M3/M4
+conservent les fermetures effectives et invalidations collectives de scope/source.
+Les sources/version privées restent
 figées ; les observations distantes sont celles de la lecture fraîche, pas une
 surveillance permanente de Nextcloud. L'inventaire local détecte les collisions
 NFC/casefold ; une image non mobilisée ne bloque pas une proposition Markdown.
@@ -143,6 +159,56 @@ upload, multisélection, drag-and-drop et corrections M2 restent éprouvés.
 
 ## Preuves et contre-audit
 
+Le contre-audit postérieur à la livraison initiale ouvre trois findings :
+
+| Finding | État et périmètre |
+| --- | --- |
+| P2-M4-01 | Fermé : annulation collatérale reproduite sur Flask/PostgreSQL, correctif ciblé prouvé et contre-audité indépendamment. |
+| P2-M4-02 | Ouvert : provenance perdue lors du gel du payload, signalée par le contre-audit ; aucune correction autorisée ici. |
+| P3-M4-03 | Ouvert : sélecteurs/comptes du relevé initial non concordants ; relevé conservé sans réécriture ni clôture implicite. |
+
+Les [preuves P2-M4-01](../baselines/document-workshop/frida-v1-document-workshop-p2-m4-01-20261006.json)
+développent les sélections de ce seul lot et distinguent baseline, nouveautés et
+sous-sélections. Baseline avant toute édition : 1 414 cas, 739 Python, 121 SQL,
+2 pgvector, 424 Node, 107 Chromium historiques et 21 M4, exits 0, zéro skip.
+Elle ne corrige pas rétrospectivement le relevé historique litigieux ci-dessous.
+
+Rouge causal avant patch : 2 cas, 1 échec, 2,055 s, exit 1 ; A pending et B
+preparing deviennent cancelled avec leur contexte, B termine HTTP503. Contrôle
+sans annulation : 1/1, 1,484 s, exit 0 ; B HTTP200/pending supersède A normalement.
+Les deux variantes ont exactement deux préparations/deux appels documentaires,
+zéro échange principal normal, avec rendez-vous explicite et connexions indépendantes.
+
+Comparaison finale : **1 436/1 436**, exits 0, zéro skip : 739 Python (233,545 s),
+142 SQL (79,250 s), 2 pgvector (1,284 s), 424 Node (1,305917226 s),
+107 Chromium historiques (95,431059486 s), 22 Chromium M4 (19,121124928 s).
+Delta : 21 nouveaux cas SQL et un cas navigateur supplémentaire ; aucune autre extension
+de sélection entre la baseline de ce lot et sa comparaison. Le ciblé SQL 21/21
+(21,195 s) et les probes navigateur 2/2 (3,126736087 s) sont des sous-ensembles,
+pas des cas additionnels.
+
+La matrice réelle prouve annulation A/B, claim normal concurrent, répétitions,
+terminaux/missing/mauvais contexte, perte de lease, les deux ordres annulation/
+commit, rollback des deux écritures, conflits NOWAIT, nouvelle préparation explicite
+et invalidations collectives scope/source. Annuler B ferme physiquement sa socket
+HTTP ; son résultat tardif ne finalise pas, A reste pending. La revue indépendante
+ne confirme aucun nouveau finding sur ce delta et soutient la fermeture de P2-M4-01
+seulement. Le frontend produit est inchangé ; ses deux probes de cartes sont reliées
+à la preuve SQL réelle, sans attribuer d'autorité backend au faux fetch.
+
+Deux erreurs de fixture SQL ont conduit à déplacer le contrôle NOWAIT d'inspection
+après la fin du provider, en conservant le contrôle d'absence de transaction réseau.
+Trois probes de contention diffèrent seulement les contrôles de supervision concurrents
+pendant le verrou externe, puis délèguent aux stores réels. Les timeouts de fixture
+navigateur ont été corrigés en déclenchant le GET attendu ; GET/cancel ciblent ensuite
+l'identité exacte, avec registre restauré au refresh et réponses tardives réalistes.
+Ces limites et les échecs intermédiaires sont conservés dans l'artefact.
+Nettoyage vérifié avant livraison : deux conteneurs PostgreSQL dédiés, leurs
+sockets et les trois arbres temporaires propres à ce correctif sont absents.
+Aucune ressource runtime/opérateur modifiée.
+
+### Relevé de livraison initiale conservé — P3-M4-03 ouvert
+
 L'[artefact daté content-free](../baselines/document-workshop/frida-v1-document-workshop-m4-20261006.json)
 porte les **sélecteurs exacts**, commandes Docker/env, comptes, exits/durées,
 fixtures adaptées et échecs intermédiaires. Images et dépendances préexistantes,
@@ -172,7 +238,8 @@ La seconde lecture indépendante a fermé P2 DNS, P2 canonical JSON en surface,
 P2 busy UI et P3 libellés techniques ; le contre-audit final a corrigé le refus
 PNG non mobilisé et rétabli la propagation des interruptions de processus après
 nettoyage de la réservation, sans assimiler celles-ci à une panne documentaire.
-Aucun finding confirmé vivant dans ce delta. Les adaptations
+La revue initiale concluait sans finding confirmé vivant ; les trois findings
+du contre-audit ci-dessus remplacent cette conclusion comme état courant. Les adaptations
 static frontend renforcent la condition documentaire sans retirer les gardes
 normales ; M2 scope/projection a été découplé après une régression reproduite.
 Warnings DB/admin des fixtures minimales ne prouvent pas la santé du runtime.
