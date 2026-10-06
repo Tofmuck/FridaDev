@@ -1,5 +1,12 @@
 # Atelier documentaire Frida V1 — contrat M3
 
+## Évolution M4 — 6 octobre 2026
+
+La préparation M4 réutilise les claims communs et le snapshot transactionnel M3. Sauvegarde utilisateur/action initiale, puis réponse courte/révision/pending/supersession/clôture finale sont atomiques. Le pending libère le claim et n’expire pas. Le correctif golden M3 distinct est `9f10531ae9c799f4afc769c97ea2d48659f1c3d3`, poussé et vérifié avant la branche M4.
+Voir le [contrat M4](frida-v1-document-workshop-m4-contract.md) pour les preuves
+hermétiques et les limites ; migrations opérateur, runtime, modèle/DAV live et M5 restent ouverts.
+
+
 Date : 2026-10-06. Base : M2 `6e8c61f5059350d8d15ded4b41b68f2e0d9acac3`.
 Autorité : [roadmap](../../todo-todo/product/frida-v1-document-workshop-todo.md),
 §§3.4, 3.6, 3.7, 4 et M3. M4 reste non commencé.

@@ -1,0 +1,441 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-06",
+  "scope": "M4 code and hermetic proofs only",
+  "base": "9f10531ae9c799f4afc769c97ea2d48659f1c3d3",
+  "branch": "FridaV1-Document-Workshop-M4",
+  "profiles": {
+    "python_command": "docker run --rm --pull=never --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v \"$CHECKOUT:/workspace:ro\" -w /workspace/app --entrypoint /usr/bin/env fridadev-audit-py:latest -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/workspace EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid SEARXNG_URL=https://search.invalid python -m unittest <selectors>",
+    "sql_additions": "-v \"$PROOF/pg-socket:/proof/sock:ro\" and env M1_PROOF_PG_SOCKET=/proof/sock M2_PROOF_PG_SOCKET=/proof/sock M3_PROOF_PG_SOCKET=/proof/sock M4_PROOF_PG_SOCKET=/proof/sock M3_VECTOR_PROOF_PG_SOCKET=/proof/sock",
+    "vector_additions": "same SQL variables, bind \"$PROOF/vector-socket:/proof/sock:ro\"",
+    "node_command": "docker run --rm --pull never --network none --read-only --tmpfs /tmp:rw,nosuid,nodev --mount type=bind,src=\"$TASK_CHECKOUT\",dst=/workspace,readonly --mount type=bind,src=/opt/platform/fridadev/node_modules,dst=/workspace/node_modules,readonly --mount type=bind,src=/home/tof/.cache/ms-playwright,dst=/proof/browsers,readonly --workdir /workspace --entrypoint /usr/bin/env mcr.microsoft.com/playwright:v1.54.0-jammy -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp PLAYWRIGHT_BROWSERS_PATH=/proof/browsers node --test \"$@\"",
+    "database_commands": [
+      "docker run -d --name fridadev-m4-proof-pg-20261006 --pull=never --network none --read-only --tmpfs /tmp:rw,nosuid,nodev --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev -v \"$PROOF/pg-socket:/var/run/postgresql\" -e POSTGRES_USER=m1proof -e POSTGRES_DB=m1proof -e POSTGRES_HOST_AUTH_METHOD=trust postgres:16-alpine -c listen_addresses=",
+      "docker run -d --name fridadev-m4-vector-proof-pg-20261006 --pull=never --network none --read-only --tmpfs /tmp:rw,nosuid,nodev --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev -v \"$PROOF/vector-socket:/var/run/postgresql\" -e POSTGRES_USER=m1proof -e POSTGRES_DB=m1proof -e POSTGRES_HOST_AUTH_METHOD=trust pgvector/pgvector:pg17 -c listen_addresses="
+    ],
+    "baseline_setup": "git archive 9f10531ae9c799f4afc769c97ea2d48659f1c3d3 app benchmark | tar -x -C \"$BASELINE\"; mkdir -p \"$BASELINE/app/conv\"; CHECKOUT=\"$BASELINE\". Existing node_modules and browser cache mounted read-only separately. Empty ignored app/conv restored for fixture only."
+  },
+  "baseline": {
+    "total_unique": 840,
+    "selections": [
+      {
+        "selection": "python",
+        "tests": 377,
+        "seconds": 21.425,
+        "exit": 0,
+        "skips": 0
+      },
+      {
+        "selection": "sql",
+        "tests": 82,
+        "seconds": 38.93,
+        "exit": 0,
+        "skips": 0
+      },
+      {
+        "selection": "vector",
+        "tests": 2,
+        "seconds": 1.332,
+        "exit": 0,
+        "skips": 0
+      },
+      {
+        "selection": "neighbors",
+        "tests": 68,
+        "seconds": 1.055,
+        "exit": 0,
+        "skips": 0
+      },
+      {
+        "selection": "node",
+        "tests": 207,
+        "seconds": 0.481842129,
+        "exit": 0,
+        "skips": 0
+      },
+      {
+        "selection": "chromium",
+        "tests": 104,
+        "seconds": 93.716402474,
+        "exit": 0,
+        "skips": 0
+      }
+    ],
+    "python_selectors": [
+      "tests.test_server_active_documents_contract",
+      "tests.test_server_workspace_folders_contract",
+      "tests.test_server_chat_route_transport_contract",
+      "tests.test_server_chat_conversation_id_contract",
+      "tests.test_server_chat_document_integrity_contract",
+      "tests.integration.frontend_chat.test_frontend_chat_contract",
+      "tests.unit.core.test_workspace_folders_contract",
+      "tests.unit.chat.test_chat_llm_flow",
+      "tests.unit.chat.test_chat_llm_flow_boundaries",
+      "tests.unit.chat.test_chat_stream_control",
+      "tests.unit.core.test_document_workshop_canonical_paths",
+      "tests.unit.core.test_document_workshop_admission",
+      "tests.unit.core.test_document_workshop_provider_progress",
+      "tests.unit.core.test_workspace_documents_ingestion",
+      "tests.test_server_document_workshop_contexts_contract",
+      "tests.unit.core.test_workspace_folder_documents",
+      "tests.unit.core.test_workspace_file_selection_prompt",
+      "tests.unit.core.test_active_document_text_extraction",
+      "tests.unit.core.test_document_upload_limits",
+      "tests.unit.core.test_workspace_nextcloud_compensation_etag",
+      "tests.unit.core.test_workspace_file_ocr_service",
+      "tests.unit.core.test_workspace_document_read_client_m2",
+      "tests.unit.core.test_workspace_document_source_extraction_m2",
+      "tests.unit.core.test_workspace_document_adoption_m2",
+      "tests.unit.core.test_workspace_folders_listing_failure",
+      "tests.unit.core.test_workspace_folder_rename_commit_projection"
+    ],
+    "neighbor_selectors": [
+      "tests.unit.core.test_conversations_store_save_result",
+      "tests.test_conv_store_phase4_database",
+      "tests.unit.chat.test_chat_session_flow",
+      "tests.test_server_chat_synthetic_logs_contract",
+      "tests.integration.chat.test_chat_input_mode_route",
+      "tests.unit.memory.test_summarizer_phase4",
+      "tests.unit.memory.test_summarizer_phase13",
+      "tests.unit.memory.test_memory_trace_summary_store_boundary",
+      "tests.unit.memory.test_hermeneutic_node_state",
+      "tests.unit.core.test_chat_hermeneutic_node_state"
+    ],
+    "sql_selectors": [
+      "tests.integration.document_workshop.test_context_store_postgresql",
+      "tests.integration.document_workshop.test_adoption_postgresql",
+      "tests.integration.document_workshop.test_turn_claims_postgresql",
+      "tests.integration.document_workshop.test_claim_transport_postgresql",
+      "tests.integration.document_workshop.test_claim_adoption_postgresql"
+    ],
+    "vector_selectors": [
+      "tests.integration.document_workshop.test_claim_summary_postgresql"
+    ]
+  },
+  "final": {
+    "total_unique": 1198,
+    "python": {
+      "tests": 739,
+      "seconds": 197.37,
+      "exit": 0,
+      "skips": 0,
+      "selectors": [
+        "tests.test_server_active_documents_contract",
+        "tests.test_server_workspace_folders_contract",
+        "tests.test_server_chat_route_transport_contract",
+        "tests.test_server_chat_conversation_id_contract",
+        "tests.test_server_chat_document_integrity_contract",
+        "tests.integration.frontend_chat.test_frontend_chat_contract",
+        "tests.unit.core.test_workspace_folders_contract",
+        "tests.unit.chat.test_chat_llm_flow",
+        "tests.unit.chat.test_chat_llm_flow_boundaries",
+        "tests.unit.chat.test_chat_stream_control",
+        "tests.unit.core.test_document_workshop_canonical_paths",
+        "tests.unit.core.test_document_workshop_admission",
+        "tests.unit.core.test_document_workshop_provider_progress",
+        "tests.unit.core.test_workspace_documents_ingestion",
+        "tests.test_server_document_workshop_contexts_contract",
+        "tests.unit.core.test_workspace_folder_documents",
+        "tests.unit.core.test_workspace_file_selection_prompt",
+        "tests.unit.core.test_active_document_text_extraction",
+        "tests.unit.core.test_document_upload_limits",
+        "tests.unit.core.test_workspace_nextcloud_compensation_etag",
+        "tests.unit.core.test_workspace_file_ocr_service",
+        "tests.unit.core.test_workspace_document_read_client_m2",
+        "tests.unit.core.test_workspace_document_source_extraction_m2",
+        "tests.unit.core.test_workspace_document_adoption_m2",
+        "tests.unit.core.test_workspace_folders_listing_failure",
+        "tests.unit.core.test_workspace_folder_rename_commit_projection",
+        "tests.unit.core.test_conversations_store_save_result",
+        "tests.test_conv_store_phase4_database",
+        "tests.unit.chat.test_chat_session_flow",
+        "tests.test_server_chat_synthetic_logs_contract",
+        "tests.integration.chat.test_chat_input_mode_route",
+        "tests.unit.memory.test_summarizer_phase4",
+        "tests.unit.memory.test_summarizer_phase13",
+        "tests.unit.memory.test_memory_trace_summary_store_boundary",
+        "tests.unit.memory.test_hermeneutic_node_state",
+        "tests.unit.core.test_chat_hermeneutic_node_state",
+        "tests.test_llm_client",
+        "tests.unit.chat.test_main_llm_reasoning",
+        "tests.unit.runtime_settings.test_runtime_settings",
+        "tests.unit.runtime_settings.test_runtime_settings_validation",
+        "tests.unit.runtime_settings.test_runtime_settings_validation_boundaries",
+        "tests.unit.runtime_settings.test_runtime_settings_seed_bundles_and_plans",
+        "tests.unit.core.test_chat_main_payload_boundary",
+        "tests.unit.chat.test_web_turn_provenance_continuity",
+        "tests.unit.core.test_stimmung_agent",
+        "tests.unit.core.hermeneutic_node.inputs.test_stimmung_input",
+        "tests.unit.golden.test_l7_6_stimmung_finalization_integrity",
+        "tests.unit.logs.test_main_payload_manifest",
+        "tests.unit.logs.test_observability_payload_guard_schema_boundaries",
+        "tests.unit.golden.test_lot9_golden_harness",
+        "tests.test_server_admin_non_settings_contracts",
+        "tests.integration.chat.test_chat_dialogue_audio_routes",
+        "tests.unit.core.test_document_workshop_envelope",
+        "tests.unit.core.test_document_markdown",
+        "tests.unit.core.test_document_workshop_http_transport",
+        "tests.unit.core.test_document_workshop_m4_observability",
+        "tests.unit.core.test_document_workshop_turn_ownership"
+      ]
+    },
+    "sql": {
+      "tests_unique": 121,
+      "exit": 0,
+      "skips": 0,
+      "historical": {
+        "tests": 82,
+        "seconds": 32.171,
+        "selectors": [
+          "tests.integration.document_workshop.test_context_store_postgresql",
+          "tests.integration.document_workshop.test_adoption_postgresql",
+          "tests.integration.document_workshop.test_turn_claims_postgresql",
+          "tests.integration.document_workshop.test_claim_transport_postgresql",
+          "tests.integration.document_workshop.test_claim_adoption_postgresql"
+        ]
+      },
+      "preparation": {
+        "tests": 39,
+        "seconds": 20.277,
+        "selectors": [
+          "tests.integration.document_workshop.test_preparation_postgresql",
+          "tests.integration.document_workshop.test_preparation_failures_postgresql",
+          "tests.integration.document_workshop.test_preparation_http_postgresql"
+        ]
+      },
+      "earlier_combined": {
+        "tests": 118,
+        "seconds": 52.031,
+        "add_to_unique": false
+      }
+    },
+    "vector": {
+      "tests": 2,
+      "seconds": 1.671,
+      "exit": 0,
+      "skips": 0,
+      "selectors": [
+        "tests.integration.document_workshop.test_claim_summary_postgresql"
+      ]
+    },
+    "node": {
+      "tests": 211,
+      "seconds": 0.541363126,
+      "exit": 0,
+      "skips": 0,
+      "selectors": [
+        "app/tests/unit/frontend_chat/test_*.js"
+      ]
+    },
+    "chromium_historical": {
+      "tests": 104,
+      "seconds": 91.290776034,
+      "exit": 0,
+      "skips": 0,
+      "selectors": [
+        "app/tests/integration/frontend_browser/test_frontend_browser_active_documents.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_adobe_mode.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_document_adoption.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_document_adoption_reasons.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_document_inventory_publication.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_document_workshop.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_identity_governance.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_smoke.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_workspace_folders.js"
+      ]
+    },
+    "chromium_m4": {
+      "tests": 21,
+      "seconds": 16.708937178,
+      "exit": 0,
+      "skips": 0,
+      "selectors": [
+        "app/tests/integration/frontend_browser/test_frontend_browser_document_preparation_m4.js"
+      ]
+    },
+    "subsets_not_additive": [
+      {
+        "tests": 324,
+        "seconds": 8.492,
+        "scope": "54 historical M0 +36 M4 +234 neighbors"
+      },
+      {
+        "tests": 89,
+        "seconds": 9.449,
+        "scope": "HTTP and M0"
+      },
+      {
+        "tests": 25,
+        "seconds": 13.169,
+        "scope": "M4 SQL failure matrix"
+      },
+      {
+        "tests": 8,
+        "seconds": 3.916,
+        "scope": "M4 turn and separate constitutive counters"
+      }
+    ]
+  },
+  "review": {
+    "independent": true,
+    "confirmed_live_findings": 0,
+    "closed": [
+      "P2 DNS executor wait",
+      "P2 surface canonical JSON pure/embedded",
+      "P2 frontend busy after blocked state read",
+      "P3 technical UI labels",
+      "PNG collision false refusal",
+      "Process control interruption swallowed by M4 failure handling"
+    ]
+  },
+  "invariants": {
+    "documentary_main_calls": 1,
+    "normal_main_calls": 0,
+    "constitutive_calls_synthetic_nominal": 2,
+    "dav_mutations": 0,
+    "canonical_public": false,
+    "operator_migration": false,
+    "runtime_delivery": false,
+    "model_live": false,
+    "dav_live": false,
+    "M5_started": false
+  },
+  "cleanup": {
+    "status": "verified_absent",
+    "containers": [
+      "fridadev-m4-proof-pg-20261006",
+      "fridadev-m4-vector-proof-pg-20261006"
+    ],
+    "directories": [
+      "/tmp/fridadev-m4-proof-20261006",
+      "/tmp/fridadev-m4-frontend-proof",
+      "/tmp/fridadev-m4-envelope-proof-20261006"
+    ],
+    "standalone_proof_logs_removed": 16,
+    "verification": "docker inspect reports no such object; exact owned paths absent; no fridadev-m4 temporary resource remains",
+    "socket_directory_cleanup": "UID 70/999 sticky directories required the existing Python proof image as UID 0; writable bind limited to the owned proof directory, network none, rootfs read-only, --pull=never; no operator resource touched"
+  },
+  "git": {
+    "push_verification": "reported in final response after commit; this artifact cannot contain its own enclosing commit hash"
+  },
+  "intermediate_failures": [
+    {
+      "scope": "initial /api/chat M3",
+      "tests": 1,
+      "failed": 1,
+      "seconds": 1.166,
+      "exit": 1,
+      "reason": "409 instead of prepared200"
+    },
+    {
+      "scope": "M4 Python comparison",
+      "tests": 384,
+      "failed": 3,
+      "seconds": 27.226,
+      "exit": 1,
+      "reason": "2 stale frontend string expectations; M2 adoption scope coupled to M4 projection. Corrected without relaxing invariants."
+    },
+    {
+      "scope": "root SQL fixtures first",
+      "tests": 8,
+      "errors": 2,
+      "seconds": 3.374,
+      "exit": 1,
+      "reason": "RemoteResource signature and provenance meta key corrected"
+    },
+    {
+      "scope": "root SQL source fixture second",
+      "tests": 8,
+      "failed": 1,
+      "seconds": 4.935,
+      "exit": 1,
+      "reason": "M2 synthetic identity and module deepcopy fixture corrected"
+    },
+    {
+      "scope": "DNS unit initial fixture",
+      "tests": 2,
+      "failed": 2,
+      "seconds": 4.004,
+      "exit": 1,
+      "reason": "synthetic build_payload signature corrected; not causal DNS red"
+    },
+    {
+      "scope": "DNS causal red",
+      "tests": 2,
+      "failed": 2,
+      "seconds": 2.011,
+      "exit": 1,
+      "reason": "request waits for blocked DNS after cancellation/inactivity"
+    },
+    {
+      "scope": "DNS first green cleanup",
+      "tests": 16,
+      "failed": 2,
+      "seconds": 1.089,
+      "exit": 1,
+      "reason": "empty gather bound wrong loop; release coroutine corrected"
+    },
+    {
+      "scope": "canonical SQL sinks red",
+      "tests": 2,
+      "failed": 2,
+      "seconds": 1.4,
+      "exit": 1,
+      "reason": "canonical JSON persisted as surface"
+    },
+    {
+      "scope": "canonical unit sinks red",
+      "tests": 3,
+      "subtest_failures": 22,
+      "seconds": 0.037,
+      "exit": 1
+    },
+    {
+      "scope": "canonical prefixed unit red",
+      "tests": 1,
+      "subtest_failures": 12,
+      "seconds": 0.022,
+      "exit": 1
+    },
+    {
+      "scope": "canonical prefixed SQL intended red",
+      "exit": 0,
+      "reason": "guard already loaded corrected; no red claimed"
+    },
+    {
+      "scope": "PNG causal red",
+      "tests": 2,
+      "failed": 1,
+      "seconds": 1.506,
+      "exit": 1,
+      "reason": "unrelated PNG blocked Markdown; NFC positive collision already green"
+    },
+    {
+      "scope": "frontend busy causal red",
+      "tests": 1,
+      "failed": 1,
+      "seconds": 1.119718521,
+      "exit": 1,
+      "reason": "normal call blocked by state GET"
+    },
+    {
+      "scope": "process control causal red",
+      "tests": 1,
+      "failed": 1,
+      "seconds": 1.106,
+      "exit": 1,
+      "reason": "KeyboardInterrupt swallowed by documentary failure handling; ordinary failures remain persisted, process control propagates after reservation cleanup; final preparation39 green"
+    },
+    {
+      "scope": "historical neighbors archive",
+      "tests": 63,
+      "exit": 1,
+      "reason": "ignored empty app/conv absent in readonly archive; restored only empty fixture directory, replay68 green"
+    },
+    {
+      "scope": "frontend archive initial",
+      "exit": 1,
+      "reason": "existing node_modules absent in archive; mounted readonly, no install"
+    }
+  ]
+}

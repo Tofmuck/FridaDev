@@ -79,6 +79,15 @@ PARENT_SUMMARY = {
 
 
 def context_rule(stage: str, path: tuple[str, ...]) -> Any:
+    if stage == 'document_preparation' and not path:
+        return {'status_schema_version': ('enum','agentic_v1'), 'reason_code': 'code', 'error_code': 'code',
+                'action_id': 'uuid', 'context_id': 'uuid',
+                'phase': ('enum', 'preparing', 'user_saved', 'dialogue_ready', 'source_read', 'sources_ready',
+                          'summary_ready','identity_ready','memory_ready','stimmung_ready','hermeneutic_ready',
+                          'payload_prepared', 'admitted', 'provider_content', 'provider_finished',
+                          'canonical_validated', 'complete', 'failed'),
+                'state': ('enum', 'preparing', 'succeeded', 'failed', 'cancelled'),
+                'received_content_codepoints': 'int'}
     if stage == 'memory_chain_snapshot' and not path:
         return MEMORY_SNAPSHOT
     if stage == 'biblio':
@@ -123,6 +132,8 @@ def valid_context_scalar(kind: Any, value: Any) -> bool:
         return False
     if kind == 'hash':
         return value == '' or bool(re.fullmatch(r'[0-9a-f]{12}', value))
+    if kind == 'uuid':
+        return bool(re.fullmatch(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}', value))
     if kind == 'hostname':
         # Only a DNS hostname at a source-domain path, never an URL, port or userinfo.
         labels = value.split('.')

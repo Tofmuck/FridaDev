@@ -303,6 +303,7 @@
   window.FridaDialogueModeController = dialogueModeController;
   const openDialogueSession = (mode) => {
     if (!['d3_local', 'full', 'local_preflight'].includes(mode)) throw new Error('dialogue_session_mode_invalid');
+    if (documentWorkshopController?.blocksSubmission()) return Promise.resolve();
     if (dialogueD3Active) return dialogueD3Operation;
     dialogueD3Active = true;
     dialogueD3TerminalError = false;
@@ -597,9 +598,12 @@
     if (persistedErrorMeta) {
       const assistantNode = createMessageNode("assistant", persistedErrorMeta.bubbleMessage, timestamp);
       applyAssistantStreamingFailure(assistantNode, persistedErrorMeta);
+      void documentWorkshopController?.renderMessage(assistantNode.wrapper, messageRecord);
       return assistantNode;
     }
-    return addMsg(role, String(messageRecord && messageRecord.content || ""), timestamp);
+    const node = addMsg(role, String(messageRecord && messageRecord.content || ""), timestamp);
+    void documentWorkshopController?.renderMessage(node.wrapper, messageRecord);
+    return node;
   };
 
   const setAssistantLoader = (assistantNode, enabled) => {
@@ -762,6 +766,7 @@
     buttonEl: btnActiveDocument, inputEl: activeDocumentFileInput,
     menuEl: $("#documentFileMenu"), panelEl: $("#documentWorkshop"), sourceBarEl: activeDocumentsBar,
     statusEl: $("#documentWorkshopStatus"), folderEl: $("#documentWorkshopFolder"),
+    actionEl: $("#documentWorkshopAction"), dialogueButtonEl: btnDialogueMode,
     bindFolderEl: $("#documentWorkshopBindFolder"), targetEl: $("#documentWorkshopTarget"),
     reloadEl: $("#documentWorkshopReload"), exitEl: $("#documentWorkshopExit"),
     browseEl: $("#documentWorkshopBrowse"), remoteEl: $("#documentRemoteBrowser"),
@@ -770,6 +775,9 @@
     remoteBackEl: $("#documentRemoteBack"), remoteRefreshEl: $("#documentRemoteRefresh"),
     fetchFn: fetch, getThread: () => getThreadById(getCurrentId()),
     getFolders: threadsLifecycle.getWorkspaceFolders, getFiles: threadsLifecycle.getWorkspaceFiles,
+    getSourceFileIds: conversationId => threadsLifecycle.getWorkspaceFileSelections(conversationId)
+      .filter(selection => selection.selected === true)
+      .map(selection => selection.workspace_file_id),
     refreshFiles: async (folderId, isCurrent) => {
       const files = await threadsLifecycle.refreshWorkspaceFiles(folderId, isCurrent);
       if (isCurrent() && files !== null) renderThreads();
@@ -888,9 +896,19 @@
 
   async function submitCanonicalChatMessage(text, inputMode) {
     if (chatRequestInFlight) return { ok: false, reason: "busy" };
+    let documentSubmission = null;
     if (documentWorkshopController?.blocksSubmission()) {
-      documentWorkshopController.refuseSubmission();
-      return { ok: false, reason: "document_preparation_unavailable" };
+      const incompatibleModes = webSearchEnabled
+        || Boolean(adobeModeController?.getPayload().specialization_profile)
+        || Boolean(biblioModeController?.getPayload().biblio_enabled)
+        || Boolean(agendaModeController?.getPayload().agenda_enabled)
+        || Boolean(notesModeController?.getPayload({ workspaceFolderId: getThreadById(getCurrentId())?.workspace_folder_id }).workspace_notes_mode)
+        || (typeof imageGenerationPanel !== "undefined" && !imageGenerationPanel.classList.contains("hidden"));
+      documentSubmission = documentWorkshopController.prepareSubmission?.({ inputMode, incompatibleModes });
+      if (!documentSubmission?.ok) {
+        documentWorkshopController.refuseSubmission(documentSubmission);
+        return { ok: false, reason: documentSubmission?.reason || "document_preparation_unavailable" };
+      }
     }
     text = typeof text === "string" ? text.trim() : "";
     if (!text) return { ok: false, reason: "empty" };
@@ -898,6 +916,7 @@
     inputMode = isDialogue || inputMode === "voice" ? "voice" : "keyboard";
     const requestThreadId = getCurrentId();
     const clientTurnId = crypto.randomUUID();
+    if (documentSubmission) documentWorkshopController.beginSubmission(clientTurnId);
 
     addMsg("user", text);
     appendMessageToThread(requestThreadId, "user", text);
@@ -928,6 +947,7 @@
         }
       }, requestThreadId, inputMode, {
         clientTurnId,
+        documentSubmission,
         onStreamEvent(event) {
           applyAssistantStreamingUiEvent(assistantNode, event);
         },
@@ -952,13 +972,13 @@
         );
       }
       applyConversationTerminalMeta(requestThreadId, replyTerminal);
-      if (!hasReplyUpdatedAt && requestThreadId) {
+      if ((!hasReplyUpdatedAt || documentSubmission) && requestThreadId) {
         await hydrateThreadMessages(requestThreadId, { force: true });
       }
       const refreshed = await refreshThreadsFromServer({ keepSelection: true });
       renderThreads();
       updateExportConversationButton();
-      if (!hasReplyUpdatedAt && requestThreadId && getCurrentId() === requestThreadId) {
+      if ((!hasReplyUpdatedAt || documentSubmission) && requestThreadId && getCurrentId() === requestThreadId) {
         await loadThread(requestThreadId, { preserveStatus: !refreshed });
       } else if (shouldStickToBottom) {
         scrollToBottom(true);
@@ -972,7 +992,7 @@
         renderThreads();
         updateExportConversationButton();
       }
-      if (requestThreadId && errorTerminal && errorTerminal.event === "error" && hasTerminalUpdatedAt(errorTerminal)) {
+      if (!documentSubmission && requestThreadId && errorTerminal && errorTerminal.event === "error" && hasTerminalUpdatedAt(errorTerminal)) {
         appendMessageToThread(
           requestThreadId,
           "assistant",
@@ -981,7 +1001,7 @@
           buildInterruptedAssistantTurnMeta(errorTerminal.error_code || "stream_protocol_error"),
         );
         renderThreads();
-      } else if (requestThreadId && errorTerminal && errorTerminal.event === "error") {
+      } else if (requestThreadId && (documentSubmission || (errorTerminal && errorTerminal.event === "error"))) {
         try {
           await hydrateThreadMessages(requestThreadId, { force: true });
           const refreshed = await refreshThreadsFromServer({ keepSelection: true });
@@ -1007,6 +1027,7 @@
       chatRequestInFlight = false;
       syncDictationUi();
       void refreshActiveDocuments();
+      if (documentSubmission) void documentWorkshopController.finishSubmission(clientTurnId);
     }
   }
 
@@ -1031,6 +1052,10 @@
       body: JSON.stringify({
         message: userText,
         client_turn_id: options.clientTurnId,
+        ...(options.documentSubmission ? {
+          document_context_id: options.documentSubmission.contextId,
+          document_source_file_ids: options.documentSubmission.sourceFileIds,
+        } : {}),
         conversation_id: thread ? thread.conversation_id : null,
         stream: true,
         web_search: adobeActive ? false : webSearchEnabled,

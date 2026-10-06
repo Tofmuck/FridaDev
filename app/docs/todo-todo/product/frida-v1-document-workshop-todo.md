@@ -52,6 +52,9 @@ Une clôture code/preuves M2/M3 ne ferme pas migration opérateur, rebuild ou pr
   preuves hermétiques seulement, sans autorisation runtime ou canari implicite.
 - [x] M3 explicitement autorisé le 2026-10-06, depuis le M2 exact validé, pour code,
   migrations isolées, preuves, contre-audit et livraison Git ; aucune livraison runtime.
+- [x] M4 explicitement autorisé le 2026-10-06 après livraison séparée du P3 M3,
+  pour code, migrations isolées, preuves, contre-audit, documentation et commit/push.
+  Aucun GO runtime, provider/DAV live ou M5.
 - [ ] GO distinct obtenu avant tout appel modèle réel de preuve.
 - [ ] GO distinct obtenu avant tout canari d'écriture Nextcloud.
 
@@ -2703,7 +2706,8 @@ M3–M10/Z non commencés ; arrêt après vérification Git.
 
 **Statut au 6 octobre 2026 :** code/preuves hermétiques et contre-audit fermés sur
 `FridaV1-Document-Workshop-M3`. Migration opérateur, rebuild/restart, health et
-smoke runtime restent ouverts et hors autorisation. M4 reste non commencé.
+smoke runtime restent ouverts et hors autorisation. À la clôture M3, M4 était
+non commencé ; son exécution autorisée du 6 octobre est consignée ci-dessous.
 [Contrat M3](../../states/specs/frida-v1-document-workshop-m3-contract.md).
 
 **Objectif :** empêcher double génération et commit tardif.
@@ -3036,18 +3040,83 @@ finalisation et UI.
 **Interface :** prepared/clarify/refuse et commit de fin de tour commun.
 **Propriétaire :** Celebrimbor.
 
-- [ ] Rouge causal : un appel documentaire/zéro échange normal ; échec de commit
+- [x] Rouge causal : un appel documentaire/zéro échange normal ; échec de commit
   pending → aucun succès ; refresh → même action.
-- [ ] Tests final lock/persistance/stream/provenance voisins ; panne à chaque
+- [x] Tests final lock/persistance/stream/provenance voisins ; panne à chaque
   écriture, sortie tronquée valide et refus du fallthrough normal.
-- [ ] Tests de progression et annulation réelles, attente initiale sans événement,
+- [x] Tests de progression et annulation réelles, attente initiale sans événement,
   données tardives après échec fermé et pending non expirant avec le temps.
-- [ ] Faux verts : absence d'assertion sur appels normaux, stores finalisés séparément
+- [x] Faux verts : absence d'assertion sur appels normaux, stores finalisés séparément
   mais toujours disponibles, generator jamais réellement consommé.
-- [ ] Interdire canonical dans transcript, aperçu, retry et contamination des facultés.
-- [ ] Synchroniser tour/ingestion/observabilité ; modèle live sous GO distinct.
-- [ ] Écriture inactive ; activation complète interdite avant M6.
-- [ ] Fermer sauvegarde utilisateur initiale et transaction finale atomiques.
+- [x] Interdire canonical dans transcript, aperçu, retry et contamination des facultés.
+- [x] Synchroniser tour/ingestion/observabilité ; modèle live sous GO distinct.
+- [x] Écriture inactive ; activation complète interdite avant M6.
+- [x] Fermer sauvegarde utilisateur initiale et transaction finale atomiques.
+
+#### Exécution M4 du 6 octobre 2026
+
+Code et preuves hermétiques fermés. Base exacte : correctif P3
+`9f10531ae9c799f4afc769c97ea2d48659f1c3d3`, poussé/vérifié propre sur M3 avant
+création de `FridaV1-Document-Workshop-M4`. Les deux livraisons ont des commits
+séparés ; le hash M4 et les contrôles distants sont fournis au retour final.
+
+Le [contrat M4](../../states/specs/frida-v1-document-workshop-m4-contract.md)
+décrit les frontières du tour, de la persistance, du transport et de l'UI ;
+l'[artefact daté content-free](../../states/baselines/document-workshop/frida-v1-document-workshop-m4-20261006.json)
+porte les commandes/sélecteurs exacts, durées/exits et écarts intermédiaires.
+
+- Baseline P3 archivée et rejouée : **840/840**, zéro skip, soit 377 Python,
+  82 PostgreSQL, 2 pgvector, 68 voisins, 207 Node et 104 Chromium.
+- Final sans recouvrement : **1 198/1 198**, zéro skip, exits 0 : 739 Python
+  (197,370 s), 82 PostgreSQL historiques (32,171 s) + 39 M4 (20,277 s),
+  2 pgvector (1,671 s), 211 Node (0,541363126 s), 104 Chromium historiques
+  (91,290776034 s) et 21 M4 (16,708937178 s).
+- Runs de sous-sélections non additifs : 324/324 enveloppe/voisins (8,492 s),
+  89/89 transport/M0 (9,449 s), 25/25 pannes SQL (13,169 s), 8/8 compteurs
+  du tour (3,916 s). Le run commun SQL 118/118 (52,031 s) est repris dans ces
+  82 + 39, jamais additionné une seconde fois.
+- Nominal réel `/api/chat` : vrai user unique, 1 principal documentaire,
+  0 principal normal, 2 constitutifs synthétiques comptés séparément. Prepared,
+  clarify/refuse, réhydratation, provenance main_model et done daté éprouvés.
+- Connexions SQL indépendantes et rendez-vous : rollback initial et chaque
+  écriture finale, triggers atteints même après rollback, exclusion/fencing,
+  lease/scope, annulation/résultat tardif/course commit, supersession et SHA
+  stable après JSONB. Pas de transaction conservée pendant le réseau.
+- HTTP physique synthétique : corps admis exact, JSON/SSE, framing/TLS,
+  attente bloquée, EOF/reset réel, keepalives seuls, horloge exacte 120 et
+  reprise DNS incapable d'ouvrir une socket tardive. Aucun provider réel.
+- Chromium monté à fetch simulé : thèmes/compositions, cartes compactes,
+  preparing/pending, cancel/refus/late/refresh, calls comptés et aucun canonical
+  public. Les 104 historiques conservent upload/multisélection/drop et M2.
+
+Rouges et adaptations : 409 M3 au lieu de préparation ; deux assertions static
+frontend devenues étroites et un couplage scope M2/projection M4, corrigés sans
+relâchement ; signatures/identités/provenance de fixtures explicitées ; absence
+du répertoire ignoré vide app/conv et des node_modules dans l'archive corrigée
+uniquement dans le runner, sans installation. Aucun rouge d'import absent ne
+constitue la preuve causale. Les détails de chaque run restent dans l'artefact.
+
+Revue indépendante et contre-audit : P2 DNS retenait la requête malgré transport
+annulé ; P2 surface acceptait JSON canonical pur/préfixé ; P2 GET suspendu
+retenait le garde chat ; P3 libellés exposaient des codes internes. Tous corrigés
+et revalidés indépendamment. Le dernier contre-audit a corrigé le refus d'une
+préparation Markdown par un PNG non mobilisé, tout en conservant NFC/casefold.
+Il a aussi rétabli la propagation des interruptions de processus après nettoyage
+de la réservation : rouge causal KeyboardInterrupt, puis 39/39 SQL verts.
+Aucun finding confirmé vivant dans le delta. La conformité sémantique d'une
+prose arbitraire reste une obligation du prompt, sans preuve fournisseur live.
+
+Migration M4 versionnée et testée uniquement dans PostgreSQL dédiés isolés.
+Deux seules routes M4 (GET action et POST cancel), golden exact **130** ; aucune
+confirmation active, mutation Nextcloud, route chat parallèle, reçu ou renderer.
+Le service de scope M2 reste indépendant de la projection HTTP des actions.
+Les contrats vivants tour/ingestion/continuité/observabilité et M0–M3 sont
+synchronisés, leurs preuves historiques préservées. Ressources temporaires
+créées par ce lot nettoyées avant livraison ; résultat technique durable conservé.
+
+- [ ] Migration opérateur, rebuild/restart/déploiement, health et recette runtime.
+- [ ] Provider/DAV live sous GO distinct et recette matérielle Safari.
+- [ ] Confirmation/exécution M5, parcours complet Markdown/reçu M6.
 
 ### M5 — Confirmation et exécution hermétiquement protégées
 
@@ -3660,14 +3729,16 @@ corrigé séparément en frontend (594/594 historiques) ; P2-M2-02 est ensuite
 corrigé séparément sur Exports/Images/Notes,
 P2-M2-04 backend est corrigé séparément (713/713 historiques). P2-M2-05 est
 ensuite corrigé sur le résumé de réconciliation (716/716). Le retour final porte la livraison Git et ses
-alignements. M3 et suivants restent
-non commencés.
+alignements. M3 est fermé sur code/preuves/Git ; son P3 golden a été corrigé
+séparément avant M4. M4 est fermé sur code et preuves hermétiques ci-dessus ;
+M5–M10/Z restent non commencés et les obligations runtime restent ouvertes.
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
 dans AGENTS.md ; l'invariant de consolidation reste applicable hors de cette
 exception. Les seuls composants applicatifs livrables par M0 sont les frontières
 internes inactives et leurs preuves. M1 ajoute seulement entrée et contexte
 `editing`, avec préparation indisponible. M2 ajoute exclusivement lecture/adoption ciblées et inventaire commun, avec
-préparation toujours indisponible. Aucune dépendance nouvelle, service
+préparation historiquement indisponible. M3 ajoute l’autorité commune ; M4
+raccorde uniquement la préparation Markdown sans écriture. Aucune dépendance nouvelle, service
 plateforme ou preuve live n'est livré. La correction P3 M1 est séparée ; la
 livraison M2 reste limitée à `FridaV1-Document-Workshop-M2`. Aucun merge vers main,
 rebuild, restart, migration opérateur ou déploiement n'est autorisé par ces lots.

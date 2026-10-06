@@ -3,6 +3,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from tests.support.server_test_bootstrap import load_server_module_for_tests
+from core import document_workshop_actions
 
 CONV = '11111111-1111-4111-8111-111111111111'
 FOLDER = '22222222-2222-4222-8222-222222222222'
@@ -33,6 +34,7 @@ class DocumentWorkshopRoutesTests(unittest.TestCase):
         self.store.create_context.side_effect = create
         self.store.get_context.side_effect = lambda context_id: dict(self.saved) if self.saved and context_id == CTX else None
         patches = [
+            patch.object(document_workshop_actions, 'latest', return_value=None),
             patch.object(self.server, 'document_workshop_contexts', self.store, create=True),
             patch.object(self.server.conv_store, 'get_conversation_summary', side_effect=lambda *_a, **_k: self.conversation),
             patch.object(self.server.workspace_folders, 'get_workspace_folder', side_effect=lambda *_a, **_k: self.folder),
@@ -64,7 +66,9 @@ class DocumentWorkshopRoutesTests(unittest.TestCase):
         self.assertEqual((context['id'], context['conversation_id'], context['workspace_folder_id'], context['state']),
                          (CTX, CONV, FOLDER, 'editing'))
         self.assertIsNone(context['target_file_id'])
-        self.assertEqual(context['capabilities'], {'prepare': False})
+        self.assertEqual(context['capabilities'], {'prepare': True, 'confirm': False,
+            'formats': ['markdown'], 'operations': ['create', 'copy'], 'update': False})
+        self.assertIsNone(context['preparation'])
         result = self.client.get(f'/api/document-workshop/contexts/{CTX}')
         self.assertEqual(result.status_code, 200)
         self.assertEqual(result.json['context'], context)
@@ -129,11 +133,10 @@ class DocumentWorkshopRoutesTests(unittest.TestCase):
         self.assertEqual(response.status_code, 503)
         self.assertNotIn('synthetic-sensitive-detail', response.get_data(as_text=True))
 
-    def test_documentary_chat_refused_before_turn_logger_and_chat_service(self):
-        with patch.object(self.server.chat_service, 'chat_response') as chat, \
-             patch.object(self.server.chat_turn_logger, 'begin_turn') as begin:
+    def test_incomplete_documentary_request_refused_before_reservation_or_provider(self):
+        with patch.object(self.server.chat_service.turn_claims, 'acquire') as acquire:
             for context_id in (CTX, 'forged', None, ''):
                 response = self.client.post('/api/chat', json={'message': 'Synthétique', 'document_context_id': context_id})
                 self.assertEqual(response.status_code, 409)
-                self.assertEqual(response.json['reason_code'], 'document_preparation_unavailable')
-            chat.assert_not_called(); begin.assert_not_called()
+                self.assertEqual(response.json['reason_code'], 'document_request_invalid')
+            acquire.assert_not_called()

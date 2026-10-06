@@ -1,4 +1,4 @@
-"""Inactive M0 single-exchange boundary, consuming injected provider transport.
+"""Single-exchange M0/M4 boundary, consuming injected provider transport.
 
 No HTTP implementation is installed or selected here. The owned transport must
 send the frozen body verbatim, have no retry, and close/abort promptly, including
@@ -11,13 +11,20 @@ from dataclasses import dataclass, field
 from typing import AsyncIterator, Protocol, Any, Callable
 
 from . import llm_client, main_llm_reasoning
-from .document_canonical import ValidatedCanonical, read_canonical_json, strict_json_loads
+from .document_canonical import ValidatedCanonical, strict_json_loads
 from .document_workshop_admission import PreparedDocumentCall, prepare_document_call
 from .document_workshop_contract import (
-    DOCUMENT_CONTEXT_TOKENS, DOCUMENT_OUTPUT_TOKENS, MAX_CANONICAL_JSON_BYTES,
+    DOCUMENT_CONTEXT_TOKENS, DOCUMENT_OUTPUT_TOKENS,
     DocumentWorkshopError,
 )
 from .document_workshop_progress import DocumentPreparation
+from .document_workshop_envelope import (
+    DocumentEnvelope, MAX_DOCUMENT_ENVELOPE_BYTES, read_document_envelope,
+)
+
+# JSON-encoded provider frames can escape every content byte into six ASCII
+# bytes. This wire bound is distinct from the admitted envelope/canonical bounds.
+MAX_DOCUMENT_PROVIDER_FRAME_BYTES = 6 * MAX_DOCUMENT_ENVELOPE_BYTES + 65_536
 
 
 class DocumentTransport(Protocol):
@@ -37,11 +44,15 @@ class ProviderUsage:
 
 @dataclass(frozen=True, repr=False)
 class DocumentProviderResult:
-    canonical: ValidatedCanonical = field(repr=False)
+    envelope: DocumentEnvelope = field(repr=False)
     finish_reason: str
     model: str
     provider_usage: ProviderUsage | None
     state: str = "complete"
+
+    @property
+    def canonical(self) -> ValidatedCanonical | None:
+        return self.envelope.canonical
 
 
 @dataclass
@@ -146,9 +157,9 @@ def _validated_result(content: str, evidence: _Evidence, progress: DocumentPrepa
     if not content:
         raise DocumentWorkshopError("document_provider_empty")
     progress.complete_step("provider_finished")
-    canonical = read_canonical_json(content)
+    envelope = read_document_envelope(content)
     progress.complete_step("canonical_validated")
-    return DocumentProviderResult(canonical, evidence.finish_reason, evidence.model, evidence.usage)
+    return DocumentProviderResult(envelope, evidence.finish_reason, evidence.model, evidence.usage)
 
 
 async def _sse_events(transport: DocumentTransport, progress: DocumentPreparation) -> AsyncIterator[str]:
@@ -171,7 +182,7 @@ async def _sse_events(transport: DocumentTransport, progress: DocumentPreparatio
             if value.startswith(" "):
                 value = value[1:]
             frame_bytes += len(value.encode("utf-8")) + 1
-            if frame_bytes > MAX_CANONICAL_JSON_BYTES:
+            if frame_bytes > MAX_DOCUMENT_PROVIDER_FRAME_BYTES:
                 raise DocumentWorkshopError("document_json_envelope_limit")
             lines.append(value)
         # Comments, event/id/retry and empty frames are control, never progress.
@@ -231,7 +242,7 @@ async def _read_exchange(prepared: PreparedDocumentCall, transport: DocumentTran
             if evidence.finish_reason is not None:
                 raise DocumentWorkshopError("document_provider_incomplete")
             content_bytes += len(content.encode("utf-8"))
-            if content_bytes > MAX_CANONICAL_JSON_BYTES:
+            if content_bytes > MAX_DOCUMENT_ENVELOPE_BYTES:
                 raise DocumentWorkshopError("document_json_envelope_limit")
             fragments.append(content)
             progress._receive_provider_content(content)

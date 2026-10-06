@@ -1,7 +1,9 @@
-"""M1 contexts and explicit M2 read/adopt actions; preparation stays absent."""
+"""Workshop contexts, M2 adoption and M4 durable preparation projections."""
 from flask import jsonify, request
 from core import document_workshop_context_service as service
 from core import workspace_document_adoption_service as adoption
+from core import document_workshop_actions as actions
+from core.document_workshop_contract import DocumentWorkshopError
 
 
 def register_document_workshop_routes(app, *, get_store, get_conversations, get_folders, get_files):
@@ -16,7 +18,36 @@ def register_document_workshop_routes(app, *, get_store, get_conversations, get_
     @app.get('/api/document-workshop/contexts/<context_id>')
     def get_document_workshop_context(context_id):
         payload, status = service.get_context(context_id, **dependencies())
+        if status == 200:
+            try:
+                payload['context']['preparation'] = actions.latest(payload['context']['id'])
+            except Exception:
+                return jsonify(ok=False, reason_code='document_action_storage_unavailable'), 503
         return jsonify(payload), status
+
+    def action_response(action_id, cancel=False):
+        action_id = service._id(action_id)
+        data = request.get_json(silent=True) if cancel else None
+        if not action_id or (cancel and (type(data) is not dict or set(data) != {'context_id'}
+                                        or not service._id(data['context_id']))):
+            return jsonify(ok=False, reason_code='document_action_request_invalid'), 400
+        try:
+            action = actions.cancel(action_id, service._id(data['context_id'])) if cancel else actions.get_action(action_id)
+            if not action:
+                return jsonify(ok=False, reason_code='document_action_missing'), 404
+            return jsonify(ok=True, action=action), 200
+        except DocumentWorkshopError as exc:
+            return jsonify(ok=False, reason_code=exc.reason_code), 404 if exc.reason_code == 'document_action_missing' else 409
+        except Exception:
+            return jsonify(ok=False, reason_code='document_action_storage_unavailable'), 503
+
+    @app.get('/api/document-workshop/actions/<action_id>')
+    def get_document_workshop_action(action_id):
+        return action_response(action_id)
+
+    @app.post('/api/document-workshop/actions/<action_id>/cancel')
+    def cancel_document_workshop_action(action_id):
+        return action_response(action_id, cancel=True)
 
     @app.get('/api/workspace-folders/<folder_id>/documents/remote')
     def list_remote_workspace_documents(folder_id):

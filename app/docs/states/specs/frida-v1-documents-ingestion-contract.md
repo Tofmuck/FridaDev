@@ -1,5 +1,12 @@
 # Frida V1 - Documents ingestion contract
 
+## Évolution M4 — 6 octobre 2026
+
+Un draft Markdown M4 est un artefact/révision/action, jamais une ligne `workspace_files` ou un fichier Nextcloud. La source explicite réutilise la lecture fraîche M2 ; la sélection ne donne aucune autorité d’update. Le renderer, les formats DOCX/PDF et l’écriture restent hors M4.
+Voir le [contrat M4](frida-v1-document-workshop-m4-contract.md) pour les preuves
+hermétiques et les limites ; migrations opérateur, runtime, modèle/DAV live et M5 restent ouverts.
+
+
 Statut: spec vivante Documents V1 cloture par Lot Z
 Date: 2026-06-17
 Roadmap archivee: `app/docs/todo-done/product/frida-v1-documents-ingestion-todo.md`

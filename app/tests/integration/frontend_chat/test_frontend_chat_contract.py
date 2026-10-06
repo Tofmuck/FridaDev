@@ -301,7 +301,9 @@ class AppPhase8Tests(unittest.TestCase):
 
         self.assertIn('appendMessageToThread(', success_block)
         self.assertIn('const hasReplyUpdatedAt = hasTerminalUpdatedAt(replyTerminal);', success_block)
-        self.assertIn('if (!hasReplyUpdatedAt && requestThreadId) {', success_block)
+        # Normal chat still falls back only without a terminal timestamp.
+        # Documentary success also rereads the canonical reference metadata.
+        self.assertIn('if ((!hasReplyUpdatedAt || documentSubmission) && requestThreadId) {', success_block)
         self.assertIn('await hydrateThreadMessages(requestThreadId, { force: true });', success_block)
         self.assertIn('const errorMeta = getObservableStreamErrorMeta(err);', catch_block)
         self.assertIn('let rehydratedAfterUnpersistedTerminalError = false;', catch_block)
@@ -309,11 +311,14 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertIn('applyAssistantStreamingFailure(visibleAssistantNode, errorMeta);', catch_block)
         self.assertIn('visibleAssistantNode.bubble.textContent = extractErrorMessage(err);', catch_block)
         self.assertIn(
-            'if (requestThreadId && errorTerminal && errorTerminal.event === "error" && hasTerminalUpdatedAt(errorTerminal)) {',
+            'if (!documentSubmission && requestThreadId && errorTerminal && errorTerminal.event === "error" && hasTerminalUpdatedAt(errorTerminal)) {',
             catch_block,
         )
         self.assertIn('appendMessageToThread(', catch_block)
         self.assertIn('buildInterruptedAssistantTurnMeta(errorTerminal.error_code || "stream_protocol_error")', catch_block)
+        # Normal dated errors keep their canonical marker; documentary errors
+        # force the same authoritative reread to recover action metadata.
+        self.assertIn('} else if (requestThreadId && (documentSubmission || (errorTerminal && errorTerminal.event === "error"))) {', catch_block)
         self.assertIn('await hydrateThreadMessages(requestThreadId, { force: true });', catch_block)
         self.assertIn('await refreshThreadsFromServer({ keepSelection: true });', catch_block)
 
@@ -399,9 +404,9 @@ class AppPhase8Tests(unittest.TestCase):
         self.assertIn('setMessageNodeTimestamp(assistantNode, "assistant", replyTerminal.updated_at);', app_source)
         self.assertIn('appendMessageToThread(', app_source)
         self.assertIn('}, requestThreadId, inputMode, {', app_source)
-        self.assertIn('if (!hasReplyUpdatedAt && requestThreadId) {', app_source)
+        self.assertIn('if ((!hasReplyUpdatedAt || documentSubmission) && requestThreadId) {', app_source)
         self.assertIn('await hydrateThreadMessages(requestThreadId, { force: true });', app_source)
-        self.assertIn('if (!hasReplyUpdatedAt && requestThreadId && getCurrentId() === requestThreadId) {', app_source)
+        self.assertIn('if ((!hasReplyUpdatedAt || documentSubmission) && requestThreadId && getCurrentId() === requestThreadId) {', app_source)
 
     def test_threads_sidebar_lifecycle_is_loaded_as_a_single_frontend_seam(self) -> None:
         app_source = (APP_DIR / "web" / "app.js").read_text(encoding="utf-8")

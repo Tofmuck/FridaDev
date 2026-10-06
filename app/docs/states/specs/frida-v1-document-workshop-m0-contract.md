@@ -1,5 +1,12 @@
 # Atelier documentaire Frida V1 — contrat interne M0
 
+## Évolution M4 — 6 octobre 2026
+
+Le lecteur M0 et son builder utilisent désormais une seule enveloppe fermée `prepared/clarify/refuse`, réutilisant le canonical et les preuves de fin/usages. Le transport HTTP réel, annulable et borné est livré par M4 ; les résultats M0 ci-dessous restent historiques.
+Voir le [contrat M4](frida-v1-document-workshop-m4-contract.md) pour les preuves
+hermétiques et les limites ; migrations opérateur, runtime, modèle/DAV live et M5 restent ouverts.
+
+
 Date : 2026-10-04. Spécification autoritative :
 [roadmap active](../../todo-todo/product/frida-v1-document-workshop-todo.md).
 Ce contrat décrit les composants internes inactifs de M0. Il ne livre aucune

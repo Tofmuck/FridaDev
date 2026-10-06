@@ -31,13 +31,36 @@ const DOCUMENT_WORKSHOP_REMOTE_MESSAGES = Object.freeze({
   document_adoption_commit_unknown: 'Résultat de l’adoption incertain. Aucun nouvel essai automatique. Actualiser la collection pour vérifier son état.',
 });
 
+const DOCUMENT_WORKSHOP_PHASE_LABELS = Object.freeze({
+  preparing: 'Préparation en cours', user_saved: 'Demande enregistrée',
+  summary_ready: 'Contexte du dialogue préparé', identity_ready: 'Contexte du dialogue préparé',
+  memory_ready: 'Contexte du dialogue préparé', stimmung_ready: 'Contexte du dialogue préparé',
+  hermeneutic_ready: 'Contexte du dialogue préparé', dialogue_ready: 'Contexte du dialogue préparé',
+  source_read: 'Source lue', sources_ready: 'Sources préparées', payload_prepared: 'Demande documentaire préparée',
+  admitted: 'Demande documentaire admise', provider_content: 'Réception du document',
+  provider_finished: 'Document reçu', canonical_validated: 'Document validé',
+});
+const DOCUMENT_WORKSHOP_LIMITATION_LABELS = Object.freeze({
+  markdown_pagination_reader_dependent: 'La pagination dépend du lecteur Markdown.',
+  markdown_style_reader_dependent: 'La mise en forme dépend du lecteur Markdown.',
+  write_confirmation_unavailable: 'L’écriture du document est indisponible.',
+  docx_pdf_unavailable: 'Les formats DOCX et PDF sont indisponibles.',
+  update_unavailable: 'La modification d’un document existant est indisponible.',
+});
+const preparationLabel = record => record.phase
+  ? `${DOCUMENT_WORKSHOP_PHASE_LABELS[record.phase] || 'Préparation en cours'} · ${record.received_content_codepoints || 0} caractères reçus`
+  : 'Préparation demandée · relecture de l’état serveur';
+
 function createDocumentWorkshopController({
   buttonEl, menuEl, inputEl, panelEl, statusEl, folderEl, bindFolderEl, sourceBarEl,
   targetEl, reloadEl, exitEl, browseEl, remoteEl, remoteStatusEl, remotePathEl,
   remoteListEl, remoteRootEl, remoteBackEl, remoteRefreshEl, documentObj, fetchFn, getThread,
   getFolders, getFiles, refreshFiles, createConversation, bindFolder, closeMobileTools,
+  actionEl, dialogueButtonEl, getSourceFileIds = () => [], storageObj,
 } = {}) {
   const doc = documentObj || document;
+  const storage = storageObj || doc.defaultView.sessionStorage;
+  const attemptKey = 'frida.document-workshop.attempt';
   let generation = 0;
   let visible = false;
   let busy = false;
@@ -47,6 +70,13 @@ function createDocumentWorkshopController({
   let remoteTrail = [];
   let listing = false;
   let adoptionInFlight = false;
+  let action = null;
+  let pollTimer = null;
+  let cancellationInFlight = false;
+  let submissionSettled = false;
+  let actionReadSerial = 0;
+  const cancellationGenerations = new Map();
+  const cards = new Map();
   // A departed/uncertain adoption can still publish. Keep only the affected
   // folder IDs until an explicit read refreshes their existing shared inventory.
   const inventoriesToRefresh = new Set();
@@ -56,6 +86,158 @@ function createDocumentWorkshopController({
   const currentScope = () => scope(getThread());
   const current = (token, expected) => visible && token === generation
     && signature(currentScope()) === signature(expected);
+
+  function saveAttempt(record = action) {
+    if (!context) return;
+    try {
+      storage.setItem(attemptKey, JSON.stringify({ context_id: context.id,
+        conversation_id: context.conversation_id, workspace_folder_id: context.workspace_folder_id,
+        action_id: record?.id || null, state: record?.state || 'editing' }));
+    } catch { /* A storage failure grants no server authority. */ }
+  }
+  function stopPolling() {
+    if (pollTimer !== null) doc.defaultView.clearTimeout(pollTimer);
+    pollTimer = null;
+  }
+  function validAction(record, expected, contextId, actionId) {
+    return record && record.id === actionId && record.context_id === contextId
+      && signature(scope(record)) === signature(expected)
+      && ['preparing', 'pending', 'clarify', 'refuse', 'failed', 'cancelled', 'invalidated',
+        'superseded', 'interrupted', 'lost'].includes(record.state);
+  }
+  function renderAction(container, record) {
+    container.replaceChildren();
+    if (!record) return;
+    const card = doc.createElement('section');
+    card.className = 'document-action-card'; card.dataset.state = record.state;
+    card.setAttribute('aria-label', 'Préparation documentaire');
+    const status = doc.createElement('div'); status.setAttribute('role', 'status');
+    status.textContent = record.state === 'preparing'
+      ? preparationLabel(record)
+      : ({ pending: 'Document préparé', cancelled: 'Préparation annulée', failed: 'Préparation échouée',
+        invalidated: 'Préparation invalidée', superseded: 'Préparation remplacée', interrupted: 'Tour interrompu',
+        lost: 'Préparation perdue', clarify: 'Précision nécessaire', refuse: 'Préparation refusée' })[record.state];
+    card.appendChild(status);
+    if (record.state === 'pending') {
+      const limitations = (record.limitations || []).map(code => DOCUMENT_WORKSHOP_LIMITATION_LABELS[code] || 'Limite documentaire non précisée.');
+      for (const value of [record.name, record.format, record.relative_path, ...limitations]) {
+        if (typeof value !== 'string' || !value) continue;
+        const detail = doc.createElement('div'); detail.textContent = value; card.appendChild(detail);
+      }
+      const confirm = doc.createElement('button'); confirm.type = 'button'; confirm.disabled = true;
+      confirm.dataset.documentConfirm = ''; confirm.textContent = 'Écriture indisponible';
+      card.appendChild(confirm);
+    }
+    if (['preparing', 'pending'].includes(record.state) && record.capabilities?.cancel === true) {
+      const cancel = doc.createElement('button'); cancel.type = 'button'; cancel.dataset.documentCancel = '';
+      cancel.textContent = 'Annuler la préparation'; cancel.disabled = cancellationInFlight;
+      cancel.addEventListener('click', () => void cancelAction(record)); card.appendChild(cancel);
+    }
+    container.appendChild(card);
+  }
+  function publishAction(record) {
+    if (context?.id === record.context_id && action?.id === record.id) {
+      action = record; saveAttempt();
+    }
+    for (const [container, reference] of cards) {
+      if (!container.isConnected) { cards.delete(container); continue; }
+      if (reference.action_id === record.id) renderAction(container, record);
+    }
+    render();
+  }
+  async function readAction() {
+    if (!context || !action || !visible) return;
+    stopPolling();
+    const token = generation, expected = scope(context), contextId = context.id, actionId = action.id;
+    const serial = ++actionReadSerial, cancellation = cancellationGenerations.get(actionId);
+    const validRead = () => current(token, expected) && context?.id === contextId && action?.id === actionId
+      && serial === actionReadSerial && cancellation === cancellationGenerations.get(actionId);
+    try {
+      const response = await fetchFn(`/api/document-workshop/actions/${encodeURIComponent(actionId)}`);
+      const payload = await response.json();
+      if (!validRead()) return;
+      if (response.status === 404) {
+        // The initial user/action transaction may not have committed yet.
+        // A targeted context read observes it; neither read replays the turn.
+        const contextResponse = await fetchFn(`/api/document-workshop/contexts/${encodeURIComponent(contextId)}`);
+        const contextPayload = await contextResponse.json();
+        if (!validRead()) return;
+        if (!contextResponse.ok || contextPayload?.ok !== true) throw new Error('document_state_unavailable');
+        const record = contextPayload.context?.preparation;
+        if (validAction(record, expected, contextId, actionId)) publishAction(record);
+        else if (submissionSettled) {
+          saveAttempt({ id: actionId, state: 'unknown' });
+          action = null;
+          render('Préparation absente ou non confirmée. Relisez le contexte ; aucun tour ne sera rejoué.');
+          return;
+        }
+      } else {
+        if (!response.ok || payload?.ok !== true || !validAction(payload.action, expected, contextId, actionId)) {
+          throw new Error('document_state_unavailable');
+        }
+        publishAction(payload.action);
+      }
+      if (action.state === 'preparing') pollTimer = doc.defaultView.setTimeout(() => void readAction(), 750);
+    } catch {
+      if (validRead()) {
+        render('État de préparation indisponible. Relisez le contexte ; aucun tour ne sera rejoué.');
+      }
+    }
+  }
+  async function cancelAction(record) {
+    if (cancellationInFlight || !['preparing', 'pending'].includes(record.state)) return;
+    const token = generation, expected = currentScope();
+    cancellationGenerations.set(record.id, (cancellationGenerations.get(record.id) || 0) + 1);
+    if (action?.id === record.id) stopPolling();
+    let notice = '';
+    cancellationInFlight = true;
+    if (visible) render();
+    try {
+      const response = await fetchFn(`/api/document-workshop/actions/${encodeURIComponent(record.id)}/cancel`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context_id: record.context_id }),
+      });
+      const payload = await response.json();
+      if (token !== generation || signature(currentScope()) !== signature(expected)) return;
+      if (!response.ok || payload?.ok !== true || !validAction(payload.action, expected, record.context_id, record.id)) {
+        throw new Error('document_cancel_unavailable');
+      }
+      publishAction(payload.action);
+    } catch {
+      if (token === generation && signature(currentScope()) === signature(expected) && visible) {
+        notice = 'Annulation non confirmée. Relisez l’état avant un nouvel essai explicite.';
+      }
+    } finally {
+      cancellationInFlight = false;
+      if (token === generation && signature(currentScope()) === signature(expected) && visible) render(notice);
+    }
+  }
+
+  async function renderMessage(wrapper, messageRecord) {
+    const reference = messageRecord?.meta?.document_workshop;
+    if (!reference?.context_id || !reference.action_id || !wrapper) return;
+    const token = generation, expected = currentScope();
+    const cancellation = cancellationGenerations.get(reference.action_id);
+    const validNode = () => token === generation && wrapper.isConnected
+      && cancellation === cancellationGenerations.get(reference.action_id) && signature(currentScope()) === signature(expected);
+    try {
+      const response = await fetchFn(`/api/document-workshop/actions/${encodeURIComponent(reference.action_id)}`);
+      const payload = await response.json();
+      if (!validNode() || !response.ok || payload?.ok !== true
+          || !validAction(payload.action, expected, reference.context_id, reference.action_id)) return;
+      // The user and assistant carry the same references. Show one card, under
+      // the assistant when present, or the durable user for an interrupted turn.
+      for (const [container, existing] of cards) {
+        if (!container.isConnected) { cards.delete(container); continue; }
+        if (existing.action_id !== reference.action_id) continue;
+        if (existing.role === 'assistant' || messageRecord.role !== 'assistant') return;
+        container.remove(); cards.delete(container);
+      }
+      const container = doc.createElement('div');
+      cards.set(container, { ...reference, role: messageRecord.role });
+      wrapper.appendChild(container); renderAction(container, payload.action);
+    } catch { /* No invented action, success or transcript after a failed reread. */ }
+  }
 
   function closeMenu({ restoreFocus = false } = {}) {
     menuEl.hidden = true;
@@ -78,9 +260,19 @@ function createDocumentWorkshopController({
     panelEl.hidden = !visible;
     if (context) panelEl.dataset.state = context.state;
     else panelEl.removeAttribute('data-state');
+    if (action) panelEl.dataset.actionState = action.state;
+    else delete panelEl.dataset.actionState;
     statusEl.textContent = message || (context
-      ? 'Édition · La préparation documentaire est indisponible. Votre brouillon est conservé.'
+      ? action?.state === 'preparing' ? preparationLabel(action)
+      : context.capabilities.prepare === true
+        ? 'Édition · Décrivez votre demande dans le compositeur. Markdown · création ou copie ; écriture indisponible.'
+        : 'Édition · La préparation documentaire est indisponible. Votre brouillon est conservé.'
       : busy ? 'Ouverture du contexte…' : 'Choisissez explicitement un répertoire pour cette conversation.');
+    if (actionEl) renderAction(actionEl, action);
+    if (dialogueButtonEl) {
+      dialogueButtonEl.disabled = visible;
+      dialogueButtonEl.title = visible ? 'Dialogue indisponible pendant l’atelier documentaire' : 'Ouvrir le mode Dialogue';
+    }
     folderEl.disabled = busy || !currentScope().conversation_id || Boolean(currentScope().workspace_folder_id);
     bindFolderEl.hidden = Boolean(currentScope().workspace_folder_id);
     bindFolderEl.disabled = busy || !currentScope().conversation_id || !folderEl.value;
@@ -88,9 +280,9 @@ function createDocumentWorkshopController({
     positionPanel();
   }
   function contextControls() {
-    targetEl.disabled = busy || !context || adoptionInFlight;
+    targetEl.disabled = busy || !context || adoptionInFlight || action?.state === 'preparing';
     reloadEl.disabled = busy || !context || adoptionInFlight;
-    browseEl.disabled = busy || !context || adoptionInFlight || listing;
+    browseEl.disabled = busy || !context || adoptionInFlight || listing || action?.state === 'preparing';
   }
   function populateFolders() {
     folderEl.replaceChildren();
@@ -112,18 +304,21 @@ function createDocumentWorkshopController({
   }
   function exit({ focus = true } = {}) {
     generation += 1;
-    visible = false; busy = false; context = null; pendingScope = null;
+    stopPolling();
+    visible = false; busy = false; context = null; pendingScope = null; action = null;
     resetRemote();
+    if (focus) { try { storage.removeItem(attemptKey); } catch {} }
     render('');
     if (focus) buttonEl.focus();
   }
   function scopeChanged() {
-    if (!visible) return;
+    if (!visible) { void restoreAttempt(); return; }
     const expected = pendingScope || (context && scope(context));
     if (expected && signature(currentScope()) !== signature(expected)) exit({ focus: false });
   }
-  async function requestContext(expected, targetId = null, contextId = null) {
+  async function requestContext(expected, targetId, contextId = null) {
     const token = ++generation;
+    stopPolling(); action = null;
     pendingScope = expected; busy = true; context = null;
     resetRemote();
     render();
@@ -132,24 +327,40 @@ function createDocumentWorkshopController({
         ? `/api/document-workshop/contexts/${encodeURIComponent(contextId)}`
         : '/api/document-workshop/contexts', contextId ? {} : {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...expected, target_file_id: targetId }),
+        body: JSON.stringify({ ...expected, target_file_id: targetId || null }),
       });
       const payload = await response.json();
       if (!current(token, expected)) return;
       const record = payload?.context;
       if (!response.ok || payload.ok !== true || !record?.id || record.state !== 'editing'
-          || record.capabilities?.prepare !== false || signature(scope(record)) !== signature(expected)
-          || (record.target_file_id || null) !== targetId || (contextId && record.id !== contextId)) {
+          || ![true, false].includes(record.capabilities?.prepare) || signature(scope(record)) !== signature(expected)
+          || (targetId !== undefined && (record.target_file_id || null) !== targetId) || (contextId && record.id !== contextId)) {
         throw new Error('document_context_unavailable');
       }
       context = record;
+      if (record.preparation && validAction(record.preparation, expected, record.id, record.preparation.id)) action = record.preparation;
       busy = false; pendingScope = null;
       populateFolders(); populateTargets(record.workspace_folder_id, record.target_file_id || '');
       render();
+      saveAttempt();
+      if (action?.state === 'preparing') void readAction();
     } catch {
       if (!current(token, expected)) return;
       busy = false; context = null; pendingScope = expected;
       render('Impossible d’ouvrir ce contexte documentaire. Retournez au chat pour réessayer.');
+    }
+  }
+  async function restoreAttempt() {
+    let marker;
+    try { marker = JSON.parse(storage.getItem(attemptKey)); } catch { return; }
+    if (!marker?.context_id || signature(scope(marker)) !== signature(currentScope())) return;
+    visible = true;
+    await requestContext(currentScope(), undefined, marker.context_id);
+    if (context && !action && marker.action_id && ['preparing', 'pending', 'unknown'].includes(marker.state)) {
+      submissionSettled = marker.state === 'unknown';
+      action = { id: marker.action_id, context_id: context.id, ...scope(context), state: 'preparing',
+        capabilities: { confirm: false, cancel: true } };
+      render(); void readAction();
     }
   }
   async function open() {
@@ -376,8 +587,35 @@ function createDocumentWorkshopController({
   exitEl.addEventListener('click', () => exit());
   return Object.freeze({
     scopeChanged,
+    renderMessage,
     blocksSubmission: () => visible,
-    refuseSubmission: () => render('La préparation documentaire est indisponible. Votre brouillon est conservé ; « Retour au chat » permet l’envoi normal.'),
+    prepareSubmission({ inputMode, incompatibleModes = false } = {}) {
+      if (!visible) return null;
+      if (inputMode === 'dialogue' || incompatibleModes) {
+        return { ok: false, reason: 'document_mode_incompatible',
+          message: 'Mode incompatible : désactivez les autres outils pour préparer le document. Votre brouillon est conservé.' };
+      }
+      if (busy || adoptionInFlight || !context || context.capabilities.prepare !== true || action?.state === 'preparing') {
+        return { ok: false, reason: 'document_preparation_unavailable' };
+      }
+      if (context.target_file_id && context.capabilities.update !== true) {
+        return { ok: false, reason: 'document_update_unavailable',
+          message: 'La modification d’une cible est indisponible. Choisissez « Nouveau document » ; votre brouillon est conservé.' };
+      }
+      return { ok: true, contextId: context.id, sourceFileIds: getSourceFileIds(context.conversation_id) };
+    },
+    beginSubmission(clientTurnId) {
+      submissionSettled = false;
+      action = { id: clientTurnId, context_id: context.id, ...scope(context), state: 'preparing',
+        capabilities: { confirm: false, cancel: true } };
+      saveAttempt(); render(); void readAction();
+    },
+    finishSubmission(clientTurnId) {
+      if (action?.id !== clientTurnId) return Promise.resolve();
+      submissionSettled = true;
+      return readAction();
+    },
+    refuseSubmission: result => render(result?.message || 'La préparation documentaire est indisponible. Votre brouillon est conservé ; « Retour au chat » permet l’envoi normal.'),
   });
 }
 

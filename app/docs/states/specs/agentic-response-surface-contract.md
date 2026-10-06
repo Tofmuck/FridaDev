@@ -1,5 +1,12 @@
 # Agentic Response Surface Contract
 
+## Évolution M4 — 6 octobre 2026
+
+M4 conserve une vraie demande et une réponse courte du modèle documentaire avec provenance `main_model`. `message.meta.document_workshop` ne porte que contexte/action/révision ; les sources utilisateur portent des IDs. Le canonical reste dans les révisions privées. Les surfaces JSON du protocole documentaire connu sont refusées ; l’interdiction de recopier une source arbitraire en prose relève aussi des instructions au modèle, sans classificateur sémantique déterministe.
+Voir le [contrat M4](frida-v1-document-workshop-m4-contract.md) pour les preuves
+hermétiques et les limites ; migrations opérateur, runtime, modèle/DAV live et M5 restent ouverts.
+
+
 Statut: spec vivante
 Date: 2026-06-06
 Classement: `app/docs/states/specs/`

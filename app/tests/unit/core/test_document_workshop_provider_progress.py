@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 from core import llm_client, token_utils
 from tests.unit.core.test_document_workshop_canonical_paths import canonical
+from tests.unit.core.test_document_workshop_envelope import envelope
 
 
 class VirtualClock:
@@ -48,7 +49,7 @@ def response(*, finish="stop", content=None, model="openai/gpt-5.1"):
     return {
         "model": model,
         "choices": [{"index": 0, "finish_reason": finish, "message": {
-            "role": "assistant", "content": json.dumps(canonical(), ensure_ascii=False) if content is None else content,
+            "role": "assistant", "content": json.dumps(envelope(), ensure_ascii=False) if content is None else content,
             "reasoning": "synthetic hidden reasoning", "reasoning_details": [{"text": "synthetic hidden reasoning"}],
         }}],
         "usage": {"prompt_tokens": 32, "completion_tokens": 77, "total_tokens": 109,
@@ -61,7 +62,7 @@ def event(chunk, delay=0):
 
 
 def stream_events(text=None, *, finish="stop", done=True):
-    text = json.dumps(canonical(), ensure_ascii=False) if text is None else text
+    text = json.dumps(envelope(), ensure_ascii=False) if text is None else text
     chunks = event({"model": "openai/gpt-5.1", "choices": [{"index": 0, "delta": {"content": text, "reasoning": "synthetic hidden reasoning"}, "finish_reason": None}]})
     chunks += event({"model": "openai/gpt-5.1", "choices": [{"index": 0, "delta": {}, "finish_reason": finish}]})
     chunks += event({"model": "openai/gpt-5.1", "choices": [], "usage": {"prompt_tokens": 32, "completion_tokens": 77, "total_tokens": 109}})
@@ -158,6 +159,8 @@ class DocumentProviderProgressTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["reasoning"], {"effort": "medium", "exclude": True})
         self.assertEqual(call.admission.estimated_input_tokens, token_utils.estimate_tokens(payload["messages"], payload["model"]))
         self.assertEqual(result.canonical.as_dict(), canonical())
+        self.assertEqual(result.envelope.surface_text, "Document préparé.")
+        self.assertEqual(result.envelope.status, "prepared")
         self.assertEqual(result.state, "complete")
         self.assertEqual(result.finish_reason, "stop")
         self.assertEqual(result.model, "openai/gpt-5.1")
@@ -191,9 +194,9 @@ class DocumentProviderProgressTests(unittest.IsolatedAsyncioTestCase):
         cases = (
             (response(content=""), "document_provider_empty"),
             (response(finish=None), "document_provider_incomplete"),
-            (response(content="{"), "document_canonical_invalid"),
-            (response(content='{}'), "document_canonical_invalid"),
-            (response(content=json.dumps(canonical("x" * 75001))), "document_character_limit"),
+            (response(content="{"), "document_envelope_invalid"),
+            (response(content='{}'), "document_envelope_invalid"),
+            (response(content=json.dumps(envelope(document=canonical("x" * 75001)))), "document_character_limit"),
         )
         for payload, code in cases:
             with self.subTest(code=code):
@@ -301,7 +304,7 @@ class DocumentProviderProgressTests(unittest.IsolatedAsyncioTestCase):
             await self.reject(SimulatedTransport(lines=lines), code, stream=True)
 
     async def test_valid_multiline_sse_and_post_terminal_content_refused(self):
-        raw = json.dumps({"model": "openai/gpt-5.1", "choices": [{"delta": {"content": json.dumps(canonical(), ensure_ascii=False)}, "finish_reason": "stop"}]}, ensure_ascii=False, indent=2)
+        raw = json.dumps({"model": "openai/gpt-5.1", "choices": [{"delta": {"content": json.dumps(envelope(), ensure_ascii=False)}, "finish_reason": "stop"}]}, ensure_ascii=False, indent=2)
         lines = [(0, "data: " + line) for line in raw.splitlines()] + [(0, ""), (0, "data: [DONE]"), (0, "")]
         result = await self.run_call(SimulatedTransport(lines=lines), stream=True)
         self.assertEqual(result.canonical.as_dict(), canonical())
@@ -310,7 +313,7 @@ class DocumentProviderProgressTests(unittest.IsolatedAsyncioTestCase):
         await self.reject(SimulatedTransport(lines=lines), "document_provider_incomplete", stream=True)
 
     async def test_stream_valid_json_without_finish_and_malformed_usage_refused(self):
-        lines = event({"model": "openai/gpt-5.1", "choices": [{"delta": {"content": json.dumps(canonical())}, "finish_reason": None}]}) + [(0, "data: [DONE]"), (0, "")]
+        lines = event({"model": "openai/gpt-5.1", "choices": [{"delta": {"content": json.dumps(envelope())}, "finish_reason": None}]}) + [(0, "data: [DONE]"), (0, "")]
         await self.reject(SimulatedTransport(lines=lines), "document_provider_incomplete", stream=True)
         for malformed in (True, -1, "77", 77.0):
             self.progress = self.progress_module.DocumentPreparation(monotonic=self.clock, wait_until=self.clock.wait_until)
@@ -333,7 +336,7 @@ class DocumentProviderProgressTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.progress.snapshot().state, "failed")
 
     async def test_useful_stream_progress_allows_total_duration_over_120(self):
-        text = json.dumps(canonical(), ensure_ascii=False)
+        text = json.dumps(envelope(), ensure_ascii=False)
         parts = (text[:50], text[50:100], text[100:])
         lines = []
         for part in parts:
@@ -445,6 +448,79 @@ class DocumentProviderProgressTests(unittest.IsolatedAsyncioTestCase):
         second = SimulatedTransport()
         await self.reject(second, "document_preparation_closed")
         self.assertEqual(second.sent, [])
+
+    async def test_clarify_and_refuse_are_complete_single_exchanges_without_canonical(self):
+        for status in ("clarify", "refuse"):
+            for stream in (False, True):
+                with self.subTest(status=status, stream=stream):
+                    self.progress = self.progress_module.DocumentPreparation(monotonic=self.clock, wait_until=self.clock.wait_until)
+                    text = json.dumps(envelope(status=status, text="Parole réelle."))
+                    transport = SimulatedTransport(payload=response(content=text), lines=stream_events(text))
+                    result = await self.run_call(transport, stream=stream)
+                    self.assertEqual(result.envelope.status, status)
+                    self.assertEqual(result.envelope.surface_text, "Parole réelle.")
+                    self.assertIsNone(result.canonical)
+                    self.assertEqual(result.finish_reason, "stop")
+                    self.assertEqual(result.provider_usage.total_tokens, 109)
+                    self.assertEqual(result.state, "complete")
+                    self.assertEqual(len(transport.sent), 1)
+                    self.assertEqual(transport.close_count, 1)
+
+    async def test_invalid_envelope_or_old_canonical_root_has_one_call_and_no_repair(self):
+        for data in (envelope(operation="update"), envelope(format="pdf"), canonical(), envelope(document={})):
+            for stream in (False, True):
+                self.progress = self.progress_module.DocumentPreparation(monotonic=self.clock, wait_until=self.clock.wait_until)
+                text = json.dumps(data)
+                transport = SimulatedTransport(payload=response(content=text), lines=stream_events(text))
+                with self.assertRaises(self.error):
+                    await self.run_call(transport, stream=stream)
+                self.assertEqual(len(transport.sent), 1)
+                self.assertEqual(transport.close_count, 1)
+                self.assertEqual(self.progress.snapshot().state, "failed")
+
+    async def test_oversized_envelope_json_and_stream_fail_without_partial_document(self):
+        text = json.dumps(envelope()) + " " * (1048576 + 65536)
+        for stream in (False, True):
+            self.progress = self.progress_module.DocumentPreparation(monotonic=self.clock, wait_until=self.clock.wait_until)
+            transport = SimulatedTransport(payload=response(content=text), lines=stream_events(text))
+            await self.reject(transport, "document_json_envelope_limit", stream=stream)
+            self.assertEqual(len(transport.sent), 1)
+
+    async def test_content_tool_calls_and_hidden_reasoning_never_become_envelope(self):
+        for field in ("tool_calls", "function_call"):
+            self.progress = self.progress_module.DocumentPreparation(monotonic=self.clock, wait_until=self.clock.wait_until)
+            payload = response()
+            payload["choices"][0]["message"][field] = [{"name": "synthetic"}]
+            transport = SimulatedTransport(payload=payload)
+            await self.reject(transport, "document_provider_incomplete")
+            self.assertEqual(len(transport.sent), 1)
+
+    async def test_valid_dense_content_can_have_a_larger_escaped_sse_frame(self):
+        document = canonical()
+        document["blocks"] += [{"type": "page_break"}] * 45000
+        text = json.dumps(envelope(document=document), separators=(",", ":"))
+        transport = SimulatedTransport(lines=stream_events(text))
+        self.assertLess(len(text.encode("utf-8")), 1048576)
+        self.assertGreater(len(transport.lines[0][1].encode("utf-8")), 1048576 + 65536)
+        result = await self.run_call(transport, stream=True)
+        self.assertEqual(result.canonical.as_dict(), document)
+        self.assertEqual(len(transport.sent), 1)
+
+    async def test_oversized_sse_frame_is_rejected_before_json_decode(self):
+        size = 6 * (1048576 + 65536) + 65536
+        transport = SimulatedTransport(lines=[(0, "data: " + " " * size), (0, "")])
+        await self.reject(transport, "document_json_envelope_limit", stream=True)
+        self.assertEqual(len(transport.sent), 1)
+
+    async def test_source_canary_in_protocol_surface_is_rejected_before_publication(self):
+        for status in ("prepared", "clarify"):
+            for stream in (False, True):
+                self.progress = self.progress_module.DocumentPreparation(monotonic=self.clock, wait_until=self.clock.wait_until)
+                text = json.dumps(envelope(status=status, text=json.dumps(canonical("synthetic source canary"))))
+                transport = SimulatedTransport(payload=response(content=text), lines=stream_events(text))
+                await self.reject(transport, "document_envelope_invalid", stream=stream)
+                self.assertEqual(len(transport.sent), 1)
+                self.assertEqual(self.progress.snapshot().state, "failed")
 
 
 if __name__ == "__main__":

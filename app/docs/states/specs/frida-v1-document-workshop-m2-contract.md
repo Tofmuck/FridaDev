@@ -1,5 +1,12 @@
 # Atelier documentaire Frida V1 — contrat M2
 
+## Évolution M4 — 6 octobre 2026
+
+La lecture fraîche complète M2 est raccordée uniquement aux références explicitement mobilisées, après construction des facultés du vrai tour. L’adoption seule ne sélectionne ni n’injecte une source. Les observations de version sont figées dans l’action M4 ; les corrections P2-M2-01 à 05 et leurs preuves historiques sont conservées.
+Voir le [contrat M4](frida-v1-document-workshop-m4-contract.md) pour les preuves
+hermétiques et les limites ; migrations opérateur, runtime, modèle/DAV live et M5 restent ouverts.
+
+
 Date : 2026-10-05. Statut : P2-M2-01 corrigé sur code/preuves, comparaison
 historique 567/567 ; succès historique 536/536 et revue G-R1–G-R4 Approved conservés.
 P2-M2-03 corrigé séparément sur la frontière frontend du listing (594/594

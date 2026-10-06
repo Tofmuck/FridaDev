@@ -3,6 +3,7 @@ from uuid import UUID
 
 from .document_workshop_contract import DocumentWorkshopError
 from .workspace_document_paths import validate_document_path
+from . import document_workshop_actions as actions
 
 
 def _id(value):
@@ -58,9 +59,10 @@ def _scope(fields, *, conversations, folders, files):
                 target_document_ref=link['nextcloud_document_ref'], target_remote_identity=identity)
 
 
-def _public(record):
+def _public(record, preparation=None):
     return {key: record[key] for key in ('id', 'conversation_id', 'workspace_folder_id',
-            'target_file_id', 'target_relative_path', 'state', 'created_at')} | {'capabilities': {'prepare': False}}
+            'target_file_id', 'target_relative_path', 'state', 'created_at')} | {
+                'capabilities': dict(actions.CAPABILITIES), 'preparation': preparation}
 
 
 def _scope_error(exc):

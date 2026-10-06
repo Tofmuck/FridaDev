@@ -15,6 +15,7 @@ from core import workspace_file_selections
 from core import chat_llm_flow
 from core import conversation_turn_claims as turn_claims
 from core import chat_turn_reservation
+from core import document_workshop_turn
 from core.chat_document_prompt_reads import (
     ActiveDocumentsPromptRead,
     _active_documents_for_prompt,
@@ -425,20 +426,27 @@ def chat_response(
     workspace_folder_notes_module: Any = workspace_folder_notes,
     workspace_folder_notes_read_module: Any = workspace_folder_notes_read,
 ) -> dict[str, Any]:
-    if 'document_context_id' in data:
-        return _json_result({'ok': False, 'reason_code': 'document_preparation_unavailable',
-                             'error': 'La préparation documentaire est indisponible.'}, 409)
+    documentary = 'document_context_id' in data
+    document_context = None
+    source_ids = ()
     try:
         turn_id, fingerprint = chat_turn_reservation.request_identity(data)
         if 'client_turn_id' in data:
             prior = turn_claims.read(turn_id)
             if prior:
-                if prior['request_fingerprint'] != fingerprint or prior['kind'] != 'chat':
+                if prior['request_fingerprint'] != fingerprint or prior['kind'] != ('preparation' if documentary else 'chat'):
                     raise turn_claims.ClaimError('conversation_turn_id_incompatible')
                 return chat_turn_reservation.error_result(
                     turn_claims.ClaimError('conversation_turn_repeated'), record=prior)
     except turn_claims.ClaimError as exc:
         return chat_turn_reservation.error_result(exc)
+    if documentary:
+        try:
+            document_context, source_ids = document_workshop_turn.validate_request(data)
+        except document_workshop_turn.DocumentWorkshopError as exc:
+            return document_workshop_turn.error_result(exc.reason_code)
+        except Exception:
+            return document_workshop_turn.error_result('document_context_storage_unavailable', 503)
     adobe_request = adobe_docs_pipeline.resolve_adobe_request(data)
     if adobe_request.error_code:
         chat_turn_logger.emit(
@@ -482,7 +490,8 @@ def chat_response(
 
     try:
         admission = turn_claims.acquire(conversation_id=session['conversation']['id'],
-            turn_id=turn_id, request_fingerprint=fingerprint)
+            turn_id=turn_id, request_fingerprint=fingerprint,
+            **(dict(kind='preparation', context_id=document_context['id']) if documentary else {}))
         if admission.token is None:
             return chat_turn_reservation.error_result(
                 turn_claims.ClaimError('conversation_turn_repeated'), record=admission.record)
@@ -490,6 +499,7 @@ def chat_response(
         return chat_turn_reservation.error_result(exc)
     reservation = chat_turn_reservation.ChatReservation(admission.token, turn_claims)
     reserved_store = chat_turn_reservation.ReservedConversationStore(conv_store_module, reservation)
+    document_turn = document_workshop_turn.DocumentTurn(reservation, document_context, source_ids) if documentary else None
     try:
         # Loading before admission was only existence/session resolution. This
         # reload occurs under the exclusion, so a prior completed snapshot is used.
@@ -499,7 +509,7 @@ def chat_response(
             if not session['conversation']:
                 raise turn_claims.ClaimError('conversation_turn_invalidated')
         result = _run_reserved_chat_session(
-            data, session=session, system_prompt=system_prompt,
+            data, session=session, document_turn=document_turn, system_prompt=system_prompt,
             hermeneutical_prompt=hermeneutical_prompt, adobe_request=adobe_request,
             prompt_loader_module=prompt_loader_module, conv_store_module=reserved_store,
             memory_store_module=chat_turn_reservation.ReservedMemoryStore(memory_store_module, reservation),
@@ -515,23 +525,41 @@ def chat_response(
             workspace_folder_notes_module=workspace_folder_notes_module,
             workspace_folder_notes_read_module=workspace_folder_notes_read_module,
         )
+        if document_turn is not None:
+            return result
         if result['kind'] == 'stream':
             result['stream'] = chat_turn_reservation.ReservedChatStream(result['stream'], reservation)
         else:
             reservation.finish('succeeded' if 200 <= result['status'] < 300 else None)
         return result
-    except turn_claims.ClaimError as exc:
+    except (turn_claims.ClaimError, document_workshop_turn.DocumentWorkshopError) as exc:
+        if document_turn is not None:
+            result = document_turn.failure(session['conversation'], reserved_store, exc.reason_code, _now_iso())
+            reservation.close()
+            return result
         reservation.close()
         return chat_turn_reservation.error_result(exc)
+    except Exception:
+        if document_turn is not None:
+            result = document_turn.failure(session['conversation'], reserved_store, 'document_preparation_failed', _now_iso())
+            reservation.close()
+            return result
+        reservation.close()
+        raise
     except BaseException:
         reservation.close()
         raise
+    finally:
+        if document_turn is not None:
+            document_turn.stop()
+            reservation.close()
 
 
 def _run_reserved_chat_session(
     data: Mapping[str, Any],
     *,
     session: dict,
+    document_turn: Any = None,
     system_prompt: str,
     hermeneutical_prompt: str,
     adobe_request: Any,
@@ -577,6 +605,9 @@ def _run_reserved_chat_session(
         message_timestamp=user_timestamp,
     )
     user_message_meta = {'client_turn_id': conv_store_module.reservation.token.turn_id}
+    if document_turn is not None:
+        user_message_meta['document_workshop'] = dict(context_id=document_turn.token.context_id, action_id=document_turn.token.turn_id, revision_id=None)
+        user_message_meta['document_source_file_ids'] = list(document_turn.source_ids)
     if input_mode == 'voice':
         user_message_meta['input_mode'] = 'voice'
     conv_store_module.append_message(
@@ -587,8 +618,12 @@ def _run_reserved_chat_session(
         timestamp=user_timestamp,
     )
 
-    conv_store_module.mark_next_persist_phase('user_initial')
-    initial_save = conv_store_module.save_conversation(conversation, updated_at=user_timestamp)
+    if document_turn is not None:
+        document_turn.start(conversation, conv_store_module)
+        initial_save = None
+    else:
+        conv_store_module.mark_next_persist_phase('user_initial')
+        initial_save = conv_store_module.save_conversation(conversation, updated_at=user_timestamp)
     if initial_save is not None and not initial_save.ok:
         return _json_result({'ok': False, 'reason_code': 'conversation_persist_failed',
                              'error': 'Sauvegarde de conversation indisponible.'}, 503)
@@ -608,6 +643,9 @@ def _run_reserved_chat_session(
         admin_logs_module.log_event('summary_generated', conversation_id=conversation['id'])
         chat_turn_logger.set_state('summary_generation_observed', True)
 
+    if document_turn is not None:
+        document_turn.progress.complete_input_step('summary_ready')
+
     now_iso_value = user_timestamp
     time_payload = _resolve_time_input(
         now_iso=now_iso_value,
@@ -622,6 +660,9 @@ def _run_reserved_chat_session(
     )
     chat_prompt_context.apply_augmented_system(conversation, augmented_system)
 
+    if document_turn is not None:
+        document_turn.progress.complete_input_step('identity_ready')
+
     prepared_memory_context = chat_memory_flow.prepare_memory_context(
         conversation=conversation,
         user_msg=user_msg,
@@ -632,6 +673,8 @@ def _run_reserved_chat_session(
         now_iso=now_iso_value,
     )
     current_mode, memory_traces, context_hints = prepared_memory_context
+    if document_turn is not None:
+        document_turn.progress.complete_input_step('memory_ready')
     summary_payload = _resolve_summary_input(
         conversation_id=conversation.get('id'),
         conv_store_module=conv_store_module,
@@ -659,6 +702,8 @@ def _run_reserved_chat_session(
         signal=affective_turn_signal,
     )
     stimmung_payload = _build_stimmung_input(conversation=conversation)
+    if document_turn is not None:
+        document_turn.progress.complete_input_step('stimmung_ready')
     if adobe_request.active:
         web_runtime_payload = _resolve_web_runtime_payload_skipped_by_adobe(
             user_msg=user_msg,
@@ -695,20 +740,22 @@ def _run_reserved_chat_session(
             admin_logs_module=admin_logs_module,
         )
 
-    biblio_state = biblio_chat_runtime.read_biblio_conversation_state(conversation)
-    biblio_recent_dialogue = _biblio_recent_dialogue(conversation, user_msg)
-    biblio_result = biblio_chat_runtime.run_biblio_chat_turn(
-        data,
-        user_msg=user_msg,
-        conversation_id=conversation.get('id'),
-        conversation_state=biblio_state,
-        recent_dialogue=biblio_recent_dialogue,
-        now_iso=now_iso_value,
-        config_module=config_module,
-    )
-    biblio_chat_runtime.attach_biblio_conversation_state(conversation, biblio_result)
-    _emit_biblio_observability(biblio_result)
-
+    biblio_result = None
+    biblio_recent_dialogue = ()
+    if document_turn is None:
+        biblio_state = biblio_chat_runtime.read_biblio_conversation_state(conversation)
+        biblio_recent_dialogue = _biblio_recent_dialogue(conversation, user_msg)
+        biblio_result = biblio_chat_runtime.run_biblio_chat_turn(
+            data,
+            user_msg=user_msg,
+            conversation_id=conversation.get('id'),
+            conversation_state=biblio_state,
+            recent_dialogue=biblio_recent_dialogue,
+            now_iso=now_iso_value,
+            config_module=config_module,
+        )
+        biblio_chat_runtime.attach_biblio_conversation_state(conversation, biblio_result)
+        _emit_biblio_observability(biblio_result)
     agenda_result = None
     agenda_enabled = agenda_chat_runtime.normalize_agenda_enabled(data.get('agenda_enabled'))
     agenda_recent_dialogue = ()
@@ -757,6 +804,8 @@ def _run_reserved_chat_session(
         requests_module=requests_module,
     )
     hermeneutic_node_runtime_payload = _mapping(hermeneutic_node_runtime)
+    if document_turn is not None:
+        document_turn.progress.complete_input_step('hermeneutic_ready')
     validated_result = hermeneutic_node_runtime_payload.get('validated_result')
     primary_payload = _mapping(hermeneutic_node_runtime_payload.get('primary_payload'))
     hermeneutic_judgment_block = chat_prompt_context.build_hermeneutic_judgment_block(
@@ -805,15 +854,33 @@ def _run_reserved_chat_session(
         web_evidence_guard_block,
     )
     assistant_output_policy = assistant_output_contract.resolve_assistant_output_policy(user_msg)
-    plain_text_guard_block = chat_prompt_context.build_plain_text_guard_block(
-        user_msg=user_msg,
-        output_policy=assistant_output_policy,
-    )
-    augmented_system = chat_prompt_context.inject_plain_text_guard_block(
-        augmented_system,
-        plain_text_guard_block,
-    )
+    if document_turn is None:
+        plain_text_guard_block = chat_prompt_context.build_plain_text_guard_block(
+            user_msg=user_msg,
+            output_policy=assistant_output_policy,
+        )
+        augmented_system = chat_prompt_context.inject_plain_text_guard_block(
+            augmented_system,
+            plain_text_guard_block,
+        )
     chat_prompt_context.apply_augmented_system(conversation, augmented_system)
+
+    if document_turn is not None:
+        return document_turn.complete(conversation=conversation, conv_store_module=conv_store_module,
+            memory_traces=memory_traces, context_hints=context_hints, temperature=temperature,
+            top_p=top_p, token_utils_module=token_utils_module, llm_module=llm_module,
+            config_module=config_module, now_iso_func=_now_iso, stream_req=stream_req,
+            manifest_inputs=dict(summary_payload=summary_payload,identity_payload=identity_payload,
+                recent_context_payload=recent_context_payload,recent_window_payload=recent_window_payload,
+                current_mode=current_mode,memory_retrieved=getattr(prepared_memory_context,'memory_retrieved',None),
+                memory_arbitration=getattr(prepared_memory_context,'memory_arbitration',None),
+                web_runtime_payload=web_runtime_payload,hermeneutic_node_runtime=hermeneutic_node_runtime,
+                hermeneutic_judgment_block=hermeneutic_judgment_block),
+            effects=dict(current_mode=current_mode,identity_ids=identity_ids,web_input=web_payload,
+                memory_store_module=memory_store_module,token_utils_module=token_utils_module,
+                admin_logs_module=admin_logs_module,logger=logger,arbiter_module=arbiter_module,
+                record_identity_entries_for_mode=_record_identity_entries_for_mode,
+                mode_enforces_identity=chat_memory_flow.mode_enforces_identity))
 
     active_documents_read = _active_documents_for_prompt(
         conversation=conversation,

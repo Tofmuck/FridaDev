@@ -92,6 +92,8 @@ def _expected_rows() -> list[RouteContract]:
         _row('/api/chat/transcribe', 'POST', 'api_chat_transcribe', 'chat_and_transcription'),
         _row('/api/document-workshop/contexts', 'POST', 'create_document_workshop_context', 'conversations_documents_workspace'),
         _row('/api/document-workshop/contexts/<context_id>', 'GET', 'get_document_workshop_context', 'conversations_documents_workspace'),
+        _row('/api/document-workshop/actions/<action_id>', 'GET', 'get_document_workshop_action', 'conversations_documents_workspace'),
+        _row('/api/document-workshop/actions/<action_id>/cancel', 'POST', 'cancel_document_workshop_action', 'conversations_documents_workspace'),
         _row(
             '/api/tools/image-generation',
             'POST',

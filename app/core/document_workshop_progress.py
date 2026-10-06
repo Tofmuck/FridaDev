@@ -9,6 +9,8 @@ from typing import Awaitable, Callable
 from .document_workshop_contract import DocumentWorkshopError, PREPARATION_INACTIVITY_SECONDS
 
 _STEPS = ("payload_prepared", "admitted", "provider_finished", "canonical_validated")
+_INPUT_STEPS = ('user_saved', 'summary_ready', 'identity_ready', 'memory_ready', 'stimmung_ready',
+                'hermeneutic_ready', 'dialogue_ready', 'sources_ready')
 
 
 @dataclass(frozen=True)
@@ -40,6 +42,26 @@ class DocumentPreparation:
         self._reason: str | None = None
         self._stopped = asyncio.Event()
         self._exchange_started = False
+        self._input_steps: list[str] = []
+        self._source_reads: set[str] = set()
+
+    def complete_input_step(self, step: str) -> None:
+        """M4 finite upstream work, before the M0 provider exchange."""
+        self.check()
+        steps = _INPUT_STEPS
+        if self._exchange_started or len(self._input_steps) >= len(steps) or steps[len(self._input_steps)] != step:
+            raise DocumentWorkshopError('document_progress_invalid')
+        self._input_steps.append(step)
+        self._phase = step
+        self._last_progress = self._clock()
+
+    def complete_source(self, source_id: str) -> None:
+        self.check()
+        if self._exchange_started or tuple(self._input_steps) != _INPUT_STEPS[:-1] or source_id in self._source_reads:
+            raise DocumentWorkshopError('document_progress_invalid')
+        self._source_reads.add(source_id)
+        self._phase = 'source_read'
+        self._last_progress = self._clock()
 
     async def _sleep_until(self, deadline: float) -> None:
         await asyncio.sleep(max(0.0, deadline - self._clock()))

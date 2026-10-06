@@ -1,5 +1,12 @@
 # Streaming Protocol
 
+## Évolution M4 — 6 octobre 2026
+
+Dans la branche atelier explicite de `/api/chat`, M4 commit la réponse courte, la révision/action et la clôture du claim avant de produire le premier octet et l’unique terminal `done` daté. Aucun canonical ni JSON d’action ne traverse ce flux. La coupure après commit se réconcilie par les références persistées, sans replay.
+Voir le [contrat M4](frida-v1-document-workshop-m4-contract.md) pour les preuves
+hermétiques et les limites ; migrations opérateur, runtime, modèle/DAV live et M5 restent ouverts.
+
+
 Statut: reference normative active
 Classement: `app/docs/states/specs/`
 Portee: contrat public du streaming de `/api/chat` quand `stream=true`

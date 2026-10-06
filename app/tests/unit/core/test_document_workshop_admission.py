@@ -155,6 +155,23 @@ class DocumentAdmissionTests(unittest.TestCase):
             self.prepare(messages=[{"role": [], "content": "synthetic"}])
         self.assertEqual(raised.exception.reason_code, "document_payload_invalid")
 
+    def test_one_complete_envelope_schema_is_counted_before_send(self):
+        from core.document_canonical import CANONICAL_INSTRUCTIONS
+        call = self.prepare(messages=[{"role": "user", "content": "Préparer un document synthétique."}])
+        messages = json.loads(call.body)["messages"]
+        self.assertEqual(len(messages), 2)
+        instructions = messages[-1]["content"]
+        self.assertIn('status', instructions)
+        self.assertIn('surface_text', instructions)
+        self.assertIn('proposal', instructions)
+        self.assertIn('prepared', instructions)
+        self.assertIn('clarify', instructions)
+        self.assertIn('refuse', instructions)
+        self.assertIn('canonical', instructions)
+        self.assertIn('page_break', instructions)
+        self.assertNotIn(CANONICAL_INSTRUCTIONS, instructions)
+        self.assertEqual(call.admission.estimated_input_tokens, token_utils.estimate_tokens(messages, "openai/gpt-5.1"))
+
 
 if __name__ == "__main__":
     unittest.main()

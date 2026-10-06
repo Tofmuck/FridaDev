@@ -1,5 +1,12 @@
 # Atelier documentaire Frida V1 — contrat M1
 
+## Évolution M4 — 6 octobre 2026
+
+L’entrée et le contexte M1 sont conservés. Les capacités publiques annoncent la préparation Markdown create/copy ; `confirm` et `update` restent faux. GET contexte projette la dernière préparation durable. La validation de scope interne M2 reste indépendante de cette projection HTTP.
+Voir le [contrat M4](frida-v1-document-workshop-m4-contract.md) pour les preuves
+hermétiques et les limites ; migrations opérateur, runtime, modèle/DAV live et M5 restent ouverts.
+
+
 Date : 2026-10-04. Statut : code et preuves hermétiques M1 ; activation différée.
 La [roadmap autoritative](../../todo-todo/product/frida-v1-document-workshop-todo.md)
 reste l'unique spécification du chantier. Le [contrat M0](frida-v1-document-workshop-m0-contract.md)

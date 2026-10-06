@@ -1,5 +1,12 @@
 # Frida V1 - Continuity Payload Contract
 
+## Évolution M4 — 6 octobre 2026
+
+Le payload documentaire M4 est assemblé après les facultés constitutives, avec les sources complètes non souveraines, puis les instructions d’enveloppe et la capsule existante. L’admission mesure cette entrée figée via `token_utils.estimate_tokens`, avec E + 24 000 <= 400 000. Le manifeste reste content-free et attribue les sources tardives à `document_lane` ; aucune sortie canonical ne nourrit les facultés.
+Voir le [contrat M4](frida-v1-document-workshop-m4-contract.md) pour les preuves
+hermétiques et les limites ; migrations opérateur, runtime, modèle/DAV live et M5 restent ouverts.
+
+
 Date: 2026-06-22
 
 Statut: contrat source-of-truth Continuity Payload. Lot 1 a defini le contrat;

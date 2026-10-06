@@ -180,3 +180,44 @@ test('M3 creates one distinct identity per accepted canonical turn after all gua
   await f.submit('Même texte', 'keyboard');
   assert.equal(ids, 2);
 });
+
+for (const mode of ['keyboard','voice']) {
+  test(`M4 canonical ${mode} carries explicit context/sources once and forces metadata hydration`,async()=>{
+    const f=fixture();let begun=null,completed=0;
+    f.context.documentWorkshopController={
+      blocksSubmission:()=>true,
+      prepareSubmission:()=>({ok:true,contextId:'context-a',sourceFileIds:['a1111111-1111-4111-8111-111111111111']}),
+      beginSubmission:id=>{begun=id;},finishSubmission:async()=>{completed++;},
+      refuseSubmission:()=>{},
+    };
+    const pending=f.submit('Prépare la synthèse',mode);
+    assert.equal(f.requests.length,1,'mounted canonical path must start the documentary request');
+    assert.equal(f.requests[0].payload.document_context_id,'context-a');
+    assert.deepEqual(f.requests[0].payload.document_source_file_ids,['a1111111-1111-4111-8111-111111111111']);
+    assert.equal(f.requests[0].payload.client_turn_id,begun);
+    assert.equal(f.requests[0].payload.input_mode,mode);
+    f.release();assert.equal((await pending).ok,true);
+    assert.equal(completed,1);assert.equal(f.hydrations.length,1);assert.deepEqual(f.loads,['thread-A']);
+  });
+}
+
+test('M4 interrupted documentary terminal with timestamp still rereads canonical metadata',async()=>{
+  const f=fixture({terminal:{event:'error',error_code:'document_preparation_failed',updated_at:'2026-10-06T10:00:00Z'}});
+  f.context.documentWorkshopController={blocksSubmission:()=>true,
+    prepareSubmission:()=>({ok:true,contextId:'context-a',sourceFileIds:[]}),beginSubmission(){},finishSubmission:async()=>{}};
+  const pending=f.submit('Synthétique','keyboard');f.release();assert.equal((await pending).ok,false);
+  assert.equal(f.hydrations.length,1,'documentary metadata must be hydrated even with a durable error timestamp');
+  assert.deepEqual(f.loads,['thread-A']);
+});
+
+test('M4 persisted interrupted assistant still mounts its documentary reference card hook',()=>{
+  const f=fixture();const references=[];
+  f.context.documentWorkshopController={renderMessage:(wrapper,record)=>references.push(record.meta.document_workshop)};
+  f.context.getPersistedAssistantTurnErrorMeta=streaming.getPersistedAssistantTurnErrorMeta;
+  const source=fs.readFileSync(path.resolve(__dirname,'../../../web/app.js'),'utf8');
+  vm.runInContext(source.slice(source.indexOf('  const renderConversationMessage ='),source.indexOf('  const setAssistantLoader ='))+'\n globalThis.renderProbe=renderConversationMessage;',f.context);
+  const record={role:'assistant',content:'',meta:{...streaming.buildInterruptedAssistantTurnMeta('document_preparation_failed'),
+    document_workshop:{context_id:'context-a',action_id:'action-a',revision_id:null}}};
+  f.context.renderProbe(record);
+  assert.deepEqual(plain(references),[record.meta.document_workshop]);
+});

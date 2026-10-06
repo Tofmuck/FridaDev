@@ -86,6 +86,11 @@ class ChatReservation:
             # time, and an old token cannot release its successor.
             pass
 
+    def stop_after_commit(self):
+        """M4 already closed the claim in its common snapshot transaction."""
+        self._stop.set()
+        self._closed = True
+
 
 class ReservedConversationStore:
     def __init__(self, base, reservation):

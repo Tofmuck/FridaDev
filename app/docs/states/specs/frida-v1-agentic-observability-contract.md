@@ -1,5 +1,12 @@
 # Frida V1 - Agentic Observability Contract
 
+## Évolution M4 — 6 octobre 2026
+
+Le nouvel événement `document_preparation` utilise une whitelist de stage fermée : UUID action/contexte, état, phase finie, motifs techniques et compte de points de code. Ni contenu, canonical, nom, chemin, URL ni exception de transport n’y sont admis. La projection HTTP utilisateur peut afficher le nom/chemin validé de la proposition ; elle ne publie ni canonical ni versions privées. Les étapes réelles seules renouvellent les 120 secondes, jamais GET/polling/keepalive/lease.
+Voir le [contrat M4](frida-v1-document-workshop-m4-contract.md) pour les preuves
+hermétiques et les limites ; migrations opérateur, runtime, modèle/DAV live et M5 restent ouverts.
+
+
 Statut: spec source-of-truth livree par Lot 1 docs-only; Lot 2 runtime
 `chat_turn_logger` / `log_store` / checklist / read-model livre; correctif
 Lot 2.1 writer V1 livre; correctif Lot 2.2 redaction invalid status livre;

@@ -10,7 +10,7 @@ import json
 from typing import Callable, Mapping, Any
 
 from . import llm_client
-from .document_canonical import CANONICAL_INSTRUCTIONS
+from .document_workshop_envelope import DOCUMENT_ENVELOPE_INSTRUCTIONS
 from .document_workshop_contract import (
     DOCUMENT_CONTEXT_TOKENS, DOCUMENT_MODEL, DOCUMENT_OUTPUT_TOKENS,
     DocumentWorkshopError,
@@ -68,7 +68,7 @@ def prepare_document_call(
 ) -> PreparedDocumentCall:
     """The caller supplies final prompt/dialogue/whole sources/context/metadata.
 
-    This boundary appends its canonical instructions before counting. The sole
+    This boundary appends its envelope instructions before counting. The sole
     supported model-consumed field outside messages is response_format, represented
     explicitly as one estimation-only system message using the *same* callable.
     Attribution metadata/trace, sampling/stop controls and HTTP headers are not
@@ -77,7 +77,7 @@ def prepare_document_call(
     if progress is not None:
         progress.check()
     final_messages = _messages(messages)
-    final_messages.append({"role": "system", "content": CANONICAL_INSTRUCTIONS})
+    final_messages.append({"role": "system", "content": DOCUMENT_ENVELOPE_INSTRUCTIONS})
     payload = llm_module.build_payload(final_messages, temperature, top_p, DOCUMENT_OUTPUT_TOKENS, stream=stream)
     if type(payload) is not dict or set(payload) - _PAYLOAD_FIELDS:
         raise DocumentWorkshopError("document_payload_invalid")
