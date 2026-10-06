@@ -155,6 +155,11 @@ la livraison runtime exige une migration opérateur coordonnée avant son rebuil
 
 Les commandes, sélecteurs, résultats, durées, défauts de harnais et contre-audit
 sont consignés dans [M3 de la roadmap](../../todo-todo/product/frida-v1-document-workshop-todo.md#m3--réservation-durable-et-concurrence).
+Le P3 préexistant de l'inventaire golden des routes est corrigé séparément le
+2026-10-06, tests/docs-only : cinq entrées explicites, classification de test des
+contextes, cardinalité 128 et sensibilités strictes. Rouge ciblé conservé ; vert
+2/2 puis module et voisins 59/59, sans skip. Les découvertes historiques M3 ne
+sont pas réécrites en succès global. Aucun code runtime modifié par ce correctif.
 Providers synthétiques comptés, PostgreSQL réel avec connexions/processus distincts,
 pgvector réel pour le résumé, runners réseau fermé et checkout en lecture seule.
 Aucun modèle/DAV live, base opérateur, rebuild/restart, health runtime, renderer,

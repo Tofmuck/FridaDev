@@ -13,6 +13,7 @@ P2-M2-04 backend corrigé séparément, comparaison historique 713/713 ;
 P2-M2-05 corrigé séparément sur le résumé de réconciliation, comparaison
 716/716 ; livraison runtime ouverte ;
 M3 fermé sur code/preuves hermétiques et contre-audit, branche `FridaV1-Document-Workshop-M3`, livraison runtime ouverte ;
+P3-M3-baseline-route-golden corrigé séparément le 2026-10-06 (tests/docs-only) ;
 M4–M10 et Z non commencés ; préparation inactive, aucun déploiement ou renderer livré**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
@@ -2950,12 +2951,42 @@ les **55/55 SQL** et **59/59 voisins**, sans prétendre à une nouvelle découve
 globale du dernier état. Le dernier nouveau cas SQL est ainsi exécuté explicitement,
 pas compté dans cette découverte.
 
-**P3-M3-baseline-route-golden, hors patch :** le golden des routes attend 123 alors
+**P3-M3-baseline-route-golden, historique hors patch M3 initial :** le golden des routes attend 123 alors
 que M2 expose déjà 128 routes. Reproduit au commit M2 exact : 84 tests en 187,139 s,
 83 succès et ce seul failure ; après adaptation M3 : mêmes 84 tests en 190,669 s,
 83 succès et le même failure. Requalifié défaut préexistant de fixture, non absorbé
 par M3 ; aucune route ajoutée et aucune assertion historique changée. La découverte
 globale n'est pas déclarée entièrement verte.
+
+**Correctif distinct P3, 2026-10-06 :** revalidé sur M3
+`c9275847d81c2fedd9147bbacd5798b44eacca2a`, propre et aligné avec origin (`0/0`).
+Le rouge ciblé reproduit `128 != 123` : un test, 0,787 s, exit 1. La différence
+détaillée est exactement les cinq routes speech, création/lecture de contexte,
+adoption et listing distant. Méthodes/endpoints contrôlés dans les déclarations ;
+gardes contrôlées dans les deux `before_request` serveur. Les contextes rejoignent
+la famille de test `conversations_documents_workspace`. L'attendu reste un
+inventaire explicite avec égalité exacte ; le nombre seul n'est pas la preuve.
+Aucun handler, route produit, garde ou classement applicatif modifié.
+
+Preuves exécutées avec checkout readonly, environnement vidé, réseau `none`,
+aucune installation/pull ni DB opérateur. Rouge dans l'image existante
+`platform-fridadev-app:local` ; vert dans `fridadev-audit-py:latest`, wrapper
+Python M3 ci-dessus, sans bind SQL. Commandes (noms complets) :
+
+```sh
+python -m unittest tests.unit.golden.test_lot9_golden_harness.Lot9GoldenHarnessTests.test_route_map_is_exact_by_family_method_endpoint_and_guard
+python -m unittest tests.unit.golden.test_lot9_golden_harness.Lot9GoldenHarnessTests.test_route_map_is_exact_by_family_method_endpoint_and_guard tests.unit.golden.test_lot9_golden_harness.Lot9GoldenHarnessTests.test_route_map_validator_rejects_controlled_mutations
+python -m unittest tests.unit.golden.test_lot9_golden_harness tests.test_server_chat_route_transport_contract tests.test_server_document_workshop_contexts_contract tests.test_server_admin_non_settings_contracts tests.integration.chat.test_chat_dialogue_audio_routes
+```
+
+Vert ciblé : **2/2**, 0,700 s, exit 0. Module golden et voisins : **59/59**,
+1,705 s, exit 0, aucun skip. Sensibilités conservées : route absente,
+supplémentaire, méthode/famille/garde altérées ; endpoint altéré ajouté.
+Diff contre-audité, `git diff --check` et périmètre tests/docs vérifiés.
+Les échecs historiques M2/M3 et discovery ci-dessus restent historiques : aucune
+nouvelle découverte globale n'est revendiquée. Le hash complet du correctif et
+son alignement distant sont relevés avant la création de M4 et dans son contrat.
+Migration/runtime et fournisseurs live restent hors de cette livraison P3.
 
 Échecs intermédiaires conservés : mauvais mount socket (3 errors, 0,763 s),
 indentation extraction initiale (import, pas rouge causal), fixture SQL ancienne

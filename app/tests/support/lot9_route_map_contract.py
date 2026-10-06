@@ -82,6 +82,7 @@ def _expected_rows() -> list[RouteContract]:
         _row('/log', 'GET', 'log_root', 'health_and_technical_surfaces'),
         _row('/memory-admin', 'GET', 'memory_admin_root', 'health_and_technical_surfaces'),
         _row('/api/chat', 'POST', 'api_chat', 'chat_and_transcription'),
+        _row('/api/chat/dialogue/speech', 'POST', 'api_chat_dialogue_speech', 'chat_and_transcription'),
         _row(
             '/api/chat/dialogue/transcribe',
             'POST',
@@ -89,6 +90,8 @@ def _expected_rows() -> list[RouteContract]:
             'chat_and_transcription',
         ),
         _row('/api/chat/transcribe', 'POST', 'api_chat_transcribe', 'chat_and_transcription'),
+        _row('/api/document-workshop/contexts', 'POST', 'create_document_workshop_context', 'conversations_documents_workspace'),
+        _row('/api/document-workshop/contexts/<context_id>', 'GET', 'get_document_workshop_context', 'conversations_documents_workspace'),
         _row(
             '/api/tools/image-generation',
             'POST',
@@ -148,6 +151,8 @@ def _expected_rows() -> list[RouteContract]:
         _row('/api/workspace-folders/<folder_id>', 'PATCH', 'api_patch_workspace_folder', 'conversations_documents_workspace'),
     ]
     workspace_rows = (
+        ('/api/workspace-folders/<folder_id>/documents/adopt', 'POST', 'adopt_remote_workspace_document'),
+        ('/api/workspace-folders/<folder_id>/documents/remote', 'GET', 'list_remote_workspace_documents'),
         ('/api/workspace-folders/<folder_id>/files', 'GET', 'api_list_workspace_folder_files'),
         ('/api/workspace-folders/<folder_id>/files', 'POST', 'api_upload_workspace_folder_file'),
         ('/api/workspace-folders/<folder_id>/files/<file_id>', 'DELETE', 'api_delete_workspace_folder_file'),
@@ -229,7 +234,7 @@ def classify_family(path: str) -> str:
         return 'chat_and_transcription'
     if path.startswith('/api/tools/'):
         return 'guarded_tools'
-    if path.startswith('/api/conversations') or path.startswith('/api/workspace-folders'):
+    if path.startswith(('/api/conversations', '/api/workspace-folders', '/api/document-workshop/')):
         return 'conversations_documents_workspace'
     return 'health_and_technical_surfaces'
 

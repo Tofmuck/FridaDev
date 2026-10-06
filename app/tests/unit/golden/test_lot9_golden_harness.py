@@ -248,7 +248,7 @@ class Lot9GoldenHarnessTests(unittest.TestCase):
 
     def test_route_map_is_exact_by_family_method_endpoint_and_guard(self) -> None:
         actual = lot9_route_map_contract.route_contracts_from_app(self.server.app)
-        self.assertEqual(len(actual), 123)
+        self.assertEqual(len(actual), 128)
         lot9_route_map_contract.assert_exact_route_contract(actual)
 
         client = self.server.app.test_client()
@@ -278,6 +278,11 @@ class Lot9GoldenHarnessTests(unittest.TestCase):
         row[1] = ('POST',)
         method_changed[0] = tuple(row)
         variants.append(method_changed)
+        endpoint_changed = list(expected)
+        row = list(endpoint_changed[0])
+        row[2] = 'synthetic_wrong_endpoint'
+        endpoint_changed[0] = tuple(row)
+        variants.append(endpoint_changed)
         family_changed = list(expected)
         row = list(family_changed[0])
         row[3] = 'synthetic_wrong_family'
