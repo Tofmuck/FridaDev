@@ -14,6 +14,16 @@ rebuild et lecture DAV déployée exigent une autorisation distincte. M3–M10 e
 ne sont pas commencés ; `editing` et `capabilities.prepare=false` restent seuls
 disponibles. Aucune préparation, mutation distante ou appel modèle dans M2.
 
+## Évolution M3 — 6 octobre 2026
+
+Les résultats M2 ci-dessous sont historiques et conservés. Le
+[contrat M3](frida-v1-document-workshop-m3-contract.md) ajoute les triggers
+d'invalidation durable. Pour rester compatible avec la suppression de fichiers,
+l'adoption conserve exactement ses verrous existants et prend les fichiers/liens
+avant conversation puis contexte. La réadoption des mêmes octets/ETag peut
+renouveler le cache sans invalider le scope. Ces frontières sont prouvées sur SQL
+réel et DAV synthétique, sans appel DAV live ni migration opérateur.
+
 ## Autorité et interfaces
 
 `document_workshop_routes.py` réutilise le registrar M1 pour deux routes :

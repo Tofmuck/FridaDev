@@ -113,11 +113,20 @@ def _lock_scope(cur, folder_id, context_id, folder):
     if (not current or current.get('nextcloud_sync_state') != 'linked'
             or any(current.get(key) != folder.get(key) for key in ('nextcloud_target_name', 'nextcloud_folder_ref'))):
         raise DocumentWorkshopError('document_context_scope_changed')
+    # Same historical rows/lock strength, before context authority. A deletion
+    # locks the file before its invalidation trigger locks that context.
+    cur.execute('SELECT id FROM workspace_files WHERE workspace_folder_id=%s::uuid FOR UPDATE', (folder_id,))
+    cur.fetchall()
+    cur.execute('SELECT workspace_file_id FROM workspace_file_nextcloud_links WHERE workspace_folder_id=%s::uuid FOR UPDATE', (folder_id,))
+    cur.fetchall()
     cur.execute('''SELECT dc.* FROM document_workshop_contexts dc JOIN conversations c ON c.id=dc.conversation_id
         WHERE dc.id=%s::uuid AND dc.workspace_folder_id=%s::uuid AND dc.state='editing'
-          AND c.workspace_folder_id=dc.workspace_folder_id AND c.deleted_at IS NULL FOR SHARE OF dc,c''', (context_id,folder_id))
+          AND c.workspace_folder_id=dc.workspace_folder_id AND c.deleted_at IS NULL FOR SHARE OF c''', (context_id,folder_id))
     context = cur.fetchone()
     if not context:
+        raise DocumentWorkshopError('document_context_scope_changed')
+    cur.execute("SELECT state FROM document_workshop_contexts WHERE id=%s FOR SHARE", (context_id,))
+    if cur.fetchone()['state'] != 'editing':
         raise DocumentWorkshopError('document_context_scope_changed')
     if context['target_file_id'] is not None:
         cur.execute('''SELECT wf.id FROM workspace_files wf JOIN workspace_file_nextcloud_links l ON l.workspace_file_id=wf.id
@@ -168,10 +177,6 @@ def publish_adoption(*, folder_id, context_id, folder, scope_key, resource, cont
         with _db_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 _lock_scope(cur, folder_id, context_id, folder)
-                cur.execute('SELECT id FROM workspace_files WHERE workspace_folder_id=%s::uuid FOR UPDATE', (folder_id,))
-                cur.fetchall()
-                cur.execute('SELECT workspace_file_id FROM workspace_file_nextcloud_links WHERE workspace_folder_id=%s::uuid FOR UPDATE', (folder_id,))
-                cur.fetchall()
                 _, _, previous = classify_resource(_candidates(cur, folder_id), scope_key, resource)
                 if previous:
                     link = previous.get('link') or {}

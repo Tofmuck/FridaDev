@@ -43,7 +43,7 @@ def create_context(*, conversation_id, workspace_folder_id, target_file_id=None,
                 WITH scope AS (
                     SELECT c.id FROM conversations c JOIN workspace_folders f ON f.id=c.workspace_folder_id
                     WHERE c.id=%s::uuid AND f.id=%s::uuid AND c.deleted_at IS NULL AND f.deleted_at IS NULL
-                    FOR SHARE OF c, f
+                    FOR UPDATE OF c FOR SHARE OF f NOWAIT
                 ), target AS (
                     SELECT wf.id FROM workspace_files wf JOIN workspace_file_nextcloud_links l ON l.workspace_file_id=wf.id
                     WHERE wf.id=%s::uuid AND wf.workspace_folder_id=%s::uuid AND wf.deleted_at IS NULL
@@ -52,7 +52,7 @@ def create_context(*, conversation_id, workspace_folder_id, target_file_id=None,
                       AND l.nextcloud_sync_state='linked' AND l.nextcloud_document_ref=%s
                       AND COALESCE(to_jsonb(l)->>'nextcloud_relative_path', 'Documents/' || l.nextcloud_target_name)=%s
                       AND ((to_jsonb(l)->>'nextcloud_scope_key') || ':' || (to_jsonb(l)->>'nextcloud_file_id')) IS NOT DISTINCT FROM %s
-                    FOR SHARE OF wf, l
+                    FOR SHARE OF wf, l NOWAIT
                 )
                 INSERT INTO document_workshop_contexts
                     (id, conversation_id, workspace_folder_id, target_file_id, target_relative_path, target_document_ref, target_remote_identity)

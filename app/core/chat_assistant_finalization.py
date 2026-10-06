@@ -168,11 +168,12 @@ def persist_user_turn_after_error(
     conversation: dict[str, Any],
     conv_store_module: Any,
     updated_at: str | None = None,
+    persist_phase: str = 'user_turn',
 ) -> AssistantPersistAttempt:
     ok, persisted_at, reason = _persist_conversation(
         conversation=conversation,
         conv_store_module=conv_store_module,
-        persist_phase='user_turn',
+        persist_phase=persist_phase,
         updated_at=updated_at,
     )
     return AssistantPersistAttempt(

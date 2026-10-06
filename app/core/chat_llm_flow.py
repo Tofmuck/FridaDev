@@ -498,6 +498,7 @@ def run_llm_exchange(
                             conversation=conversation,
                             conv_store_module=conv_store_module,
                             updated_at=final_updated_at,
+                            persist_phase='empty_final',
                         )
                 elif terminal_event == chat_stream_control.STREAM_TERMINAL_ERROR:
                     assistant_tracker.attempt = append_and_persist_assistant(

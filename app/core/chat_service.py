@@ -13,6 +13,8 @@ from core import workspace_folder_notes_read
 from core import workspace_folders
 from core import workspace_file_selections
 from core import chat_llm_flow
+from core import conversation_turn_claims as turn_claims
+from core import chat_turn_reservation
 from core.chat_document_prompt_reads import (
     ActiveDocumentsPromptRead,
     _active_documents_for_prompt,
@@ -423,6 +425,20 @@ def chat_response(
     workspace_folder_notes_module: Any = workspace_folder_notes,
     workspace_folder_notes_read_module: Any = workspace_folder_notes_read,
 ) -> dict[str, Any]:
+    if 'document_context_id' in data:
+        return _json_result({'ok': False, 'reason_code': 'document_preparation_unavailable',
+                             'error': 'La préparation documentaire est indisponible.'}, 409)
+    try:
+        turn_id, fingerprint = chat_turn_reservation.request_identity(data)
+        if 'client_turn_id' in data:
+            prior = turn_claims.read(turn_id)
+            if prior:
+                if prior['request_fingerprint'] != fingerprint or prior['kind'] != 'chat':
+                    raise turn_claims.ClaimError('conversation_turn_id_incompatible')
+                return chat_turn_reservation.error_result(
+                    turn_claims.ClaimError('conversation_turn_repeated'), record=prior)
+    except turn_claims.ClaimError as exc:
+        return chat_turn_reservation.error_result(exc)
     adobe_request = adobe_docs_pipeline.resolve_adobe_request(data)
     if adobe_request.error_code:
         chat_turn_logger.emit(
@@ -464,6 +480,80 @@ def chat_response(
         payload, status = session_error
         return _json_result(payload, status)
 
+    try:
+        admission = turn_claims.acquire(conversation_id=session['conversation']['id'],
+            turn_id=turn_id, request_fingerprint=fingerprint)
+        if admission.token is None:
+            return chat_turn_reservation.error_result(
+                turn_claims.ClaimError('conversation_turn_repeated'), record=admission.record)
+    except turn_claims.ClaimError as exc:
+        return chat_turn_reservation.error_result(exc)
+    reservation = chat_turn_reservation.ChatReservation(admission.token, turn_claims)
+    reserved_store = chat_turn_reservation.ReservedConversationStore(conv_store_module, reservation)
+    try:
+        # Loading before admission was only existence/session resolution. This
+        # reload occurs under the exclusion, so a prior completed snapshot is used.
+        if session.get('existing_conversation'):
+            session['conversation'] = conv_store_module.load_conversation(
+                admission.token.conversation_id, system_prompt)
+            if not session['conversation']:
+                raise turn_claims.ClaimError('conversation_turn_invalidated')
+        result = _run_reserved_chat_session(
+            data, session=session, system_prompt=system_prompt,
+            hermeneutical_prompt=hermeneutical_prompt, adobe_request=adobe_request,
+            prompt_loader_module=prompt_loader_module, conv_store_module=reserved_store,
+            memory_store_module=chat_turn_reservation.ReservedMemoryStore(memory_store_module, reservation),
+            runtime_settings_module=runtime_settings_module,
+            summarizer_module=summarizer_module, identity_module=identity_module,
+            admin_logs_module=admin_logs_module, llm_module=llm_module,
+            requests_module=chat_turn_reservation.ReservedRequests(requests_module, reservation),
+            token_utils_module=token_utils_module,
+            arbiter_module=arbiter_module, web_search_module=web_search_module,
+            config_module=config_module, logger=logger,
+            workspace_file_selections_module=workspace_file_selections_module,
+            workspace_folders_module=workspace_folders_module,
+            workspace_folder_notes_module=workspace_folder_notes_module,
+            workspace_folder_notes_read_module=workspace_folder_notes_read_module,
+        )
+        if result['kind'] == 'stream':
+            result['stream'] = chat_turn_reservation.ReservedChatStream(result['stream'], reservation)
+        else:
+            reservation.finish('succeeded' if 200 <= result['status'] < 300 else None)
+        return result
+    except turn_claims.ClaimError as exc:
+        reservation.close()
+        return chat_turn_reservation.error_result(exc)
+    except BaseException:
+        reservation.close()
+        raise
+
+
+def _run_reserved_chat_session(
+    data: Mapping[str, Any],
+    *,
+    session: dict,
+    system_prompt: str,
+    hermeneutical_prompt: str,
+    adobe_request: Any,
+    prompt_loader_module: Any,
+    conv_store_module: Any,
+    memory_store_module: Any,
+    runtime_settings_module: Any,
+    summarizer_module: Any,
+    identity_module: Any,
+    admin_logs_module: Any,
+    llm_module: Any,
+    requests_module: Any,
+    token_utils_module: Any,
+    arbiter_module: Any,
+    web_search_module: Any,
+    config_module: Any,
+    logger: Any,
+    workspace_file_selections_module: Any = workspace_file_selections,
+    workspace_folders_module: Any = workspace_folders,
+    workspace_folder_notes_module: Any = workspace_folder_notes,
+    workspace_folder_notes_read_module: Any = workspace_folder_notes_read,
+) -> dict[str, Any]:
     user_msg = str(session['user_msg'])
     conversation = session['conversation']
     stream_req = bool(session['stream_req'])
@@ -486,7 +576,9 @@ def chat_response(
         estimated_user_tokens=estimated_user_tokens,
         message_timestamp=user_timestamp,
     )
-    user_message_meta = {'input_mode': 'voice'} if input_mode == 'voice' else None
+    user_message_meta = {'client_turn_id': conv_store_module.reservation.token.turn_id}
+    if input_mode == 'voice':
+        user_message_meta['input_mode'] = 'voice'
     conv_store_module.append_message(
         conversation,
         'user',
@@ -495,12 +587,24 @@ def chat_response(
         timestamp=user_timestamp,
     )
 
+    conv_store_module.mark_next_persist_phase('user_initial')
+    initial_save = conv_store_module.save_conversation(conversation, updated_at=user_timestamp)
+    if initial_save is not None and not initial_save.ok:
+        return _json_result({'ok': False, 'reason_code': 'conversation_persist_failed',
+                             'error': 'Sauvegarde de conversation indisponible.'}, 503)
+
     chat_turn_logger.set_state('summary_generation_observed', False)
-    if summarizer_module.maybe_summarize(conversation, runtime_main_model):
+    summarized = summarizer_module.maybe_summarize(
+        conversation, runtime_main_model, turn_claim=conv_store_module.reservation.token)
+    conv_store_module.reservation.resume()
+    if summarized:
         mark_persist_phase = getattr(conv_store_module, 'mark_next_persist_phase', None)
         if callable(mark_persist_phase):
             mark_persist_phase('summary')
-        conv_store_module.save_conversation(conversation)
+        summary_save = conv_store_module.save_conversation(conversation)
+        if summary_save is not None and not summary_save.ok:
+            return _json_result({'ok': False, 'reason_code': 'conversation_persist_failed',
+                                 'error': 'Sauvegarde de conversation indisponible.'}, 503)
         admin_logs_module.log_event('summary_generated', conversation_id=conversation['id'])
         chat_turn_logger.set_state('summary_generation_observed', True)
 

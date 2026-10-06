@@ -58,7 +58,10 @@ def resolve_chat_session(
                 _sha256_12(raw_text),
             )
         conversation = conv_store_module.new_conversation(system_prompt)
-        conv_store_module.save_conversation(conversation)
+        saved = conv_store_module.save_conversation(conversation)
+        if saved is not None and not saved.ok:
+            return None, ({'ok': False, 'reason_code': 'conversation_persist_failed',
+                           'error': 'Sauvegarde de conversation indisponible.'}, 503)
         logger.info(
             'conv_created id=%s path=%s',
             conversation['id'],
@@ -73,6 +76,7 @@ def resolve_chat_session(
             'stream_req': stream_req,
             'web_search_on': web_search_on,
             'input_mode': input_mode,
+            'existing_conversation': bool(conversation_id),
         },
         None,
     )

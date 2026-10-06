@@ -168,6 +168,9 @@ def register_chat_route(
                     if terminal_chunk is not None:
                         yield terminal_chunk
                 finally:
+                    closer = getattr(result['stream'], 'close', None)
+                    if callable(closer):
+                        closer()
                     stream_meta = chat_turn_logger_module.get_state('llm_stream_call_meta', {}) or {}
                     stream_started_at = stream_meta.get('started_at')
                     if isinstance(stream_started_at, (int, float)):
@@ -219,6 +222,9 @@ def register_chat_route(
                 stream_with_context_func(_stream_with_turn_finalize()),
                 content_type='text/plain; charset=utf-8',
             )
+            closer = getattr(result['stream'], 'close', None)
+            if callable(closer):
+                response.call_on_close(closer)
             for key, value in result['headers'].items():
                 response.headers[key] = value
             return response

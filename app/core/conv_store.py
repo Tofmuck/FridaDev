@@ -166,6 +166,8 @@ def save_conversation(
     updated_at: Optional[str] = None,
     *,
     preserve_deleted: bool = False,
+    turn_claim=None,
+    claim_outcome: str | None = None,
 ) -> ConversationSaveResult:
     return conversations_store.save_conversation(
         conversation,
@@ -180,7 +182,41 @@ def save_conversation(
             preserve_deleted=preserve,
         ),
         upsert_conversation_messages_func=_upsert_conversation_messages,
-        atomic_save_func=_save_conversation_atomic,
+        atomic_save_func=(_save_conversation_atomic if turn_claim is None else
+            lambda conv, preserve: _save_claimed_conversation(conv, preserve, turn_claim, claim_outcome)),
+    )
+
+
+def _save_claimed_conversation(conversation, preserve_deleted, token, outcome):
+    from . import conversation_turn_claims as claims
+    try:
+        with _db_conn() as conn:
+            current, _ = claims.check_in_transaction(conn, token, conversation_id=conversation['id'])
+            # A normal chat may survive a folder move, but cannot move it back
+            # from its old in-memory snapshot or resurrect a deleted conversation.
+            conversation['workspace_folder_id'] = str(current['workspace_folder_id']) if current['workspace_folder_id'] else None
+            save_conversation_snapshot_in_transaction(conversation, conn, preserve_deleted=True)
+            if outcome is not None:
+                claims.record_outcome_in_transaction(conn, token, outcome)
+        return True, True, None
+    except claims.ClaimError as exc:
+        return False, False, exc.reason_code
+    except conversations_store.ConversationSnapshotConflictError:
+        return False, False, conversations_store.CONVERSATION_SNAPSHOT_CONFLICT_REASON
+    except conversations_store.ConversationSnapshotWriteError as exc:
+        return False, False, exc.reason
+    except Exception:
+        return False, False, 'conversation_claim_write_failed'
+
+
+def save_conversation_snapshot_in_transaction(conversation, conn, *, preserve_deleted=True):
+    """No connection, commit or exception swallowing; caller owns the transaction."""
+    return conversations_store.save_conversation_snapshot_in_transaction(
+        conversation, conn, preserve_deleted=preserve_deleted,
+        conversation_metadata_func=_conversation_metadata,
+        normalize_conversation_id_func=normalize_conversation_id,
+        normalize_messages_for_storage_func=_normalize_messages_for_storage,
+        parse_iso_to_dt_func=_parse_iso_to_dt,
     )
 
 

@@ -631,6 +631,122 @@ def upsert_conversation_catalog(
         return None
 
 
+class ConversationSnapshotWriteError(RuntimeError):
+    def __init__(self, reason: str, stage: str = 'catalog'):
+        self.reason, self.stage = reason, stage
+        super().__init__(reason)
+
+
+def save_conversation_snapshot_in_transaction(
+    conversation: dict[str, Any],
+    conn: Any,
+    *,
+    preserve_deleted: bool,
+    conversation_metadata_func: Callable[[dict[str, Any]], dict[str, Any]],
+    normalize_conversation_id_func: Callable[[Optional[str]], Optional[str]],
+    normalize_messages_for_storage_func: Callable[[Any], list[dict[str, Any]]],
+    parse_iso_to_dt_func: Callable[[str], datetime],
+) -> None:
+    messages = normalize_messages_for_storage_func(conversation.get("messages", []))
+    conversation["messages"] = messages
+    meta = conversation_metadata_func(conversation)
+    conv_id = normalize_conversation_id_func(meta.get("id"))
+    if not conv_id:
+        raise ConversationSnapshotWriteError("catalog_write_failed")
+
+    stage = "catalog"
+    try:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                INSERT INTO conversations (
+                    id,
+                    title,
+                    created_at,
+                    updated_at,
+                    message_count,
+                    last_message_preview,
+                    workspace_folder_id,
+                    deleted_at
+                )
+                VALUES (%s::uuid, %s, %s, %s, %s, %s, %s::uuid, NULL)
+                ON CONFLICT (id) DO UPDATE
+                SET
+                    title = EXCLUDED.title,
+                    created_at = LEAST(conversations.created_at, EXCLUDED.created_at),
+                    updated_at = GREATEST(conversations.updated_at, EXCLUDED.updated_at),
+                    message_count = EXCLUDED.message_count,
+                    last_message_preview = EXCLUDED.last_message_preview,
+                    workspace_folder_id = COALESCE(EXCLUDED.workspace_folder_id, conversations.workspace_folder_id),
+                    deleted_at = CASE WHEN %s THEN conversations.deleted_at ELSE NULL END
+                RETURNING id
+                """,
+                (
+                    conv_id,
+                    meta["title"],
+                    parse_iso_to_dt_func(meta["created_at"]),
+                    parse_iso_to_dt_func(meta["updated_at"]),
+                    meta["message_count"],
+                    meta["last_message_preview"],
+                    meta.get("workspace_folder_id"),
+                    bool(preserve_deleted),
+                ),
+            )
+            if cur.fetchone() is None:
+                raise RuntimeError("catalog_write_returned_no_row")
+
+            stage = "precondition"
+            cur.execute(
+                """
+                SELECT role, content, timestamp, summarized_by, embedded, meta
+                FROM conversation_messages
+                WHERE conversation_id = %s::uuid
+                ORDER BY seq ASC
+                FOR UPDATE
+                """,
+                (conv_id,),
+            )
+            canonical_messages = list(cur.fetchall())
+            messages = reconcile_conversation_snapshot(
+                canonical_messages,
+                messages,
+                parse_iso_to_dt_func=parse_iso_to_dt_func,
+            )
+            conversation["messages"] = messages
+
+        stage = "messages"
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM conversation_messages WHERE conversation_id = %s::uuid",
+                (conv_id,),
+            )
+            if messages:
+                cur.executemany(
+                    """
+                    INSERT INTO conversation_messages (
+                        conversation_id,
+                        seq,
+                        role,
+                        content,
+                        timestamp,
+                        summarized_by,
+                        embedded,
+                        meta
+                    )
+                    VALUES (%s::uuid, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    conversation_message_insert_rows(
+                        conv_id,
+                        messages,
+                        parse_iso_to_dt_func=parse_iso_to_dt_func,
+                    ),
+                )
+    except ConversationSnapshotConflictError:
+        raise
+    except Exception as exc:
+        raise ConversationSnapshotWriteError("messages_write_failed" if stage == "messages" else "catalog_write_failed", stage) from exc
+
+
 def save_conversation_catalog_and_messages_atomic(
     conversation: dict[str, Any],
     *,
@@ -642,120 +758,32 @@ def save_conversation_catalog_and_messages_atomic(
     parse_iso_to_dt_func: Callable[[str], datetime],
     logger: Any,
 ) -> tuple[bool, bool, str | None]:
-    messages = normalize_messages_for_storage_func(conversation.get("messages", []))
-    conversation["messages"] = messages
-    meta = conversation_metadata_func(conversation)
-    conv_id = normalize_conversation_id_func(meta.get("id"))
-    if not conv_id:
-        logger.warning("conv_save_atomic_failed id=%s stage=catalog reason=invalid_conversation_id", meta.get("id"))
-        return False, False, "catalog_write_failed"
-
-    stage = "catalog"
+    stage = 'catalog'
+    conv_id = normalize_conversation_id_func(conversation.get('id'))
     try:
         with db_conn_func() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                cur.execute(
-                    """
-                    INSERT INTO conversations (
-                        id,
-                        title,
-                        created_at,
-                        updated_at,
-                        message_count,
-                        last_message_preview,
-                        workspace_folder_id,
-                        deleted_at
-                    )
-                    VALUES (%s::uuid, %s, %s, %s, %s, %s, %s::uuid, NULL)
-                    ON CONFLICT (id) DO UPDATE
-                    SET
-                        title = EXCLUDED.title,
-                        created_at = LEAST(conversations.created_at, EXCLUDED.created_at),
-                        updated_at = GREATEST(conversations.updated_at, EXCLUDED.updated_at),
-                        message_count = EXCLUDED.message_count,
-                        last_message_preview = EXCLUDED.last_message_preview,
-                        workspace_folder_id = COALESCE(EXCLUDED.workspace_folder_id, conversations.workspace_folder_id),
-                        deleted_at = CASE WHEN %s THEN conversations.deleted_at ELSE NULL END
-                    RETURNING id
-                    """,
-                    (
-                        conv_id,
-                        meta["title"],
-                        parse_iso_to_dt_func(meta["created_at"]),
-                        parse_iso_to_dt_func(meta["updated_at"]),
-                        meta["message_count"],
-                        meta["last_message_preview"],
-                        meta.get("workspace_folder_id"),
-                        bool(preserve_deleted),
-                    ),
-                )
-                if cur.fetchone() is None:
-                    raise RuntimeError("catalog_write_returned_no_row")
-
-                stage = "precondition"
-                cur.execute(
-                    """
-                    SELECT role, content, timestamp, summarized_by, embedded, meta
-                    FROM conversation_messages
-                    WHERE conversation_id = %s::uuid
-                    ORDER BY seq ASC
-                    FOR UPDATE
-                    """,
-                    (conv_id,),
-                )
-                canonical_messages = list(cur.fetchall())
-                messages = reconcile_conversation_snapshot(
-                    canonical_messages,
-                    messages,
-                    parse_iso_to_dt_func=parse_iso_to_dt_func,
-                )
-                conversation["messages"] = messages
-
-            stage = "messages"
-            with conn.cursor() as cur:
-                cur.execute(
-                    "DELETE FROM conversation_messages WHERE conversation_id = %s::uuid",
-                    (conv_id,),
-                )
-                if messages:
-                    cur.executemany(
-                        """
-                        INSERT INTO conversation_messages (
-                            conversation_id,
-                            seq,
-                            role,
-                            content,
-                            timestamp,
-                            summarized_by,
-                            embedded,
-                            meta
-                        )
-                        VALUES (%s::uuid, %s, %s, %s, %s, %s, %s, %s)
-                        """,
-                        conversation_message_insert_rows(
-                            conv_id,
-                            messages,
-                            parse_iso_to_dt_func=parse_iso_to_dt_func,
-                        ),
-                    )
+            save_conversation_snapshot_in_transaction(
+                conversation, conn, preserve_deleted=preserve_deleted,
+                conversation_metadata_func=conversation_metadata_func,
+                normalize_conversation_id_func=normalize_conversation_id_func,
+                normalize_messages_for_storage_func=normalize_messages_for_storage_func,
+                parse_iso_to_dt_func=parse_iso_to_dt_func,
+            )
+            stage = 'messages'
             conn.commit()
         return True, True, None
     except ConversationSnapshotConflictError:
-        logger.warning(
-            "conv_save_atomic_failed id=%s stage=precondition reason=%s",
-            conv_id,
-            CONVERSATION_SNAPSHOT_CONFLICT_REASON,
-        )
-        return False, False, CONVERSATION_SNAPSHOT_CONFLICT_REASON
-    except Exception as exc:
-        reason = "messages_write_failed" if stage == "messages" else "catalog_write_failed"
-        logger.warning(
-            "conv_save_atomic_failed id=%s stage=%s err_class=%s",
-            conv_id,
-            stage,
-            exc.__class__.__name__,
-        )
+        reason = CONVERSATION_SNAPSHOT_CONFLICT_REASON
+        logger.warning("conv_save_atomic_failed id=%s stage=precondition reason=%s", conv_id, reason)
         return False, False, reason
+    except ConversationSnapshotWriteError as exc:
+        reason = exc.reason
+        logger.warning("conv_save_atomic_failed id=%s stage=%s err_class=%s", conv_id, exc.stage,
+                       type(exc.__cause__ or exc).__name__)
+    except Exception as exc:
+        reason = "messages_write_failed" if stage == 'messages' else "catalog_write_failed"
+        logger.warning("conv_save_atomic_failed id=%s stage=%s err_class=%s", conv_id, stage, type(exc).__name__)
+    return False, False, reason
 
 
 def get_conversation_summary(

@@ -544,7 +544,7 @@ class ServerChatRouteTransportContractTests(unittest.TestCase):
         observed = {'save_calls': [], 'save_attempts': 0}
 
         def raising_first_save(*_args, **kwargs):
-            if not kwargs.get('updated_at'):
+            if not kwargs.get('updated_at') or kwargs.get('claim_outcome') is None:
                 return None
             observed['save_attempts'] += 1
             if observed['save_attempts'] == 1:

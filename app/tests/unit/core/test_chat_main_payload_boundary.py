@@ -23,7 +23,8 @@ class ChatMainPayloadBoundaryTests(unittest.TestCase):
         )
 
     def test_chat_response_delegates_lane_injection_capsule_and_manifest(self) -> None:
-        source = inspect.getsource(chat_service.chat_response)
+        source = inspect.getsource(chat_service.chat_response) + inspect.getsource(chat_service._run_reserved_chat_session)
+        self.assertIn('_run_reserved_chat_session(', inspect.getsource(chat_service.chat_response))
 
         self.assertIn('prepared_main_payload = prepare_main_payload(', source)
         for low_level_call in (

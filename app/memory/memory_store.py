@@ -308,11 +308,18 @@ def retrieve_for_arbiter_with_status(
 
 # Summary persistence
 
-def save_summary(conversation_id: str, summary: dict[str, Any]) -> bool:
+def _turn_write_connection(conversation_id, turn_claim):
+    if turn_claim is None:
+        return _conn
+    from core import conversation_turn_claims
+    return lambda: conversation_turn_claims.fenced_connection(_conn, turn_claim, conversation_id)
+
+
+def save_summary(conversation_id: str, summary: dict[str, Any], *, turn_claim=None) -> bool:
     return memory_traces_summaries.save_summary(
         conversation_id,
         summary,
-        conn_factory=_conn,
+        conn_factory=_turn_write_connection(conversation_id, turn_claim),
         embed_fn=embed,
         logger=logger,
     )
@@ -325,13 +332,15 @@ def update_traces_summary_id(
     summary_id: str,
     start_ts: Optional[str],
     end_ts: Optional[str],
+    *,
+    turn_claim=None,
 ) -> None:
     memory_traces_summaries.update_traces_summary_id(
         conversation_id,
         summary_id,
         start_ts,
         end_ts,
-        conn_factory=_conn,
+        conn_factory=_turn_write_connection(conversation_id, turn_claim),
         logger=logger,
     )
 
@@ -545,11 +554,13 @@ def read_hermeneutic_node_state(conversation_id: str) -> dict[str, Any]:
 def write_hermeneutic_node_state(
     conversation_id: str,
     state: Mapping[str, Any] | None,
+    *,
+    turn_claim=None,
 ) -> dict[str, Any]:
     return hermeneutic_node_state.write_node_state(
         conversation_id,
         state,
-        conn_factory=_conn,
+        conn_factory=_turn_write_connection(conversation_id, turn_claim),
         logger=logger,
     )
 

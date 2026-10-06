@@ -58,6 +58,8 @@ class ChatInputModeRouteTests(unittest.TestCase):
             originals.append((obj, name, getattr(obj, name)))
             setattr(obj, name, value)
 
+        from tests.support.chat_claims import SyntheticChatClaims
+        patch_attr(self.server.chat_service, 'turn_claims', SyntheticChatClaims())
         patch_attr(self.server.prompt_loader, 'get_main_system_prompt', lambda: 'BACKEND SYSTEM PROMPT')
         patch_attr(
             self.server.prompt_loader,

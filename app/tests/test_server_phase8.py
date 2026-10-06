@@ -75,6 +75,8 @@ class ServerPhase8BehaviorTests(unittest.TestCase):
         }
 
         with ExitStack() as stack:
+            from tests.support.chat_claims import SyntheticChatClaims
+            stack.enter_context(patch.object(chat_service, 'turn_claims', SyntheticChatClaims()))
             stack.enter_context(patch.object(chat_service.chat_session_flow, 'resolve_chat_session', return_value=(session, None)))
             stack.enter_context(patch.object(chat_service.chat_prompt_context, 'resolve_backend_prompts', return_value=('SYSTEM', 'HERMENEUTIC')))
             stack.enter_context(patch.object(chat_service.chat_prompt_context, 'build_augmented_system', return_value=('AUGMENTED SYSTEM', [])))

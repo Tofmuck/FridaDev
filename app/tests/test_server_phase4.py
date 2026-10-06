@@ -160,7 +160,7 @@ class ServerPhase4BehaviorTests(unittest.TestCase):
             observed['estimate_models'].append(str(model))
             return 7
 
-        def fake_maybe_summarize(_conversation, model):
+        def fake_maybe_summarize(_conversation, model, **_kwargs):
             observed['summary_models'].append(str(model))
             return False
 
@@ -174,14 +174,17 @@ class ServerPhase4BehaviorTests(unittest.TestCase):
             }
 
         def fake_save_conversation(*_args, **_kwargs):
-            observed['conversation_saves'] += 1
+            if _kwargs.get('claim_outcome') is not None:
+                observed['conversation_saves'] += 1
+            else:
+                observed['initial_barriers'] = observed.get('initial_barriers', 0) + 1
 
         conv_store_module = SimpleNamespace(
             append_message=lambda conv, role, content, meta=None, timestamp=None: conv['messages'].append(
                 {'role': role, 'content': content, 'timestamp': timestamp, **({'meta': meta} if meta is not None else {})}
             ),
             save_conversation=fake_save_conversation,
-            mark_next_persist_phase=lambda phase: observed['persist_phases'].append(phase),
+            mark_next_persist_phase=lambda phase: observed['persist_phases'].append(phase) if phase != 'user_initial' else None,
             build_prompt_messages=lambda conv, *_args, **_kwargs: [
                 {'role': str(message.get('role') or ''), 'content': str(message.get('content') or '')}
                 for message in conv.get('messages', [])
@@ -207,6 +210,8 @@ class ServerPhase4BehaviorTests(unittest.TestCase):
         }
 
         with ExitStack() as stack:
+            from tests.support.chat_claims import SyntheticChatClaims
+            stack.enter_context(patch.object(chat_service, 'turn_claims', SyntheticChatClaims()))
             stack.enter_context(patch.object(chat_service.chat_session_flow, 'resolve_chat_session', return_value=(session, None)))
             stack.enter_context(patch.object(chat_service.chat_prompt_context, 'resolve_backend_prompts', return_value=('SYSTEM', 'HERMENEUTIC')))
             stack.enter_context(patch.object(chat_service.chat_prompt_context, 'build_augmented_system', return_value=('AUGMENTED SYSTEM', [])))
@@ -277,6 +282,7 @@ class ServerPhase4BehaviorTests(unittest.TestCase):
         self.assertNotIn(('summary_generation_observed', True), observed['summary_states'])
         self.assertFalse(any(event == 'summary_generated' for event, _payload in observed['admin_events']))
         self.assertEqual(observed['persist_phases'], [])
+        self.assertEqual(observed['initial_barriers'], 1)
         self.assertEqual(observed['conversation_saves'], 0)
 
 

@@ -7,6 +7,17 @@ conserve ses comptes, budgets, modèle et transport de préparation. Le
 [contrat M2](frida-v1-document-workshop-m2-contract.md) précise désormais les
 chemins sources/collections partagés et la lecture/adoption ciblées.
 
+## Évolution M3 — 6 octobre 2026
+
+Le présent document conserve les preuves et frontières historiques M1. Le
+[contrat M3](frida-v1-document-workshop-m3-contract.md) complète l'autorité des
+contextes : identité immuable, fermeture durable `cancelled`/`invalidated`,
+invalidation irréversible du scope et réservation commune au chat. Les prises de
+ressources de création refusent un verrou concurrent pour éviter une attente
+cyclique avec les mutations existantes. Le menu/protocole M1 et la préparation
+publique inactive sont conservés. Migrations uniquement prouvées en isolation ;
+application opérateur et rebuild restent ouverts.
+
 ## Entrée et compositeur
 
 Le même bouton **Fichier**, menu et input servent le bureau et le téléphone :

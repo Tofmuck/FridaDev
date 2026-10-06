@@ -86,7 +86,10 @@ class ServerChatWebRuntimeContractTests(unittest.TestCase):
         original_build_payload = self.server.llm.build_payload
 
         def fake_build_context_payload(_user_msg, **kwargs):
-            observed['web_requests_module'] = kwargs.get('requests_module')
+            from core.chat_turn_reservation import ReservedRequests
+            requests = kwargs.get('requests_module')
+            observed['web_requests_reserved'] = isinstance(requests, ReservedRequests)
+            observed['web_requests_module'] = requests._base if observed['web_requests_reserved'] else requests
             observed['web_llm_module'] = kwargs.get('llm_module')
             return {
                 'enabled': True,
@@ -213,6 +216,7 @@ class ServerChatWebRuntimeContractTests(unittest.TestCase):
             expected_prefix=[{'role': 'user', 'content': 'WEB CONTEXT\n\nQuestion : Bonjour'}],
         )
         self.assertIsInstance(observed['web_requests_module'], self.server._RequestsChatLogProxy)
+        self.assertTrue(observed['web_requests_reserved'])
         self.assertIsInstance(observed['web_llm_module'], self.server._LlmChatLogProxy)
         self.assertGreaterEqual(len(observed_state['save_calls']), 2)
 

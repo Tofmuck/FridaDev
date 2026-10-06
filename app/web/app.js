@@ -897,6 +897,7 @@
     const isDialogue = inputMode === "dialogue";
     inputMode = isDialogue || inputMode === "voice" ? "voice" : "keyboard";
     const requestThreadId = getCurrentId();
+    const clientTurnId = crypto.randomUUID();
 
     addMsg("user", text);
     appendMessageToThread(requestThreadId, "user", text);
@@ -926,6 +927,7 @@
           scrollToBottom(false);
         }
       }, requestThreadId, inputMode, {
+        clientTurnId,
         onStreamEvent(event) {
           applyAssistantStreamingUiEvent(assistantNode, event);
         },
@@ -1028,6 +1030,7 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message: userText,
+        client_turn_id: options.clientTurnId,
         conversation_id: thread ? thread.conversation_id : null,
         stream: true,
         web_search: adobeActive ? false : webSearchEnabled,

@@ -97,7 +97,7 @@ def summarize_conversation(turns: list[dict[str, Any]]) -> str:
     return llm_client.extract_openrouter_text(response_payload)
 
 
-def maybe_summarize(conversation: dict[str, Any], model: str) -> bool:
+def maybe_summarize(conversation: dict[str, Any], model: str, *, turn_claim=None) -> bool:
     """
     Si les messages bruts dépassent SUMMARY_THRESHOLD_TOKENS, résume les tours anciens,
     les marque avec summarized_by, et stocke le résumé en base.
@@ -160,7 +160,8 @@ def maybe_summarize(conversation: dict[str, Any], model: str) -> bool:
     try:
         from memory import memory_store
         conv_id = conversation.get("id", "")
-        summary_saved = memory_store.save_summary(conv_id, summary_entry)
+        authority = {'turn_claim': turn_claim} if turn_claim is not None else {}
+        summary_saved = memory_store.save_summary(conv_id, summary_entry, **authority)
     except Exception as exc:
         logger.error("summary_db_save_failed conv_id=%s err=%s", conversation.get("id"), exc)
         return False
@@ -170,7 +171,7 @@ def maybe_summarize(conversation: dict[str, Any], model: str) -> bool:
 
     # Le rattachement des traces reste distinct du stockage texte déjà confirmé.
     try:
-        memory_store.update_traces_summary_id(conv_id, summary_id, start_ts, end_ts)
+        memory_store.update_traces_summary_id(conv_id, summary_id, start_ts, end_ts, **authority)
     except Exception as exc:
         logger.error("update_traces_summary_id_error conv_id=%s err=%s", conversation.get("id"), exc)
 

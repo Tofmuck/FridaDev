@@ -19,7 +19,7 @@ function fixture({ terminal = { event: 'done', updated_at: '2026-09-09T10:00:00Z
     f.nodes.push(node); return node;
   };
   const context = {
-    ...streaming, TextDecoder, Response, JSON, console: { error() {} },
+    ...streaming, crypto: require('node:crypto').webcrypto, TextDecoder, Response, JSON, console: { error() {} },
     ask: { addEventListener: (_, handler) => { f.form = handler; } },
     message: { value: '' }, currentDraftInputMode: 'keyboard', chatRequestInFlight: false,
     documentWorkshopController: null,
@@ -68,7 +68,9 @@ for (const mode of ['keyboard', 'voice', 'dialogue']) {
     assert.deepEqual(plain(busyResult), { ok: false, reason: 'busy' });
     assert.equal(Object.hasOwn(busyResult, 'text'), false);
     assert.equal(f.requests.length, 1);
+    assert.match(f.requests[0].payload.client_turn_id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     assert.deepEqual(f.requests[0], { url: '/api/chat', payload: {
+      client_turn_id: f.requests[0].payload.client_turn_id,
       message: 'Texte synthétique', conversation_id: 'thread-A', stream: true,
       web_search: false, input_mode: mode === 'keyboard' ? 'keyboard' : 'voice',
       biblio_enabled: false, agenda_enabled: false, workspace_notes_mode: false,
@@ -162,3 +164,19 @@ for (const mode of ['keyboard', 'voice', 'dialogue']) {
     assert.equal((await normal).ok, true); assert.equal(f.requests.length, 1);
   });
 }
+
+
+test('M3 creates one distinct identity per accepted canonical turn after all guards', async () => {
+  const f = fixture(); let ids = 0;
+  f.context.crypto = { randomUUID: () => { ids++; return require('node:crypto').randomUUID(); } };
+  const first = f.submit('Même texte', 'keyboard');
+  await f.submit('Même texte', 'voice');
+  assert.equal(ids, 1);
+  f.release(); await first;
+  await f.submit('Même texte', 'dialogue');
+  assert.equal(ids, 2);
+  assert.notEqual(f.requests[0].payload.client_turn_id, f.requests[1].payload.client_turn_id);
+  f.context.documentWorkshopController = { blocksSubmission: () => true, refuseSubmission() {} };
+  await f.submit('Même texte', 'keyboard');
+  assert.equal(ids, 2);
+});

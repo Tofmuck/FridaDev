@@ -1,6 +1,6 @@
 # Atelier documentaire agentique Frida V1 — spécification validée et roadmap
 
-Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-05.
+Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-05 ; M3 : 2026-10-06.
 
 Statut : **spécification et choix architecturaux validés par Tof ; M0 fermé sur
 composants et preuves internes, contre-audit corrigé sur `FridaV1-Document-Workshop-M0` ;
@@ -12,7 +12,8 @@ sur Exports/Images/Notes,
 P2-M2-04 backend corrigé séparément, comparaison historique 713/713 ;
 P2-M2-05 corrigé séparément sur le résumé de réconciliation, comparaison
 716/716 ; livraison runtime ouverte ;
-M3–M10 et Z non commencés ; préparation inactive, aucun déploiement ou renderer livré**.
+M3 fermé sur code/preuves hermétiques et contre-audit, branche `FridaV1-Document-Workshop-M3`, livraison runtime ouverte ;
+M4–M10 et Z non commencés ; préparation inactive, aucun déploiement ou renderer livré**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
 dialogue avec Tof. Création documentaire committée dans `d6b63fd1`, puis validation
@@ -35,8 +36,8 @@ l'exécution des lots concernés, sans recommencer une reconnaissance générale
 Une case cochée dans les décisions signifie « décidé par Tof », pas « livré ».
 Une case ouverte dans les critères ou les lots signifie « à implémenter ou prouver ».
 Les inconnues factuelles sont isolées en section 11. Seules les preuves datées
-dans M0, M1 et M2 décrivent des tests exécutés ; M3 et suivants restent des preuves futures.
-Une clôture code/preuves M2 ne ferme pas migration opérateur, rebuild ou preuve DAV déployée.
+dans M0–M3 décrivent des tests exécutés ; M4 et suivants restent des preuves futures.
+Une clôture code/preuves M2/M3 ne ferme pas migration opérateur, rebuild ou preuve DAV déployée.
 
 - [x] Reconnaissance et proposition de design produites dans le dialogue.
 - [x] Création de cette TODO autorisée par Tof.
@@ -48,6 +49,8 @@ Une clôture code/preuves M2 ne ferme pas migration opérateur, rebuild ou preuv
 - [x] M1 explicitement autorisé le 2026-10-04, sur une nouvelle branche issue de M0 audité.
 - [x] M2 explicitement autorisé le 2026-10-04, sur une branche issue de M1 corrigé ;
   preuves hermétiques seulement, sans autorisation runtime ou canari implicite.
+- [x] M3 explicitement autorisé le 2026-10-06, depuis le M2 exact validé, pour code,
+  migrations isolées, preuves, contre-audit et livraison Git ; aucune livraison runtime.
 - [ ] GO distinct obtenu avant tout appel modèle réel de preuve.
 - [ ] GO distinct obtenu avant tout canari d'écriture Nextcloud.
 
@@ -863,10 +866,11 @@ P2-M2-03 est corrigé dans un lot frontend distinct (594/594 historiques) ;
 P2-M2-02 est ensuite corrigé sur les trois familles ci-dessous, puis P2-M2-04
 sur le contrat backend de listing (713/713 historiques). P2-M2-05 est corrigé
 dans le lot de résumé ci-dessous (716/716). Migration opérateur, rebuild et lecture DAV déployée
-restent ouverts. M3–M10 et Z ne sont pas commencés. Spécification et
+restent ouverts. M3 est fermé sur code/preuves et contre-audit ci-dessous ;
+M4–M10 et Z ne sont pas commencés. Spécification et
 décisions amont sont validées et l'exception produit est inscrite.
 Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
-les GO M0–M2 ne valent pour aucun lot suivant ni déploiement.
+les GO M0–M3 ne valent pour aucun lot suivant ni déploiement.
 UI construite tôt, contrats DOM/HTTP hermétiques ; aucun parcours d'écriture exposé
 comme fonctionnel avant livraison des protections et de la tranche complète.
 
@@ -2696,25 +2700,301 @@ M3–M10/Z non commencés ; arrêt après vérification Git.
 
 ### M3 — Réservation durable et concurrence
 
-**Objectif :** empêcher double génération et commit tardif.
-**Dépendances :** M0–M2 ; suivi de progression de M0 et contexte de M1–M2.
-**Fichiers :** claims, transport chat, finalisation et primitive transactionnelle
-de snapshot.
-**Interface :** turn_id, réservation propriétaire, lease technique renouvelable
-et jeton de génération ; aucun TTL temporel du pending.
-**Propriétaire :** Celebrimbor ; Sauron conditionnel pour environnement SQL isolé.
+**Statut au 6 octobre 2026 :** code/preuves hermétiques et contre-audit fermés sur
+`FridaV1-Document-Workshop-M3`. Migration opérateur, rebuild/restart, health et
+smoke runtime restent ouverts et hors autorisation. M4 reste non commencé.
+[Contrat M3](../../states/specs/frida-v1-document-workshop-m3-contract.md).
 
-- [ ] Rouge causal : même tour soumis deux fois → un démarrage ; concurrent normal
-  → conflit contrôlé ; ancien jeton → aucun commit.
-- [ ] Tests ciblés SQL concurrents isolés ; voisins sauvegarde/erreurs/streaming.
-- [ ] Faux vert : store dictionnaire verrouillé présenté comme preuve PostgreSQL.
-- [ ] Interdire transaction DB durant réseau, replay automatique et modification
-  du contenu des réponses normales.
-- [ ] Synchroniser concurrence/états interrompus ; aucun provider live.
-- [ ] Distinguer lease perdu, inactivité de préparation, annulation et invalidation
-  pending ; progression continue sans expiration murale, aucun retry automatique.
-- [ ] Rebuild requis à livraison ; fermer courses SQL, lease/fencing et invalidation,
-  y compris pending ancien encore valide.
+**Objectif :** empêcher double génération et commit tardif.
+**Dépendances :** M0–M2 ; progression M0 et contexte M1–M2.
+**Fichiers :** claims SQL, enveloppes chat/transport/finalisation, primitive
+transactionnelle de snapshot, écritures pré-finales résumé/état herméneutique,
+ordre des verrous M2, identité depuis l'unique soumission frontend.
+**Interface :** identité tour/confirmation interne, propriétaire, génération et
+lease technique ; aucun TTL du pending, carte/action/révision/exécution M4/M5.
+**Propriétaire :** Celebrimbor. Aucun besoin plateforme installé.
+
+- [x] Rouge causal : même tour soumis deux fois, tours concurrents normaux et
+  scope A→B→A reproduits au M2 exact ; un démarrage principal après correction.
+- [x] Tests SQL concurrents isolés avec connexions/processus indépendants ; voisins
+  de sauvegarde/erreurs/streaming, providers synthétiques comptés et vrai transport.
+- [x] Faux vert exclu : les doubles mémoire des anciens tests ne sont pas une
+  preuve PostgreSQL ; autorité SQL réelle dans tous les nouveaux tests décisifs.
+- [x] Aucune transaction maintenue pendant provider bloqué ; snapshots et fences
+  atomiques, pas de replay automatique ni modification du contenu normal.
+- [x] Succès JSON/flux, final locks, résumé intermédiaire, erreurs et secours
+  raccordés ; perte, résultats tardifs et fermeture réelle du flux couverts.
+- [x] Lease, inactivité documentaire M0, annulation et invalidation distingués ;
+  préparation utile au-delà de 120 secondes ; confirmation interne ancienne valide.
+- [x] Contre-audit indépendant et corrections causales fermés ; aucune route,
+  préparation publique, M4, fournisseur live, DAV live ou runtime opérateur activé.
+- [ ] **Rebuild requis à livraison runtime**, après migration opérateur coordonnée.
+  Les courses SQL/lease/fencing/invalidation sont prouvées en isolation seulement.
+
+#### Base et plan revalidés avant édition
+
+`pwd` et toplevel : `/opt/platform/fridadev`. M2 propre ; fetch explicite sans pull ;
+HEAD = upstream = M2 distant `6e8c61f5059350d8d15ded4b41b68f2e0d9acac3`,
+parent `6b891eb39b39069116302f9fdfba047f445fbf16`, divergence `0/0`.
+M3 absent local/distant, créé depuis ce commit exact avant toute édition.
+M1 `c6f648badba96a60f1474db8d3f7404f97a2dda7`,
+M0 `3eb2e34aa0622112ebb4a8700dbe0eec02e4a27a`,
+main `e3e0d19290cb7ac275b3fd4b19c4b01dbc89f2cb` conservés.
+
+« Existe-t-il un meilleur plan, plus simple, plus sûr et avec moins d'effets de bord ? »
+Oui : partager seulement la primitive existante de snapshot sur connexion fournie,
+plutôt que créer un autre store de messages. Le snapshot M2 était déjà atomique,
+mais ouvrait/commitait sa propre connexion ; M1 n'avait ni claim ni génération.
+Le chat pouvait démarrer deux providers et le scope A→B→A redevenait admissible.
+L'acquisition est maintenant avant le travail protégé/providers, avec sauvegarde
+utilisateur initiale et relecture du transcript après admission.
+
+Le claim est détenu pendant le traitement effectif et la consommation du flux.
+Snapshot + contrôle propriétaire/génération/scope + résultat sont une seule courte
+transaction. La clôture durable reste avant succès JSON/terminal `done` ; une
+clôture refusée ne devient pas un succès. Les erreurs ne contournent pas le fence.
+Résumé et état herméneutique pré-final disposent également du fence sur leur
+connexion d'écriture. Aucun appel réseau sous transaction.
+
+Compatibilité sans `client_turn_id` : UUID serveur par requête, même exclusion,
+aucune déduplication promise sans identité commune. Clavier/dictée/Dialogue passent
+par la même soumission UUID. Répétition identifiée : relecture technique `409`, sans
+nouveau provider/utilisateur ni reprise d'un tour interrompu. Demande incompatible refusée.
+
+Lease **90 s**, renouvellement **15 s**, autorité PostgreSQL `clock_timestamp()` ;
+`statement_timeout` local SQL **5 s**. Le superviseur de requête renouvelle pendant
+le travail et cesse entre chunks/avant consommation ; close fonctionne même sans
+premier `next()`. Ces paramètres ne changent ni le timeout fournisseur (défaut
+source principal 900 s), ni les budgets/réglages, ni M0. Cadence accélérée à 0,02 s
+uniquement dans le test de renouvellement, via le même code et le vrai SQL.
+Le pending n'expire pas par âge ; preuve de confirmation interne avec contexte
+créé en 2000 et ETag actuel, sans livraison pending produit.
+
+#### Environnement de preuve et commandes
+
+Aucune installation/pull. Images locales :
+
+- `fridadev-audit-py:latest` : `sha256:486a8afeb2f62c7906194d3e1fee839387e55753bcad365120d18306502fafdc`.
+- `mcr.microsoft.com/playwright:v1.54.0-jammy` : `sha256:55dfaaa282c98d5f4d328676e36eca5203b6494b97d9ef3ba0608d9e939e9523`.
+- `postgres:16-alpine` : `sha256:87e04d274d186c7331d0e13c7c90c8b9f63b0d7ae94476c98a229a94d62c9745`, PostgreSQL **16.12**.
+- `pgvector/pgvector:pg17` : `sha256:e34a81641384711daf8aedaed03223011d0274005b5afa0fa3c11917f9b745ae`, PostgreSQL **17.9**, vector **0.8.2**.
+
+Deux conteneurs propres à M3 : `fridadev-m3-proof-pg-20261006` et
+`fridadev-m3-summary-proof-pg-20261006`, données/tmp en tmpfs, rootfs readonly,
+`--network none`, aucun port TCP (`-c listen_addresses=`), trust/db/user synthétiques
+`m1proof`. Sockets dans `/tmp/fridadev-m3-proof-20261006/{pg-socket,vector-socket}`,
+montés `/var/run/postgresql` dans PostgreSQL et readonly `/proof/sock` dans runners.
+Le checkout est toujours readonly ; `.env` absent et non symlink vérifié avant Python.
+DAV synthétique utilise uniquement le loopback du runner sans réseau externe.
+
+Commandes exécutées, mêmes images/options que M1/M2 :
+
+```sh
+proof_root=/tmp/fridadev-m3-proof-20261006
+mkdir -p "$proof_root/pg-socket" "$proof_root/vector-socket"
+chmod 777 "$proof_root/pg-socket" "$proof_root/vector-socket"
+docker run -d --name fridadev-m3-proof-pg-20261006 --pull never --network none --read-only \
+  --tmpfs /tmp:rw,nosuid,nodev --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev \
+  --mount type=bind,src="$proof_root/pg-socket",dst=/var/run/postgresql \
+  -e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_USER=m1proof -e POSTGRES_DB=m1proof \
+  postgres:16-alpine -c listen_addresses=
+docker run -d --name fridadev-m3-summary-proof-pg-20261006 --pull never --network none --read-only \
+  --tmpfs /tmp:rw,nosuid,nodev --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev \
+  --mount type=bind,src="$proof_root/vector-socket",dst=/var/run/postgresql \
+  -e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_USER=m1proof -e POSTGRES_DB=m1proof \
+  pgvector/pgvector:pg17 -c listen_addresses=
+```
+
+Readiness positive au démarrage par `pg_isready` sur les sockets isolées.
+Les extraits ci-dessous tracent les commandes exécutées dans le wrapper
+`set -euo pipefail` ; ils ne sont pas des runners autonomes à copier isolément.
+Une reproduction conserve les préconditions M2 complètes : aucun conteneur,
+répertoire/socket de preuve préexistant, absence de `.env` et readiness ; ne
+jamais écraser une ressource existante. Les fonctions de preuve `m3_python`, `m3_node`, `m3_sql`, `m3_vector` sont les
+wrappers M2 conservés plus haut, renommés avec les sockets M3 ci-dessus. Invocation
+Python effective commune :
+
+```sh
+test ! -e /opt/platform/fridadev/app/.env && test ! -L /opt/platform/fridadev/app/.env
+docker run --rm --pull never --network none --read-only --tmpfs /tmp:rw,nosuid,nodev \
+  --mount type=bind,src=/opt/platform/fridadev,dst=/workspace,readonly \
+  --workdir /workspace/app --entrypoint /usr/bin/env fridadev-audit-py:latest \
+  -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/tmp PYTHONDONTWRITEBYTECODE=1 \
+  PYTHONPATH=/workspace EMBED_BASE_URL=https://embed.invalid \
+  CRAWL4AI_URL=https://crawl.invalid SEARXNG_URL=https://search.invalid \
+  python -m unittest <sélecteurs>
+```
+
+SQL ajoute le bind readonly de la socket choisie vers `/proof/sock` et les variables
+`M1_PROOF_PG_SOCKET=/proof/sock`, `M2_PROOF_PG_SOCKET=/proof/sock`,
+`M3_PROOF_PG_SOCKET=/proof/sock` ; pgvector ajoute `M3_VECTOR_PROOF_PG_SOCKET=/proof/sock`.
+Node reprend l'image Playwright et le bind readonly `/home/tof/.cache/ms-playwright`
+vers `/proof/browsers`, workdir `/workspace`, env vide plus PATH/HOME et
+`PLAYWRIGHT_BROWSERS_PATH=/proof/browsers`, `node --test` ; Chromium
+`--test-concurrency=1`. `PYTHONPATH=/workspace` est ajouté pour la découverte élargie
+qui importe le package `benchmark` versionné à la racine ; aucune dépendance installée.
+Les premières baseline/ciblés n'en avaient pas besoin.
+
+Comparaison : les **43 sélecteurs M2 explicités ci-dessus**, identiques, fonctions
+renommées `m3_*`. Le nouveau test Node canonique ajoute un cas aux 206 historiques.
+Voisins supplémentaires, dix sélecteurs :
+
+```sh
+m3_python \
+  tests.unit.core.test_conversations_store_save_result \
+  tests.test_conv_store_phase4_database tests.unit.chat.test_chat_session_flow \
+  tests.test_server_chat_synthetic_logs_contract tests.integration.chat.test_chat_input_mode_route \
+  tests.unit.memory.test_summarizer_phase4 tests.unit.memory.test_summarizer_phase13 \
+  tests.unit.memory.test_memory_trace_summary_store_boundary \
+  tests.unit.memory.test_hermeneutic_node_state tests.unit.core.test_chat_hermeneutic_node_state
+m3_sql \
+  tests.integration.document_workshop.test_turn_claims_postgresql \
+  tests.integration.document_workshop.test_claim_transport_postgresql \
+  tests.integration.document_workshop.test_claim_adoption_postgresql
+m3_vector tests.integration.document_workshop.test_claim_summary_postgresql
+m3_python \
+  tests.test_server_chat_hermeneutic_insertion_contract tests.test_server_chat_web_runtime_contract \
+  tests.test_server_phase4 tests.test_server_phase8 \
+  tests.unit.chat.test_chat_workspace_folder_notes_prompt tests.unit.core.test_chat_main_payload_boundary \
+  tests.unit.golden.test_lot0_identity_goldens tests.unit.golden.test_lot4_stimmung_causal_goldens \
+  tests.unit.golden.test_lot9_golden_harness tests.unit.golden.test_l7_6_stimmung_finalization_integrity
+m3_python discover
+```
+
+La baseline de ces voisins a été mesurée au M2 avant leur modification : 41 tests
+persistance/transport, 18 mémoire, neuf voisins d'état herméneutique, puis 84 goldens
+sur une archive Git du M2 exact readonly (app et benchmark). Ce sont des extensions
+de sélection, distinctes des nouveaux tests M3.
+
+#### Rouges causaux et contre-audit
+
+Le probe gelé du transport, conservé dans
+`app/tests/support/m3_baseline_causal_probe.py` (exclu de discovery), est rejoué
+sur archive du M2 exact : deux requêtes
+simultanées atteignent **deux fois le modèle principal**, pour même ID et IDs
+concurrents ; A→B→A rendait le contexte `200`. Trois vrais failures en **5,287 s**,
+exit 1. Un premier probe comptait aussi la validation constitutive ; la reprise
+compte exclusivement `openrouter/runtime-main-model`, sans supprimer ces appels.
+Aucune reproduction n'est fondée sur un import absent. Le probe conservé exige
+`M3_BASELINE_PROBE_SOCKET=/proof/pg-socket` ; rejeu après conservation : trois
+failures en **5,124 s**, exit 1, deux appels principaux dans chaque concurrence.
+Reproduction du rejeu dans le runner Python M2 readonly : checkout bind remplacé
+par l'archive obtenue avec `git archive 6e8c61f5059350d8d15ded4b41b68f2e0d9acac3 app benchmark`,
+probe readonly monté `/proof/m3_probe.py`, socket isolée readonly `/proof/pg-socket`,
+env `PYTHONPATH=/workspace:/workspace/app` et `M3_BASELINE_PROBE_SOCKET=/proof/pg-socket`,
+commande `python /proof/m3_probe.py`. Le probe est uniquement M2, jamais un test
+SQL vert M3 ni un composant produit.
+
+| Défaut reproduit | Rouge, exit 1 | Correction/proof réelle |
+| --- | --- | --- |
+| Transport M2 double démarrage et scope restauré | 3 failures, 5,287 s | Un seul détenteur/provider/utilisateur ; relecture sans replay. |
+| Résumé tardif sauvegardé après lease perdu | 1 failure, 0,844 s | Vrai MemoryStore/pgvector fence la connexion d'écriture. |
+| Annulation laissant le contexte editing | 1 failure, 1,050 s (plus erreur de nouvelle signature non causale) | Contexte et claim cancelled atomiquement. |
+| Jeton transplanté vers une autre conversation de même génération | 1 failure, 1,091 s | Conversation/contexte de la ligne liés au jeton, vert 0,901 s. |
+| Lien de répertoire A→B→A / contexte mutable | 2 failures, 1,018 s | Triggers irréversibles et identité immuable. |
+| Suppression réelle répertoire contre claim | 1 failure, 1,866 s | Ressources downstream NOWAIT, mutation légitime aboutit. |
+| Adoption/suppression fichier et rotation cache identique | 2 failures, 1,911 s ; DeadlockDetected explicite | Mêmes verrous M2 réordonnés ; champs de scope positifs. |
+| Delta provider assimilé à done avant snapshot | 1 failure, 0,963 s | Done exige résultat SQL réussi ; flux vide légitime conservé. |
+| Échange nominal JSON sans résultat canonique (défaut injecté à la frontière existante) | 1 failure, 0,919 s | Succès JSON exige aussi outcome SQL succeeded. |
+| Renommage répertoire aller-retour | 1 failure, 0,950 s | Invalidation durable au changement de nom. |
+
+Le rouge adoption recompose uniquement l'ancien ordre M2 et le prédicat initial
+M3 trop large dans des mounts scratch readonly. Il reproduit une régression du
+patch intermédiaire, pas un finding prétendument présent avant les triggers M3.
+Le probe terminal utilise un vrai delta synthétique dans une fence de code ouverte,
+le normalizer réel et le transport réellement consommé. Le probe simple sans
+fence avait sauvegardé une réponse : il n'est pas retenu comme rouge causal.
+
+Contre-audit indépendant `m3_counteraudit` en lecture seule (compétence
+`superpowers:requesting-code-review`) : trois P2 (verrous, cache, faux done),
+régression vide prévenue, corrections relues ; approbation finale après preuves
+53/53 SQL, 2/2 pgvector et 59/59 voisins sur les derniers deltas.
+Les deux P3 documentaires (statut §8 et portée des fragments de commandes)
+sont corrigés et relus. Aucun autre finding M3 confirmé restant.
+La roadmap/hub sont vérifiés séparément après rédaction.
+
+#### Résultats et limites des preuves
+
+| Sélection exécutée | Résultat | Exit | Durée suite |
+| --- | --- | --- | --- |
+| Baseline M2 Python / Node / Chromium / SQL, avant édition | 377 + 206 + 104 + 29 = **716/716**, aucun skip | 0 / 0 / 0 / 0 | 18,611 / 0,4774418 / 91,14398262 / 17,670 s |
+| Extension baseline persistance / mémoire / état herméneutique | 41 + 18 + 9 = **68/68** | 0 / 0 / 0 | 1,086 / 0,061 / 0,002 s |
+| Première comparaison historique M3 | **716/716**, aucun skip | 0 / 0 / 0 / 0 | 19,486 / 0,479271569 / 91,257983855 / 17,692 s |
+| Comparaison finale 43 sélecteurs + un nouveau cas Node | 377 + 207 + 104 + 29 = **717/717**, aucun skip | 0 / 0 / 0 / 0 | 19,867 / 0,44542203 / 91,33331557 / 17,993 s |
+| Voisins finaux (dix sélecteurs) | **68/68**, aucun skip | 0 | 0,890 s |
+| Nouvelle matrice M3 SQL finale | **53/53**, aucun skip | 0 | 15,052 s |
+| Résumé réel pgvector M3 final | **2/2**, aucun skip | 0 | 1,144 s |
+| Extension dix sélecteurs goldens M2 / M3 | 84 exécutés de chaque côté ; 83 succès et un failure préexistant | 1 / 1 | 187,139 / 190,669 s |
+| Découverte Python élargie finale, sélection chargée avant les derniers deltas | 3369 tests, un failure préexistant, 83 skips SQL sans socket | 1 | 659,873 s |
+
+Soit **772/772** sur la comparaison et les nouveaux tests (717 + 55), plus les
+68 voisins existants. Les 83 goldens supplémentaires réussis sont séparés du
+golden de routes préexistant défaillant, sans le masquer ni l'absorber.
+
+La découverte élargie initiale : **3339 tests, 502,321 s, exit 1**, 26 failures,
+un import `benchmark` absent du PYTHONPATH, 70 skips (dont SQL sans socket dans
+cette commande ordinaire). Les défauts de fixtures introduits par le contrat M3
+sont corrigés sans retirer les assertions historiques : sauvegarde initiale
+exposée séparément de la vue historique final/summary, doubles claims explicites
+sur services directs, nouveau kwarg summarizer, inspect source incluant le helper
+réservé, proxy requests sous-jacent toujours inspecté et réservation vérifiée.
+Les callbacks voix/Dialogue, Stimmung, cardinalités Identity et budgets restent testés.
+Les doubles ne constituent aucun bypass en production ; les suites SQL raccordées
+utilisent les vrais claims et snapshots.
+
+La découverte finale exécute **3369 tests en 659,873 s, exit 1**, avec le seul
+failure de routes préexistant et 83 skips SQL faute de socket dans cette commande.
+Elle avait chargé sa sélection avant le dernier garde JSON et la préservation
+des champs de diagnostic snapshot : ces deltas ont ensuite été vérifiés par
+les **55/55 SQL** et **59/59 voisins**, sans prétendre à une nouvelle découverte
+globale du dernier état. Le dernier nouveau cas SQL est ainsi exécuté explicitement,
+pas compté dans cette découverte.
+
+**P3-M3-baseline-route-golden, hors patch :** le golden des routes attend 123 alors
+que M2 expose déjà 128 routes. Reproduit au commit M2 exact : 84 tests en 187,139 s,
+83 succès et ce seul failure ; après adaptation M3 : mêmes 84 tests en 190,669 s,
+83 succès et le même failure. Requalifié défaut préexistant de fixture, non absorbé
+par M3 ; aucune route ajoutée et aucune assertion historique changée. La découverte
+globale n'est pas déclarée entièrement verte.
+
+Échecs intermédiaires conservés : mauvais mount socket (3 errors, 0,763 s),
+indentation extraction initiale (import, pas rouge causal), fixture SQL ancienne
+sans migration/wiring (12 tests, 23,172 s, trois failures), fixtures chat ciblant
+involontairement l'initial au lieu du final (21 tests : 6 failures/1,454 s, puis
+1/1,410 s, corrigés 21/21 en 1,594 s), provider count incluant validation (24 tests,
+6 failures/6,425 s), observation d'une autre transaction courte confondue avec un
+provider sous transaction (28 tests, 1 failure/7,547 s), attente HTTP 503 contre
+le refus correct 409 de perte (32/37 tests, 1 failure/8,594 et 9,748 s), imports de
+fixture de scope (2 errors/0,962 s), ancien contexte daté via UPDATE incompatible
+avec immutabilité (44 tests, 2 errors/12,397 s ; INSERT synthétique daté corrigé),
+fixture suppression fichier sans table selections (3 tests, 1 failure/1,814 s).
+Aucun de ces écarts de harnais n'est présenté comme une faille produit ni un rouge
+causal. Intermédiaires verts : snapshot27/0,008 s, SQL9/2,716 puis2,728 s,
+39/11,563 s, 48/13,488 s, 51/15,461 s, mémoire27/0,047 s,
+Nodecanonique13/0,11479011 s, résumé1/0,893 s puis2/1,345 s.
+Après préservation des champs privés historiques id normalisé/stage/err_class
+dans l'extraction : 22 voisins snapshot en0,010 s, puis 59 voisins
+snapshot/transport/flux en1,171 s, exits0. Matrice intermédiaire52/16,742 s et
+résumé2/1,166 s conservés avant le dernier garde JSON.
+
+Les rendez-vous SQL et providers bloqués démontrent la causalité ; les attentes
+maximales de 10 s bornent seulement les tests. Les pertes de lease sont forcées
+par horloge SQL de fixture, puis une nouvelle acquisition génère le successeur.
+Migration rejouée avec relecture indépendante ; aucun tableau actions/révisions/
+reçus/artefacts créé. Préparation publique inactive, aucune règle documentaire
+appliquée au chat normal, aucun pending/confirmation produit livré.
+
+Nettoyage des seuls conteneurs/sockets/temporaires M3 après preuves, absence vérifiée.
+Le retrait initial du scratch a rencontré les sockets résiduelles dans les
+répertoires sticky possédés par PostgreSQL ; un runner `postgres:16-alpine`
+existant, `--rm --pull never --network none --read-only --user 0`, avec le seul
+scratch M3 bind writable, a retiré les quatre fichiers socket/lock explicitement.
+Exit 0, puis retrait complet du scratch ; aucune permission d'hôte modifiée.
+Liens touchés,
+`git diff --check`, diff utile et périmètre contrôlés avant commit. Le retour final
+porte commit/push/upstream, alignement propre `0/0`, ascendance M2 et références
+M2/M1/M0/main inchangées. Aucun merge/rebase/reset/force-push, migration opérateur,
+rebuild/restart, modèle/DAV live, canari, renderer ou démarrage M4.
 
 ### M4 — Préparation Markdown dans un tour canonique
 

@@ -384,12 +384,14 @@ def patch_server_chat_pipeline(
     summarize_user_turn: bool = False,
     hermeneutic_mode: str | None = None,
     disable_chat_log_storage: bool = False,
+    claim_store=None,
 ):
     """Patch the shared baseline /api/chat seam and return observations plus restore."""
 
     originals = []
     observed = {
         'save_calls': [],
+        'initial_save_calls': [],
         'save_new_traces_calls': [],
         'node_state_reads': [],
         'node_state_writes': [],
@@ -400,6 +402,9 @@ def patch_server_chat_pipeline(
     def patch_attr(obj, name, value):
         originals.append((obj, name, getattr(obj, name)))
         setattr(obj, name, value)
+
+    from tests.support.chat_claims import SyntheticChatClaims
+    patch_attr(server_module.chat_service, 'turn_claims', claim_store or SyntheticChatClaims())
 
     patch_attr(server_module.prompt_loader, 'get_main_system_prompt', lambda: 'BACKEND SYSTEM PROMPT')
     patch_attr(
@@ -479,12 +484,19 @@ def patch_server_chat_pipeline(
                 dict(message)
                 for message in _args[0].get('messages', [])
             ]
-        observed['save_calls'].append(
+        # Keep the historical final/summary view and expose the additional M3
+        # initial barrier separately. Both invoke this persistence double.
+        initial = kwargs.get('turn_claim') is not None and kwargs.get('claim_outcome') is None and 'updated_at' in kwargs
+        observed['initial_save_calls' if initial else 'save_calls'].append(
             {
                 'kwargs': dict(kwargs),
                 'messages': conversation_snapshot,
             }
         )
+        if kwargs.get('claim_outcome') is None:
+            # Existing fixture failures target finalization; the newly required
+            # initial user/summary barrier is nominal in these historical cases.
+            return SimpleNamespace(ok=True, updated_at=kwargs.get('updated_at'))
         if callable(save_conversation_result):
             return save_conversation_result(*_args, **kwargs)
         return save_conversation_result
@@ -593,7 +605,7 @@ def patch_server_chat_pipeline(
         observed['node_state_reads'].append(dict(result, state=None))
         return result
 
-    def fake_write_node_state(conversation_id: str, state: dict[str, Any] | None):
+    def fake_write_node_state(conversation_id: str, state: dict[str, Any] | None, **_kwargs):
         conv_id = str(conversation_id or '')
         if not state:
             result = {
