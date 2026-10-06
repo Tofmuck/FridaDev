@@ -15,7 +15,8 @@ P2-M2-05 corrigé séparément sur le résumé de réconciliation, comparaison
 M3 fermé sur code/preuves hermétiques et contre-audit, branche `FridaV1-Document-Workshop-M3`, livraison runtime ouverte ;
 P3-M3-baseline-route-golden corrigé séparément le 2026-10-06 (tests/docs-only) ;
 M4 livré sur code, P2-M4-01 et P2-M4-02 fermés après contre-audits indépendants ;
-P3-M4-03 ouvert (comptes historiques 1 198/1 414 et 21 identifiants mal formés) ;
+P3-M4-03 corrigé par erratum documentaire (1 198 déclarés conservés et rectifiés,
+sélection publiée à 1 414, 21 identifiants réutilisables validés) ;
 M4 non intégralement fermé ;
 M5–M10 et Z non commencés, aucun déploiement ou renderer livré**.
 
@@ -30,7 +31,7 @@ le compteur partagé existant et impose une branche dédiée avant toute éditio
 Ce recadrage est inscrit en §7.3 ; le premier arrêt avant patch sur l'exigence
 ancienne de framing ne reste pas un blocage du lot autorisé.
 
-Les observations techniques ci-dessous sont rattachées au HEAD
+Les observations de reconnaissance architecturale des sections 1–3 sont rattachées au HEAD
 `a2483bf1aa6f5e93ba7ec2800b8ff053cc0af2c6`, branche `main`, checkout
 `/opt/platform/fridadev`. Elles doivent être revalidées de façon ciblée avant
 l'exécution des lots concernés, sans recommencer une reconnaissance générale.
@@ -40,8 +41,10 @@ l'exécution des lots concernés, sans recommencer une reconnaissance générale
 Une case cochée dans les décisions signifie « décidé par Tof », pas « livré ».
 Une case ouverte dans les critères ou les lots signifie « à implémenter ou prouver ».
 Les inconnues factuelles sont isolées en section 11. Seules les preuves datées
-dans M0–M3 décrivent des tests exécutés ; M4 et suivants restent des preuves futures.
-Une clôture code/preuves M2/M3 ne ferme pas migration opérateur, rebuild ou preuve DAV déployée.
+dans M0–M4 décrivent des tests exécutés ou des déclarations historiques explicitement
+qualifiées ; M5 et suivants restent des preuves futures. L'erratum P3-M4-03
+ci-dessous distingue les nouveaux rejeux des résultats antérieurs.
+Une clôture code/preuves ne ferme pas migration opérateur, rebuild ou preuve DAV déployée.
 
 - [x] Reconnaissance et proposition de design produites dans le dialogue.
 - [x] Création de cette TODO autorisée par Tof.
@@ -58,6 +61,8 @@ Une clôture code/preuves M2/M3 ne ferme pas migration opérateur, rebuild ou pr
 - [x] M4 explicitement autorisé le 2026-10-06 après livraison séparée du P3 M3,
   pour code, migrations isolées, preuves, contre-audit, documentation et commit/push.
   Aucun GO runtime, provider/DAV live ou M5.
+- [x] P3-M4-03 explicitement autorisé le 2026-10-06 sur M4 : rectification
+  documentaire, vérifications isolées, contre-audit et commit/push seulement.
 - [ ] GO distinct obtenu avant tout appel modèle réel de preuve.
 - [ ] GO distinct obtenu avant tout canari d'écriture Nextcloud.
 
@@ -874,10 +879,12 @@ P2-M2-02 est ensuite corrigé sur les trois familles ci-dessous, puis P2-M2-04
 sur le contrat backend de listing (713/713 historiques). P2-M2-05 est corrigé
 dans le lot de résumé ci-dessous (716/716). Migration opérateur, rebuild et lecture DAV déployée
 restent ouverts. M3 est fermé sur code/preuves et contre-audit ci-dessous ;
-M4–M10 et Z ne sont pas commencés. Spécification et
+M4 est livré sur code/preuves hermétiques, P2-M4-01 et P2-M4-02 fermés après
+contre-audits indépendants, P3-M4-03 corrigé documentairement ; livraison runtime
+ouverte, confirmation et écriture inactives. M5–M10 et Z ne sont pas commencés. Spécification et
 décisions amont sont validées et l'exception produit est inscrite.
 Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
-les GO M0–M3 ne valent pour aucun lot suivant ni déploiement.
+les GO M0–M4 et P3-M4-03 ne valent pour aucun lot suivant ni déploiement.
 UI construite tôt, contrats DOM/HTTP hermétiques ; aucun parcours d'écriture exposé
 comme fonctionnel avant livraison des protections et de la tranche complète.
 
@@ -3058,7 +3065,9 @@ finalisation et UI.
 
 #### Exécution M4 du 6 octobre 2026
 
-Relevé de la livraison initiale conservé ; contre-audit M4 ouvert ci-dessous.
+Relevé historique de la livraison initiale conservé, déclaration de comptes
+rectifiée par l'[erratum P3-M4-03](#erratum-documentaire-p3-m4-03--6-octobre-2026)
+ci-dessous. Il ne décrit pas une nouvelle exécution ni l'état courant des findings.
 Base exacte : correctif P3
 `9f10531ae9c799f4afc769c97ea2d48659f1c3d3`, poussé/vérifié propre sur M3 avant
 création de `FridaV1-Document-Workshop-M4`. Les deux livraisons ont des commits
@@ -3067,14 +3076,19 @@ séparés ; le hash M4 et les contrôles distants sont fournis au retour final.
 Le [contrat M4](../../states/specs/frida-v1-document-workshop-m4-contract.md)
 décrit les frontières du tour, de la persistance, du transport et de l'UI ;
 l'[artefact daté content-free](../../states/baselines/document-workshop/frida-v1-document-workshop-m4-20261006.json)
-porte les commandes/sélecteurs exacts, durées/exits et écarts intermédiaires.
+porte les commandes/sélecteurs publiés, comptes déclarés, durées/exits et écarts
+intermédiaires ; son renvoi P3 retire le total contesté comme référence reproductible.
 
 - Baseline P3 archivée et rejouée : **840/840**, zéro skip, soit 377 Python,
   82 PostgreSQL, 2 pgvector, 68 voisins, 207 Node et 104 Chromium.
-- Final sans recouvrement : **1 198/1 198**, zéro skip, exits 0 : 739 Python
+- Déclaration finale initiale sur `2cbeb7fa…` : **1 198/1 198**, annoncés verts,
+  zéro skip, exits 0 : 739 Python
   (197,370 s), 82 PostgreSQL historiques (32,171 s) + 39 M4 (20,277 s),
   2 pgvector (1,671 s), 211 Node (0,541363126 s), 104 Chromium historiques
   (91,290776034 s) et 21 M4 (16,708937178 s).
+  La sélection exacte du run annoncé reste inconnue. Les sélecteurs frontend
+  publiés exécutent 424 Node et 107 Chromium historiques dans le rejeu P3 ;
+  les durées ci-dessus restent celles de la déclaration originale.
 - Runs de sous-sélections non additifs : 324/324 enveloppe/voisins (8,492 s),
   89/89 transport/M0 (9,449 s), 25/25 pannes SQL (13,169 s), 8/8 compteurs
   du tour (3,916 s). Le run commun SQL 118/118 (52,031 s) est repris dans ces
@@ -3091,7 +3105,8 @@ porte les commandes/sélecteurs exacts, durées/exits et écarts intermédiaires
   reprise DNS incapable d'ouvrir une socket tardive. Aucun provider réel.
 - Chromium monté à fetch simulé : thèmes/compositions, cartes compactes,
   preparing/pending, cancel/refus/late/refresh, calls comptés et aucun canonical
-  public. Les 104 historiques conservent upload/multisélection/drop et M2.
+  public. La déclaration de 104 historiques est rectifiée ci-dessous ; le rejeu
+  des neuf fichiers historiques exécute 107 cas.
 
 Rouges et adaptations : 409 M3 au lieu de préparation ; deux assertions static
 frontend devenues étroites et un couplage scope M2/projection M4, corrigés sans
@@ -3135,8 +3150,11 @@ Base vérifiée : `2cbeb7fa59be5751502079a1eb6857c2f9977ef2`, HEAD/upstream/dist
 | P2-M4-02 | Ouvert : provenance perdue lors du gel du payload ; aucune modification de provenance, modèle, compteur ou budgets dans ce lot. |
 | P3-M4-03 | Ouvert : sélecteurs/comptes historiques non concordants ; ancien relevé et artefact conservés, sans les prétendre corrigés. |
 
+Ce tableau conserve l'état P2-M4-01 ; l'[erratum P3](#erratum-documentaire-p3-m4-03--6-octobre-2026)
+porte la rectification ultérieure et l'état courant.
+
 Ordre utilisateur avant M5 : P2-M4-01 puis contre-audit ; P2-M4-02 puis contre-audit ;
-P3-M4-03 puis contrôle documentaire. Seul P2-M4-01 est autorisé ici.
+P3-M4-03 puis contrôle documentaire. Seul P2-M4-01 était autorisé dans ce lot daté.
 Le [contrat M4](../../states/specs/frida-v1-document-workshop-m4-contract.md)
 distingue l'annulation d'action de la fermeture globale du contexte M3.
 L'[artefact P2-M4-01](../../states/baselines/document-workshop/frida-v1-document-workshop-p2-m4-01-20261006.json)
@@ -3205,7 +3223,8 @@ historique/courant, ordre des verrous, panne entre écritures, course commit,
 lease/successeur, invalidations collectives et projections navigateur vérifiés.
 Nettoyage vérifié : les deux conteneurs SQL dédiés, leurs sockets et les trois
 arbres temporaires du correctif ont disparu ; aucun reste sous leur préfixe.
-M4 demeure ouvert sur P2-M4-02/P3-M4-03. M5 non commencé ; écriture/confirmation,
+À cette livraison P2-M4-01, M4 demeurait ouvert sur P2-M4-02/P3-M4-03.
+M5 non commencé ; écriture/confirmation,
 DB opérateur, provider/DAV live et runtime hors de ce correctif.
 
 #### Contre-audit M4 — correctif borné P2-M4-02 du 6 octobre 2026
@@ -3216,11 +3235,14 @@ HEAD/upstream/distant alignés, worktree propre et divergence 0/0 ; parent
 `9f10531ae9c799f4afc769c97ea2d48659f1c3d3`. Même branche M4, sans merge,
 rebase, M5 ou intervention runtime. Les branches M0–M3 et main sont préservées.
 
-| Finding | État courant |
+| Finding | État à la livraison P2-M4-02, conservé |
 | --- | --- |
 | P2-M4-01 | Fermé après revue indépendante ; matrice d'annulation conservée dans la comparaison de ce lot. |
 | P2-M4-02 | Fermé : reproduit après gel réel, correctif local, ciblés et comparaison 1 447/1 447 verts ; contre-audit indépendant favorable. |
 | P3-M4-03 | Ouvert sur les comptes historiques 1 198/1 414 et les 21 noms de méthode doublés dans `new_sql_test_ids` de l'artefact P2-M4-01. Aucun ancien artefact réparé ici. |
+
+Ce tableau est historique ; la [rectification P3 ultérieure](#erratum-documentaire-p3-m4-03--6-octobre-2026)
+préserve ses résultats et corrige les métadonnées réutilisables.
 
 L'[artefact P2-M4-02](../../states/baselines/document-workshop/frida-v1-document-workshop-p2-m4-02-20261006.json)
 porte les listes exactes, identifiants chargeables, commandes, résultats/exits/durées,
@@ -3233,7 +3255,7 @@ Baseline avant édition : **1 436/1 436**, exits 0, zéro skip :
 424 Node (7,166231765 s), 107 Chromium historiques (106,177801850 s),
 22 Chromium M4 (26,221945543 s). Sélecteurs finaux publiés P2-M4-01 revalidés
 par modules/fichiers ; les 21 identifiants hérités mal formés n'ont pas été utilisés.
-Ces anomalies restent P3-M4-03, sans réécriture des relevés historiques.
+Ces anomalies restaient P3-M4-03 à la livraison P2-M4-02, sans réécriture des relevés historiques.
 
 Rouge causal avant patch : 2 cas, 1 échec (1,646 s, exit 1), contrôle sans source
 vert ; contrôle seul 1/1 (1,064 s, exit 0). Flask/stores SQL/M2/admission/manifeste
@@ -3303,8 +3325,106 @@ sans nouveau finding confirmé : delta, logs bruts, traces et documentation
 concordent. Les garanties P2-M4-01 restent vertes. Nettoyage vérifié : deux
 PostgreSQL dédiés, deux répertoires de sockets et l'unique arbre temporaire de ce
 lot supprimés ; inventaires sous leur préfixe vides, aucune ressource voisine modifiée.
-M4 reste non intégralement fermé ; P3-M4-03 ouvert, M5 non commencé. Aucun appel
+À cette livraison P2-M4-02, P3-M4-03 restait ouvert. M4 reste non intégralement
+fermé et M5 non commencé. Aucun appel
 OpenRouter/DAV live, migration opérateur, confirmation, écriture ou déploiement.
+
+#### Erratum documentaire P3-M4-03 — 6 octobre 2026
+
+Lot documentaire uniquement, base `674150d913e3402819a1c307876427d59d6791e4`,
+parent `722132631c2a70851c95d732420d64926895cba9`, même branche M4 ;
+HEAD/upstream/distant alignés, worktree propre et divergence 0/0 avant édition.
+M0–M3 et main inchangés. Aucun code, test produit, configuration ou migration
+modifié ; commit/push M4 autorisés, aucun déploiement ni démarrage M5.
+
+« Existe-t-il un meilleur plan, plus simple, plus sûr et avec moins d'effets de bord ? »
+Plan minimal retenu : un [artefact autoritatif P3](../../states/baselines/document-workshop/frida-v1-document-workshop-p3-m4-03-20261006.json),
+renvois depuis les trois anciens artefacts, correction de la seule liste
+réutilisable `new_sql_test_ids`, synchronisation de cette roadmap, du contrat M4
+et du hub. Les anciens champs de résultats, durées et digests de logs restent
+inchangés ; les statuts des anciens tableaux sont explicitement datés.
+
+**Comptes.** Sur une archive Git temporaire isolée du commit initial
+`2cbeb7fa59be5751502079a1eb6857c2f9977ef2`, les deux sélections publiées
+litigieuses ont été exécutées, et pas seulement collectées :
+
+| Nouveau rejeu P3 sur le commit initial | Fichiers | Cas exécutés verts | Durée TAP | Exit / skips |
+| --- | ---: | ---: | ---: | --- |
+| `app/tests/unit/frontend_chat/test_*.js`, liste développée | 34 | 424/424 | 1,217185992 s | 0 / 0 |
+| Neuf fichiers Chromium historiques publiés, en série | 9 | 107/107 | 94,262826388 s | 0 / 0 |
+
+L'artefact développe les fichiers, commandes et empreintes des sources et des
+nouveaux TAP. Une collecte distincte des registrations, sans appeler les
+callbacks, concorde avec les noms/comptes exécutés. Le fichier Chromium M4 est
+seulement collecté à 21 cas dans P3, jamais présenté comme un nouveau vert.
+Les trois ensembles de fichiers frontend sont disjoints ; les sélecteurs
+Python/SQL/pgvector initiaux sont également uniques et disjoints par module.
+Les 11 noms Node répétés ne sont pas des identifiants ; l'identité de collecte
+associe fichier, rang de registration et nom, sans supprimer de cas exécuté.
+
+| Relevé historique du 6 octobre, version testée | Compte et statut |
+| --- | --- |
+| M4 initial `2cbeb7fa…` | 1 198 annoncés = 739 Python + 121 SQL + 2 pgvector + 211 Node + 104 Chromium historiques + 21 M4 ; sélection exacte du run annoncé inconnue. |
+| Sélection publiée sur ce même commit, baseline P2-M4-01 | 1 414 exécutés historiquement = 739 + 121 + 2 + 424 + 107 + 21, exits 0, zéro skip. P3 ne rejoue que les deux lignes frontend ci-dessus. |
+| P2-M4-01 `72213263…` | 1 436 exécutés, delta +21 SQL/+1 navigateur, contre-audit indépendant favorable. |
+| P2-M4-02 `674150d9…` | 1 447 exécutés, delta +2 unitaires/+9 SQL, contre-audit indépendant favorable. |
+
+Source précise des sous-comptes initiaux non rejoués ici :
+[`P2-M4-01.baseline`](../../states/baselines/document-workshop/frida-v1-document-workshop-p2-m4-01-20261006.json),
+datée du 6 octobre, base `2cbeb7fa…` : Python 739/739 (235,979 s), SQL
+121/121 (56,311 s), pgvector 2/2 (1,536 s), Chromium M4 21/21
+(16,756157819 s), exits 0, zéro skip. Leurs pointeurs, sélecteurs et blobs
+originaux sont développés dans l'erratum. Ce sont des résultats historiques,
+pas un nouveau run intégral ou des durées du rejeu P3.
+
+La non-concordance sélection/comptes est prouvée ; elle ne prouve pas qu'un run
+de 1 198 n'a jamais existé. Sa sélection exacte n'est pas récupérable dans
+l'artefact conservé ni l'historique documentaire pertinent inspecté. La
+déclaration reste accessible mais son statut de référence reproductible est
+retiré. Aucun log manquant, durée ou succès n'est inventé. Un digest seul ne
+prouve pas un run. Les ciblés qui se recouvrent ne s'additionnent pas ; les
+11 cas capsule hors comparaison et les trois probes indépendantes signalées
+par le mandat restent séparés. Ce mandat ne fournit pas leurs IDs/logs/résultats ;
+P3 ne leur attribue aucun nouveau succès ni compte additionnel.
+
+**Identifiants.** La collecte réelle du module d'annulation au HEAD `674150d9…`
+fournit 21 cas. Chaque ID corrigé résout exactement un test, sans erreur,
+en conservant son nom de méthode ; liste égale aux 21 attendus, sans doublon,
+et aux listes historiques vertes du ciblé P2-M4-01 et de P2-M4-02.
+Les 21 valeurs originales reproduisent 21 erreurs de chargement. Original
+retrouvable au blob `a428bcfdf56493b8980b0ac86a12dcb55ce12314`, dans
+`674150d9:app/docs/states/baselines/document-workshop/frida-v1-document-workshop-p2-m4-01-20261006.json`.
+Le module n'a pas changé depuis `72213263…`, SHA inchangé. Le contrôle des
+IDs ne lance ni `setUp` ni SQL ; le vert 21/21 en 21,195 s est conservé comme
+résultat historique de `targeted_sql.runs[4]`, sans nouveau run DB.
+L'empreinte historique SQL de 142 IDs encode les méthodes doublées : elle est
+conservée avec cette qualification. L'erratum valide cet encodage, l'égalité
+avec les 142 IDs corrects de la baseline P2-M4-02 et leurs empreintes nouvelles
+explicitement encodées, sans remplacer aucun digest de log.
+
+Images/runners préexistants et figés, `--pull=never`, réseau extérieur fermé,
+env vidé, sources/rootfs/dépendances read-only, `/tmp` tmpfs, bytecode désactivé ;
+aucune DB opérateur ni socket DB montée. Adaptation d'archive : seul point de
+montage vide `node_modules`, dépendances/cache navigateur existants read-only.
+Le premier collecteur Python lancé comme fichier scratch n'avait pas le cwd
+applicatif sur `sys.path` ; `python -c/runpy` le rétablit comme `python -m unittest`,
+sans changer les sources. Une assertion de noms frontend uniques a été corrigée
+dans le résumé de collecte, en conservant les 424 registrations et leurs noms.
+Les programmes, exits et observations intermédiaires sont dans l'artefact.
+
+Contre-audit documentaire indépendant favorable : sources, TAP, IDs, empreintes,
+liens, chronologie et périmètre vérifiés. Une précision sur l'encodage des trois
+digests de registrations a été ajoutée puis revalidée ; aucun finding vivant.
+L'unique arbre temporaire P3, ses archives/programmes et les deux nouveaux TAP
+ont été retirés ; inventaires du préfixe temporaire et des conteneurs P3 vides.
+Aucune DB de preuve ni socket DB créée dans ce lot.
+
+État courant : **P2-M4-01 et P2-M4-02 fermés après contre-audits indépendants ;
+P3-M4-03 corrigé documentairement ; livraison runtime ouverte ; confirmation
+et écriture inactives ; M5 non commencé**. La limite `response_format` sous
+builder synthétique reste inchangée, le builder courant n'émettant pas ce champ.
+Migrations opérateur, déploiement/health, OpenRouter/DAV live et Safari matériel
+restent des obligations distinctes. Ce lot ne vaut pas autorisation de M5.
 
 ### M5 — Confirmation et exécution hermétiquement protégées
 
@@ -3918,9 +4038,11 @@ corrigé séparément sur Exports/Images/Notes,
 P2-M2-04 backend est corrigé séparément (713/713 historiques). P2-M2-05 est
 ensuite corrigé sur le résumé de réconciliation (716/716). Le retour final porte la livraison Git et ses
 alignements. M3 est fermé sur code/preuves/Git ; son P3 golden a été corrigé
-séparément avant M4. La livraison initiale M4 est conservée ; son contre-audit
-reste ouvert sur P3-M4-03 ; P2-M4-01 et P2-M4-02 sont fermés après leurs
-contre-audits indépendants, avec leurs relevés conservés ci-dessus ;
+séparément avant M4. La livraison initiale M4 est conservée comme déclaration
+historique explicitement rectifiée par P3-M4-03 ; les identifiants réutilisables
+sont corrigés. P2-M4-01 et P2-M4-02 sont fermés après leurs contre-audits
+indépendants, avec leurs résultats conservés ci-dessus ; P3-M4-03 est corrigé
+documentairement, sans fermer la livraison runtime de M4 ;
 M5–M10/Z restent non commencés et les obligations runtime restent ouvertes.
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
 dans AGENTS.md ; l'invariant de consolidation reste applicable hors de cette

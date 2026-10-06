@@ -437,5 +437,22 @@
       "exit": 1,
       "reason": "existing node_modules absent in archive; mounted readonly, no install"
     }
-  ]
+  ],
+  "historical_record_status": "Original run declarations and findings are dated delivery records, not current findings or a new P3 full run.",
+  "erratum_p3_m4_03": {
+    "date": "2026-10-06",
+    "authoritative_artifact": "frida-v1-document-workshop-p3-m4-03-20261006.json",
+    "original_commit": "674150d913e3402819a1c307876427d59d6791e4",
+    "original_git_blob": "499708ecadf999a1cd8871da897d0e984f6331c1",
+    "current_findings": {
+      "P2-M4-01": "closed after independent counter-audit",
+      "P2-M4-02": "closed after independent counter-audit",
+      "P3-M4-03": "corrected by documented replay and identifier validation"
+    },
+    "runtime_delivery": "open",
+    "confirmation_and_write": "inactive",
+    "M5": "not started",
+    "corrected_claim": "final.total_unique=1198 remains a historical declaration; its exact executed selection is unknown. The published final frontend selectors execute 424 Node and 107 historical Chromium cases on initial M4 commit 2cbeb7fa59be5751502079a1eb6857c2f9977ef2. The initial 1198 declaration is withdrawn as a reproducible reference, not disproved as a past execution.",
+    "historical_metrics_unchanged": true
+  }
 }

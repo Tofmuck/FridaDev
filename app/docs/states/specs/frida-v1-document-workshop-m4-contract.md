@@ -1,10 +1,12 @@
 # Atelier documentaire Frida V1 — contrat M4
 
-Date : 2026-10-06. Statut : livraison initiale conservée ; contre-audit M4 ouvert.
+Date : 2026-10-06. Statut : code et preuves hermétiques livrés ; livraison runtime ouverte.
 P2-M4-01 reste fermé. P2-M4-02 est fermé après correction, comparaison complète
-et contre-audit indépendant ci-dessous. P3-M4-03 reste ouvert sur les comptes historiques
-1 198/1 414 et les 21 identifiants mal formés de l'artefact P2-M4-01 conservé.
-M4 n'est pas intégralement fermé et M5 reste non commencé.
+et contre-audit indépendant ci-dessous. P3-M4-03 est corrigé par l'erratum
+documentaire du 6 octobre ci-dessous : déclaration 1 198 conservée mais retirée
+comme référence reproductible, sélection publiée à 1 414 correctement sourcée,
+21 identifiants réutilisables corrigés. M4 n'est pas intégralement fermé ;
+confirmation et écriture restent inactives, M5 non commencé.
 Base exacte : correctif P3 `9f10531ae9c799f4afc769c97ea2d48659f1c3d3`, poussé
 sur M3 et vérifié propre, HEAD = upstream = distant, divergence `0/0`, avant
 création de `FridaV1-Document-Workshop-M4`. Le hash M4 et les contrôles du push
@@ -182,19 +184,21 @@ upload, multisélection, drag-and-drop et corrections M2 restent éprouvés.
 
 ## Preuves et contre-audit
 
-Le contre-audit postérieur à la livraison initiale ouvre trois findings :
+Le contre-audit postérieur à la livraison initiale a ouvert trois findings.
+État courant après réconciliation documentaire P3 du 6 octobre 2026 :
 
 | Finding | État et périmètre |
 | --- | --- |
 | P2-M4-01 | Fermé : annulation collatérale reproduite sur Flask/PostgreSQL, correctif ciblé prouvé et contre-audité indépendamment. |
 | P2-M4-02 | Fermé : perte de provenance reproduite après le vrai gel, correctif local par index, ciblés et comparaison 1 447/1 447 verts, contre-audit indépendant favorable. |
-| P3-M4-03 | Ouvert : comptes historiques 1 198/1 414 et 21 identifiants doublant leur nom de méthode dans `new_sql_test_ids` de l'artefact P2-M4-01. Les deux anciens artefacts restent inchangés. |
+| P3-M4-03 | Corrigé : déclaration initiale rectifiée explicitement, deux sélections frontend rejouées sur le commit initial, 21 identifiants corrigés et chargeables. [Erratum autoritatif](../baselines/document-workshop/frida-v1-document-workshop-p3-m4-03-20261006.json) ; aucune fermeture runtime/live. |
 
 Les [preuves P2-M4-01](../baselines/document-workshop/frida-v1-document-workshop-p2-m4-01-20261006.json)
 développent les sélections de ce seul lot et distinguent baseline, nouveautés et
 sous-sélections. Baseline avant toute édition : 1 414 cas, 739 Python, 121 SQL,
 2 pgvector, 424 Node, 107 Chromium historiques et 21 M4, exits 0, zéro skip.
-Elle ne corrige pas rétrospectivement le relevé historique litigieux ci-dessous.
+Cette exécution historique sur `2cbeb7fa…` est la source du total 1 414 ;
+le lot documentaire P3 n'en rejoue que les deux sélections frontend litigieuses.
 
 Rouge causal avant patch : 2 cas, 1 échec, 2,055 s, exit 1 ; A pending et B
 preparing deviennent cancelled avec leur contexte, B termine HTTP503. Contrôle
@@ -239,8 +243,9 @@ HEAD/upstream/distant égaux, worktree propre, divergence 0/0 ; parent M4
 L'[artefact P2-M4-02](../baselines/document-workshop/frida-v1-document-workshop-p2-m4-02-20261006.json)
 développe les listes exécutées et les identifiants chargeables, baseline/comparaison,
 ciblés non additifs, commandes/exits/durées, traces content-free et adaptations.
-Les sélecteurs par modules/fichiers de P2-M4-01 restent utilisables ; ses 21
-identifiants mal formés ne sont ni utilisés ni réparés dans ce lot.
+À la livraison P2-M4-02, les sélecteurs par modules/fichiers de P2-M4-01 étaient
+utilisables ; ses 21 identifiants mal formés n'étaient ni utilisés ni réparés.
+La correction ultérieure P3 ci-dessous rend `new_sql_test_ids` réutilisable.
 
 Baseline avant édition : **1 436/1 436**, exits 0, zéro skip. Rouge causal
 scratch : 2 cas, 1 échec, 1,646 s, exit 1 ; contrôle sans source seul 1/1,
@@ -299,10 +304,10 @@ Nettoyage vérifié : les deux PostgreSQL dédiés, leurs deux répertoires de s
 et l'unique arbre temporaire P2-M4-02 ont disparu ; inventaires sous leur préfixe
 vides. Aucune ressource opérateur ou runtime modifiée.
 
-### Relevé de livraison initiale conservé — P3-M4-03 ouvert
+### Relevé de livraison initiale conservé — déclaration rectifiée par P3-M4-03
 
 L'[artefact daté content-free](../baselines/document-workshop/frida-v1-document-workshop-m4-20261006.json)
-porte les **sélecteurs exacts**, commandes Docker/env, comptes, exits/durées,
+porte les **sélecteurs publiés**, commandes Docker/env, comptes déclarés, exits/durées,
 fixtures adaptées et échecs intermédiaires. Images et dépendances préexistantes,
 `--pull=never`, env vidé, réseau extérieur fermé, checkout/rootfs read-only ;
 PostgreSQL dédiés via sockets et données synthétiques. Aucune installation.
@@ -312,8 +317,12 @@ Baseline P3 figée rejouée : **840 = 377 Python + 82 PostgreSQL + 2 pgvector
 seulement le répertoire ignoré vide app/conv pour la fixture et monte les
 node_modules existants read-only. L'échec global historique P3 reste historique.
 
-Final unique : **1 198 = 739 Python + 121 PostgreSQL + 2 pgvector + 211 Node
-+ 104 Chromium historiques + 21 Chromium M4**, tous verts, exits 0, zéro skip.
+Déclaration finale initiale sur `2cbeb7fa59be5751502079a1eb6857c2f9977ef2` :
+**1 198 = 739 Python + 121 PostgreSQL + 2 pgvector + 211 Node
++ 104 Chromium historiques + 21 Chromium M4**, annoncés verts, exits 0, zéro skip.
+Sa sélection exacte exécutée n'est pas établie. Le rejeu P3 ci-dessous rectifie
+la correspondance sélection/comptes ; les durées et résultats déclarés de cet
+ancien relevé ne deviennent pas ceux du nouveau rejeu.
 Les 121 SQL sont 82 historiques et 39 M4. Le run commun 118/118 puis le ciblé
 39/39 se recouvrent : ne pas les additionner. Même règle pour 324/324, 89/89,
 les 25 pannes SQL et le rejeu 8/8 des compteurs constitutifs.
@@ -335,6 +344,49 @@ du contre-audit ci-dessus remplacent cette conclusion comme état courant. Les a
 static frontend renforcent la condition documentaire sans retirer les gardes
 normales ; M2 scope/projection a été découplé après une régression reproduite.
 Warnings DB/admin des fixtures minimales ne prouvent pas la santé du runtime.
+
+### Erratum P3-M4-03 — 6 octobre 2026
+
+Base : `674150d913e3402819a1c307876427d59d6791e4`, parent `72213263…`,
+branche M4, propre et HEAD = upstream = distant, divergence 0/0.
+L'[erratum autoritatif](../baselines/document-workshop/frida-v1-document-workshop-p3-m4-03-20261006.json)
+conserve les sources Git originales, listes développées, commandes, validations
+et limites. Les anciens relevés portent un renvoi explicite ; leurs résultats,
+durées et digests de logs ne sont pas remplacés.
+
+Une archive Git isolée de `2cbeb7fa…`, sans changement de source, exécute
+**424/424 Node dans 34 fichiers (1,217185992 s)** et **107/107 Chromium
+historiques dans neuf fichiers (94,262826388 s)**, exits 0, zéro skip.
+La collecte séparée concorde avec les noms et comptes du TAP exécuté ; elle
+n'est pas une exécution verte. Les fichiers des trois sélections frontend
+sont disjoints. Le fichier Chromium M4 est seulement collecté à 21 cas ici.
+
+Le total 1 414 de la sélection publiée est établi par la baseline P2-M4-01
+datée du 6 octobre, sur ce même commit initial. Les 739 Python, 121 SQL,
+2 pgvector et 21 Chromium M4 de cette baseline ne sont pas réexécutés par P3.
+Chronologie conservée : 1 198 déclarés initialement, sélection publiée à 1 414 ;
+1 436 sur `72213263…` (+21 SQL/+1 navigateur), puis 1 447 sur `674150d9…`
+(+2 unitaires/+9 SQL). Aucun total composé n'est présenté comme un nouveau run
+intégral. La sélection exacte des 1 198 reste inconnue ; la déclaration est
+retirée comme référence reproductible, sans nier une possible exécution passée.
+
+`new_sql_test_ids` de P2-M4-01 contient désormais les 21 IDs issus du vrai
+`TestLoader` : un test par ID, méthode exacte, aucun doublon, égalité avec le
+module, les listes historiques vertes et la comparaison P2-M4-02. Les 21 anciens
+IDs provoquent bien 21 erreurs de chargement. Original : blob Git
+`a428bcfdf56493b8980b0ac86a12dcb55ce12314` au commit de base. Le SHA du module
+reste identique ; la validation n'exécute ni `setUp` ni SQL. Le 21/21 vert en
+21,195 s reste une preuve historique P2-M4-01. L'ancienne empreinte SQL est
+conservée comme digest de la liste aux méthodes doublées ; l'erratum explicite
+l'encodage et fournit la nouvelle empreinte des IDs valides, sans changer un
+digest de log. Les ciblés, les 11 cas capsule hors comparaison et les trois
+probes indépendantes signalées restent séparés, jamais ajoutés aux totaux.
+
+P3-M4-03 est corrigé documentairement. Aucun changement applicatif, test produit,
+migration ou configuration ; aucune nouvelle fermeture live ni autorisation M5.
+La limite synthétique `response_format` décrite plus haut reste inchangée.
+Contre-audit documentaire indépendant favorable, remarque d'encodage corrigée ;
+temporaires P3 retirés et inventaires vides, sans DB ni socket de preuve créée.
 
 ## Frontières encore ouvertes
 

@@ -1,0 +1,1300 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-06",
+  "finding": "P3-M4-03",
+  "scope": "documentary evidence reconciliation only; no application, product test, configuration or migration change",
+  "branch": "FridaV1-Document-Workshop-M4",
+  "base": "674150d913e3402819a1c307876427d59d6791e4",
+  "base_parent": "722132631c2a70851c95d732420d64926895cba9",
+  "base_state": "HEAD=upstream=remote, clean worktree, divergence 0/0; other branches unchanged",
+  "current_status": {
+    "P2-M4-01": "closed after independent counter-audit, preserved",
+    "P2-M4-02": "closed after independent counter-audit, preserved",
+    "P3-M4-03": "corrected by the executed frontend replays and resolved reusable IDs",
+    "M4_runtime_delivery": "open",
+    "operator_migrations": "open",
+    "confirmation_and_write": "inactive",
+    "M5": "not started"
+  },
+  "erratum": {
+    "source": "M4 initial published final selectors and counts; P2-M4-01 new_sql_test_ids; user counter-audit mission dated 2026-10-06",
+    "initial_commit": "2cbeb7fa59be5751502079a1eb6857c2f9977ef2",
+    "original_initial_declaration": {
+      "date": "2026-10-06",
+      "artifact": "frida-v1-document-workshop-m4-20261006.json",
+      "pointer": "/final",
+      "original_git_blob": "499708ecadf999a1cd8871da897d0e984f6331c1"
+    },
+    "declared_total": 1198,
+    "declared_Node": 211,
+    "declared_historical_Chromium": 104,
+    "published_Node_selector": [
+      "app/tests/unit/frontend_chat/test_*.js"
+    ],
+    "published_historical_Chromium_selectors": [
+      "app/tests/integration/frontend_browser/test_frontend_browser_active_documents.js",
+      "app/tests/integration/frontend_browser/test_frontend_browser_adobe_mode.js",
+      "app/tests/integration/frontend_browser/test_frontend_browser_document_adoption.js",
+      "app/tests/integration/frontend_browser/test_frontend_browser_document_adoption_reasons.js",
+      "app/tests/integration/frontend_browser/test_frontend_browser_document_inventory_publication.js",
+      "app/tests/integration/frontend_browser/test_frontend_browser_document_workshop.js",
+      "app/tests/integration/frontend_browser/test_frontend_browser_identity_governance.js",
+      "app/tests/integration/frontend_browser/test_frontend_browser_smoke.js",
+      "app/tests/integration/frontend_browser/test_frontend_browser_workspace_folders.js"
+    ],
+    "executed_Node": 424,
+    "executed_historical_Chromium": 107,
+    "arithmetic_delta": 216,
+    "exact_1198_run_selection": "unknown; not recoverable from the retained artifact or relevant committed proof history inspected in this lot",
+    "conclusion": "Selection/count non-concordance is proved. It does not prove that 1198 cases were never executed. The 1198 declaration and its original durations/exits remain historical; it is withdrawn as an exact reproducible reference. No missing logs or execution success are invented."
+  },
+  "chronology": [
+    {
+      "stage": "m4",
+      "tested_source_commit": "2cbeb7fa59be5751502079a1eb6857c2f9977ef2",
+      "total": 1198,
+      "components": {
+        "python": 739,
+        "sql": 121,
+        "vector": 2,
+        "node": 211,
+        "chromium_historical": 104,
+        "chromium_m4": 21
+      },
+      "source": {
+        "date": "2026-10-06",
+        "artifact": "frida-v1-document-workshop-m4-20261006.json",
+        "pointer": "/final",
+        "original_git_blob": "499708ecadf999a1cd8871da897d0e984f6331c1"
+      },
+      "status": "historical declaration, withdrawn as reproducible reference"
+    },
+    {
+      "stage": "p2-m4-01",
+      "tested_source_commit": "722132631c2a70851c95d732420d64926895cba9",
+      "total": 1436,
+      "components": {
+        "python": 739,
+        "sql": 142,
+        "vector": 2,
+        "node": 424,
+        "chromium_historical": 107,
+        "chromium_m4": 22
+      },
+      "source": {
+        "date": "2026-10-06",
+        "artifact": "frida-v1-document-workshop-p2-m4-01-20261006.json",
+        "pointer": "/final",
+        "original_git_blob": "a428bcfdf56493b8980b0ac86a12dcb55ce12314"
+      },
+      "status": "historical executed green comparison, independently counter-audited, not re-executed in P3"
+    },
+    {
+      "stage": "p2-m4-02",
+      "tested_source_commit": "674150d913e3402819a1c307876427d59d6791e4",
+      "total": 1447,
+      "components": {
+        "python": 741,
+        "sql": 151,
+        "vector": 2,
+        "node": 424,
+        "chromium_historical": 107,
+        "chromium_m4": 22
+      },
+      "source": {
+        "date": "2026-10-06",
+        "artifact": "frida-v1-document-workshop-p2-m4-02-20261006.json",
+        "pointer": "/final",
+        "original_git_blob": "f464c0e84b6ebb554f02c3d57aa03719b4d88ca7"
+      },
+      "status": "historical executed green comparison, independently counter-audited, not re-executed in P3"
+    }
+  ],
+  "initial_published_selection_reconciliation": {
+    "total": 1414,
+    "components": {
+      "python": 739,
+      "sql": 121,
+      "vector": 2,
+      "node": 424,
+      "chromium_historical": 107,
+      "chromium_m4": 21
+    },
+    "full_execution_source": {
+      "date": "2026-10-06",
+      "artifact": "frida-v1-document-workshop-p2-m4-01-20261006.json",
+      "pointer": "/baseline",
+      "original_git_blob": "a428bcfdf56493b8980b0ac86a12dcb55ce12314"
+    },
+    "tested_source_commit": "2cbeb7fa59be5751502079a1eb6857c2f9977ef2",
+    "status": "complete green execution established historically by the P2-M4-01 baseline; P3 freshly executes only Node and historical Chromium, not a new integral 1414 run",
+    "not_reexecuted_in_P3": [
+      {
+        "selection": "python",
+        "tested_source_commit": "2cbeb7fa59be5751502079a1eb6857c2f9977ef2",
+        "status": "historical executed green baseline before P2-M4-01; not re-executed in P3",
+        "source": {
+          "date": "2026-10-06",
+          "artifact": "frida-v1-document-workshop-p2-m4-01-20261006.json",
+          "pointer": "/baseline/python",
+          "original_git_blob": "a428bcfdf56493b8980b0ac86a12dcb55ce12314"
+        },
+        "selectors": [
+          "tests.test_server_active_documents_contract",
+          "tests.test_server_workspace_folders_contract",
+          "tests.test_server_chat_route_transport_contract",
+          "tests.test_server_chat_conversation_id_contract",
+          "tests.test_server_chat_document_integrity_contract",
+          "tests.integration.frontend_chat.test_frontend_chat_contract",
+          "tests.unit.core.test_workspace_folders_contract",
+          "tests.unit.chat.test_chat_llm_flow",
+          "tests.unit.chat.test_chat_llm_flow_boundaries",
+          "tests.unit.chat.test_chat_stream_control",
+          "tests.unit.core.test_document_workshop_canonical_paths",
+          "tests.unit.core.test_document_workshop_admission",
+          "tests.unit.core.test_document_workshop_provider_progress",
+          "tests.unit.core.test_workspace_documents_ingestion",
+          "tests.test_server_document_workshop_contexts_contract",
+          "tests.unit.core.test_workspace_folder_documents",
+          "tests.unit.core.test_workspace_file_selection_prompt",
+          "tests.unit.core.test_active_document_text_extraction",
+          "tests.unit.core.test_document_upload_limits",
+          "tests.unit.core.test_workspace_nextcloud_compensation_etag",
+          "tests.unit.core.test_workspace_file_ocr_service",
+          "tests.unit.core.test_workspace_document_read_client_m2",
+          "tests.unit.core.test_workspace_document_source_extraction_m2",
+          "tests.unit.core.test_workspace_document_adoption_m2",
+          "tests.unit.core.test_workspace_folders_listing_failure",
+          "tests.unit.core.test_workspace_folder_rename_commit_projection",
+          "tests.unit.core.test_conversations_store_save_result",
+          "tests.test_conv_store_phase4_database",
+          "tests.unit.chat.test_chat_session_flow",
+          "tests.test_server_chat_synthetic_logs_contract",
+          "tests.integration.chat.test_chat_input_mode_route",
+          "tests.unit.memory.test_summarizer_phase4",
+          "tests.unit.memory.test_summarizer_phase13",
+          "tests.unit.memory.test_memory_trace_summary_store_boundary",
+          "tests.unit.memory.test_hermeneutic_node_state",
+          "tests.unit.core.test_chat_hermeneutic_node_state",
+          "tests.test_llm_client",
+          "tests.unit.chat.test_main_llm_reasoning",
+          "tests.unit.runtime_settings.test_runtime_settings",
+          "tests.unit.runtime_settings.test_runtime_settings_validation",
+          "tests.unit.runtime_settings.test_runtime_settings_validation_boundaries",
+          "tests.unit.runtime_settings.test_runtime_settings_seed_bundles_and_plans",
+          "tests.unit.core.test_chat_main_payload_boundary",
+          "tests.unit.chat.test_web_turn_provenance_continuity",
+          "tests.unit.core.test_stimmung_agent",
+          "tests.unit.core.hermeneutic_node.inputs.test_stimmung_input",
+          "tests.unit.golden.test_l7_6_stimmung_finalization_integrity",
+          "tests.unit.logs.test_main_payload_manifest",
+          "tests.unit.logs.test_observability_payload_guard_schema_boundaries",
+          "tests.unit.golden.test_lot9_golden_harness",
+          "tests.test_server_admin_non_settings_contracts",
+          "tests.integration.chat.test_chat_dialogue_audio_routes",
+          "tests.unit.core.test_document_workshop_envelope",
+          "tests.unit.core.test_document_markdown",
+          "tests.unit.core.test_document_workshop_http_transport",
+          "tests.unit.core.test_document_workshop_m4_observability",
+          "tests.unit.core.test_document_workshop_turn_ownership"
+        ],
+        "tests": 739,
+        "seconds": 235.979,
+        "exit": 0,
+        "skips": 0
+      },
+      {
+        "selection": "sql",
+        "tested_source_commit": "2cbeb7fa59be5751502079a1eb6857c2f9977ef2",
+        "status": "historical executed green baseline before P2-M4-01; not re-executed in P3",
+        "source": {
+          "date": "2026-10-06",
+          "artifact": "frida-v1-document-workshop-p2-m4-01-20261006.json",
+          "pointer": "/baseline/sql",
+          "original_git_blob": "a428bcfdf56493b8980b0ac86a12dcb55ce12314"
+        },
+        "selectors": [
+          "tests.integration.document_workshop.test_context_store_postgresql",
+          "tests.integration.document_workshop.test_adoption_postgresql",
+          "tests.integration.document_workshop.test_turn_claims_postgresql",
+          "tests.integration.document_workshop.test_claim_transport_postgresql",
+          "tests.integration.document_workshop.test_claim_adoption_postgresql",
+          "tests.integration.document_workshop.test_preparation_postgresql",
+          "tests.integration.document_workshop.test_preparation_failures_postgresql",
+          "tests.integration.document_workshop.test_preparation_http_postgresql"
+        ],
+        "tests": 121,
+        "seconds": 56.311,
+        "exit": 0,
+        "skips": 0
+      },
+      {
+        "selection": "vector",
+        "tested_source_commit": "2cbeb7fa59be5751502079a1eb6857c2f9977ef2",
+        "status": "historical executed green baseline before P2-M4-01; not re-executed in P3",
+        "source": {
+          "date": "2026-10-06",
+          "artifact": "frida-v1-document-workshop-p2-m4-01-20261006.json",
+          "pointer": "/baseline/vector",
+          "original_git_blob": "a428bcfdf56493b8980b0ac86a12dcb55ce12314"
+        },
+        "selectors": [
+          "tests.integration.document_workshop.test_claim_summary_postgresql"
+        ],
+        "tests": 2,
+        "seconds": 1.536,
+        "exit": 0,
+        "skips": 0
+      },
+      {
+        "selection": "chromium_m4",
+        "tested_source_commit": "2cbeb7fa59be5751502079a1eb6857c2f9977ef2",
+        "status": "historical executed green baseline before P2-M4-01; not re-executed in P3",
+        "source": {
+          "date": "2026-10-06",
+          "artifact": "frida-v1-document-workshop-p2-m4-01-20261006.json",
+          "pointer": "/baseline/chromium_m4",
+          "original_git_blob": "a428bcfdf56493b8980b0ac86a12dcb55ce12314"
+        },
+        "files": [
+          "app/tests/integration/frontend_browser/test_frontend_browser_document_preparation_m4.js"
+        ],
+        "tests": 21,
+        "seconds": 16.756157819,
+        "exit": 0,
+        "skips": 0
+      }
+    ]
+  },
+  "new_frontend_executions": {
+    "node": {
+      "kind": "executed",
+      "tested_commit": "2cbeb7fa59be5751502079a1eb6857c2f9977ef2",
+      "started_at_utc": "2026-10-06T14:53:06.829768+00:00",
+      "argv": [
+        "docker",
+        "run",
+        "--name",
+        "fridadev-p3-m4-03-node-20261006",
+        "--rm",
+        "--pull=never",
+        "--network",
+        "none",
+        "--read-only",
+        "--tmpfs",
+        "/tmp:rw,nosuid,nodev",
+        "--mount",
+        "type=bind,src=/tmp/fridadev-p3-m4-03-20261006-vn2luN/initial,dst=/workspace,readonly",
+        "--mount",
+        "type=bind,src=/opt/platform/fridadev/node_modules,dst=/workspace/node_modules,readonly",
+        "--mount",
+        "type=bind,src=/home/tof/.cache/ms-playwright,dst=/proof/browsers,readonly",
+        "--workdir",
+        "/workspace",
+        "--entrypoint",
+        "/usr/bin/env",
+        "sha256:55dfaaa282c98d5f4d328676e36eca5203b6494b97d9ef3ba0608d9e939e9523",
+        "-i",
+        "PATH=/usr/local/bin:/usr/bin:/bin",
+        "HOME=/tmp",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "PLAYWRIGHT_BROWSERS_PATH=/proof/browsers",
+        "node",
+        "--test",
+        "app/tests/unit/frontend_chat/test_active_documents_module.js",
+        "app/tests/unit/frontend_chat/test_adobe_mode_module.js",
+        "app/tests/unit/frontend_chat/test_agenda_mode_module.js",
+        "app/tests/unit/frontend_chat/test_biblio_mode_module.js",
+        "app/tests/unit/frontend_chat/test_canonical_chat_submission.js",
+        "app/tests/unit/frontend_chat/test_chat_copy_export_module.js",
+        "app/tests/unit/frontend_chat/test_chat_theme_module.js",
+        "app/tests/unit/frontend_chat/test_dialogue_audio_client_module.js",
+        "app/tests/unit/frontend_chat/test_dialogue_mode_module.js",
+        "app/tests/unit/frontend_chat/test_dialogue_session_controller_module.js",
+        "app/tests/unit/frontend_chat/test_dialogue_vad_recorder_module.js",
+        "app/tests/unit/frontend_chat/test_dialogue_vad_runtime_module.js",
+        "app/tests/unit/frontend_chat/test_dialogue_vad_utterance_regression.js",
+        "app/tests/unit/frontend_chat/test_dialogue_vad_vendor_contract.js",
+        "app/tests/unit/frontend_chat/test_hermeneutic_admin_render_scopes.js",
+        "app/tests/unit/frontend_chat/test_image_generation_module.js",
+        "app/tests/unit/frontend_chat/test_log_filter_signature_module.js",
+        "app/tests/unit/frontend_chat/test_lot9_load_order_golden.js",
+        "app/tests/unit/frontend_chat/test_main_reasoning_control_module.js",
+        "app/tests/unit/frontend_chat/test_notes_mode_module.js",
+        "app/tests/unit/frontend_chat/test_stream_control_parser_module.js",
+        "app/tests/unit/frontend_chat/test_streaming_ui_state_module.js",
+        "app/tests/unit/frontend_chat/test_threads_folder_binding_module.js",
+        "app/tests/unit/frontend_chat/test_threads_list_renderer_module.js",
+        "app/tests/unit/frontend_chat/test_threads_sidebar_module.js",
+        "app/tests/unit/frontend_chat/test_validation_projection_module.js",
+        "app/tests/unit/frontend_chat/test_whisper_dictation_module.js",
+        "app/tests/unit/frontend_chat/test_workspace_folder_exports_module.js",
+        "app/tests/unit/frontend_chat/test_workspace_folder_exports_panel_module.js",
+        "app/tests/unit/frontend_chat/test_workspace_folder_generated_images_module.js",
+        "app/tests/unit/frontend_chat/test_workspace_folder_generated_images_panel_module.js",
+        "app/tests/unit/frontend_chat/test_workspace_folder_notes_panel_module.js",
+        "app/tests/unit/frontend_chat/test_workspace_folder_sidebar_boundaries.js",
+        "app/tests/unit/frontend_chat/test_workspace_folders_module.js"
+      ],
+      "file_count": 34,
+      "files": [
+        "app/tests/unit/frontend_chat/test_active_documents_module.js",
+        "app/tests/unit/frontend_chat/test_adobe_mode_module.js",
+        "app/tests/unit/frontend_chat/test_agenda_mode_module.js",
+        "app/tests/unit/frontend_chat/test_biblio_mode_module.js",
+        "app/tests/unit/frontend_chat/test_canonical_chat_submission.js",
+        "app/tests/unit/frontend_chat/test_chat_copy_export_module.js",
+        "app/tests/unit/frontend_chat/test_chat_theme_module.js",
+        "app/tests/unit/frontend_chat/test_dialogue_audio_client_module.js",
+        "app/tests/unit/frontend_chat/test_dialogue_mode_module.js",
+        "app/tests/unit/frontend_chat/test_dialogue_session_controller_module.js",
+        "app/tests/unit/frontend_chat/test_dialogue_vad_recorder_module.js",
+        "app/tests/unit/frontend_chat/test_dialogue_vad_runtime_module.js",
+        "app/tests/unit/frontend_chat/test_dialogue_vad_utterance_regression.js",
+        "app/tests/unit/frontend_chat/test_dialogue_vad_vendor_contract.js",
+        "app/tests/unit/frontend_chat/test_hermeneutic_admin_render_scopes.js",
+        "app/tests/unit/frontend_chat/test_image_generation_module.js",
+        "app/tests/unit/frontend_chat/test_log_filter_signature_module.js",
+        "app/tests/unit/frontend_chat/test_lot9_load_order_golden.js",
+        "app/tests/unit/frontend_chat/test_main_reasoning_control_module.js",
+        "app/tests/unit/frontend_chat/test_notes_mode_module.js",
+        "app/tests/unit/frontend_chat/test_stream_control_parser_module.js",
+        "app/tests/unit/frontend_chat/test_streaming_ui_state_module.js",
+        "app/tests/unit/frontend_chat/test_threads_folder_binding_module.js",
+        "app/tests/unit/frontend_chat/test_threads_list_renderer_module.js",
+        "app/tests/unit/frontend_chat/test_threads_sidebar_module.js",
+        "app/tests/unit/frontend_chat/test_validation_projection_module.js",
+        "app/tests/unit/frontend_chat/test_whisper_dictation_module.js",
+        "app/tests/unit/frontend_chat/test_workspace_folder_exports_module.js",
+        "app/tests/unit/frontend_chat/test_workspace_folder_exports_panel_module.js",
+        "app/tests/unit/frontend_chat/test_workspace_folder_generated_images_module.js",
+        "app/tests/unit/frontend_chat/test_workspace_folder_generated_images_panel_module.js",
+        "app/tests/unit/frontend_chat/test_workspace_folder_notes_panel_module.js",
+        "app/tests/unit/frontend_chat/test_workspace_folder_sidebar_boundaries.js",
+        "app/tests/unit/frontend_chat/test_workspace_folders_module.js"
+      ],
+      "exit": 0,
+      "summary": {
+        "tests": 424,
+        "pass": 424,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "seconds": 1.217185992,
+      "wall_seconds": 1.5519075829070061,
+      "log_sha256": "81cda9cccde2be1a8486c63524e80bf0f010f2cfe9c98293e6519500a32ef697",
+      "case_names_duplicate_count": 11,
+      "collection_matches_executed_TAP_names_and_counts": true,
+      "collected_counts_by_file": {
+        "app/tests/unit/frontend_chat/test_active_documents_module.js": 10,
+        "app/tests/unit/frontend_chat/test_adobe_mode_module.js": 3,
+        "app/tests/unit/frontend_chat/test_agenda_mode_module.js": 3,
+        "app/tests/unit/frontend_chat/test_biblio_mode_module.js": 3,
+        "app/tests/unit/frontend_chat/test_canonical_chat_submission.js": 18,
+        "app/tests/unit/frontend_chat/test_chat_copy_export_module.js": 4,
+        "app/tests/unit/frontend_chat/test_chat_theme_module.js": 6,
+        "app/tests/unit/frontend_chat/test_dialogue_audio_client_module.js": 36,
+        "app/tests/unit/frontend_chat/test_dialogue_mode_module.js": 4,
+        "app/tests/unit/frontend_chat/test_dialogue_session_controller_module.js": 42,
+        "app/tests/unit/frontend_chat/test_dialogue_vad_recorder_module.js": 16,
+        "app/tests/unit/frontend_chat/test_dialogue_vad_runtime_module.js": 8,
+        "app/tests/unit/frontend_chat/test_dialogue_vad_utterance_regression.js": 4,
+        "app/tests/unit/frontend_chat/test_dialogue_vad_vendor_contract.js": 4,
+        "app/tests/unit/frontend_chat/test_hermeneutic_admin_render_scopes.js": 2,
+        "app/tests/unit/frontend_chat/test_image_generation_module.js": 6,
+        "app/tests/unit/frontend_chat/test_log_filter_signature_module.js": 1,
+        "app/tests/unit/frontend_chat/test_lot9_load_order_golden.js": 4,
+        "app/tests/unit/frontend_chat/test_main_reasoning_control_module.js": 3,
+        "app/tests/unit/frontend_chat/test_notes_mode_module.js": 4,
+        "app/tests/unit/frontend_chat/test_stream_control_parser_module.js": 9,
+        "app/tests/unit/frontend_chat/test_streaming_ui_state_module.js": 6,
+        "app/tests/unit/frontend_chat/test_threads_folder_binding_module.js": 2,
+        "app/tests/unit/frontend_chat/test_threads_list_renderer_module.js": 2,
+        "app/tests/unit/frontend_chat/test_threads_sidebar_module.js": 146,
+        "app/tests/unit/frontend_chat/test_validation_projection_module.js": 5,
+        "app/tests/unit/frontend_chat/test_whisper_dictation_module.js": 9,
+        "app/tests/unit/frontend_chat/test_workspace_folder_exports_module.js": 7,
+        "app/tests/unit/frontend_chat/test_workspace_folder_exports_panel_module.js": 9,
+        "app/tests/unit/frontend_chat/test_workspace_folder_generated_images_module.js": 5,
+        "app/tests/unit/frontend_chat/test_workspace_folder_generated_images_panel_module.js": 10,
+        "app/tests/unit/frontend_chat/test_workspace_folder_notes_panel_module.js": 4,
+        "app/tests/unit/frontend_chat/test_workspace_folder_sidebar_boundaries.js": 10,
+        "app/tests/unit/frontend_chat/test_workspace_folders_module.js": 19
+      },
+      "collection_only_reference": "frontend_collection",
+      "source_files_match_initial_git_blobs": true
+    },
+    "chromium_historical": {
+      "kind": "executed",
+      "tested_commit": "2cbeb7fa59be5751502079a1eb6857c2f9977ef2",
+      "started_at_utc": "2026-10-06T14:53:08.387149+00:00",
+      "argv": [
+        "docker",
+        "run",
+        "--name",
+        "fridadev-p3-m4-03-chromium_historical-20261006",
+        "--rm",
+        "--pull=never",
+        "--network",
+        "none",
+        "--read-only",
+        "--tmpfs",
+        "/tmp:rw,nosuid,nodev",
+        "--mount",
+        "type=bind,src=/tmp/fridadev-p3-m4-03-20261006-vn2luN/initial,dst=/workspace,readonly",
+        "--mount",
+        "type=bind,src=/opt/platform/fridadev/node_modules,dst=/workspace/node_modules,readonly",
+        "--mount",
+        "type=bind,src=/home/tof/.cache/ms-playwright,dst=/proof/browsers,readonly",
+        "--workdir",
+        "/workspace",
+        "--entrypoint",
+        "/usr/bin/env",
+        "sha256:55dfaaa282c98d5f4d328676e36eca5203b6494b97d9ef3ba0608d9e939e9523",
+        "-i",
+        "PATH=/usr/local/bin:/usr/bin:/bin",
+        "HOME=/tmp",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "PLAYWRIGHT_BROWSERS_PATH=/proof/browsers",
+        "node",
+        "--test",
+        "--test-concurrency=1",
+        "app/tests/integration/frontend_browser/test_frontend_browser_active_documents.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_adobe_mode.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_document_adoption.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_document_adoption_reasons.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_document_inventory_publication.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_document_workshop.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_identity_governance.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_smoke.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_workspace_folders.js"
+      ],
+      "file_count": 9,
+      "files": [
+        "app/tests/integration/frontend_browser/test_frontend_browser_active_documents.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_adobe_mode.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_document_adoption.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_document_adoption_reasons.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_document_inventory_publication.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_document_workshop.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_identity_governance.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_smoke.js",
+        "app/tests/integration/frontend_browser/test_frontend_browser_workspace_folders.js"
+      ],
+      "exit": 0,
+      "summary": {
+        "tests": 107,
+        "pass": 107,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "seconds": 94.262826388,
+      "wall_seconds": 94.59173468500376,
+      "log_sha256": "7e77a98f9e93e3bc57fa63f210b2d8abadd5e830d7b787bc29f8c3de93e04c3f",
+      "case_names_duplicate_count": 0,
+      "collection_matches_executed_TAP_names_and_counts": true,
+      "collected_counts_by_file": {
+        "app/tests/integration/frontend_browser/test_frontend_browser_active_documents.js": 1,
+        "app/tests/integration/frontend_browser/test_frontend_browser_adobe_mode.js": 2,
+        "app/tests/integration/frontend_browser/test_frontend_browser_document_adoption.js": 25,
+        "app/tests/integration/frontend_browser/test_frontend_browser_document_adoption_reasons.js": 4,
+        "app/tests/integration/frontend_browser/test_frontend_browser_document_inventory_publication.js": 19,
+        "app/tests/integration/frontend_browser/test_frontend_browser_document_workshop.js": 11,
+        "app/tests/integration/frontend_browser/test_frontend_browser_identity_governance.js": 1,
+        "app/tests/integration/frontend_browser/test_frontend_browser_smoke.js": 42,
+        "app/tests/integration/frontend_browser/test_frontend_browser_workspace_folders.js": 2
+      },
+      "collection_only_reference": "frontend_collection",
+      "source_files_match_initial_git_blobs": true
+    }
+  },
+  "frontend_collection": {
+    "kind": "registration_collection_only_callbacks_never_called",
+    "exit": 0,
+    "wall_seconds": 0.6524761822074652,
+    "argv": [
+      "docker",
+      "run",
+      "--name",
+      "fridadev-p3-m4-03-frontend-collection-20261006",
+      "--rm",
+      "--pull=never",
+      "--network",
+      "none",
+      "--read-only",
+      "--tmpfs",
+      "/tmp:rw,nosuid,nodev",
+      "--mount",
+      "type=bind,src=/tmp/fridadev-p3-m4-03-20261006-vn2luN/initial,dst=/workspace,readonly",
+      "--mount",
+      "type=bind,src=/opt/platform/fridadev/node_modules,dst=/workspace/node_modules,readonly",
+      "-v",
+      "/tmp/fridadev-p3-m4-03-20261006-vn2luN:/proof:ro",
+      "--workdir",
+      "/workspace",
+      "--entrypoint",
+      "/usr/bin/env",
+      "sha256:55dfaaa282c98d5f4d328676e36eca5203b6494b97d9ef3ba0608d9e939e9523",
+      "-i",
+      "PATH=/usr/local/bin:/usr/bin:/bin",
+      "HOME=/tmp",
+      "PYTHONDONTWRITEBYTECODE=1",
+      "node",
+      "/proof/collect_frontend.js"
+    ],
+    "summary": {
+      "node": {
+        "collected_cases": 424,
+        "duplicate_registration_identities": 0,
+        "repeated_names_alone": 11,
+        "files_counts": {
+          "app/tests/unit/frontend_chat/test_active_documents_module.js": 10,
+          "app/tests/unit/frontend_chat/test_adobe_mode_module.js": 3,
+          "app/tests/unit/frontend_chat/test_agenda_mode_module.js": 3,
+          "app/tests/unit/frontend_chat/test_biblio_mode_module.js": 3,
+          "app/tests/unit/frontend_chat/test_canonical_chat_submission.js": 18,
+          "app/tests/unit/frontend_chat/test_chat_copy_export_module.js": 4,
+          "app/tests/unit/frontend_chat/test_chat_theme_module.js": 6,
+          "app/tests/unit/frontend_chat/test_dialogue_audio_client_module.js": 36,
+          "app/tests/unit/frontend_chat/test_dialogue_mode_module.js": 4,
+          "app/tests/unit/frontend_chat/test_dialogue_session_controller_module.js": 42,
+          "app/tests/unit/frontend_chat/test_dialogue_vad_recorder_module.js": 16,
+          "app/tests/unit/frontend_chat/test_dialogue_vad_runtime_module.js": 8,
+          "app/tests/unit/frontend_chat/test_dialogue_vad_utterance_regression.js": 4,
+          "app/tests/unit/frontend_chat/test_dialogue_vad_vendor_contract.js": 4,
+          "app/tests/unit/frontend_chat/test_hermeneutic_admin_render_scopes.js": 2,
+          "app/tests/unit/frontend_chat/test_image_generation_module.js": 6,
+          "app/tests/unit/frontend_chat/test_log_filter_signature_module.js": 1,
+          "app/tests/unit/frontend_chat/test_lot9_load_order_golden.js": 4,
+          "app/tests/unit/frontend_chat/test_main_reasoning_control_module.js": 3,
+          "app/tests/unit/frontend_chat/test_notes_mode_module.js": 4,
+          "app/tests/unit/frontend_chat/test_stream_control_parser_module.js": 9,
+          "app/tests/unit/frontend_chat/test_streaming_ui_state_module.js": 6,
+          "app/tests/unit/frontend_chat/test_threads_folder_binding_module.js": 2,
+          "app/tests/unit/frontend_chat/test_threads_list_renderer_module.js": 2,
+          "app/tests/unit/frontend_chat/test_threads_sidebar_module.js": 146,
+          "app/tests/unit/frontend_chat/test_validation_projection_module.js": 5,
+          "app/tests/unit/frontend_chat/test_whisper_dictation_module.js": 9,
+          "app/tests/unit/frontend_chat/test_workspace_folder_exports_module.js": 7,
+          "app/tests/unit/frontend_chat/test_workspace_folder_exports_panel_module.js": 9,
+          "app/tests/unit/frontend_chat/test_workspace_folder_generated_images_module.js": 5,
+          "app/tests/unit/frontend_chat/test_workspace_folder_generated_images_panel_module.js": 10,
+          "app/tests/unit/frontend_chat/test_workspace_folder_notes_panel_module.js": 4,
+          "app/tests/unit/frontend_chat/test_workspace_folder_sidebar_boundaries.js": 10,
+          "app/tests/unit/frontend_chat/test_workspace_folders_module.js": 19
+        },
+        "distinct_registration_ids_sha256": "5d03f1955033cdb480ac9f9afd9e6f35034a21cd2e01057d16a48336bf9dc663"
+      },
+      "chromium_historical": {
+        "collected_cases": 107,
+        "duplicate_registration_identities": 0,
+        "repeated_names_alone": 0,
+        "files_counts": {
+          "app/tests/integration/frontend_browser/test_frontend_browser_active_documents.js": 1,
+          "app/tests/integration/frontend_browser/test_frontend_browser_adobe_mode.js": 2,
+          "app/tests/integration/frontend_browser/test_frontend_browser_document_adoption.js": 25,
+          "app/tests/integration/frontend_browser/test_frontend_browser_document_adoption_reasons.js": 4,
+          "app/tests/integration/frontend_browser/test_frontend_browser_document_inventory_publication.js": 19,
+          "app/tests/integration/frontend_browser/test_frontend_browser_document_workshop.js": 11,
+          "app/tests/integration/frontend_browser/test_frontend_browser_identity_governance.js": 1,
+          "app/tests/integration/frontend_browser/test_frontend_browser_smoke.js": 42,
+          "app/tests/integration/frontend_browser/test_frontend_browser_workspace_folders.js": 2
+        },
+        "distinct_registration_ids_sha256": "549d7d1a031e29a1e616f260a64e66023b0527b622e3e3ec2910630ba4d5ebfd"
+      },
+      "chromium_m4": {
+        "collected_cases": 21,
+        "duplicate_registration_identities": 0,
+        "repeated_names_alone": 0,
+        "files_counts": {
+          "app/tests/integration/frontend_browser/test_frontend_browser_document_preparation_m4.js": 21
+        },
+        "distinct_registration_ids_sha256": "7039a059d64d9b18e444963e2dfe95b0b4a5aa63babf5f3c8be1ecce08313781"
+      }
+    },
+    "registration_identity": "file + 1-based registration index + name; repeated names alone do not prove duplicated cases",
+    "program": "'use strict';\nconst fs=require('node:fs'); const Module=require('node:module');\nconst meta=JSON.parse(fs.readFileSync('/proof/selection.json','utf8'));\nconst original=Module._load; let currentFile=null; const rows=[];\nfunction register(name, ...args){\n if(typeof name!=='string'||!args.some(x=>typeof x==='function')) throw new Error('unexpected registration');\n rows.push({file:currentFile,name});\n}\nregister.test=register;\nModule._load=function(request,parent,isMain){if(request==='node:test')return register; return original.apply(this,arguments);};\nfor(const file of [...meta.node_files,...meta.chromium_historical_files,...meta.chromium_m4_files_not_replayed]){\n currentFile=file; require('/workspace/'+file);\n}\nconsole.log(JSON.stringify({kind:'registration_collection_only_callbacks_never_called',rows}));\n",
+    "program_setup": "Write program to $PROOF/collect_frontend.js and selection_archive.node_files/chromium_historical_files/chromium_m4_files_not_replayed to $PROOF/selection.json; mount /proof read-only. node:test registration is intercepted only to collect names; no callback is invoked and no collection is claimed green execution. Replayed Node/Chromium TAP names and counts match the collected multisets. M4 Chromium is collected only.",
+    "registration_digest_encoding": "SHA256 of UTF-8 bytes of lexically sorted file + '::' + decimal 1-based per-file registration index + '::' + name strings, joined by LF, with no trailing LF. Assign indices in the embedded collector rows encounter order separately for each file."
+  },
+  "selection_archive": {
+    "tested_commit": "2cbeb7fa59be5751502079a1eb6857c2f9977ef2",
+    "archive_setup": [
+      "git archive 2cbeb7fa59be5751502079a1eb6857c2f9977ef2 app benchmark",
+      "tar extraction in isolated temporary initial directory",
+      "empty node_modules mountpoint only; no versioned source modified"
+    ],
+    "node_files": [
+      "app/tests/unit/frontend_chat/test_active_documents_module.js",
+      "app/tests/unit/frontend_chat/test_adobe_mode_module.js",
+      "app/tests/unit/frontend_chat/test_agenda_mode_module.js",
+      "app/tests/unit/frontend_chat/test_biblio_mode_module.js",
+      "app/tests/unit/frontend_chat/test_canonical_chat_submission.js",
+      "app/tests/unit/frontend_chat/test_chat_copy_export_module.js",
+      "app/tests/unit/frontend_chat/test_chat_theme_module.js",
+      "app/tests/unit/frontend_chat/test_dialogue_audio_client_module.js",
+      "app/tests/unit/frontend_chat/test_dialogue_mode_module.js",
+      "app/tests/unit/frontend_chat/test_dialogue_session_controller_module.js",
+      "app/tests/unit/frontend_chat/test_dialogue_vad_recorder_module.js",
+      "app/tests/unit/frontend_chat/test_dialogue_vad_runtime_module.js",
+      "app/tests/unit/frontend_chat/test_dialogue_vad_utterance_regression.js",
+      "app/tests/unit/frontend_chat/test_dialogue_vad_vendor_contract.js",
+      "app/tests/unit/frontend_chat/test_hermeneutic_admin_render_scopes.js",
+      "app/tests/unit/frontend_chat/test_image_generation_module.js",
+      "app/tests/unit/frontend_chat/test_log_filter_signature_module.js",
+      "app/tests/unit/frontend_chat/test_lot9_load_order_golden.js",
+      "app/tests/unit/frontend_chat/test_main_reasoning_control_module.js",
+      "app/tests/unit/frontend_chat/test_notes_mode_module.js",
+      "app/tests/unit/frontend_chat/test_stream_control_parser_module.js",
+      "app/tests/unit/frontend_chat/test_streaming_ui_state_module.js",
+      "app/tests/unit/frontend_chat/test_threads_folder_binding_module.js",
+      "app/tests/unit/frontend_chat/test_threads_list_renderer_module.js",
+      "app/tests/unit/frontend_chat/test_threads_sidebar_module.js",
+      "app/tests/unit/frontend_chat/test_validation_projection_module.js",
+      "app/tests/unit/frontend_chat/test_whisper_dictation_module.js",
+      "app/tests/unit/frontend_chat/test_workspace_folder_exports_module.js",
+      "app/tests/unit/frontend_chat/test_workspace_folder_exports_panel_module.js",
+      "app/tests/unit/frontend_chat/test_workspace_folder_generated_images_module.js",
+      "app/tests/unit/frontend_chat/test_workspace_folder_generated_images_panel_module.js",
+      "app/tests/unit/frontend_chat/test_workspace_folder_notes_panel_module.js",
+      "app/tests/unit/frontend_chat/test_workspace_folder_sidebar_boundaries.js",
+      "app/tests/unit/frontend_chat/test_workspace_folders_module.js"
+    ],
+    "chromium_historical_files": [
+      "app/tests/integration/frontend_browser/test_frontend_browser_active_documents.js",
+      "app/tests/integration/frontend_browser/test_frontend_browser_adobe_mode.js",
+      "app/tests/integration/frontend_browser/test_frontend_browser_document_adoption.js",
+      "app/tests/integration/frontend_browser/test_frontend_browser_document_adoption_reasons.js",
+      "app/tests/integration/frontend_browser/test_frontend_browser_document_inventory_publication.js",
+      "app/tests/integration/frontend_browser/test_frontend_browser_document_workshop.js",
+      "app/tests/integration/frontend_browser/test_frontend_browser_identity_governance.js",
+      "app/tests/integration/frontend_browser/test_frontend_browser_smoke.js",
+      "app/tests/integration/frontend_browser/test_frontend_browser_workspace_folders.js"
+    ],
+    "chromium_m4_files_not_replayed": [
+      "app/tests/integration/frontend_browser/test_frontend_browser_document_preparation_m4.js"
+    ],
+    "selected_file_fingerprints": {
+      "app/tests/unit/frontend_chat/test_active_documents_module.js": {
+        "git_blob": "8df875d542bc7c74f22679ae8fb0913328c2aff9",
+        "sha256": "6b8949072a2ae6ad1ed5e01fd46900c05d344188a9e4c81ea3cc693d98c650d1"
+      },
+      "app/tests/unit/frontend_chat/test_adobe_mode_module.js": {
+        "git_blob": "c8b7d257a4c9139689af70e118a3b75d68396adf",
+        "sha256": "58606c23c728ac9af655ce9f0a018c7cd58677ec9eb00d289a23bd0ca6c59be0"
+      },
+      "app/tests/unit/frontend_chat/test_agenda_mode_module.js": {
+        "git_blob": "1c9265df63c889ebcf9e9cb035433127a0d5fe49",
+        "sha256": "6e8cf46dbcce646d0c81baf4ec15676cb333db18344e6a4d775e94a27f9492b9"
+      },
+      "app/tests/unit/frontend_chat/test_biblio_mode_module.js": {
+        "git_blob": "8daa3574975fbdf2e5fc37ed2908c4f89a018e99",
+        "sha256": "c328378e3f7632f8fb65a0fe5e114d673b165067e5aaefc75f4bc9d644d29dfa"
+      },
+      "app/tests/unit/frontend_chat/test_canonical_chat_submission.js": {
+        "git_blob": "06b0f096aacf0140c91638de866523ee0a14e9b5",
+        "sha256": "e7068869c7fa9945c07f8b843cd6c16409a073de1efdbf89b687de1e0ad688ca"
+      },
+      "app/tests/unit/frontend_chat/test_chat_copy_export_module.js": {
+        "git_blob": "d3656d60157022c3bab38f06371176fb67bd4483",
+        "sha256": "20c0f08aaaa5dfd641d419fff46b9e73bb0e187f770923ee2e21bf1b2788d9cf"
+      },
+      "app/tests/unit/frontend_chat/test_chat_theme_module.js": {
+        "git_blob": "db40382a820e80a6fcc37671ef6459721fd10cfe",
+        "sha256": "d2fb0203d328f0d7df097d25a429b677142bf0fcb4bab341a26b02fe8b3ae0d9"
+      },
+      "app/tests/unit/frontend_chat/test_dialogue_audio_client_module.js": {
+        "git_blob": "38dbb51a22f5498ba4e967a4383062f8a4656e9c",
+        "sha256": "070077262e9a59715b6fc7dd89cfdd752e5d409d54667aab2fb9b421de2d2c08"
+      },
+      "app/tests/unit/frontend_chat/test_dialogue_mode_module.js": {
+        "git_blob": "2655a783dc15279c8db00e10f7736a6ede5ecf3b",
+        "sha256": "04a77b8bf3d38390765f146f2b04736eb2aada8c4d0e5bbc07b80b9ea86b39a2"
+      },
+      "app/tests/unit/frontend_chat/test_dialogue_session_controller_module.js": {
+        "git_blob": "b532ba94909ef4b8de7d17091367b541731394d7",
+        "sha256": "7564dd44a691017c83a23659120415f9e8e3ab95a75436d4bd4071db654d2c27"
+      },
+      "app/tests/unit/frontend_chat/test_dialogue_vad_recorder_module.js": {
+        "git_blob": "5c20d4d7d38511a0d90390ffda01ab7cac77b13c",
+        "sha256": "591dc3a15cd9c2c8e4ef49f06a098aa6f248e20637428b420dc53b113e858393"
+      },
+      "app/tests/unit/frontend_chat/test_dialogue_vad_runtime_module.js": {
+        "git_blob": "f9b64a73d58bed42ed369bc59369bfcf2baa5714",
+        "sha256": "37b038ab1024e09f30fab0eaae33fcf1f4f82b3b5b838a565ee0da88f65e22cf"
+      },
+      "app/tests/unit/frontend_chat/test_dialogue_vad_utterance_regression.js": {
+        "git_blob": "0a96c989f5cc6d5bda4a1ff641781a4dc91e6a1a",
+        "sha256": "45bcff5b2db13363b53e6e11d4eb8044e94eafb1114b44f2f436ee65c37c3de8"
+      },
+      "app/tests/unit/frontend_chat/test_dialogue_vad_vendor_contract.js": {
+        "git_blob": "4c055c94776b0e85359f161c7d8395c215ec1ede",
+        "sha256": "3d3c63d52f1c9df9a92ee6e18d553e915af6e24081a0ef620f20d1cf90efbb96"
+      },
+      "app/tests/unit/frontend_chat/test_hermeneutic_admin_render_scopes.js": {
+        "git_blob": "1e9149fbe3c83d66e23436ace624f28efdc21554",
+        "sha256": "884ea5b73e28fb7f584135a0493f4cf4010a31a17451c9253cea5a47502651ce"
+      },
+      "app/tests/unit/frontend_chat/test_image_generation_module.js": {
+        "git_blob": "f3a277dc44c064fe2bb5e7b1786bad6bef42f5ce",
+        "sha256": "d5c7e050930d984baad69ad9b92b96868bcd1dac39e59f59376ae66bddab8897"
+      },
+      "app/tests/unit/frontend_chat/test_log_filter_signature_module.js": {
+        "git_blob": "95dbcd43eba807694dddc6f7e965fc6d47cd9221",
+        "sha256": "c1389e42116d38951c13e4aca4e82b3407261cd1f12aa5ef7bbc430a69618e31"
+      },
+      "app/tests/unit/frontend_chat/test_lot9_load_order_golden.js": {
+        "git_blob": "b13b62274be9798842dc9bebae05e7d89ecd5583",
+        "sha256": "3760125fc15d533cf3e750b88869435d9fec25b4a93a0ed873fda7cd8855744d"
+      },
+      "app/tests/unit/frontend_chat/test_main_reasoning_control_module.js": {
+        "git_blob": "3403bb2f9f46c5813ce9fba90bed99227d446515",
+        "sha256": "498bd421a9badb59e97a48293d5468ec9523f95e1e38e105061c9f6ca97763e2"
+      },
+      "app/tests/unit/frontend_chat/test_notes_mode_module.js": {
+        "git_blob": "0deb7ada8d266ea6def90eff9fe0ef04d61ba519",
+        "sha256": "bab37336058118981e0a2964a7d6faf63fb9f28c14d783f394a1ac61d26468a9"
+      },
+      "app/tests/unit/frontend_chat/test_stream_control_parser_module.js": {
+        "git_blob": "36dbeaa0f5f0d7f9b6b646e422bba303f03d8fa3",
+        "sha256": "27592e65fef8eb4ee2c3acfc622f7fb4fbb2036d7d3bdade14d7ecdd68ddc775"
+      },
+      "app/tests/unit/frontend_chat/test_streaming_ui_state_module.js": {
+        "git_blob": "c2c41c321d6f904490caaf725f91affb7af293d1",
+        "sha256": "a5dc4751b31a2d840dfc51037fc7f4177ac4b1bafca8e043ef4a7a1a79ce2ecb"
+      },
+      "app/tests/unit/frontend_chat/test_threads_folder_binding_module.js": {
+        "git_blob": "f75c6107e5b5260556ff5e51ad067ac53736d80a",
+        "sha256": "cad0e73073e023371fa96d34f276fa4db404dae66839cad2685dd95aad06c3b8"
+      },
+      "app/tests/unit/frontend_chat/test_threads_list_renderer_module.js": {
+        "git_blob": "e601775d3c74e1e3551fbd9526bb9105d39986ac",
+        "sha256": "fb203cb755b8f9a6cb2b0bab3f089a38dbe18f974266f01f6d181fddca7ec906"
+      },
+      "app/tests/unit/frontend_chat/test_threads_sidebar_module.js": {
+        "git_blob": "ad5bab0183070cbb043866a2f40ead50e73fe88e",
+        "sha256": "6baddd42d757530141787f6eec8a231a15cf5c8e07d50ea59548e7a04a870530"
+      },
+      "app/tests/unit/frontend_chat/test_validation_projection_module.js": {
+        "git_blob": "a854d0aec5d2b9c24b29a804aa8d3e726502cc8a",
+        "sha256": "f665d04a25a6486045e458f536473fa38fa246a292b1dab2593e9c7a9140700f"
+      },
+      "app/tests/unit/frontend_chat/test_whisper_dictation_module.js": {
+        "git_blob": "d9368d26a6d5c253a3a98db62caee90415e59f75",
+        "sha256": "e53cd569c98b068228ea8878c758296b9b33e88c36704029956e4351d2bd3e5e"
+      },
+      "app/tests/unit/frontend_chat/test_workspace_folder_exports_module.js": {
+        "git_blob": "83b79daa8755c5551621f4193fa26cdcd7d1c2ca",
+        "sha256": "aa6266c94dbda3ac0ef22e87f17dd9a4bc91be372e0d8f06cb29ee4949109ffa"
+      },
+      "app/tests/unit/frontend_chat/test_workspace_folder_exports_panel_module.js": {
+        "git_blob": "672e924d497bbce63fe25bb9461412bc445e69b3",
+        "sha256": "d796394be9ffc9be407d2fb6a523f62487b0469c6448206e026e0c7685a08b73"
+      },
+      "app/tests/unit/frontend_chat/test_workspace_folder_generated_images_module.js": {
+        "git_blob": "8d5492f670770306f1602c4f439ba9d953fcf096",
+        "sha256": "84a59221964b362b428b7d837823d09b75a642b6a9268a99e5d958158cb311b0"
+      },
+      "app/tests/unit/frontend_chat/test_workspace_folder_generated_images_panel_module.js": {
+        "git_blob": "bbe55f2e0d48c3a25aecb27d03245670f69bccc5",
+        "sha256": "7f7cd7dbca974c0655814530671bcfc3575299cf85bc6db67f0bef0ed9cd5098"
+      },
+      "app/tests/unit/frontend_chat/test_workspace_folder_notes_panel_module.js": {
+        "git_blob": "7bee4f00d3d76f2373a7978e8efa7f902046958b",
+        "sha256": "2209a1bde999923102cb1922c9e1cf9823216f4e2ae27cd94bce7429a95a58f9"
+      },
+      "app/tests/unit/frontend_chat/test_workspace_folder_sidebar_boundaries.js": {
+        "git_blob": "dac5eac936112f5324ba9cba321f60dc5ce95b19",
+        "sha256": "1a815de60c45bad8e1ba9b5ef8a7be7e7d1beb76fc3fab3b62b8fad8197fdfc7"
+      },
+      "app/tests/unit/frontend_chat/test_workspace_folders_module.js": {
+        "git_blob": "f1ccce29422300c183a2e1b82ccd5d14e6cd2cd5",
+        "sha256": "fda889ce52b84798f0211a5cafdee565454ca9b2b21da9465b2ae75a6ec5a3b6"
+      },
+      "app/tests/integration/frontend_browser/test_frontend_browser_active_documents.js": {
+        "git_blob": "af7700c40e2c7f4f7e02a27bf0de359b45145281",
+        "sha256": "44f1e21c7ab166e1ab11c5ab575c6ce26406584755be45c07476c383b8d536d4"
+      },
+      "app/tests/integration/frontend_browser/test_frontend_browser_adobe_mode.js": {
+        "git_blob": "c762bc2932312f34ee555fa855271734762e5991",
+        "sha256": "59dd98da3d588178a5501e6211b4ba7778ab6efbc0e3912458d47d27e82027de"
+      },
+      "app/tests/integration/frontend_browser/test_frontend_browser_document_adoption.js": {
+        "git_blob": "44f45f17dc33c42410283bbc5c2a67ddf9c84111",
+        "sha256": "5c5a47d8cb4f7d4206457c982de696c4efe096625c16cb231a451c021c06d5e2"
+      },
+      "app/tests/integration/frontend_browser/test_frontend_browser_document_adoption_reasons.js": {
+        "git_blob": "e42dc0996c13fbefc754b79da1d71a2a121d7322",
+        "sha256": "fab7f08fafbaee25822803a75277120989225771c3f4e3282f5c7302337851ec"
+      },
+      "app/tests/integration/frontend_browser/test_frontend_browser_document_inventory_publication.js": {
+        "git_blob": "896091271a66698effb9558ba0f5af5ba97821a8",
+        "sha256": "d4d72c596271e7e4c3659cff2f76bcd50b7195d0ad9f6fc0c9d1d7a72c42d262"
+      },
+      "app/tests/integration/frontend_browser/test_frontend_browser_document_workshop.js": {
+        "git_blob": "dbe78c800d826da31c8bf7412b5503cb4989bf9e",
+        "sha256": "76471b84098022aa67aa73de803dae431870a8cc41104ab9df43bd42003559d6"
+      },
+      "app/tests/integration/frontend_browser/test_frontend_browser_identity_governance.js": {
+        "git_blob": "dcae303253ba989c8eed8d448bab42dcc663c7a5",
+        "sha256": "e8d941155ce11da3f80ce2a4ed50866d8f16619cc24817bad8929228b2d8026f"
+      },
+      "app/tests/integration/frontend_browser/test_frontend_browser_smoke.js": {
+        "git_blob": "8ab8c38f355237005082e503592d06c8d68bc80d",
+        "sha256": "4aa0c27198d3d3712aaac744c21a9a81dcd9d9f44f553353a3b9a631d07e3c7f"
+      },
+      "app/tests/integration/frontend_browser/test_frontend_browser_workspace_folders.js": {
+        "git_blob": "294e0479f4a4bfedc5111dd5e8c72de0c6953bde",
+        "sha256": "7ebc9af08d3e52318ec934e4161a410e9da83fc9032accde913af647ca53021b"
+      },
+      "app/tests/integration/frontend_browser/test_frontend_browser_document_preparation_m4.js": {
+        "git_blob": "371ea8eca82fb1e04c885841f2878b32604e26e6",
+        "sha256": "229ab5ddd6e74d185d6c3ee3bc02dc0806dc61e8eeaa3b05b3a4a70b0387b71d"
+      }
+    },
+    "frontend_file_intersections": {
+      "node_historical": 0,
+      "node_m4": 0,
+      "historical_m4": 0
+    },
+    "backend_module_intersections": 0
+  },
+  "identifier_validation": {
+    "kind": "collection_and_resolution_only_not_execution",
+    "module": "tests.integration.document_workshop.test_action_cancellation_postgresql",
+    "cases_collected": 21,
+    "old_ids_loading_errors": 21,
+    "per_id_validation": [
+      {
+        "id": "tests.integration.document_workshop.test_action_cancellation_postgresql.ActionCancellationPostgresqlTests.test_absent_action_and_wrong_context_do_not_mutate_preparing_successor",
+        "loaded_tests": 1,
+        "loading_errors": 0,
+        "method_name": "test_absent_action_and_wrong_context_do_not_mutate_preparing_successor",
+        "id_preserved": true
+      },
+      {
+        "id": "tests.integration.document_workshop.test_action_cancellation_postgresql.ActionCancellationPostgresqlTests.test_action_local_cancel_preserves_scope_round_trip_invalidation_trigger",
+        "loaded_tests": 1,
+        "loading_errors": 0,
+        "method_name": "test_action_local_cancel_preserves_scope_round_trip_invalidation_trigger",
+        "id_preserved": true
+      },
+      {
+        "id": "tests.integration.document_workshop.test_action_cancellation_postgresql.ActionCancellationPostgresqlTests.test_action_local_cancel_preserves_selected_source_change_invalidation_trigger",
+        "loaded_tests": 1,
+        "loading_errors": 0,
+        "method_name": "test_action_local_cancel_preserves_selected_source_change_invalidation_trigger",
+        "id_preserved": true
+      },
+      {
+        "id": "tests.integration.document_workshop.test_action_cancellation_postgresql.ActionCancellationPostgresqlTests.test_all_terminal_cancellations_are_idempotent_and_preserve_successor",
+        "loaded_tests": 1,
+        "loading_errors": 0,
+        "method_name": "test_all_terminal_cancellations_are_idempotent_and_preserve_successor",
+        "id_preserved": true
+      },
+      {
+        "id": "tests.integration.document_workshop.test_action_cancellation_postgresql.ActionCancellationPostgresqlTests.test_cancel_expired_old_preparation_preserves_lost_claim_and_new_successor",
+        "loaded_tests": 1,
+        "loading_errors": 0,
+        "method_name": "test_cancel_expired_old_preparation_preserves_lost_claim_and_new_successor",
+        "id_preserved": true
+      },
+      {
+        "id": "tests.integration.document_workshop.test_action_cancellation_postgresql.ActionCancellationPostgresqlTests.test_cancel_old_pending_preserves_concurrent_normal_chat",
+        "loaded_tests": 1,
+        "loading_errors": 0,
+        "method_name": "test_cancel_old_pending_preserves_concurrent_normal_chat",
+        "id_preserved": true
+      },
+      {
+        "id": "tests.integration.document_workshop.test_action_cancellation_postgresql.ActionCancellationPostgresqlTests.test_cancel_old_pending_preserves_preparing_successor_authority_and_result",
+        "loaded_tests": 1,
+        "loading_errors": 0,
+        "method_name": "test_cancel_old_pending_preserves_preparing_successor_authority_and_result",
+        "id_preserved": true
+      },
+      {
+        "id": "tests.integration.document_workshop.test_action_cancellation_postgresql.ActionCancellationPostgresqlTests.test_cancel_old_pending_waits_for_successor_commit_then_is_terminal_noop",
+        "loaded_tests": 1,
+        "loading_errors": 0,
+        "method_name": "test_cancel_old_pending_waits_for_successor_commit_then_is_terminal_noop",
+        "id_preserved": true
+      },
+      {
+        "id": "tests.integration.document_workshop.test_action_cancellation_postgresql.ActionCancellationPostgresqlTests.test_cancel_pending_action_update_failure_preserves_successor_and_context",
+        "loaded_tests": 1,
+        "loading_errors": 0,
+        "method_name": "test_cancel_pending_action_update_failure_preserves_successor_and_context",
+        "id_preserved": true
+      },
+      {
+        "id": "tests.integration.document_workshop.test_action_cancellation_postgresql.ActionCancellationPostgresqlTests.test_cancel_pending_does_not_lock_or_change_historical_succeeded_claim",
+        "loaded_tests": 1,
+        "loading_errors": 0,
+        "method_name": "test_cancel_pending_does_not_lock_or_change_historical_succeeded_claim",
+        "id_preserved": true
+      },
+      {
+        "id": "tests.integration.document_workshop.test_action_cancellation_postgresql.ActionCancellationPostgresqlTests.test_cancel_pending_is_idempotent_and_preserves_succeeded_claim_and_revision",
+        "loaded_tests": 1,
+        "loading_errors": 0,
+        "method_name": "test_cancel_pending_is_idempotent_and_preserves_succeeded_claim_and_revision",
+        "id_preserved": true
+      },
+      {
+        "id": "tests.integration.document_workshop.test_action_cancellation_postgresql.ActionCancellationPostgresqlTests.test_cancel_preparing_action_lock_conflicts_without_partial_mutation",
+        "loaded_tests": 1,
+        "loading_errors": 0,
+        "method_name": "test_cancel_preparing_action_lock_conflicts_without_partial_mutation",
+        "id_preserved": true
+      },
+      {
+        "id": "tests.integration.document_workshop.test_action_cancellation_postgresql.ActionCancellationPostgresqlTests.test_cancel_preparing_action_update_failure_rolls_back_claim_and_authority",
+        "loaded_tests": 1,
+        "loading_errors": 0,
+        "method_name": "test_cancel_preparing_action_update_failure_rolls_back_claim_and_authority",
+        "id_preserved": true
+      },
+      {
+        "id": "tests.integration.document_workshop.test_action_cancellation_postgresql.ActionCancellationPostgresqlTests.test_cancel_preparing_claim_lock_conflicts_without_partial_mutation",
+        "loaded_tests": 1,
+        "loading_errors": 0,
+        "method_name": "test_cancel_preparing_claim_lock_conflicts_without_partial_mutation",
+        "id_preserved": true
+      },
+      {
+        "id": "tests.integration.document_workshop.test_action_cancellation_postgresql.ActionCancellationPostgresqlTests.test_cancel_preparing_claim_update_failure_rolls_back_action_and_authority",
+        "loaded_tests": 1,
+        "loading_errors": 0,
+        "method_name": "test_cancel_preparing_claim_update_failure_rolls_back_action_and_authority",
+        "id_preserved": true
+      },
+      {
+        "id": "tests.integration.document_workshop.test_action_cancellation_postgresql.ActionCancellationPostgresqlTests.test_cancel_preparing_successor_closes_real_http_socket_without_cancelling_old_pending",
+        "loaded_tests": 1,
+        "loading_errors": 0,
+        "method_name": "test_cancel_preparing_successor_closes_real_http_socket_without_cancelling_old_pending",
+        "id_preserved": true
+      },
+      {
+        "id": "tests.integration.document_workshop.test_action_cancellation_postgresql.ActionCancellationPostgresqlTests.test_cancel_preparing_successor_preserves_old_pending_and_fences_late_result",
+        "loaded_tests": 1,
+        "loading_errors": 0,
+        "method_name": "test_cancel_preparing_successor_preserves_old_pending_and_fences_late_result",
+        "id_preserved": true
+      },
+      {
+        "id": "tests.integration.document_workshop.test_action_cancellation_postgresql.ActionCancellationPostgresqlTests.test_cancel_successor_before_final_transaction_prevents_commit_and_preserves_old_pending",
+        "loaded_tests": 1,
+        "loading_errors": 0,
+        "method_name": "test_cancel_successor_before_final_transaction_prevents_commit_and_preserves_old_pending",
+        "id_preserved": true
+      },
+      {
+        "id": "tests.integration.document_workshop.test_action_cancellation_postgresql.ActionCancellationPostgresqlTests.test_cancel_successor_waits_for_commit_and_preserves_completed_claim",
+        "loaded_tests": 1,
+        "loading_errors": 0,
+        "method_name": "test_cancel_successor_waits_for_commit_and_preserves_completed_claim",
+        "id_preserved": true
+      },
+      {
+        "id": "tests.integration.document_workshop.test_action_cancellation_postgresql.ActionCancellationPostgresqlTests.test_new_explicit_turn_after_pending_cancel_preserves_repeat_identity_without_replay",
+        "loaded_tests": 1,
+        "loading_errors": 0,
+        "method_name": "test_new_explicit_turn_after_pending_cancel_preserves_repeat_identity_without_replay",
+        "id_preserved": true
+      },
+      {
+        "id": "tests.integration.document_workshop.test_action_cancellation_postgresql.ActionCancellationPostgresqlTests.test_without_cancel_successor_supersedes_old_pending",
+        "loaded_tests": 1,
+        "loading_errors": 0,
+        "method_name": "test_without_cancel_successor_supersedes_old_pending",
+        "id_preserved": true
+      }
+    ],
+    "distinct_ids_sha256": "a9aafbac65887a0443b21a3e89bd40688f57a24742316251cfad3d1eb3622b20",
+    "digest_encoding": "SHA256 UTF-8 sorted unique IDs joined by LF, no trailing LF",
+    "final_sql_cases_collected": 142,
+    "legacy_sql_digest_encoding_verified": "SHA256 UTF-8 sorted IDs with duplicated method suffix joined by LF, no trailing LF",
+    "final_sql_ids_sha256_without_trailing_newline": "2dc4e149abf386aba069f64a73ed4668f1dc04ffb56677e6d33a661014b24349",
+    "historical_sql_digest": "264e3006ce8cf9b741cc4dce83b54740ef30df9f6e71fd9837dea9ecd9044444",
+    "cancellation_module_sha256": "bdb1e54be3223a289bf162cd13dfb0536cd4feb6bd9d6d51cf3fb77886a78ef9",
+    "historical_module_sha256": "bdb1e54be3223a289bf162cd13dfb0536cd4feb6bd9d6d51cf3fb77886a78ef9",
+    "historical_lists_checked": [
+      {
+        "path": "p2-m4-01.targeted_sql.runs[2].executed_test_ids",
+        "case_count": 17,
+        "same_21_cases": false
+      },
+      {
+        "path": "p2-m4-01.targeted_sql.runs[3].executed_test_ids",
+        "case_count": 21,
+        "same_21_cases": true
+      },
+      {
+        "path": "p2-m4-01.targeted_sql.runs[4].executed_test_ids",
+        "case_count": 21,
+        "same_21_cases": true
+      },
+      {
+        "path": "p2-m4-02.baseline.selections.sql.test_ids",
+        "case_count": 21,
+        "same_21_cases": true
+      },
+      {
+        "path": "p2-m4-02.final.selections.sql.test_ids",
+        "case_count": 21,
+        "same_21_cases": true
+      }
+    ],
+    "argv": [
+      "docker",
+      "run",
+      "--name",
+      "fridadev-p3-m4-03-ids-20261006",
+      "--rm",
+      "--pull=never",
+      "--network",
+      "none",
+      "--read-only",
+      "--tmpfs",
+      "/tmp:rw,nosuid,nodev",
+      "-v",
+      "/opt/platform/fridadev:/workspace:ro",
+      "-v",
+      "/tmp/fridadev-p3-m4-03-20261006-vn2luN:/proof:ro",
+      "-w",
+      "/workspace/app",
+      "--entrypoint",
+      "/usr/bin/env",
+      "sha256:486a8afeb2f62c7906194d3e1fee839387e55753bcad365120d18306502fafdc",
+      "-i",
+      "PATH=/usr/local/bin:/usr/bin:/bin",
+      "HOME=/tmp",
+      "PYTHONDONTWRITEBYTECODE=1",
+      "PYTHONPATH=/workspace",
+      "EMBED_BASE_URL=https://embed.invalid",
+      "CRAWL4AI_URL=https://crawl.invalid",
+      "SEARXNG_URL=https://search.invalid",
+      "python",
+      "-c",
+      "import runpy; runpy.run_path('/proof/validate_metadata.py',run_name='__main__')"
+    ],
+    "exit": 0,
+    "wall_seconds": 0.9413084741681814,
+    "tested_source_commit": "674150d913e3402819a1c307876427d59d6791e4",
+    "original_field_source": {
+      "date": "2026-10-06",
+      "artifact": "frida-v1-document-workshop-p2-m4-01-20261006.json",
+      "pointer": "/new_sql_test_ids",
+      "original_git_blob": "a428bcfdf56493b8980b0ac86a12dcb55ce12314"
+    },
+    "current_authoritative_reusable_field": "frida-v1-document-workshop-p2-m4-01-20261006.json#/new_sql_test_ids",
+    "historical_green_execution": {
+      "date": "2026-10-06",
+      "artifact": "frida-v1-document-workshop-p2-m4-01-20261006.json",
+      "pointer": "/targeted_sql/runs/4",
+      "original_git_blob": "a428bcfdf56493b8980b0ac86a12dcb55ce12314"
+    },
+    "historical_green_execution_metrics": {
+      "tests": 21,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 21.195,
+      "exit": 0,
+      "log_sha256": "cfa264d557909c4d5449eec442c5e6ed0adcd2601263b10be0e06e4f3c8353c9"
+    },
+    "all_original_method_names_preserved": true,
+    "no_duplicate_ids": true,
+    "setUp_or_SQL_executed": false,
+    "validation_program": "import unittest, json, hashlib\nfrom pathlib import Path\nROOT=Path('/workspace/app/docs/states/baselines/document-workshop')\nd=json.loads((ROOT/'frida-v1-document-workshop-p2-m4-01-20261006.json').read_text())\noriginal=json.loads(Path('/proof/original-p2-m4-01.json').read_text())\nold=original['new_sql_test_ids']; module='tests.integration.document_workshop.test_action_cancellation_postgresql'\ndef flatten(s):\n for t in s:\n  if isinstance(t,unittest.TestSuite): yield from flatten(t)\n  else: yield t\nloader=unittest.TestLoader(); cases=list(flatten(loader.loadTestsFromName(module)))\nassert not loader.errors\nids=[t.id() for t in cases]; assert len(ids)==len(set(ids))==21\nbad=[]\nfor value in old:\n l=unittest.TestLoader(); s=l.loadTestsFromName(value)\n bad.append({'id':value,'loading_errors':len(l.errors),'loaded_test_placeholders':s.countTestCases()})\nassert all(x['loading_errors']==1 for x in bad)\nassert [x.rsplit('.',1)[0] for x in old]==ids\nassert d['new_sql_test_ids']==ids\nrows=[]\nfor value in ids:\n l=unittest.TestLoader(); loaded=list(flatten(l.loadTestsFromName(value)))\n assert not l.errors and len(loaded)==1 and loaded[0].id()==value\n assert loaded[0]._testMethodName==value.rsplit('.',1)[1]\n rows.append({'id':value,'loaded_tests':len(loaded),'loading_errors':len(l.errors),'method_name':loaded[0]._testMethodName,'id_preserved':True})\ndef digest(values): return hashlib.sha256(('\\n'.join(sorted(set(values)))+'\\n').encode()).hexdigest()\nsel_loader=unittest.TestLoader(); all_ids=[]\nfor s in d['final']['sql']['selectors']: all_ids.extend(t.id() for t in flatten(sel_loader.loadTestsFromName(s)))\nassert not sel_loader.errors and len(all_ids)==len(set(all_ids))==142\nother=json.loads((ROOT/'frida-v1-document-workshop-p2-m4-02-20261006.json').read_text())\n# Inspect every list carrying executable IDs; the corrected module must match all historical successful lists.\nsuccess_lists=[]\ndef scan(obj,path):\n if isinstance(obj,dict):\n  for k,v in obj.items(): scan(v,path+'.'+k)\n elif isinstance(obj,list):\n  if obj and all(isinstance(x,str) for x in obj):\n   found=[x for x in obj if x.startswith(module+'.')]\n   if found: success_lists.append({'path':path,'case_count':len(found),'same_21_cases':set(found)==set(ids)})\n  else:\n   for i,v in enumerate(obj):scan(v,path+'['+str(i)+']')\nassert all_ids==other['baseline']['selections']['sql']['test_ids']\nlegacy_sql_digest=hashlib.sha256('\\n'.join(sorted(x+'.'+x.rsplit('.',1)[1] for x in all_ids)).encode()).hexdigest()\nassert legacy_sql_digest==original['final']['sql']['distinct_test_ids_sha256']\nscan(d['targeted_sql'],'p2-m4-01.targeted_sql');scan(other['baseline'],'p2-m4-02.baseline');scan(other['final'],'p2-m4-02.final')\nassert all(x['same_21_cases'] for x in success_lists if x['case_count']==21)\nprint(json.dumps({'kind':'collection_and_resolution_only_not_execution','module':module,'cases_collected':21,'ids':ids,'old_ids_loading_errors':sum(x['loading_errors'] for x in bad),'old_id_checks':bad,'per_id_validation':rows,'distinct_ids_sha256':hashlib.sha256('\\n'.join(sorted(ids)).encode()).hexdigest(),'digest_encoding':'SHA256 UTF-8 sorted unique IDs joined by LF, no trailing LF','final_sql_cases_collected':142,'legacy_sql_digest_encoding_verified':'SHA256 UTF-8 sorted IDs with duplicated method suffix joined by LF, no trailing LF','final_sql_ids_sha256_without_trailing_newline':hashlib.sha256('\\n'.join(sorted(set(all_ids))).encode()).hexdigest(),'historical_sql_digest':d['final']['sql']['distinct_test_ids_sha256'],'cancellation_module_sha256':hashlib.sha256(Path('/workspace/app/tests/integration/document_workshop/test_action_cancellation_postgresql.py').read_bytes()).hexdigest(),'historical_module_sha256':d['targeted_sql']['module_sha256'],'historical_lists_checked':success_lists},indent=2))\n",
+    "validation_program_setup": "git show 674150d913e3402819a1c307876427d59d6791e4:app/docs/states/baselines/document-workshop/frida-v1-document-workshop-p2-m4-01-20261006.json > $PROOF/original-p2-m4-01.json; write validation_program to $PROOF/validate_metadata.py; bind $PROOF read-only at /proof; use argv with the current docs-corrected checkout read-only at /workspace. The program loads but never runs test cases."
+  },
+  "overlaps_and_separate_evidence": {
+    "new_executed_frontend_subset_cases": 531,
+    "new_full_comparison_run": false,
+    "initial_frontend_file_intersections": {
+      "node_historical": 0,
+      "node_m4": 0,
+      "historical_m4": 0
+    },
+    "initial_backend_module_intersections": 0,
+    "backend_overlap_check": "initial final Python, SQL and vector selectors are unique and pairwise disjoint; no backend execution repeated",
+    "P2_M4_01_delta": {
+      "SQL": 21,
+      "Chromium_M4": 1,
+      "total": 22,
+      "1414_plus_delta": 1436
+    },
+    "P2_M4_02_delta": {
+      "Python": 2,
+      "SQL": 9,
+      "total": 11,
+      "1436_plus_delta": 1447
+    },
+    "targeted_subsets": "Initial SQL118, SQL39, Python324, transport89, failure25, constitutive8 overlap; P2-M4-01 SQL21/browser2 and P2-M4-02 SQL9/unit36 overlap their comparisons. Never add targeted/control/intermediate runs to integral totals.",
+    "capsule_outside_comparison": {
+      "source": {
+        "date": "2026-10-06",
+        "artifact": "frida-v1-document-workshop-p2-m4-02-20261006.json",
+        "pointer": "/delta/targeted_only_preexisting_case_ids",
+        "original_git_blob": "f464c0e84b6ebb554f02c3d57aa03719b4d88ca7"
+      },
+      "cases": 11,
+      "included_in_1447": false,
+      "reexecuted_in_P3": false
+    },
+    "independent_probes": {
+      "source": "user P3-M4-03 counter-audit mission, 2026-10-06",
+      "reported_count": 3,
+      "identifiers_results_and_logs": "not supplied in this mission or recovered in the three retained artifacts; no outcome asserted",
+      "included_in_comparison_totals": false,
+      "reexecuted_in_P3": false
+    }
+  },
+  "isolation": {
+    "preexisting_images": {
+      "python": "sha256:486a8afeb2f62c7906194d3e1fee839387e55753bcad365120d18306502fafdc",
+      "playwright": "sha256:55dfaaa282c98d5f4d328676e36eca5203b6494b97d9ef3ba0608d9e939e9523"
+    },
+    "versions_observed": {
+      "python": "3.11.15",
+      "node": "22.17.0"
+    },
+    "install_or_pull": false,
+    "network": "none; synthetic static browser HTTP loopback inside proof container only",
+    "checkout_archive_rootfs_and_dependencies": "read-only; /tmp tmpfs; env -i; PYTHONDONTWRITEBYTECODE=1",
+    "DB_socket_or_operator_data_mounted": false,
+    "backend_test_execution": false,
+    "runtime_or_live_calls": false,
+    "archive_harness_adaptation": "empty node_modules mountpoint plus existing dependencies/browser cache read-only; no versioned source change. Identifier validator uses python -c/runpy to retain app cwd in sys.path, like python -m unittest."
+  },
+  "intermediate_harness_observations": [
+    {
+      "stage": "first identifier collection",
+      "exit": 1,
+      "observation": "running the scratch file directly made /proof sys.path[0], so core imports failed before module collection",
+      "correction": "python -c/runpy preserves cwd entry; sources unchanged; final validation exit 0"
+    },
+    {
+      "stage": "first frontend registration summary",
+      "container_exit": 0,
+      "host_summary_exit": 1,
+      "observation": "asserting unique names ignored 11 repeated Node test labels",
+      "correction": "identity uses file plus registration index and name; all 424 registrations kept; executed TAP count/name multiset unchanged"
+    }
+  ],
+  "limits": {
+    "response_format": "synthetic builder manifest includes the trailing estimation row; current runtime builder emits no response_format; unchanged, no application fix",
+    "historical_log_digests": "Historical logs were removed by their original lots. Stored hashes identify declared logs, not a standalone proof of execution; all old metrics/log digests are preserved. New replays have their own observed metrics and TAP digests.",
+    "live_obligations": "operator migrations, deployment/health, OpenRouter/DAV live and Safari hardware remain separate and open; no implicit canary, rebuild or M5 authorization"
+  },
+  "counter_audit": {
+    "date": "2026-10-06",
+    "independent": true,
+    "reviewer": "p3_documentary_counteraudit",
+    "read_only": true,
+    "new_test_execution": false,
+    "temporary_resources_created": false,
+    "status": "favorable; no living documentary finding after encoding correction",
+    "checks": [
+      "1495 archive blobs and 44 frontend fingerprints match initial commit",
+      "34 Node files and nine historical Chromium files, actual TAP424/107, metrics/digests/names agree",
+      "21 reusable IDs match real methods and unchanged module; primary TestLoader validation inspected",
+      "valid21/142 IDs fingerprints and historical SQL doubled-method fingerprint recomputed",
+      "four JSONs,81 links/anchors,unchanged historical fields and coherent chronology/status",
+      "docs-only diff; recorded branch refs unchanged"
+    ],
+    "corrected_review_note": {
+      "severity": "P3 documentary reproducibility",
+      "issue": "frontend registration digest byte encoding not explicit",
+      "resolution": "registration_digest_encoding now specifies file::index::name, lexical sort, UTF-8, LF separators, no trailing LF; all three digests reproduced"
+    },
+    "limits": "No product or SQL test rerun by reviewer; no live/runtime/M5 approval. Final cleanup and Git delivery are checked by root."
+  },
+  "cleanup": {
+    "status": "verified absent",
+    "owned_temporary_tree": "/tmp/fridadev-p3-m4-03-20261006-vn2luN",
+    "temporary_tree_and_prefix_absent": true,
+    "owned_container_prefix": "fridadev-p3-m4-03",
+    "owned_container_prefix_inventory_empty": true,
+    "ephemeral_proof_runners_removed_by_rm": true,
+    "new_TAP_logs_removed": 2,
+    "archive_and_scratch_programs_removed": true,
+    "DB_containers_or_sockets_created": false,
+    "other_or_operator_resources_touched": false,
+    "verification": "Exact owned tree removed, /tmp prefix inventory empty, docker ps -a name filter inventory empty before and after removal. No existing image/dependency/browser cache removed."
+  },
+  "git_delivery": "enclosing commit, parent and verified push reported in final response; no self-referential commit hash",
+  "documentary_controls": {
+    "date": "2026-10-06",
+    "static_docs_validation": {
+      "argv": [
+        "docker",
+        "run",
+        "--name",
+        "fridadev-p3-m4-03-docs-20261006",
+        "--rm",
+        "--pull=never",
+        "--network",
+        "none",
+        "--read-only",
+        "--tmpfs",
+        "/tmp:rw,nosuid,nodev",
+        "-v",
+        "/opt/platform/fridadev:/workspace:ro",
+        "-v",
+        "/tmp/fridadev-p3-m4-03-20261006-vn2luN:/proof:ro",
+        "-w",
+        "/workspace/app",
+        "--entrypoint",
+        "/usr/bin/env",
+        "sha256:486a8afeb2f62c7906194d3e1fee839387e55753bcad365120d18306502fafdc",
+        "-i",
+        "PATH=/usr/local/bin:/usr/bin:/bin",
+        "HOME=/tmp",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "PYTHONPATH=/workspace",
+        "EMBED_BASE_URL=https://embed.invalid",
+        "CRAWL4AI_URL=https://crawl.invalid",
+        "SEARXNG_URL=https://search.invalid",
+        "python",
+        "-c",
+        "import runpy;runpy.run_path('/proof/validate_docs.py',run_name='__main__')"
+      ],
+      "exit": 0,
+      "wall_seconds": 0.44531226996332407,
+      "checks": {
+        "JSON_files_valid": 4,
+        "historical_fields_preserved": true,
+        "arithmetic_exact": true,
+        "selectors_and_commits_valid": true,
+        "frontend_logs_and_collection_match": true,
+        "valid_reusable_ids": 21,
+        "local_links_and_anchors_checked": 81,
+        "current_vs_historical_statuses_checked": true,
+        "no_full_comparison_executed": true,
+        "registration_digest_encodings_validated": 3
+      }
+    },
+    "scope_and_archive_validation": {
+      "complete_archive_git_blobs_verified": 1495,
+      "durable_changes_only_app_docs": true,
+      "files": [
+        "app/docs/README.md",
+        "app/docs/states/baselines/document-workshop/frida-v1-document-workshop-m4-20261006.json",
+        "app/docs/states/baselines/document-workshop/frida-v1-document-workshop-p2-m4-01-20261006.json",
+        "app/docs/states/baselines/document-workshop/frida-v1-document-workshop-p2-m4-02-20261006.json",
+        "app/docs/states/specs/frida-v1-document-workshop-m4-contract.md",
+        "app/docs/todo-todo/product/frida-v1-document-workshop-todo.md",
+        "app/docs/states/baselines/document-workshop/frida-v1-document-workshop-p3-m4-03-20261006.json"
+      ]
+    },
+    "description": "Read-only Python proof runner validates four JSONs, preserved historical fields, arithmetic, selector uniqueness, TAP digests/summaries and collection match, corrected IDs digest, 81 local Markdown links/anchors and current/historical statuses. Git metadata control verifies all 1495 archive blobs and only app/docs durable changes; code/tests/config/migrations unchanged. No backend test executed."
+  }
+}
