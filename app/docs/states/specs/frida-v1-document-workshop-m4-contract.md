@@ -1,8 +1,10 @@
 # Atelier documentaire Frida V1 — contrat M4
 
 Date : 2026-10-06. Statut : livraison initiale conservée ; contre-audit M4 ouvert.
-Le lot courant corrige uniquement P2-M4-01. P2-M4-02 et P3-M4-03 restent ouverts,
-sans correction dans ce lot ; M4 n'est pas intégralement fermé et M5 reste non commencé.
+P2-M4-01 reste fermé. P2-M4-02 est fermé après correction, comparaison complète
+et contre-audit indépendant ci-dessous. P3-M4-03 reste ouvert sur les comptes historiques
+1 198/1 414 et les 21 identifiants mal formés de l'artefact P2-M4-01 conservé.
+M4 n'est pas intégralement fermé et M5 reste non commencé.
 Base exacte : correctif P3 `9f10531ae9c799f4afc769c97ea2d48659f1c3d3`, poussé
 sur M3 et vérifié propre, HEAD = upstream = distant, divergence `0/0`, avant
 création de `FridaV1-Document-Workshop-M4`. Le hash M4 et les contrôles du push
@@ -46,6 +48,27 @@ mobilisés ; leurs textes sont données sans autorité dans le payload local.
 L'adoption seule n'injecte rien. Aucun canonical, rendu ou JSON d'action n'entre
 dans la conversation ou les facultés. Les effets après persistance reçoivent
 seulement la vraie demande et la réponse courte.
+
+La provenance du message regroupant les sources est enregistrée hors payload
+par son index, calculé immédiatement avant son ajout à la composition effective.
+Le resolver existant retrouve cet index après les copies JSON et le gel M0 :
+`logical_roles=['document_lane']`, `origin='core.workspace_document_content_service'`,
+`origin_stage='document_preparation_sources'`, `content_kind='document_source_data'`.
+Une sélection de N sources crée un seul message de données et des compteurs de
+lane à N ; aucune sélection laisse le mapping vide. Ni texte, égalité, préfixe,
+regex ou empreinte ne servent d'autorité d'attribution.
+
+L'ordre est conservé par les raccords actuels : capsule et instructions d'enveloppe
+ajoutées en fin, `build_payload` conserve les messages, les clones JSON conservent
+la séquence. Le message documentaire garde donc son occurrence dans le corps admis
+et envoyé, indépendamment de la longueur d'historique ou d'un voisin de texte égal.
+Le fournisseur reçoit toujours seulement `role/content` dans ses messages.
+L'éventuel `response_format` ajoute une ligne en fin pour l'estimation seulement :
+elle est absente de `body.messages` et n'acquiert jamais la provenance documentaire.
+Sous ce builder synthétique, le callback et la liste `manifest.messages` comprennent
+aussi cette ligne d'estimation ; cette limite préexistante distincte reste inchangée.
+Le builder runtime courant ne produit pas ce champ. Aucun refactor général du
+manifeste, nouveau marqueur, seconde mesure ou assouplissement du gel n'est ajouté.
 
 Le nominal synthétique compte séparément **1 échange principal documentaire,
 0 principal normal et 2 échanges constitutifs de validation** ; ce dernier
@@ -164,8 +187,8 @@ Le contre-audit postérieur à la livraison initiale ouvre trois findings :
 | Finding | État et périmètre |
 | --- | --- |
 | P2-M4-01 | Fermé : annulation collatérale reproduite sur Flask/PostgreSQL, correctif ciblé prouvé et contre-audité indépendamment. |
-| P2-M4-02 | Ouvert : provenance perdue lors du gel du payload, signalée par le contre-audit ; aucune correction autorisée ici. |
-| P3-M4-03 | Ouvert : sélecteurs/comptes du relevé initial non concordants ; relevé conservé sans réécriture ni clôture implicite. |
+| P2-M4-02 | Fermé : perte de provenance reproduite après le vrai gel, correctif local par index, ciblés et comparaison 1 447/1 447 verts, contre-audit indépendant favorable. |
+| P3-M4-03 | Ouvert : comptes historiques 1 198/1 414 et 21 identifiants doublant leur nom de méthode dans `new_sql_test_ids` de l'artefact P2-M4-01. Les deux anciens artefacts restent inchangés. |
 
 Les [preuves P2-M4-01](../baselines/document-workshop/frida-v1-document-workshop-p2-m4-01-20261006.json)
 développent les sélections de ce seul lot et distinguent baseline, nouveautés et
@@ -206,6 +229,75 @@ Ces limites et les échecs intermédiaires sont conservés dans l'artefact.
 Nettoyage vérifié avant livraison : deux conteneurs PostgreSQL dédiés, leurs
 sockets et les trois arbres temporaires propres à ce correctif sont absents.
 Aucune ressource runtime/opérateur modifiée.
+
+### Correctif P2-M4-02 — 6 octobre 2026
+
+Base vérifiée avant édition : `722132631c2a70851c95d732420d64926895cba9`,
+HEAD/upstream/distant égaux, worktree propre, divergence 0/0 ; parent M4
+`2cbeb7fa59be5751502079a1eb6857c2f9977ef2`, M3 inchangé à
+`9f10531ae9c799f4afc769c97ea2d48659f1c3d3`. Branche M4 conservée.
+L'[artefact P2-M4-02](../baselines/document-workshop/frida-v1-document-workshop-p2-m4-02-20261006.json)
+développe les listes exécutées et les identifiants chargeables, baseline/comparaison,
+ciblés non additifs, commandes/exits/durées, traces content-free et adaptations.
+Les sélecteurs par modules/fichiers de P2-M4-01 restent utilisables ; ses 21
+identifiants mal formés ne sont ni utilisés ni réparés dans ce lot.
+
+Baseline avant édition : **1 436/1 436**, exits 0, zéro skip. Rouge causal
+scratch : 2 cas, 1 échec, 1,646 s, exit 1 ; contrôle sans source seul 1/1,
+1,064 s, exit 0. Assertions durables ajoutées au test SQL M4 existant :
+rouge 2 cas/1 échec, 1,577 s, exit 1 puis vert 2/2, 1,631 s, exit 0.
+Le manifeste réellement construit après gel classait les données en
+`time_reference/core.conversations_prompt_window/prompt_window/system_context`
+malgré `document_lane.input_count=1`. Lecture fraîche M2, source entière,
+facultés/transcript/mémoire séparés et garde de schéma restent éprouvés.
+
+Neuf nouveaux cas SQL réels : loopback bytes égaux au corps admis, trois sources
+regroupées, historique variable et capsule on/off, copies JSON, voisin identique
+et textes trompeurs, mutation du caller après gel, compteur mutateur refusé avant
+transport, `response_format` et contrôle sans source. Deux nouveaux cas unitaires
+isolent la frontière admission/manifeste. Aucun mock du builder de manifeste ni
+résultat d'admission fabriqué : les spies délèguent à ces deux implémentations.
+
+Adaptations de harnais sans changement produit : helper `append_message` réel,
+capture superficielle des paramètres des facultés contenant des modules, signature
+M2 `(folder_id,file_id)`, réglages capsule du module de config déjà bootstrappé,
+dates historiques synthétiques et contrôle de chaque rôle/suffixe après le vrai
+label temporel. L'import d'une classe TestCase avait rechargé dix tests dans le
+premier ciblé unitaire ; la composition par module élimine ce recouvrement.
+Les erreurs et comptes de ces passages restent dans l'artefact.
+
+Comparaison complète : **1 447/1 447**, exits 0, zéro skip :
+
+| Sélection | Cas | Durée du runner |
+| --- | ---: | ---: |
+| Python | 741 | 235,422 s |
+| PostgreSQL | 151 | 111,133 s |
+| pgvector | 2 | 3,034 s |
+| Node | 424 | 7,150256656 s |
+| Chromium historiques | 107 | 107,597451612 s |
+| Chromium M4 | 22 | 26,206865055 s |
+
+Tous les cas de la baseline sont conservés ; delta exact **2 unitaires + 9 SQL**,
+deux nouveaux modules, aucun autre fichier ajouté à cette comparaison. Les
+11 nouveaux identifiants se chargent chacun comme un seul test avec leur nom
+de méthode exact. Ciblés SQL 9/9 (6,414 s), admission/manifeste 36/36 (6,678 s),
+chat/capsule 37/37 (0,039 s), exits 0 : non additifs. Le dernier ciblé comprend
+26 cas déjà dans la comparaison et 11 cas existants de deux modules capsule
+hors sélection publiée, développés séparément dans l'artefact.
+
+Les traces de la chaîne finale montrent un index source 4 ou 20 selon
+l'historique synthétique, jamais une constante ; les quatre champs sont exacts.
+Le nominal HTTP confirme l'égalité des octets admis et reçus. Avec
+`response_format`, 7 messages transmis et 8 estimés restent distingués ; la
+ligne auxiliaire n'est pas une source. Une mesure partagée par admission,
+aucun contenu brut dans ces traces de test.
+
+Revue indépendante finale favorable, sans nouveau finding : occurrence après
+gel, absence d'attribution par contenu, mesure unique, transport, chat normal et
+annulation P2-M4-01 préservés ; documents et artefact concordants avec les logs.
+Nettoyage vérifié : les deux PostgreSQL dédiés, leurs deux répertoires de sockets
+et l'unique arbre temporaire P2-M4-02 ont disparu ; inventaires sous leur préfixe
+vides. Aucune ressource opérateur ou runtime modifiée.
 
 ### Relevé de livraison initiale conservé — P3-M4-03 ouvert
 

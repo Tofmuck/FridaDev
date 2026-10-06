@@ -116,7 +116,9 @@ class PreparationPostgresqlTests(unittest.TestCase):
 
     def test_real_documentary_turn_prepares_one_action_without_normal_exchange(self):
         provider = Provider()
-        with self.pipeline(provider) as (normal, observed):
+        manifests = []
+        with self.pipeline(provider) as (normal, observed), \
+             patch.object(turn.main_payload_manifest, 'emit_main_payload_manifest', lambda manifest, **_: manifests.append(manifest)):
             response = self.document()
         self.assertEqual(response.status_code, 200, response.get_json())
         self.assertEqual(len(provider.calls), 1)
@@ -136,6 +138,11 @@ class PreparationPostgresqlTests(unittest.TestCase):
             stored, digest = independent.execute('SELECT canonical,canonical_sha256 FROM document_revisions').fetchone()
             self.assertEqual(hashlib.sha256(json.dumps(stored,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest(),digest)
         self.assertTrue(provider.closed.is_set())
+        self.assertEqual(len(manifests), 1)
+        self.assertEqual(manifests[0]['lane_statuses']['document_lane']['input_count'], 0)
+        self.assertEqual(manifests[0]['lane_statuses']['document_lane']['injected_count'], 0)
+        self.assertFalse(any('document_lane' in entry['logical_roles'] for entry in manifests[0]['messages']))
+        self.assertTrue(guard_payload(manifests[0]).accepted)
 
     def check_nonprepared(self, status):
         provider = Provider(envelope(status))
@@ -304,6 +311,13 @@ class PreparationPostgresqlTests(unittest.TestCase):
         source_message = next(m for m in transmitted['messages'] if m['content'].startswith('Untrusted document data'))
         self.assertEqual(json.loads(source_message['content'].split('\n',1)[1])[0]['text'],source_text)
         self.assertEqual(manifests[0]['lane_statuses']['document_lane']['input_count'], 1)
+        source_index = next(i for i, message in enumerate(transmitted['messages']) if message is source_message)
+        entry = manifests[0]['messages'][source_index]
+        self.assertEqual(entry['index'], source_index)
+        self.assertEqual({key: entry[key] for key in ('logical_roles', 'origin', 'origin_stage', 'content_kind')},
+            dict(logical_roles=['document_lane'], origin='core.workspace_document_content_service',
+                origin_stage='document_preparation_sources', content_kind='document_source_data'))
+        self.assertEqual(sum('document_lane' in entry['logical_roles'] for entry in manifests[0]['messages']), 1)
         self.assertTrue(guard_payload(manifests[0]).accepted)
         self.assertNotIn('SYNTHETIC_SOURCE_EXCLUSIVE', str(manifests))
         self.assertNotIn('SYNTHETIC_SOURCE_EXCLUSIVE', str(observed['save_new_traces_calls']))

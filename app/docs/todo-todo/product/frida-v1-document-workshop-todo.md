@@ -14,8 +14,9 @@ P2-M2-05 corrigé séparément sur le résumé de réconciliation, comparaison
 716/716 ; livraison runtime ouverte ;
 M3 fermé sur code/preuves hermétiques et contre-audit, branche `FridaV1-Document-Workshop-M3`, livraison runtime ouverte ;
 P3-M3-baseline-route-golden corrigé séparément le 2026-10-06 (tests/docs-only) ;
-M4 livré sur code, contre-audit ouvert avec P2-M4-01 seul correctif autorisé,
-P2-M4-02 et P3-M4-03 ouverts ; M4 non intégralement fermé ;
+M4 livré sur code, P2-M4-01 et P2-M4-02 fermés après contre-audits indépendants ;
+P3-M4-03 ouvert (comptes historiques 1 198/1 414 et 21 identifiants mal formés) ;
+M4 non intégralement fermé ;
 M5–M10 et Z non commencés, aucun déploiement ou renderer livré**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
@@ -3128,7 +3129,7 @@ Base vérifiée : `2cbeb7fa59be5751502079a1eb6857c2f9977ef2`, HEAD/upstream/dist
 égaux, worktree propre et divergence 0/0 ; parent et M3 distant exacts
 `9f10531ae9c799f4afc769c97ea2d48659f1c3d3`. Correction sur la même branche M4.
 
-| Finding | État courant |
+| Finding | État à la livraison P2-M4-01, conservé |
 | --- | --- |
 | P2-M4-01 | Fermé : cancel A pending annulait aussi B preparing ; correctif ciblé prouvé sur Flask/PostgreSQL et contre-audité indépendamment. |
 | P2-M4-02 | Ouvert : provenance perdue lors du gel du payload ; aucune modification de provenance, modèle, compteur ou budgets dans ce lot. |
@@ -3206,6 +3207,104 @@ Nettoyage vérifié : les deux conteneurs SQL dédiés, leurs sockets et les tro
 arbres temporaires du correctif ont disparu ; aucun reste sous leur préfixe.
 M4 demeure ouvert sur P2-M4-02/P3-M4-03. M5 non commencé ; écriture/confirmation,
 DB opérateur, provider/DAV live et runtime hors de ce correctif.
+
+#### Contre-audit M4 — correctif borné P2-M4-02 du 6 octobre 2026
+
+Base vérifiée avant édition : `722132631c2a70851c95d732420d64926895cba9`,
+HEAD/upstream/distant alignés, worktree propre et divergence 0/0 ; parent
+`2cbeb7fa59be5751502079a1eb6857c2f9977ef2`, M3 distant inchangé à
+`9f10531ae9c799f4afc769c97ea2d48659f1c3d3`. Même branche M4, sans merge,
+rebase, M5 ou intervention runtime. Les branches M0–M3 et main sont préservées.
+
+| Finding | État courant |
+| --- | --- |
+| P2-M4-01 | Fermé après revue indépendante ; matrice d'annulation conservée dans la comparaison de ce lot. |
+| P2-M4-02 | Fermé : reproduit après gel réel, correctif local, ciblés et comparaison 1 447/1 447 verts ; contre-audit indépendant favorable. |
+| P3-M4-03 | Ouvert sur les comptes historiques 1 198/1 414 et les 21 noms de méthode doublés dans `new_sql_test_ids` de l'artefact P2-M4-01. Aucun ancien artefact réparé ici. |
+
+L'[artefact P2-M4-02](../../states/baselines/document-workshop/frida-v1-document-workshop-p2-m4-02-20261006.json)
+porte les listes exactes, identifiants chargeables, commandes, résultats/exits/durées,
+traces sans contenu, différences de sélection, sous-ensembles et erreurs de harnais.
+Le [contrat M4](../../states/specs/frida-v1-document-workshop-m4-contract.md)
+fixe l'attribution stable sans modifier admission, estimation ou schéma du manifeste.
+
+Baseline avant édition : **1 436/1 436**, exits 0, zéro skip :
+739 Python (231,955 s), 142 SQL (104,923 s), 2 pgvector (2,800 s),
+424 Node (7,166231765 s), 107 Chromium historiques (106,177801850 s),
+22 Chromium M4 (26,221945543 s). Sélecteurs finaux publiés P2-M4-01 revalidés
+par modules/fichiers ; les 21 identifiants hérités mal formés n'ont pas été utilisés.
+Ces anomalies restent P3-M4-03, sans réécriture des relevés historiques.
+
+Rouge causal avant patch : 2 cas, 1 échec (1,646 s, exit 1), contrôle sans source
+vert ; contrôle seul 1/1 (1,064 s, exit 0). Flask/stores SQL/M2/admission/manifeste
+réels, transport de preuve recevant le corps figé. La source complète est envoyée
+mais classée `time_reference`, origine `core.conversations_prompt_window`, stage
+`prompt_window`, kind `system_context`, avec lane input_count 1. Son index observé
+appartient à la fixture, pas au produit. Les assertions ajoutées au test SQL
+existant reproduisent séparément rouge 2 cas/1 échec (1,577 s, exit 1), puis vert
+2/2 (1,631 s, exit 0), sans retirer contenu intégral, non-contamination et garde.
+
+Le seul delta produit remplace la clé d'identité Python par la position calculée
+immédiatement avant l'append du message source. Capsule/enveloppe/adaptateur
+`response_format` ajoutent en fin ; le builder actuel et les clones JSON gardent
+l'ordre. Le resolver existant accepte cette clé. Un message regroupe toutes les
+sources sélectionnées et porte les quatre champs documentaires explicites ;
+aucune sélection laisse le mapping vide. Aucune attribution par texte/égalité/
+regex/empreinte, métadonnée fournisseur, marqueur, mesure ou budget ajouté.
+
+Matrice ciblée SQL **9/9, 6,414 s, exit 0** : nominal avec octets reçus en loopback
+égaux aux octets admis, trois sources regroupées, historique de longueurs différentes,
+capsule active/inactive, copies JSON, voisin de texte identique et canaris trompeurs,
+caller modifié après gel sans altération du corps, compteur mutateur refusé avant
+transport, `response_format` et absence de source. Un seul appel documentaire,
+zéro fallback normal. Ciblé admission/manifeste **36/36, 6,678 s** ; voisins
+chat/capsule **37/37, 0,039 s**, exits 0, zéro skip. Ces sous-sélections ne
+s'ajoutent pas au total de comparaison ; les deux modules capsule supplémentaires
+sont un ciblé distinct de la sélection publiée, pas une extension cachée de sa baseline.
+
+Les adaptations ne changent aucune assertion produit : nom/signature des helpers
+réels, capture des paramètres contenant des modules sans deepcopy, config capsule
+résolue au bootstrap plutôt qu'environnement tardif, dates synthétiques et contrôle
+des suffixes/rôles après le label temporel existant. Le premier ciblé unitaire
+chargeait dix tests importés en doublon ; import du module et composition corrigent
+ce seul harnais. Tous les passages intermédiaires sont consignés avec leurs exits.
+
+Sous builder synthétique `response_format`, la liste du manifeste conserve aussi
+la ligne d'estimation, distincte de `body.messages`. Cette limite préexistante est
+consignée séparément : elle n'est jamais une source documentaire, et sa refonte
+n'est pas absorbée par ce correctif. Le builder runtime actuel ne produit pas ce champ.
+
+Comparaison finale **1 447/1 447**, exits 0, zéro skip :
+
+| Sélection | Cas | Durée du runner |
+| --- | ---: | ---: |
+| Python | 741 | 235,422 s |
+| PostgreSQL | 151 | 111,133 s |
+| pgvector | 2 | 3,034 s |
+| Node | 424 | 7,150256656 s |
+| Chromium historiques | 107 | 107,597451612 s |
+| Chromium M4 | 22 | 26,206865055 s |
+
+Tous les cas baseline sont conservés. Le delta ajoute exactement deux tests
+unitaires et neuf SQL dans deux nouveaux modules ; aucune extension des autres
+fichiers de comparaison. Les onze identifiants nouveaux se chargent chacun
+comme un seul test, sans nom de méthode doublé. Les ciblés et contrôles ne
+s'ajoutent pas à 1 447 : le ciblé chat/capsule de 37 cas contient 26 cas en
+recouvrement et 11 cas existants hors comparaison, développés séparément.
+
+Traces finales de la chaîne réelle : index source 4 ou 20 selon l'historique,
+quatre champs de provenance exacts, source entière et compte cohérent. Le nominal
+HTTP relie les octets admis aux octets effectivement reçus ; `response_format`
+distingue les 7 messages transmis des 8 estimés sans attribuer la source à
+l'auxiliaire. Une mesure partagée par admission ; zéro nouveau log produit.
+
+Revue indépendante finale favorable à la fermeture de **P2-M4-02 seulement**,
+sans nouveau finding confirmé : delta, logs bruts, traces et documentation
+concordent. Les garanties P2-M4-01 restent vertes. Nettoyage vérifié : deux
+PostgreSQL dédiés, deux répertoires de sockets et l'unique arbre temporaire de ce
+lot supprimés ; inventaires sous leur préfixe vides, aucune ressource voisine modifiée.
+M4 reste non intégralement fermé ; P3-M4-03 ouvert, M5 non commencé. Aucun appel
+OpenRouter/DAV live, migration opérateur, confirmation, écriture ou déploiement.
 
 ### M5 — Confirmation et exécution hermétiquement protégées
 
@@ -3820,7 +3919,8 @@ P2-M2-04 backend est corrigé séparément (713/713 historiques). P2-M2-05 est
 ensuite corrigé sur le résumé de réconciliation (716/716). Le retour final porte la livraison Git et ses
 alignements. M3 est fermé sur code/preuves/Git ; son P3 golden a été corrigé
 séparément avant M4. La livraison initiale M4 est conservée ; son contre-audit
-reste ouvert sur P2-M4-02/P3-M4-03 après le seul correctif autorisé P2-M4-01 ;
+reste ouvert sur P3-M4-03 ; P2-M4-01 et P2-M4-02 sont fermés après leurs
+contre-audits indépendants, avec leurs relevés conservés ci-dessus ;
 M5–M10/Z restent non commencés et les obligations runtime restent ouvertes.
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
 dans AGENTS.md ; l'invariant de consolidation reste applicable hors de cette
