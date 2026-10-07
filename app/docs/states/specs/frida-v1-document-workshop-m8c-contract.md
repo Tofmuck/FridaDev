@@ -5,7 +5,11 @@ parent M6 `b00eb95001755295dcc301232272a8070d26cd78`. Branche
 `FridaV1-Document-Workshop-M8-C`, créée avant édition. Autorité : mandat M8-C de
 Tof et [roadmap](../../todo-todo/product/frida-v1-document-workshop-todo.md),
 §§3.9–3.17, M8-C et section 9. Ce document est la remise commune à Sauron.
-Statut : contrat fermé et raccord simulé validés par les preuves isolées ci-dessous.
+Statut courant : P2-M8C-AUD-01 corrigé sur la structure DOCX ;
+**P2-M8C-AUD-02 reste ouvert, M8-C n'est pas intégralement fermé**.
+Le relevé initial ci-dessous conserve ses résultats historiques ; le
+[relevé dédié AUD-01](../baselines/document-workshop/frida-v1-document-workshop-p2-m8c-aud-01-20261007.json)
+porte les nouvelles exécutions et la portée du correctif.
 Aucun service Writer ni transport AF_UNIX n'est livré. DOCX/PDF restent inactifs.
 
 ## Plan et frontières
@@ -136,7 +140,8 @@ Seules données documentaires admissibles et IDs techniques : aucun nom privé,
 chemin hôte/DAV, URL de téléchargement, secret, commande, template externe,
 filtre libre ou instruction UNO. Le texte reste du texte ; les liens http/https
 admis par M0 restent passifs, conservés, sans fetch autorisé.
-DOCX externe : inspection OOXML complète puis inspection UNO sans réparation,
+DOCX externe : inspection bornée de l'ensemble du package et de ses XML,
+puis inspection UNO sans réparation par le futur service,
 inventaire complet et représentabilité/losslessness attestés. Champs dynamiques,
 macros, révisions suivies, sections/styles complexes, objets/images ou contenu
 non représentable sont refusés sans suppression. M9-B annoncera la remise en
@@ -157,12 +162,58 @@ la requête entière. Aucun pin Stirling n'est réutilisé.
 `render_result_v1` lie job/révision/canonical/hash de requête/source, engine,
 status/reason_code, artifacts et page_evidence/source_evidence.
 Ready exige les deux artefacts complets, MIME fermé, longueur/SHA recalculés
-sur les octets reçus, package OOXML véritable et PDF analysable entier. Archives
+sur les octets reçus, inspection du package DOCX et PDF analysable entier. Archives
 inspectées sans extraction vers filesystem. PDF chiffré/actif/partiel refusé,
 actions des signets incluses ; liens passifs et destinations locales conservés.
 Inspection binaire dans un sous-processus fixe, sans shell/réseau : mémoire
 512 MiB, CPU 20 secondes, graphe PDF limité à 65 536 conteneurs atteignables.
 Ces gardes d'inspection applicative ne sont pas les ressources du futur Writer.
+
+### Squelette DOCX — correctif P2-M8C-AUD-01
+
+La garde renderer de `word/document.xml` compare les **noms qualifiés**,
+indépendamment des préfixes : racine WordprocessingML `document`, puis
+`background` facultatif et `body` facultatif, chacun au plus une fois, dans cet
+ordre. Ces trois éléments n'apparaissent pas ailleurs dans cette partie.
+`background` admet zéro ou un enfant VML `background` ; celui-ci est un autre
+nom qualifié. Racine/background/body sont à contenu élément-seul : seul le
+blanc XML U+0020/U+0009/U+000D/U+000A est admis entre leurs enfants.
+
+Les enfants directs du body appartiennent aux noms CT_Body du modèle SDK :
+blocs `p`, `tbl`, `customXml`, métadonnées proofErr/permissions/bookmarks/comment
+ranges et marqueurs de révision, y compris les noms `w14` déclarés par ce
+modèle. `sectPr` direct est facultatif, unique et terminal. Un `sectPr` de
+paragraphe sous `pPr` reste admis. Les gardes de profil existantes continuent
+de refuser, entre autres, altChunk, sdt, champs dynamiques et révisions suivies,
+même lorsqu'un nom figure dans CT_Body. L'allowlist structurelle ne donne
+aucune permission supplémentaire au profil V1.
+
+Provenance vérifiée le 7 octobre 2026 : modèle primaire
+[Open XML SDK, schéma WordprocessingML](https://github.com/dotnet/Open-XML-SDK/blob/431ab05cf160248cc3885a4a766026d4f8243792/data/schemas/schemas_openxmlformats_org_wordprocessingml_2006_main.json),
+commit `431ab05cf160248cc3885a4a766026d4f8243792`, SHA-256 du fichier
+`b29e60a07afc3e0a4695eecca6c2a7a35070eb81f53a2f11033c6df6f946212b`.
+Types `w:CT_Document/w:document` (index 487), `w:CT_Background/w:background`
+(645), `w:CT_Body/w:body` (654) : séquences/choix et occurrences ; body 0..1,
+pas exactement un. Voir aussi la
+[classe Document Microsoft](https://learn.microsoft.com/en-us/dotnet/api/documentformat.openxml.wordprocessing.document?view=openxml-3.0.1).
+
+Document vide, body vide et background seul sont acceptés **structurellement**.
+Cela n'établit aucune correspondance au canonical ni fidélité du rendu.
+Préfixes équivalents, namespaces/attributs supplémentaires et métadonnées
+admissibles ne sont pas bannis globalement. Les intérieurs de paragraphe,
+tableau, sectPr ou VML, les attributs et toutes les particules imbriquées ne
+sont pas validés comme par un XSD universel. Le correctif ne livre ni moteur
+de compatibilité XML, ni réparation de document, ni preuve Writer.
+
+Même garde pour l'artefact reçu et l'admission source DOCX Frida/externe ;
+lecteur partagé M2 inchangé. Refus dans le vocabulaire existant
+`renderer_source_unsupported`, traduit en `document_render_invalid` au raccord
+applicatif. Aucun changement de protocole/version, profil, budgets, horloge
+ou libération. Les
+[fixtures adverses et positives](../../../tests/support/document_renderer_structure_fixtures.py)
+et [sondes de structure](../../../tests/unit/core/test_document_renderer_structure.py)
+reproduisent les ZIP et manifestes cohérents, avec les vrais inspecteurs en
+sous-processus. Aucun XML n'est réparé et aucun canonical n'est réécrit.
 
 Le manifeste exige la séquence : docx_saved → docx_reloaded → layout_stable →
 writer_pages_measured → pdf_exported → pdf_pages_measured. Le DOCX enregistré
@@ -302,7 +353,7 @@ Le corpus prouve les décisions du protocole, aucune pagination/layout réelle.
 
 ## Preuves et limites de livraison M8-C
 
-Le [relevé du 7 octobre](../baselines/document-workshop/frida-v1-document-workshop-m8c-20261007.json)
+Le [relevé initial du 7 octobre](../baselines/document-workshop/frida-v1-document-workshop-m8c-20261007.json), conservé sans modification,
 porte sélecteurs développés, IDs chargeables, commandes/versions/durées/exits,
 rouges/verts/contrôles causaux, corrections du contre-audit et nettoyage. Même
 référence M7 : 1 604 IDs avant/après ; 60 nouveaux puis un positif PDF passif,
@@ -324,10 +375,41 @@ Aucun wiring produit du renderer injectable, aucun format activé. Rebuild du
 service applicatif nécessaire lors d'une livraison runtime ultérieure autorisée,
 à effectuer dans ce lot ultérieur seulement ; aucun rebuild exécuté ici.
 
-Contre-lecture indépendante du delta et du relevé effectuée : avis favorable
+Lors de la livraison initiale `fc911ed3`, contre-lecture indépendante du delta et du relevé effectuée : avis favorable
 à la fermeture contrat/simulation, aucun finding vivant identifié après
 correction et reprojection des preuves. Sept conteneurs de preuve possédés,
 sockets, caches et répertoire temporaire supprimés avec absence vérifiée.
 Le cache navigateur partagé et les services opérateur sont préservés.
-La preuve durable est figée avant commit/push ; le hash de livraison et les
-contrôles Git finaux sont donnés dans le retour de livraison.
+Ces constats sont historiques : les findings AUD-01/AUD-02 du contre-audit
+ultérieur sont distincts des findings internes alors corrigés. AUD-01 est
+traité dans le relevé dédié ; AUD-02, horloge/libération, demeure ouvert et
+hors correction. Les verts historiques ou leur rejouage ne le ferment pas.
+Les preuves et contrôles Git de la correction sont consignés séparément.
+
+Correction AUD-01 : baseline ciblée 62/62 avant patch ; reproduction autonome
+4 sondes dont deux refus rouges, puis 4/4 verts. Douze nouveaux IDs donnent
+27 assertions rouges avant la garde, puis 12/12 verts ; ciblés avec historique
+M5 : 74/74. Comparaison finale des mêmes **1 665 IDs historiques + 12 nouveaux
+= 1 677 distincts**, 70 + 26 voisins séparés, aucun skip. Les cinq parcours
+HTTP natifs M6, les treize M7 et les dix M6 à fetch simulé restent verts.
+La collecte vérifie les IDs Python individuellement chargeables, les identités
+frontend fichier/nom/index et la normalisation des six noms M4 TAP inchangés.
+
+Sous confirmation et claim SQL réels, les deux variantes invalides atteignent
+la validation réelle et sont refusées **avant** la garde finale de format :
+zéro mutation DAV, journal et reçu de succès, sans bundle local ni libération
+positive. Le mutant de test neutralise seulement la garde structurelle dans
+le vrai enfant ; il est détecté, les paires deviennent acceptables sous ce
+mutant, mais le XML tronqué reste refusé. Aucun mutant livré.
+
+L'échec intermédiaire Chromium M4 (21/22, brouillon vide pour le contrôle image)
+est conservé ; sélecteur exact rejoué 22/22 sans patch ni attente allongée,
+frontend/harnais identiques à la base. Cause non établie, hors attribution à
+AUD-01. L'erreur initiale de chemin de reproduction et deux noms de modules
+voisins erronés restent également qualifiés ; les sélections finales exactes
+les remplacent comme preuves, sans effacer leurs échecs.
+
+Seconde lecture indépendante du delta code/tests/docs et du relevé : favorable
+à AUD-01 seul, sans nouveau finding bloquant ; revue statique et vérification
+des artefacts, aucun test/SQL/probe supplémentaire revendiqué. La livraison
+Git s'arrête pour contre-audit Codex ; aucun avis de fermeture d'AUD-02.

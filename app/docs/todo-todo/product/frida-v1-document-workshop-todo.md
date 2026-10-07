@@ -18,7 +18,7 @@ M4 livré sur code, P2-M4-01 et P2-M4-02 fermés après contre-audits indépenda
 P3-M4-03 corrigé par erratum documentaire (1 198 déclarés conservés et rectifiés,
 sélection publiée à 1 414, 21 identifiants réutilisables validés) ;
 M4 non intégralement fermé ;
-M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées, livraison runtime ouverte ; M7 fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C fermé sur contrat et preuves simulées ; M8-S/M8-A, M9/M10 et Z non commencés,
+M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées, livraison runtime ouverte ; M7 fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C non intégralement fermé : AUD-01 corrigé, AUD-02 ouvert ; M8-S/M8-A, M9/M10 et Z non commencés,
 aucun déploiement ou renderer livré**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
@@ -895,7 +895,7 @@ restent ouverts. M3 est fermé sur code/preuves et contre-audit ci-dessous ;
 M4 est livré sur code/preuves hermétiques, P2-M4-01 et P2-M4-02 fermés après
 contre-audits indépendants, P3-M4-03 corrigé documentairement ; livraison runtime
 ouverte. M5 est fermé sur code/preuves injectées ; M6 raccorde le parcours réel
-avec preuves isolées, sans déploiement. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C est fermé sur contrat/preuves simulées ; M8-S/M8-A, M9/M10 et Z restent non commencés. Spécification et
+avec preuves isolées, sans déploiement. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C non intégralement fermé : AUD-01 corrigé, AUD-02 ouvert ; M8-S/M8-A, M9/M10 et Z restent non commencés. Spécification et
 décisions amont sont validées et l'exception produit est inscrite.
 Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
 les GO M0–M4 et P3-M4-03 ne valent pour aucun lot suivant ni déploiement.
@@ -3610,10 +3610,12 @@ canonical/révision/profil figés, source temporaire optionnelle, résultat ferm
   socket Docker, shell libre, fallback ou modification Exports.
 - [x] Synchroniser contrat commun/profil/bornes/erreurs avec cette roadmap ; aucun
   déploiement requis pour fermer le contrat hermétique, rebuild futur du code livré.
-- [x] Fermer sur contrat consommable par M8-S et fake rejetant les contre-cas ;
+- [ ] Fermer sur contrat consommable par M8-S et fake rejetant les contre-cas ;
+  AUD-01 corrigé, AUD-02 reste ouvert et hors correction ;
   aucune installation ou preuve de disponibilité déclarée accomplie.
 
-**Clôture M8-C — 7 octobre 2026.** Base M7 exacte
+**Livraison initiale M8-C — 7 octobre 2026 (`fc911ed3`).** Résultats historiques
+conservés ; la clôture totale est retirée après le contre-audit AUD-01/AUD-02. Base M7 exacte
 `750180fa8595b53c7e188017c9c62be1ae9943fc`, branche
 `FridaV1-Document-Workshop-M8-C`, créée avant édition. Voir le
 [contrat commun remis à Sauron](../../states/specs/frida-v1-document-workshop-m8c-contract.md)
@@ -3635,6 +3637,46 @@ public disponible, aucun Writer, transport HTTP Unix, rendu/layout/glyphe réel,
 service ou pin réel livré. M8-S/M8-A/M9-A/M9-B/M10/Z non commencés ; GO distincts
 requis. Aucun rebuild/restart ; rebuild futur du code applicatif à effectuer
 seulement lors d’une livraison runtime autorisée.
+
+### P2-M8C-AUD-01 — Squelette de la partie principale DOCX
+
+**Statut :** correctif borné sur la base `fc911ed3d42d253424becae399422dc992bc0b9c` ;
+AUD-02, horloge/libération, reste ouvert. M8-C n'est pas intégralement fermé.
+Ces identifiants AUD sont distincts des findings internes de la livraison initiale.
+Voir le [relevé dédié](../../states/baselines/document-workshop/frida-v1-document-workshop-p2-m8c-aud-01-20261007.json)
+et le [contrat structurel/provenance SDK](../../states/specs/frida-v1-document-workshop-m8c-contract.md#squelette-docx--correctif-p2-m8c-aud-01).
+
+L'inspecteur renderer ferme les QNames et le placement du squelette
+`document → background? → body?`, cardinalité/ordre et blanc XML exact ;
+background admet VML background facultatif. Body : enfants CT_Body admis,
+sectPr direct facultatif/unique/terminal ; sectPr de paragraphe préservé.
+Body optionnel selon le modèle SDK : absence de body n'est pas un refus de
+structure. Aucun validateur XSD universel, preuve de fidélité ou rendu Writer.
+La même garde s'applique aux sources DOCX Frida/externe ; M2/Exports inchangés.
+
+Rouges avant patch : reproduction autonome, 4 sondes dont deux refus attendus
+rouges ; 12 nouveaux cas, 27 assertions rouges, dont les deux variantes sous
+confirmation/claim PostgreSQL. Verts ciblés : 74/74 et reproduction 4/4.
+Instrumentations : result → refus réel → abandon lié au job/hash, aucun
+bundle figé/libération positive ; refus avant la garde finale de format,
+zéro DAV/journal/reçu de succès. Mutant temporaire dans le vrai sous-processus
+neutralisant seulement la garde détecté ; XML tronqué toujours refusé.
+
+Le relevé initial et ses 1 665 IDs restent historiques. Rejouage final :
+**1 665 références exactes + 12 nouveaux = 1 677 distincts verts**, aucun skip ;
+70 + 26 voisins séparés, cinq HTTP natifs M6, treize M7 et dix M6 à fetch simulé
+préservés. Commandes/durées/exits et contre-lecture du delta sont consignés dans
+le relevé dédié. Un échec intermédiaire Chromium M4 (21/22) est conservé :
+sélecteur exact rejoué 22/22 sans patch, cause non établie. Les six sondes
+Codex fournies (trois contrôles verts/trois refus attendus rouges, dont un
+AUD-02) restent des preuves distinctes, jamais ajoutées à la sélection.
+Aucune correction AUD-02, modification de transport/profil/budget/claim,
+route/UI/capacité publique ou installation/rebuild/restart. DOCX/PDF publics
+restent inactifs ; Markdown direct ; M8-S/M8-A/M9/M10 non commencés.
+
+Seconde lecture indépendante code/tests/docs/relevé favorable à AUD-01 seul ;
+vérification statique des artefacts, aucun test supplémentaire revendiqué.
+Arrêt après livraison Git pour contre-audit Codex, sans correction AUD-02.
 
 ### M8-S — Service Writer/UNO isolé et preuve plateforme
 
@@ -4176,7 +4218,7 @@ sont corrigés. P2-M4-01 et P2-M4-02 sont fermés après leurs contre-audits
 indépendants, avec leurs résultats conservés ci-dessus ; P3-M4-03 est corrigé
 documentairement, sans fermer la livraison runtime de M4 ;
 M5 est fermé sur code/preuves hermétiques et contre-audit ; M6 est réalisé sur
-code/preuves isolées et contre-audit. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C est fermé sur contrat/preuves simulées ; M8-S/M8-A, M9/M10/Z restent non commencés et les
+code/preuves isolées et contre-audit. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C non intégralement fermé : AUD-01 corrigé, AUD-02 ouvert ; M8-S/M8-A, M9/M10/Z restent non commencés et les
 obligations runtime restent ouvertes.
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
 dans AGENTS.md ; l'invariant de consolidation reste applicable hors de cette

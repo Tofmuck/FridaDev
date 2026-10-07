@@ -11,6 +11,52 @@ if __name__!='__main__':
 
 CT='{http://schemas.openxmlformats.org/package/2006/content-types}'
 REL='{http://schemas.openxmlformats.org/package/2006/relationships}'
+WORD='{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
+WORD14='{http://schemas.microsoft.com/office/word/2010/wordml}'
+VML='{urn:schemas-microsoft-com:vml}'
+# SDK CT_Body children. Existing profile guards still refuse active content
+# and revisions; membership here does not grant permission to those features.
+BODY_CHILDREN={WORD+name for name in (
+    'altChunk','customXml','sdt','p','tbl','proofErr','permStart','permEnd',
+    'bookmarkStart','bookmarkEnd','commentRangeStart','commentRangeEnd',
+    'moveFromRangeStart','moveFromRangeEnd','moveToRangeStart','moveToRangeEnd',
+    'customXmlInsRangeStart','customXmlInsRangeEnd','customXmlDelRangeStart','customXmlDelRangeEnd',
+    'customXmlMoveFromRangeStart','customXmlMoveFromRangeEnd','customXmlMoveToRangeStart','customXmlMoveToRangeEnd',
+    'ins','del','moveFrom','moveTo','contentPart','sectPr')}
+BODY_CHILDREN.update(WORD14+name for name in (
+    'customXmlConflictInsRangeStart','customXmlConflictInsRangeEnd',
+    'customXmlConflictDelRangeStart','customXmlConflictDelRangeEnd','conflictIns','conflictDel'))
+
+
+def _check_docx_structure(root):
+    """Main-part skeleton only, not universal XSD validation or layout proof.
+
+    CT_Document is background? then body?. CT_Body has block/metadata children
+    followed by sectPr?. Prefixes/attributes and paragraph/table interiors do
+    not determine the skeleton. No document bytes are repaired.
+    """
+    from .document_renderer_contract import fail
+    def element_only(node):
+        if any(char not in ' \t\r\n' for text in [node.text, *(child.tail for child in node)] for char in (text or '')):fail()
+    if root.tag!=WORD+'document':fail()
+    element_only(root)
+    children=list(root)
+    tags=[child.tag for child in children]
+    if tags not in ([],[WORD+'background'],[WORD+'body'],[WORD+'background',WORD+'body']):fail()
+    # These QNames belong only at these main-part positions. v:background is
+    # distinct and allowed inside w:background; nested pPr/sectPr stays legal.
+    for node in root.iter():
+        if node.tag==WORD+'document' and node is not root:fail()
+        if node.tag in (WORD+'background',WORD+'body') and node not in children:fail()
+    for node in children:
+        element_only(node)
+        if node.tag==WORD+'background':
+            if [child.tag for child in node] not in ([],[VML+'background']):fail()
+        else:
+            blocks=list(node)
+            if any(child.tag not in BODY_CHILDREN for child in blocks):fail()
+            sections=[i for i,child in enumerate(blocks) if child.tag==WORD+'sectPr']
+            if sections and sections!=[len(blocks)-1]:fail()
 
 
 def _inspect_docx(content):
@@ -31,6 +77,7 @@ def _inspect_docx(content):
             for name in archive.namelist():
                 if name.endswith(('.xml','.rels')):
                     root=reader.xml_root(archive.read(name))
+                    if name=='word/document.xml':_check_docx_structure(root)
                     for node in root.iter():
                         if node.tag==REL+'Relationship':
                             target=node.get('Target','');mode=node.get('TargetMode')
