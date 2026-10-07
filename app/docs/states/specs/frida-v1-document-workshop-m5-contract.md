@@ -1,8 +1,20 @@
 # Atelier documentaire Frida V1 — contrat M5
 
+## Évolution M8-C — 7 octobre 2026
+
+La frontière synthétique historique `BinaryRenderEvidence` / `_validated_binary`
+est retirée au profit du [contrat Writer v1 fermé](frida-v1-document-workshop-m8c-contract.md),
+de `validate_result` et de la session injectable. L’ID M5 et ses onze sous-cas
+sont conservés avec paire/manifeste et libération séparée ; leur nouveau run
+est consigné dans le relevé M8-C. Aucun chemin permissif parallèle. Ce constat
+ne requalifie pas la frontière M5 en bug historique. Markdown direct et gardes
+M3/M5 restent inchangés ; DOCX/PDF publics restent indisponibles, Writer et
+transport Unix non livrés. Les sections M5 ci-dessous sont des preuves datées,
+pas le protocole Writer courant. M8-S/M8-A/M9/M10 restent non commencés.
+
 ## Évolution M7 — 7 octobre 2026
 
-Create/copy conservent leur création If-None-Match et leur compensation conditionnelle. Update conserve fichier/lien, écrit avec If-Match préparé et interdit toute compensation DELETE/restauration. La migration M7 explicite étend les contraintes sans désactiver les triggers. Voir le [contrat M7](frida-v1-document-workshop-m7-contract.md) et son relevé daté. Code et preuves isolées ; migration opérateur, rebuild, préconditions Nextcloud et Versions réels restent ouverts sous GO distinct. M8-C et suivants non commencés. Les sections précédentes ci-dessous gardent leur périmètre et leurs résultats historiques datés.
+Create/copy conservent leur création If-None-Match et leur compensation conditionnelle. Update conserve fichier/lien, écrit avec If-Match préparé et interdit toute compensation DELETE/restauration. La migration M7 explicite étend les contraintes sans désactiver les triggers. Voir le [contrat M7](frida-v1-document-workshop-m7-contract.md) et son relevé daté. Code et preuves isolées ; migration opérateur, rebuild, préconditions Nextcloud et Versions réels restent ouverts sous GO distinct. M8-C est désormais fermé en contrat/simulation (voir évolution ci-dessus) ; M8-S/M8-A et formats binaires restent non commencés. Les sections précédentes ci-dessous gardent leur périmètre et leurs résultats historiques datés.
 
 ## Raccord M6 — 7 octobre 2026
 

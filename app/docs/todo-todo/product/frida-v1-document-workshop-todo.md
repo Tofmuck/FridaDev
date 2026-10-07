@@ -18,7 +18,7 @@ M4 livré sur code, P2-M4-01 et P2-M4-02 fermés après contre-audits indépenda
 P3-M4-03 corrigé par erratum documentaire (1 198 déclarés conservés et rectifiés,
 sélection publiée à 1 414, 21 identifiants réutilisables validés) ;
 M4 non intégralement fermé ;
-M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées, livraison runtime ouverte ; M7 fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8–M10 et Z non commencés,
+M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées, livraison runtime ouverte ; M7 fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C fermé sur contrat et preuves simulées ; M8-S/M8-A, M9/M10 et Z non commencés,
 aucun déploiement ou renderer livré**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
@@ -895,7 +895,7 @@ restent ouverts. M3 est fermé sur code/preuves et contre-audit ci-dessous ;
 M4 est livré sur code/preuves hermétiques, P2-M4-01 et P2-M4-02 fermés après
 contre-audits indépendants, P3-M4-03 corrigé documentairement ; livraison runtime
 ouverte. M5 est fermé sur code/preuves injectées ; M6 raccorde le parcours réel
-avec preuves isolées, sans déploiement. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8–M10 et Z restent non commencés. Spécification et
+avec preuves isolées, sans déploiement. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C est fermé sur contrat/preuves simulées ; M8-S/M8-A, M9/M10 et Z restent non commencés. Spécification et
 décisions amont sont validées et l'exception produit est inscrite.
 Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
 les GO M0–M4 et P3-M4-03 ne valent pour aucun lot suivant ni déploiement.
@@ -3585,7 +3585,8 @@ le relevé, y compris la fenêtre succès SQL/GET inventaire, fermée par une pr
 Event de reprojection sans sélection implicite. Ciblés inclus non recomptés.
 Migration M7 explicite après M1–M5, éprouvée sur PostgreSQL isolé seulement ;
 aucune DB opérateur, livraison runtime, canari Nextcloud/Versions ou OpenRouter
-réel. M8-C et lots suivants restent non commencés.
+réel. Lors de cette fermeture M7, M8-C et lots suivants n’étaient pas commencés ;
+le statut courant M8-C est consigné immédiatement ci-dessous.
 
 ### M8-C — Contrat Writer fermé et raccord simulé
 
@@ -3597,20 +3598,43 @@ document_rendering.py, execution/actions et tests de contrat ; aucun fichier pla
 canonical/révision/profil figés, source temporaire optionnelle, résultat fermé sans cible DAV.
 **Propriétaire :** Celebrimbor ; contrat remis à Sauron sans patch de sa racine.
 
-- [ ] Rouge causal : appel avant confirmation, canonical/hash discordants, profil inconnu,
+- [x] Rouge causal : appel avant confirmation, canonical/hash discordants, profil inconnu,
   source/format inadmissible, pages absentes/21, partie manquante ou résultat brut → refus.
-- [ ] Livrer schémas versionnés, client fake, validate_result et garde zéro mutation ;
+- [x] Livrer schémas versionnés, client fake, validate_result et garde zéro mutation ;
   conserver Markdown direct et refuser les formats binaires tant que M9/M10 sont inactifs.
-- [ ] Tests ciblés de contrat/action/executor, voisins M5–M7/Exports/readers ; assert
+- [x] Tests ciblés de contrat/action/executor, voisins M5–M7/Exports/readers ; assert
   ordre claim→render→validate→DAV et nombre d'appels, pas seulement statut HTTP.
-- [ ] Faux verts : fake toujours complet, hash déclaré sans recalcul, canonical muté
+- [x] Faux verts : fake toujours complet, hash déclaré sans recalcul, canonical muté
   pour correspondre au résultat, résultat PDF présenté comme compte DOCX.
-- [ ] Interdire provider/live renderer/Nextcloud, dépendance moteur dans FridaDev,
+- [x] Interdire provider/live renderer/Nextcloud, dépendance moteur dans FridaDev,
   socket Docker, shell libre, fallback ou modification Exports.
-- [ ] Synchroniser contrat commun/profil/bornes/erreurs avec cette roadmap ; aucun
+- [x] Synchroniser contrat commun/profil/bornes/erreurs avec cette roadmap ; aucun
   déploiement requis pour fermer le contrat hermétique, rebuild futur du code livré.
-- [ ] Fermer sur contrat consommable par M8-S et fake rejetant les contre-cas ;
+- [x] Fermer sur contrat consommable par M8-S et fake rejetant les contre-cas ;
   aucune installation ou preuve de disponibilité déclarée accomplie.
+
+**Clôture M8-C — 7 octobre 2026.** Base M7 exacte
+`750180fa8595b53c7e188017c9c62be1ae9943fc`, branche
+`FridaV1-Document-Workshop-M8-C`, créée avant édition. Voir le
+[contrat commun remis à Sauron](../../states/specs/frida-v1-document-workshop-m8c-contract.md)
+et le [relevé durable](../../states/baselines/document-workshop/frida-v1-document-workshop-m8c-20261007.json).
+Six schémas fermés, multipart brut borné, hash canonical et identité complète
+recalculés, sources Frida/externe distinguées, paire DOCX/PDF et assertions de
+pages liées aux octets. Snapshots locaux puis DELETE/acquittement HTTP lié au
+job/hash ; conflit préserve le job, submit incertain tente abandon sans retry.
+Progression utile monotone N+7, 120 s d’inactivité exacte, aucun plafond mural.
+
+La frontière synthétique BinaryRenderEvidence/_validated_binary M5 est remplacée,
+son test et ses onze sous-cas conservés sous le nouveau contrat. Confirmation,
+claim et fences prouvés sur PostgreSQL isolé ; faux verts hash/partie/armement
+calibrés. Comparaison : 1 604 références M7 + 61 nouveaux = 1 665 distincts ;
+70 voisins historiques et 26 Exports/readers séparés ; 32 vecteurs autonomes
+(13 acceptés/19 refusés). Les findings introduits du contre-audit sont corrigés
+et les preuves rouges/vertes conservées dans le relevé. Aucun format binaire
+public disponible, aucun Writer, transport HTTP Unix, rendu/layout/glyphe réel,
+service ou pin réel livré. M8-S/M8-A/M9-A/M9-B/M10/Z non commencés ; GO distincts
+requis. Aucun rebuild/restart ; rebuild futur du code applicatif à effectuer
+seulement lors d’une livraison runtime autorisée.
 
 ### M8-S — Service Writer/UNO isolé et preuve plateforme
 
@@ -3839,12 +3863,15 @@ peut imposer une recréation ciblée FridaDev gérée par Sauron, pas un restart
 
 ### 9.3. Protocole fermé et bornes techniques
 
-Schémas fermés versionnés, champs inconnus refusés. Interfaces internes seulement :
+Schémas fermés versionnés, champs inconnus et clés dupliquées refusés. Le
+[contrat M8-C v1](../../states/specs/frida-v1-document-workshop-m8c-contract.md)
+fixe champs obligatoires/nullables, encodage, unités exactes, HTTP/erreurs et
+corpus autonome. Cette section conserve les invariants communs. Interfaces internes seulement :
 
 | Méthode | Effet |
 | --- | --- |
 | GET /v1/capabilities | Version du contrat/image/Writer/UNO, filtres, profil/polices et limites ; aucun contenu ni secret. |
-| POST /v1/jobs | render_request_v1 : job_id, revision_id/hash, profil épinglé, format DOCX ou PDF, canonical validé, source_kind et octets/hash optionnels. Claim Frida confirmé requis côté orchestrateur. |
+| POST /v1/jobs | render_request_v1 : job_id, revision_id/hash, profil épinglé, format DOCX ou PDF, canonical validé, source fermée nullable et partie octets/hash optionnelle. Claim Frida confirmé requis côté orchestrateur. |
 | GET /v1/jobs/{id} | État et progression vérifiable, jamais canonical ou aperçu. |
 | GET /v1/jobs/{id}/result | Résultat terminal multipart borné : manifeste JSON et artefacts nommés techniquement par le wrapper, sans chemin opérateur. |
 | DELETE /v1/jobs/{id} | Annulation/destruction ou acquittement/libération d'espace éphémère ; ne touche jamais Nextcloud. |
@@ -3898,7 +3925,8 @@ renderer_job_conflict, renderer_job_lost et renderer_cleanup_failed. Toute raiso
 non reconnue est une erreur de protocole, sans exception brute. Les phases et
 comptes d'avancement sont monotones et bornés par les étapes/blocs réellement attendus.
 
-Même job_id et même hash : lecture de l'état/résultat, aucune seconde exécution ;
+Même job_id et même empreinte de requête complète (distincte du hash canonical,
+liant aussi révision/format/profil/source/pins) : lecture de l'état/résultat, aucune seconde exécution ;
 job_id réutilisé avec autre hash : conflit. Dédoublonnage à durée de vie du worker,
 pas promesse exactly-once distribuée. Claim/journal durable Frida font autorité ;
 worker redémarré/job perdu → erreur honnête, aucun retry caché. Après récupération
@@ -4022,7 +4050,9 @@ Modules probables, noms proposés et non fichiers déjà livrés :
 - document_workshop_routes.py : frontières HTTP.
 - document_canonical.py : modèle structuré ; document_rendering.py : orchestration
   du rendu et validation, sérialisation Markdown directe, aucun UNO embarqué.
-- document_renderer_contract.py : schémas fermés du service privé et capacités.
+- document_renderer_contract.py : schémas fermés, identités/snapshots et capacités ;
+  document_renderer_wire.py : framing strict ; document_renderer_artifacts.py :
+  inspections de type/archives/PDF bornées, aucune exécution Writer.
 - document_renderer_client.py : HTTP Unix borné, suivi/résultat/annulation/libération.
 - workspace_document_paths.py : racine/segments.
 - workspace_document_content_service.py : fraîcheur/lecture.
@@ -4146,7 +4176,7 @@ sont corrigés. P2-M4-01 et P2-M4-02 sont fermés après leurs contre-audits
 indépendants, avec leurs résultats conservés ci-dessus ; P3-M4-03 est corrigé
 documentairement, sans fermer la livraison runtime de M4 ;
 M5 est fermé sur code/preuves hermétiques et contre-audit ; M6 est réalisé sur
-code/preuves isolées et contre-audit. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8–M10/Z restent non commencés et les
+code/preuves isolées et contre-audit. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C est fermé sur contrat/preuves simulées ; M8-S/M8-A, M9/M10/Z restent non commencés et les
 obligations runtime restent ouvertes.
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
 dans AGENTS.md ; l'invariant de consolidation reste applicable hors de cette

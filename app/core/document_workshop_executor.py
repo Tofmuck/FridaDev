@@ -6,20 +6,7 @@ from . import document_workshop_execution_store as store
 from .chat_turn_reservation import ChatReservation
 from .document_canonical import validate_canonical
 from .document_markdown import serialize_markdown
-from .document_workshop_contract import DocumentWorkshopError, validate_writer_page_count
-
-
-@dataclass(frozen=True,repr=False)
-class BinaryRenderEvidence:
-    """Internal synthetic boundary only, not the future Writer wire contract."""
-    revision_id: str
-    canonical_sha256: str
-    format: str
-    content: bytes
-    sha256: str
-    page_count: int
-    complete: bool
-    cleanup_complete: bool
+from .document_workshop_contract import DocumentWorkshopError
 
 
 @dataclass(frozen=True)
@@ -28,24 +15,6 @@ class ExecutionResult:
     reason_code: str|None=None
 
 
-def _validated_binary(run,format,renderer):
-    # This boundary cannot be reached by the public Markdown action. Internal
-    # synthetic executors exercise its post-confirmation ordering in M5.
-    store.check(run)
-    if format not in ('docx','pdf') or not callable(renderer):
-        raise DocumentWorkshopError('document_format_unavailable')
-    canonical=validate_canonical(run.revision['canonical'])
-    evidence=renderer(revision_id=run.action['revision_id'],canonical_sha256=run.revision['canonical_sha256'],
-        canonical=canonical.as_dict(),format=format)
-    store.check(run)
-    if (not isinstance(evidence,BinaryRenderEvidence) or evidence.revision_id!=run.action['revision_id']
-        or evidence.canonical_sha256!=run.revision['canonical_sha256'] or evidence.format!=format
-        or evidence.complete is not True or evidence.cleanup_complete is not True
-        or type(evidence.content) is not bytes or not 0<len(evidence.content)<=16*1024*1024
-        or hashlib.sha256(evidence.content).hexdigest()!=evidence.sha256):
-        raise DocumentWorkshopError('document_render_invalid')
-    validate_writer_page_count(evidence.page_count)
-    return evidence
 
 
 class DocumentExecutor:

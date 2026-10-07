@@ -423,29 +423,38 @@ class ExecutionPostgresqlTests(unittest.TestCase):
         self.assertEqual(client.mutations,[])
 
     def test_fake_binary_render_runs_after_claim_and_rejects_failure_pages_cleanup_and_public_formats(self):
-        from core.document_workshop_contract import DocumentWorkshopError
+        # Historical M5 ID/counter-cases preserved, now using the closed M8-C
+        # pair/provenance/lifecycle contract rather than single arbitrary bytes.
+        from core.document_rendering import RenderingSession,render_confirmed
+        from tests.support.document_renderer_fake import FakeRenderer
+        from tests.support.document_renderer_fixtures import ENGINE
         for case in ('failure','pages','pages_absent','pages_float','cleanup','partial','digest','revision','canonical_hash','format','valid_but_product_inactive'):
             with self.subTest(case=case):
                 if case!='failure':self.doCleanups();self.setUp()
-                seen=[]
-                def renderer(**kwargs):
-                    seen.append(kwargs)
+                def change(m):
+                    if case in ('pages','pages_absent','pages_float'):
+                        m['page_evidence']['writer_pages']=21 if case=='pages' else None if case=='pages_absent' else 1.0
+                    if case=='partial':m['artifacts'].pop('pdf')
+                    if case=='digest':m['artifacts']['docx']['sha256']='0'*64
+                    if case=='revision':m['revision_id']=str(uuid4())
+                    if case=='canonical_hash':m['canonical_sha256']='0'*64
+                    if case=='format':m['format']='pdf' # undeclared competing format
+                worker=FakeRenderer(result_change=change,
+                    status_change=dict(status='failed',reason_code='renderer_incomplete') if case=='failure' else {},
+                    release_change=dict(state='failed',reason_code='renderer_cleanup_failed',workspace_removed=False) if case=='cleanup' else {})
+                original=worker.submit
+                def submit(request):
                     self.assertEqual(actions.get_action(self.request_turn)['state'],'executing')
                     self.assertEqual(self.rows("SELECT count(*) FROM conversation_turn_claims WHERE kind='confirmation' AND state='active'"),[(1,)])
-                    if case=='failure':raise DocumentWorkshopError('document_render_invalid')
-                    content=b'PK\x03\x04synthetic-binary'
-                    return self.executor_module.BinaryRenderEvidence(
-                        str(uuid4()) if case=='revision' else self.action['revision_id'],
-                        '0'*64 if case=='canonical_hash' else kwargs['canonical_sha256'],'pdf' if case=='format' else 'docx',content,
-                        '0'*64 if case=='digest' else hashlib.sha256(content).hexdigest(),
-                        21 if case=='pages' else None if case=='pages_absent' else 1.0 if case=='pages_float' else 1,
-                        case!='partial',case!='cleanup')
+                    return original(request)
+                worker.submit=submit
+                session=RenderingSession(client=worker,expected_engine=ENGINE,wait=lambda:None)
                 class SyntheticBinaryExecutor(self.executor_module.DocumentExecutor):
-                    def _render(inner,run):return self.executor_module._validated_binary(run,'docx',renderer).content
+                    def _render(inner,run):return render_confirmed(run,'docx',session).docx
                 client=SyntheticDAV(self)
                 payload,status=self.confirm(SyntheticBinaryExecutor(mutation_client=client,storage_root=self.env.root))
                 self.assertEqual(status,503,payload)
-                self.assertEqual(len(seen),1)
+                self.assertEqual(worker.events.count('submit'),1)
                 self.assertEqual(client.mutations,[])
                 self.assertEqual(self.rows('SELECT count(*) FROM document_execution_journal'),[(0,)])
                 self.assertEqual(self.rows('SELECT count(*) FROM document_receipts'),[(0,)])

@@ -1,0 +1,674 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:frida:writer:render_delete_v1",
+  "$defs": {
+    "span": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bold": {
+          "type": "boolean"
+        },
+        "italic": {
+          "type": "boolean"
+        },
+        "link": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[hH][tT][tT][pP][sS]?://",
+              "minLength": 1
+            }
+          ]
+        }
+      },
+      "required": [
+        "text",
+        "bold",
+        "italic",
+        "link"
+      ],
+      "additionalProperties": false
+    },
+    "canonical": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "type": "integer"
+        },
+        "profile": {
+          "const": "frida_document_v1",
+          "type": "string"
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "paragraph",
+                    "type": "string"
+                  },
+                  "spans": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/span"
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "type",
+                  "spans"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "heading",
+                    "type": "string"
+                  },
+                  "spans": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/span"
+                    },
+                    "minItems": 1
+                  },
+                  "level": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 6
+                  }
+                },
+                "required": [
+                  "type",
+                  "spans",
+                  "level"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "quote",
+                    "type": "string"
+                  },
+                  "spans": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/span"
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "type",
+                  "spans"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "list",
+                    "type": "string"
+                  },
+                  "ordered": {
+                    "type": "boolean"
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/span"
+                      },
+                      "minItems": 1
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "type",
+                  "ordered",
+                  "items"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "table",
+                    "type": "string"
+                  },
+                  "rows": {
+                    "type": "array",
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/$defs/span"
+                        }
+                      },
+                      "minItems": 1
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "type",
+                  "rows"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "page_break",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "schema_version",
+        "profile",
+        "blocks"
+      ],
+      "additionalProperties": false
+    },
+    "engine": {
+      "type": "object",
+      "properties": {
+        "renderer_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.+-]{0,95}$",
+          "not": {
+            "pattern": "\\.\\."
+          }
+        },
+        "image_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.+-]{0,95}$",
+          "not": {
+            "pattern": "\\.\\."
+          }
+        },
+        "image_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "writer_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.+-]{0,95}$",
+          "not": {
+            "pattern": "\\.\\."
+          }
+        },
+        "uno_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.+-]{0,95}$",
+          "not": {
+            "pattern": "\\.\\."
+          }
+        },
+        "profile": {
+          "const": "frida_document_v1",
+          "type": "string"
+        },
+        "locale": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.+-]{0,95}$",
+          "not": {
+            "pattern": "\\.\\."
+          }
+        },
+        "filters": {
+          "type": "object",
+          "properties": {
+            "docx": {
+              "const": "Office Open XML Text",
+              "type": "string"
+            },
+            "pdf": {
+              "const": "writer_pdf_Export",
+              "type": "string"
+            }
+          },
+          "required": [
+            "docx",
+            "pdf"
+          ],
+          "additionalProperties": false
+        },
+        "fonts": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "prefixItems": [
+            {
+              "type": "object",
+              "properties": {
+                "role": {
+                  "const": "regular",
+                  "type": "string"
+                },
+                "file_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_.+-]{0,95}$",
+                  "not": {
+                    "pattern": "\\.\\."
+                  }
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "license_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_.+-]{0,95}$",
+                  "not": {
+                    "pattern": "\\.\\."
+                  }
+                }
+              },
+              "required": [
+                "role",
+                "file_id",
+                "sha256",
+                "license_id"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "role": {
+                  "const": "bold",
+                  "type": "string"
+                },
+                "file_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_.+-]{0,95}$",
+                  "not": {
+                    "pattern": "\\.\\."
+                  }
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "license_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_.+-]{0,95}$",
+                  "not": {
+                    "pattern": "\\.\\."
+                  }
+                }
+              },
+              "required": [
+                "role",
+                "file_id",
+                "sha256",
+                "license_id"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "role": {
+                  "const": "italic",
+                  "type": "string"
+                },
+                "file_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_.+-]{0,95}$",
+                  "not": {
+                    "pattern": "\\.\\."
+                  }
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "license_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_.+-]{0,95}$",
+                  "not": {
+                    "pattern": "\\.\\."
+                  }
+                }
+              },
+              "required": [
+                "role",
+                "file_id",
+                "sha256",
+                "license_id"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "role": {
+                  "const": "bold_italic",
+                  "type": "string"
+                },
+                "file_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_.+-]{0,95}$",
+                  "not": {
+                    "pattern": "\\.\\."
+                  }
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "license_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_.+-]{0,95}$",
+                  "not": {
+                    "pattern": "\\.\\."
+                  }
+                }
+              },
+              "required": [
+                "role",
+                "file_id",
+                "sha256",
+                "license_id"
+              ],
+              "additionalProperties": false
+            }
+          ],
+          "items": false
+        }
+      },
+      "required": [
+        "renderer_version",
+        "image_id",
+        "image_digest",
+        "writer_version",
+        "uno_version",
+        "profile",
+        "locale",
+        "filters",
+        "fonts"
+      ],
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "docx",
+            "pdf"
+          ]
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "frida",
+            "external"
+          ]
+        },
+        "byte_size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 41943040
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "source_revision_id": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            }
+          ]
+        },
+        "canonical": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/canonical"
+            }
+          ]
+        },
+        "canonical_sha256": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "origin",
+        "byte_size",
+        "sha256",
+        "source_revision_id",
+        "canonical",
+        "canonical_sha256"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "origin": {
+                "const": "external",
+                "type": "string"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "kind": {
+                "const": "docx",
+                "type": "string"
+              },
+              "source_revision_id": {
+                "type": "null"
+              },
+              "canonical": {
+                "type": "null"
+              },
+              "canonical_sha256": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "source_revision_id": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              },
+              "canonical": {
+                "$ref": "#/$defs/canonical"
+              },
+              "canonical_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "pages": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "const": "writer_reload_layout_v1",
+          "type": "string"
+        },
+        "revision_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "canonical_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "docx_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "pdf_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "writer_pages": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "pdf_pages": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "sequence": {
+          "const": [
+            "docx_saved",
+            "docx_reloaded",
+            "layout_stable",
+            "writer_pages_measured",
+            "pdf_exported",
+            "pdf_pages_measured"
+          ],
+          "type": "array"
+        }
+      },
+      "required": [
+        "method",
+        "revision_id",
+        "canonical_sha256",
+        "docx_sha256",
+        "pdf_sha256",
+        "writer_pages",
+        "pdf_pages",
+        "sequence"
+      ],
+      "additionalProperties": false
+    },
+    "source_evidence": {
+      "type": "object",
+      "properties": {
+        "inspection": {
+          "type": "string",
+          "enum": [
+            "frida_correspondence",
+            "external_docx_preflight_uno"
+          ]
+        },
+        "source_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "inventory_complete": {
+          "const": true,
+          "type": "boolean"
+        },
+        "representable": {
+          "const": true,
+          "type": "boolean"
+        },
+        "repair_used": {
+          "const": false,
+          "type": "boolean"
+        },
+        "loss_detected": {
+          "const": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "inspection",
+        "source_sha256",
+        "inventory_complete",
+        "representable",
+        "repair_used",
+        "loss_detected"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "render_delete_v1",
+      "type": "string"
+    },
+    "protocol_version": {
+      "const": 1,
+      "type": "integer"
+    },
+    "job_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "request_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "intent": {
+      "type": "string",
+      "enum": [
+        "cancel",
+        "release"
+      ]
+    }
+  },
+  "required": [
+    "schema",
+    "protocol_version",
+    "job_id",
+    "request_sha256",
+    "intent"
+  ],
+  "additionalProperties": false
+}
