@@ -366,29 +366,59 @@ class ActionCancellationPostgresqlTests(unittest.TestCase):
     def test_cancel_pending_action_update_failure_preserves_successor_and_context(self):
         self.cancellation_rollback('document_actions', preparing=False)
 
+    @contextmanager
+    def external_lock_supervision_pause(self):
+        # Only these two stores compete with the fixture's external row lock.
+        # Their entire calls (including SQL context exit) count as admitted.
+        condition = threading.Condition()
+        paused, active = False, 0
+        def defer_check(function):
+            def checked(*args, **kwargs):
+                nonlocal active
+                with condition:
+                    self.assertTrue(condition.wait_for(lambda: not paused, timeout=5),
+                                    'external-lock supervision pause was not released')
+                    active += 1
+                try:
+                    return function(*args, **kwargs)
+                finally:
+                    with condition:
+                        active -= 1
+                        condition.notify_all()
+            return checked
+        def pause():
+            nonlocal paused
+            with condition:
+                paused = True
+                self.assertTrue(condition.wait_for(lambda: active == 0, timeout=5),
+                                'admitted supervision did not finish before external lock')
+        def resume():
+            nonlocal paused
+            with condition:
+                paused = False
+                condition.notify_all()
+        def snapshot():
+            with condition:
+                return dict(paused=paused, active=active)
+        try:
+            with patch.object(self.actions, 'check_active', defer_check(self.actions.check_active)), \
+                 patch.object(self.actions, 'project_progress', defer_check(self.actions.project_progress)):
+                yield SimpleNamespace(pause=pause, resume=resume, snapshot=snapshot, condition=condition)
+        finally:
+            resume()
+
     def cancel_with_external_lock(self, table, column, identity, *, historical):
         first = self.prepare_a()
         action_a, claim_a, proposal_a = self.get(A), self.authority(A), self.immutable_proposal(A)
         successor = fixture.Provider(gate=True)
-        pause_checks, resume_checks = threading.Event(), threading.Event()
-        def defer_check(function):
-            def checked(*args, **kwargs):
-                # Defer competing supervision SQL until the synthetic lock is
-                # released. Every deferred check then executes its real store
-                # code; cancellation and its SQL locks are never simulated.
-                if pause_checks.is_set():
-                    self.assertTrue(resume_checks.wait(5))
-                return function(*args, **kwargs)
-            return checked
         with self.env.pipeline(successor) as (normal, _), \
-             patch.object(self.actions, 'check_active', defer_check(self.actions.check_active)), \
-             patch.object(self.actions, 'project_progress', defer_check(self.actions.project_progress)), ThreadPoolExecutor(2) as pool:
+             self.external_lock_supervision_pause() as checks, ThreadPoolExecutor(2) as pool:
             request = pool.submit(self.env.document, identity=B, message='Prepare proposal B')
             cancellation = None
             try:
                 self.assertTrue(successor.arrived.wait(5))
                 claim_b = self.authority(B)
-                pause_checks.set()
+                checks.pause()
                 with self.env.conn() as holder:
                     holder.execute('SELECT '+column+' FROM '+table+' WHERE '+column+'=%s::uuid FOR UPDATE', (identity,))
                     cancellation = pool.submit(self.cancel, A if historical else B)
@@ -398,7 +428,7 @@ class ActionCancellationPostgresqlTests(unittest.TestCase):
                     instant_a, instant_b, instant_context = self.get(A), self.authority(B), self.context_state()
                     instant_action_b = self.rows('SELECT state FROM document_actions WHERE id=%s::uuid', (B,))[0][0]
             finally:
-                resume_checks.set()
+                checks.resume()
                 successor.release.set()
                 result = request.result(timeout=10)
                 if cancellation is not None:

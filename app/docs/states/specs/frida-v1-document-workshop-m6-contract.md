@@ -204,7 +204,8 @@ contrôles négatifs injectent un second fetch dans le harnais seul et font reje
 la même assertion ; ils ne prétendent pas contourner la garde via l'UI produit.
 Les gates sont libérées en `finally`. Aucun délai ne décide de l'ordre causal.
 
-Un finding **indépendant P3-M6-AUD-03 reste ouvert**, hors correctif : le harnais
+À la livraison P3-01/02 `47a85218`, un finding **indépendant P3-M6-AUD-03 restait
+ouvert**, hors correctif : le harnais
 inchangé `cancel_with_external_lock` ne draine pas une supervision déjà entrée
 avant `pause_checks`. Le run élargi de 87 cas a un échec (préparation 503 au lieu
 de 200). Le diagnostic avec helper de base et helper corrigé force un contrôle
@@ -221,6 +222,56 @@ eux). Les cinq parcours M6 à HTTP natif et les dix à fetch simulé sont conser
 et comptés séparément. Ciblés, diagnostics et répétitions incluses dans ces
 sélections ne sont pas recomptés. L'échec intermédiaire de P3-M6-AUD-03 reste
 consigné ; ces résultats ne constituent pas une fermeture de cette anomalie.
+
+### Correctif de harnais P3-M6-AUD-03 — 7 octobre 2026
+
+Le [relevé dédié](../baselines/document-workshop/frida-v1-document-workshop-p3-m6-aud-03-20261007.json)
+part de `47a85218`. **P3-M6-AUD-03 corrigé dans le harnais seulement.** La baseline
+nominale des trois appelants est verte. Avant édition, le diagnostic causal impose
+un contrôle déjà entré, puis le verrou SQL externe : le vrai store lève
+`LockNotAvailable`, la préparation retourne `503 document_authority_unavailable`
+et le claim déjà interrompu fait rejeter l'assertion historique. Son exit 0 signifie
+échec attendu capturé. L'historique 86 succès/1 échec sur 87 est conservé ; son
+ordonnancement spontané exact reste inconnu. L'égalité AST M5/base des fonctions
+concernées établit leur origine héritée, sans finding produit attribué à M6.
+
+La fixture ferme l'admission de `check_active` et `project_progress` sous une
+Condition locale puis attend que leurs appels admis, transactions comprises,
+soient terminés. Les vrais stores s'exécutent hors du mutex ; `wait_for` le libère
+pendant le drainage. Le holder SQL n'entre qu'ensuite. Sa sortie précède la reprise
+des contrôles différés. Watchdog, garde asynchrone, renouvellement/lease et fencing
+restent réels ; seuls ces deux stores sont temporairement différés dans cette
+fenêtre synthétique. Les 17 assertions des trois appelants restent identiques.
+
+La preuve positive retient le vrai watchdog après acquisition de ses verrous,
+observe le drainage en attente sans verrou externe, puis constate son retour et
+la fin de sa transaction par PID PostgreSQL. Pendant le holder, son prochain
+contrôle attend réellement à l'admission ; après libération, son vrai store
+termine et la préparation aboutit, avec un seul appel fournisseur. Le négatif
+retire uniquement l'attente de drainage dans le thread de fenêtre : la même sonde
+`active == 0` rejette avant tout effet SQL du holder. Aucun succès de store simulé.
+Barrières et provider sont libérés en `finally`, y compris si le join de fenêtre
+expire ; un diagnostic de timeout injecté calibre cette sortie d'erreur.
+
+Le premier rendez-vous de la nouvelle preuve attendait le prochain contrôle avant
+de libérer l'appel actuel : 4 succès/1 échec sur 5, conservés. Il observe désormais
+le contrôle suivant pendant le holder, après drainage ; aucun sleep ou rejeu
+jusqu'au vert. La contre-lecture a fait corriger le risque de nettoyage du join,
+calibré par le diagnostic ci-dessus. Aucun code produit, contrat métier, route,
+migration, configuration, dépendance ou budget ne change. P3-01/02 et leurs
+contrôles négatifs sont inchangés et rejoués.
+
+Un diagnostic exploratoire attendait à tort un NOWAIT du guard avant la pause :
+il échoue sur cette prémisse, reste consigné et ne compte pas comme cas fonctionnel.
+Le guard admis attend d'abord le `FOR UPDATE` conversationnel bloquant détenu par
+le watchdog ; après libération, son vrai appel termine avant la fin du drainage.
+
+Validation finale : **1 555 identités historiques conservées + 2 cas SQL nouveaux
+= 1 557 distincts**, zéro skip/annulation, exits 0 ; **70 voisins séparés**, soit
+1 627 avec eux. Les 89 ciblés SQL, diagnostics et ciblés de cinq cas ne sont pas
+recomptés. Les cinq parcours HTTP natifs et les dix à fetch simulé restent
+distincts. Identités chargeables, sélecteurs, commandes, durées, sorties résumées
+et empreintes figurent dans le relevé. Livraison runtime ouverte ; M7 non commencé.
 
 M6 ne livre aucune nouvelle migration. Pour une livraison future, après GO
 distinct, Celebrimbor vérifie la version et l'état des migrations atelier M1

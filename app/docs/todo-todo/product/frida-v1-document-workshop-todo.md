@@ -3536,6 +3536,23 @@ parcours HTTP natifs et les dix à fetch simulé M6 sont conservés. Le passage 
 au vert ne ferme pas P3-M6-AUD-03 ; son échec intermédiaire reste dans le relevé.
 La livraison runtime reste ouverte et M7 reste non commencé.
 
+Correctif dédié **P3-M6-AUD-03**, 7 octobre 2026, depuis `47a85218` :
+[relevé séparé](../../states/baselines/document-workshop/frida-v1-document-workshop-p3-m6-aud-03-20261007.json).
+Le finding laissé ouvert ci-dessus est corrigé dans la seule fixture : admission
+fermée et drainage des vrais appels/transactions avant le verrou externe, puis
+reprise réelle après libération. La preuve observe un watchdog déjà entré, son
+retour et sa transaction fermée, son prochain contrôle différé et son store repris.
+Un négatif retire uniquement le drainage : la même sonde rejette avant l'effet SQL.
+Les trois scénarios et leurs 17 assertions sont conservés ; P3-01/02 restent
+inchangés et rejoués. Aucun code produit ou prérequis runtime modifié.
+Le diagnostic rouge avant patch, le rendez-vous intermédiaire 4/5 et la correction
+du nettoyage détectée en contre-lecture restent consignés ; aucun rouge historique
+86/87 n'est réécrit, son ordonnancement spontané reste inconnu.
+Comparaison exacte : **1 555 historiques + 2 nouveaux = 1 557 distincts**, exits 0,
+zéro skip/annulation ; **70 voisins séparés**. Les cinq parcours HTTP natifs et dix
+à fetch simulé restent distincts ; ciblés/diagnostics ne sont pas recomptés.
+Livraison runtime et canari toujours ouverts ; **M7 non commencé**.
+
 ### M7 — Update Markdown, ID stable et conflit
 
 **Objectif :** modifier la cible explicite sans écrasement concurrent.
