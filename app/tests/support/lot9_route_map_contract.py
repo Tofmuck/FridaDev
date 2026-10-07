@@ -93,6 +93,7 @@ def _expected_rows() -> list[RouteContract]:
         _row('/api/document-workshop/contexts', 'POST', 'create_document_workshop_context', 'conversations_documents_workspace'),
         _row('/api/document-workshop/contexts/<context_id>', 'GET', 'get_document_workshop_context', 'conversations_documents_workspace'),
         _row('/api/document-workshop/actions/<action_id>', 'GET', 'get_document_workshop_action', 'conversations_documents_workspace'),
+        _row('/api/workspace-folders/<folder_id>/files/<file_id>/content', 'GET', 'get_document_workshop_file_content', 'conversations_documents_workspace'),
         _row('/api/document-workshop/actions/<action_id>/cancel', 'POST', 'cancel_document_workshop_action', 'conversations_documents_workspace'),
         _row('/api/document-workshop/actions/<action_id>/confirm', 'POST', 'confirm_document_workshop_action', 'conversations_documents_workspace'),
         _row(

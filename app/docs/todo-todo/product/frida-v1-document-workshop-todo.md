@@ -1,6 +1,6 @@
 # Atelier documentaire agentique Frida V1 — spécification validée et roadmap
 
-Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-05 ; M3/M4/M5 : 2026-10-06.
+Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-05 ; M3/M4/M5 : 2026-10-06 ; M6 : 2026-10-07.
 
 Statut : **spécification et choix architecturaux validés par Tof ; M0 fermé sur
 composants et preuves internes, contre-audit corrigé sur `FridaV1-Document-Workshop-M0` ;
@@ -18,7 +18,7 @@ M4 livré sur code, P2-M4-01 et P2-M4-02 fermés après contre-audits indépenda
 P3-M4-03 corrigé par erratum documentaire (1 198 déclarés conservés et rectifiés,
 sélection publiée à 1 414, 21 identifiants réutilisables validés) ;
 M4 non intégralement fermé ;
-M5 fermé sur code/preuves hermétiques et contre-audit ; M6–M10 et Z non commencés,
+M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées, livraison runtime ouverte ; M7–M10 et Z non commencés,
 aucun déploiement ou renderer livré**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
@@ -43,7 +43,7 @@ Une case cochée dans les décisions signifie « décidé par Tof », pas « liv
 Une case ouverte dans les critères ou les lots signifie « à implémenter ou prouver ».
 Les inconnues factuelles sont isolées en section 11. Seules les preuves datées
 dans M0–M4 décrivent des tests exécutés ou des déclarations historiques explicitement
-qualifiées ; M5 dispose de son relevé daté hermétique, M6 et suivants restent des preuves futures. L'erratum P3-M4-03
+qualifiées ; M5 dispose de son relevé daté hermétique, M6 dispose de son relevé isolé du 7 octobre ; M7 et suivants restent des preuves futures. L'erratum P3-M4-03
 ci-dessous distingue les nouveaux rejeux des résultats antérieurs.
 Une clôture code/preuves ne ferme pas migration opérateur, rebuild ou preuve DAV déployée.
 
@@ -68,6 +68,10 @@ Une clôture code/preuves ne ferme pas migration opérateur, rebuild ou preuve D
   pour confirmation, exécution injectée, migrations isolées, preuves, contre-audit,
   documentation et commit/push sur `FridaV1-Document-Workshop-M5` seulement.
   Aucun démarrage M6, raccord réel de mutation, runtime ou canari.
+- [x] M6 explicitement autorisé le 2026-10-07 depuis M5 exact `6ea19f93bab0c1fb14fd4465ddc449f60f1531e4`,
+  sur la nouvelle branche `FridaV1-Document-Workshop-M6` : raccord applicatif create/copy,
+  reçu/lien/inventaire/continuité, preuves isolées, contre-audit et commit/push.
+  Aucun runtime opérateur, modèle réel, canari DAV ou démarrage M7.
 - [ ] GO distinct obtenu avant tout appel modèle réel de preuve.
 - [ ] GO distinct obtenu avant tout canari d'écriture Nextcloud.
 
@@ -740,7 +744,9 @@ Les routes remote/adopt sont implémentées et prouvées hermétiquement en M2 ;
 leur livraison runtime reste ouverte. `/api/chat` avec `document_context_id`
 raccorde depuis M4 la préparation Markdown, avec GET/cancel des actions durables.
 M5 ajoute la confirmation à exécuteur injecté pour ses preuves hermétiques ;
-sans exécuteur runtime, la capacité reste indisponible et aucun POST ne mute DAV.
+M6 raccorde la factory réelle au registrar existant : capacité annoncée seulement
+si les prérequis sont disponibles. Ce code est prouvé en isolation, sans livraison
+runtime opérateur ni canari. Voir le [contrat M6](../../states/specs/frida-v1-document-workshop-m6-contract.md).
 
 | Interface | Responsabilité |
 | --- | --- |
@@ -888,7 +894,8 @@ dans le lot de résumé ci-dessous (716/716). Migration opérateur, rebuild et l
 restent ouverts. M3 est fermé sur code/preuves et contre-audit ci-dessous ;
 M4 est livré sur code/preuves hermétiques, P2-M4-01 et P2-M4-02 fermés après
 contre-audits indépendants, P3-M4-03 corrigé documentairement ; livraison runtime
-ouverte, confirmation et écriture inactives. M5–M10 et Z ne sont pas commencés. Spécification et
+ouverte. M5 est fermé sur code/preuves injectées ; M6 raccorde le parcours réel
+avec preuves isolées, sans déploiement. M7–M10 et Z restent non commencés. Spécification et
 décisions amont sont validées et l'exception produit est inscrite.
 Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
 les GO M0–M4 et P3-M4-03 ne valent pour aucun lot suivant ni déploiement.
@@ -3439,7 +3446,8 @@ restent des obligations distinctes. Ce lot ne vaut pas autorisation de M5.
 Le [contrat M5](../../states/specs/frida-v1-document-workshop-m5-contract.md)
 porte les propriétaires, la matrice de panne, l'autorité durable et les limites.
 La confirmation reste indisponible dans le parcours public ; seul le harnais
-injecte l'exécuteur et le transport synthétique. M6 reste non commencé.
+injecte l'exécuteur et le transport synthétique à cette date. Le raccord M6 du
+7 octobre est décrit dans la section suivante, sans livraison runtime.
 
 **Objectif :** démontrer les protections d'exécution avant raccord réel d'écriture.
 **Dépendances :** M4.
@@ -3494,15 +3502,23 @@ réservé à M6 ; aucune preuve de rendu, de DAV live ou de déploiement.
 **Interface :** action exécutée, lien produit, inventaire commun et reçu suivant.
 **Propriétaire :** Celebrimbor.
 
-- [ ] Rouge causal : succès distant/échec local → aucun faux succès ; autre conversation
+- [x] Rouge causal : succès distant/échec local → aucun faux succès ; autre conversation
   → inventaire sans contenu ; confirmation répétée → aucune seconde mutation.
-- [ ] Tests HTTP complet, inventaire/réhydratation/manifeste/projections voisins.
-- [ ] Faux verts : tester l'executor seul, confondre ID conversation de départ et
+- [x] Tests HTTP complet, inventaire/réhydratation/manifeste/projections voisins.
+- [x] Faux verts : tester l'executor seul, confondre ID conversation de départ et
   thread courant, vérifier présence du reçu sans vérifier sa lane.
-- [ ] Interdire copie implicite, renommage après clic, reçu assistant/tool.
-- [ ] Synchroniser atelier/Documents/dossiers/observabilité.
+- [x] Interdire copie implicite, renommage après clic, reçu assistant/tool.
+- [x] Synchroniser atelier/Documents/dossiers/observabilité.
 - [ ] Premier canari synthétique après fermeture hermétique et GO distinct seulement.
 - [ ] Rebuild requis ; fermer concordance lien/inventaire/reçu/tour suivant.
+
+Code et preuves isolées : [contrat M6](../../states/specs/frida-v1-document-workshop-m6-contract.md),
+[relevé daté](../../states/baselines/document-workshop/frida-v1-document-workshop-m6-20261007.json).
+Baseline M5 exacte rejouée avant patch et comparée après patch ; nouveautés et
+70 voisins supplémentaires séparés. Contre-lecture indépendante effectuée,
+findings M6 corrigés et revalidés avant livraison Git. Aucune nouvelle migration
+M6 ; prérequis M1–M5 et recette future
+détaillés dans le contrat. Les deux portes live ci-dessus restent ouvertes.
 
 ### M7 — Update Markdown, ID stable et conflit
 
@@ -4079,8 +4095,9 @@ historique explicitement rectifiée par P3-M4-03 ; les identifiants réutilisabl
 sont corrigés. P2-M4-01 et P2-M4-02 sont fermés après leurs contre-audits
 indépendants, avec leurs résultats conservés ci-dessus ; P3-M4-03 est corrigé
 documentairement, sans fermer la livraison runtime de M4 ;
-M5 est fermé sur code/preuves hermétiques et contre-audit ; M6–M10/Z restent
-non commencés et les obligations runtime restent ouvertes.
+M5 est fermé sur code/preuves hermétiques et contre-audit ; M6 est réalisé sur
+code/preuves isolées et contre-audit. M7–M10/Z restent non commencés et les
+obligations runtime restent ouvertes.
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
 dans AGENTS.md ; l'invariant de consolidation reste applicable hors de cette
 exception. Les seuls composants applicatifs livrables par M0 sont les frontières

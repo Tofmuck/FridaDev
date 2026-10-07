@@ -1,6 +1,7 @@
-"""M5 closed confirmation HTTP service; execution is injection-only."""
+"""Closed confirmation HTTP service; M6 composes available execution lazily."""
 from . import conversation_turn_claims as claims, document_workshop_actions as actions
 from . import document_workshop_execution_store as store
+from . import document_workshop_receipts as receipts
 from .document_workshop_context_service import _id
 from .document_workshop_contract import DocumentWorkshopError
 from .workspace_document_paths import validate_document_path
@@ -15,10 +16,12 @@ def project_action(record,*,executor=None):
     if record is None:return None
     result={key:record[key] for key in _PUBLIC if key in record}
     if record.get('state')=='succeeded':
-        try:complete=store.verify_committed_action(record['id'],storage_root=getattr(executor,'storage_root',None))
-        except Exception:complete=False
-        if not complete:
+        try:receipt=receipts.for_action(record['id'],storage_root=getattr(executor,'storage_root',None))
+        except Exception:receipt=None
+        if receipt is None:
             result.update(state='remote_uncertain',reason_code='document_publication_unknown')
+        else:
+            result['receipt']=receipt
     eligible=record.get('state')=='pending' and record.get('format')=='markdown' and record.get('operation') in ('create','copy')
     collections=[]
     if record.get('relative_path'):

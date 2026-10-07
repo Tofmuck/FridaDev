@@ -1,8 +1,20 @@
 # Frida V1 - Continuity Payload Contract
 
+## Évolution M6 — 7 octobre 2026
+
+`document_receipt_lane` est une lane tardive privée de métadonnées historiques,
+distincte de `document_lane` : dernier reçu pertinent uniquement, historique
+supplémentaire zéro. Même fonction dans le tour normal et documentaire, après
+les facultés et avant la capsule ; aucune persistance en message ni récupération
+automatique du contenu. Le manifeste mesure le payload envoyé et garde seulement
+statut/comptes/volume/provenance content-free. Provenance par index au gel et
+E + 24 000 ≤ 400 000 avec le compteur partagé sont conservés.
+Voir le [contrat M6](frida-v1-document-workshop-m6-contract.md). Aucun nouveau
+réglage, politique de logs ou transport ; runtime/live ouverts.
+
 ## Évolution M4 — 6 octobre 2026
 
-Le payload documentaire M4 est assemblé après les facultés constitutives, avec les sources complètes non souveraines, puis les instructions d’enveloppe et la capsule existante. L’admission mesure cette entrée figée via `token_utils.estimate_tokens`, avec E + 24 000 <= 400 000. Le manifeste reste content-free et attribue les sources tardives à `document_lane` ; aucune sortie canonical ne nourrit les facultés.
+Le payload documentaire M4 est assemblé après les facultés constitutives, avec les sources complètes non souveraines, puis la capsule existante et les instructions d’enveloppe M0. M6 ajoute les métadonnées du reçu entre les sources et la capsule, sans déplacer cet ordre ; il conserve aussi l'attribution de la capsule par index après gel. L’admission mesure cette entrée figée via `token_utils.estimate_tokens`, avec E + 24 000 <= 400 000. Le manifeste reste content-free et attribue les sources tardives à `document_lane` ; aucune sortie canonical ne nourrit les facultés.
 Voir le [contrat M4](frida-v1-document-workshop-m4-contract.md) pour les preuves
 hermétiques et les limites ; migrations opérateur, runtime, modèle/DAV live et M5 restent ouverts.
 

@@ -1,5 +1,14 @@
 # Frida V1 - Documents ingestion contract
 
+## Évolution M6 — 7 octobre 2026
+
+La création/copie Markdown confirmée réutilise le registre commun fichier/lien.
+Son reçu historique immuable et son lien vers la révision publiée ne mobilisent
+aucune source. Une lecture HTTP d'inventaire échouée renvoie 503 sans liste vide ;
+le refresh M6 conserve l'inventaire précédent et n'écrit jamais de nouveau fichier.
+Voir le [contrat M6](frida-v1-document-workshop-m6-contract.md). Code prouvé en
+isolation seulement ; migrations opérateur, rebuild et canari restent ouverts.
+
 ## Évolution M4 — 6 octobre 2026
 
 Un draft Markdown M4 est un artefact/révision/action, jamais une ligne `workspace_files` ou un fichier Nextcloud. La source explicite réutilise la lecture fraîche M2 ; la sélection ne donne aucune autorité d’update. Le renderer, les formats DOCX/PDF et l’écriture restent hors M4.

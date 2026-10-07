@@ -235,12 +235,17 @@ def serialize_workspace_file_row(
     }
 
 
+class WorkspaceFileListUnavailable(RuntimeError):
+    """The common inventory could not be read; this is not an empty inventory."""
+
+
 def list_workspace_files(
     folder_id: str,
     *,
     db_conn_func: Callable[[], Any],
     storage_root: Path,
     logger: Any,
+    fail_closed: bool = False,
 ) -> list[dict[str, Any]]:
     normalized = normalize_workspace_folder_id(folder_id)
     if not normalized:
@@ -292,6 +297,8 @@ def list_workspace_files(
             reason_code=REASON_WORKSPACE_FILE_DB_MISSING,
             error_type=type(exc).__name__,
         )
+        if fail_closed:
+            raise WorkspaceFileListUnavailable("workspace_files_lookup_failed") from None
         return []
 
 

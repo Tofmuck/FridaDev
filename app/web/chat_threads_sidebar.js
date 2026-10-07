@@ -737,7 +737,7 @@ function createChatThreadsSidebar({
     workspaceFilesRequests.set(folderId, request);
     return request;
   };
-  const readWorkspaceFiles = async (normalized, request, isCurrent) => {
+  const readWorkspaceFiles = async (normalized, request, isCurrent, preserveInventoryOnError = false) => {
     const mayPublish = () => isCurrent() && workspaceFilesRequests.get(normalized) === request;
     if (!mayPublish()) return null;
     try {
@@ -751,7 +751,7 @@ function createChatThreadsSidebar({
       return files;
     } catch (err) {
       if (!mayPublish()) return null;
-      workspaceFilesState.set(normalized, []);
+      if (!preserveInventoryOnError) workspaceFilesState.set(normalized, []);
       workspaceFilesStatusState.set(normalized, {
         status: "error",
         reason_code: listErrorReason(err, "workspace_files_lookup_failed"),
@@ -761,10 +761,10 @@ function createChatThreadsSidebar({
   };
   // Array (including []) = effective publication; null = ignored; current
   // errors publish the error status and reject. No repair or retry is implicit.
-  const refreshWorkspaceFiles = async (folderId, isCurrent = () => true) => {
+  const refreshWorkspaceFiles = async (folderId, isCurrent = () => true, { preserveInventoryOnError = false } = {}) => {
     const normalized = WorkspaceFolders?.normalizeWorkspaceFolderId(folderId);
     if (!normalized || !isCurrent() || !getWorkspaceFolders().some(folder => folder.id === normalized)) return null;
-    return readWorkspaceFiles(normalized, beginWorkspaceFilesRequest(normalized), isCurrent);
+    return readWorkspaceFiles(normalized, beginWorkspaceFilesRequest(normalized), isCurrent, preserveInventoryOnError);
   };
 
   const beginWorkspaceExportsRequest = (folderId) => {

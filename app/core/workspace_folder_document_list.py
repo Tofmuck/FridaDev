@@ -22,7 +22,9 @@ def list_workspace_folder_documents(
     workspace_files_module: Any,
 ) -> list[dict[str, Any]]:
     folder_id = str(folder.get("id") or "")
-    items = workspace_files_module.list_workspace_files(folder_id)
+    read = getattr(workspace_files_module, "list_workspace_files_strict",
+                   workspace_files_module.list_workspace_files)
+    items = read(folder_id)
     enriched = [
         _attach_content_free_nextcloud_link(item, workspace_files_module=workspace_files_module)
         for item in items

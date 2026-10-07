@@ -1,5 +1,6 @@
-"""Workshop contexts, adoption, durable actions and injection-only confirmation."""
-from flask import jsonify, request
+"""Workshop contexts, adoption, durable actions and confirmed M6 execution."""
+from io import BytesIO
+from flask import jsonify, request, send_file
 from core import document_workshop_context_service as service
 from core import workspace_document_adoption_service as adoption
 from core import document_workshop_actions as actions
@@ -8,7 +9,6 @@ from core.document_workshop_contract import DocumentWorkshopError
 
 def register_document_workshop_routes(app, *, get_store, get_conversations, get_folders, get_files,
                                       get_executor=None):
-    # M5 proof injection only. server.py supplies no mutator or execution factory.
     def executor():
         return get_executor() if get_executor is not None else None
 
@@ -71,6 +71,23 @@ def register_document_workshop_routes(app, *, get_store, get_conversations, get_
         from core.document_workshop_execution_service import confirm
         payload, status = confirm(action_id, request.get_json(silent=True), executor=available)
         return jsonify(payload), status
+
+    @app.get('/api/workspace-folders/<folder_id>/files/<file_id>/content')
+    def get_document_workshop_file_content(folder_id, file_id):
+        if request.args:
+            return jsonify(ok=False, reason_code='document_file_request_invalid'), 400
+        from core.document_workshop_receipts import read_content
+        try:
+            content, name = read_content(folder_id, file_id)
+            response = send_file(BytesIO(content), mimetype='text/plain; charset=utf-8',
+                as_attachment=True, download_name=name, max_age=0)
+            response.headers['Cache-Control'] = 'private, no-store'
+            response.headers['X-Content-Type-Options'] = 'nosniff'
+            return response
+        except DocumentWorkshopError as error:
+            return jsonify(ok=False, reason_code=error.reason_code), 404 if error.reason_code=='document_file_missing' else 503
+        except Exception:
+            return jsonify(ok=False, reason_code='document_file_unavailable'), 503
 
     @app.get('/api/workspace-folders/<folder_id>/documents/remote')
     def list_remote_workspace_documents(folder_id):

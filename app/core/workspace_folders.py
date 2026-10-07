@@ -88,12 +88,13 @@ def list_workspace_folders(*, include_deleted: bool = False) -> list[dict[str, A
     )
 
 
-def get_workspace_folder(folder_id: str, *, include_deleted: bool = False) -> Optional[dict[str, Any]]:
+def get_workspace_folder(folder_id: str, *, include_deleted: bool = False, fail_closed: bool = False) -> Optional[dict[str, Any]]:
     return workspace_folders_store.get_workspace_folder(
         folder_id,
         include_deleted=include_deleted,
         db_conn_func=_db_conn,
         logger=logger,
+        fail_closed=fail_closed,
     )
 
 

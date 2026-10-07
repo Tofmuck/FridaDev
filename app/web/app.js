@@ -778,8 +778,8 @@
     getSourceFileIds: conversationId => threadsLifecycle.getWorkspaceFileSelections(conversationId)
       .filter(selection => selection.selected === true)
       .map(selection => selection.workspace_file_id),
-    refreshFiles: async (folderId, isCurrent) => {
-      const files = await threadsLifecycle.refreshWorkspaceFiles(folderId, isCurrent);
+    refreshFiles: async (folderId, isCurrent, options) => {
+      const files = await threadsLifecycle.refreshWorkspaceFiles(folderId, isCurrent, options);
       if (isCurrent() && files !== null) renderThreads();
       return files;
     },

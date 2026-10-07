@@ -78,6 +78,8 @@ function createDocumentWorkshopController({
   let actionReadSerial = 0;
   const cancellationGenerations = new Map();
   const cards = new Map();
+  const executionReads = new Map();
+  const receiptInventories = new Map();
   // Local evidence of an attempted click only; it grants no server authority.
   // Keep every consumed action through navigation/refresh, including a POST
   // that never reached the server. Reads may establish state, never replay it.
@@ -126,6 +128,68 @@ function createDocumentWorkshopController({
       && ['preparing', 'pending', 'clarify', 'refuse', 'failed', 'cancelled', 'invalidated',
         'superseded', 'interrupted', 'lost', 'executing', 'succeeded', 'remote_uncertain'].includes(record.state);
   }
+  function receiptLink(record) {
+    const receipt = record.receipt;
+    if (record.state !== 'succeeded' || !receipt || receipt.action_id !== record.id
+        || receipt.conversation_id !== record.conversation_id || receipt.workspace_folder_id !== record.workspace_folder_id
+        || receipt.revision_id !== record.revision_id || receipt.relative_path !== record.relative_path
+        || receipt.publication_evidence !== 'historical' || typeof receipt.workspace_file_id !== 'string'
+        || !receipt.workspace_file_id || receipt.workspace_file_id.length > 128) return null;
+    const path = `/api/workspace-folders/${encodeURIComponent(receipt.workspace_folder_id)}/files/${encodeURIComponent(receipt.workspace_file_id)}/content`;
+    return receipt.product_link === path ? path : null;
+  }
+  function renderPublished(record) {
+    for (const [container, reference] of cards) {
+      if (!container.isConnected) { cards.delete(container); continue; }
+      if (reference.action_id === record.id) renderAction(container, record);
+    }
+    if (action?.id === record.id) render();
+  }
+  async function refreshReceiptInventory(record) {
+    if (!receiptLink(record) || receiptInventories.has(record.id)) return;
+    receiptInventories.set(record.id, 'refreshing');
+    const folderId = record.workspace_folder_id;
+    try {
+      // Receipt identities own the refresh, never the thread at response time.
+      const files = await refreshFiles(folderId, () => true, { preserveInventoryOnError: true });
+      const complete = Array.isArray(files) && files.some(file => file.id === record.receipt.workspace_file_id);
+      receiptInventories.set(record.id, complete ? 'updated' : 'unavailable');
+    } catch { receiptInventories.set(record.id, 'unavailable'); }
+    if (signature(currentScope()) === signature(scope(record))) renderPublished(record);
+  }
+  function watchExecution(record) {
+    const existing = executionReads.get(record.id);
+    if (record.state !== 'executing') {
+      if (existing) doc.defaultView.clearTimeout(existing.timer);
+      executionReads.delete(record.id); return;
+    }
+    if (existing) return;
+    const expected = scope(record), cancellation = cancellationGenerations.get(record.id);
+    const read = { timer: null };
+    executionReads.set(record.id, read);
+    const mayRead = () => executionReads.get(record.id) === read
+      && signature(currentScope()) === signature(expected)
+      && cancellation === cancellationGenerations.get(record.id)
+      && ((visible && action?.id === record.id) || [...cards].some(([node, ref]) => node.isConnected && ref.action_id === record.id));
+    read.timer = doc.defaultView.setTimeout(async () => {
+      if (!mayRead()) { executionReads.delete(record.id); return; }
+      try {
+        const response = await fetchFn(`/api/document-workshop/actions/${encodeURIComponent(record.id)}`);
+        const payload = await response.json();
+        if (!mayRead()) return;
+        if (!response.ok || payload?.ok !== true || !validAction(payload.action, expected, record.context_id, record.id)) return;
+        executionReads.delete(record.id);
+        publishAction(payload.action);
+      } catch { /* Read unavailable: retain state and the explicit Reload action. */ }
+      finally {
+        if (executionReads.get(record.id) === read) {
+          const continueReading = mayRead();
+          executionReads.delete(record.id);
+          if (continueReading) watchExecution(record);
+        }
+      }
+    }, 750);
+  }
   function renderAction(container, record) {
     container.replaceChildren();
     if (!record) return;
@@ -142,8 +206,17 @@ function createDocumentWorkshopController({
       : ({ pending: 'Document préparé', cancelled: 'Préparation annulée', failed: confirmations.has(record.id) || record.confirmation_turn_id ? 'Exécution documentaire échouée' : 'Préparation échouée',
         invalidated: 'Préparation invalidée', superseded: 'Préparation remplacée', interrupted: 'Tour interrompu',
         lost: 'Préparation perdue', clarify: 'Précision nécessaire', refuse: 'Préparation refusée',
-        executing: 'Exécution engagée', succeeded: 'Document créé', remote_uncertain: 'Résultat distant incertain. Aucun nouvel envoi automatique.' })[record.state];
+        executing: 'Exécution engagée', succeeded: receiptLink(record) ? 'Document créé' : 'Publication documentaire à vérifier.', remote_uncertain: 'Résultat distant incertain. Aucun nouvel envoi automatique.' })[record.state];
     card.appendChild(status);
+    const link = receiptLink(record);
+    if (link) {
+      const detail = doc.createElement('div'); detail.textContent = record.receipt.relative_path; card.appendChild(detail);
+      const open = doc.createElement('a'); open.href = link; open.dataset.documentReceiptLink = '';
+      open.textContent = 'Télécharger le document'; open.rel = 'noopener'; card.appendChild(open);
+      if (receiptInventories.get(record.id) === 'unavailable') {
+        const notice = doc.createElement('div'); notice.textContent = 'Inventaire non actualisé.'; card.appendChild(notice);
+      }
+    }
     if (['failed', 'remote_uncertain'].includes(record.state)) {
       const count = record.created_collections_count;
       let notice = '';
@@ -193,6 +266,8 @@ function createDocumentWorkshopController({
       if (reference.action_id === record.id) renderAction(container, record);
     }
     render();
+    watchExecution(record);
+    void refreshReceiptInventory(record);
   }
   async function confirmAction(record) {
     const expected = currentScope();
@@ -229,7 +304,14 @@ function createDocumentWorkshopController({
           workspace_folder_id: marker.workspace_folder_id, revision_id: marker.revision_id, request_id: marker.request_id }),
       });
       const payload = await response.json();
-      if (!stillHere()) return;
+      if (!stillHere()) {
+        // A late publication belongs to the confirmed origin. Refresh its
+        // common inventory without rendering into the newly selected thread.
+        if (response.ok && payload?.ok === true && validAction(payload.action, expected, record.context_id, record.id)) {
+          void refreshReceiptInventory(payload.action);
+        }
+        return;
+      }
       if (!response.ok || payload?.ok !== true || !validAction(payload.action, expected, record.context_id, record.id)) {
         throw new Error('document_confirmation_unavailable');
       }
@@ -347,6 +429,8 @@ function createDocumentWorkshopController({
       const container = doc.createElement('div');
       cards.set(container, { ...reference, role: messageRecord.role });
       wrapper.appendChild(container); renderAction(container, payload.action);
+      watchExecution(payload.action);
+      void refreshReceiptInventory(payload.action);
     } catch { /* No invented action, success or transcript after a failed reread. */ }
   }
 
@@ -376,7 +460,9 @@ function createDocumentWorkshopController({
     statusEl.textContent = message || (context
       ? action?.state === 'preparing' ? preparationLabel(action)
       : context.capabilities.prepare === true
-        ? 'Édition · Décrivez votre demande dans le compositeur. Markdown · création ou copie ; écriture indisponible.'
+        ? context.capabilities.confirm === true
+          ? 'Édition · Décrivez votre demande dans le compositeur. Markdown · création ou copie après confirmation.'
+          : 'Édition · Décrivez votre demande dans le compositeur. Markdown · création ou copie ; écriture indisponible.'
         : 'Édition · La préparation documentaire est indisponible. Votre brouillon est conservé.'
       : busy ? 'Ouverture du contexte…' : 'Choisissez explicitement un répertoire pour cette conversation.');
     if (actionEl) renderAction(actionEl, action);
@@ -455,6 +541,7 @@ function createDocumentWorkshopController({
       render();
       saveAttempt();
       if (action?.state === 'preparing') void readAction();
+      if (action) { watchExecution(action); void refreshReceiptInventory(action); }
     } catch {
       if (!current(token, expected)) return;
       busy = false; context = null; pendingScope = expected;
@@ -693,6 +780,7 @@ function createDocumentWorkshopController({
     if (context && !busy) void requestContext(scope(context), targetEl.value || null);
   });
   reloadEl.addEventListener('click', () => {
+    if (action && receiptInventories.get(action.id) === 'unavailable') receiptInventories.delete(action.id);
     if (context && !busy) void requestContext(scope(context), context.target_file_id || null, context.id);
   });
   exitEl.addEventListener('click', () => exit());

@@ -57,6 +57,14 @@ def list_workspace_files(folder_id: str) -> list[dict[str, Any]]:
     )
 
 
+def list_workspace_files_strict(folder_id: str) -> list[dict[str, Any]]:
+    """Read the same inventory, preserving an unavailable HTTP refresh as such."""
+    return workspace_files_store.list_workspace_files(
+        folder_id, db_conn_func=_db_conn, storage_root=_storage_root(),
+        logger=logger, fail_closed=True,
+    )
+
+
 def get_workspace_file_storage_row(folder_id: str, file_id: str) -> Optional[dict[str, Any]]:
     return workspace_file_ocr_store.get_workspace_file_storage_row(
         folder_id,

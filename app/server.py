@@ -30,6 +30,7 @@ from core import assistant_turn_state
 from core import chat_stream_control
 from core import conv_store
 from core import document_workshop_contexts
+from core import document_workshop_runtime
 from core import active_conversation_documents
 from core import active_document_upload_service
 from core import chat_service
@@ -906,6 +907,7 @@ document_workshop_routes.register_document_workshop_routes(
     get_conversations=lambda: conv_store,
     get_folders=lambda: workspace_folders,
     get_files=lambda: workspace_files,
+    get_executor=lambda: document_workshop_runtime.get_executor(),
 )
 
 

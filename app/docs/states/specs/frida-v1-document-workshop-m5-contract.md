@@ -1,5 +1,14 @@
 # Atelier documentaire Frida V1 — contrat M5
 
+## Raccord M6 — 7 octobre 2026
+
+Le périmètre historique M5 ci-dessous reste la confirmation/exécution injectée.
+M6 fournit désormais au serveur une factory réelle paresseuse, les consommateurs
+du reçu/lien/inventaire et la lane de continuité, sans modifier l'autorité ni les
+compensations M5. Voir le [contrat M6](frida-v1-document-workshop-m6-contract.md).
+Cette évolution est prouvée en isolation ; aucune migration opérateur, livraison
+runtime ou mutation Nextcloud opérateur n'est attestée.
+
 Date : 2026-10-06. Statut : code et preuves hermétiques fermés ;
 aucune livraison runtime. Autorité :
 [roadmap active](../../todo-todo/product/frida-v1-document-workshop-todo.md#m5--confirmation-et-exécution-hermétiquement-protégées)

@@ -1,5 +1,15 @@
 # FridaDev - workspace folders contract
 
+## Évolution M6 — 7 octobre 2026
+
+Un fichier Markdown créé/copié après confirmation entre dans le même inventaire
+du répertoire d'origine. Une autre conversation le voit sans devenir sa source,
+cible ou sélection. Les rafraîchissements gardent la coordination M2 par famille
+et répertoire, y compris les réponses tardives de confirmation. Le lien produit
+folder/file donne la révision attestée, sans chemin DAV/filesystem fourni par le
+client. Voir le [contrat M6](frida-v1-document-workshop-m6-contract.md),
+livraison runtime et canari ouverts.
+
 Statut: spec vivante
 Date: 2026-05-20
 Classement: `app/docs/states/specs/`

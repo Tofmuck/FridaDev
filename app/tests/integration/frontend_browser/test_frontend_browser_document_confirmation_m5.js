@@ -96,6 +96,8 @@ for(const failure of ['not_received','after_received'])test(`M5 ${failure} rerea
     await page.waitForFunction(count=>window.__m5.calls.filter(c=>c.path.startsWith('/api/document-workshop/actions/')&&c.method==='GET').length>count,reads);
     assert.equal(await page.locator('[data-document-confirm]').count(),0);
     if(failure==='not_received'){
+      // The request counter observes dispatch, before its JSON response renders.
+      await page.waitForFunction(()=>/non établie|non confirmée|incertain/i.test(document.querySelector('#documentWorkshop .document-action-card')?.textContent||''));
       assert.equal(await page.evaluate(()=>window.__m5.action.state),'pending');
       assert.match(await page.locator('#documentWorkshop .document-action-card').textContent(),/non établie|non confirmée|incertain/i);
       assert.equal(await page.locator('.document-action-card[data-state="executing"],.document-action-card[data-state="succeeded"]').count(),0);

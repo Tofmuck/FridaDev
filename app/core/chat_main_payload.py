@@ -8,6 +8,7 @@ from core import active_document_prompt_lane
 from core import adobe_docs_prompt_lane
 from core import chat_prompt_context
 from core import continuity_capsule
+from core import document_workshop_receipts
 from core import workspace_folder_notes_prompt_lane
 from core.chat_agent_lane_orchestration import (
     _emit_adobe_prompt_lane_observability,
@@ -185,6 +186,8 @@ def prepare_main_payload(
     )
     if adobe_request.active:
         _emit_adobe_prompt_lane_observability(adobe_lane)
+    receipt_lane = document_workshop_receipts.inject_receipt_lane(prompt_messages, conversation)
+    payload_message_sources.update(receipt_lane.message_sources)
     continuity_capsule_result = continuity_capsule.resolve_continuity_capsule(
         config_module=config_module,
         final_response_lock_present=assistant_response_override is not None,
@@ -236,6 +239,7 @@ def prepare_main_payload(
         count_tokens_func=count_tokens_func,
         prompt_soft_token_limit=getattr(config_module, 'MAX_TOKENS', None),
         continuity_capsule_result=continuity_capsule_result,
+        document_receipt_lane=receipt_lane,
     )
     main_payload_manifest.emit_main_payload_manifest(
         payload_manifest,

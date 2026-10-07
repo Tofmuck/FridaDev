@@ -301,6 +301,7 @@ def get_workspace_folder(
     include_deleted: bool = False,
     db_conn_func: Callable[[], Any],
     logger: Any,
+    fail_closed: bool = False,
 ) -> Optional[dict[str, Any]]:
     normalized = normalize_workspace_folder_id(folder_id)
     if not normalized:
@@ -323,6 +324,8 @@ def get_workspace_folder(
                 row = cur.fetchone()
         return serialize_workspace_folder_row(row)
     except Exception as exc:
+        if fail_closed:
+            raise WorkspaceFolderListError() from exc
         logger.warning("workspace_folder_get_failed id=%s err=%s", normalized, exc)
         return None
 

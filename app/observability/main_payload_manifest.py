@@ -114,6 +114,7 @@ def _message_lane_block_count(messages_manifest: Sequence[Mapping[str, Any]]) ->
         "web_lane",
         "note_lane",
         "document_lane",
+        "document_receipt_lane",
         "biblio_lane",
         "agenda_lane",
         "adobe_lane",
@@ -132,7 +133,7 @@ def _message_lane_status_mismatch_count(
     messages_manifest: Sequence[Mapping[str, Any]],
     lane_statuses: Mapping[str, Any],
 ) -> int:
-    prompt_lane_roles = {"web_lane", "note_lane", "document_lane", "biblio_lane", "adobe_lane", "continuity_capsule"}
+    prompt_lane_roles = {"web_lane", "note_lane", "document_lane", "document_receipt_lane", "biblio_lane", "adobe_lane", "continuity_capsule"}
     mismatches = 0
     for message in messages_manifest:
         roles = message.get("logical_roles")
@@ -153,6 +154,7 @@ def _selected_lane_count(lane_statuses: Mapping[str, Any]) -> int:
         "web_lane",
         "note_lane",
         "document_lane",
+        "document_receipt_lane",
         "biblio_lane",
         "agenda_lane",
         "adobe_lane",
@@ -347,6 +349,7 @@ def build_main_payload_manifest(
     count_tokens_func: Callable[[list[dict[str, Any]], str], int] | None = None,
     prompt_soft_token_limit: int | None = None,
     continuity_capsule_result: Any = None,
+    document_receipt_lane: Any = None,
 ) -> dict[str, Any]:
     messages = [message for message in prompt_messages if isinstance(message, Mapping)]
     final_response_lock = _final_response_lock_payload(assistant_response_override)
@@ -373,6 +376,11 @@ def build_main_payload_manifest(
         assistant_response_override=assistant_response_override,
         continuity_capsule_result=continuity_capsule_result,
     )
+    lane_statuses['document_receipt_lane'] = document_receipt_lane.to_manifest() if document_receipt_lane is not None else {
+        'status': 'not_selected', 'selected': False, 'enabled': True, 'input_count': 0,
+        'injected_count': 0, 'content_chars': 0, 'origin': 'core.document_workshop_receipts',
+        'raw_lane_content_included': False,
+    }
     messages_manifest = build_messages_manifest(
         messages,
         web_runtime_payload=web_runtime_payload,
