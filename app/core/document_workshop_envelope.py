@@ -147,7 +147,7 @@ def read_document_envelope(raw: str) -> DocumentEnvelope:
     proposal = _closed(root["proposal"], {
         "operation", "format", "relative_path", "source_file_ids", "limitations", "canonical",
     })
-    if (type(proposal["operation"]) is not str or proposal["operation"] not in {"create", "copy"}
+    if (type(proposal["operation"]) is not str or proposal["operation"] not in {"create", "copy", "update"}
             or type(proposal["format"]) is not str or proposal["format"] != "markdown"):
         _invalid()
     path = validate_document_path(proposal["relative_path"], format="markdown")
@@ -171,9 +171,11 @@ Do not put document/source content, canonical JSON or the response envelope in
 surface_text, including a JSON fence. The surface is speech, not a document preview.
 For clarify/refuse, proposal must be null: ask the necessary question or state the refusal.
 For prepared, proposal has exactly these required keys:
-{operation:"create"|"copy", format:"markdown", relative_path:string,
+{operation:"create"|"copy"|"update", format:"markdown", relative_path:string,
  source_file_ids:[UUID strings], limitations:[codes], canonical:object}.
-Update, DOCX and PDF preparation are unavailable. The path is exactly
+Update requires the explicitly selected server target and advertised capability.
+For update, use that exact target path/name; never choose another target or identity.
+DOCX and PDF preparation are unavailable. The path is exactly
 Documents/<optional subdirectories>/<name.md>, relative to the selected folder:
 at most 8 subdirectories, 180 codepoints/255 UTF-8 bytes per segment, 1024 UTF-8
 bytes for the full path. No traversal, encoded separator or renamed/trimmed target.
@@ -197,5 +199,6 @@ with 2.5cm margins; Markdown cannot establish that binary layout.
 The complete response envelope is at most 1114112 UTF-8 bytes.
 No truncation, summary or rewriting to evade limits. Markdown pagination depends
 on the reader; inline style delimiters also depend on the reader and adjacency.
-No page count or full style fidelity is established. No write or renderer is available.
+No page count or full style fidelity is established. Preparation cannot write;
+execution requires separate human confirmation and the advertised server capability.
 """

@@ -18,7 +18,7 @@ M4 livré sur code, P2-M4-01 et P2-M4-02 fermés après contre-audits indépenda
 P3-M4-03 corrigé par erratum documentaire (1 198 déclarés conservés et rectifiés,
 sélection publiée à 1 414, 21 identifiants réutilisables validés) ;
 M4 non intégralement fermé ;
-M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées, livraison runtime ouverte ; M7–M10 et Z non commencés,
+M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées, livraison runtime ouverte ; M7 fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8–M10 et Z non commencés,
 aucun déploiement ou renderer livré**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
@@ -895,7 +895,7 @@ restent ouverts. M3 est fermé sur code/preuves et contre-audit ci-dessous ;
 M4 est livré sur code/preuves hermétiques, P2-M4-01 et P2-M4-02 fermés après
 contre-audits indépendants, P3-M4-03 corrigé documentairement ; livraison runtime
 ouverte. M5 est fermé sur code/preuves injectées ; M6 raccorde le parcours réel
-avec preuves isolées, sans déploiement. M7–M10 et Z restent non commencés. Spécification et
+avec preuves isolées, sans déploiement. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8–M10 et Z restent non commencés. Spécification et
 décisions amont sont validées et l'exception produit est inscrite.
 Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
 les GO M0–M4 et P3-M4-03 ne valent pour aucun lot suivant ni déploiement.
@@ -3534,7 +3534,7 @@ Comparaison finale : **1 552 historiques conservés + 3 contrôles négatifs = 1
 distincts**, exits 0, zéro skip/annulation ; **70 voisins séparés**. Les cinq
 parcours HTTP natifs et les dix à fetch simulé M6 sont conservés. Le passage final
 au vert ne ferme pas P3-M6-AUD-03 ; son échec intermédiaire reste dans le relevé.
-La livraison runtime reste ouverte et M7 reste non commencé.
+À cette livraison historique M6, le runtime restait ouvert et M7 non commencé.
 
 Correctif dédié **P3-M6-AUD-03**, 7 octobre 2026, depuis `47a85218` :
 [relevé séparé](../../states/baselines/document-workshop/frida-v1-document-workshop-p3-m6-aud-03-20261007.json).
@@ -3551,7 +3551,7 @@ du nettoyage détectée en contre-lecture restent consignés ; aucun rouge histo
 Comparaison exacte : **1 555 historiques + 2 nouveaux = 1 557 distincts**, exits 0,
 zéro skip/annulation ; **70 voisins séparés**. Les cinq parcours HTTP natifs et dix
 à fetch simulé restent distincts ; ciblés/diagnostics ne sont pas recomptés.
-Livraison runtime et canari toujours ouverts ; **M7 non commencé**.
+À cette livraison historique P3-M6-AUD-03, runtime et canari restaient ouverts ; **M7 non commencé**.
 
 ### M7 — Update Markdown, ID stable et conflit
 
@@ -3561,14 +3561,31 @@ Livraison runtime et canari toujours ouverts ; **M7 non commencé**.
 **Interface :** If-Match de version préparée et même workspace_file_id.
 **Propriétaire :** Celebrimbor ; Sauron conditionnel pour preuve Versions.
 
-- [ ] Rouge causal : changement avant clic → conflit ; succès → même nom/ID.
-- [ ] Tests Notes ETag/sélections voisins ; changement après prélecture, 412,
-  panne DB après PUT réussi et réconciliation sans seconde écriture.
-- [ ] Faux verts : ETag toujours identique ou If-Match seulement présent dans un
-  objet intermédiaire, jamais dans la requête finale.
-- [ ] Interdire restauration automatique, fusion, renommage ou copie de secours.
-- [ ] Synchroniser update/Versions ; canari update sous GO distinct.
-- [ ] Rebuild requis ; fermer identité stable, conflits et réconciliation sans PUT.
+- [x] Rouge causal : changement avant clic → conflit et zéro PUT ; succès → même nom/chemin/ID local et distant.
+- [x] Voisins Notes ETag/sélections, create/copy/compensations M5, annulation/provenance M4 et inventaires M2 préservés ; 412 après prélecture, rollback PostgreSQL réel et réconciliation SQL sous nouveau claim sans seconde écriture.
+- [x] Requête DAV de production observée avec ETag préparé exact ; négatifs retirant/remplaçant le header final détectent l'écrasement concurrent réel du peer synthétique.
+- [x] Aucune restauration automatique, fusion, renommage, copie de secours, DELETE ou compensation d'update ; Nextcloud Versions reste l'autorité de récupération.
+- [x] Identité stable, historiques/révisions et réparation ciblée sans PUT fermés sur code/preuves isolées après contre-lecture indépendante.
+- [ ] Migration opérateur et rebuild du seul service applicatif sous GO distinct ; contrôles déployés et canari update/Versions restent ouverts.
+
+[Contrat M7](../../states/specs/frida-v1-document-workshop-m7-contract.md) et
+[relevé daté M7](../../states/baselines/document-workshop/frida-v1-document-workshop-m7-20261007.json).
+Depuis M6 exact `b00eb95001755295dcc301232272a8070d26cd78`, branche nouvelle
+`FridaV1-Document-Workshop-M7`, sans merge/rebase. **1 557 identités de référence
+rejouées avant édition puis conservées + 47 nouveaux cas = 1 604 distincts verts**,
+exits 0, zéro skip/annulation ; **70 voisins distincts supplémentaires séparés**.
+Les 47 nouveaux sont 29 SQL/Flask/DAV, cinq tests HTTP du client de production et
+13 parcours navigateur monté → vrai Flask HTTP → PostgreSQL isolé → client DAV
+de production → serveur DAV HTTP synthétique à versions/préconditions effectives.
+Les cinq parcours HTTP natifs et dix à transport simulé M6 restent distingués.
+Les deux assertions historiques interdisant update au parseur évoluent avec le
+contrat M7 sous les mêmes IDs ; autorité cible et refus voisins restent prouvés.
+Les rouges, pannes de harnais et résultats intermédiaires restent qualifiés dans
+le relevé, y compris la fenêtre succès SQL/GET inventaire, fermée par une preuve
+Event de reprojection sans sélection implicite. Ciblés inclus non recomptés.
+Migration M7 explicite après M1–M5, éprouvée sur PostgreSQL isolé seulement ;
+aucune DB opérateur, livraison runtime, canari Nextcloud/Versions ou OpenRouter
+réel. M8-C et lots suivants restent non commencés.
 
 ### M8-C — Contrat Writer fermé et raccord simulé
 
@@ -4129,7 +4146,7 @@ sont corrigés. P2-M4-01 et P2-M4-02 sont fermés après leurs contre-audits
 indépendants, avec leurs résultats conservés ci-dessus ; P3-M4-03 est corrigé
 documentairement, sans fermer la livraison runtime de M4 ;
 M5 est fermé sur code/preuves hermétiques et contre-audit ; M6 est réalisé sur
-code/preuves isolées et contre-audit. M7–M10/Z restent non commencés et les
+code/preuves isolées et contre-audit. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8–M10/Z restent non commencés et les
 obligations runtime restent ouvertes.
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
 dans AGENTS.md ; l'invariant de consolidation reste applicable hors de cette

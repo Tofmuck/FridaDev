@@ -2,9 +2,7 @@
 from dataclasses import dataclass
 import hashlib
 import json
-from datetime import datetime
 from pathlib import Path
-from types import SimpleNamespace
 from uuid import uuid4
 
 from psycopg.rows import dict_row
@@ -16,10 +14,9 @@ from .document_workshop_contract import DocumentWorkshopError
 from .workspace_document_paths import validate_document_path, validate_document_source_path
 from .workspace_document_adoption_store import remote_identity
 from .workspace_nextcloud_etag import validated_strong_etag
-from .workspace_document_nextcloud_read_client import RemoteResource
 
 _SCHEMA = Path(__file__).with_name('sql') / 'document_workshop_execution_m5.sql'
-_OUTCOME_REASONS=frozenset(('document_remote_created','document_remote_mutation_uncertain','document_remote_changed',
+_OUTCOME_REASONS=frozenset(('document_remote_created','document_remote_updated','document_remote_mutation_uncertain','document_remote_changed',
     'document_remote_unavailable','document_remote_incompatible','document_remote_missing','document_target_collision',
     'document_collection_conflict','document_mutation_not_authorized','document_path_invalid','document_output_invalid',
     'document_compensation_absent','document_compensation_missing','document_compensation_ownership_unverified',
@@ -94,6 +91,10 @@ def _resources(conn,row):
 
 
 def _collision(conn,row):
+    if row['operation']=='update':
+        from .document_workshop_update_target import verify_local
+        verify_local(conn,row)
+        return
     target=validate_document_path(row['relative_path'],format=row['format'])
     inventory=conn.execute('''SELECT COALESCE(l.nextcloud_relative_path,'Documents/'||
         COALESCE(l.nextcloud_target_name,to_jsonb(f)->>'original_filename')) FROM workspace_files f
@@ -124,6 +125,9 @@ def _revision(conn,row):
 def _versions(conn,row):
     actions._verify_versions(conn,dict(workspace_folder_id=row['workspace_folder_id']),
         row['source_file_ids'],row['source_versions'])
+    if row['operation']=='update':
+        from .document_workshop_update_target import verify_local
+        verify_local(conn,row)
 
 
 def _fingerprint(action_id,data):
@@ -155,16 +159,17 @@ def begin(action_id,data):
             (data['conversation_id'],)).fetchone():raise claims.ClaimError('conversation_turn_conflict')
         row=actions._read(conn,action_id,lock=True)
         if row['state']!='pending':return None
-        if row['format']!='markdown' or row['operation'] not in ('create','copy'):
+        if row['format']!='markdown' or row['operation'] not in ('create','copy','update'):
             raise DocumentWorkshopError('document_operation_unavailable')
         _collision(conn,row);revision=_revision(conn,row)
         generation=conn.execute('UPDATE conversations SET turn_generation=turn_generation+1 WHERE id=%s::uuid RETURNING turn_generation',
             (data['conversation_id'],)).fetchone()[0]
         owner=str(uuid4())
         conn.execute('''INSERT INTO conversation_turn_claims(turn_id,conversation_id,owner_id,generation,kind,
-            request_fingerprint,context_id,lease_until) VALUES(%s::uuid,%s::uuid,%s::uuid,%s,'confirmation',%s,%s::uuid,
+            request_fingerprint,context_id,expected_etag,lease_until) VALUES(%s::uuid,%s::uuid,%s::uuid,%s,'confirmation',%s,%s::uuid,%s,
             clock_timestamp()+%s*interval '1 second')''',
-            (data['request_id'],data['conversation_id'],owner,generation,fingerprint,data['context_id'],claims.LEASE_SECONDS))
+            (data['request_id'],data['conversation_id'],owner,generation,fingerprint,data['context_id'],
+             row['target_version']['etag'] if row['operation']=='update' else None,claims.LEASE_SECONDS))
         conn.execute("UPDATE document_actions SET state='executing',phase='confirmed',confirmation_turn_id=%s::uuid,confirmed_at=clock_timestamp(),updated_at=clock_timestamp() WHERE id=%s::uuid",
             (data['request_id'],action_id))
         row=actions._read(conn,action_id)
@@ -226,6 +231,8 @@ def intent(run):
 def before_mutation(run,method,path,*,compensation=False):
     allowed=(method=='MKCOL' and path in run.collections) or (method=='PUT' and path==run.target.relative_path)
     if compensation:allowed=method=='DELETE' and path==run.target.relative_path
+    if run.action['operation']=='update':
+        allowed=not compensation and method=='PUT' and path==run.target.relative_path
     if not allowed:raise DocumentWorkshopError('document_mutation_not_authorized')
     with _db_conn() as conn:
         _guard(conn,run)
@@ -235,6 +242,8 @@ def before_mutation(run,method,path,*,compensation=False):
             if not conn.execute("SELECT 1 FROM document_execution_journal WHERE action_id=%s::uuid AND event='remote_outcome' AND state='known_success' AND etag IS NOT NULL",(run.action['id'],)).fetchone():
                 raise DocumentWorkshopError('document_mutation_not_authorized')
         else:_collision(conn,run.action)
+        if method=='PUT' and conn.execute("SELECT 1 FROM document_execution_journal WHERE action_id=%s::uuid AND event='put_intent'",(run.action['id'],)).fetchone():
+            raise DocumentWorkshopError('document_mutation_not_authorized')
         _append(conn,run,method.lower()+'_intent',path=path)
     return True
 
@@ -254,14 +263,14 @@ def observe(run,event,result):
 
 
 def finish(run,state,reason,*,created_collections_count=None):
-    if state not in ('failed','invalidated','remote_uncertain'):raise DocumentWorkshopError('document_execution_state_invalid')
+    if state not in ('failed','invalidated','remote_uncertain','conflict'):raise DocumentWorkshopError('document_execution_state_invalid')
     with _db_conn() as conn:
         _guard(conn,run)
         reason=reason if reason in _EXECUTION_REASONS else 'document_execution_unavailable'
         conn.execute('UPDATE document_actions SET state=%s,phase=%s,reason_code=%s,created_collections_count=%s,updated_at=clock_timestamp() WHERE id=%s::uuid',
             (state,state,reason,created_collections_count,run.action['id']))
         conn.execute('UPDATE conversation_turn_claims SET state=%s,outcome=%s,finished_at=clock_timestamp() WHERE turn_id=%s::uuid',
-            ('failed' if state in ('failed','invalidated') else 'interrupted','interrupted',run.token.turn_id))
+            ('failed' if state in ('failed','invalidated','conflict') else 'interrupted','interrupted',run.token.turn_id))
 
 
 def publication_unknown(run):
@@ -297,6 +306,9 @@ def discard(prepared):
 
 
 def publish(run,*,result,content,scope_key,storage_root):
+    if run.action['operation']=='update':
+        from .document_workshop_update_publication import publish
+        return publish(run,result=result,content=content,scope_key=scope_key,storage_root=storage_root)
     target=run.target;resource=result.resource
     etag=validated_strong_etag(result.creation_etag)
     digest=hashlib.sha256(content).hexdigest()
@@ -365,75 +377,15 @@ def publication_proof(run,*,result,content,scope_key,storage_root):
     a,r,f,l,v,ar,c=(row[k] or {} for k in ('action','receipt','file','link','render','artifact','claim'))
     if a.get('state')=='executing' and not a.get('workspace_file_id') and not r and not v and not ar.get('workspace_file_id') and not ar.get('current_revision_id'):
         return 'absent'
-    file_id=a.get('workspace_file_id')
-    expected=dict(conversation_id=run.token.conversation_id,workspace_folder_id=run.action['workspace_folder_id'],
-        artifact_id=run.action['artifact_id'],revision_id=run.action['revision_id'],format='markdown',
-        operation=run.action['operation'],relative_path=run.target.relative_path)
-    try:confirmed_same=datetime.fromisoformat(a.get('confirmed_at'))==datetime.fromisoformat(run.action['confirmed_at'])
-    except (ValueError,TypeError):confirmed_same=False
-    if (a.get('state')!='succeeded' or not file_id or any(a.get(k)!=value or r.get(k)!=value for k,value in expected.items())
-        or a.get('confirmation_turn_id')!=run.token.turn_id or r.get('confirmation_turn_id')!=run.token.turn_id
-        or r.get('action_id')!=run.action['id'] or r.get('request_turn_id')!=run.action['id']
-        or r.get('workspace_file_id')!=file_id or r.get('creation_author')!='frida' or r.get('revision_author')!='frida'
-        or r.get('confirmed_at')!=a.get('confirmed_at') or not confirmed_same
-        or c.get('state')!='succeeded' or c.get('outcome')!='succeeded' or c.get('kind')!='confirmation'
-        or c.get('owner_id')!=run.token.owner_id or c.get('generation')!=run.token.generation
-        or c.get('turn_id')!=run.token.turn_id or c.get('conversation_id')!=run.token.conversation_id or c.get('context_id')!=run.token.context_id
-        or c.get('request_fingerprint')!=_fingerprint(run.action['id'],dict(context_id=run.token.context_id,
-            conversation_id=run.token.conversation_id,workspace_folder_id=run.action['workspace_folder_id'],revision_id=run.action['revision_id']))
-        or f.get('id')!=file_id or f.get('workspace_folder_id')!=run.action['workspace_folder_id'] or f.get('status')!='active'
-        or f.get('deleted_at') is not None or f.get('content_kind')!='document' or f.get('media_kind')!='text'
-        or f.get('source_extension')!='.md' or f.get('mime_type')!='text/markdown' or f.get('source_kind')!='document_workshop'
-        or f.get('display_name')!=run.target.segments[-1] or f.get('original_filename')!=run.target.segments[-1]
-        or f.get('byte_size')!=len(content) or v.get('byte_size')!=len(content) or v.get('format')!='markdown'
-        or v.get('serializer_version')!='frida_markdown_v1' or v.get('revision_id')!=run.action['revision_id']
-        or not f.get('storage_key') or f.get('storage_key')!=v.get('storage_key')
-        or ar.get('id')!=run.action['artifact_id'] or ar.get('workspace_folder_id')!=run.action['workspace_folder_id']
-        or ar.get('workspace_file_id')!=file_id or ar.get('current_revision_id')!=run.action['revision_id']
-        or l.get('workspace_file_id')!=file_id or l.get('workspace_folder_id')!=run.action['workspace_folder_id']
-        or l.get('nextcloud_sync_state')!='linked' or l.get('document_origin')!='frida'
-        or l.get('nextcloud_document_ref')!='workspace-file:'+file_id or l.get('nextcloud_relative_path')!=run.target.relative_path
-        or l.get('nextcloud_collision_key')!=run.target.collision_key
-        or any(item.get('nextcloud_scope_key')!=scope_key or item.get('nextcloud_file_id')!=result.resource.file_id
-               or item.get('nextcloud_etag')!=result.creation_etag for item in (r,l))
-        or any(value!=run.revision['markdown_sha256'] for value in (r.get('content_sha256'),f.get('sha256'),l.get('observed_sha256'),v.get('content_sha256')))
-        or r.get('canonical_sha256')!=run.revision['canonical_sha256']):
-        return 'unknown'
-    try:
-        with workspace_files_store.workspace_file_path(storage_root,f['storage_key']).open('rb') as cache:
-            cached=cache.read(16*1024*1024+1)
-    except (OSError,ValueError):return 'unknown'
-    return 'complete' if cached==content else 'unknown'
+    if (a.get('state')!='succeeded' or r.get('nextcloud_scope_key')!=scope_key
+        or r.get('nextcloud_file_id')!=result.resource.file_id or r.get('nextcloud_etag')!=result.creation_etag
+        or r.get('revision_id')!=run.action['revision_id'] or r.get('confirmation_turn_id')!=run.token.turn_id
+        or c.get('owner_id')!=run.token.owner_id or c.get('generation')!=run.token.generation):return 'unknown'
+    from .document_workshop_publication_proof import verify
+    return 'complete' if verify(run.action['id'],storage_root=storage_root) else 'unknown'
 
 
 def verify_committed_action(action_id,*,storage_root):
-    """Read-only rehydration: immutable receipt and initial journal bind proof.
-
-    The historical SQL commit is never reopened. An unavailable complete bundle
-    cannot be projected as success, and this function grants no DAV capability.
-    """
-    if storage_root is None:return False
-    with _db_conn() as conn,conn.cursor(row_factory=dict_row) as cur:
-        row=actions._read(conn,action_id)
-        if not row or row['state']!='succeeded':return False
-        cur.execute('SELECT * FROM document_receipts WHERE action_id=%s::uuid',(action_id,));receipt=cur.fetchone()
-        cur.execute("SELECT * FROM document_execution_journal WHERE action_id=%s::uuid AND event='intent' ORDER BY created_at,id LIMIT 1",(action_id,));journal=cur.fetchone()
-        cur.execute("SELECT * FROM document_execution_journal WHERE action_id=%s::uuid AND event='remote_outcome' ORDER BY created_at DESC,id DESC LIMIT 1",(action_id,));outcome=cur.fetchone()
-        if not receipt or not journal or not outcome:return False
-        revision=_revision(conn,row)
-        if (outcome['state']!='known_success' or outcome['http_status']!=201 or outcome['etag']!=receipt['nextcloud_etag']
-            or validated_strong_etag(outcome['etag'])!=outcome['etag']
-            or journal['path_sha256']!=hashlib.sha256(row['relative_path'].encode()).hexdigest()
-            or any(item['confirmation_turn_id']!=row['confirmation_turn_id'] or item['owner_id']!=journal['owner_id']
-                or item['generation']!=journal['generation'] or item['canonical_sha256']!=revision['canonical_sha256']
-                or item['content_sha256']!=revision['markdown_sha256'] or item['serializer_version']!='frida_markdown_v1'
-                for item in (journal,outcome))
-            or receipt['canonical_sha256']!=revision['canonical_sha256'] or receipt['content_sha256']!=revision['markdown_sha256']):
-            return False
-    token=claims.TurnClaim(str(row['confirmation_turn_id']),str(row['conversation_id']),str(journal['owner_id']),
-        journal['generation'],str(row['context_id']))
-    run=ConfirmedExecution(token,_json(row),_json(revision),'{}')
-    content=serialize_markdown(validate_canonical(revision['canonical'])).encode('utf-8')
-    resource=RemoteResource(receipt['relative_path'],False,receipt['nextcloud_file_id'],receipt['nextcloud_etag'],len(content),'text/markdown')
-    result=SimpleNamespace(state='known_success',resource=resource,creation_etag=receipt['nextcloud_etag'])
-    return publication_proof(run,result=result,content=content,scope_key=receipt['nextcloud_scope_key'],storage_root=storage_root)=='complete'
+    """Historical render and current linkage are distinct complete proofs."""
+    from .document_workshop_publication_proof import verify
+    return verify(action_id,storage_root=storage_root)

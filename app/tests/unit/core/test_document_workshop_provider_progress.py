@@ -467,7 +467,9 @@ class DocumentProviderProgressTests(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(transport.close_count, 1)
 
     async def test_invalid_envelope_or_old_canonical_root_has_one_call_and_no_repair(self):
-        for data in (envelope(operation="update"), envelope(format="pdf"), canonical(), envelope(document={})):
+        # M7 accepts update syntax; durable target authority is checked later by
+        # the preparation service. Unsupported operations still fail here.
+        for data in (envelope(operation="delete"), envelope(format="pdf"), canonical(), envelope(document={})):
             for stream in (False, True):
                 self.progress = self.progress_module.DocumentPreparation(monotonic=self.clock, wait_until=self.clock.wait_until)
                 text = json.dumps(data)
@@ -477,6 +479,15 @@ class DocumentProviderProgressTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(len(transport.sent), 1)
                 self.assertEqual(transport.close_count, 1)
                 self.assertEqual(self.progress.snapshot().state, "failed")
+        for stream in (False, True):
+            self.progress = self.progress_module.DocumentPreparation(monotonic=self.clock, wait_until=self.clock.wait_until)
+            text = json.dumps(envelope(operation="update"))
+            transport = SimulatedTransport(payload=response(content=text), lines=stream_events(text))
+            result = await self.run_call(transport, stream=stream)
+            self.assertEqual(result.envelope.operation, "update")
+            self.assertEqual(result.state, "complete")
+            self.assertEqual(len(transport.sent), 1)
+            self.assertEqual(transport.close_count, 1)
 
     async def test_oversized_envelope_json_and_stream_fail_without_partial_document(self):
         text = json.dumps(envelope()) + " " * (1048576 + 65536)

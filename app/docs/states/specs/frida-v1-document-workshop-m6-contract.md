@@ -1,5 +1,9 @@
 # Atelier documentaire Frida V1 — contrat M6
 
+## Évolution M7 — 7 octobre 2026
+
+Les cartes, le GET, le propriétaire d’inventaire et la lane tardive existants portent maintenant aussi update. La preuve historique conserve les octets de sa révision ; le lien fichier suit la révision courante complète. Les cinq parcours natifs et dix à transport simulé M6 restent conservés. Voir le [contrat M7](frida-v1-document-workshop-m7-contract.md) et son relevé daté. Code et preuves isolées ; migration opérateur, rebuild, préconditions Nextcloud et Versions réels restent ouverts sous GO distinct. M8-C et suivants non commencés. Les sections précédentes ci-dessous gardent leur périmètre et leurs résultats historiques datés.
+
 Date : 2026-10-07. Périmètre : code et preuves isolées du parcours Markdown
 create/copy. Livraison runtime, migrations opérateur, rebuild, canari DAV et
 modèle réel restent ouverts. M7 reste non commencé.

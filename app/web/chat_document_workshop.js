@@ -126,7 +126,7 @@ function createDocumentWorkshopController({
     return record && record.id === actionId && record.context_id === contextId
       && signature(scope(record)) === signature(expected)
       && ['preparing', 'pending', 'clarify', 'refuse', 'failed', 'cancelled', 'invalidated',
-        'superseded', 'interrupted', 'lost', 'executing', 'succeeded', 'remote_uncertain'].includes(record.state);
+        'superseded', 'interrupted', 'lost', 'executing', 'succeeded', 'remote_uncertain', 'conflict'].includes(record.state);
   }
   function receiptLink(record) {
     const receipt = record.receipt;
@@ -155,7 +155,14 @@ function createDocumentWorkshopController({
       const complete = Array.isArray(files) && files.some(file => file.id === record.receipt.workspace_file_id);
       receiptInventories.set(record.id, complete ? 'updated' : 'unavailable');
     } catch { receiptInventories.set(record.id, 'unavailable'); }
-    if (signature(currentScope()) === signature(scope(record))) renderPublished(record);
+    if (signature(currentScope()) === signature(scope(record))) {
+      // A fresh context can have opened while this receipt's inventory GET was
+      // pending. Reproject the shared inventory without selecting the receipt.
+      if (visible && context?.state === 'editing' && context.workspace_folder_id === folderId) {
+        populateTargets(folderId, context.target_file_id || '');
+      }
+      renderPublished(record);
+    }
   }
   function watchExecution(record) {
     const existing = executionReads.get(record.id);
@@ -206,7 +213,9 @@ function createDocumentWorkshopController({
       : ({ pending: 'Document préparé', cancelled: 'Préparation annulée', failed: confirmations.has(record.id) || record.confirmation_turn_id ? 'Exécution documentaire échouée' : 'Préparation échouée',
         invalidated: 'Préparation invalidée', superseded: 'Préparation remplacée', interrupted: 'Tour interrompu',
         lost: 'Préparation perdue', clarify: 'Précision nécessaire', refuse: 'Préparation refusée',
-        executing: 'Exécution engagée', succeeded: receiptLink(record) ? 'Document créé' : 'Publication documentaire à vérifier.', remote_uncertain: 'Résultat distant incertain. Aucun nouvel envoi automatique.' })[record.state];
+        executing: 'Exécution engagée', conflict: 'Conflit : la cible a changé. Aucun changement concurrent n’a été écrasé.',
+        succeeded: receiptLink(record) ? record.operation === 'update' ? 'Fichier modifié' : 'Document créé' : 'Publication documentaire à vérifier.',
+        remote_uncertain: 'Résultat distant incertain. Aucun nouvel envoi automatique.' })[record.state];
     card.appendChild(status);
     const link = receiptLink(record);
     if (link) {
@@ -232,6 +241,11 @@ function createDocumentWorkshopController({
       }
     }
     if (record.state === 'pending') {
+      if (record.operation === 'update') {
+        const detail = doc.createElement('div');
+        detail.textContent = 'Modification de la cible sélectionnée · même nom et même identité. Une version modifiée provoque un conflit ; aucune restauration automatique. Nextcloud Versions reste l’autorité de récupération.';
+        card.appendChild(detail);
+      }
       const limitations = (record.limitations || []).map(code => DOCUMENT_WORKSHOP_LIMITATION_LABELS[code] || 'Limite documentaire non précisée.');
       for (const value of [record.name, record.format, record.relative_path,
         ...(record.collections || []).map(path => `Sous-répertoire susceptible d’être créé : ${path}`), ...limitations]) {
@@ -241,7 +255,7 @@ function createDocumentWorkshopController({
       if (!confirmations.has(record.id)) {
         const available = record.capabilities?.confirm === true && confirmationStorageAvailable;
         const confirm = doc.createElement('button'); confirm.type = 'button'; confirm.disabled = !available;
-        confirm.dataset.documentConfirm = ''; confirm.textContent = available ? 'Confirmer la création' : 'Écriture indisponible';
+        confirm.dataset.documentConfirm = ''; confirm.textContent = available ? record.operation === 'update' ? 'Modifier le fichier' : 'Confirmer la création' : 'Écriture indisponible';
         if (available) confirm.addEventListener('click', () => void confirmAction(record));
         card.appendChild(confirm);
       }
@@ -260,6 +274,11 @@ function createDocumentWorkshopController({
     }
     if (context?.id === record.context_id && action?.id === record.id) {
       action = record; saveAttempt();
+      if (record.operation === 'update' && receiptLink(record)) {
+        // The authorized SQL publication closes this old target context through
+        // the real triggers. A new request needs an explicit new context.
+        context = { ...context, state: 'invalidated', capabilities: { ...context.capabilities, prepare: false } };
+      }
     }
     for (const [container, reference] of cards) {
       if (!container.isConnected) { cards.delete(container); continue; }
@@ -458,10 +477,13 @@ function createDocumentWorkshopController({
     if (action) panelEl.dataset.actionState = action.state;
     else delete panelEl.dataset.actionState;
     statusEl.textContent = message || (context
-      ? action?.state === 'preparing' ? preparationLabel(action)
+      ? context.state !== 'editing' ? 'Cette préparation est terminée. Rouvrez l’atelier ou choisissez explicitement une cible pour une nouvelle demande. Votre brouillon est conservé.'
+      : action?.state === 'preparing' ? preparationLabel(action)
       : context.capabilities.prepare === true
         ? context.capabilities.confirm === true
-          ? 'Édition · Décrivez votre demande dans le compositeur. Markdown · création ou copie après confirmation.'
+          ? context.capabilities.update === true
+            ? 'Édition · Décrivez votre demande dans le compositeur. Markdown · création, copie ou modification de la cible sélectionnée après confirmation.'
+            : 'Édition · Décrivez votre demande dans le compositeur. Markdown · création ou copie après confirmation.'
           : 'Édition · Décrivez votre demande dans le compositeur. Markdown · création ou copie ; écriture indisponible.'
         : 'Édition · La préparation documentaire est indisponible. Votre brouillon est conservé.'
       : busy ? 'Ouverture du contexte…' : 'Choisissez explicitement un répertoire pour cette conversation.');
@@ -790,6 +812,10 @@ function createDocumentWorkshopController({
     blocksSubmission: () => visible,
     prepareSubmission({ inputMode, incompatibleModes = false } = {}) {
       if (!visible) return null;
+      if (context && context.state !== 'editing') {
+        return { ok: false, reason: 'document_context_scope_changed',
+          message: 'Rouvrez l’atelier ou choisissez explicitement une cible pour une nouvelle demande. Votre brouillon est conservé.' };
+      }
       if (inputMode === 'dialogue' || incompatibleModes) {
         return { ok: false, reason: 'document_mode_incompatible',
           message: 'Mode incompatible : désactivez les autres outils pour préparer le document. Votre brouillon est conservé.' };

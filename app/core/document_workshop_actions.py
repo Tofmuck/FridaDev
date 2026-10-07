@@ -17,6 +17,12 @@ LIMITATIONS = ('write_confirmation_unavailable', 'markdown_pagination_reader_dep
 CAPABILITIES = dict(prepare=True, confirm=False, formats=['markdown'], operations=['create','copy'], update=False)
 
 
+def capabilities(executor=None):
+    result=dict(CAPABILITIES,confirm=executor is not None)
+    if getattr(executor,'supports_update',False):result.update(operations=['create','copy','update'],update=True)
+    return result
+
+
 def _db_conn():
     return runtime_db_bootstrap.connect_runtime_database(psycopg, config, runtime_settings)
 
@@ -140,7 +146,7 @@ def _verify_versions(conn, ctx, source_ids, versions):
             raise DocumentWorkshopError('document_remote_changed')
 
 
-def finalize(token, conversation, envelope, versions, markdown, *, snapshot):
+def finalize(token, conversation, envelope, versions, markdown, *, snapshot, target_source=None):
     revision_id = artifact_id = None
     with _db_conn() as conn:
         current, ctx, _ = _authority(conn, token)
@@ -154,7 +160,13 @@ def finalize(token, conversation, envelope, versions, markdown, *, snapshot):
             path = validate_document_path(envelope.relative_path, format='markdown')
             if not set(envelope.source_file_ids).issubset(source_ids):
                 raise DocumentWorkshopError('document_source_reference_invalid')
-            if ctx['target_file_id'] and (envelope.operation != 'copy' or str(ctx['target_file_id']) not in envelope.source_file_ids):
+            if envelope.operation=='update':
+                from . import document_workshop_update_target as update
+                target_version=update.snapshot(conn,ctx,target_source)
+                if path.relative_path!=target_version['relative_path']:
+                    raise DocumentWorkshopError('document_update_target_invalid')
+            else:target_version=None
+            if ctx['target_file_id'] and envelope.operation!='update' and (envelope.operation != 'copy' or str(ctx['target_file_id']) not in envelope.source_file_ids):
                 raise DocumentWorkshopError('document_operation_unavailable')
             # A known inventory collision is useful conflict, never rename/update.
             inventory = conn.execute('''SELECT COALESCE(l.nextcloud_relative_path,
@@ -169,11 +181,18 @@ def finalize(token, conversation, envelope, versions, markdown, *, snapshot):
                     # Same preliminary collision rule as M2; unrelated image
                     # uploads and unreadable legacy paths do not grant authority.
                     collision = False
-                if collision:
+                if collision and envelope.operation!='update':
                     raise DocumentWorkshopError('document_local_collision')
             revision_id, artifact_id = str(uuid4()), str(uuid4())
+            if target_version:
+                existing=conn.execute('SELECT id::text,current_revision_id::text FROM document_artifacts WHERE workspace_file_id=%s::uuid FOR UPDATE NOWAIT',
+                    (target_version['workspace_file_id'],)).fetchone()
+                if existing:artifact_id=existing[0]
+                else:conn.execute('INSERT INTO document_artifacts(id,workspace_folder_id,workspace_file_id) VALUES(%s::uuid,%s::uuid,%s::uuid)',
+                    (artifact_id,str(ctx['workspace_folder_id']),target_version['workspace_file_id']))
+                target_version['base_revision_id']=existing[1] if existing else None
+            else:conn.execute('INSERT INTO document_artifacts(id,workspace_folder_id) VALUES (%s::uuid,%s::uuid)', (artifact_id,str(ctx['workspace_folder_id'])))
             raw = json.dumps(envelope.canonical.as_dict(), ensure_ascii=False, sort_keys=True, separators=(',',':'))
-            conn.execute('INSERT INTO document_artifacts(id,workspace_folder_id) VALUES (%s::uuid,%s::uuid)', (artifact_id,str(ctx['workspace_folder_id'])))
             conn.execute('''INSERT INTO document_revisions(id,artifact_id,schema_version,canonical,canonical_sha256,
                 markdown_sha256,serializer_version,word_count,codepoint_count) VALUES (%s::uuid,%s::uuid,1,%s,%s,%s,'frida_markdown_v1',%s,%s)''',
                 (revision_id,artifact_id,Jsonb(envelope.canonical.as_dict()),hashlib.sha256(raw.encode()).hexdigest(),
@@ -184,15 +203,17 @@ def finalize(token, conversation, envelope, versions, markdown, *, snapshot):
         meta['document_workshop']['revision_id'] = revision_id
         conversation['workspace_folder_id'] = str(current['workspace_folder_id'])
         snapshot(conversation, conn)
+        target_assignment=',target_version=%s' if envelope.operation=='update' else ''
+        values=(state,Jsonb(versions),revision_id,artifact_id,envelope.operation,envelope.format,envelope.relative_path,
+             Jsonb(list(dict.fromkeys(list(envelope.limitations)+[code for code in LIMITATIONS if code!='update_unavailable' or envelope.operation!='update']))))
         conn.execute('''UPDATE document_actions SET state=%s,phase='complete',source_versions=%s,
             revision_id=%s::uuid,artifact_id=%s::uuid,operation=%s,format=%s,relative_path=%s,
-            limitations=%s,updated_at=clock_timestamp() WHERE id=%s::uuid''',
-            (state,Jsonb(versions),revision_id,artifact_id,envelope.operation,envelope.format,envelope.relative_path,
-             Jsonb(list(dict.fromkeys(list(envelope.limitations)+list(LIMITATIONS)))),token.turn_id))
+            limitations=%s,updated_at=clock_timestamp()'''+target_assignment+' WHERE id=%s::uuid',
+            values+((Jsonb(target_version),) if target_assignment else ())+(token.turn_id,))
         claims.record_outcome_in_transaction(conn, token, 'succeeded')
         conn.execute("UPDATE conversation_turn_claims SET state='succeeded',finished_at=clock_timestamp() WHERE turn_id=%s::uuid", (token.turn_id,))
-    return _public(row | dict(state=state,revision_id=revision_id,artifact_id=artifact_id,operation=envelope.operation,
-        format=envelope.format,relative_path=envelope.relative_path,limitations=list(LIMITATIONS)))
+        result=_public(_read(conn,token.turn_id))
+    return result
 
 
 def fail(token, conversation, reason, *, snapshot):

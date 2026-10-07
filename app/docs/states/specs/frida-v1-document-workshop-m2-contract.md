@@ -1,5 +1,9 @@
 # Atelier documentaire Frida V1 — contrat M2
 
+## Évolution M7 — 7 octobre 2026
+
+La cible Markdown explicitement sélectionnée est lue fraîchement par M2 avant préparation et avant PUT. Une source de lecture reste distincte ; source et cible identiques partagent une seule observation lors de la préparation. Le propriétaire et l’identité de l’inventaire commun sont conservés. Voir le [contrat M7](frida-v1-document-workshop-m7-contract.md) et son relevé daté. Code et preuves isolées ; migration opérateur, rebuild, préconditions Nextcloud et Versions réels restent ouverts sous GO distinct. M8-C et suivants non commencés. Les sections précédentes ci-dessous gardent leur périmètre et leurs résultats historiques datés.
+
 ## Évolution M5 — 6 octobre 2026
 
 Le [contrat M5](frida-v1-document-workshop-m5-contract.md) décrit la confirmation

@@ -15,8 +15,12 @@ def register_document_workshop_routes(app, *, get_store, get_conversations, get_
     def project_action(record):
         if not record:
             return record
+        available=executor()
+        if record.get('operation')=='update' and record.get('state')=='remote_uncertain' and getattr(available,'supports_update',False):
+            available.reconcile(record['id'])
+            record=actions.get_action(record['id'])
         from core.document_workshop_execution_service import project_action as project
-        return project(record, executor=executor())
+        return project(record, executor=available)
 
     def dependencies():
         return dict(store=get_store(), conversations=get_conversations(), folders=get_folders(), files=get_files())
@@ -25,7 +29,7 @@ def register_document_workshop_routes(app, *, get_store, get_conversations, get_
     def create_document_workshop_context():
         payload, status = service.create_context(request.get_json(silent=True), **dependencies())
         if status == 201:
-            payload['context']['capabilities']['confirm'] = executor() is not None
+            payload['context']['capabilities'] = actions.capabilities(executor())
         return jsonify(payload), status
 
     @app.get('/api/document-workshop/contexts/<context_id>')
@@ -34,7 +38,7 @@ def register_document_workshop_routes(app, *, get_store, get_conversations, get_
         if status == 200:
             try:
                 payload['context']['preparation'] = project_action(actions.latest(payload['context']['id']))
-                payload['context']['capabilities']['confirm'] = executor() is not None
+                payload['context']['capabilities'] = actions.capabilities(executor())
             except Exception:
                 return jsonify(ok=False, reason_code='document_action_storage_unavailable'), 503
         return jsonify(payload), status

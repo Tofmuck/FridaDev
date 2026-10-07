@@ -2,7 +2,7 @@
 
 Configuration is explicit. M0 owns paths, M2 owns scope and conditional reads.
 The executor owns durable intents/fencing before every individual HTTP effect.
-This client never updates, retries, follows redirects or deletes collections.
+No retry, redirect or collection deletion. Updates never acquire creation proof.
 """
 from __future__ import annotations
 
@@ -279,3 +279,42 @@ class NextcloudDocumentMutationClient:
         if status == 412:
             return CompensationResult("preserved", "document_remote_changed", status)
         return CompensationResult("remote_uncertain", "document_compensation_uncertain", status)
+
+    def update_document(self, folder_name, target, content, *, prepared_etag,
+                        expected_file_id, before_mutation):
+        """One PUT of the prepared version; the executor owns the fresh read.
+
+        The shared result's creation_etag is the observed output version here,
+        but it never grants the creation compensation capability.
+        """
+        target = _target(target, "markdown")
+        from .workspace_document_adoption_store import remote_identity
+        remote_identity(self.scope_key(folder_name), expected_file_id)
+        if (type(content) is not bytes or not 0 < len(content) <= MAX_SOURCE_BYTES
+                or validated_strong_etag(prepared_etag) != prepared_etag or not prepared_etag):
+            _fail("document_remote_version_invalid")
+        if not callable(before_mutation):
+            _fail("document_mutation_not_authorized")
+        status, etag = 0, ""
+        try:
+            _authorize(before_mutation, "PUT", target.relative_path)
+            status, headers = self._mutation_request("PUT", folder_name, target, data=content,
+                headers={"If-Match": prepared_etag, "Content-Type": _MEDIA_TYPES["markdown"]})
+            if status not in {200, 204}:
+                if status not in _REJECTED_STATUSES:
+                    raise _UnknownMutation(status)
+                _fail("document_remote_changed" if status == 412 else "document_remote_unavailable")
+            etags = headers.get_all("ETag", [])
+            etag = validated_strong_etag(etags[0]) if len(etags) == 1 else ""
+            if not etag:
+                raise _UnknownMutation(status)
+            resource = self._reader.stat_resource(folder_name, target.relative_path, expected_etag=etag)
+            if (resource.file_id != expected_file_id or resource.byte_size != len(content)
+                    or self._reader.read_file(folder_name, resource) != content):
+                _fail("document_remote_changed")
+            return CreatedDocumentResult("known_success", "document_remote_updated", status, resource, etag)
+        except _UnknownMutation as error:
+            return CreatedDocumentResult("remote_uncertain", "document_remote_mutation_uncertain", error.http_status)
+        except DocumentWorkshopError as error:
+            return CreatedDocumentResult("remote_uncertain" if status in {200, 204} else "known_failure",
+                error.reason_code, status, None, etag)

@@ -80,8 +80,10 @@ def read_content(folder_id, file_id):
     if folder.get('nextcloud_sync_state') != 'linked':
         raise DocumentWorkshopError('document_file_unavailable')
     with store._db_conn() as conn:
-        row = conn.execute('''SELECT action_id::text FROM document_receipts
-            WHERE workspace_folder_id=%s::uuid AND workspace_file_id=%s::uuid''', (folder_id, file_id)).fetchone()
+        row = conn.execute('''SELECT r.action_id::text FROM document_receipts r
+            JOIN document_artifacts a ON a.id=r.artifact_id AND a.current_revision_id=r.revision_id
+            WHERE r.workspace_folder_id=%s::uuid AND r.workspace_file_id=%s::uuid
+                AND a.workspace_file_id=r.workspace_file_id''', (folder_id, file_id)).fetchone()
     if not row:
         raise DocumentWorkshopError('document_file_missing')
     receipt = for_action(row[0])

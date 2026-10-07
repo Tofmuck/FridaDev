@@ -67,7 +67,9 @@ def get_executor():
                 WHERE n.nspname=current_schema() AND t.tgenabled IN ('O','A')''').fetchall()
             if not required_triggers.issubset(set(present)):
                 return None
-        return DocumentExecutor(mutation_client=NextcloudDocumentMutationClient(reader.config),
+            from .document_workshop_update_target import available
+            supports_update=available(conn)
+        return DocumentExecutor(mutation_client=NextcloudDocumentMutationClient(reader.config),supports_update=supports_update,
             storage_root=root, source_reader=lambda folder_id, file_id:
                 sources.read_workspace_document_source(folder_id, file_id, reader=reader))
     except Exception:

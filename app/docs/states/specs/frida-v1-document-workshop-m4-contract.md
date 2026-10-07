@@ -1,5 +1,9 @@
 # Atelier documentaire Frida V1 — contrat M4
 
+## Évolution M7 — 7 octobre 2026
+
+Le parseur accepte la syntaxe update Markdown ; la finalisation durable exige la cible serveur explicite, sa preuve fraîche et les prérequis M7 avant de rendre une action confirmable. La révision confirmée reste celle préparée ; aucune préparation ni appel modèle au clic. Voir le [contrat M7](frida-v1-document-workshop-m7-contract.md) et son relevé daté. Code et preuves isolées ; migration opérateur, rebuild, préconditions Nextcloud et Versions réels restent ouverts sous GO distinct. M8-C et suivants non commencés. Les sections précédentes ci-dessous gardent leur périmètre et leurs résultats historiques datés.
+
 ## Évolution M5 — 6 octobre 2026
 
 Le [contrat M5](frida-v1-document-workshop-m5-contract.md) décrit la confirmation

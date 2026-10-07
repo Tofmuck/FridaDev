@@ -130,7 +130,10 @@ class DocumentEnvelopeTests(unittest.TestCase):
 
     def test_only_create_copy_markdown_can_be_prepared(self):
         self.assertEqual(self.read(envelope(operation="copy", source_file_ids=[SOURCE_ID])).operation, "copy")
-        for operation in ("update", "delete", None, [], 1):
+        # M7 parses update; selected-target/version authority is server-owned
+        # and must still be established before a durable confirmable action.
+        self.assertEqual(self.read(envelope(operation="update")).operation, "update")
+        for operation in ("delete", None, [], 1):
             self.reject(envelope(operation=operation))
         for format in ("docx", "pdf", "txt", [], None):
             self.reject(envelope(format=format))

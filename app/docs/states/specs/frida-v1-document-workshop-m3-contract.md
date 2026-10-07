@@ -1,5 +1,9 @@
 # Atelier documentaire Frida V1 — contrat M3
 
+## Évolution M7 — 7 octobre 2026
+
+Le clic crée un claim confirmation distinct et fige aussi son ETag préparé. Une réparation ciblée des seules métadonnées utilise un nouveau claim, sans rendre son autorité au détenteur original et sans aucune mutation DAV. Voir le [contrat M7](frida-v1-document-workshop-m7-contract.md) et son relevé daté. Code et preuves isolées ; migration opérateur, rebuild, préconditions Nextcloud et Versions réels restent ouverts sous GO distinct. M8-C et suivants non commencés. Les sections précédentes ci-dessous gardent leur périmètre et leurs résultats historiques datés.
+
 ## Évolution M5 — 6 octobre 2026
 
 Le [contrat M5](frida-v1-document-workshop-m5-contract.md) décrit la confirmation

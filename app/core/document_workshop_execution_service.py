@@ -22,7 +22,8 @@ def project_action(record,*,executor=None):
             result.update(state='remote_uncertain',reason_code='document_publication_unknown')
         else:
             result['receipt']=receipt
-    eligible=record.get('state')=='pending' and record.get('format')=='markdown' and record.get('operation') in ('create','copy')
+    eligible=record.get('state')=='pending' and record.get('format')=='markdown' and (record.get('operation') in ('create','copy')
+        or record.get('operation')=='update' and getattr(executor,'supports_update',False))
     collections=[]
     if record.get('relative_path'):
         try:
@@ -30,6 +31,7 @@ def project_action(record,*,executor=None):
             collections=['/'.join(path.segments[:i]) for i in range(2,len(path.segments))]
         except DocumentWorkshopError:eligible=False
     result['collections']=collections
+    if record.get('operation')=='update':result['collections']=[]
     if executor is not None:
         result['limitations']=[code for code in record.get('limitations',[]) if code!='write_confirmation_unavailable']
     result['capabilities']=dict(confirm=executor is not None and eligible,cancel=record.get('state') in ('preparing','pending','executing'))
@@ -44,6 +46,9 @@ def confirm(action_id,data,*,executor=None):
     data={key:_id(value) for key,value in data.items()}
     action_id=_id(action_id)
     try:
+        record=actions.get_action(action_id)
+        if record and record.get('operation')=='update' and not getattr(executor,'supports_update',False):
+            return dict(ok=False,reason_code='document_update_unavailable'),503
         run=store.begin(action_id,data)
         if run is not None:
             outcome=executor.execute(run)

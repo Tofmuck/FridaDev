@@ -1,5 +1,9 @@
 # Atelier documentaire Frida V1 — contrat M5
 
+## Évolution M7 — 7 octobre 2026
+
+Create/copy conservent leur création If-None-Match et leur compensation conditionnelle. Update conserve fichier/lien, écrit avec If-Match préparé et interdit toute compensation DELETE/restauration. La migration M7 explicite étend les contraintes sans désactiver les triggers. Voir le [contrat M7](frida-v1-document-workshop-m7-contract.md) et son relevé daté. Code et preuves isolées ; migration opérateur, rebuild, préconditions Nextcloud et Versions réels restent ouverts sous GO distinct. M8-C et suivants non commencés. Les sections précédentes ci-dessous gardent leur périmètre et leurs résultats historiques datés.
+
 ## Raccord M6 — 7 octobre 2026
 
 Le périmètre historique M5 ci-dessous reste la confirmation/exécution injectée.
