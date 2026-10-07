@@ -3520,6 +3520,22 @@ findings M6 corrigés et revalidés avant livraison Git. Aucune nouvelle migrati
 M6 ; prérequis M1–M5 et recette future
 détaillés dans le contrat. Les deux portes live ci-dessus restent ouvertes.
 
+Correctif **P3-M6-AUD-01/02**, 7 octobre 2026, sur la même branche M6 :
+[preuves séparées](../../states/baselines/document-workshop/frida-v1-document-workshop-p3-m6-aud-20261007.json).
+Les harnais SQL/NOWAIT et Chromium/concurrence étaient déjà identiques sur M5.
+Sonde de transactions ciblée au thread de requête et réponses navigateur bloquées
+explicitement remplacent leurs hypothèses temporelles, avec contrôles négatifs,
+supervision réelle et assertions produit conservées. Tests/preuves/docs seulement.
+Le run élargi de 87 cas a révélé **P3-M6-AUD-03**, course indépendante du harnais
+d'annulation inchangé (contrôle déjà entré avant pause), reproduite avec les deux
+helpers et laissée ouverte hors mandat. Aucun finding produit établi ; le premier
+échec spontané n'est pas réattribué au détenteur imposé par le diagnostic causal.
+Comparaison finale : **1 552 historiques conservés + 3 contrôles négatifs = 1 555
+distincts**, exits 0, zéro skip/annulation ; **70 voisins séparés**. Les cinq
+parcours HTTP natifs et les dix à fetch simulé M6 sont conservés. Le passage final
+au vert ne ferme pas P3-M6-AUD-03 ; son échec intermédiaire reste dans le relevé.
+La livraison runtime reste ouverte et M7 reste non commencé.
+
 ### M7 — Update Markdown, ID stable et conflit
 
 **Objectif :** modifier la cible explicite sans écrasement concurrent.

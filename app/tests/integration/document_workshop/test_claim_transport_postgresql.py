@@ -51,9 +51,20 @@ class SyntheticResponse:
 @unittest.skipUnless(os.environ.get('M3_PROOF_PG_SOCKET'), 'isolated PostgreSQL proof required')
 class ClaimTransportPostgresqlTests(unittest.TestCase):
     def conn(self):
-        return psycopg.connect(host=os.environ['M3_PROOF_PG_SOCKET'], dbname='m1proof', user='m1proof')
+        # Only the synchronous request thread inherits this identity. Watchdog,
+        # lease renewal and asyncio.to_thread keep independent, untagged sessions.
+        name = getattr(self._request_thread, 'application_name', '')
+        conn = psycopg.connect(host=os.environ['M3_PROOF_PG_SOCKET'], dbname='m1proof',
+                               user='m1proof', application_name=name)
+        if name:
+            self.assertEqual(conn.info.parameter_status('application_name'), name)
+            self._request_connections.append((name, conn.info.backend_pid))
+        return conn
 
     def setUp(self):
+        self._request_thread = threading.local()
+        self._request_names = []
+        self._request_connections = []
         self.server = load_server_module_for_tests()
         with self.conn() as conn:
             conn.execute('DROP SCHEMA public CASCADE; CREATE SCHEMA public')
@@ -111,8 +122,15 @@ class ClaimTransportPostgresqlTests(unittest.TestCase):
         body = dict(message=message, conversation_id=conversation, stream=stream, **extra)
         if not legacy:
             body['client_turn_id'] = identity
-        with self.server.app.test_client() as client:
-            return client.post('/api/chat', json=body, buffered=True)
+        previous = getattr(self._request_thread, 'application_name', '')
+        name = 'frida-proof-request-' + uuid4().hex
+        self._request_names.append(name)
+        self._request_thread.application_name = name
+        try:
+            with self.server.app.test_client() as client:
+                return client.post('/api/chat', json=body, buffered=True)
+        finally:
+            self._request_thread.application_name = previous
 
     def claim(self):
         with self.conn() as conn:
@@ -124,9 +142,19 @@ class ClaimTransportPostgresqlTests(unittest.TestCase):
             self.assertEqual(conn.execute("SELECT role FROM conversation_messages WHERE role<>'system' ORDER BY seq").fetchall(), [('user',)])
 
     def assert_no_open_transaction(self):
+        """No request-owned transaction survives the provider rendezvous.
+
+        Short supervision transactions may hold conversation locks legitimately.
+        Probe the request sessions themselves, without an age/state heuristic or
+        a row lock that races those transactions. A real connection handshake
+        calibrates the selector, so an absent request identity cannot pass vacuously.
+        """
+        self.assertTrue(self._request_connections, 'request connection tagging was not exercised')
         with self.conn() as conn:
-            conn.execute('SELECT id FROM conversations WHERE id=%s FOR UPDATE NOWAIT', (C,))
-            self.assertEqual(conn.execute("SELECT count(*) FROM pg_stat_activity WHERE datname='m1proof' AND state='idle in transaction' AND clock_timestamp()-state_change>interval '100 milliseconds'").fetchone()[0], 0)
+            active = conn.execute("""SELECT pid,state FROM pg_stat_activity
+                WHERE datname=current_database() AND application_name=ANY(%s)
+                  AND xact_start IS NOT NULL""", (self._request_names,)).fetchall()
+        self.assertEqual(active, [], 'request transaction held across provider wait or completion')
 
     def simultaneous(self, same, *, legacy=False):
         arrived, release = threading.Event(), threading.Event()

@@ -12,7 +12,7 @@ const {
 
 const STREAM_CONTROL_PREFIX = '\x1e';
 
-function chatMockScript({ streamMode, imageMode = 'success', chatDelayMs = 0 }) {
+function chatMockScript({ streamMode, imageMode = 'success', blockChatResponses = false }) {
   const nominalTerminal = `${STREAM_CONTROL_PREFIX}${JSON.stringify({
     kind: 'frida-stream-control',
     event: 'done',
@@ -48,7 +48,8 @@ function chatMockScript({ streamMode, imageMode = 'success', chatDelayMs = 0 }) 
       const nativeFetch = window.fetch.bind(window);
       const state = {
         streamMode: ${JSON.stringify(streamMode)},
-        chatDelayMs: ${JSON.stringify(chatDelayMs)},
+        blockChatResponses: ${JSON.stringify(blockChatResponses)},
+        pendingChatRequests: [],
         chatSubmitted: false,
         chatRequests: 0,
         chatMessages: [],
@@ -62,6 +63,17 @@ function chatMockScript({ streamMode, imageMode = 'success', chatDelayMs = 0 }) 
         messageFetches: 0,
       };
       window.__fridaBrowserState = state;
+      const chatResponseGates = new Map();
+      state.releaseChatResponse = (id) => {
+        const release = chatResponseGates.get(id);
+        if (!release) throw new Error("No pending chat response " + id);
+        chatResponseGates.delete(id);
+        state.pendingChatRequests = state.pendingChatRequests.filter((pending) => pending !== id);
+        release();
+      };
+      state.releaseChatResponses = () => {
+        for (const id of [...chatResponseGates.keys()]) state.releaseChatResponse(id);
+      };
       Object.defineProperty(window.navigator, "clipboard", {
         configurable: true,
         value: {
@@ -198,7 +210,7 @@ function chatMockScript({ streamMode, imageMode = 'success', chatDelayMs = 0 }) 
         }
 
         if (url.pathname === "/api/chat" && method === "POST") {
-          state.chatRequests += 1;
+          const requestId = ++state.chatRequests;
           state.chatSubmitted = true;
           try {
             state.lastUserMessage = String(JSON.parse(init.body || "{}").message || "");
@@ -206,8 +218,11 @@ function chatMockScript({ streamMode, imageMode = 'success', chatDelayMs = 0 }) 
             state.lastUserMessage = "";
           }
           state.chatMessages.push(state.lastUserMessage);
-          if (state.chatDelayMs > 0) {
-            await new Promise((resolve) => setTimeout(resolve, state.chatDelayMs));
+          if (state.blockChatResponses) {
+            await new Promise((resolve) => {
+              chatResponseGates.set(requestId, resolve);
+              state.pendingChatRequests.push(requestId);
+            });
           }
           if (state.streamMode !== "error") {
             state.updatedAt = "2026-05-03T10:00:00Z";
@@ -226,6 +241,29 @@ function chatMockScript({ streamMode, imageMode = 'success', chatDelayMs = 0 }) 
       };
     })();
   `;
+}
+
+async function waitForBlockedChat(page, id) {
+  await page.waitForFunction((requestId) =>
+    window.__fridaBrowserState.pendingChatRequests.includes(requestId), id);
+  assert.equal(await page.locator('#btnMic').getAttribute('data-dictation-state'), 'busy');
+}
+
+async function assertOnlyFirstChatIsBlocked(page) {
+  const state = await page.evaluate(() => ({
+    chatRequests: window.__fridaBrowserState.chatRequests,
+    pendingChatRequests: [...window.__fridaBrowserState.pendingChatRequests],
+    chatMessages: [...window.__fridaBrowserState.chatMessages],
+  }));
+  assert.equal(state.chatRequests, 1, 'a concurrent submit must not start a second chat request');
+  assert.deepEqual(state.pendingChatRequests, [1], 'the first response must still be blocked at the probe');
+  return state;
+}
+
+async function waitForChatCompletion(page) {
+  // Product finally releases the canonical guard, then refreshes dictation UI.
+  // Listing counters alone can precede that release on either terminal path.
+  await page.waitForFunction(() => document.querySelector('#btnMic').dataset.dictationState === 'idle');
 }
 
 function dialogueD3MockScript() {
@@ -614,43 +652,45 @@ test('chat submit honors an explicit empty terminal without caching a phantom as
 });
 
 test('chat submit keeps the second draft while one request is in flight and accepts it after completion', async () => {
-  await openBrowserPage({ mockScript: chatMockScript({ streamMode: 'done', chatDelayMs: 120 }) }, async (page) => {
-    await page.waitForSelector('#message:not([disabled])');
-    await page.fill('#message', 'Premier envoi');
-    await page.click('#ask button[type="submit"]');
-    await page.waitForFunction(() => window.__fridaBrowserState.chatRequests === 1);
+  await openBrowserPage({ mockScript: chatMockScript({ streamMode: 'done', blockChatResponses: true }) }, async (page) => {
+    try {
+      await page.waitForSelector('#message:not([disabled])');
+      await page.fill('#message', 'Premier envoi');
+      await page.click('#ask button[type="submit"]');
+      await waitForBlockedChat(page, 1);
 
-    await page.fill('#message', 'Brouillon conservé');
-    await page.click('#ask button[type="submit"]');
-    await page.waitForTimeout(30);
+      await page.fill('#message', 'Brouillon conservé');
+      await page.click('#ask button[type="submit"]');
+      let state = await assertOnlyFirstChatIsBlocked(page);
+      assert.deepEqual(state.chatMessages, ['Premier envoi']);
+      assert.equal(await page.locator('#message').inputValue(), 'Brouillon conservé');
+      assert.deepEqual(
+        await page.locator('.msg-wrapper.me .msg').evaluateAll((nodes) => nodes.map((node) => node.textContent.trim())),
+        ['Premier envoi'],
+      );
 
-    let state = await page.evaluate(() => ({
-      chatRequests: window.__fridaBrowserState.chatRequests,
-      chatMessages: [...window.__fridaBrowserState.chatMessages],
-    }));
-    assert.equal(state.chatRequests, 1, 'a concurrent submit must not start a second chat request');
-    assert.deepEqual(state.chatMessages, ['Premier envoi']);
-    assert.equal(await page.locator('#message').inputValue(), 'Brouillon conservé');
-    assert.deepEqual(
-      await page.locator('.msg-wrapper.me .msg').evaluateAll((nodes) => nodes.map((node) => node.textContent.trim())),
-      ['Premier envoi'],
-    );
+      await page.evaluate(() => window.__fridaBrowserState.releaseChatResponse(1));
+      await waitForChatCompletion(page);
+      assert.ok(await page.evaluate(() => window.__fridaBrowserState.conversationFetches >= 2));
+      await page.click('#ask button[type="submit"]');
+      await waitForBlockedChat(page, 2);
 
-    await page.waitForFunction(() => window.__fridaBrowserState.conversationFetches >= 2);
-    await page.click('#ask button[type="submit"]');
-    await page.waitForFunction(() => window.__fridaBrowserState.chatRequests === 2);
-
-    state = await page.evaluate(() => ({
-      chatRequests: window.__fridaBrowserState.chatRequests,
-      chatMessages: [...window.__fridaBrowserState.chatMessages],
-    }));
-    assert.equal(state.chatRequests, 2, 'the in-flight guard must be released after the first terminal');
-    assert.deepEqual(state.chatMessages, ['Premier envoi', 'Brouillon conservé']);
-    assert.equal(await page.locator('#message').inputValue(), '');
-    assert.deepEqual(
-      await page.locator('.msg-wrapper.me .msg').evaluateAll((nodes) => nodes.map((node) => node.textContent.trim())),
-      ['Premier envoi', 'Brouillon conservé'],
-    );
+      state = await page.evaluate(() => ({
+        chatRequests: window.__fridaBrowserState.chatRequests,
+        chatMessages: [...window.__fridaBrowserState.chatMessages],
+      }));
+      assert.equal(state.chatRequests, 2, 'the in-flight guard must be released after the first terminal');
+      assert.deepEqual(state.chatMessages, ['Premier envoi', 'Brouillon conservé']);
+      assert.equal(await page.locator('#message').inputValue(), '');
+      assert.deepEqual(
+        await page.locator('.msg-wrapper.me .msg').evaluateAll((nodes) => nodes.map((node) => node.textContent.trim())),
+        ['Premier envoi', 'Brouillon conservé'],
+      );
+      await page.evaluate(() => window.__fridaBrowserState.releaseChatResponse(2));
+      await waitForChatCompletion(page);
+    } finally {
+      await page.evaluate(() => window.__fridaBrowserState.releaseChatResponses());
+    }
   });
 });
 
@@ -1570,50 +1610,59 @@ test('chat reasoning shortcut stays compact on desktop and mobile', async () => 
 });
 
 test('chat stream error without updated_at rehydrates and avoids canonical optimistic assistant', async () => {
-  await openBrowserPage({ mockScript: chatMockScript({ streamMode: 'error', chatDelayMs: 120 }) }, async (page) => {
-    await page.waitForSelector('#message:not([disabled])');
-    await page.fill('#message', 'Bonjour erreur');
-    await page.click('#ask button[type="submit"]');
-    await page.waitForFunction(() => window.__fridaBrowserState.chatRequests === 1);
+  await openBrowserPage({ mockScript: chatMockScript({ streamMode: 'error', blockChatResponses: true }) }, async (page) => {
+    try {
+      await page.waitForSelector('#message:not([disabled])');
+      await page.fill('#message', 'Bonjour erreur');
+      await page.click('#ask button[type="submit"]');
+      await waitForBlockedChat(page, 1);
 
-    await page.fill('#message', 'Reprise après erreur');
-    await page.click('#ask button[type="submit"]');
-    await page.waitForTimeout(30);
-    assert.equal(
-      await page.evaluate(() => window.__fridaBrowserState.chatRequests),
-      1,
-      'the in-flight guard must also reject a concurrent submit on an error path',
-    );
-    assert.equal(await page.locator('#message').inputValue(), 'Reprise après erreur');
+      await page.fill('#message', 'Reprise après erreur');
+      await page.click('#ask button[type="submit"]');
+      const state = await assertOnlyFirstChatIsBlocked(page);
+      assert.deepEqual(state.chatMessages, ['Bonjour erreur']);
+      assert.equal(await page.locator('#message').inputValue(), 'Reprise après erreur');
+      assert.deepEqual(
+        await page.locator('.msg-wrapper.me .msg').evaluateAll((nodes) => nodes.map((node) => node.textContent.trim())),
+        ['Bonjour erreur'],
+      );
 
-    await page.waitForFunction(() =>
-      Array.from(document.querySelectorAll('.msg-wrapper:not(.me) .msg-stream-status'))
-        .some((node) => !node.hidden && node.textContent.includes('Interrompu côté serveur')));
+      await page.evaluate(() => window.__fridaBrowserState.releaseChatResponse(1));
+      await waitForChatCompletion(page);
+      await page.waitForFunction(() =>
+        Array.from(document.querySelectorAll('.msg-wrapper:not(.me) .msg-stream-status'))
+          .some((node) => !node.hidden && node.textContent.includes('Interrompu côté serveur')));
 
-    const visibleAssistantTexts = await page
-      .locator('.msg-wrapper:not(.me) .msg')
-      .evaluateAll((nodes) => nodes.map((node) => node.textContent.trim()).filter(Boolean));
-    assert.deepEqual(visibleAssistantTexts, ['Réponse interrompue côté serveur.']);
+      const visibleAssistantTexts = await page
+        .locator('.msg-wrapper:not(.me) .msg')
+        .evaluateAll((nodes) => nodes.map((node) => node.textContent.trim()).filter(Boolean));
+      assert.deepEqual(visibleAssistantTexts, ['Réponse interrompue côté serveur.']);
 
-    const bylineText = await page.locator('.msg-wrapper:not(.me) .byline').last().textContent();
-    assert.equal(String(bylineText || '').trim(), 'Frida');
+      const bylineText = await page.locator('.msg-wrapper:not(.me) .byline').last().textContent();
+      assert.equal(String(bylineText || '').trim(), 'Frida');
 
-    const fetchCalls = await page.evaluate(() => window.__fridaBrowserState.fetchCalls);
-    assert.ok(
-      fetchCalls.filter((call) => call.method === 'GET' && call.path === '/api/conversations/conv-browser/messages').length >= 2,
-      'error terminal without updated_at should force conversation message rehydration',
-    );
-    assert.ok(fetchCalls.filter((call) => call.method === 'GET' && call.path === '/api/conversations').length >= 2);
-    assert.equal(visibleAssistantTexts.some((text) => text.includes('Réponse partielle non persistée')), false);
+      const fetchCalls = await page.evaluate(() => window.__fridaBrowserState.fetchCalls);
+      assert.ok(
+        fetchCalls.filter((call) => call.method === 'GET' && call.path === '/api/conversations/conv-browser/messages').length >= 2,
+        'error terminal without updated_at should force conversation message rehydration',
+      );
+      assert.ok(fetchCalls.filter((call) => call.method === 'GET' && call.path === '/api/conversations').length >= 2);
+      assert.equal(visibleAssistantTexts.some((text) => text.includes('Réponse partielle non persistée')), false);
 
-    await page.click('#ask button[type="submit"]');
-    await page.waitForFunction(() => window.__fridaBrowserState.chatRequests === 2);
-    await page.waitForFunction(() => window.__fridaBrowserState.conversationFetches >= 3);
-    assert.deepEqual(
-      await page.evaluate(() => window.__fridaBrowserState.chatMessages),
-      ['Bonjour erreur', 'Reprise après erreur'],
-      'the guard must be released after the error terminal',
-    );
+      await page.click('#ask button[type="submit"]');
+      await waitForBlockedChat(page, 2);
+      assert.equal(await page.locator('#message').inputValue(), '');
+      await page.evaluate(() => window.__fridaBrowserState.releaseChatResponse(2));
+      await waitForChatCompletion(page);
+      await page.waitForFunction(() => window.__fridaBrowserState.conversationFetches >= 3);
+      assert.deepEqual(
+        await page.evaluate(() => window.__fridaBrowserState.chatMessages),
+        ['Bonjour erreur', 'Reprise après erreur'],
+        'the guard must be released after the error terminal',
+      );
+    } finally {
+      await page.evaluate(() => window.__fridaBrowserState.releaseChatResponses());
+    }
   });
 });
 
@@ -4785,3 +4834,34 @@ test('D4 thread change during lazy assets or STT cannot arm or submit in the new
     });
   }
 });
+
+for (const streamMode of ['done', 'error']) {
+  test(`P3-M6-AUD-02 blocked-response probe rejects a second test-only request: ${streamMode}`, async () => {
+    await openBrowserPage({ mockScript: chatMockScript({ streamMode, blockChatResponses: true }) }, async (page) => {
+      try {
+        await page.waitForSelector('#message:not([disabled])');
+        await page.fill('#message', 'Première demande synthétique');
+        await page.click('#ask button[type="submit"]');
+        await waitForBlockedChat(page, 1);
+        await assertOnlyFirstChatIsBlocked(page);
+        // Negative calibration of the same probe, confined to this fixture.
+        // The production UI guard is intact; this is deliberately a direct fetch.
+        await page.evaluate(() => {
+          window.__negativeChatResponse = window.fetch('/api/chat', {
+            method: 'POST',
+            body: JSON.stringify({ message: 'Seconde requête synthétique injectée' }),
+          }).then((response) => response.text());
+        });
+        await waitForBlockedChat(page, 2);
+        assert.deepEqual(await page.evaluate(() => window.__fridaBrowserState.pendingChatRequests), [1, 2]);
+        await assert.rejects(() => assertOnlyFirstChatIsBlocked(page), {
+          code: 'ERR_ASSERTION', actual: 2, expected: 1,
+        });
+      } finally {
+        await page.evaluate(() => window.__fridaBrowserState.releaseChatResponses());
+        await page.evaluate(() => window.__negativeChatResponse);
+      }
+      await waitForChatCompletion(page);
+    });
+  });
+}

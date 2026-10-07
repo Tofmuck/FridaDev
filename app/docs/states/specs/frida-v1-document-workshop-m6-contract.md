@@ -173,6 +173,55 @@ La contre-lecture indépendante a fermé les refus de prérequis incomplets,
 les classifications d'indisponibilité, le refresh d'origine tardif et
 l'attribution capsule après gel ; aucun finding code confirmé ne reste ouvert.
 
+### Correctif de harnais P3-M6-AUD-01/02 — 7 octobre 2026
+
+Le [relevé séparé du correctif](../baselines/document-workshop/frida-v1-document-workshop-p3-m6-aud-20261007.json)
+préserve la preuve M6 initiale et les rouges causaux. Les trois fichiers de tests
+concernés étaient identiques sur M5 et la base M6 `d676f4fb` : leurs hypothèses
+temporelles ne sont pas des régressions produit M6. Aucun code produit, contrat
+métier, route, migration, dépendance ou réglage runtime ne change.
+
+**P3-M6-AUD-01 corrigé.** Le NOWAIT historique peut rejeter la transaction courte
+de supervision. Le harnais identifie désormais chaque invocation HTTP par un
+`application_name` unique passé à `psycopg.connect`, restauré en `finally` sur
+le seul thread de requête. Une connexion réellement taguée calibre la sonde
+indépendante `pg_stat_activity` : aucune transaction de requête ouverte, active
+ou idle, sans seuil d'âge. Watchdog, renouvellement et garde asynchrone exécutent
+leurs vrais stores sans hériter du tag. Un rendez-vous retient un seul appel
+watchdog après ses vrais verrous jusqu'à la sonde, puis deux appels réels terminés
+prouvent sa continuation. Annulation HTTP 200, fermeture physique, réponse 503,
+absence de révision/assistant tardif et appel fournisseur unique sont conservés.
+Le contrôle négatif tient volontairement une transaction du thread de requête
+pendant le SSE HTTP réel : la même sonde la rejette, puis la fermeture la libère.
+
+**P3-M6-AUD-02 corrigé.** Les chemins nominal et erreur bloquent explicitement
+la réponse de fixture. La seconde saisie/clic a lieu pendant cette attente
+constatée ; un seul appel, le brouillon et la bulle utilisateur sont vérifiés
+avant libération. Le retour `busy → idle` du contrôleur dictée observe le vrai
+`finally` produit ; une soumission ultérieure est autorisée. Réhydratation,
+transcript canonique et absence d'assistant optimiste restent prouvés. Deux
+contrôles négatifs injectent un second fetch dans le harnais seul et font rejeter
+la même assertion ; ils ne prétendent pas contourner la garde via l'UI produit.
+Les gates sont libérées en `finally`. Aucun délai ne décide de l'ordre causal.
+
+Un finding **indépendant P3-M6-AUD-03 reste ouvert**, hors correctif : le harnais
+inchangé `cancel_with_external_lock` ne draine pas une supervision déjà entrée
+avant `pause_checks`. Le run élargi de 87 cas a un échec (préparation 503 au lieu
+de 200). Le diagnostic avec helper de base et helper corrigé force un contrôle
+déjà admis à rencontrer le verrou réel et reproduit l'interruption, avec une
+assertion plus précoce sur le claim. Les fichiers et fonctions de supervision
+concernés sont hérités de M5. Cette variante causale n'établit pas l'ordonnancement
+de l'échec spontané. Aucun finding produit n'est établi et ce troisième harnais
+n'est pas modifié ici ; un éventuel rejeu vert ne ferme pas cette course.
+
+Comparaison complète du correctif : **1 552 cas historiques conservés à l'identité
+exacte + 3 nouveaux contrôles négatifs = 1 555 distincts**, tous verts dans la
+sélection finale, zéro skip/annulation. Les 70 voisins restent séparés (1 625 avec
+eux). Les cinq parcours M6 à HTTP natif et les dix à fetch simulé sont conservés
+et comptés séparément. Ciblés, diagnostics et répétitions incluses dans ces
+sélections ne sont pas recomptés. L'échec intermédiaire de P3-M6-AUD-03 reste
+consigné ; ces résultats ne constituent pas une fermeture de cette anomalie.
+
 M6 ne livre aucune nouvelle migration. Pour une livraison future, après GO
 distinct, Celebrimbor vérifie la version et l'état des migrations atelier M1
 contextes → M2 adoption/liens → M3 claims → M4 actions/révisions → M5 exécution/
