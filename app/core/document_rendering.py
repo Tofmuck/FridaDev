@@ -97,7 +97,10 @@ class RenderingSession:
             check();release_attempted=True
             message=self._call('cancel_release',request,cancel=False);check()
             ack=c.validate_release_message(message,request=request)
-            check();self._released=ReleasedRender(self.collected,c.json_bytes(ack))
+            check()
+            # Release acknowledges cleanup, not useful rendering progress.
+            if self._clock()-last>=120:c.fail('renderer_inactivity')
+            self._released=ReleasedRender(self.collected,c.json_bytes(ack))
             return self._released
         except Exception:
             if submitted and not release_attempted:

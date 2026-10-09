@@ -6,10 +6,13 @@ parent M6 `b00eb95001755295dcc301232272a8070d26cd78`. Branche
 Tof et [roadmap](../../todo-todo/product/frida-v1-document-workshop-todo.md),
 §§3.9–3.17, M8-C et section 9. Ce document est la remise commune à Sauron.
 Statut courant : P2-M8C-AUD-01 corrigé sur la structure DOCX ;
-**P2-M8C-AUD-02 reste ouvert, M8-C n'est pas intégralement fermé**.
+**P2-M8C-AUD-02 corrigé sur la décision temporelle finale ; clôture globale M8-C à contre-auditer**.
 Le relevé initial ci-dessous conserve ses résultats historiques ; le
 [relevé dédié AUD-01](../baselines/document-workshop/frida-v1-document-workshop-p2-m8c-aud-01-20261007.json)
-porte les nouvelles exécutions et la portée du correctif.
+porte ses exécutions historiques et sa portée. Le
+[relevé AUD-02 du 9 octobre](../baselines/document-workshop/frida-v1-document-workshop-p2-m8c-aud-02-20261009.json)
+porte la correction temporelle et la comparaison actuelle, distinctes des
+déclarations historiques et du contre-audit indépendant du 7 octobre.
 Aucun service Writer ni transport AF_UNIX n'est livré. DOCX/PDF restent inactifs.
 
 ## Plan et frontières
@@ -275,6 +278,18 @@ nouveaux blocs/étapes réarment. Poll/keepalive/CPU/lease ne le font pas. Aucun
 plafond mural tant que du progrès utile arrive avant chaque échéance ; à 120
 exact l'opération échoue. M8-S prouvera un superviseur indépendant d'UNO bloqué.
 
+Correctif **P2-M8C-AUD-02**, 9 octobre 2026 : cette même horloge reste
+l'autorité jusqu'à la décision finale de succès, après validation stricte de
+l'acquittement et recontrôle d'autorité, avant création/mémorisation de
+`ReleasedRender`. Result, validation, libération et acquittement ne réarment
+pas le dernier progrès utile. À 120 s exactes ou au-delà, `renderer_inactivity`
+refuse le bundle ; `collected` peut conserver le snapshot validé sans prouver
+un succès. Aucune seconde annulation/libération après la tentative de libération,
+même si le refus applicatif est tardif : il ne révoque pas le nettoyage acquitté.
+Une répétition de la session refusée donne `renderer_job_lost` sans nouvel
+échange, rendu ni mutation. Autorité/lease/inactivité restent distinctes ;
+aucune interruption d'appel réellement bloqué n'est ajoutée (M8-S/M8-A).
+
 Dérivation exacte des compteurs (N = nombre de blocs top-level canonical) :
 accepted : 0/blocks 0 ; source_inspected : 1/blocks 0, même sans source ;
 canonical_applied : 1+B/blocks B, 0 ≤ B ≤ N ; puis blocks=N et
@@ -382,8 +397,9 @@ sockets, caches et répertoire temporaire supprimés avec absence vérifiée.
 Le cache navigateur partagé et les services opérateur sont préservés.
 Ces constats sont historiques : les findings AUD-01/AUD-02 du contre-audit
 ultérieur sont distincts des findings internes alors corrigés. AUD-01 est
-traité dans le relevé dédié ; AUD-02, horloge/libération, demeure ouvert et
-hors correction. Les verts historiques ou leur rejouage ne le ferment pas.
+traité dans son relevé dédié ; AUD-02 était alors ouvert et hors correction.
+Les verts historiques ou leur rejouage seuls ne le fermaient pas ; son correctif
+et ses preuves du 9 octobre sont consignés séparément ci-dessous.
 Les preuves et contrôles Git de la correction sont consignés séparément.
 
 Correction AUD-01 : baseline ciblée 62/62 avant patch ; reproduction autonome
@@ -412,4 +428,55 @@ les remplacent comme preuves, sans effacer leurs échecs.
 Seconde lecture indépendante du delta code/tests/docs et du relevé : favorable
 à AUD-01 seul, sans nouveau finding bloquant ; revue statique et vérification
 des artefacts, aucun test/SQL/probe supplémentaire revendiqué. La livraison
-Git s'arrête pour contre-audit Codex ; aucun avis de fermeture d'AUD-02.
+Git AUD-01 s’arrêtait pour contre-audit Codex ; aucun avis de fermeture d’AUD-02 dans ce lot historique.
+
+### Correctif P2-M8C-AUD-02 — 9 octobre 2026
+
+Base AUD-01 `1732a1266d4b573734ea0ea72baa72dea5e563ca`, même branche M8-C.
+Reproduction autonome avec vrais validateurs/inspecteurs : acquittement valide
+reçu à 120 s accepté et mémorisé avant patch, refusé après patch. Nominal et
+119,999 s admis ; retard de result à 120 s déjà refusé. Le correctif ajoute
+une seule décision temporelle dans la session existante, sans nouveau mécanisme.
+Les nouveaux tests observent snapshot, événements, absence de cache/replay,
+nettoyage unique, erreur initiale conservée et autorité. La composition sous
+confirmation/claim PostgreSQL distingue le refus renderer traduit en
+`document_render_invalid` du contrôle légitime `document_format_unavailable` ;
+aucune mutation DAV, publication ni reçu de succès. Le contrôle négatif retire
+uniquement la garde finale en mémoire dans le processus de test ; aucun mutant
+produit ni modification du transport.
+
+La déclaration AUD-01 « 1 677 verts » reste historique. Provenance distincte :
+contre-audit indépendant du 7 octobre communiqué par Tof dans le mandat AUD-02,
+**1 674 succès / 1 677**, plus 96 voisins verts. OBS-M7-CONC-01 : après deux
+confirmations, GET observait encore `executing` (groupe 28/29 deux fois).
+OBS-M7-UI-01 : les cas natifs `phone light` et `phone dark` échouaient au clic
+`#btnSidebarClose`, hors viewport/intercepté par topbar (11/13). Causes non
+établies : aucune qualification de bug produit, de régression AUD ou de simple
+instabilité ; aucune correction M7 ici. L'incident historique M4 21/22 puis
+22/22 de cause initiale inconnue reste consigné. Les exécutions du 9 octobre,
+leurs résultats exacts et incidents de harnais sont dans le relevé dédié AUD-02 ;
+un rejeu vert ne résout pas une cause inconnue. Clôture globale M8-C à
+contre-auditer ; M8-S/M8-A non commencés, formats publics inactifs, aucune
+preuve Writer, AF_UNIX ou Nextcloud live ni livraison runtime.
+
+
+Exécutions AUD-02 du 9 octobre : baseline ciblée 73/73 ; nouveaux rouges
+unitaires 11 IDs/5 échecs et SQL 2 IDs/3 sous-cas échoués ; autonome 3/4 puis
+4/4. Ciblés séquencés 86/86 ; négatif limité à la nouvelle garde : 2 IDs,
+4 échecs attendus, zéro erreur. Comparaison finale : **1 677 identités
+historiques exactes + 13 nouveaux = 1 690 succès**, sans skip ; 70 + 26 voisins
+verts séparés. M6 natif 5/5, M7 natif 13/13, M6 à fetch simulé 10/10 ; M7 SQL
+29/29 dans le groupe Python 34/34, M4 Chromium 22/22. Ces verts actuels
+n'expliquent ni ne ferment les observations M7/M4 historiques.
+
+Incidents de preuve conservés : le premier ciblé et le premier négatif SQL
+ont chevauché le même schéma `public` détruit/recréé par les fixtures ; le
+premier groupe historique SQL 151/152 a également chevauché la fin du ciblé
+de 1,752 s (`exact=None` au premier test M1). Contamination plausible,
+causalité précise de la ligne absente non établie. Ces runs sont exclus de
+la preuve finale, puis rejoués une seule fois en séquence, sans patch produit
+ni assertion affaiblie : 86/86, négatif causal attendu, groupe SQL 152/152.
+Commandes/IDs/exits/durées et incidents restent dans le relevé ; aucun double
+compte, aucune répétition ajoutée au total. Seconde lecture indépendante et
+nettoyage sont consignés dans ce même relevé ; arrêt après livraison Git pour
+contre-audit Codex.

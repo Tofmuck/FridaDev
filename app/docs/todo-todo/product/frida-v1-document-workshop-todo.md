@@ -18,7 +18,7 @@ M4 livré sur code, P2-M4-01 et P2-M4-02 fermés après contre-audits indépenda
 P3-M4-03 corrigé par erratum documentaire (1 198 déclarés conservés et rectifiés,
 sélection publiée à 1 414, 21 identifiants réutilisables validés) ;
 M4 non intégralement fermé ;
-M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées, livraison runtime ouverte ; M7 fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C non intégralement fermé : AUD-01 corrigé, AUD-02 ouvert ; M8-S/M8-A, M9/M10 et Z non commencés,
+M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées, livraison runtime ouverte ; M7 fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C à contre-auditer : AUD-01 fermé, AUD-02 corrigé sur preuves dédiées ; M8-S/M8-A, M9/M10 et Z non commencés,
 aucun déploiement ou renderer livré**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
@@ -895,7 +895,7 @@ restent ouverts. M3 est fermé sur code/preuves et contre-audit ci-dessous ;
 M4 est livré sur code/preuves hermétiques, P2-M4-01 et P2-M4-02 fermés après
 contre-audits indépendants, P3-M4-03 corrigé documentairement ; livraison runtime
 ouverte. M5 est fermé sur code/preuves injectées ; M6 raccorde le parcours réel
-avec preuves isolées, sans déploiement. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C non intégralement fermé : AUD-01 corrigé, AUD-02 ouvert ; M8-S/M8-A, M9/M10 et Z restent non commencés. Spécification et
+avec preuves isolées, sans déploiement. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C à contre-auditer : AUD-01 fermé, AUD-02 corrigé sur preuves dédiées ; M8-S/M8-A, M9/M10 et Z restent non commencés. Spécification et
 décisions amont sont validées et l'exception produit est inscrite.
 Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
 les GO M0–M4 et P3-M4-03 ne valent pour aucun lot suivant ni déploiement.
@@ -3611,7 +3611,7 @@ canonical/révision/profil figés, source temporaire optionnelle, résultat ferm
 - [x] Synchroniser contrat commun/profil/bornes/erreurs avec cette roadmap ; aucun
   déploiement requis pour fermer le contrat hermétique, rebuild futur du code livré.
 - [ ] Fermer sur contrat consommable par M8-S et fake rejetant les contre-cas ;
-  AUD-01 corrigé, AUD-02 reste ouvert et hors correction ;
+  AUD-01 fermé, AUD-02 corrigé sur preuves dédiées ; clôture globale à contre-auditer ;
   aucune installation ou preuve de disponibilité déclarée accomplie.
 
 **Livraison initiale M8-C — 7 octobre 2026 (`fc911ed3`).** Résultats historiques
@@ -3641,7 +3641,8 @@ seulement lors d’une livraison runtime autorisée.
 ### P2-M8C-AUD-01 — Squelette de la partie principale DOCX
 
 **Statut :** correctif borné sur la base `fc911ed3d42d253424becae399422dc992bc0b9c` ;
-AUD-02, horloge/libération, reste ouvert. M8-C n'est pas intégralement fermé.
+AUD-02, horloge/libération, restait ouvert dans ce lot historique.
+Son correctif séparé du 9 octobre suit ci-dessous ; M8-C reste à contre-auditer.
 Ces identifiants AUD sont distincts des findings internes de la livraison initiale.
 Voir le [relevé dédié](../../states/baselines/document-workshop/frida-v1-document-workshop-p2-m8c-aud-01-20261007.json)
 et le [contrat structurel/provenance SDK](../../states/specs/frida-v1-document-workshop-m8c-contract.md#squelette-docx--correctif-p2-m8c-aud-01).
@@ -3670,13 +3671,54 @@ le relevé dédié. Un échec intermédiaire Chromium M4 (21/22) est conservé :
 sélecteur exact rejoué 22/22 sans patch, cause non établie. Les six sondes
 Codex fournies (trois contrôles verts/trois refus attendus rouges, dont un
 AUD-02) restent des preuves distinctes, jamais ajoutées à la sélection.
-Aucune correction AUD-02, modification de transport/profil/budget/claim,
+Lors de la livraison AUD-01 : aucune correction AUD-02, modification de transport/profil/budget/claim,
 route/UI/capacité publique ou installation/rebuild/restart. DOCX/PDF publics
 restent inactifs ; Markdown direct ; M8-S/M8-A/M9/M10 non commencés.
 
 Seconde lecture indépendante code/tests/docs/relevé favorable à AUD-01 seul ;
 vérification statique des artefacts, aucun test supplémentaire revendiqué.
-Arrêt après livraison Git pour contre-audit Codex, sans correction AUD-02.
+Cette livraison AUD-01 s’arrêtait après Git pour contre-audit Codex, sans correction AUD-02.
+
+### P2-M8C-AUD-02 — Inactivité au dernier acquittement de libération
+
+Correctif borné du 9 octobre 2026, base AUD-01 `1732a126`, branche M8-C conservée.
+[Relevé dédié](../../states/baselines/document-workshop/frida-v1-document-workshop-p2-m8c-aud-02-20261009.json)
+et [contrat temporel](../../states/specs/frida-v1-document-workshop-m8c-contract.md#états-http-progression-et-espace-worker).
+Un acquittement valide reçu à exactement 120 s sans progrès était accepté ;
+le rouge autonome et le rouge sous confirmation/claim SQL le reproduisent.
+La session contrôle désormais l'âge du dernier progrès utile après acquittement
+validé et autorité, avant mémorisation de `ReleasedRender`. Aucun compteur
+réarmé, deadline totale ou superviseur ajouté. `collected` reste un snapshot,
+pas une preuve de succès ; un refus ne réexécute rien et ne relibère pas un job.
+
+Les preuves ciblées couvrent 119,999/120/au-delà, âge consommé avant libération,
+validation et contrôle d'autorité, cache/replay, erreurs et nettoyage unique.
+Le contrôle négatif neutralise uniquement la nouvelle garde en mémoire de test.
+Sous PostgreSQL réel, le refus temporel précède le contrôle de format public,
+avec erreur applicative fermée et zéro DAV/journal de mutation/reçu de succès.
+
+La déclaration AUD-01 de 1 677 verts est historique, pas la référence de santé
+actuelle : contre-audit indépendant du 7 octobre transmis par Tof = **1 674 /
+1 677**, plus 70 + 26 voisins verts. OBS-M7-CONC-01 : GET encore `executing`
+après deux confirmations, 28/29 deux fois ; OBS-M7-UI-01 : `phone light`/`phone
+dark`, clic `#btnSidebarClose` hors viewport/intercepté par topbar, 11/13.
+Causes non établies ; ni bug produit confirmé, ni régression AUD démontrée,
+ni simple instabilité qualifiée. Ces observations restent séparées et ouvertes,
+sans patch M7. M4 historique 21/22 puis 22/22 reste de cause initiale inconnue.
+Le relevé AUD-02 porte chaque exécution actuelle sans double compte ni effacement
+des incidents. AUD-01 reste fermé ; clôture globale M8-C soumise au contre-audit
+Codex après livraison Git, sans démarrer M8-S/M8-A ni déployer.
+
+Comparaison finale du 9 octobre : **1 677 identités historiques exactes +
+13 nouveaux = 1 690 succès**, zéro skip ; 70 + 26 voisins verts séparés.
+Ciblés séquencés 86/86 ; négatif de la seule nouvelle garde : 2 IDs et 4 échecs
+attendus, zéro erreur. M6 natif 5/5, M7 natif 13/13, M6 à fetch simulé 10/10 ;
+M7 SQL 29/29, M4 Chromium 22/22. Observations M7/M4 historiques non résolues
+par ces verts. Premiers ciblé/négatif contaminés par chevauchement des fixtures
+SQL conservés ; premier groupe SQL 151/152 chevauché de 1,752 s, `exact=None`
+au premier cas M1, cause précise non établie. Un rejeu séquencé exact donne
+152/152 sans patch ni affaiblissement ; incidents exclus de la sélection finale,
+conservés dans le relevé avec commandes/IDs/exits/durées, sans double compte.
 
 ### M8-S — Service Writer/UNO isolé et preuve plateforme
 
@@ -3945,7 +3987,11 @@ il ne change pas les 20 pages/10 000 mots/75 000 caractères ni le moteur.
 Le temps est borné par **120 secondes sans progression effective** ; aucun
 watchdog absolu supplémentaire tant que la progression continue. Avancement :
 blocs réellement appliqués, import/layout/export achevés ou étape utile vérifiable ;
-ni pulse, poll, CPU consommé, animation ni lease ne réarment ce compteur. Frida
+ni pulse, poll, CPU consommé, animation ni lease ne réarment ce compteur. La
+même borne inclusive vaut jusqu'à la décision finale après libération acquittée :
+ni collecte, validation, début de libération ni acquittement ne réarment le temps.
+Un snapshot local peut exister sans bundle livrable ; un refus tardif ne répète
+pas le nettoyage déjà tenté/acquitté. Frida
 projette cet état après clic. Un UNO bloqué est neutralisé par un superviseur
 hors de son appel bloquant : destruction du groupe de processus, nettoyage du
 profil/espace de travail, erreur terminale. Perte du worker/OOM : échec fermé
@@ -4218,7 +4264,7 @@ sont corrigés. P2-M4-01 et P2-M4-02 sont fermés après leurs contre-audits
 indépendants, avec leurs résultats conservés ci-dessus ; P3-M4-03 est corrigé
 documentairement, sans fermer la livraison runtime de M4 ;
 M5 est fermé sur code/preuves hermétiques et contre-audit ; M6 est réalisé sur
-code/preuves isolées et contre-audit. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C non intégralement fermé : AUD-01 corrigé, AUD-02 ouvert ; M8-S/M8-A, M9/M10/Z restent non commencés et les
+code/preuves isolées et contre-audit. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C à contre-auditer : AUD-01 fermé, AUD-02 corrigé sur preuves dédiées ; M8-S/M8-A, M9/M10/Z restent non commencés et les
 obligations runtime restent ouvertes.
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
 dans AGENTS.md ; l'invariant de consolidation reste applicable hors de cette

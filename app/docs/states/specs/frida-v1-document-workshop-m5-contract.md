@@ -7,7 +7,8 @@ est retirée au profit du [contrat Writer v1 fermé](frida-v1-document-workshop-
 de `validate_result` et de la session injectable. L’ID M5 et ses onze sous-cas
 sont conservés avec paire/manifeste et libération séparée ; leur nouveau run
 est consigné dans le relevé initial M8-C. AUD-01 est corrigé dans la garde de
-structure renderer ; AUD-02 reste ouvert, M8-C non intégralement fermé.
+structure renderer. Le [correctif AUD-02 du 9 octobre](../baselines/document-workshop/frida-v1-document-workshop-p2-m8c-aud-02-20261009.json)
+ferme la décision temporelle du dernier acquittement ; clôture globale M8-C à contre-auditer.
 Aucun chemin permissif parallèle. Ce constat
 ne requalifie pas la frontière M5 en bug historique. Markdown direct et gardes
 M3/M5 restent inchangés ; DOCX/PDF publics restent indisponibles, Writer et
@@ -16,7 +17,7 @@ pas le protocole Writer courant. M8-S/M8-A/M9/M10 restent non commencés.
 
 ## Évolution M7 — 7 octobre 2026
 
-Create/copy conservent leur création If-None-Match et leur compensation conditionnelle. Update conserve fichier/lien, écrit avec If-Match préparé et interdit toute compensation DELETE/restauration. La migration M7 explicite étend les contraintes sans désactiver les triggers. Voir le [contrat M7](frida-v1-document-workshop-m7-contract.md) et son relevé daté. Code et preuves isolées ; migration opérateur, rebuild, préconditions Nextcloud et Versions réels restent ouverts sous GO distinct. Le statut courant M8-C et son AUD-02 ouvert figurent ci-dessus ; M8-S/M8-A et formats binaires restent non commencés. Les sections précédentes ci-dessous gardent leur périmètre et leurs résultats historiques datés.
+Create/copy conservent leur création If-None-Match et leur compensation conditionnelle. Update conserve fichier/lien, écrit avec If-Match préparé et interdit toute compensation DELETE/restauration. La migration M7 explicite étend les contraintes sans désactiver les triggers. Voir le [contrat M7](frida-v1-document-workshop-m7-contract.md) et son relevé daté. Code et preuves isolées ; migration opérateur, rebuild, préconditions Nextcloud et Versions réels restent ouverts sous GO distinct. Le statut courant M8-C et le correctif AUD-02 figurent ci-dessus ; M8-S/M8-A et formats binaires restent non commencés. Les sections précédentes ci-dessous gardent leur périmètre et leurs résultats historiques datés.
 
 ## Raccord M6 — 7 octobre 2026
 
