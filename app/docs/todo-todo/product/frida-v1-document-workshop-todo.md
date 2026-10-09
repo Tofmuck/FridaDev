@@ -3667,6 +3667,32 @@ Les comptes indépendants 1 674/1 677 et 1 689/1 690 restent conservés ci-dessu
 AUD-01/AUD-02 fermés ; UI M7/M4, runtime et clôture globale M8-C restent séparés.
 Livraison à contre-auditer par Codex ; aucun démarrage M8-S/M8-A ni lot suivant.
 
+#### OBS-M7-UI-01 — Diagnostic borné du menu téléphone, 9 octobre 2026
+
+[Rapport et suite proposée](../../states/audits/frida-v1-document-workshop-obs-m7-ui-01-20261009.md),
+[relevé reproductible](../../states/baselines/document-workshop/frida-v1-document-workshop-obs-m7-ui-01-20261009.json).
+Base `360521bd`, même branche M8-C. **Défaut d'attente du harnais démontré au
+HEAD courant** : sélection native fermant le menu après `loadThread`, puis
+clic redondant du helper pendant/après cette fermeture. Baseline intacte
+13/13 en 265,955 s ; sonde riche quatre variantes 3/4, rouge phone dark avant
+reload. Témoin GET réel retenu puis continué : 2/2, parcours/assertions complets.
+Ordre après fin réelle de transition : deux timeouts au clic natif 10 000 ms,
+reproduits avec observateur réduit. Retrait de classe seul : gestes armés
+réussis, rouge ultérieur non armé après reload conservé. Tentative de filtre
+transition ciblé : deux rouges avant armement, contrôle non atteint et rejeté
+comme preuve causale. Aucun cumul de ces ciblés avec les treize cas natifs.
+
+Produit, CSS, tests/helpers historiques et fixtures communs inchangés ;
+1 041 empreintes historiques comparées. Diagnostic/probes/preuves/docs seulement,
+sans nouvelle confirmation ou mutation DAV par instrumentation, sans runtime.
+L'ordre exact des deux rouges du 7 octobre reste inconnu ; aucun lien causal
+renderer/SQL établi. **Correctif du harnais encore ouvert**, proposé pour un
+mandat distinct, sans l'appliquer ici. Les branches après le point d'échec ne
+sont pas validées par les rouges. M4 reste ouvert séparément. AUD-01/AUD-02 et
+OBS-M7-CONC-01 restent validés ; clôture globale M8-C hors mandat, aucun M8-S/M8-A
+ou lot suivant. Nettoyage et contre-lecture dans le relevé, arrêt après Git
+pour contre-audit Codex.
+
 ### M8-C — Contrat Writer fermé et raccord simulé
 
 **Objectif :** rendre le service isolé implémentable et le raccord testable sans moteur live.

@@ -193,6 +193,19 @@ préparation et sa propre confirmation.
 
 ## UI, continuité et budgets
 
+Diagnostic seul **OBS-M7-UI-01**, 9 octobre 2026, base `360521bd` :
+[rapport causal borné](../audits/frida-v1-document-workshop-obs-m7-ui-01-20261009.md)
+et [relevé reproductible](../baselines/document-workshop/frida-v1-document-workshop-obs-m7-ui-01-20261009.json).
+Le helper peut cliquer sur `#btnSidebarClose` après la fermeture légitime par
+`selectThread` : défaut d'attente du harnais démontré au HEAD courant, avec vrais
+handlers/CSS/clic/HTTP. Baseline intacte 13/13 ; sonde riche 3/4 ; témoin contrôlé
+2/2 ; deux timeouts contrôlés téléphone, reproduits avec observateur réduit.
+La tentative avec filtre de cible renforcé échoue avant armement et ne compte
+pas comme preuve causale. Aucun correctif produit/test historique ici ;
+correctif séparé encore requis. L'ordre exact des rouges du 7 octobre et
+l'incident M4 restent inconnus et distincts. Ces essais ne changent aucun
+contrat documentaire ni ne ferment les branches non atteintes des cas rouges.
+
 La carte indique modification, cible exacte, identité conservée et absence de
 restauration automatique. « Modifier le fichier » utilise la confirmation commune
 et disparaît synchroniquement au clic, y compris pour un bouton détaché/double

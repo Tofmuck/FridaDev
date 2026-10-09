@@ -25,6 +25,16 @@ conserve l'ID nominal et ajoute la branche NOWAIT/expiration synchronisée, sans
 changement produit/renderer/politique de lease. Les comptes et incidents historiques restent
 conservés ; OBS-M7-UI-01 et M4 restent séparés, M8-C à contre-auditer.
 
+Diagnostic UI séparé du 9 octobre, base `360521bd` :
+[OBS-M7-UI-01](../audits/frida-v1-document-workshop-obs-m7-ui-01-20261009.md)
+qualifie un défaut d'attente du harnais au HEAD courant : fermeture native par
+sélection et clic supplémentaire concurrents, deux timeouts reproduits par
+ordre contrôlé et observateur réduit. Baseline intacte 13/13 distincte de ces
+ciblés ; tentative de garde de cible renforcée non atteinte, conservée.
+Aucun correctif produit/test historique ni lien renderer/SQL démontré.
+L'ordre historique exact reste inconnu ; correctif UI séparé encore ouvert,
+M4 indépendant, clôture globale M8-C et runtime hors de ce mandat.
+
 ## Plan et frontières
 
 « Existe-t-il un meilleur plan, plus simple, plus sûr et avec moins d'effets de
@@ -468,6 +478,11 @@ leurs résultats exacts et incidents de harnais sont dans le relevé dédié AUD
 un rejeu vert ne résout pas une cause inconnue. Clôture globale M8-C à
 contre-auditer ; M8-S/M8-A non commencés, formats publics inactifs, aucune
 preuve Writer, AF_UNIX ou Nextcloud live ni livraison runtime.
+
+Ces observations décrivent la provenance historique AUD-02. La qualification
+UI actuelle est portée par le diagnostic OBS-M7-UI-01 lié en tête : défaut
+d'attente du harnais démontré, sans reconstruction certaine des rouges anciens
+ni correctif appliqué dans ce lot. Les résultats ci-dessus restent inchangés.
 
 
 Exécutions AUD-02 du 9 octobre : baseline ciblée 73/73 ; nouveaux rouges
