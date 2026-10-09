@@ -18,7 +18,7 @@ M4 livré sur code, P2-M4-01 et P2-M4-02 fermés après contre-audits indépenda
 P3-M4-03 corrigé par erratum documentaire (1 198 déclarés conservés et rectifiés,
 sélection publiée à 1 414, 21 identifiants réutilisables validés) ;
 M4 non intégralement fermé ;
-M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées, livraison runtime ouverte ; M7 fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C à contre-auditer : AUD-01 fermé, AUD-02 corrigé sur preuves dédiées ; M8-S/M8-A, M9/M10 et Z non commencés,
+M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées, livraison runtime ouverte ; M7 fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C à contre-auditer : AUD-01 et AUD-02 fermés après contre-audits indépendants ; M8-S/M8-A, M9/M10 et Z non commencés,
 aucun déploiement ou renderer livré**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
@@ -895,7 +895,7 @@ restent ouverts. M3 est fermé sur code/preuves et contre-audit ci-dessous ;
 M4 est livré sur code/preuves hermétiques, P2-M4-01 et P2-M4-02 fermés après
 contre-audits indépendants, P3-M4-03 corrigé documentairement ; livraison runtime
 ouverte. M5 est fermé sur code/preuves injectées ; M6 raccorde le parcours réel
-avec preuves isolées, sans déploiement. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C à contre-auditer : AUD-01 fermé, AUD-02 corrigé sur preuves dédiées ; M8-S/M8-A, M9/M10 et Z restent non commencés. Spécification et
+avec preuves isolées, sans déploiement. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C à contre-auditer : AUD-01 et AUD-02 fermés après contre-audits indépendants ; M8-S/M8-A, M9/M10 et Z restent non commencés. Spécification et
 décisions amont sont validées et l'exception produit est inscrite.
 Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
 les GO M0–M4 et P3-M4-03 ne valent pour aucun lot suivant ni déploiement.
@@ -3586,7 +3586,40 @@ Event de reprojection sans sélection implicite. Ciblés inclus non recomptés.
 Migration M7 explicite après M1–M5, éprouvée sur PostgreSQL isolé seulement ;
 aucune DB opérateur, livraison runtime, canari Nextcloud/Versions ou OpenRouter
 réel. Lors de cette fermeture M7, M8-C et lots suivants n’étaient pas commencés ;
-le statut courant M8-C est consigné immédiatement ci-dessous.
+le statut courant M8-C est consigné ci-dessous, après le diagnostic M7.
+
+#### OBS-M7-CONC-01 — Diagnostic causal, 9 octobre 2026
+
+[Rapport borné](../../states/audits/frida-v1-document-workshop-obs-m7-conc-01-20261009.md),
+[relevé](../../states/baselines/document-workshop/frida-v1-document-workshop-obs-m7-conc-01-20261009.json)
+et traces synthétiques corrélées : un verrou réel détenu par le perdant DAV 412
+refuse l'observation, la fermeture d'action et celle du claim du gagnant 204.
+Après arrêt des superviseurs, claim encore vivant et GET `executing/confirmed`
+sans reçu ; après expiration artificielle de lease dans la DB jetable, un GET
+converge vers `remote_uncertain`, sans second PUT. Contrôle sans chevauchement :
+un reçu publié. Deux PUT/un seul effet, fichier/lien uniques, zéro compensation
+et répétitions sans DAV ni nouvel état SQL dans les deux scénarios.
+
+L'attente de terminalité immédiate du test est trop forte pour cette branche
+permise par le contrat M7. Cause suffisante éprouvée ; ordonnancement exact des
+rouges initiaux inconnu, aucun défaut produit démontré. Diagnostic livré sans
+correctif produit, migration, test historique ou fixture commune. Suite proposée,
+non exécutée : micro-lot de preuve M7 synchronisant explicitement clôture et
+frontière de lease, sans ajouter `executing` aux états terminaux ni polling/sleep.
+
+Provenances conservées : contre-audit indépendant du 7 octobre sur `1732a126`,
+SQL 28/29 deux fois, total 1 674/1 677 ; celui du 9 octobre sur `c1654c25`,
+SQL 28/29, total 1 689/1 690 et cinq clients verts séparément après SQL.
+96 voisins verts séparés dans chacun de ces contre-audits. Le 9 octobre,
+Celebrimbor AUD-02 : combiné 34/34 et total 1 690/1 690, distincts de ces rouges.
+Dans ce diagnostic seulement : SQL 29/29, ciblé 1/1, combiné 34/34, séquencés ;
+deux scénarios finaux autonomes verts, assertion historique rouge capturée dans
+le chevauchement. Aucun cumul de répétitions ni comparaison intégrale relancée.
+Les bases/sockets de Codex étaient isolés et les groupes SQL séquencés : aucun
+rattachement aux chevauchements de fixtures du relevé AUD-02. OBS-M7-UI-01 et
+M4 restent séparés, de causes initiales inconnues. AUD-01 et AUD-02 sont fermés
+après contre-audits indépendants selon le mandat de Tof ; aucun lot suivant,
+runtime ou correctif ne démarre. Arrêt après Git pour contre-audit Codex.
 
 ### M8-C — Contrat Writer fermé et raccord simulé
 
@@ -3611,7 +3644,7 @@ canonical/révision/profil figés, source temporaire optionnelle, résultat ferm
 - [x] Synchroniser contrat commun/profil/bornes/erreurs avec cette roadmap ; aucun
   déploiement requis pour fermer le contrat hermétique, rebuild futur du code livré.
 - [ ] Fermer sur contrat consommable par M8-S et fake rejetant les contre-cas ;
-  AUD-01 fermé, AUD-02 corrigé sur preuves dédiées ; clôture globale à contre-auditer ;
+  AUD-01 et AUD-02 fermés après contre-audits indépendants ; clôture globale à contre-auditer ;
   aucune installation ou preuve de disponibilité déclarée accomplie.
 
 **Livraison initiale M8-C — 7 octobre 2026 (`fc911ed3`).** Résultats historiques
@@ -4264,7 +4297,7 @@ sont corrigés. P2-M4-01 et P2-M4-02 sont fermés après leurs contre-audits
 indépendants, avec leurs résultats conservés ci-dessus ; P3-M4-03 est corrigé
 documentairement, sans fermer la livraison runtime de M4 ;
 M5 est fermé sur code/preuves hermétiques et contre-audit ; M6 est réalisé sur
-code/preuves isolées et contre-audit. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C à contre-auditer : AUD-01 fermé, AUD-02 corrigé sur preuves dédiées ; M8-S/M8-A, M9/M10/Z restent non commencés et les
+code/preuves isolées et contre-audit. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C à contre-auditer : AUD-01 et AUD-02 fermés après contre-audits indépendants ; M8-S/M8-A, M9/M10/Z restent non commencés et les
 obligations runtime restent ouvertes.
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
 dans AGENTS.md ; l'invariant de consolidation reste applicable hors de cette

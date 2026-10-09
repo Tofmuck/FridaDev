@@ -5,8 +5,9 @@ parent M6 `b00eb95001755295dcc301232272a8070d26cd78`. Branche
 `FridaV1-Document-Workshop-M8-C`, créée avant édition. Autorité : mandat M8-C de
 Tof et [roadmap](../../todo-todo/product/frida-v1-document-workshop-todo.md),
 §§3.9–3.17, M8-C et section 9. Ce document est la remise commune à Sauron.
-Statut courant : P2-M8C-AUD-01 corrigé sur la structure DOCX ;
-**P2-M8C-AUD-02 corrigé sur la décision temporelle finale ; clôture globale M8-C à contre-auditer**.
+Statut courant, mandat de Tof du 9 octobre 2026 : **P2-M8C-AUD-01 et
+P2-M8C-AUD-02 fermés après contre-audits indépendants** ; clôture globale M8-C
+à contre-auditer, aucun démarrage M8-S/M8-A.
 Le relevé initial ci-dessous conserve ses résultats historiques ; le
 [relevé dédié AUD-01](../baselines/document-workshop/frida-v1-document-workshop-p2-m8c-aud-01-20261007.json)
 porte ses exécutions historiques et sa portée. Le
@@ -14,6 +15,12 @@ porte ses exécutions historiques et sa portée. Le
 porte la correction temporelle et la comparaison actuelle, distinctes des
 déclarations historiques et du contre-audit indépendant du 7 octobre.
 Aucun service Writer ni transport AF_UNIX n'est livré. DOCX/PDF restent inactifs.
+Le [diagnostic séparé OBS-M7-CONC-01 du 9 octobre](../audits/frida-v1-document-workshop-obs-m7-conc-01-20261009.md)
+éprouve un transitoire NOWAIT/lease permis par M7 et contredit l'attente de
+terminalité immédiate du test. Le contre-audit indépendant sur `c1654c25`
+(1 689/1 690, SQL 28/29, 96 voisins verts) reste distinct des verts AUD-02 ;
+l'entrelacement exact historique reste inconnu. Aucun patch M7 ou renderer dans
+ce diagnostic Markdown. OBS-M7-UI-01 et M4 restent hors diagnostic.
 
 ## Plan et frontières
 

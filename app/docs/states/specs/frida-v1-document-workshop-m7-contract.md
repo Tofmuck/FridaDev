@@ -100,6 +100,17 @@ indisponible ou occupé, l’expiration de lease reste l’autorité avant le pr
 inconnu si aucune preuve acquittée/publiante suffisante n’est durable. Ce refus
 fermé est distinct du succès nominal et du 412, tous deux éprouvés séparément.
 
+Diagnostic **OBS-M7-CONC-01**, 9 octobre 2026 : un entrelacement contrôlé
+éprouve cette fenêtre jusqu'au premier GET `executing/confirmed`, claim SQL
+encore vivant après arrêt des superviseurs, puis `remote_uncertain` après
+expiration artificielle de sa lease dans la base de preuve. Le contrôle sans
+chevauchement publie un reçu ; deux PUT produisent un seul effet dans les deux
+cas. L'attente de terminalité immédiate du test de concurrence est donc trop
+forte pour cette branche contractuelle. Aucun correctif produit/test appliqué ;
+l'ordonnancement exact des rouges historiques reste inconnu. Voir le
+[rapport et sa proposition de suite bornée](../audits/frida-v1-document-workshop-obs-m7-conc-01-20261009.md)
+et le [relevé daté](../baselines/document-workshop/frida-v1-document-workshop-obs-m7-conc-01-20261009.json).
+
 ## Publication et historique
 
 L’intention durable précède tout effet distant. Après un succès distant établi,
