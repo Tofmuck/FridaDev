@@ -306,41 +306,12 @@ class UpdateM7PostgresqlTests(unittest.TestCase):
             self.assertFalse(execution.verify_committed_action(action['id'],storage_root=self.env.env.root))
 
     def test_two_inflight_conversations_same_version_at_most_one_publication(self):
-        from concurrent.futures import ThreadPoolExecutor
-        with update_dav() as (base,state),self.configured(base):
-            file_id=self.adopt(base,state);first=self.prepare(file_id)
-            other=str(uuid4());conversation=conv_store.new_conversation('Synthetic',conversation_id=other)
-            conversation['workspace_folder_id']=self.folder;self.assertTrue(conv_store.save_conversation(conversation).ok)
-            second=self.prepare(file_id,conversation_id=other,text='Other')
-            state['block_put']=True;state['release'].clear()
-            real_observe=execution.observe;rejections=[]
-            def trace_observe(*args,**kwargs):
-                try:return real_observe(*args,**kwargs)
-                except Exception as error:
-                    rejections.append((type(error).__name__,getattr(error,'sqlstate',None)));raise
-            with patch.object(execution,'observe',trace_observe),ThreadPoolExecutor(2) as pool:
-                a=pool.submit(self.confirm,first);b=None
-                try:
-                    self.assertTrue(state['arrived'].wait(5));b=pool.submit(self.confirm,second)
-                    with state['changed']:
-                        self.assertTrue(state['changed'].wait_for(lambda:len([r for r in state['seen'] if r[0]=='PUT'])==2,5))
-                    self.env.assert_no_transaction()
-                finally:state['release'].set()
-                results=[a.result(timeout=10),b.result(timeout=10)]
-            # DAV chooses at most one writer; SQL NOWAIT may additionally refuse
-            # that winner's observation/publication under real contention. Such
-            # a result is honestly unknown, never a receipt of success.
-            self.assertLessEqual(sum(r.status_code==200 for r in results),1,[r.json for r in results])
-            count=self.env.rows('SELECT count(*) FROM document_receipts')[0][0];self.assertLessEqual(count,1)
-            if count==0:self.assertIn(('LockNotAvailable','55P03'),rejections,rejections)
-            for action in (first,second):
-                view=self.server.app.test_client().get('/api/document-workshop/actions/'+action['id']).json['action']
-                self.assertIn(view['state'],('succeeded','conflict','remote_uncertain'),view)
-                self.assertEqual('receipt' in view,view['state']=='succeeded')
-            self.assertEqual(self.env.rows("SELECT count(*) FROM conversation_turn_claims WHERE kind='confirmation' AND state='active'"),[(0,)])
-            self.assertEqual(len([r for r in state['seen'] if r[0]=='PUT']),2)
-            self.assertEqual(state['version'],2,'two PUT requests must yield exactly one remote effect')
-            self.assertFalse(any(r[0] in ('DELETE','MKCOL') for r in state['seen']))
+        from tests.support.document_workshop_m7_concurrency import exercise_two_updates
+        exercise_two_updates(self, overlap=False)
+
+    def test_two_inflight_updates_nowait_keep_live_claim_until_expiry_then_uncertain(self):
+        from tests.support.document_workshop_m7_concurrency import exercise_two_updates
+        exercise_two_updates(self, overlap=True)
 
     def test_interruption_before_effect_cannot_authorize_late_executor(self):
         with update_dav() as (base,state),self.configured(base):

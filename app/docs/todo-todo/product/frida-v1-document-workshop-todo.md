@@ -3603,9 +3603,9 @@ et répétitions sans DAV ni nouvel état SQL dans les deux scénarios.
 L'attente de terminalité immédiate du test est trop forte pour cette branche
 permise par le contrat M7. Cause suffisante éprouvée ; ordonnancement exact des
 rouges initiaux inconnu, aucun défaut produit démontré. Diagnostic livré sans
-correctif produit, migration, test historique ou fixture commune. Suite proposée,
-non exécutée : micro-lot de preuve M7 synchronisant explicitement clôture et
-frontière de lease, sans ajouter `executing` aux états terminaux ni polling/sleep.
+correctif produit, migration, test historique ou fixture commune dans le commit
+diagnostique `970ccb37`. Le correctif de preuves autorisé ensuite est consigné
+ci-dessous ; il conserve cette branche contractuelle sans changer le produit.
 
 Provenances conservées : contre-audit indépendant du 7 octobre sur `1732a126`,
 SQL 28/29 deux fois, total 1 674/1 677 ; celui du 9 octobre sur `c1654c25`,
@@ -3618,8 +3618,54 @@ le chevauchement. Aucun cumul de répétitions ni comparaison intégrale relanc�
 Les bases/sockets de Codex étaient isolés et les groupes SQL séquencés : aucun
 rattachement aux chevauchements de fixtures du relevé AUD-02. OBS-M7-UI-01 et
 M4 restent séparés, de causes initiales inconnues. AUD-01 et AUD-02 sont fermés
-après contre-audits indépendants selon le mandat de Tof ; aucun lot suivant,
-runtime ou correctif ne démarre. Arrêt après Git pour contre-audit Codex.
+après contre-audits indépendants selon le mandat de Tof ; aucun runtime
+ou lot suivant ne démarre lors de ce diagnostic. Arrêt historique après
+Git pour contre-audit Codex.
+
+#### OBS-M7-CONC-01 — Correctif des preuves de concurrence, 9 octobre 2026
+
+Mandat distinct tests/helpers/preuves/docs, base `970ccb37750af1aa7f53486afcef00774d269c84`,
+parent `c1654c25`. Produit, configuration, migrations et frontend identiques.
+[Rapport du correctif](../../states/audits/frida-v1-document-workshop-obs-m7-conc-01-fix-20261009.md) et
+[relevé exact](../../states/baselines/document-workshop/frida-v1-document-workshop-obs-m7-conc-01-fix-20261009.json),
+avec inventaires avant/après, commandes, exits, durées et traces JSONL.
+
+L'ID historique est conservé pour le nominal : deux PUT réellement en vol avec
+`If-Match: "v1"`, puis fin de requête du perdant avant observation du gagnant.
+Un reçu vérifié pour le gagnant, conflit sans reçu pour le perdant. Un nouvel ID
+éprouve séparément les trois refus NOWAIT, le claim vivant après jonction des
+superviseurs, le premier GET sans mutation SQL, puis l'expiration artificielle
+du seul claim identifié dans la DB jetable et le GET `remote_uncertain`/`lost`.
+Aucune attente de terminalité avant expiration ; `executing` reste transitoire.
+Dans les deux cas : fichier/lien uniques, deux PUT/un effet, zéro compensation,
+aucun nouveau claim ni DAV/journal/état modifié lors des répétitions. Tous les
+champs durables sont comparés ; `lease_live` est vérifié séparément.
+
+L'ancienne assertion est rouge causalement dans le chevauchement ; le contrôle
+nominal est vert. Les scénarios corrigés et le négatif de convergence sont
+éprouvés sur SQL/Flask réels ; les injections restent en mémoire. Le nettoyage
+est éprouvé sur échec du harnais après deux PUT et sur erreur d'observation de
+supervision, sans masquer l'erreur initiale ni interrompre les autres joins.
+Baseline 1 690/1 690 ; comparaison finale : **1 690 IDs historiques conservés +
+1 nouveau = 1 691/1 691**, zéro skip. 70 + 26 voisins verts séparés ; groupe M7
+35/35 et ciblés 2/2 distincts, non ajoutés au total. M6 HTTP natif 5/5, M7 natif
+13/13, M6 à transport simulé 10/10, avant et après. Aucun échec fonctionnel
+intermédiaire inattendu ; rouge causal et incidents de commande conservés.
+
+Preuves transmises par Tof, distinctes de ces exécutions : contre-audit Codex du
+diagnostic, sélection 34/34 et deux scénarios verts. Variante d'expiration
+naturelle en mémoire : 92,681 s, dont environ 89,054 s résiduelles, échéance
+inchangée et GET convergent sans replay. Un premier essai auxiliaire de 92,902 s
+a échoué après le GET conforme sur l'égalité autour du replay ; différence non
+capturée, cause inconnue. Le second ajoutait une capture d'erreur sans changer
+les assertions. La séparation des projections temporelles dans ce correctif
+ne permet pas d'attribuer une cause à ce premier essai.
+
+Ce lot corrige l'attente et la reproductibilité de la preuve ; il n'identifie
+pas rétrospectivement chaque rouge historique et ne démontre aucun bug produit.
+Les comptes indépendants 1 674/1 677 et 1 689/1 690 restent conservés ci-dessus.
+AUD-01/AUD-02 fermés ; UI M7/M4, runtime et clôture globale M8-C restent séparés.
+Livraison à contre-auditer par Codex ; aucun démarrage M8-S/M8-A ni lot suivant.
 
 ### M8-C — Contrat Writer fermé et raccord simulé
 

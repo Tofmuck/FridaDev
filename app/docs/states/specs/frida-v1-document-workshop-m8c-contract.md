@@ -20,7 +20,10 @@ Le [diagnostic séparé OBS-M7-CONC-01 du 9 octobre](../audits/frida-v1-document
 terminalité immédiate du test. Le contre-audit indépendant sur `c1654c25`
 (1 689/1 690, SQL 28/29, 96 voisins verts) reste distinct des verts AUD-02 ;
 l'entrelacement exact historique reste inconnu. Aucun patch M7 ou renderer dans
-ce diagnostic Markdown. OBS-M7-UI-01 et M4 restent hors diagnostic.
+ce diagnostic Markdown. Le [correctif de preuves M7 autorisé ensuite](../audits/frida-v1-document-workshop-obs-m7-conc-01-fix-20261009.md)
+conserve l'ID nominal et ajoute la branche NOWAIT/expiration synchronisée, sans
+changement produit/renderer/politique de lease. Les comptes et incidents historiques restent
+conservés ; OBS-M7-UI-01 et M4 restent séparés, M8-C à contre-auditer.
 
 ## Plan et frontières
 

@@ -106,10 +106,29 @@ encore vivant après arrêt des superviseurs, puis `remote_uncertain` après
 expiration artificielle de sa lease dans la base de preuve. Le contrôle sans
 chevauchement publie un reçu ; deux PUT produisent un seul effet dans les deux
 cas. L'attente de terminalité immédiate du test de concurrence est donc trop
-forte pour cette branche contractuelle. Aucun correctif produit/test appliqué ;
+forte pour cette branche contractuelle. Aucun correctif produit/test dans le
+commit diagnostique `970ccb37` ;
 l'ordonnancement exact des rouges historiques reste inconnu. Voir le
 [rapport et sa proposition de suite bornée](../audits/frida-v1-document-workshop-obs-m7-conc-01-20261009.md)
 et le [relevé daté](../baselines/document-workshop/frida-v1-document-workshop-obs-m7-conc-01-20261009.json).
+
+Correctif de preuves distinct du même jour, base `970ccb37` : l'ID historique
+couvre désormais le nominal avec deux PUT en vol, puis commit/retour du perdant
+avant observation du gagnant, reçu vérifié unique et conflit sans reçu. Un
+nouveau test maintient le vrai verrou du perdant jusqu'aux trois refus `55P03`
+du gagnant et à son retour HTTP. Il joint les vrais superviseurs puis observe,
+par connexion distincte, claim actif/lease future et action `executing/confirmed`
+sans reçu ; le premier GET ne change aucun champ durable. Après expiration
+artificielle de ce seul claim en DB jetable, GET `remote_uncertain`, claim `lost`,
+sans preuve de succès ni réparation de métadonnées, nouveau claim ou appel DAV.
+Ce contrôle n'est pas une mesure d'expiration naturelle et ne modifie ni les
+durées/constantes produit de lease, ni le renouvellement, ni le contrat. Les
+snapshots comparent toutes les colonnes des tables concernées, journal compris ; `lease_live` est une projection temporelle
+vérifiée séparément. Répétitions sans mutation ni replay dans les deux cas.
+Voir le [rapport du correctif](../audits/frida-v1-document-workshop-obs-m7-conc-01-fix-20261009.md)
+et le [relevé daté](../baselines/document-workshop/frida-v1-document-workshop-obs-m7-conc-01-fix-20261009.json).
+La cause exacte des rouges historiques demeure inconnue ; le défaut d'attente
+immédiate est corrigé dans les preuves, sans patch produit.
 
 ## Publication et historique
 
