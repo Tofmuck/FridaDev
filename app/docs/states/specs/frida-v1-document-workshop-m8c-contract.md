@@ -27,13 +27,25 @@ conservés ; OBS-M7-UI-01 et M4 restent séparés, M8-C à contre-auditer.
 
 Diagnostic UI séparé du 9 octobre, base `360521bd` :
 [OBS-M7-UI-01](../audits/frida-v1-document-workshop-obs-m7-ui-01-20261009.md)
-qualifie un défaut d'attente du harnais au HEAD courant : fermeture native par
+qualifie un défaut d'attente du harnais sur sa base : fermeture native par
 sélection et clic supplémentaire concurrents, deux timeouts reproduits par
 ordre contrôlé et observateur réduit. Baseline intacte 13/13 distincte de ces
 ciblés ; tentative de garde de cible renforcée non atteinte, conservée.
 Aucun correctif produit/test historique ni lien renderer/SQL démontré.
-L'ordre historique exact reste inconnu ; correctif UI séparé encore ouvert,
+L'ordre historique exact reste inconnu ; correctif UI alors encore ouvert,
 M4 indépendant, clôture globale M8-C et runtime hors de ce mandat.
+
+Correctif séparé **OBS-M7-UI-01** du 9 octobre, base `be9e3a8a` :
+[rapport](../audits/frida-v1-document-workshop-obs-m7-ui-01-fix-20261009.md)
+et [relevé](../baselines/document-workshop/frida-v1-document-workshop-obs-m7-ui-01-fix-20261009.json).
+Le harnais `choose` M7 attend la fermeture native après sélection sur téléphone,
+y compris si elle est déjà terminée ; clic supplémentaire retiré. Condition liée
+à l'ID, aux classes/ARIA/backdrop et à la transition/géométrie réelles. Le
+bureau, le helper partagé et le produit restent inchangés. Six positifs complets,
+quatre négatifs causaux attendus ; M7 natif 13/13, M6 HTTP natif 5/5, M6 simulé
+10/10 distingués, comparaison 1 691/1 691 et 70 + 26 voisins distincts.
+Défaut d'attente corrigé, livraison à contre-auditer par Codex. AUD-01/AUD-02 et
+OBS-M7-CONC-01 restent fermés ; M4, clôture globale M8-C et runtime séparés.
 
 ## Plan et frontières
 
@@ -480,9 +492,9 @@ contre-auditer ; M8-S/M8-A non commencés, formats publics inactifs, aucune
 preuve Writer, AF_UNIX ou Nextcloud live ni livraison runtime.
 
 Ces observations décrivent la provenance historique AUD-02. La qualification
-UI actuelle est portée par le diagnostic OBS-M7-UI-01 lié en tête : défaut
-d'attente du harnais démontré, sans reconstruction certaine des rouges anciens
-ni correctif appliqué dans ce lot. Les résultats ci-dessus restent inchangés.
+UI est portée par le diagnostic puis le correctif OBS-M7-UI-01 liés en tête :
+défaut d'attente du harnais démontré puis corrigé séparément, sans reconstruction
+certaine des rouges anciens. Les résultats AUD ci-dessus restent inchangés.
 
 
 Exécutions AUD-02 du 9 octobre : baseline ciblée 73/73 ; nouveaux rouges

@@ -197,14 +197,29 @@ Diagnostic seul **OBS-M7-UI-01**, 9 octobre 2026, base `360521bd` :
 [rapport causal borné](../audits/frida-v1-document-workshop-obs-m7-ui-01-20261009.md)
 et [relevé reproductible](../baselines/document-workshop/frida-v1-document-workshop-obs-m7-ui-01-20261009.json).
 Le helper peut cliquer sur `#btnSidebarClose` après la fermeture légitime par
-`selectThread` : défaut d'attente du harnais démontré au HEAD courant, avec vrais
+`selectThread` : défaut d'attente du harnais démontré sur sa base, avec vrais
 handlers/CSS/clic/HTTP. Baseline intacte 13/13 ; sonde riche 3/4 ; témoin contrôlé
 2/2 ; deux timeouts contrôlés téléphone, reproduits avec observateur réduit.
 La tentative avec filtre de cible renforcé échoue avant armement et ne compte
 pas comme preuve causale. Aucun correctif produit/test historique ici ;
-correctif séparé encore requis. L'ordre exact des rouges du 7 octobre et
-l'incident M4 restent inconnus et distincts. Ces essais ne changent aucun
+correctif séparé encore requis à la fin de ce diagnostic. L'ordre exact des
+rouges du 7 octobre et l'incident M4 restent inconnus et distincts. Ces essais ne changent aucun
 contrat documentaire ni ne ferment les branches non atteintes des cas rouges.
+
+Correctif du harnais **OBS-M7-UI-01**, 9 octobre 2026, base `be9e3a8a` :
+[rapport du correctif](../audits/frida-v1-document-workshop-obs-m7-ui-01-fix-20261009.md)
+et [relevé reproductible](../baselines/document-workshop/frida-v1-document-workshop-obs-m7-ui-01-fix-20261009.json).
+Le `choose` M7 attend désormais l'ID sélectionné et, sous l'autorité téléphone
+existante, la fermeture native complète : classes/ARIA/backdrop, fin de la
+transition transform utile et menu hors viewport. Aucun second clic ; fermeture
+déjà achevée reconnue, lecture réelle retenue refusant une attente prématurée.
+Bureau clair/sombre préservé, helper partagé et vrai bouton de fermeture
+explicite conservés. Produit/CSS/fixtures/assertions métier inchangés.
+Six positifs complets et quatre négatifs causaux attendus séparés ; M7 natif
+13/13, M6 HTTP natif 5/5, M6 simulé 10/10 puis 1 691 identités historiques
+exactes vertes et 70 + 26 voisins distincts. Seul ce défaut d'attente est corrigé,
+livraison à contre-auditer ; aucune nouvelle certitude sur le 7 octobre.
+M4 et clôture globale M8-C/runtime restent indépendants et ouverts.
 
 La carte indique modification, cible exacte, identité conservée et absence de
 restauration automatique. « Modifier le fichier » utilise la confirmation commune

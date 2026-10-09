@@ -4,7 +4,7 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {randomUUID,createHash}=require('node:crypto');
 const {chromium}=require('playwright');
-const {showFolder,closeSidebar,openWorkshop}=require('./helpers/document_workshop_fixture.js');
+const {showFolder,openWorkshop}=require('./helpers/document_workshop_fixture.js');
 const base=process.env.M7_HTTP_BASE;
 const hash=text=>createHash('sha256').update(text).digest('hex');
 const mutations=s=>s.dav.filter(d=>['PUT','DELETE','MKCOL'].includes(d.method));
@@ -27,8 +27,25 @@ async function session(run,{phone=false,theme='light'}={}) {
     await run(page,state,control,initial);assert.deepEqual(errors,[]);
   } finally {await browser.close();}
 }
+async function waitForNativeSelection(page,conversation) {
+  // selectThread renders the selection and closes the phone menu after
+  // loadThread. Observe that completion; a second close click races its exit.
+  await page.waitForFunction(id=>{
+    const selected=[...document.querySelectorAll('#threads li.active')]
+      .some(row=>row.dataset.conversationId===id);
+    if(!selected)return false;
+    if(document.documentElement.dataset.presentationContext!=='phone')return true;
+    const sidebar=document.querySelector('.sidebar'),backdrop=document.querySelector('#sidebarBackdrop');
+    return !sidebar.classList.contains('open')&&sidebar.getAttribute('aria-hidden')==='true'
+      &&document.querySelector('#btnMenu').getAttribute('aria-expanded')==='false'
+      &&!backdrop.classList.contains('show')&&getComputedStyle(backdrop).display==='none'
+      &&!sidebar.getAnimations().some(a=>a.transitionProperty==='transform'&&(a.playState==='running'||a.pending))
+      &&sidebar.getBoundingClientRect().right<=0;
+  },conversation);
+}
 async function choose(page,s,conversation) {
-  await showFolder(page,s.folder);await page.locator(`[data-conversation-id="${conversation}"]`).click();await closeSidebar(page);
+  await showFolder(page,s.folder);await page.locator(`[data-conversation-id="${conversation}"]`).click();
+  await waitForNativeSelection(page,conversation);
 }
 async function open(page) {
   if(await page.locator('#documentWorkshop').isVisible())await page.click('#documentWorkshopExit');

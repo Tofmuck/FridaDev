@@ -3671,8 +3671,8 @@ Livraison à contre-auditer par Codex ; aucun démarrage M8-S/M8-A ni lot suivan
 
 [Rapport et suite proposée](../../states/audits/frida-v1-document-workshop-obs-m7-ui-01-20261009.md),
 [relevé reproductible](../../states/baselines/document-workshop/frida-v1-document-workshop-obs-m7-ui-01-20261009.json).
-Base `360521bd`, même branche M8-C. **Défaut d'attente du harnais démontré au
-HEAD courant** : sélection native fermant le menu après `loadThread`, puis
+Base `360521bd`, même branche M8-C. **Défaut d'attente du harnais démontré sur la
+base du diagnostic** : sélection native fermant le menu après `loadThread`, puis
 clic redondant du helper pendant/après cette fermeture. Baseline intacte
 13/13 en 265,955 s ; sonde riche quatre variantes 3/4, rouge phone dark avant
 reload. Témoin GET réel retenu puis continué : 2/2, parcours/assertions complets.
@@ -3686,12 +3686,47 @@ Produit, CSS, tests/helpers historiques et fixtures communs inchangés ;
 1 041 empreintes historiques comparées. Diagnostic/probes/preuves/docs seulement,
 sans nouvelle confirmation ou mutation DAV par instrumentation, sans runtime.
 L'ordre exact des deux rouges du 7 octobre reste inconnu ; aucun lien causal
-renderer/SQL établi. **Correctif du harnais encore ouvert**, proposé pour un
-mandat distinct, sans l'appliquer ici. Les branches après le point d'échec ne
+renderer/SQL établi. **Correctif du harnais alors encore ouvert**, proposé pour un
+mandat distinct, sans l'appliquer dans ce diagnostic. Les branches après le point d'échec ne
 sont pas validées par les rouges. M4 reste ouvert séparément. AUD-01/AUD-02 et
 OBS-M7-CONC-01 restent validés ; clôture globale M8-C hors mandat, aucun M8-S/M8-A
 ou lot suivant. Nettoyage et contre-lecture dans le relevé, arrêt après Git
 pour contre-audit Codex.
+
+#### OBS-M7-UI-01 — Correctif du harnais de navigation, 9 octobre 2026
+
+[Rapport du correctif](../../states/audits/frida-v1-document-workshop-obs-m7-ui-01-fix-20261009.md),
+[relevé et commandes](../../states/baselines/document-workshop/frida-v1-document-workshop-obs-m7-ui-01-fix-20261009.json).
+Base exacte `be9e3a8a0bdbc246659ccde4f286a2a91e2cbab3`, même branche M8-C.
+**Défaut d'attente corrigé ; produit inchangé.** `choose` retire son clic
+redondant et attend la sélection exacte puis la fermeture native complète sous
+l'autorité téléphone existante : classes, ARIA, backdrop, transition transform
+et géométrie. Fermeture déjà achevée reconnue ; vrai GET retenu démontrant que
+l'attente ne se termine pas pendant `loadThread`. Bureau clair/sombre préservé,
+helper partagé et geste explicite de fermeture toujours exercés.
+
+Baseline avant édition 13/13 ; premier ciblé rouge conservé : dark causal
+atteint, light avant armement et non causal. Six positifs complets (quatre
+variantes `completed`, dont deux téléphones déjà fermés, et deux téléphones
+en cours de sélection) ; négatifs attente supprimée
+2/2 rouges attendus et ancien clic 2/2 timeouts attendus, barrières exigées.
+Archive isolée sur la base : deux incidents de montage conservés, puis deux
+rouges causaux atteints avec les anciens programmes inchangés. Les branches
+après un rouge restent non validées par ce rouge. Assertions métier conservées.
+
+M7 natif **13/13**, M6 HTTP natif **5/5**, M6 simulé **10/10**, groupes séparés.
+Comparaison finale **1 691 identités historiques exactes / 1 691**, aucun nouvel
+ID normal ; six positifs et quatre mutants de preuve hors de ce total.
+**70 + 26 voisins distincts** sans double compte. 1 043 sources historiques app
+hors docs : 1 042 inchangées, seul le test M7 modifié avec autorisation. Produit,
+CSS, handlers et fixtures communs inchangés. Traces, incidents, inventaires,
+nettoyage et portée de contre-lecture dans le relevé.
+
+Seul le défaut d'attente est corrigé, livraison à contre-auditer par Codex.
+L'ordre exact des incidents du 7 octobre reste inconnu ; aucun défaut produit
+ni lien renderer/SQL établi. AUD-01/AUD-02 et OBS-M7-CONC-01 restent fermés ;
+M4, clôture globale M8-C, runtime et Writer restent séparés. Aucun M8-S/M8-A,
+restart/rebuild/déploiement ou lot suivant ; arrêt après livraison Git.
 
 ### M8-C — Contrat Writer fermé et raccord simulé
 
