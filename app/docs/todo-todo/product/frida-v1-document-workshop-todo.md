@@ -895,7 +895,9 @@ restent ouverts. M3 est fermé sur code/preuves et contre-audit ci-dessous ;
 M4 est livré sur code/preuves hermétiques, P2-M4-01 et P2-M4-02 fermés après
 contre-audits indépendants, P3-M4-03 corrigé documentairement ; livraison runtime
 ouverte. M5 est fermé sur code/preuves injectées ; M6 raccorde le parcours réel
-avec preuves isolées, sans déploiement. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C à contre-auditer : AUD-01 et AUD-02 fermés après contre-audits indépendants ; M8-S/M8-A, M9/M10 et Z restent non commencés. Spécification et
+avec preuves isolées, sans déploiement. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; AUD-01 et AUD-02 fermés après contre-audits indépendants.
+**M8-C fermé sur contrat, code et preuves isolées ; M8-S non commencé.**
+M8-A, M9/M10 et Z restent non commencés. Spécification et
 décisions amont sont validées et l'exception produit est inscrite.
 Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
 les GO M0–M4 et P3-M4-03 ne valent pour aucun lot suivant ni déploiement.
@@ -3815,9 +3817,18 @@ canonical/révision/profil figés, source temporaire optionnelle, résultat ferm
   socket Docker, shell libre, fallback ou modification Exports.
 - [x] Synchroniser contrat commun/profil/bornes/erreurs avec cette roadmap ; aucun
   déploiement requis pour fermer le contrat hermétique, rebuild futur du code livré.
-- [ ] Fermer sur contrat consommable par M8-S et fake rejetant les contre-cas ;
-  AUD-01 et AUD-02 fermés après contre-audits indépendants ; clôture globale à contre-auditer ;
+- [x] Fermer sur contrat consommable par M8-S et fake rejetant les contre-cas ;
+  AUD-01 et AUD-02 fermés après contre-audits indépendants ; clôture documentaire du 10 octobre ;
   aucune installation ou preuve de disponibilité déclarée accomplie.
+
+**M8-C fermé sur contrat, code et preuves isolées ; M8-S non commencé.**
+La [note de clôture du contrat commun](../../states/specs/frida-v1-document-workshop-m8c-contract.md#clôture-documentaire--10-octobre-2026)
+relie les critères aux preuves existantes et distingue le compte rendu Codex
+transmis par Tof de toute nouvelle exécution. Réserve d'archive M7 maintenue :
+une seule des deux barrières au dernier contre-audit, record Celebrimbor à deux
+barrières séparé ; aucun défaut actuel démontré. Les attributions historiques
+restent inconnues. Remise à Sauron du contrat implémentable ; disponibilité du
+service, pins et confinement à prouver en M8-S sous GO distinct, aucun lot suivant démarré.
 
 **Livraison initiale M8-C — 7 octobre 2026 (`fc911ed3`).** Résultats historiques
 conservés ; la clôture totale est retirée après le contre-audit AUD-01/AUD-02. Base M7 exacte
@@ -4469,7 +4480,9 @@ sont corrigés. P2-M4-01 et P2-M4-02 sont fermés après leurs contre-audits
 indépendants, avec leurs résultats conservés ci-dessus ; P3-M4-03 est corrigé
 documentairement, sans fermer la livraison runtime de M4 ;
 M5 est fermé sur code/preuves hermétiques et contre-audit ; M6 est réalisé sur
-code/preuves isolées et contre-audit. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C à contre-auditer : AUD-01 et AUD-02 fermés après contre-audits indépendants ; M8-S/M8-A, M9/M10/Z restent non commencés et les
+code/preuves isolées et contre-audit. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; AUD-01 et AUD-02 fermés après contre-audits indépendants.
+**M8-C fermé sur contrat, code et preuves isolées ; M8-S non commencé.**
+M8-A, M9/M10/Z restent non commencés et les
 obligations runtime restent ouvertes.
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
 dans AGENTS.md ; l'invariant de consolidation reste applicable hors de cette

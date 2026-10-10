@@ -5,9 +5,9 @@ parent M6 `b00eb95001755295dcc301232272a8070d26cd78`. Branche
 `FridaV1-Document-Workshop-M8-C`, créée avant édition. Autorité : mandat M8-C de
 Tof et [roadmap](../../todo-todo/product/frida-v1-document-workshop-todo.md),
 §§3.9–3.17, M8-C et section 9. Ce document est la remise commune à Sauron.
-Statut courant, mandat de Tof du 9 octobre 2026 : **P2-M8C-AUD-01 et
-P2-M8C-AUD-02 fermés après contre-audits indépendants** ; clôture globale M8-C
-à contre-auditer, aucun démarrage M8-S/M8-A.
+Statut courant, mandat de Tof du 10 octobre 2026 : **M8-C fermé sur contrat, code et preuves isolées ; M8-S non commencé.**
+P2-M8C-AUD-01 et P2-M8C-AUD-02 restent fermés après contre-audits indépendants ;
+aucun démarrage M8-S/M8-A. Les statuts des récits datés ci-dessous restent historiques.
 Le relevé initial ci-dessous conserve ses résultats historiques ; le
 [relevé dédié AUD-01](../baselines/document-workshop/frida-v1-document-workshop-p2-m8c-aud-01-20261007.json)
 porte ses exécutions historiques et sa portée. Le
@@ -71,6 +71,40 @@ copie sans cette attente rouge causal, M4 22/22 une fois ; assertions et produit
 préservés. Incident initial de montage exit125 conservé et qualifié. AUD-01/AUD-02,
 concurrence M7, attente UI et P3 restent fermés dans leurs portées ; M8-C global,
 runtime et suite Writer restent distincts.
+
+## Clôture documentaire — 10 octobre 2026
+
+Critères M8-C vérifiés par lecture des preuves conservées et du code au HEAD
+`688310b3c4ab5cd70805173481e1217d71cecde5`, sans nouvelle exécution :
+
+- Schémas, framing borné, validations/refus et faux verts :
+  [relevé initial](../baselines/document-workshop/frida-v1-document-workshop-m8c-20261007.json),
+  champs `handoff` et `causal_controls`, six schémas et 32 vecteurs (13 acceptés/19 refusés).
+- Autorité avant rendu, confirmation/claim réels, ordre validation→gel→libération
+  et zéro mutation binaire : même relevé, `causal_controls.confirmation` et
+  `ordering`, et [tests SQL conservés](../../../tests/integration/document_workshop/test_renderer_m8c_postgresql.py).
+- Correction structurelle et refus avant DAV :
+  [AUD-01](../baselines/document-workshop/frida-v1-document-workshop-p2-m8c-aud-01-20261007.json),
+  `finding` et `causal_controls`. Inactivité jusqu'à la décision finale, acquittement
+  strict et absence de second nettoyage :
+  [AUD-02](../baselines/document-workshop/frida-v1-document-workshop-p2-m8c-aud-02-20261009.json),
+  `finding` et `causal`. Les empreintes du protocole/framing initial et des deux
+  fichiers corrigés correspondent aux relevés respectifs sur ce HEAD.
+
+Le compte rendu Codex transmis par Tof dans le mandat de clôture maintient les
+clôtures AUD-01/AUD-02, concurrence/attente UI M7 et P3 du lanceur ; il confirme
+le correctif de focus M4 sur `688310b3` : deux ordres verts, retrait de la seule attente rouge causal sur
+l'assertion originale, M4 22/22 en 19,399 s. Ces exécutions sont celles de Codex,
+distinctes du [relevé du correctif M4](../baselines/document-workshop/frida-v1-document-workshop-m4-image-focus-fix-20261010.json).
+La réserve d'archive M7 ci-dessus demeure : une barrière sur deux au contre-audit,
+record Celebrimbor à deux barrières distinct ; aucun défaut actuel démontré,
+attributions historiques exactes inconnues.
+
+**M8-C fermé sur contrat, code et preuves isolées ; M8-S non commencé.**
+L'interface, les bornes, schémas et corpus ci-dessous sont remis à Sauron ; leur
+consommabilité n'exige aucun service déjà disponible. Image/pins/polices,
+confinement et disponibilité Writer relèvent de M8-S sous GO distinct ; transport
+réel M8-A et formats M9/M10 restent non commencés, runtime inchangé.
 
 ## Plan et frontières
 
