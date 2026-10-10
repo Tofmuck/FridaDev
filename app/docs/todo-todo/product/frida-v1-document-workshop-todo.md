@@ -11,14 +11,14 @@ sur sa frontière frontend (594/594 historiques) ; P2-M2-02 corrigé séparémen
 sur Exports/Images/Notes,
 P2-M2-04 backend corrigé séparément, comparaison historique 713/713 ;
 P2-M2-05 corrigé séparément sur le résumé de réconciliation, comparaison
-716/716 ; livraison runtime ouverte ;
-M3 fermé sur code/preuves hermétiques et contre-audit, branche `FridaV1-Document-Workshop-M3`, livraison runtime ouverte ;
+716/716 ; code/migrations livrés via M8-A, recette DAV ouverte ;
+M3 fermé sur code/preuves hermétiques et contre-audit, branche `FridaV1-Document-Workshop-M3`, code/migrations livrés via M8-A ;
 P3-M3-baseline-route-golden corrigé séparément le 2026-10-06 (tests/docs-only) ;
 M4 livré sur code, P2-M4-01 et P2-M4-02 fermés après contre-audits indépendants ;
 P3-M4-03 corrigé par erratum documentaire (1 198 déclarés conservés et rectifiés,
 sélection publiée à 1 414, 21 identifiants réutilisables validés) ;
 M4 non intégralement fermé ;
-M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées, livraison runtime ouverte ; M7 fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C fermé après contre-audits indépendants AUD-01/AUD-02 ; M8-S fermé après contre-audit Codex favorable transmis par Tof ; M8-A implémenté et éprouvé en isolation, raccord runtime et contre-audit ouverts ; M9/M10 et Z non commencés. Seul le renderer isolé est démarré, aucun déploiement FridaDev ou format public activé**.
+M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées ; M7 fermé sur code/preuves isolées et contre-audit ; code/migrations M1–M7 livrés via M8-A, recettes DAV/Versions ouvertes ; M8-C fermé après contre-audits indépendants AUD-01/AUD-02 ; M8-S fermé après contre-audit Codex favorable transmis par Tof ; M8-A fermé sur code et raccord runtime après contre-audit Codex favorable du 10 octobre transmis par Tof ; passage à M9-A autorisé, M9/M10 et Z non commencés. FridaDev et le renderer sont livrés ; DOCX/PDF publics atelier encore inactifs**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
 dialogue avec Tof. Création documentaire committée dans `d6b63fd1`, puis validation
@@ -42,7 +42,7 @@ Une case cochée dans les décisions signifie « décidé par Tof », pas « liv
 Une case ouverte dans les critères ou les lots signifie « à implémenter ou prouver ».
 Les inconnues factuelles sont isolées en section 11. Seules les preuves datées
 dans M0–M4 décrivent des tests exécutés ou des déclarations historiques explicitement
-qualifiées ; M5 dispose de son relevé daté hermétique, M6 dispose de son relevé isolé du 7 octobre ; M7 et suivants restent des preuves futures. L'erratum P3-M4-03
+qualifiées ; M5–M8-A disposent de leurs relevés datés et attributions ci-dessous ; M9 et suivants restent des preuves futures. L'erratum P3-M4-03
 ci-dessous distingue les nouveaux rejeux des résultats antérieurs.
 Une clôture code/preuves ne ferme pas migration opérateur, rebuild ou preuve DAV déployée.
 
@@ -4071,7 +4071,7 @@ et ses permissions dans sa racine, avec livraison FridaDev coordonnée si néces
 - [x] Synchroniser adapter/erreurs/observabilité ; preuve interne synthétique réelle
   sous GO distinct, sans modèle ni Nextcloud. Rebuild FridaDev livré par Sauron le 10 octobre ;
   preuves isolées attribuées à leur livraison et au contre-audit Codex.
-- [ ] Fermer avec contrat M8-S réellement consommé, cleanup confirmé et invariants
+- [x] Fermer avec contrat M8-S réellement consommé, cleanup confirmé et invariants
   M5 préservés ; aucune API renderer publique ni sortie partielle publiée.
 
 **Livraison applicative M8-A — 10 octobre 2026, arrêt pour contre-audit Codex.**
@@ -4156,6 +4156,28 @@ qualification M8-S. Streaming/upload/Exports/OCR non rejoués : case globale
 correspondante ouverte. DOCX/PDF publics atelier inactifs, Markdown direct ;
 recettes DAV/Versions M1–M7 distinctes et ouvertes. **M9/M10 non commencés ; arrêt
 pour contre-audit Codex.**
+
+**Clôture M8-A et P3-M8A-RUNTIME-AUD-01 reportés — 10 octobre 2026.**
+Décision transmise par Tof : contre-audit Codex favorable, M8-A validé sur code
+et raccord runtime ; passage à M9-A autorisé. Références : code
+`7a25eb90bae9abefb1d98e2882660d9e62273663`, livraison Sauron
+`e16891c681ac50862224f0191be91865210f6792`, roadmap antérieure
+`2d521d89bc90f35298a4a3178719a679e5940e0e`.
+Codex a vérifié 1 481 fichiers, schéma/migrations et sauvegardes ; rejoué depuis
+FridaDev une paire réelle avec liste, validée et gelée avant libération
+acquittée (4,988 s, exit 0), plus refus de pins discordants sans POST/DELETE
+et refus UID/GID 20002. Voisins préservés. Identité nominale effective
+**root 0:0, groupes [0]** : aucune preuve positive GID 20000.
+Les 81 tests et la preuve SQL isolée appartiennent au contre-audit applicatif
+antérieur, pas à ce rejeu runtime. Les suites générales non rejouées restent
+non rejouées ; la case composite correspondante reste ouverte.
+Rapport Codex sur le poste de pilotage :
+`/Users/tof/codex-fridadev/audits/2026-10-10-m8a-runtime-counteraudit/rapport.md`
+(hors checkout, non relu ici). Ce report attribué ne revendique aucun nouveau
+rejeu runtime. Les remises et réserves historiques ci-dessus sont conservées.
+P3-M8A-RUNTIME-AUD-01 est corrigé par synchronisation des résumés courants et
+des seules cases couvertes ; recettes DAV/Versions et activation DOCX/PDF
+restent distinctes.
 
 ### M9-A — DOCX Frida create/copy/update et pagination Writer
 
@@ -4567,8 +4589,9 @@ transactions, pagination et parcours produit restent aux lots concernés.
 - [x] M8-S/M8-A : disponibilité effective du service isolé, permissions de socket,
   capacités/filtres/polices/layout du pin livré, ressources/confinement/cleanup.
   M8-S fermé par Codex ; raccord M8-A livré et preuve depuis FridaDev exécutée.
-  Identité positive root explicitée, refus non admis prouvé ; clôture finale M8-A
-  soumise au contre-audit, aucune requalification M8-S.
+  Identité positive root explicitée, refus non admis prouvé ; M8-A fermé après
+  contre-audit runtime Codex transmis par Tof, aucune preuve positive GID 20000
+  ni requalification M8-S.
   Ce sont des preuves de livraison, aucun choix de moteur repoussé.
 - [ ] M9-A/M9-B/M10 : stabilité Writer réelle, import/round-trip externe admissible
   et limites détectées du corpus synthétique ; aucune promesse Word universelle.
@@ -4598,11 +4621,11 @@ et de preuve de M0/M4/M8–M10, pas des arbitrages repoussés.
 - [ ] Journal et remote_uncertain sans promesse d'exactly-once distribué.
 - [ ] Aucun DELETE sans propriété ni rollback récursif de collections.
 - [ ] DOCX externe et PDF externe traités avec fidélité honnête.
-- [ ] Writer/UNO isolé livré/épinglé/prouvé par M8-S, adaptateur M8-A ; aucun moteur
+- [x] Writer/UNO isolé livré/épinglé/prouvé par M8-S, adaptateur M8-A ; aucun moteur
   concurrent, cloud/payante, fallback ou LibreOffice dans le conteneur FridaDev.
-  M8-S fermé après contre-audit ; applicatif M8-A validé par Codex, raccord runtime
-  livré par Sauron. Case globale ouverte pour clôture finale M8-A après contre-audit
-  runtime ; aucun voisin non rejoué déclaré vert.
+  M8-S fermé après contre-audit ; applicatif et raccord runtime M8-A validés par
+  Codex selon décision transmise par Tof le 10 octobre ; livraison Sauron vérifiée.
+  Aucun voisin non rejoué déclaré vert ; case composite M8-A toujours ouverte.
 - [ ] Nextcloud/Collabora/Stirling distincts ; entrée humaine et OCR Stirling préservés.
 - [ ] Aucun secret/capacité DAV dans le renderer, aucun UNO brut ni API publique,
   socket restreint/network none et fichiers éphémères nettoyés, ODT jamais vérité durable.
@@ -4659,8 +4682,9 @@ code/preuves isolées et contre-audit, code livré via M8-A. M7 est fermé sur
 code/preuves isolées et contre-audit, code/migration livrés via M8-A, recettes
 DAV/Versions ouvertes ; AUD-01 et AUD-02 fermés après contre-audits indépendants.
 **M8-C fermé sur contrat, code et preuves isolées ; M8-S fermé après contre-audit Codex favorable du 10 octobre transmis par Tof.**
-M8-A applicatif validé par contre-audit Codex ; raccord runtime livré par Sauron.
-Clôture finale M8-A soumise au contre-audit Codex ; M9/M10/Z restent non commencés.
+M8-A fermé sur code et raccord runtime livré par Sauron, après contre-audits
+Codex favorables transmis par Tof le 10 octobre ; P3-M8A-RUNTIME-AUD-01 corrigé
+par ce report documentaire. Passage à M9-A autorisé ; M9/M10/Z non commencés.
 Actualisation runtime du 10 octobre : code et migrations M1–M7 livrés par le
 raccord M8-A ; les réserves de recette produit/DAV/Versions restent ouvertes.
 Les mentions de runtime ouvert dans les récits historiques décrivent leurs
