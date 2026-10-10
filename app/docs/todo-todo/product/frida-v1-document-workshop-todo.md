@@ -1,6 +1,6 @@
 # Atelier documentaire agentique Frida V1 — spécification validée et roadmap
 
-Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-05 ; M3/M4/M5 : 2026-10-06 ; M6 : 2026-10-07.
+Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-05 ; M3/M4/M5 : 2026-10-06 ; M6 : 2026-10-07 ; M8-S plateforme : 2026-10-10.
 
 Statut : **spécification et choix architecturaux validés par Tof ; M0 fermé sur
 composants et preuves internes, contre-audit corrigé sur `FridaV1-Document-Workshop-M0` ;
@@ -18,8 +18,7 @@ M4 livré sur code, P2-M4-01 et P2-M4-02 fermés après contre-audits indépenda
 P3-M4-03 corrigé par erratum documentaire (1 198 déclarés conservés et rectifiés,
 sélection publiée à 1 414, 21 identifiants réutilisables validés) ;
 M4 non intégralement fermé ;
-M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées, livraison runtime ouverte ; M7 fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C à contre-auditer : AUD-01 et AUD-02 fermés après contre-audits indépendants ; M8-S/M8-A, M9/M10 et Z non commencés,
-aucun déploiement ou renderer livré**.
+M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées, livraison runtime ouverte ; M7 fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C fermé après contre-audits indépendants AUD-01/AUD-02 ; M8-S livré et qualifié sur la plateforme, à contre-auditer ; M8-A, M9/M10 et Z non commencés. Seul le renderer isolé est démarré, aucun déploiement FridaDev ou format public activé**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
 dialogue avec Tof. Création documentaire committée dans `d6b63fd1`, puis validation
@@ -896,7 +895,7 @@ M4 est livré sur code/preuves hermétiques, P2-M4-01 et P2-M4-02 fermés après
 contre-audits indépendants, P3-M4-03 corrigé documentairement ; livraison runtime
 ouverte. M5 est fermé sur code/preuves injectées ; M6 raccorde le parcours réel
 avec preuves isolées, sans déploiement. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; AUD-01 et AUD-02 fermés après contre-audits indépendants.
-**M8-C fermé sur contrat, code et preuves isolées ; M8-S non commencé.**
+**M8-C fermé sur contrat, code et preuves isolées ; M8-S livré/qualifié, contre-audit Codex attendu.**
 M8-A, M9/M10 et Z restent non commencés. Spécification et
 décisions amont sont validées et l'exception produit est inscrite.
 Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
@@ -3821,14 +3820,14 @@ canonical/révision/profil figés, source temporaire optionnelle, résultat ferm
   AUD-01 et AUD-02 fermés après contre-audits indépendants ; clôture documentaire du 10 octobre ;
   aucune installation ou preuve de disponibilité déclarée accomplie.
 
-**M8-C fermé sur contrat, code et preuves isolées ; M8-S non commencé.**
+**M8-C fermé sur contrat, code et preuves isolées ; M8-S livré/qualifié, contre-audit Codex attendu.**
 La [note de clôture du contrat commun](../../states/specs/frida-v1-document-workshop-m8c-contract.md#clôture-documentaire--10-octobre-2026)
 relie les critères aux preuves existantes et distingue le compte rendu Codex
 transmis par Tof de toute nouvelle exécution. Réserve d'archive M7 maintenue :
 une seule des deux barrières au dernier contre-audit, record Celebrimbor à deux
 barrières séparé ; aucun défaut actuel démontré. Les attributions historiques
-restent inconnues. Remise à Sauron du contrat implémentable ; disponibilité du
-service, pins et confinement à prouver en M8-S sous GO distinct, aucun lot suivant démarré.
+restent inconnues. Contrat remis à Sauron ; disponibilité du service, pins et confinement prouvés
+par M8-S ci-dessous sous GO distinct. Contre-audit M8-S attendu ; aucun lot suivant démarré.
 
 **Livraison initiale M8-C — 7 octobre 2026 (`fc911ed3`).** Résultats historiques
 conservés ; la clôture totale est retirée après le contre-audit AUD-01/AUD-02. Base M7 exacte
@@ -3942,35 +3941,57 @@ conservés dans le relevé avec commandes/IDs/exits/durées, sans double compte.
 la paire DOCX/PDF sous le profil décidé, sans accès au stockage.
 **Dépendances :** M8-C fermé ; GO Sauron distinct pour installation/livraison et rendu synthétique.
 **Frontières :** Sauron gère la sous-stack réelle `/opt/platform/fridadev-app`,
-image/wrapper UNO/profil/font/socket/exploitation ; aucun patch du checkout FridaDev.
+image/wrapper UNO/profil/font/socket/exploitation ; exception documentaire explicite limitée à cette roadmap, aucun patch applicatif.
 **Interface :** HTTP sur socket Unix ; UNO en pipe interne ; manifestes de capacités
 et résultats selon section 9 ; aucun service existant présenté comme renderer livré.
 **Propriétaire :** Sauron. Celebrimbor vérifie seulement la conformité du contrat remis.
 
-- [ ] Rouge causal : image sans filtre/font, appelant hors permissions, second job,
+- [x] Rouge causal : image sans filtre/font, appelant hors permissions, second job,
   macro/lien distant, sortie partielle, 21 pages ou LibreOffice bloqué → échec fermé.
-- [ ] Épingler image/digest, version LibreOffice/UNO, filtres DOCX/PDF, fichiers et
+- [x] Épingler image/digest, version LibreOffice/UNO, filtres DOCX/PDF, fichiers et
   empreintes/licences des polices, locale et profil ; aucun pin hérité implicitement de Stirling.
-- [ ] Livrer utilisateur non privilégié, rootfs read-only et seules zones tmpfs/socket
+- [x] Livrer utilisateur non privilégié, rootfs read-only et seules zones tmpfs/socket
   nécessaires, network_mode none, caps retirées/no-new-privileges et ressources bornées.
-- [ ] Prouver socket Unix avec permissions dédiées, aucun port/routage public/UNO réseau,
+- [x] Prouver socket Unix avec permissions dédiées, aucun port/routage public/UNO réseau,
   aucun secret Nextcloud/DB/provider, aucune donnée opérateur montée, aucun Docker socket.
-- [ ] Une tâche active, zéro file d'attente ; saturation rejetée. Profil UNO temporaire
+- [x] Une tâche active, zéro file d'attente ; saturation rejetée. Profil UNO temporaire
   distinct, processus suivi/destructible et nettoyage succès/erreur/annulation/crash.
-- [ ] Tests synthétiques réels : Unicode, chaque style, tables multipages, sauts,
+- [x] Tests synthétiques réels : Unicode, chaque style, tables multipages, sauts,
   A4/12 points/1,5/2,5 cm ; rechargement DOCX et export PDF du même état Writer.
-- [ ] Prouver nombre de pages Writer stabilisé et concordance PDF, filtres réellement
+- [x] Prouver nombre de pages Writer stabilisé et concordance PDF, filtres réellement
   présents, refus 21e page, aucune macro/update distant/extension ou dialogue bloquant.
-- [ ] Tests adverses de transport/archive/ressources/kill et seconde requête ; voisins
+- [x] Tests adverses de transport/archive/ressources/kill et seconde requête ; voisins
   FridaDev/Nextcloud/Stirling uniquement status-only, pas de document privé.
-- [ ] Faux verts : binaire présent, headless sans layout évalué, DOCX ouvrable, font de
+- [x] Faux verts : binaire présent, headless sans layout évalué, DOCX ouvrable, font de
   l'hôte, keepalive pris pour progrès, rootfs ro sans preuve du profil writable.
-- [ ] Interdire Caddy/Authelia/UI, cloud/payante, accès Nextcloud, fallback Stirling,
+- [x] Interdire Caddy/Authelia/UI, cloud/payante, accès Nextcloud, fallback Stirling,
   nouveau moteur, données réelles ou canari d'écriture.
-- [ ] Synchroniser runbook plateforme et preuve datée content-free ; rebuild du seul
-  service renderer autorisé dans ce futur lot, aucun restart voisin automatique.
-- [ ] Fermer sur capacités réelles, sécurité/ressources/cleanup et artefact synthétique
-  accepté par le contrat M8-C ; ne pas attendre M9 pour prouver le moteur.
+- [x] Synchroniser runbook plateforme et preuve datée content-free ; rebuild du seul
+  service renderer réalisé dans ce lot, aucun restart voisin automatique.
+- [x] Établir capacités réelles, sécurité/ressources/cleanup et artefact synthétique
+  accepté par le contrat M8-C ; preuve moteur réalisée sans attendre M9, clôture après contre-audit.
+
+**Livraison plateforme — 10 octobre 2026, contre-audit Codex attendu.**
+Douze critères exécutés, sans clôture forcée ni raccord applicatif. Rapport
+Sauron : `/Users/tof/Saurons/sauron-frida-system/reports/2026-10-10-writer-m8s.md`,
+commit `726a1ff30d545961b512d6fa03a37347e5c23d8a` sur `FridaV1-Document-Workshop-M8-S` (local, sans push).
+Sources/runbook : `services/writer-renderer/` dans ce même commit. Image Docker
+`sha256:419e953c98a149741c724c6b4515420966adc7523d6f4cdb2d527c071db18185`,
+manifest OCI local `sha256:c1e292e3d4a8ae453817eb5abfad0fd777cc946f1ee69aac9d36e17e879f220d` ;
+Writer/PyUNO 25.2.3.2, filtres DOCX/PDF et quatre Liberation Serif/OFL-1.1 épinglés.
+Service `writer-renderer`, conteneur `platform-frida-writer`, socket
+`/opt/platform/fridadev-app/writer-renderer/socket/renderer.sock` 0660,
+répertoire 2770, UID/GID 20000:20000 ; client de preuve 20001:20000.
+Protocole fermé et corpus 32/32, rendus riches 5 pages, 20 acceptées/21 refusées,
+sources/refus hostiles, saturation, ressources, annulation, crash, sortie partielle,
+UNO réellement bloqué 120 s malgré polls et travail utile >120 s vérifiés.
+Trois défauts de revue interne reproduits puis corrigés/requalifiés : staging
+ENOSPC, acquittement cleanup négatif et inventaire des libellés de liste ;
+échecs intermédiaires conservés au rapport. Les 32 voisins gardent leurs IDs,
+état actif et démarrages antérieurs au lot ; aucun restart/rebuild voisin.
+Le Compose préexistant reste identique. Backup/rollback ciblé au rapport.
+Aucun document privé, modèle, Nextcloud, Caddy/Authelia ou format public ;
+M8-A et suivants non commencés. Cette revue interne ne vaut pas contre-audit.
 
 ### M8-A — Adaptateur FridaDev, validations et nettoyage
 
@@ -4137,29 +4158,28 @@ ni chaîné derrière Writer. Fusion/découpe/conversion sont décrites par l'en
 humaine observée ; rotation/compression et autres fonctions ne sont pas déclarées
 prouvées sans recette. OCR existant : contrats actuels inchangés.
 
-### 9.2. Forme minimale compatible avec le serveur observé
+### 9.2. Forme minimale livrée et raccord restant
 
-Service séparé à livrer par Sauron dans la sous-stack réelle FridaDev-app, avec
-image/worker distincts de `platform-fridadev`. Nom de service, chemin de socket et
-UID/GID seront des identifiants de livraison, pas des services prétendument présents.
-Un répertoire de socket dédié, accessible aux seuls comptes FridaDev/renderer,
-est monté dans les deux conteneurs ; aucun document, state/, secret, DB, volume
-Nextcloud ou socket Docker n'est partagé. FridaDev utilise un client HTTP AF_UNIX
-étroit de bibliothèque standard ; aucune dépendance bureautique dans son image.
+M8-S livre dans `/opt/platform/fridadev-app` le service `writer-renderer`,
+conteneur `platform-frida-writer`, image/worker distincts de `platform-fridadev`.
+Socket `/opt/platform/fridadev-app/writer-renderer/socket/renderer.sock` :
+UID/GID 20000:20000, mode 0660, répertoire 2770. Il est monté dans le seul
+renderer ; client synthétique hôte 20001:20000. Le montage et l'identité du
+client FridaDev restent M8-A, sans modification du conteneur FridaDev ici.
+Aucun document, state/, secret, DB, volume Nextcloud ou socket Docker partagé.
+Le futur client applicatif est HTTP AF_UNIX de bibliothèque standard,
+sans dépendance bureautique dans son image.
 
-Le wrapper écoute seulement sur ce socket Unix et pilote UNO sur un pipe local
-au conteneur. Renderer en `network_mode: none` : aucune route entrante publique,
-aucun port publié, Caddy/Authelia/UI, DNS ou réseau Nextcloud. Les réseaux partagés
-observés ne sont pas réutilisés pour ce service. Les permissions du socket et
-l'isolement effectif sont prouvés en M8-S ; aucune hypothèse de sécurité fondée
-sur le seul mot « interne ». HTTP réseau privé ajouterait une frontière réseau
-inutile sur ce même hôte ; CLI/SSH/Docker exec depuis FridaDev donneraient des
-capacités d'exécution/plateforme disproportionnées. Aucun de ces chemins n'est livré.
+Le wrapper écoute seulement sur ce socket Unix et pilote UNO sur un pipe local.
+`network_mode: none`, aucun listener TCP ni port publié ; Caddy/Authelia/UI,
+DNS et réseaux partagés inchangés. Confinement et permissions effectivement
+vérifiés par M8-S ; aucun shell/SSH/Docker exec offert à FridaDev.
 
-Sauron réalise les fichiers image/wrapper/runtime dans sa racine uniquement.
-Celebrimbor réalise protocole/adaptateur/orchestration dans le checkout uniquement.
-Aucune modification de stack dans ce correctif ; la future connexion du socket
-peut imposer une recréation ciblée FridaDev gérée par Sauron, pas un restart global.
+Sauron conserve image/wrapper/runtime et preuves dans son dépôt, avec cette
+seule roadmap modifiée par exception explicite de Tof. Celebrimbor réalise
+adaptateur/orchestration dans le checkout. La future connexion du socket
+peut imposer une recréation ciblée FridaDev gérée par Sauron sous mandat M8-A.
+Aucune recréation FridaDev ni restart global dans M8-S.
 
 ### 9.3. Protocole fermé et bornes techniques
 
@@ -4243,31 +4263,31 @@ lancé de job. Aucun store de fichiers concurrent dans le renderer.
 
 Writer est l'unique moteur nominal DOCX/PDF de cet atelier. Markdown reste
 sérialisé directement depuis canonical. Aspose, éditions payantes/filigranées
-d'ONLYOFFICE, cloud, second moteur et fallback sont exclus. Les contraintes suivantes sont
-prescrites, non encore implémentées :
+d'ONLYOFFICE, cloud, second moteur et fallback sont exclus. Les cases cochées ci-dessous sont prouvées côté renderer par M8-S ;
+la publication Nextcloud et la persistance applicative restent M8-A et suivants :
 
-- [ ] Créer un modèle Writer contrôlé via UNO depuis le canonical : titres,
+- [x] Créer un modèle Writer contrôlé via UNO depuis le canonical : titres,
   paragraphes, gras/italique, listes, citations, liens passifs, tableaux simples
   et sauts de page ; aucune image ni contenu actif.
-- [ ] Épingler image/digest/version LibreOffice/UNO et disponibilité des filtres
+- [x] Épingler image/digest/version LibreOffice/UNO et disponibilité des filtres
   `Office Open XML Text` pour DOCX et `writer_pdf_Export` pour PDF. Aucun filtre
   commandé par le modèle ou document ; pas de conversion CLI nominale seule.
-- [ ] Épingler fichiers/polices normales/gras/italiques, licences, empreintes, locale,
+- [x] Épingler fichiers/polices normales/gras/italiques, licences, empreintes, locale,
   profil A4/12 points/interligne 1,5/marges 2,5 cm ; absence de glyphes/font → refus.
-- [ ] Enregistrer DOCX, le recharger dans le même Writer sans mutation de son contenu
+- [x] Enregistrer DOCX, le recharger dans le même Writer sans mutation de son contenu
   ou profil, forcer/stabiliser le layout et relever ses pages. Exporter le PDF
   depuis ce même état rechargé ; vérifier compte PDF final et concordance Writer.
   Une paire de validation interne ne crée pas deux fichiers produit : seul le
   format confirmé est publié dans Nextcloud.
-- [ ] Prouver l'API de layout effectivement opérante en headless (p. ex. curseur de
+- [x] Prouver l'API de layout effectivement opérante en headless (p. ex. curseur de
   pages UNO après layout), pas un champ docProps ou un compteur de sauts déclaré.
   Export partiel, désaccord de pages, plus de 20 pages ou layout non établi : refus.
-- [ ] Le nombre de pages contractuel est celui de ce Writer épinglé, avec ces polices ;
+- [x] Le nombre de pages contractuel est celui de ce Writer épinglé, avec ces polices ;
   aucune identité mathématique universelle avec Microsoft Word n'est revendiquée.
 - [ ] Canonical Frida seule source structurée durable ; DOCX/PDF liés à sa révision
   et au manifeste de rendu. ODT éventuel strictement temporaire dans le job, jamais
   adopté, inventorié ou promu en deuxième vérité.
-- [ ] Tests synthétiques Unicode français/styles/tableaux/sauts/pagination, stabilité
+- [x] Tests synthétiques Unicode français/styles/tableaux/sauts/pagination, stabilité
   de layout/contenu sur répétition. Métadonnées volatiles fixées ou précisément
   déclarées ; aucune promesse de SHA binaire universel si le moteur ne la tient pas.
   L'exécution utilise toujours les octets effectivement figés et leur empreinte.
@@ -4298,24 +4318,29 @@ passé dans Writer. Conflit → aucune fusion/écriture aveugle. Sauron ne reço
 ni cible DAV ni secret ; Nextcloud reste autorité de Versions. Le reçu relie
 résultat, identité stable, format, cible et révision, sans injecter le contenu.
 
-### 9.6. Confinement et exploitation à prouver
+### 9.6. Confinement et exploitation prouvés côté renderer M8-S
 
-- [ ] Utilisateur non privilégié, rootfs read-only compatible ; tmpfs writable
+- [x] Utilisateur non privilégié, rootfs read-only compatible ; tmpfs writable
   uniquement pour travail/tmp/profil, répertoire de socket séparé ; aucune
   lecture arbitraire du filesystem, mount opérateur ou capability de commande.
-- [ ] Démarrage fixed argv headless/norestore avec UserInstallation éphémère par
+- [x] Démarrage fixed argv headless/norestore avec UserInstallation éphémère par
   exécution ; UNO acceptor en pipe interne ; aucune option fournie par l'appelant.
-- [ ] Macros `NEVER_EXECUTE`, liens `NO_UPDATE`, interaction handler refusant demandes
+- [x] Macros `NEVER_EXECUTE`, liens `NO_UPDATE`, interaction handler refusant demandes
   de chargement/mot de passe/réparation, extensions non nécessaires absentes ;
   network none et tests de non-chargement remote, pas confiance dans Hidden seul.
-- [ ] Profil utilisateur séparé pour chaque job, fermeture/dispose document, destruction
+- [x] Profil utilisateur séparé pour chaque job, fermeture/dispose document, destruction
   processus bloqué et nettoyage enfin garanti, y compris crash/OOM/redémarrage.
-- [ ] Tests source hostile et extraction ZIP bornée, traversée interne/symlink,
+- [x] Tests source hostile et extraction ZIP bornée, traversée interne/symlink,
   chargements locaux externes, pertes de contenu, concurrence et saturation.
-- [ ] Aucun contenu brut, nom privé, source binaire, URL sensible ou exception brute
+- [x] Aucun contenu brut, nom privé, source binaire, URL sensible ou exception brute
   dans logs/health/rapports ; seules versions, tailles, phases et reason codes.
-- [ ] Health/capabilities sans ouverture de document ; preuve synthétique de rendu
+- [x] Health/capabilities sans ouverture de document ; preuve synthétique de rendu
   séparée et autorisée. Disponibilité du service et qualité de layout sont deux preuves.
+
+Preuves limitées au renderer isolé et aux sources synthétiques ; un défaut de
+nettoyage injecté donne cleanup_failed sans acquittement positif, puis réparation
+explicite de la probe. Aucun retry caché, aucune promesse de suppression malgré
+une erreur filesystem ; admission suivante seulement après libération validée.
 
 ### 9.7. Références primaires LibreOffice revalidées
 
@@ -4329,7 +4354,7 @@ M8-S fournit les pins et preuves correspondant à sa version réelle.
 - [Filtres Writer DOCX et PDF](https://help.libreoffice.org/latest/en-US/text/shared/guide/convertfilters.html).
 - [API UNO XStorable](https://api.libreoffice.org/docs/idl/ref/interfacecom_1_1sun_1_1star_1_1frame_1_1XStorable.html) : storeAsURL pour enregistrement, storeToURL pour export.
 - [Paramètres d'export PDF](https://help.libreoffice.org/latest/en-US/text/shared/guide/pdf_params.html).
-- [Curseur de pages Writer](https://api.libreoffice.org/docs/idl/ref/interfacecom_1_1sun_1_1star_1_1text_1_1XPageCursor.html) : API de pages, dont l'utilisation effective headless reste à prouver.
+- [Curseur de pages Writer](https://api.libreoffice.org/docs/idl/ref/interfacecom_1_1sun_1_1star_1_1text_1_1XPageCursor.html) : API de pages effectivement exercée en headless par M8-S.
 - [MediaDescriptor UNO](https://api.libreoffice.org/docs/idl/ref/servicecom_1_1sun_1_1star_1_1document_1_1MediaDescriptor.html) : chargement/contrôle de macros, liens et interactions.
 - [Macros NEVER_EXECUTE](https://api.libreoffice.org/docs/idl/ref/namespacecom_1_1sun_1_1star_1_1document_1_1MacroExecMode.html).
 - [Liens NO_UPDATE](https://api.libreoffice.org/docs/idl/ref/namespacecom_1_1sun_1_1star_1_1document_1_1UpdateDocMode.html).
@@ -4373,8 +4398,8 @@ ceux du HEAD de reconnaissance ; aucun refactor cosmétique n'est proposé.
 
 ### Lot Sauron obligatoire et besoins conditionnels
 
-- [ ] M8-S : service Writer/UNO isolé, image/filtres/polices/profil/ressources/socket,
-  sécurité/cleanup/health et preuve synthétique ; voir section 8, aucune livraison ici.
+- [x] M8-S : service Writer/UNO isolé, image/filtres/polices/profil/ressources/socket,
+  sécurité/cleanup/health et preuve synthétique livrés ; voir section 8, contre-audit attendu.
 - [ ] Prouver identité DAV, préconditions, ETags et Versions si les preuves
   applicatives ne suffisent pas.
 - [ ] Fournir une preuve transactionnelle isolée si environnement SQL absent.
@@ -4382,7 +4407,7 @@ ceux du HEAD de reconnaissance ; aucun refactor cosmétique n'est proposé.
 M8-S est une vraie frontière plateforme, sans accès Nextcloud et sans surface
 publique. Permissions DAV ou environnement SQL partagé relèvent de besoins
 Sauron conditionnels distincts. Pins/bibliothèques/polices sont dans l'image du
-renderer, pas dans FridaDev. Sauron ne modifie pas ce checkout ; Celebrimbor ne
+renderer, pas dans FridaDev. Sauron modifie seulement cette roadmap par exception explicite ; Celebrimbor ne
 modifie aucune stack, réseau, secret ou fichier sous sa racine plateforme.
 
 ## 11. Faits externes restant à prouver
@@ -4397,6 +4422,7 @@ transactions, pagination et parcours produit restent aux lots concernés.
 - [ ] M3 : environnement SQL concurrent isolé de preuve si non établi par le HEAD.
 - [ ] M8-S/M8-A : disponibilité effective du service isolé, permissions de socket,
   capacités/filtres/polices/layout du pin livré, ressources/confinement/cleanup.
+  Partie M8-S prouvée ci-dessus ; raccord M8-A non commencé.
   Ce sont des preuves de livraison, aucun choix de moteur repoussé.
 - [ ] M9-A/M9-B/M10 : stabilité Writer réelle, import/round-trip externe admissible
   et limites détectées du corpus synthétique ; aucune promesse Word universelle.
@@ -4428,6 +4454,7 @@ et de preuve de M0/M4/M8–M10, pas des arbitrages repoussés.
 - [ ] DOCX externe et PDF externe traités avec fidélité honnête.
 - [ ] Writer/UNO isolé livré/épinglé/prouvé par M8-S, adaptateur M8-A ; aucun moteur
   concurrent, cloud/payante, fallback ou LibreOffice dans le conteneur FridaDev.
+  M8-S livré à contre-auditer ; case globale laissée ouverte pour M8-A.
 - [ ] Nextcloud/Collabora/Stirling distincts ; entrée humaine et OCR Stirling préservés.
 - [ ] Aucun secret/capacité DAV dans le renderer, aucun UNO brut ni API publique,
   socket restreint/network none et fichiers éphémères nettoyés, ODT jamais vérité durable.
@@ -4481,7 +4508,7 @@ indépendants, avec leurs résultats conservés ci-dessus ; P3-M4-03 est corrig�
 documentairement, sans fermer la livraison runtime de M4 ;
 M5 est fermé sur code/preuves hermétiques et contre-audit ; M6 est réalisé sur
 code/preuves isolées et contre-audit. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; AUD-01 et AUD-02 fermés après contre-audits indépendants.
-**M8-C fermé sur contrat, code et preuves isolées ; M8-S non commencé.**
+**M8-C fermé sur contrat, code et preuves isolées ; M8-S livré/qualifié, contre-audit Codex attendu.**
 M8-A, M9/M10/Z restent non commencés et les
 obligations runtime restent ouvertes.
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
@@ -4490,7 +4517,8 @@ exception. Les seuls composants applicatifs livrables par M0 sont les frontière
 internes inactives et leurs preuves. M1 ajoute seulement entrée et contexte
 `editing`, avec préparation indisponible. M2 ajoute exclusivement lecture/adoption ciblées et inventaire commun, avec
 préparation historiquement indisponible. M3 ajoute l’autorité commune ; M4
-raccorde uniquement la préparation Markdown sans écriture. Aucune dépendance nouvelle, service
-plateforme ou preuve live n'est livré. La correction P3 M1 est séparée ; la
+raccorde uniquement la préparation Markdown sans écriture. Ces lots applicatifs ne livraient aucune dépendance ou service plateforme.
+M8-S livre désormais le seul renderer isolé et ses preuves synthétiques sous
+mandat distinct ; cette exception documentaire ne raccorde aucun consommateur. La correction P3 M1 est séparée ; la
 livraison M2 reste limitée à `FridaV1-Document-Workshop-M2`. Aucun merge vers main,
 rebuild, restart, migration opérateur ou déploiement n'est autorisé par ces lots.
