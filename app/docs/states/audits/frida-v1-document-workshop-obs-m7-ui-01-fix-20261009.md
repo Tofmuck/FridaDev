@@ -219,18 +219,22 @@ sans rejeu de tests. Aucun incident de validation n’autorise un commit.
 
 ### Commandes reproductibles et comparaison
 
-Depuis la racine applicative, avec de nouvelles racines possédées, commandes
-séquencées et images/caches existants aux empreintes du relevé :
+**Erratum du 10 octobre 2026 — P3-M7-UI-FIX-01.** Les exemples publiés
+initialement avec les racines `fridadev-obs-m7-ui-01-replay` et
+`fridadev-obs-m7-ui-01-archive-replay` étaient invalides : acceptés par le
+lanceur puis refusés par le runner après deux copies, avant tout browser record.
+Ce rouge de lancement ne remettait pas en cause le correctif fonctionnel,
+validé par la contre-lecture Codex transmise par Tof. Les résultats ci-dessus,
+le JSON, les traces et les incidents du 9 octobre sont inchangés.
 
-```bash
-python3 app/tests/support/run_obs_m7_ui_01_fix.py /tmp/fridadev-obs-m7-ui-01-replay probe completed
-python3 app/tests/support/run_obs_m7_ui_01_fix.py /tmp/fridadev-obs-m7-ui-01-replay probe pending
-python3 app/tests/support/run_obs_m7_ui_01_fix.py /tmp/fridadev-obs-m7-ui-01-replay probe no-wait
-python3 app/tests/support/run_obs_m7_ui_01_fix.py /tmp/fridadev-obs-m7-ui-01-replay probe old-click
-python3 app/tests/support/run_obs_m7_ui_01_fix.py /tmp/fridadev-obs-m7-ui-01-archive-replay historical after-transition
-python3 app/tests/support/run_obs_m7_ui_01_fix.py /tmp/fridadev-obs-m7-ui-01-replay neighbors
-python3 app/tests/support/run_obs_m7_ui_01_fix.py /tmp/fridadev-obs-m7-ui-01-replay compare
-```
+Le contrat courant exige une racine directement sous `/tmp` commençant par
+`fridadev-obs-m7-ui-01-fix-`, vérifiée avant tout effet et reportée à l'identique
+dans la copie interne. Les [commandes corrigées et réellement éprouvées le
+10 octobre](frida-v1-document-workshop-p3-m7-ui-fix-01-20261010.md#commandes-corrigées-éprouvées-le-10-octobre)
+remplacent le bloc antérieur, avec traitement explicite des exits négatifs et
+validation des barrières. Voir le [relevé P3 dédié](../baselines/document-workshop/frida-v1-document-workshop-p3-m7-ui-fix-01-20261010.json)
+pour le premier rouge, les nouveaux rejeux et le nettoyage. P3 fermé seulement
+sur cette cohérence ; aucune clôture globale M8-C/runtime ou correction M4.
 
 Les deux négatifs et le rejeu historique attendent exit 1 **avec barrières
 atteintes et erreur exacte** ; un setup ou un rouge antérieur ne compte pas.

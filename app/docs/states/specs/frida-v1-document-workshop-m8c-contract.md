@@ -44,8 +44,16 @@ y compris si elle est déjà terminée ; clic supplémentaire retiré. Condition
 bureau, le helper partagé et le produit restent inchangés. Six positifs complets,
 quatre négatifs causaux attendus ; M7 natif 13/13, M6 HTTP natif 5/5, M6 simulé
 10/10 distingués, comparaison 1 691/1 691 et 70 + 26 voisins distincts.
-Défaut d'attente corrigé, livraison à contre-auditer par Codex. AUD-01/AUD-02 et
+Défaut d'attente corrigé et validé par le contre-audit indépendant transmis. AUD-01/AUD-02 et
 OBS-M7-CONC-01 restent fermés ; M4, clôture globale M8-C et runtime séparés.
+
+Erratum du 10 octobre : **P3-M7-UI-FIX-01 fermé** sur la cohérence des racines du
+seul lanceur (`/tmp/fridadev-obs-m7-ui-01-fix-…`), refus avant effets et garde
+interne identique ; attente M7, produit et runner historique intacts.
+[Rapport/commandes P3 éprouvées](../audits/frida-v1-document-workshop-p3-m7-ui-fix-01-20261010.md)
+et [relevé dédié](../baselines/document-workshop/frida-v1-document-workshop-p3-m7-ui-fix-01-20261010.json) :
+rejeux causaux, archive readonly, 1 691/1 691 et 70 + 26 séparés, distincts du
+9 octobre. Aucun changement des clôtures AUD/concurrence ou de la portée M8-C.
 
 ## Plan et frontières
 

@@ -3722,11 +3722,37 @@ hors docs : 1 042 inchangées, seul le test M7 modifié avec autorisation. Produ
 CSS, handlers et fixtures communs inchangés. Traces, incidents, inventaires,
 nettoyage et portée de contre-lecture dans le relevé.
 
-Seul le défaut d'attente est corrigé, livraison à contre-auditer par Codex.
+Seul le défaut d'attente est corrigé, validé par le contre-audit indépendant transmis par Tof.
 L'ordre exact des incidents du 7 octobre reste inconnu ; aucun défaut produit
 ni lien renderer/SQL établi. AUD-01/AUD-02 et OBS-M7-CONC-01 restent fermés ;
 M4, clôture globale M8-C, runtime et Writer restent séparés. Aucun M8-S/M8-A,
 restart/rebuild/déploiement ou lot suivant ; arrêt après livraison Git.
+
+#### P3-M7-UI-FIX-01 — Racines du lanceur, 10 octobre 2026
+
+**Fermé sur ce seul P3.** [Rapport et erratum](../../states/audits/frida-v1-document-workshop-p3-m7-ui-fix-01-20261010.md),
+[relevé durable dédié](../../states/baselines/document-workshop/frida-v1-document-workshop-p3-m7-ui-fix-01-20261010.json).
+Base exacte `2fd60c48a5a01669425fded6a648304fdede45e0`, même branche M8-C.
+Premier rouge avant édition conservé : ancien exemple avec suffixe neuf,
+exit 1 en 0,046 s, deux copies et aucun browser record ; échec de lancement,
+pas rouge causal. Contrat unique `/tmp/fridadev-obs-m7-ui-01-fix-…` avant tout
+effet et dans la copie interne, namespace/collisions/nettoyage inchangés.
+Runner et artefacts diagnostiques, attente M7, sondes et assertions intacts.
+
+36 rejets instrumentés, six refus réels sans répertoire/copie/ressource ;
+`completed` 4/4, `pending` 2/2, `no-wait` deux rejets causaux, `old-click` deux
+timeouts causaux ; archive exacte readonly avec deux barrières atteintes.
+M7 natif 13/13 ; `neighbors` : 13/5/10 séparés. Les six modes sont exécutés et
+inspectés. Une seule comparaison complète du 10 octobre : **1 691/1 691**
+identités exactes, **70 + 26** voisins distincts ; mode `compare-neighbors`
+éprouvé séparément sans ajout au total. Nouveaux résultats Celebrimbor, distincts
+du 9 octobre et de la portée du contrôle Codex transmis. Erratum daté des
+commandes, preuves, relecture indépendante et nettoyage dans le relevé P3.
+
+OBS-M7-UI-01 fonctionnel reste validé ; AUD-01/AUD-02 et concurrence M7 restent
+fermés. M4, runtime, Writer et clôture globale M8-C restent distincts ; aucune
+installation, livraison runtime, M8-S/M8-A ou suite automatique. Commit/push
+sur M8-C uniquement, puis arrêt pour contre-audit Codex de ce micro-lot.
 
 ### M8-C — Contrat Writer fermé et raccord simulé
 

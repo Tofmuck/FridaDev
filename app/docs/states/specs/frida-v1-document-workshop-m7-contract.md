@@ -218,8 +218,17 @@ explicite conservés. Produit/CSS/fixtures/assertions métier inchangés.
 Six positifs complets et quatre négatifs causaux attendus séparés ; M7 natif
 13/13, M6 HTTP natif 5/5, M6 simulé 10/10 puis 1 691 identités historiques
 exactes vertes et 70 + 26 voisins distincts. Seul ce défaut d'attente est corrigé,
-livraison à contre-auditer ; aucune nouvelle certitude sur le 7 octobre.
+correctif fonctionnel validé par le contre-audit indépendant transmis ; aucune nouvelle certitude sur le 7 octobre.
 M4 et clôture globale M8-C/runtime restent indépendants et ouverts.
+
+Erratum du 10 octobre : **P3-M7-UI-FIX-01 fermé**, seul le contrat de racine du
+lanceur corrigé (`/tmp/fridadev-obs-m7-ui-01-fix-…`) avant tout effet et dans la
+copie interne ; runner historique et correction d'attente intacts.
+[Rapport P3 et commandes éprouvées](../audits/frida-v1-document-workshop-p3-m7-ui-fix-01-20261010.md),
+[relevé dédié](../baselines/document-workshop/frida-v1-document-workshop-p3-m7-ui-fix-01-20261010.json).
+Rejeux du 10 octobre distincts des résultats du 9 : six positifs, quatre
+négatifs causaux et deux rouges d'archive ; 1 691/1 691 exacts et 70 + 26 voisins
+séparés. AUD-01/AUD-02 et concurrence M7 restent fermés ; M4/global/runtime distincts.
 
 La carte indique modification, cible exacte, identité conservée et absence de
 restauration automatique. « Modifier le fichier » utilise la confirmation commune

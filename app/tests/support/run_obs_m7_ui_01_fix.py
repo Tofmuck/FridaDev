@@ -4,6 +4,7 @@ ROOT native LABEL | ROOT probe completed|pending|no-wait|old-click
 ROOT historical after-transition | ROOT neighbors | ROOT compare | ROOT compare-neighbors
 Historical mode archives the exact pre-fix app tree, leaving current sources
 untouched. Comparisons replay the committed 1691-ID reference selections.
+ROOT must be directly under /tmp and start with fridadev-obs-m7-ui-01-fix-.
 """
 import io
 import json
@@ -17,7 +18,8 @@ ROOT = Path(sys.argv[1]).resolve()
 MODE = sys.argv[2]
 ARG = sys.argv[3] if len(sys.argv) > 3 else MODE
 BASE = 'be9e3a8a0bdbc246659ccde4f286a2a91e2cbab3'
-assert ROOT.parent == Path('/tmp') and ROOT.name.startswith('fridadev-obs-m7-ui-01-')
+ROOT_PREFIX = 'fridadev-obs-m7-ui-01-fix-'
+assert ROOT.parent == Path('/tmp') and ROOT.name.startswith(ROOT_PREFIX)
 ROOT.mkdir(exist_ok=True)
 (ROOT / (MODE + '-program-run_obs_m7_ui_01_fix.py')).write_bytes(Path(__file__).read_bytes())
 REFERENCE = REPO / 'app/docs/states/baselines/document-workshop/frida-v1-document-workshop-obs-m7-conc-01-fix-20261009.json'
@@ -37,6 +39,9 @@ if MODE in ('native', 'probe', 'historical'):
         (repo / 'node_modules').mkdir()
     source = (repo / 'app/tests/support/run_obs_m7_ui_01.py').read_text()
     source = source.replace("PREFIX = 'fridadev-obs-m7-ui-01'", "PREFIX = 'fridadev-obs-m7-ui-01-fix'")
+    root_guard = 'ROOT.name.startswith(PREFIX)'
+    assert source.count(root_guard) == 1
+    source = source.replace(root_guard, 'ROOT.name.startswith(' + repr(ROOT_PREFIX) + ')')
     if MODE == 'historical':
         anchor = 'def adapt(argv):'
         assert source.count(anchor) == 1
