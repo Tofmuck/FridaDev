@@ -145,6 +145,11 @@ for(const selector of ['#btnWebSearch','#btnBiblioMode','#btnAgendaMode','#btnAd
     await openBrowserPage({mockScript:preparationScript()},async page=>{
       await ready(page);await openWorkshop(page);await page.click(selector);
       if(selector==='#btnAdobeMode')await page.click('[data-adobe-product="photoshop"]');
+      if (selector === '#btnImageGeneration') {
+        await page.waitForFunction(() =>
+          document.activeElement === document.querySelector('#imageGenerationPrompt')
+        );
+      }
       await send(page,'Brouillon intact');
       assert.equal(await page.locator('#message').inputValue(),'Brouillon intact',selector);
       assert.equal(await page.locator('#log .msg.me').count(),0);

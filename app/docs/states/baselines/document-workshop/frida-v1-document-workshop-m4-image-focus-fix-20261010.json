@@ -1,0 +1,1801 @@
+{
+  "date": "2026-10-10",
+  "lot": "M4 image focus harness fix",
+  "status": "verified_fix_ready_for_commit_push",
+  "initial": {
+    "utc": "2026-10-10T10:36:21.821536+00:00",
+    "root": "/opt/platform/fridadev",
+    "head": "500b442bd41cd1427d6e8bf45a2654dcf2f56729",
+    "parent": "d3e1f685af88777e363d075fc7f5207f9008c031",
+    "branch": "FridaV1-Document-Workshop-M8-C",
+    "upstream": "500b442bd41cd1427d6e8bf45a2654dcf2f56729",
+    "status": "",
+    "divergence": [
+      "0",
+      "0"
+    ],
+    "refs": "refs/heads/Biblio 52f7d7272cf6cffb21c2e0c81ea3e173d8eb3c5d\nrefs/heads/Frida-Agentic-Response-Surface a2c014555405eb0a41b37a77742f929114a4dfea\nrefs/heads/FridaAgenda b2e4e05dc9cd660ac861a9fe767a892113109486\nrefs/heads/FridaV1-Before-9B-Test-Remediation 54d0e7fd5765829c86b91f93e1aaca0db7341010\nrefs/heads/FridaV1-Continuity-Payload-Audit 830e0816fc93b4afd4efe3b86c6a9b95ba263c9d\nrefs/heads/FridaV1-Document-Workshop-M0 3eb2e34aa0622112ebb4a8700dbe0eec02e4a27a\nrefs/heads/FridaV1-Document-Workshop-M1 c6f648badba96a60f1474db8d3f7404f97a2dda7\nrefs/heads/FridaV1-Document-Workshop-M2 6e8c61f5059350d8d15ded4b41b68f2e0d9acac3\nrefs/heads/FridaV1-Document-Workshop-M3 9f10531ae9c799f4afc769c97ea2d48659f1c3d3\nrefs/heads/FridaV1-Document-Workshop-M4 cc72aa963366660a6a135b66d206e39671556e8b\nrefs/heads/FridaV1-Document-Workshop-M5 6ea19f93bab0c1fb14fd4465ddc449f60f1531e4\nrefs/heads/FridaV1-Document-Workshop-M6 b00eb95001755295dcc301232272a8070d26cd78\nrefs/heads/FridaV1-Document-Workshop-M7 750180fa8595b53c7e188017c9c62be1ae9943fc\nrefs/heads/FridaV1-Document-Workshop-M8-C 500b442bd41cd1427d6e8bf45a2654dcf2f56729\nrefs/heads/FridaV1-Lot9A-Route-Refactors 02efcff11773668de7baf8b40eba519cd47c6928\nrefs/heads/FridaV1-Mega-Audit-Code-Stack a31711c32bd0323def0f74d4465407b902d29923\nrefs/heads/FridaV1-Nextcloud-Folders f3d7c2f0d07caeeb90d0d4ff7ee6273a329ddbc3\nrefs/heads/FridaV1-Web-Provenance-Continuity-Fix 4020d5b8d066efbd445506843d81299f4ae6c3b4\nrefs/heads/feature/active-image-documents 4e9f7cdadc6a4a515801125326769347f3006064\nrefs/heads/feature/chat-polish 42ea4b18715bd72d210a089ad073c4d7a786f2fd\nrefs/heads/feature/local-web-search-rebuild 0a4ec0ea0e5cce46561819d96293085f7e1065b1\nrefs/heads/feature/main-model-gpt51 13ed420a98f658b960f3a8e227d629992f844d52\nrefs/heads/feature/mutable-refonte 127548049a13b63dca30aa0697d07c1828b0dcc5\nrefs/heads/feature/workspace-folders 948350c2cbe8eef8271eeaff61c3d40d5dd217cb\nrefs/heads/identity-new-contract 29b179dfc851c575e94bceb4497ddee0b8ff1561\nrefs/heads/main e3e0d19290cb7ac275b3fd4b19c4b01dbc89f2cb\nrefs/heads/migration b9e87c72a9f4e2d63b4adc369b8f8a6b3c38cd09\nrefs/remotes/origin/Biblio 52f7d7272cf6cffb21c2e0c81ea3e173d8eb3c5d\nrefs/remotes/origin/Frida-Agentic-Response-Surface a2c014555405eb0a41b37a77742f929114a4dfea\nrefs/remotes/origin/FridaAgenda b2e4e05dc9cd660ac861a9fe767a892113109486\nrefs/remotes/origin/FridaV1-Before-9B-Test-Remediation 54d0e7fd5765829c86b91f93e1aaca0db7341010\nrefs/remotes/origin/FridaV1-Continuity-Payload-Audit 830e0816fc93b4afd4efe3b86c6a9b95ba263c9d\nrefs/remotes/origin/FridaV1-Document-Workshop-M0 3eb2e34aa0622112ebb4a8700dbe0eec02e4a27a\nrefs/remotes/origin/FridaV1-Document-Workshop-M1 c6f648badba96a60f1474db8d3f7404f97a2dda7\nrefs/remotes/origin/FridaV1-Document-Workshop-M2 6e8c61f5059350d8d15ded4b41b68f2e0d9acac3\nrefs/remotes/origin/FridaV1-Document-Workshop-M3 9f10531ae9c799f4afc769c97ea2d48659f1c3d3\nrefs/remotes/origin/FridaV1-Document-Workshop-M4 cc72aa963366660a6a135b66d206e39671556e8b\nrefs/remotes/origin/FridaV1-Document-Workshop-M5 6ea19f93bab0c1fb14fd4465ddc449f60f1531e4\nrefs/remotes/origin/FridaV1-Document-Workshop-M6 b00eb95001755295dcc301232272a8070d26cd78\nrefs/remotes/origin/FridaV1-Document-Workshop-M7 750180fa8595b53c7e188017c9c62be1ae9943fc\nrefs/remotes/origin/FridaV1-Document-Workshop-M8-C 500b442bd41cd1427d6e8bf45a2654dcf2f56729\nrefs/remotes/origin/FridaV1-Lot9A-Route-Refactors 02efcff11773668de7baf8b40eba519cd47c6928\nrefs/remotes/origin/FridaV1-Mega-Audit-Code-Stack a31711c32bd0323def0f74d4465407b902d29923\nrefs/remotes/origin/FridaV1-Nextcloud-Folders f3d7c2f0d07caeeb90d0d4ff7ee6273a329ddbc3\nrefs/remotes/origin/FridaV1-Web-Provenance-Continuity-Fix 4020d5b8d066efbd445506843d81299f4ae6c3b4\nrefs/remotes/origin/HEAD e3e0d19290cb7ac275b3fd4b19c4b01dbc89f2cb\nrefs/remotes/origin/feature/active-image-documents 4e9f7cdadc6a4a515801125326769347f3006064\nrefs/remotes/origin/feature/chat-polish 42ea4b18715bd72d210a089ad073c4d7a786f2fd\nrefs/remotes/origin/feature/local-web-search-rebuild 0a4ec0ea0e5cce46561819d96293085f7e1065b1\nrefs/remotes/origin/feature/main-model-gpt51 13ed420a98f658b960f3a8e227d629992f844d52\nrefs/remotes/origin/feature/mutable-refonte 127548049a13b63dca30aa0697d07c1828b0dcc5\nrefs/remotes/origin/feature/workspace-folders 948350c2cbe8eef8271eeaff61c3d40d5dd217cb\nrefs/remotes/origin/identity-new-contract 29b179dfc851c575e94bceb4497ddee0b8ff1561\nrefs/remotes/origin/main e3e0d19290cb7ac275b3fd4b19c4b01dbc89f2cb\nrefs/remotes/origin/migration b9e87c72a9f4e2d63b4adc369b8f8a6b3c38cd09\n",
+    "remote_heads": "52f7d7272cf6cffb21c2e0c81ea3e173d8eb3c5d\trefs/heads/Biblio\na2c014555405eb0a41b37a77742f929114a4dfea\trefs/heads/Frida-Agentic-Response-Surface\nb2e4e05dc9cd660ac861a9fe767a892113109486\trefs/heads/FridaAgenda\n54d0e7fd5765829c86b91f93e1aaca0db7341010\trefs/heads/FridaV1-Before-9B-Test-Remediation\n830e0816fc93b4afd4efe3b86c6a9b95ba263c9d\trefs/heads/FridaV1-Continuity-Payload-Audit\n3eb2e34aa0622112ebb4a8700dbe0eec02e4a27a\trefs/heads/FridaV1-Document-Workshop-M0\nc6f648badba96a60f1474db8d3f7404f97a2dda7\trefs/heads/FridaV1-Document-Workshop-M1\n6e8c61f5059350d8d15ded4b41b68f2e0d9acac3\trefs/heads/FridaV1-Document-Workshop-M2\n9f10531ae9c799f4afc769c97ea2d48659f1c3d3\trefs/heads/FridaV1-Document-Workshop-M3\ncc72aa963366660a6a135b66d206e39671556e8b\trefs/heads/FridaV1-Document-Workshop-M4\n6ea19f93bab0c1fb14fd4465ddc449f60f1531e4\trefs/heads/FridaV1-Document-Workshop-M5\nb00eb95001755295dcc301232272a8070d26cd78\trefs/heads/FridaV1-Document-Workshop-M6\n750180fa8595b53c7e188017c9c62be1ae9943fc\trefs/heads/FridaV1-Document-Workshop-M7\n500b442bd41cd1427d6e8bf45a2654dcf2f56729\trefs/heads/FridaV1-Document-Workshop-M8-C\n02efcff11773668de7baf8b40eba519cd47c6928\trefs/heads/FridaV1-Lot9A-Route-Refactors\na31711c32bd0323def0f74d4465407b902d29923\trefs/heads/FridaV1-Mega-Audit-Code-Stack\nf3d7c2f0d07caeeb90d0d4ff7ee6273a329ddbc3\trefs/heads/FridaV1-Nextcloud-Folders\n4020d5b8d066efbd445506843d81299f4ae6c3b4\trefs/heads/FridaV1-Web-Provenance-Continuity-Fix\n4e9f7cdadc6a4a515801125326769347f3006064\trefs/heads/feature/active-image-documents\n42ea4b18715bd72d210a089ad073c4d7a786f2fd\trefs/heads/feature/chat-polish\n0a4ec0ea0e5cce46561819d96293085f7e1065b1\trefs/heads/feature/local-web-search-rebuild\n13ed420a98f658b960f3a8e227d629992f844d52\trefs/heads/feature/main-model-gpt51\n127548049a13b63dca30aa0697d07c1828b0dcc5\trefs/heads/feature/mutable-refonte\n948350c2cbe8eef8271eeaff61c3d40d5dd217cb\trefs/heads/feature/workspace-folders\n29b179dfc851c575e94bceb4497ddee0b8ff1561\trefs/heads/identity-new-contract\ne3e0d19290cb7ac275b3fd4b19c4b01dbc89f2cb\trefs/heads/main\nb9e87c72a9f4e2d63b4adc369b8f8a6b3c38cd09\trefs/heads/migration\n",
+    "protected_tracked_count": 1599,
+    "protected_aggregate_sha256": "66986e51fd586689baa3f4db0bcfad169f3d20812be054f3d330f6ec75cd693f",
+    "sha256": {
+      "app/tests/integration/frontend_browser/test_frontend_browser_document_preparation_m4.js": "3eb5643422e94bb1192230a8727bd19ce422c2d62391cc1ae2496678837554b2",
+      "app/docs/states/specs/frida-v1-document-workshop-m4-contract.md": "93c8f47f1f68914e7735f7ba47e222d0143f6eeab75261d6568a3971440064e8",
+      "app/docs/states/specs/frida-v1-document-workshop-m8c-contract.md": "159f14342c8abab2efdbb513b9846eb55864ac4ae708ffc03da43e21f32ed5f4",
+      "app/docs/todo-todo/product/frida-v1-document-workshop-todo.md": "e475ab75903be865bf053b6e2f348d7a2eab667653ba753cdea74834a2d6628f",
+      "app/tests/support/probe_obs_m4_draft_image.js": "21eab1c85582df409df544cb5cd5a4da6a54ab003551420dd34b9abb40d43367",
+      "app/tests/integration/frontend_browser/helpers/browser_test_helpers.js": "6266a22afe80dac12c84af81f513d71b0beb1eecf7ffa6d67039a5a673690a64",
+      "app/tests/integration/frontend_browser/helpers/document_workshop_fixture.js": "0508d4fc0b833e59e2d1e9bc3294fbd16a24fc25076fd08c60ce9d838f953e3f",
+      "app/web/app.js": "ce724d0349616e47d9e6bdc149599f05ca48ea13ed3e7aebfe5ffdb32a28d1d7",
+      "app/web/chat_document_workshop.js": "7c8094357269a6e0b5676ef345526ac40b6e50512042b7ef872f9d1aa4add5de",
+      "app/web/chat_image_generation.js": "7abe0f815593f62657836a262af31025048838ad9ca57253978efa7599be248d",
+      "app/web/styles.css": "1a9daeb7d1c74ad8a3784e2df5c2bcebc042d5ebedb60259bb5ea7fd5792f1b9",
+      "app/docs/states/audits/frida-v1-document-workshop-obs-m4-draft-image-20261010.md": "affba5e58db259644898bcaec47e3b2edb9fcfabe802386926a4b43e99566532",
+      "app/docs/states/baselines/document-workshop/frida-v1-document-workshop-obs-m4-draft-image-20261010.json": "23483f20f6de0a112540839f081f53950df0862c57fbcaf4e4a771677980f11f",
+      "node_modules/playwright/package.json": "f5c873af32da3a56849a77a73eb4e6acf9629d58564ba420077feea88800225c",
+      "node_modules/playwright-core/package.json": "d4b8727c495ff2632084e922ee1c7f19a608ed23d86e8f3b0ba0ff317eea58ec",
+      "node_modules/playwright-core/browsers.json": "469f17a82348978f79738981bc8af9b4e8516aac5a020018911fff39b755fe60",
+      "node_modules/playwright-core/lib/server/input.js": "e78db7e662c5fefa5725d04f58bf19e25ebe08fc9c9f0c7741ed6491d8910980",
+      "package-lock.json": "1bd14172d1d192763a94b52cd123eb410f266ce85acc2a02a20f8b1a343fcc6f"
+    },
+    "runtime_ids": [
+      "9840e30bd943",
+      "8bb58bc0a7da",
+      "4a7bd509c352",
+      "dbb69b0b44f1",
+      "2b56470f575d",
+      "bc1035db914f",
+      "ef165361800d",
+      "b5b4d766dcce",
+      "4e6ceaf250b7",
+      "6731481a3fef",
+      "95eaac820747",
+      "7367c48010b2",
+      "e372edbe2407",
+      "a80655b603ac",
+      "785b39037148",
+      "511023eefc56",
+      "cddb81c58897",
+      "7000fe873981",
+      "79258ca1daf1",
+      "ef881b522059",
+      "307ca6ce9df7",
+      "dcc505724792",
+      "9dc49e1bf943",
+      "807c8b135a2f",
+      "6cc6ffdc9737",
+      "9abed5fa8f09",
+      "a008ee74e95f",
+      "3f3f5eaf7a41",
+      "5be19a06285f",
+      "d798c5648164",
+      "e699a0c98dd4",
+      "de8789370d96"
+    ],
+    "runtime": "/platform-embeddings 9840e30bd943ab45f62850f27774addae43dbbeed7c8c19ffcdfd5f8df925f91 sha256:0067e98b596232700ace2d22bdeb665032135640f826656d16f09580aa5cda05 2026-10-05T00:37:36.473234169Z 0\n/platform-frida-v4-embedding-backend 8bb58bc0a7daf6026b11d64d1cd26fe493e93d029157e0acda82a65a642c45ea sha256:0067e98b596232700ace2d22bdeb665032135640f826656d16f09580aa5cda05 2026-10-05T00:37:35.499962212Z 0\n/platform-fridadev 4a7bd509c352fded59512efb914f8d31ba5e5155f2a0a95ea83f765a7bd4ff41 sha256:e520f196c8c1c316a10eb9b50b25a0b20091b4230338224724b249e9e7e24afc 2026-09-12T19:03:49.458046146Z 0\n/platform-homepage dbb69b0b44f1118b5c42973f51e1047e603a43a609ecaad887cbb98c2072f9d5 sha256:739d95a215ec59245a722ed4af5bee2a5fce2de90ce9ed67f9c0159d1a5c9ea9 2026-09-12T19:03:48.44302622Z 0\n/platform-fridadev-postgres 2b56470f575dbda49e9054012f7c88fbeb464619e401a94d86b2744fe7d3451b sha256:17a06c0a60bf6fb548a8493b8f6057dc830b791bbbe1f1ab706ca4b9d97c8180 2026-09-12T19:03:43.127876614Z 0\n/platform-doc-pipeline-db bc1035db914f55d3d76de5e54d46bcdc60bf2e42ecf088759abcbe06ac8556a2 sha256:75f5a96988cdf694a215073c3e9c001b706b371e2f94df3967f2efdec2787f6b 2026-09-12T19:03:42.714873424Z 0\n/platform-nextcloud-cron ef165361800d150ac7d726d4358952fc5e18afccfbd8d3937655dcd7516510fc sha256:ad18a83a8d2439515506ec10dfaeba0185ee6bb2dedc94c0b18df0af6ac077dd 2026-09-12T19:03:45.742584203Z 0\n/platform-nextcloud b5b4d766dcce366faed5948338ccd4a670cbced27b89712ad638adefd51c75f4 sha256:ad18a83a8d2439515506ec10dfaeba0185ee6bb2dedc94c0b18df0af6ac077dd 2026-09-12T19:03:45.189166984Z 0\n/platform-nextcloud-db 4e6ceaf250b76b371590d0c23a0fd123147bc3d30035fa43ce9bd72c02ac5902 sha256:ee11946f6627c6acb159ebe711dece12806273eac5124e17f0c320252978684f 2026-09-12T19:03:46.900322556Z 0\n/platform-n8n-runners 6731481a3fefcea29a73054c9e0e818e98ab51b2ce5a24874173fe91aebe8287 sha256:9361304b3b100e6007ff1b4608c21ba52e26e8f5f1b798068ed7a8869656d932 2026-09-12T19:03:43.441281455Z 0\n/platform-n8n 95eaac820747202ff25041e3e00c9c3504ceb1e87b85fc81583d66c0eec53933 sha256:05f8527a0e12dff0e5c121911a5d3e69c7523b2bfc886fc8f2c67672bf070d9f 2026-09-12T19:03:47.233802219Z 0\n/platform-nextcloud-redis 7367c48010b25fffef96795aadd8f5ee77eefa4123f04ee03572156513b57785 sha256:5509c0097c6064aa8a3b1df58f1d950e67090fffa6678ae8f3f1dc2385f12deb 2026-09-12T19:03:43.469917842Z 0\n/platform-valkey-browsing e372edbe2407e7f6202c8f71345398ce9c7cf800349cdc51d8dbe086df1247aa sha256:c326b3ef584399b57afe334c4952af7b464b81f2c69bc36297c6e7fe2db6e03a 2026-09-12T19:03:42.78071927Z 0\n/platform-redis a80655b603ac5d202dcf711d5f0b83b2f0988aba04e312a2e14fb9cfa179962e sha256:5509c0097c6064aa8a3b1df58f1d950e67090fffa6678ae8f3f1dc2385f12deb 2026-09-12T19:03:43.265323194Z 0\n/platform-caddy 785b3903714821086bcc7dbedab379b3b2a664078419e3befe11a61a178d10bf sha256:af555904a0961945f16bb323a501457b13a4f7e9bde969b145b97da80b38ecbe 2026-09-12T19:03:49.396199444Z 0\n/platform-whisper-api 511023eefc56ed7caa7df57b3b034300f6ea2e2ee1ea5851b54152ac1a585661 sha256:159aa4981c91007c249266742661a36d3b5faa75dc5ed4e944e28e3e1207a21f 2026-09-12T19:03:44.06714604Z 0\n/platform-crawl4ai cddb81c5889749d5ec1eba9558aa0f10ba46054b14f4b0bd5b960bbfaa7dbf10 sha256:420af2b6cf84f28c06bc24509e76f5b8e7cb98d2b3a88887c45e07b6325da7bb 2026-09-12T19:03:43.942826943Z 0\n/platform-crawl4ai-egress 7000fe873981aeb9c1f38b7c8b658f308fd695281021436604253f30c853047d sha256:420af2b6cf84f28c06bc24509e76f5b8e7cb98d2b3a88887c45e07b6325da7bb 2026-09-12T19:03:42.660598327Z 0\n/platform-frida-v4-status 79258ca1daf1119458045d89b5c7bb3579d8e784d3060c7586eb50682bea1be1 sha256:16de2eb6d94f280347976510e6adcd510b6526a421ff80eb61816cf6d9d2c84b 2026-09-12T19:03:43.960170096Z 0\n/platform-frida-v4-embedding ef881b52205945de3aa103e849b6e51b4466c96affa11ae2d29e9c8f72c292a1 sha256:d579f3058320a67ddf642f07d1036f73b0cb6e6836bade233f2ec19e0818aea0 2026-09-12T19:07:09.325822312Z 11\n/platform-doc-pipeline-api 307ca6ce9df7904979f196919cc3d6343d4dec5b1827729ec5d5481b4fbcf81e sha256:ce305171743ed9b9c20f5719515298b8d7df8e201fc67cc9f428a2dfb87fc9a2 2026-09-12T19:03:46.680269302Z 0\n/platform-doc-pipeline dcc5057247925e815158b4b76cbd305a9ae39a37f65295791e9fbd0ae403e72e sha256:161613b017172dca195874768e174dab0af40a397e2783ee1484d6f7763e0c7e 2026-09-12T19:03:47.286684782Z 0\n/platform-anythingllm 9dc49e1bf943b592c6f91f765a5baec8083f1af30af98e18779b37aebd469dbc sha256:2380f3b977b42d4f78a71c98d378959898b1a3f396a64f229085f3c8bac55087 2026-09-12T19:03:46.753254836Z 0\n/platform-authelia 807c8b135a2f7ba9dc47b6859b546f5386358d6611337d5a07b4165cf823e838 sha256:b62cc644c7e2fc1ff5b2f9ea155591baf9e787b5de153b0caa69505f01ab3f4e 2026-09-12T19:03:48.24958803Z 0\n/platform-frida-v4-reranker 6cc6ffdc97379b64e1ccebe1a75957cebafbd5c00d16838905bb7a60706fa783 sha256:bd46b030431c362554f781077db579286c8df681ad709d3da918d569914d28d4 2026-09-12T19:03:43.788829632Z 0\n/platform-frida-adminer 9abed5fa8f09e15c899f25b7b66c93623f7499eb060a5b4629247d0638c01f2a sha256:9bfdf8cbdb4105524b6efdd292bf7f30256f40f66c8e873196c3123b3148aef3 2026-09-12T19:03:48.958154237Z 0\n/platform-searxng a008ee74e95f60a46aeff53f4dbdd9678f1624f4edad83c820ca72fb6464a266 sha256:80c467c8612f6ca988df0e9e00f2f445267795bbd0ee4efe895d26279e4d9911 2026-09-12T19:03:49.304685687Z 0\n/platform-trilium 3f3f5eaf7a41933e4466b0c6d19317f6621e90bc9fff6ef48a76709ee47f2847 sha256:84c23388419bdce6c9c103dd741e011d6a934334cc2e48d48cc6f9dd30986db8 2026-09-12T19:03:43.785068681Z 0\n/platform-stirling-pdf 5be19a06285ffbb505c9d363564e409b4f116f0bc326ca28a3f12b0c1411fbf6 sha256:c767237a6101f3f954d35f529c7c8a9264c7002d6633df511ae4db5e1a2ddc77 2026-09-12T19:03:47.956307872Z 0\n/platform-doc-library d798c5648164136f2d9e35e063e4bb24cdf7d3830fa201a145e6400207712f74 sha256:b76de378d57272a1dd9091a05dd548a3639dfb792ebdbf95d06704d2950afdea 2026-09-12T19:03:46.617515175Z 0\n/platform-doc-pipeline-info e699a0c98dd43d0026ac4788cbf7ccc32970b3376d649be8d8823fb7f966992a sha256:b76de378d57272a1dd9091a05dd548a3639dfb792ebdbf95d06704d2950afdea 2026-09-12T19:03:46.342559276Z 0\n/platform-docker-socket-proxy de8789370d960db8f97f2fad5c956f4a2f028102b94ce0bcb8ae936d7a8db2f2 sha256:16bbd1209742dc156656caf35b18e51edfab62c24d29bf4c8d2353b785cefa1f 2026-09-12T19:03:43.127876272Z 0\n",
+    "image": "sha256:55dfaaa282c98d5f4d328676e36eca5203b6494b97d9ef3ba0608d9e939e9523 [\"mcr.microsoft.com/playwright:v1.54.0-jammy\"] [\"mcr.microsoft.com/playwright@sha256:f7bef147cc7292f206cc89f21cc2b8bed3e091d4a44cf63ce48c479630aa16c3\"]\n",
+    "owned_root": "/tmp/fridadev-obs-m4-focus-fix-20261010",
+    "owned_root_initially_absent": true,
+    "allowed_tracked": [
+      "app/tests/integration/frontend_browser/test_frontend_browser_document_preparation_m4.js",
+      "app/docs/states/specs/frida-v1-document-workshop-m4-contract.md",
+      "app/docs/states/specs/frida-v1-document-workshop-m8c-contract.md",
+      "app/docs/todo-todo/product/frida-v1-document-workshop-todo.md"
+    ]
+  },
+  "allowed_paths": [
+    "app/tests/integration/frontend_browser/test_frontend_browser_document_preparation_m4.js",
+    "app/docs/states/specs/frida-v1-document-workshop-m4-contract.md",
+    "app/docs/states/specs/frida-v1-document-workshop-m8c-contract.md",
+    "app/docs/todo-todo/product/frida-v1-document-workshop-todo.md",
+    "app/docs/states/baselines/document-workshop/frida-v1-document-workshop-m4-image-focus-fix-20261010.json"
+  ],
+  "patch": {
+    "file": "app/tests/integration/frontend_browser/test_frontend_browser_document_preparation_m4.js",
+    "wait_block": "      if (selector === '#btnImageGeneration') {\n        await page.waitForFunction(() =>\n          document.activeElement === document.querySelector('#imageGenerationPrompt')\n        );\n      }\n",
+    "after_sha256": "d18a13aedb5fd019706972e933f290d54e3eb73c16c43c7d27d32ede0e0540db",
+    "before_sha256": "3eb5643422e94bb1192230a8727bd19ce422c2d62391cc1ae2496678837554b2",
+    "removed_copy_sha256": "3eb5643422e94bb1192230a8727bd19ce422c2d62391cc1ae2496678837554b2",
+    "only_change": "five-line wait for actual image prompt focus; send, five other modes, assertions and timings unchanged"
+  },
+  "runs": {
+    "before": {
+      "argv": [
+        "docker",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--name",
+        "fridadev-obs-m4-focus-fix-before-20261010",
+        "--label",
+        "fridadev.proof=obs-m4-focus-fix-20261010",
+        "--network",
+        "none",
+        "--read-only",
+        "--tmpfs",
+        "/tmp:rw,nosuid,nodev",
+        "-v",
+        "/opt/platform/fridadev:/workspace:ro",
+        "-v",
+        "/home/tof/.cache/ms-playwright:/proof/browsers:ro",
+        "-w",
+        "/workspace",
+        "--entrypoint",
+        "/usr/bin/env",
+        "mcr.microsoft.com/playwright:v1.54.0-jammy",
+        "-i",
+        "PATH=/usr/local/bin:/usr/bin:/bin",
+        "HOME=/tmp",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "PLAYWRIGHT_BROWSERS_PATH=/proof/browsers",
+        "node",
+        "app/tests/support/probe_obs_m4_draft_image.js",
+        "adverse-reduced"
+      ],
+      "exit": 1,
+      "started_utc": "2026-10-10T10:36:21.939656+00:00",
+      "wall_seconds": 1.267672,
+      "log_sha256": "4ece5d27764f5ed044190b24cbce0a31632f51cd622658e29d9957828a1d1093",
+      "log_bytes": 17875,
+      "raw_log_encoding": "gzip+base64; decode with gzip.decompress(base64.b64decode(value))",
+      "raw_log_gzip_base64": "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"
+    },
+    "ready": {
+      "argv": [
+        "docker",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--name",
+        "fridadev-obs-m4-focus-fix-ready-20261010",
+        "--label",
+        "fridadev.proof=obs-m4-focus-fix-20261010",
+        "--network",
+        "none",
+        "--read-only",
+        "--tmpfs",
+        "/tmp:rw,nosuid,nodev",
+        "-v",
+        "/tmp/fridadev-obs-m4-focus-fix-20261010:/proof:ro",
+        "-v",
+        "/opt/platform/fridadev:/workspace:ro",
+        "-v",
+        "/home/tof/.cache/ms-playwright:/proof/browsers:ro",
+        "-w",
+        "/workspace",
+        "--entrypoint",
+        "/usr/bin/env",
+        "mcr.microsoft.com/playwright:v1.54.0-jammy",
+        "-i",
+        "PATH=/usr/local/bin:/usr/bin:/bin",
+        "HOME=/tmp",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "PLAYWRIGHT_BROWSERS_PATH=/proof/browsers",
+        "node",
+        "/proof/probe_fix.js",
+        "ready"
+      ],
+      "exit": 125,
+      "started_utc": "2026-10-10T10:39:51.069794+00:00",
+      "wall_seconds": 0.259897,
+      "log_sha256": "6e8c5e99c182a46f0235ea0c9068bff9386c2d4940119533b76ef6498824a3fd",
+      "log_bytes": 497,
+      "raw_log_encoding": "gzip+base64; decode with gzip.decompress(base64.b64decode(value))",
+      "raw_log_gzip_base64": "H4sIAAAAAAAC/2WQy27CMBBF9/2KEXtwnjTJtuqiq37DxB4TK7EHjQ2Iv68ThFrRlaW5R/dY17CeSQb4FGEBoXjmEAmssAeD5DkMYNEtZCAxaCFMBAnjDDbzmkNCF9aCf1CcnN/IAb4/vkAuITlPz/SBD+tZv94uAceF1qqYUNKvBc7CmmIcgLbvmou4cPqTu+DSM/S8GnO8UxN7UomtOmjUEykf9+cF7zdxpyntVpEwJxsBU6azJKOj8C2SxN3w/N5WCIZibsXkOGwTvOAPagA/Gye5Tl1R1OJGZbahFV9JsrpSXVm3RVvWTaWr7r2s+q4sqGoKLGxV03Esc1C/G+pM0R6Nzm/T264xbV/3LY5WeZITmRd9HpTQ7Dksd7B5TYj3mMivm86Bb+Hw9gO6e7D48QEAAA=="
+    },
+    "ready-v2": {
+      "argv": [
+        "docker",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--name",
+        "fridadev-obs-m4-focus-fix-ready-v2-20261010",
+        "--label",
+        "fridadev.proof=obs-m4-focus-fix-20261010",
+        "--network",
+        "none",
+        "--read-only",
+        "--tmpfs",
+        "/tmp:rw,nosuid,nodev",
+        "-v",
+        "/tmp/fridadev-obs-m4-focus-fix-20261010:/proof/control:ro",
+        "-v",
+        "/opt/platform/fridadev:/workspace:ro",
+        "-v",
+        "/home/tof/.cache/ms-playwright:/proof/browsers:ro",
+        "-w",
+        "/workspace",
+        "--entrypoint",
+        "/usr/bin/env",
+        "mcr.microsoft.com/playwright:v1.54.0-jammy",
+        "-i",
+        "PATH=/usr/local/bin:/usr/bin:/bin",
+        "HOME=/tmp",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "PLAYWRIGHT_BROWSERS_PATH=/proof/browsers",
+        "node",
+        "/proof/control/probe_fix.js",
+        "ready"
+      ],
+      "exit": 0,
+      "started_utc": "2026-10-10T10:40:15.468715+00:00",
+      "wall_seconds": 1.214425,
+      "log_sha256": "2c58c7ad7047623cfe8c4fa8e6dfdacd052f771b4014d68a21b8a6c550238360",
+      "log_bytes": 20447,
+      "raw_log_encoding": "gzip+base64; decode with gzip.decompress(base64.b64decode(value))",
+      "raw_log_gzip_base64": "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"
+    },
+    "held": {
+      "argv": [
+        "docker",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--name",
+        "fridadev-obs-m4-focus-fix-held-20261010",
+        "--label",
+        "fridadev.proof=obs-m4-focus-fix-20261010",
+        "--network",
+        "none",
+        "--read-only",
+        "--tmpfs",
+        "/tmp:rw,nosuid,nodev",
+        "-v",
+        "/tmp/fridadev-obs-m4-focus-fix-20261010:/proof/control:ro",
+        "-v",
+        "/opt/platform/fridadev:/workspace:ro",
+        "-v",
+        "/home/tof/.cache/ms-playwright:/proof/browsers:ro",
+        "-w",
+        "/workspace",
+        "--entrypoint",
+        "/usr/bin/env",
+        "mcr.microsoft.com/playwright:v1.54.0-jammy",
+        "-i",
+        "PATH=/usr/local/bin:/usr/bin:/bin",
+        "HOME=/tmp",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "PLAYWRIGHT_BROWSERS_PATH=/proof/browsers",
+        "node",
+        "/proof/control/probe_fix.js",
+        "held"
+      ],
+      "exit": 0,
+      "started_utc": "2026-10-10T10:40:31.635457+00:00",
+      "wall_seconds": 1.275334,
+      "log_sha256": "0ec3ddc7a248662fea41f8cc7df587d201c223f5e46f2f7967ec7f09beca1301",
+      "log_bytes": 21136,
+      "raw_log_encoding": "gzip+base64; decode with gzip.decompress(base64.b64decode(value))",
+      "raw_log_gzip_base64": "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"
+    },
+    "removed": {
+      "argv": [
+        "docker",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--name",
+        "fridadev-obs-m4-focus-fix-removed-20261010",
+        "--label",
+        "fridadev.proof=obs-m4-focus-fix-20261010",
+        "--network",
+        "none",
+        "--read-only",
+        "--tmpfs",
+        "/tmp:rw,nosuid,nodev",
+        "-v",
+        "/tmp/fridadev-obs-m4-focus-fix-20261010:/proof/control:ro",
+        "-v",
+        "/opt/platform/fridadev:/workspace:ro",
+        "-v",
+        "/home/tof/.cache/ms-playwright:/proof/browsers:ro",
+        "-w",
+        "/workspace",
+        "--entrypoint",
+        "/usr/bin/env",
+        "mcr.microsoft.com/playwright:v1.54.0-jammy",
+        "-i",
+        "PATH=/usr/local/bin:/usr/bin:/bin",
+        "HOME=/tmp",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "PLAYWRIGHT_BROWSERS_PATH=/proof/browsers",
+        "node",
+        "/proof/control/probe_fix.js",
+        "removed"
+      ],
+      "exit": 1,
+      "started_utc": "2026-10-10T10:40:42.468481+00:00",
+      "wall_seconds": 1.291486,
+      "log_sha256": "af980a478c5ba534e3e2188688daaf7da8d377271bdae2b2dfe061bdb2e47c45",
+      "log_bytes": 20742,
+      "raw_log_encoding": "gzip+base64; decode with gzip.decompress(base64.b64decode(value))",
+      "raw_log_gzip_base64": "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"
+    },
+    "m4": {
+      "argv": [
+        "docker",
+        "run",
+        "--rm",
+        "--pull=never",
+        "--name",
+        "fridadev-obs-m4-focus-fix-m4-20261010",
+        "--label",
+        "fridadev.proof=obs-m4-focus-fix-20261010",
+        "--network",
+        "none",
+        "--read-only",
+        "--tmpfs",
+        "/tmp:rw,nosuid,nodev",
+        "-v",
+        "/opt/platform/fridadev:/workspace:ro",
+        "-v",
+        "/home/tof/.cache/ms-playwright:/proof/browsers:ro",
+        "-w",
+        "/workspace",
+        "--entrypoint",
+        "/usr/bin/env",
+        "mcr.microsoft.com/playwright:v1.54.0-jammy",
+        "-i",
+        "PATH=/usr/local/bin:/usr/bin:/bin",
+        "HOME=/tmp",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "PLAYWRIGHT_BROWSERS_PATH=/proof/browsers",
+        "node",
+        "--test",
+        "--test-concurrency=1",
+        "app/tests/integration/frontend_browser/test_frontend_browser_document_preparation_m4.js"
+      ],
+      "exit": 0,
+      "started_utc": "2026-10-10T10:41:04.262691+00:00",
+      "wall_seconds": 19.49801,
+      "log_sha256": "46f294dc00dbac19abd43273a5f1ebb7d48d6ad53671e809d7e724593234a915",
+      "log_bytes": 5734,
+      "raw_log_encoding": "gzip+base64; decode with gzip.decompress(base64.b64decode(value))",
+      "raw_log_gzip_base64": "H4sIAAAAAAAC/8VYTW/jNhC951cQ2MNe1oSoL0q5ZS/FAk2xRVr0skBBSyObtUwKJOVt+us7pGzHCSRA8MrZS6CvzLz3OJx59B8PX8kBjJVaEZbcfSBP/dqBdffkMSV73SsHNekMdMII5z/qLViiFZBKKK1kJVrieqM+EQstVP5rq3tT4UdC1aTS+05UjnSgaqk296QGu3O6I63cbN2d3hFGVu+SipDVaoV/636I/vfe3pOClzTLyygr8I177uCefPTsP+ItpfT95KiF2Xk14purETKNipFnOU1ZzPLyJ4nRbf3/nisjuZkWl4lGpWAsK2gWZUnxc7U4lUV6Yymmi4JFrKAszng5a4tcIoN/O+3B+QwWUxq9MWARR+PAEAf7ThthnkkapQGbz7tuA5EKWqKgd0a08j8M0QoHBP+508qCFyQbBHmXdOObJU5pERcly2fJMsh9ytUYvcf42+caI+IK7RGn2PiUeyGVPUPzMBVge8Z1U400e+u550fui8UcJ8g5zYu04HwOQalCZTnpU3z7sHbqL1g/gTDV1i+SBXNAXRFa4wICrEF5AA/BGd2SNTTaANGdk3tpnawINA1Wb+DLB743SzFKP+UxLZKEleV19D/jpdSPuoYf5l9M8V8qx4QACWUJj4or1/9hg/UpFhGgnBJgqRzjAhQpjZKMF+xKAWq9hkX4s2hSgGVyjPLP4pwWEYuj7Dr+v2l8uQx/NsV/oRzj/BmjeRrnPL+O/5c9tt9fQMFxPv2wCvGUCotmGtciS2hS4rSbVQsGWi1qP0AdJrHnSbV+xmcNGMCBRb5Lt9W9wyddK579a4H+pobBvgTCRwO4RLhRVjzhlKdlmqRXsQre4xpe6QSvqwKOM4tyGmVplM9iNjiI9o2xRATBWwpFdFujX3jBZ5Xo7FY7gpXTtliRpHk5zx2t2XJBx31pmkQ05TnPZg1oJQ5yM0DwuwG9Yisr6UX1ImKyA1q/2tu+4P0uIf/55c0SBJZHE7Zo3HGiWRZRlpZRMmsONUJ6zd+Y2x1AZ19lt87jCZ1BXcI2gCWpNHaE4LPZ0XwtGXbcbiaMcjxrzCpYBe67NruAqsc2Nlj8EzgsMHNMaQl6emUrIzv3sqXshfAOTwTa+IWCcLQS1mI/FArLsK/w06H1Hi3Yu+adOHYUNOKczWjEX+PVY7qKGNlK32DCyfDhtC3fDorP5/PSp3N/9asoa4QnnYTTOQrJ4FfboIr3ZbfNMr4j8jKiBe7/ks0XoeoNroFDCBPYXuG/BGfgHz8YXx8KR+SIo0s5bpxvVJgy5TTJSx4l8+YZtmJxtgJS4QLg7dPvvw7F6x1D6NhDQeN+FmvrKR1fnGq5EbvBV0jVew4X7SDIwk7T7vbpJsqFlRQnYVTMMi/eXLXgt+TrH1T8uAbhV6LaCkfwBI3tvTmv3ND4TuiHQzdZt7raQR1kOLq3W4Qf/2kzTmiW8CyfsK+M0jhG7v6ZJeHS9hLvSISXHfaj4aHvdeHRy0D3d3Ynu+547XStw8UFAOwOjOGEzpKMFXf/A4ZrnlNmFgAA"
+    },
+    "validation": {
+      "argv": [
+        "python3",
+        "/tmp/fridadev-obs-m4-focus-fix-20261010/validate.py"
+      ],
+      "exit": 0,
+      "started_utc": "2026-10-10T10:43:14.340810+00:00",
+      "wall_seconds": 0.037842,
+      "log_sha256": "c80bbe89f760eba237f4a7e0b522b9520abcbb1a9ae42feacc29becf644f1795",
+      "log_bytes": 491,
+      "raw_log_encoding": "gzip+base64; decode with gzip.decompress(base64.b64decode(value))",
+      "raw_log_gzip_base64": "H4sIAAAAAAAC/01QQW7DMAy77xVGzh0w7Lg9xlAdNRWiypkkNxuK/n1y0mG9STZJkbwN5uDNho80LGCG43BIg6N5HpEd+nsV/kn4DcXTia74yiSY6AITphXIO8EaOQb2tlG72vv7YVf8m09AHPNbjAWkIHPc2nebaVn27d5XZCyOYy7AfIQydxNxvQEnxYnMUXF8OChg2B2ckcfc7eRF6xUlOK4N4+fSHMRzVZpIgHNPqU5Vsm43H7ClGnnEy6G0oOYl1FG1quVyxjI/YwUn2LBB8uxnreu/7NalVA+vEMzxM+FXoyswSn+7AAnJlI7NokeztKlb0iaJJK0K0YVukSJpuC7ds7vSsXX5rt5klrpKB0VW5aCEZN6Le7ZQ2qUxRJfD/eUX8y6wfOsBAAA="
+    },
+    "precleanup-gate": {
+      "argv": [
+        "python3",
+        "/tmp/fridadev-obs-m4-focus-fix-20261010/gate.py"
+      ],
+      "exit": 0,
+      "started_utc": "2026-10-10T10:46:19.310185+00:00",
+      "wall_seconds": 0.865216,
+      "log_sha256": "fdbb15ebac784ef692f514b8cdc42886a51ca34cb6dbda60012737b0e713a85a",
+      "log_bytes": 888,
+      "raw_log_encoding": "gzip+base64",
+      "raw_log_gzip_base64": "H4sIAAAAAAAC/51Ty27cMAy89ysEn6t4d5M0j18pCoGWaFuNLAoivZtF0X8v5U3TIEVz6MWgOKMZiqR/dCwgK3ePpivAjKH7rNEMjC014EgVrU8IeS0Negmdp6UklMYaITEqBCnRCYMrIHMT/NpBKX0gz30zQe4HlU0xa6TZdcEs9kT1iWcq/VhjAHvc278gu9zYuMCEdlSI7Rif7WF3+LLf7XdX35lyq+u9FRfUw8einrJU8HK1hP+TuPf/1BAKZNunL5XC6uUjocZ7I6Dmwn3MglMFiZT1rtpgDm6odGKsG8W9z7rfyq5ULHC565YbbVL3rY21kqAXHdEYE7YR7W8fHhRI5CE5nczTltxfa67CySWa2F3qiHJW6K5VqFtSmzI7buYks1ovFJCdxCXmadum4SxotQ4lHzGY4WzwWftkxnhE25bABEwC7c1zZKEaWw1aIo3sQHU1HLYlXLOfIU+X1ayoMHsqG3R7azwUWas6zAiBe9WZYjaNZkpa2Rzu9LDowy8E86pmLsttdJOXKJv2mvUB6NpMQSus7P54P5rrg3LolLV/bxgwaBdEYalr+wt4Bq3GBSzaHMw+alte2/BC+/npF6eiyKZ4AwAA"
+    },
+    "owned-cleanup": {
+      "argv": [
+        "python3",
+        "-c",
+        "import base64,datetime,gzip,hashlib,json,os,shutil,stat,subprocess\nfrom pathlib import Path\nR=Path('/opt/platform/fridadev');P=R/'app/docs/states/baselines/document-workshop/frida-v1-document-workshop-m4-image-focus-fix-20261010.json'\nd=json.loads(P.read_text());E=Path(d['cleanup']['root'])\nassert E==Path('/tmp/fridadev-obs-m4-focus-fix-20261010') and E.resolve()==E and not E.is_symlink()\nassert E.lstat().st_uid==os.getuid() and stat.S_ISDIR(E.lstat().st_mode)\nassert d['initial']['owned_root_initially_absent'] and d['precommit']['before_cleanup']['status']=='passed'\nassert d['cleanup']['status']=='pending'\nassert subprocess.check_output(['docker','ps','-aq','--filter','label=fridadev.proof=obs-m4-focus-fix-20261010'],text=True).strip()==''\nmanifest=[]\nfor f in sorted(E.iterdir()):\n assert not f.is_symlink() and stat.S_ISREG(f.lstat().st_mode),f\n raw=f.read_bytes();text=raw.decode();key=f.stem\n if f.name in d['proof_programs']:\n  assert text==d['proof_programs'][f.name]['source'];location='proof_programs.'+f.name\n elif f.name=='probe_fix_v1.js':\n  assert text==d['proof_programs']['probe_fix.js']['source'].replace('/proof/control/test-without-wait.js','/proof/test-without-wait.js');location='incidents[0].v1_source_derivation'\n elif f.suffix=='.log' and key in d['runs']:\n  assert raw==gzip.decompress(base64.b64decode(d['runs'][key]['raw_log_gzip_base64']));location='runs.'+key+'.raw_log_gzip_base64'\n elif f.suffix=='.json' and key in d['runs']:\n  assert all(d['runs'][key][k]==v for k,v in json.loads(text).items());location='runs.'+key+' (original metadata subset)'\n elif f.name=='initial.json':\n  assert json.loads(text)==d['initial'];location='initial'\n elif f.name in ('test-before.js','test-without-wait.js'):\n  assert hashlib.sha256(raw).hexdigest()==d['patch']['before_sha256'];location='immutable initial HEAD:'+d['patch']['file']\n elif f.name.endswith('-argv.json'):\n  label=f.name.removesuffix('-argv.json');assert json.loads(text)==d['runs'][label]['argv'];location='runs.'+label+'.argv'\n elif f.name=='effective-isolation.json':\n  assert json.loads(text)==d['isolation']['effective_m4'];location='isolation.effective_m4'\n else:raise AssertionError('Owned file not durably preserved: '+f.name)\n manifest.append({'name':f.name,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest(),'durable_location':location})\nd['cleanup']={'status':'removal_in_progress','root':str(E),'manifest':manifest,'preservation_verified_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'owned_containers_absent':True,'scope':'only this exclusively owned root; no shared cache or foreign resource removed','host_sockets':'none created; browser processes/sockets lived in disposable container tmpfs'}\nP.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\\n')\nshutil.rmtree(E);assert not E.exists() and not E.is_symlink()\nd['cleanup']['status']='removed_verified';d['cleanup']['verified_absent_utc']=datetime.datetime.now(datetime.timezone.utc).isoformat()\nP.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\\n')\nprint(json.dumps({'status':'removed_verified','root':str(E),'archived_files':len(manifest),'owned_containers_absent':True,'shared_caches_preserved':True}))\n"
+      ],
+      "exit": 0,
+      "started_utc": "2026-10-10T10:47:36.628546+00:00",
+      "wall_seconds": 0.056177,
+      "log_sha256": "a22049ade2dce27304d4250ea6e5ef5a867fcf75aa8d54295a536c0bd2ede441",
+      "log_bytes": 170,
+      "raw_log_encoding": "gzip+base64",
+      "raw_log_gzip_base64": "H4sIAAAAAAAC/y2MQQrCMBBF955CsjY0reLCy5RpMiEDJlNm0iiIdzcBt++//z5GK9RDzeNsBDM3DGtDoUgYzKUz5jq2qeZ9ikIBAjbLm9p8s5H9oTbS2y5uuc9uduMC4hONTqQnjvDVdcqv0pHnUoEKiq6wKZbRrnJgFzSBDAN8Ql13QUXplb/wPf0AHUyIbqoAAAA="
+    },
+    "final-gate": {
+      "argv": [
+        "python3",
+        "-c",
+        "import base64,gzip,hashlib,json,re,subprocess\nfrom pathlib import Path\nR=Path('/opt/platform/fridadev');P=R/'app/docs/states/baselines/document-workshop/frida-v1-document-workshop-m4-image-focus-fix-20261010.json'\nd=json.loads(P.read_text());initial=d['initial'];allowed=set(d['allowed_paths']);E=Path(d['cleanup']['root'])\ndef call(*args):return subprocess.check_output(args,cwd=R,text=True)\ndef sha(b):return hashlib.sha256(b).hexdigest()\nassert call('git','rev-parse','--show-toplevel').strip()==str(R)\nassert call('git','branch','--show-current').strip()==initial['branch']\nassert call('git','rev-parse','HEAD').strip()==initial['head']\nassert call('git','rev-parse','@{u}').strip()==initial['upstream']\nassert call('git','rev-list','--left-right','--count','HEAD...@{u}').split()==['0','0']\nassert call('git','for-each-ref','--format=%(refname) %(objectname)','refs/heads/','refs/remotes/origin/')==initial['refs']\nassert call('git','ls-remote','--heads','origin')==initial['remote_heads']\nassert call('git','diff','--cached','--name-only')==''\nstatus=call('git','status','--porcelain','-z').rstrip('\\0').split('\\0');assert {row[3:] for row in status}==allowed,status\nbefore=call('git','show',initial['head']+':'+d['patch']['file']);current=(R/d['patch']['file']).read_text();wait=d['patch']['wait_block']\nassert current.count(wait)==1 and current.replace(wait,'')==before\nassert sha(current.encode())==d['patch']['after_sha256']\nassert sha(before.encode())==d['patch']['before_sha256']==d['proof_copy']['sha256']\nprotected={p:sha((R/p).read_bytes()) for p in call('git','ls-tree','-r','--name-only',initial['head']).splitlines() if p not in initial['allowed_tracked']}\nassert len(protected)==initial['protected_tracked_count']\nassert sha(json.dumps(protected,sort_keys=True,separators=(',',':')).encode())==initial['protected_aggregate_sha256']\nfor p,h in initial['sha256'].items():\n if p not in initial['allowed_tracked']:assert sha((R/p).read_bytes())==h,p\nfor k,meta in d['proof_programs'].items():assert sha(meta['source'].encode())==meta['sha256'],k\nv1=d['proof_programs']['probe_fix.js']['source'].replace('/proof/control/test-without-wait.js','/proof/test-without-wait.js')\nassert sha(v1.encode())==d['incidents'][0]['v1_source_sha256']\nfor k,meta in d['runs'].items():\n raw=gzip.decompress(base64.b64decode(meta['raw_log_gzip_base64']))\n assert sha(raw)==meta['log_sha256'] and len(raw)==meta['log_bytes'],k\n assert meta['exit']==(125 if k=='ready' else 1 if k in ('before','removed') else 0),k\nassert d['validation']['status']=='passed'\nassert d['validation']['suite']=={'tests':22,'pass':22,'fail':0,'cancelled':0,'skipped':0}\nassert d['observations']['held']['held_before_release']['fillCalls']==d['observations']['held']['held_before_release']['insertCalls']==0\nfor label in ('ready-v2','held'):\n x=d['observations'][label]\n assert x['original_callback_completed'] and x['test_sha256']==d['patch']['after_sha256']\n assert x['outcome']['snapshot']['draftIntact'] and x['outcome']['snapshot']['imagePromptLength']==0\nassert d['observations']['removed']['test_sha256']==d['patch']['before_sha256']\nassert d['observations']['removed']['error']['actual']=='' and d['observations']['removed']['error']['expected']=='Brouillon intact'\nlinks=0\nfor p in initial['allowed_tracked'][1:]:\n f=R/p\n for link in re.findall(r'\\]\\(([^)]+)\\)',f.read_text()):\n  if '://' in link or link.startswith(('#','mailto:')):continue\n  assert (f.parent/link.split('#')[0]).resolve().exists(),(p,link);links+=1\nassert call('docker','ps','-aq','--filter','label=fridadev.proof=obs-m4-focus-fix-20261010').strip()==''\nassert call('docker','inspect','--format','{{.Name}} {{.Id}} {{.Image}} {{.State.StartedAt}} {{.RestartCount}}',*initial['runtime_ids'])==initial['runtime']\nassert call('docker','image','inspect','--format','{{.Id}} {{json .RepoTags}} {{json .RepoDigests}}','mcr.microsoft.com/playwright:v1.54.0-jammy')==initial['image']\nassert call('git','diff','--check')==''\ncleaned=d['cleanup']['status']=='removed_verified'\nif cleaned:assert not E.exists() and not E.is_symlink()\nelse:assert d['cleanup']['status']=='pending' and E.is_dir() and not E.is_symlink()\nprint(json.dumps({'status':'passed','phase':'final' if cleaned else 'before-cleanup','cleanup_complete':cleaned,\n 'allowed_paths':sorted(allowed),'protected_files':len(protected),'local_links':links,'raw_logs_integrity':len(d['runs']),\n 'assertions_send_other_modes_timings':'byte-preserved by exact five-line delta','historical_proofs_and_probe':'unchanged',\n 'refs_scope':'55 captured heads/origin refs plus 27 remote heads unchanged before commit','runtime_containers_unchanged':len(initial['runtime_ids']),\n 'owned_containers_absent':True,'shared_dependencies_preserved':True}))\n"
+      ],
+      "exit": 0,
+      "started_utc": "2026-10-10T10:47:36.786941+00:00",
+      "wall_seconds": 0.78474,
+      "log_sha256": "399678fa945b1dd62cfbb19fe62bb39965b03dabd08d443188e95d4be5ebe8ac",
+      "log_bytes": 878,
+      "raw_log_encoding": "gzip+base64",
+      "raw_log_gzip_base64": "H4sIAAAAAAAC/51Ty27bMBC89ysIncvIduK2ya8UBbEiVxIbiktwV3aMov/epdwmQYrm0ItA7gxn9qUfHQvIyt2D6QowY+g+6mkGxhYaY4bUIj4h5LU4T0tJKA2UuqIikBKdMbgCMjeZrx2U0gfy3Ddp5H5QsRSznjS6LpjFnqk+8kylH2sMYE97+xdklzsbF5jQjgqxHeOTPewOn/a7/e7mO1Nuab214oJ6eV/UU5YKXm6W8H8SX/w/NYQC2fbpS6WwenlPqPFeCai5cB+z4FRBImV9qzaYgxsqnRnrRnFvo+6PsisVC1zfuuVOm9R9a8OsJOhFRzTGhG1E++P9vQKJPCSnk3ncgvtbjVU4u0QTu2seUS4KNXLbjdqU2XEzJ5nVeqGA7CQuMU/bDg0XQat5KPmEwQwXg0/aJzPGE9q2BCZgEmg1z5GFamw5aIo0sgPV1eOwrd6a/Qx5ui5kRYXZU9mg49F4KLJWdZgRAveqM8VsGs2UtLI5fNbLooVfCeZZzQw4UkWji7xE2bTXrAWgazMFzbCye/F+MLcH5dA5a/9eMWDQLsjLX8AzaDYuYNHmYPZR2/Lcht+0nx9+AVVYiQtuAwAA"
+    }
+  },
+  "observations": {
+    "before": {
+      "mode": "adverse-reduced",
+      "helper_prefix_sha256": "e55c0effdfa196cc79d495edbe6b0b14eee70240f2e3e192d534a0506af58adf",
+      "historical_sha256": "3eb5643422e94bb1192230a8727bd19ce422c2d62391cc1ae2496678837554b2",
+      "outcome": {
+        "snapshot": {
+          "draftLength": 0,
+          "draftIntact": false,
+          "workshopHidden": false,
+          "workshopState": "editing",
+          "imageHidden": false,
+          "imageExpanded": "true",
+          "imagePromptLength": 16,
+          "imagePromptHasDraft": true,
+          "optimisticUsers": 0,
+          "activeElement": "BUTTON"
+        },
+        "normalCalls": 0,
+        "documentaryCalls": 0,
+        "imageCalls": 0,
+        "status": "Mode incompatible : désactivez les autres outils pour préparer le document. Votre brouillon est conservé."
+      },
+      "events": [
+        {
+          "seq": 0,
+          "ms": 332.40000009536743,
+          "kind": "focus-barrier-armed",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": true,
+            "imageExpanded": "false",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "BODY"
+          }
+        },
+        {
+          "seq": 1,
+          "ms": 381.1000003814697,
+          "kind": "focus-barrier-reached",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "btnImageGeneration"
+          }
+        },
+        {
+          "seq": 2,
+          "ms": 425,
+          "kind": "insert-barrier-reached",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "message"
+          }
+        },
+        {
+          "seq": 3,
+          "ms": 443.90000009536743,
+          "kind": "independent-focus-release-during-fill",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "message"
+          }
+        },
+        {
+          "seq": 4,
+          "ms": 444,
+          "kind": "focus-release-before",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "message"
+          }
+        },
+        {
+          "seq": 5,
+          "ms": 444.6000003814697,
+          "kind": "focus-release-after",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "imageGenerationPrompt"
+          }
+        },
+        {
+          "seq": 6,
+          "ms": 447.40000009536743,
+          "kind": "independent-insert-release",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "imageGenerationPrompt"
+          }
+        },
+        {
+          "seq": 7,
+          "ms": 448.6000003814697,
+          "kind": "real-insert-before",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "imageGenerationPrompt"
+          }
+        },
+        {
+          "seq": 8,
+          "ms": 451.30000019073486,
+          "kind": "real-insert-after",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 16,
+            "imagePromptHasDraft": true,
+            "optimisticUsers": 0,
+            "activeElement": "imageGenerationPrompt"
+          }
+        }
+      ],
+      "error": {
+        "name": "AssertionError",
+        "message": "#btnImageGeneration\n+ actual - expected\n\n+ ''\n- 'Brouillon intact'\n",
+        "actual": "",
+        "expected": "Brouillon intact",
+        "stack": "AssertionError [ERR_ASSERTION]: #btnImageGeneration\n+ actual - expected\n\n+ ''\n- 'Brouillon intact'\n\n    at /workspace/app/tests/support/probe_obs_m4_draft_image.js:180:16\n    at async openBrowserPage (/workspace/app/tests/integration/frontend_browser/helpers/browser_test_helpers.js:81:5)\n    at async /workspace/app/tests/support/probe_obs_m4_draft_image.js:131:5"
+      },
+      "versions": {
+        "node": "v22.17.0",
+        "playwright": "1.59.1",
+        "chromium": "147.0.7727.15"
+      },
+      "causalChecks": {
+        "status": "passed",
+        "focusReached": true,
+        "focusReleased": true,
+        "insertReached": true,
+        "snapshot": {
+          "draftLength": 0,
+          "draftIntact": false,
+          "workshopHidden": false,
+          "workshopState": "editing",
+          "imageHidden": false,
+          "imageExpanded": "true",
+          "imagePromptLength": 16,
+          "imagePromptHasDraft": true,
+          "optimisticUsers": 0,
+          "activeElement": "BUTTON"
+        }
+      },
+      "patches": {
+        "chat_image_generation.js": {
+          "original_sha256": "7abe0f815593f62657836a262af31025048838ad9ca57253978efa7599be248d",
+          "instrumented_sha256": "37d2d2a95ab2ba333464ebaefeaaefc3b6d8f059561cf2ed294488863616f6ea",
+          "original_bytes": 12513
+        }
+      },
+      "complete_result": "decoded runs.before raw log, including static instrumented JS"
+    },
+    "ready-v2": {
+      "mode": "ready",
+      "test_sha256": "d18a13aedb5fd019706972e933f290d54e3eb73c16c43c7d27d32ede0e0540db",
+      "checked_test_sha256": "d18a13aedb5fd019706972e933f290d54e3eb73c16c43c7d27d32ede0e0540db",
+      "helper_prefix_sha256": "e55c0effdfa196cc79d495edbe6b0b14eee70240f2e3e192d534a0506af58adf",
+      "waitCalls": 1,
+      "fillCalls": 1,
+      "insertCalls": 1,
+      "actual_wait_function": "() =>\n          document.activeElement === document.querySelector('#imageGenerationPrompt')",
+      "original_callback_completed": true,
+      "outcome": {
+        "snapshot": {
+          "draftLength": 16,
+          "draftIntact": true,
+          "workshopHidden": false,
+          "workshopState": "editing",
+          "imageHidden": false,
+          "imageExpanded": "true",
+          "imagePromptLength": 0,
+          "imagePromptHasDraft": false,
+          "optimisticUsers": 0,
+          "activeElement": "BUTTON"
+        },
+        "normalCalls": 0,
+        "documentaryCalls": 0,
+        "imageCalls": 0,
+        "status": "Mode incompatible : désactivez les autres outils pour préparer le document. Votre brouillon est conservé."
+      },
+      "events": [
+        {
+          "seq": 0,
+          "ms": 196.2000002861023,
+          "kind": "focus-barrier-armed",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": true,
+            "workshopState": null,
+            "imageHidden": true,
+            "imageExpanded": "false",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "BODY"
+          }
+        },
+        {
+          "seq": 1,
+          "ms": 344.30000019073486,
+          "kind": "focus-barrier-reached",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "btnImageGeneration"
+          }
+        },
+        {
+          "seq": 2,
+          "ms": 380.09999990463257,
+          "kind": "independent-release-before-test-wait",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "btnImageGeneration"
+          }
+        },
+        {
+          "seq": 3,
+          "ms": 380.30000019073486,
+          "kind": "focus-release-before",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "btnImageGeneration"
+          }
+        },
+        {
+          "seq": 4,
+          "ms": 380.7000002861023,
+          "kind": "focus-release-after",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "imageGenerationPrompt"
+          }
+        },
+        {
+          "seq": 5,
+          "ms": 382.40000009536743,
+          "kind": "test-focus-wait-entered",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "imageGenerationPrompt"
+          }
+        },
+        {
+          "seq": 6,
+          "ms": 386,
+          "kind": "test-focus-wait-resolved",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "imageGenerationPrompt"
+          }
+        },
+        {
+          "seq": 7,
+          "ms": 387.7000002861023,
+          "kind": "actual-send-fill-called",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "imageGenerationPrompt"
+          }
+        },
+        {
+          "seq": 8,
+          "ms": 398.59999990463257,
+          "kind": "insert-barrier-reached",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "message"
+          }
+        },
+        {
+          "seq": 9,
+          "ms": 400,
+          "kind": "real-insert-before",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "message"
+          }
+        },
+        {
+          "seq": 10,
+          "ms": 401.30000019073486,
+          "kind": "dom-input",
+          "target": "message",
+          "trusted": true,
+          "snapshot": {
+            "draftLength": 16,
+            "draftIntact": true,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "message"
+          }
+        },
+        {
+          "seq": 11,
+          "ms": 402.5,
+          "kind": "real-insert-after",
+          "snapshot": {
+            "draftLength": 16,
+            "draftIntact": true,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "message"
+          }
+        },
+        {
+          "seq": 12,
+          "ms": 449.2000002861023,
+          "kind": "dom-submit",
+          "target": "ask",
+          "trusted": true,
+          "snapshot": {
+            "draftLength": 16,
+            "draftIntact": true,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "BUTTON"
+          }
+        }
+      ],
+      "versions": {
+        "node": "v22.17.0",
+        "playwright": "1.59.1",
+        "chromium": "147.0.7727.15"
+      },
+      "patches": {
+        "chat_image_generation.js": {
+          "original_sha256": "7abe0f815593f62657836a262af31025048838ad9ca57253978efa7599be248d",
+          "instrumented_sha256": "37d2d2a95ab2ba333464ebaefeaaefc3b6d8f059561cf2ed294488863616f6ea",
+          "original_bytes": 12513
+        }
+      },
+      "complete_result": "decoded runs.ready-v2 raw log, including static instrumented JS"
+    },
+    "held": {
+      "mode": "held",
+      "test_sha256": "d18a13aedb5fd019706972e933f290d54e3eb73c16c43c7d27d32ede0e0540db",
+      "checked_test_sha256": "d18a13aedb5fd019706972e933f290d54e3eb73c16c43c7d27d32ede0e0540db",
+      "helper_prefix_sha256": "e55c0effdfa196cc79d495edbe6b0b14eee70240f2e3e192d534a0506af58adf",
+      "waitCalls": 1,
+      "fillCalls": 1,
+      "insertCalls": 1,
+      "actual_wait_function": "() =>\n          document.activeElement === document.querySelector('#imageGenerationPrompt')",
+      "held_before_release": {
+        "focusReached": true,
+        "focusReleased": false,
+        "snapshot": {
+          "draftLength": 0,
+          "draftIntact": false,
+          "workshopHidden": false,
+          "workshopState": "editing",
+          "imageHidden": false,
+          "imageExpanded": "true",
+          "imagePromptLength": 0,
+          "imagePromptHasDraft": false,
+          "optimisticUsers": 0,
+          "activeElement": "btnImageGeneration"
+        },
+        "waitResolved": false,
+        "fillCalls": 0,
+        "insertCalls": 0
+      },
+      "original_callback_completed": true,
+      "outcome": {
+        "snapshot": {
+          "draftLength": 16,
+          "draftIntact": true,
+          "workshopHidden": false,
+          "workshopState": "editing",
+          "imageHidden": false,
+          "imageExpanded": "true",
+          "imagePromptLength": 0,
+          "imagePromptHasDraft": false,
+          "optimisticUsers": 0,
+          "activeElement": "BUTTON"
+        },
+        "normalCalls": 0,
+        "documentaryCalls": 0,
+        "imageCalls": 0,
+        "status": "Mode incompatible : désactivez les autres outils pour préparer le document. Votre brouillon est conservé."
+      },
+      "events": [
+        {
+          "seq": 0,
+          "ms": 183.59999990463257,
+          "kind": "focus-barrier-armed",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": true,
+            "workshopState": null,
+            "imageHidden": true,
+            "imageExpanded": "false",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "BODY"
+          }
+        },
+        {
+          "seq": 1,
+          "ms": 353.8999996185303,
+          "kind": "focus-barrier-reached",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "btnImageGeneration"
+          }
+        },
+        {
+          "seq": 2,
+          "ms": 371,
+          "kind": "test-focus-wait-entered",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "btnImageGeneration"
+          }
+        },
+        {
+          "seq": 3,
+          "ms": 373.3999996185303,
+          "kind": "held-condition-observed",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "btnImageGeneration"
+          }
+        },
+        {
+          "seq": 4,
+          "ms": 375.2999997138977,
+          "kind": "independent-release-while-test-waits",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "btnImageGeneration"
+          }
+        },
+        {
+          "seq": 5,
+          "ms": 375.5,
+          "kind": "focus-release-before",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "btnImageGeneration"
+          }
+        },
+        {
+          "seq": 6,
+          "ms": 375.8999996185303,
+          "kind": "focus-release-after",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "imageGenerationPrompt"
+          }
+        },
+        {
+          "seq": 7,
+          "ms": 407.3999996185303,
+          "kind": "test-focus-wait-resolved",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "imageGenerationPrompt"
+          }
+        },
+        {
+          "seq": 8,
+          "ms": 409.69999980926514,
+          "kind": "actual-send-fill-called",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "imageGenerationPrompt"
+          }
+        },
+        {
+          "seq": 9,
+          "ms": 419.19999980926514,
+          "kind": "insert-barrier-reached",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "message"
+          }
+        },
+        {
+          "seq": 10,
+          "ms": 420.59999990463257,
+          "kind": "real-insert-before",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "message"
+          }
+        },
+        {
+          "seq": 11,
+          "ms": 422.3999996185303,
+          "kind": "dom-input",
+          "target": "message",
+          "trusted": true,
+          "snapshot": {
+            "draftLength": 16,
+            "draftIntact": true,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "message"
+          }
+        },
+        {
+          "seq": 12,
+          "ms": 423.8999996185303,
+          "kind": "real-insert-after",
+          "snapshot": {
+            "draftLength": 16,
+            "draftIntact": true,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "message"
+          }
+        },
+        {
+          "seq": 13,
+          "ms": 473.69999980926514,
+          "kind": "dom-submit",
+          "target": "ask",
+          "trusted": true,
+          "snapshot": {
+            "draftLength": 16,
+            "draftIntact": true,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "BUTTON"
+          }
+        }
+      ],
+      "versions": {
+        "node": "v22.17.0",
+        "playwright": "1.59.1",
+        "chromium": "147.0.7727.15"
+      },
+      "patches": {
+        "chat_image_generation.js": {
+          "original_sha256": "7abe0f815593f62657836a262af31025048838ad9ca57253978efa7599be248d",
+          "instrumented_sha256": "37d2d2a95ab2ba333464ebaefeaaefc3b6d8f059561cf2ed294488863616f6ea",
+          "original_bytes": 12513
+        }
+      },
+      "complete_result": "decoded runs.held raw log, including static instrumented JS"
+    },
+    "removed": {
+      "mode": "removed",
+      "test_sha256": "3eb5643422e94bb1192230a8727bd19ce422c2d62391cc1ae2496678837554b2",
+      "checked_test_sha256": "d18a13aedb5fd019706972e933f290d54e3eb73c16c43c7d27d32ede0e0540db",
+      "helper_prefix_sha256": "e55c0effdfa196cc79d495edbe6b0b14eee70240f2e3e192d534a0506af58adf",
+      "waitCalls": 0,
+      "fillCalls": 1,
+      "insertCalls": 1,
+      "original_callback_completed": false,
+      "outcome": {
+        "snapshot": {
+          "draftLength": 0,
+          "draftIntact": false,
+          "workshopHidden": false,
+          "workshopState": "editing",
+          "imageHidden": false,
+          "imageExpanded": "true",
+          "imagePromptLength": 16,
+          "imagePromptHasDraft": true,
+          "optimisticUsers": 0,
+          "activeElement": "BUTTON"
+        },
+        "normalCalls": 0,
+        "documentaryCalls": 0,
+        "imageCalls": 0,
+        "status": "Mode incompatible : désactivez les autres outils pour préparer le document. Votre brouillon est conservé."
+      },
+      "events": [
+        {
+          "seq": 0,
+          "ms": 187.2000002861023,
+          "kind": "focus-barrier-armed",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": true,
+            "workshopState": null,
+            "imageHidden": true,
+            "imageExpanded": "false",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "BODY"
+          }
+        },
+        {
+          "seq": 1,
+          "ms": 369.80000019073486,
+          "kind": "focus-barrier-reached",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "btnImageGeneration"
+          }
+        },
+        {
+          "seq": 2,
+          "ms": 410.30000019073486,
+          "kind": "actual-send-fill-called",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "btnImageGeneration"
+          }
+        },
+        {
+          "seq": 3,
+          "ms": 419.80000019073486,
+          "kind": "insert-barrier-reached",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "message"
+          }
+        },
+        {
+          "seq": 4,
+          "ms": 437.09999990463257,
+          "kind": "independent-release-during-fill",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "message"
+          }
+        },
+        {
+          "seq": 5,
+          "ms": 437.09999990463257,
+          "kind": "focus-release-before",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "message"
+          }
+        },
+        {
+          "seq": 6,
+          "ms": 437.5,
+          "kind": "focus-release-after",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "imageGenerationPrompt"
+          }
+        },
+        {
+          "seq": 7,
+          "ms": 440.40000009536743,
+          "kind": "independent-insert-release",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "imageGenerationPrompt"
+          }
+        },
+        {
+          "seq": 8,
+          "ms": 441.5,
+          "kind": "real-insert-before",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 0,
+            "imagePromptHasDraft": false,
+            "optimisticUsers": 0,
+            "activeElement": "imageGenerationPrompt"
+          }
+        },
+        {
+          "seq": 9,
+          "ms": 442.90000009536743,
+          "kind": "dom-input",
+          "target": "imageGenerationPrompt",
+          "trusted": true,
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 16,
+            "imagePromptHasDraft": true,
+            "optimisticUsers": 0,
+            "activeElement": "imageGenerationPrompt"
+          }
+        },
+        {
+          "seq": 10,
+          "ms": 444.09999990463257,
+          "kind": "real-insert-after",
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 16,
+            "imagePromptHasDraft": true,
+            "optimisticUsers": 0,
+            "activeElement": "imageGenerationPrompt"
+          }
+        },
+        {
+          "seq": 11,
+          "ms": 499.30000019073486,
+          "kind": "dom-submit",
+          "target": "ask",
+          "trusted": true,
+          "snapshot": {
+            "draftLength": 0,
+            "draftIntact": false,
+            "workshopHidden": false,
+            "workshopState": "editing",
+            "imageHidden": false,
+            "imageExpanded": "true",
+            "imagePromptLength": 16,
+            "imagePromptHasDraft": true,
+            "optimisticUsers": 0,
+            "activeElement": "BUTTON"
+          }
+        }
+      ],
+      "error": {
+        "name": "AssertionError",
+        "message": "#btnImageGeneration\n+ actual - expected\n\n+ ''\n- 'Brouillon intact'\n",
+        "actual": "",
+        "expected": "Brouillon intact",
+        "stack": "AssertionError [ERR_ASSERTION]: #btnImageGeneration\n+ actual - expected\n\n+ ''\n- 'Brouillon intact'\n\n    at /proof/control/test-without-wait.js:149:14\n    at async /proof/control/probe_fix.js:190:22\n    at async openBrowserPage (/workspace/app/tests/integration/frontend_browser/helpers/browser_test_helpers.js:81:5)\n    at async runActualPage (/proof/control/probe_fix.js:137:3)\n    at async Object.callback (/proof/control/test-without-wait.js:145:5)\n    at async /proof/control/probe_fix.js:206:7"
+      },
+      "versions": {
+        "node": "v22.17.0",
+        "playwright": "1.59.1",
+        "chromium": "147.0.7727.15"
+      },
+      "patches": {
+        "chat_image_generation.js": {
+          "original_sha256": "7abe0f815593f62657836a262af31025048838ad9ca57253978efa7599be248d",
+          "instrumented_sha256": "37d2d2a95ab2ba333464ebaefeaaefc3b6d8f059561cf2ed294488863616f6ea",
+          "original_bytes": 12513
+        }
+      },
+      "complete_result": "decoded runs.removed raw log, including static instrumented JS"
+    }
+  },
+  "proof_programs": {
+    "probe_fix.js": {
+      "sha256": "ed7967fe838fde00d3d0a8c298d1ba7c05ea3e45b27f4c8eb6298915d0f36909",
+      "source": "'use strict';\n// Autonomous diagnostic: historical helper extraction, real DOM/CSS/handlers,\n// fetch simulated by the unchanged M4 fixture. No historical file is rewritten.\nconst assert = require('node:assert/strict');\nconst fs = require('node:fs');\nconst path = require('node:path');\nconst vm = require('node:vm');\nconst crypto = require('node:crypto');\nconst { createRequire } = require('node:module');\nconst root = '/workspace';\nconst mode = process.argv[2];\nassert.ok(['ready','held','removed'].includes(mode));\nconst historical = path.join(root, 'app/tests/integration/frontend_browser/test_frontend_browser_document_preparation_m4.js');\nconst checkedSource = fs.readFileSync(historical, 'utf8');\nconst source = mode === 'removed' ? fs.readFileSync('/proof/control/test-without-wait.js','utf8') : checkedSource;\nconst helperPrefix = source.slice(0, source.indexOf('for(const mobile of [false,true])'));\nconst controlled = true;\nconst reduced = true;\nconst digest = text => crypto.createHash('sha256').update(text).digest('hex');\nconst patches = {};\nfunction change(text, from, to) {\n  assert.equal(text.split(from).length, 2, from);\n  return text.replace(from, to);\n}\nfunction instrument(filename, text) {\n  const original = text;\n  if (filename === 'app.js' && !reduced) {\n    text = change(text, '  async function submitCanonicalChatMessage(text, inputMode) {',\n      '  async function submitCanonicalChatMessage(text, inputMode) {\\n    window.__obsM4.trace(\"canonical-enter\", {inputMode, busy:chatRequestInFlight});');\n    text = change(text, '      documentSubmission = documentWorkshopController.prepareSubmission?.({ inputMode, incompatibleModes });',\n      '      window.__obsM4.trace(\"incompatible-computed\", {incompatibleModes});\\n      documentSubmission = documentWorkshopController.prepareSubmission?.({ inputMode, incompatibleModes });\\n      window.__obsM4.trace(\"prepare-result\", {ok:documentSubmission?.ok, reason:documentSubmission?.reason});');\n    text = change(text, '        documentWorkshopController.refuseSubmission(documentSubmission);',\n      '        window.__obsM4.trace(\"refuse-call\", {reason:documentSubmission?.reason});\\n        documentWorkshopController.refuseSubmission(documentSubmission);');\n    text = change(text, '    addMsg(\"user\", text);',\n      '    window.__obsM4.trace(\"optimistic-user-before\");\\n    addMsg(\"user\", text);\\n    window.__obsM4.trace(\"optimistic-user-after\");');\n  } else if (filename === 'chat_document_workshop.js' && !reduced) {\n    text = change(text, \"  function render(message = '') {\", \"  function render(message = '') {\\n    window.__obsM4.trace('workshop-render', {visible,busy,contextId:context?.id||null,contextState:context?.state||null,prepare:context?.capabilities?.prepare||false,currentScope:currentScope()});\");\n    text = change(text, '  function exit({ focus = true } = {}) {', \"  function exit({ focus = true } = {}) {\\n    window.__obsM4.trace('workshop-exit', {focus,stack:new Error().stack});\");\n    text = change(text, '  function scopeChanged() {', \"  function scopeChanged() {\\n    window.__obsM4.trace('scope-change', {visible,currentScope:currentScope(),pendingScope,contextId:context?.id||null});\");\n    text = change(text, '    blocksSubmission: () => visible,', \"    blocksSubmission: () => (window.__obsM4.trace('blocks-submission', {visible}), visible),\");\n    text = change(text, '    prepareSubmission({ inputMode, incompatibleModes = false } = {}) {', \"    prepareSubmission({ inputMode, incompatibleModes = false } = {}) {\\n      window.__obsM4.trace('prepare-enter', {visible,busy,contextId:context?.id||null,contextState:context?.state||null,inputMode,incompatibleModes});\");\n  } else if (filename === 'chat_image_generation.js' && reduced) {\n    text=change(text, 'window.setTimeout(() => promptEl.focus(), 0);', 'window.__obsM4.scheduleFocus(() => promptEl.focus());');\n  } else if (filename === 'chat_image_generation.js') {\n    text = change(text, '  const open = () => {', \"  const open = () => {\\n    window.__obsM4.trace('image-open-enter', {open:state.open});\");\n    text = change(text, '      window.setTimeout(() => promptEl.focus(), 0);', \"      window.setTimeout(() => {window.__obsM4.trace('image-focus-before');promptEl.focus();window.__obsM4.trace('image-focus-after');}, 0);\");\n    text = change(text, '  const submit = async () => {', \"  const submit = async () => {\\n    window.__obsM4.trace('image-submit-enter', {busy:state.busy});\");\n  }\n  if(controlled && !reduced && filename==='chat_image_generation.js') {\n    text=change(text, \"window.setTimeout(() => {window.__obsM4.trace('image-focus-before');promptEl.focus();window.__obsM4.trace('image-focus-after');}, 0);\", \"window.__obsM4.scheduleFocus(() => {window.__obsM4.trace('image-focus-before');promptEl.focus();window.__obsM4.trace('image-focus-after');});\");\n  }\n  assert.notEqual(text, original);\n  patches[filename] = { original_sha256: digest(original), instrumented_sha256: digest(text), original_bytes:Buffer.byteLength(original), instrumented_source:text };\n  return text;\n}\nconst init = `;(() => {\n  const events=[];\n  const snapshot=()=>({draftLength:document.querySelector('#message')?.value.length||0,\n    draftIntact:document.querySelector('#message')?.value==='Brouillon intact',\n    workshopHidden:document.querySelector('#documentWorkshop')?.hidden??null,\n    workshopState:document.querySelector('#documentWorkshop')?.dataset.state||null,\n    imageHidden:document.querySelector('#imageGenerationPanel')?.classList.contains('hidden')??null,\n    imageExpanded:document.querySelector('#btnImageGeneration')?.getAttribute('aria-expanded')||null,\n    imagePromptLength:document.querySelector('#imageGenerationPrompt')?.value.length||0,\n    imagePromptHasDraft:document.querySelector('#imageGenerationPrompt')?.value==='Brouillon intact',\n    optimisticUsers:document.querySelectorAll('#log .msg.me').length,\n    activeElement:document.activeElement?.id||document.activeElement?.tagName||null});\n  const trace=(kind,data={})=>events.push({seq:events.length,ms:performance.now(),kind,...data,snapshot:snapshot()});\n  window.__obsM4={events,trace,snapshot,focusArmed:false,focusReached:false,focusReleased:false,insertReached:false};\n  window.__obsM4.armFocus=()=>{if(window.__obsM4.focusArmed)throw new Error('focus-already-armed');window.__obsM4.focusArmed=true;trace('focus-barrier-armed');};\n  window.__obsM4.scheduleFocus=callback=>{\n    if(!window.__obsM4.focusArmed)throw new Error('focus-not-armed');\n    window.setTimeout(()=>{\n      if(window.__obsM4.focusReached)throw new Error('focus-reached-twice');\n      window.__obsM4.focusReached=true;trace('focus-barrier-reached');\n      window.__obsM4.releaseFocus=()=>{\n        if(window.__obsM4.focusReleased)throw new Error('focus-released-twice');\n        window.__obsM4.focusReleased=true;trace('focus-release-before');callback();trace('focus-release-after');\n      };\n    },0);\n  };\n  if(!${reduced}) {\n  const descriptor=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value');\n  Object.defineProperty(HTMLTextAreaElement.prototype,'value',{...descriptor,set(value){\n    if(this.id==='message')trace('draft-write-before',{nextLength:String(value).length,stack:new Error().stack});\n    descriptor.set.call(this,value);\n    if(this.id==='message')trace('draft-write-after');\n  }});\n  const fetchBase=window.fetch;\n  window.fetch=async(input,options={})=>{\n    const pathname=new URL(input,location.origin).pathname;\n    const body=typeof options.body==='string'?JSON.parse(options.body):null;\n    trace('fetch-call',{pathname,method:options.method||'GET',documentary:Boolean(body?.document_context_id)});\n    const response=await fetchBase(input,options);\n    trace('fetch-response',{pathname,status:response.status});\n    return response;\n  };\n  for(const type of ['pointerdown','pointerup','click','submit','input','focusin']) document.addEventListener(type,event=>{\n    const el=event.target;trace('dom-'+type,{target:el.id||el.closest?.('button')?.id||el.tagName,form:el.form?.id||null,trusted:event.isTrusted});\n  },true);\n  }\n})();`;\n// Only the registration dispatcher and boundary observers are replaced.\n// The selected callback, wait predicate, send and assertions come from the file.\nconst name = 'M4 incompatible #btnImageGeneration preserves draft and active control before optimistic effects';\nconst registered = [];\nconst nativeRequire = createRequire(historical);\nconst baseOpenBrowserPage = nativeRequire('./helpers/browser_test_helpers.js').openBrowserPage;\nconst sandbox = {require(id) {\n  if(id === 'node:test') return (name, callback) => registered.push({name,callback});\n  if(id === './helpers/browser_test_helpers.js') return {...nativeRequire(id),openBrowserPage:runActualPage};\n  return nativeRequire(id);\n},module:{exports:{}}};\nvm.runInNewContext(source,sandbox,{filename:mode==='removed'?'/proof/control/test-without-wait.js':historical});\nassert.equal(registered.length,22);\nassert.equal(registered.filter(t=>t.name===name).length,1);\nconst result={mode,name,registered:registered.map(t=>t.name),test_sha256:digest(source),checked_test_sha256:digest(checkedSource),\n  helper_prefix_sha256:digest(helperPrefix),transport:'unchanged M4 simulated fetch; static HTTP files; no Flask/provider/DAV',\n  patches,events:[],waitCalls:0,fillCalls:0,insertCalls:0,outcome:null};\nlet livePage=null,releaseInsert=null,pendingCase=null,waitResolved=false,waitEnteredResolve=null;\nconst waitEntered=new Promise(resolve=>waitEnteredResolve=resolve);\nconst Keyboard=nativeRequire(path.join(root,'node_modules/playwright-core/lib/server/input.js')).Keyboard;\nconst originalInsert=Keyboard.prototype._insertText;\nKeyboard.prototype._insertText=async function(progress,text){\n  if(text!=='Brouillon intact'||!livePage)return originalInsert.call(this,progress,text);\n  result.insertCalls++;\n  assert.equal((await livePage.evaluate(()=>window.__obsM4.snapshot())).activeElement,'message');\n  const held=mode==='removed'?new Promise(resolve=>releaseInsert=resolve):null;\n  await livePage.evaluate(()=>{window.__obsM4.insertReached=true;window.__obsM4.trace('insert-barrier-reached');});\n  if(held)await held;\n  await livePage.evaluate(()=>window.__obsM4.trace('real-insert-before'));\n  const value=await originalInsert.call(this,progress,text);\n  await livePage.evaluate(()=>window.__obsM4.trace('real-insert-after'));\n  return value;\n};\nasync function runActualPage(options,callback){\n  await baseOpenBrowserPage({...options,mockScript:options.mockScript+init+`;['input','submit'].forEach(type=>document.addEventListener(type,e=>window.__obsM4.trace('dom-'+type,{target:e.target.id,trusted:e.isTrusted}),true));`,\n    beforePage:async page=>{\n      if(options.beforePage)await options.beforePage(page);\n      await page.route(/\\/chat_image_generation\\.js$/,async route=>{\n        const text=fs.readFileSync(path.join(root,'app/web/chat_image_generation.js'),'utf8');\n        await route.fulfill({status:200,contentType:'application/javascript',body:instrument('chat_image_generation.js',text)});\n      });\n    }},async page=>{\n      livePage=page;\n      result.versions={node:process.version,playwright:nativeRequire('playwright/package.json').version,chromium:page.context().browser().version()};\n      const nativeWait=page.waitForFunction.bind(page),nativeClick=page.click.bind(page),nativeFill=page.fill.bind(page);\n      await page.evaluate(()=>window.__obsM4.armFocus());\n      page.click=async(selector,...args)=>{\n        const value=await nativeClick(selector,...args);\n        if(selector==='#btnImageGeneration'){\n          await nativeWait(()=>window.__obsM4.focusReached);\n          if(mode==='ready')await page.evaluate(()=>{window.__obsM4.trace('independent-release-before-test-wait');window.__obsM4.releaseFocus();});\n        }\n        return value;\n      };\n      page.waitForFunction=async(fn,...args)=>{\n        if(!String(fn).includes(\"document.activeElement === document.querySelector('#imageGenerationPrompt')\"))return nativeWait(fn,...args);\n        result.waitCalls++;result.actual_wait_function=String(fn);\n        await page.evaluate(()=>window.__obsM4.trace('test-focus-wait-entered'));\n        const pending=nativeWait(fn,...args); // unchanged predicate from the actual test\n        waitEnteredResolve({entered:true});\n        const value=await pending;waitResolved=true;\n        await page.evaluate(()=>window.__obsM4.trace('test-focus-wait-resolved'));\n        return value;\n      };\n      page.fill=async(...args)=>{\n        result.fillCalls++;await page.evaluate(()=>window.__obsM4.trace('actual-send-fill-called'));\n        return nativeFill(...args);\n      };\n      try{\n        pendingCase=callback(page).then(()=>({ok:true}),error=>({ok:false,error}));\n        if(mode==='held'){\n          await Promise.race([waitEntered,pendingCase.then(v=>{throw v.error||new Error('case-ended-before-wait');})]);\n          const held=await page.evaluate(()=>{window.__obsM4.trace('held-condition-observed');return {focusReached:window.__obsM4.focusReached,focusReleased:window.__obsM4.focusReleased,snapshot:window.__obsM4.snapshot()};});\n          assert.ok(held.focusReached&&!held.focusReleased);assert.equal(waitResolved,false);\n          assert.equal(result.fillCalls,0);assert.equal(result.insertCalls,0);\n          assert.notEqual(held.snapshot.activeElement,'imageGenerationPrompt');assert.equal(held.snapshot.workshopState,'editing');\n          result.held_before_release={...held,waitResolved,fillCalls:result.fillCalls,insertCalls:result.insertCalls};\n          // Independent controller action: no wait for any insertion in this mode.\n          await page.evaluate(()=>{window.__obsM4.trace('independent-release-while-test-waits');window.__obsM4.releaseFocus();});\n        }else if(mode==='removed'){\n          await nativeWait(()=>window.__obsM4.insertReached);\n          assert.equal(typeof releaseInsert,'function');\n          await page.evaluate(()=>{window.__obsM4.trace('independent-release-during-fill');window.__obsM4.releaseFocus();});\n          assert.equal(await page.evaluate(()=>document.activeElement.id),'imageGenerationPrompt');\n          await page.evaluate(()=>window.__obsM4.trace('independent-insert-release'));\n          releaseInsert();releaseInsert=null;\n        }\n        const actual=await pendingCase;pendingCase=null;\n        result.original_callback_completed=actual.ok;\n        result.outcome=await page.evaluate(()=>({snapshot:window.__obsM4.snapshot(),normalCalls:window.__m4.normalCalls,documentaryCalls:window.__m4.documentaryCalls,imageCalls:window.__m4.calls.filter(c=>c.path==='/api/tools/image-generation').length,status:document.querySelector('#documentWorkshopStatus').textContent}));\n        assert.equal(result.outcome.normalCalls,0);assert.equal(result.outcome.documentaryCalls,0);assert.equal(result.outcome.imageCalls,0);\n        assert.equal(result.outcome.snapshot.optimisticUsers,0);assert.equal(result.outcome.snapshot.imageExpanded,'true');\n        assert.match(result.outcome.status,/incompatible|désactivez/i);\n        assert.equal(result.waitCalls,mode==='removed'?0:1);assert.equal(result.fillCalls,1);assert.equal(result.insertCalls,1);\n        if(!actual.ok)throw actual.error; // original assertion, not a manufactured error\n      }finally{\n        if(releaseInsert){releaseInsert();releaseInsert=null;}\n        if(pendingCase){await pendingCase;pendingCase=null;}\n        result.events=await page.evaluate(()=>window.__obsM4.events);livePage=null;\n      }\n    });\n}\n(async()=>{\n  try{await registered.find(t=>t.name===name).callback();result.exit=0;}\n  catch(error){result.exit=1;result.error={name:error.name,message:error.message,actual:error.actual,expected:error.expected,stack:error.stack};}\n  finally{Keyboard.prototype._insertText=originalInsert;}\n  console.log('M4_FIX_PROOF '+JSON.stringify(result));process.exitCode=result.exit;\n})();\n"
+    },
+    "capture_run.py": {
+      "sha256": "1ada5f5f51a789992ba9b487b34c327e1012bd237be7aec8979744d040199440",
+      "source": "import datetime, hashlib, json, subprocess, sys, time\nfrom pathlib import Path\nE=Path('/tmp/fridadev-obs-m4-focus-fix-20261010')\nlabel=sys.argv[1]; argv=sys.argv[2:]\nassert label.replace('-','').isalnum() and argv\nlog=E/(label+'.log');meta=E/(label+'.json')\nassert not log.exists() and not meta.exists()\nstarted=datetime.datetime.now(datetime.timezone.utc).isoformat();start=time.monotonic()\nwith log.open('wb') as sink:r=subprocess.run(argv,stdout=sink,stderr=subprocess.STDOUT,cwd='/opt/platform/fridadev')\nraw=log.read_bytes()\nrecord={'argv':argv,'exit':r.returncode,'started_utc':started,'wall_seconds':round(time.monotonic()-start,6),'log_sha256':hashlib.sha256(raw).hexdigest(),'log_bytes':len(raw)}\nmeta.write_text(json.dumps(record,indent=2)+'\\n')\nprint(json.dumps(record,indent=2));print(raw.decode()[:1500])\nraise SystemExit(r.returncode)\n"
+    },
+    "validate.py": {
+      "sha256": "d25a07547a92c4dd72dbedd107afa067942326e3c10b531a3d497cd600126775",
+      "source": "import hashlib,json,re\nfrom pathlib import Path\nR=Path('/opt/platform/fridadev');E=Path('/tmp/fridadev-obs-m4-focus-fix-20261010')\ninitial=json.loads((E/'initial.json').read_text())\nwait=\"\"\"      if (selector === '#btnImageGeneration') {\n        await page.waitForFunction(() =>\n          document.activeElement === document.querySelector('#imageGenerationPrompt')\n        );\n      }\n\"\"\"\ndef sha(b):return hashlib.sha256(b).hexdigest()\ncurrent=(R/initial['allowed_tracked'][0]).read_text();before=(E/'test-before.js').read_text()\nassert current.count(wait)==1 and current.replace(wait,'')==before\nassert (E/'test-without-wait.js').read_text()==before\ndata={}\nfor label,prefix in [('before','M4_DIAGNOSTIC '),('ready-v2','M4_FIX_PROOF '),('held','M4_FIX_PROOF '),('removed','M4_FIX_PROOF ')]:\n meta=json.loads((E/(label+'.json')).read_text());raw=(E/(label+'.log')).read_bytes()\n assert sha(raw)==meta['log_sha256']\n x=json.loads(raw.decode().removeprefix(prefix));data[label]=x\n assert meta['exit']==x['exit']==(1 if label in ('before','removed') else 0)\n assert all(x['outcome'][k]==0 for k in ('normalCalls','documentaryCalls','imageCalls'))\n s=x['outcome']['snapshot'];assert s['optimisticUsers']==0 and s['imageExpanded']=='true' and s['workshopState']=='editing'\n assert 'incompatible' in x['outcome']['status'].lower()\n events=x['events'];kinds=[e['kind'] for e in events]\n def event(k):\n  assert kinds.count(k)==1,(label,k)\n  return events[kinds.index(k)]\n for k in ('focus-barrier-armed','focus-barrier-reached','focus-release-before','focus-release-after','insert-barrier-reached','real-insert-before','real-insert-after'):event(k)\n assert kinds.index('focus-barrier-armed')<kinds.index('focus-barrier-reached')<kinds.index('focus-release-before')<kinds.index('focus-release-after')\n assert event('insert-barrier-reached')['snapshot']['activeElement']=='message'\n if label in ('before','removed'):\n  assert x['error']['name']=='AssertionError' and x['error']['actual']=='' and x['error']['expected']=='Brouillon intact'\n  assert s['draftLength']==0 and s['imagePromptHasDraft'] and s['imagePromptLength']==16\n  assert kinds.index('insert-barrier-reached')<kinds.index('focus-release-before')<kinds.index('focus-release-after')<kinds.index('independent-insert-release')<kinds.index('real-insert-before')\n  assert event('real-insert-before')['snapshot']['activeElement']=='imageGenerationPrompt'\n else:\n  assert x['original_callback_completed'] and x['test_sha256']==sha(current.encode())\n  assert (x['waitCalls'],x['fillCalls'],x['insertCalls'])==(1,1,1)\n  assert x['actual_wait_function'].strip()==\"() =>\\n          document.activeElement === document.querySelector('#imageGenerationPrompt')\"\n  assert s['draftIntact'] and s['draftLength']==16 and s['imagePromptLength']==0\n  assert event('test-focus-wait-resolved')['snapshot']['activeElement']=='imageGenerationPrompt'\n  assert kinds.index('focus-release-after')<kinds.index('test-focus-wait-resolved')<kinds.index('actual-send-fill-called')<kinds.index('real-insert-before')\n  assert event('real-insert-before')['snapshot']['activeElement']=='message'\n if label!='before':\n  assert x['checked_test_sha256']==sha(current.encode())\n  assert x['fillCalls']==x['insertCalls']==1\n  input_event=event('dom-input');submit=event('dom-submit')\n  assert input_event['trusted'] and input_event['target']==('imageGenerationPrompt' if label=='removed' else 'message')\n  assert submit['trusted'] and submit['target']=='ask'\nheld=data['held'];h=held['held_before_release'];k=[e['kind'] for e in held['events']]\nassert h['focusReached'] and not h['focusReleased'] and not h['waitResolved'] and h['fillCalls']==h['insertCalls']==0\nassert h['snapshot']['activeElement']=='btnImageGeneration' and h['snapshot']['draftLength']==h['snapshot']['imagePromptLength']==0\nassert k.index('test-focus-wait-entered')<k.index('held-condition-observed')<k.index('independent-release-while-test-waits')<k.index('focus-release-after')<k.index('test-focus-wait-resolved')\nready=data['ready-v2'];k=[e['kind'] for e in ready['events']]\nassert k.index('focus-release-after')<k.index('test-focus-wait-entered')\nremoved=data['removed'];assert removed['waitCalls']==0 and not removed['original_callback_completed']\nassert removed['test_sha256']==sha(before.encode()) and '/proof/control/test-without-wait.js:149:' in removed['error']['stack']\nassert data['before']['causalChecks']['status']=='passed'\nfailed=json.loads((E/'ready.json').read_text());assert failed['exit']==125 and b'read-only file system' in (E/'ready.log').read_bytes()\ntap=(E/'m4.log').read_text();summary={k:int(v) for k,v in re.findall(r'^# (tests|pass|fail|cancelled|skipped) (\\d+)$',tap,re.M)}\nassert summary=={'tests':22,'pass':22,'fail':0,'cancelled':0,'skipped':0}\nnames=[n.replace('\\\\#','#') for n in re.findall(r'^# Subtest: (.*)$',tap,re.M)]\nassert len(names)==22 and names==ready['registered']==held['registered']==removed['registered']\nassert json.loads((E/'m4.json').read_text())['exit']==0\nfor label in ('before','ready','ready-v2','held','removed','m4'):\n meta=json.loads((E/(label+'.json')).read_text());assert sha((E/(label+'.log')).read_bytes())==meta['log_sha256']\nfor p,h in initial['sha256'].items():\n if p not in initial['allowed_tracked']:assert sha((R/p).read_bytes())==h,p\nprint(json.dumps({'status':'passed','test_delta':'only exact five-line image wait','suite':summary,'selected_callback':'actual registered image case','held_wait_proven':True,'mutant_original_assertion_red':True,'positive_helper_pageerrors_checked':True,'negative_post_throw_assertions':'not reached; equivalent remaining business checks run in wrapper','historical_attribution':'unknown','overlapping_selections':'not cumulated'}))\n"
+    },
+    "gate.py": {
+      "sha256": "0fc3b4158885d5531a70cba98632d721b5f24a23d174f77eed904a1bd9ccd438",
+      "source": "import base64,gzip,hashlib,json,re,subprocess\nfrom pathlib import Path\nR=Path('/opt/platform/fridadev');P=R/'app/docs/states/baselines/document-workshop/frida-v1-document-workshop-m4-image-focus-fix-20261010.json'\nd=json.loads(P.read_text());initial=d['initial'];allowed=set(d['allowed_paths']);E=Path(d['cleanup']['root'])\ndef call(*args):return subprocess.check_output(args,cwd=R,text=True)\ndef sha(b):return hashlib.sha256(b).hexdigest()\nassert call('git','rev-parse','--show-toplevel').strip()==str(R)\nassert call('git','branch','--show-current').strip()==initial['branch']\nassert call('git','rev-parse','HEAD').strip()==initial['head']\nassert call('git','rev-parse','@{u}').strip()==initial['upstream']\nassert call('git','rev-list','--left-right','--count','HEAD...@{u}').split()==['0','0']\nassert call('git','for-each-ref','--format=%(refname) %(objectname)','refs/heads/','refs/remotes/origin/')==initial['refs']\nassert call('git','ls-remote','--heads','origin')==initial['remote_heads']\nassert call('git','diff','--cached','--name-only')==''\nstatus=call('git','status','--porcelain','-z').rstrip('\\0').split('\\0');assert {row[3:] for row in status}==allowed,status\nbefore=call('git','show',initial['head']+':'+d['patch']['file']);current=(R/d['patch']['file']).read_text();wait=d['patch']['wait_block']\nassert current.count(wait)==1 and current.replace(wait,'')==before\nassert sha(current.encode())==d['patch']['after_sha256']\nassert sha(before.encode())==d['patch']['before_sha256']==d['proof_copy']['sha256']\nprotected={p:sha((R/p).read_bytes()) for p in call('git','ls-tree','-r','--name-only',initial['head']).splitlines() if p not in initial['allowed_tracked']}\nassert len(protected)==initial['protected_tracked_count']\nassert sha(json.dumps(protected,sort_keys=True,separators=(',',':')).encode())==initial['protected_aggregate_sha256']\nfor p,h in initial['sha256'].items():\n if p not in initial['allowed_tracked']:assert sha((R/p).read_bytes())==h,p\nfor k,meta in d['proof_programs'].items():assert sha(meta['source'].encode())==meta['sha256'],k\nv1=d['proof_programs']['probe_fix.js']['source'].replace('/proof/control/test-without-wait.js','/proof/test-without-wait.js')\nassert sha(v1.encode())==d['incidents'][0]['v1_source_sha256']\nfor k,meta in d['runs'].items():\n raw=gzip.decompress(base64.b64decode(meta['raw_log_gzip_base64']))\n assert sha(raw)==meta['log_sha256'] and len(raw)==meta['log_bytes'],k\n assert meta['exit']==(125 if k=='ready' else 1 if k in ('before','removed') else 0),k\nassert d['validation']['status']=='passed'\nassert d['validation']['suite']=={'tests':22,'pass':22,'fail':0,'cancelled':0,'skipped':0}\nassert d['observations']['held']['held_before_release']['fillCalls']==d['observations']['held']['held_before_release']['insertCalls']==0\nfor label in ('ready-v2','held'):\n x=d['observations'][label]\n assert x['original_callback_completed'] and x['test_sha256']==d['patch']['after_sha256']\n assert x['outcome']['snapshot']['draftIntact'] and x['outcome']['snapshot']['imagePromptLength']==0\nassert d['observations']['removed']['test_sha256']==d['patch']['before_sha256']\nassert d['observations']['removed']['error']['actual']=='' and d['observations']['removed']['error']['expected']=='Brouillon intact'\nlinks=0\nfor p in initial['allowed_tracked'][1:]:\n f=R/p\n for link in re.findall(r'\\]\\(([^)]+)\\)',f.read_text()):\n  if '://' in link or link.startswith(('#','mailto:')):continue\n  assert (f.parent/link.split('#')[0]).resolve().exists(),(p,link);links+=1\nassert call('docker','ps','-aq','--filter','label=fridadev.proof=obs-m4-focus-fix-20261010').strip()==''\nassert call('docker','inspect','--format','{{.Name}} {{.Id}} {{.Image}} {{.State.StartedAt}} {{.RestartCount}}',*initial['runtime_ids'])==initial['runtime']\nassert call('docker','image','inspect','--format','{{.Id}} {{json .RepoTags}} {{json .RepoDigests}}','mcr.microsoft.com/playwright:v1.54.0-jammy')==initial['image']\nassert call('git','diff','--check')==''\ncleaned=d['cleanup']['status']=='removed_verified'\nif cleaned:assert not E.exists() and not E.is_symlink()\nelse:assert d['cleanup']['status']=='pending' and E.is_dir() and not E.is_symlink()\nprint(json.dumps({'status':'passed','phase':'final' if cleaned else 'before-cleanup','cleanup_complete':cleaned,\n 'allowed_paths':sorted(allowed),'protected_files':len(protected),'local_links':links,'raw_logs_integrity':len(d['runs']),\n 'assertions_send_other_modes_timings':'byte-preserved by exact five-line delta','historical_proofs_and_probe':'unchanged',\n 'refs_scope':'55 captured heads/origin refs plus 27 remote heads unchanged before commit','runtime_containers_unchanged':len(initial['runtime_ids']),\n 'owned_containers_absent':True,'shared_dependencies_preserved':True}))\n"
+    },
+    "collect_compact.py": {
+      "sha256": "ef5bcc20149673360d918a4dbaf57dd918c48e2c4f103b80c85b4baae8067cd2",
+      "source": "import base64,gzip,hashlib,json\nfrom pathlib import Path\nR=Path('/opt/platform/fridadev');E=Path('/tmp/fridadev-obs-m4-focus-fix-20261010');P=R/'app/docs/states/baselines/document-workshop/frida-v1-document-workshop-m4-image-focus-fix-20261010.json'\nassert not P.exists()\ndef sha(b):return hashlib.sha256(b).hexdigest()\ninitial=json.loads((E/'initial.json').read_text());wait=\"\"\"      if (selector === '#btnImageGeneration') {\n        await page.waitForFunction(() =>\n          document.activeElement === document.querySelector('#imageGenerationPrompt')\n        );\n      }\n\"\"\"\nd={'date':'2026-10-10','lot':'M4 image focus harness fix','status':'verified_fix_delivery_pending','initial':initial,'allowed_paths':initial['allowed_tracked']+[str(P.relative_to(R))],\n 'patch':{'file':initial['allowed_tracked'][0],'wait_block':wait,'after_sha256':sha((R/initial['allowed_tracked'][0]).read_bytes()),'before_sha256':sha((E/'test-before.js').read_bytes()),'removed_copy_sha256':sha((E/'test-without-wait.js').read_bytes()),'only_change':'five-line wait for actual image prompt focus; send, five other modes, assertions and timings unchanged'},\n 'runs':{},'observations':{},'proof_programs':{},\n 'transport':'unchanged M4 simulated fetch; real frontend DOM/CSS/handlers and static HTTP; no Flask/provider/DAV',\n 'isolation':{'argv':'--pull=never --network none --read-only; checkout, existing browser cache and control copy readonly; /tmp tmpfs; env -i','effective_m4':json.loads((E/'effective-isolation.json').read_text()),'other_runs':'argv inspected; no effective retrospective inspection claimed'},\n 'incidents':[{'record':'runs.ready','exit':125,'phase':'before browser creation','cause':'readonly control mounted on /proof prevented creation of /proof/browsers destination','resolution':'control moved to /proof/control readonly, sibling of unchanged browser cache; fresh container ready-v2; no assertions/timeout changes or functional retry','v1_source_sha256':sha((E/'probe_fix_v1.js').read_bytes()),'v1_source_derivation':'proof_programs.probe_fix.js.source replacing /proof/control/test-without-wait.js with /proof/test-without-wait.js'}],\n 'limits':['Exact historical AUD-01 attribution and natural frequency remain unknown.','Controlled order proves the five-line fix with actual registered test callback, not spontaneous scheduling probability.','In-memory observers and scheduling barriers perturb timing; unchanged 22-test file also executed without instrumentation.','Negative removed-copy throws original draft assertion; later original assertions and helper pageerror assertion are not reached. Equivalent remaining business checks execute in wrapper.','No 1691, SQL/M6/M7, Safari, live Flask/provider/DAV or operator runtime tests.'],\n 'reserve':'M7 archive one-barrier reservation preserved; prior AUD/UI/P3 closures, global M8-C and runtime remain separate.',\n 'validation':json.loads((E/'validation.log').read_text()),'cleanup':{'status':'pending','root':str(E)},'git_delivery':{'expected_parent':initial['head'],'commit_push_proof':'final return, avoiding self-reference'}}\nfor label in ('before','ready','ready-v2','held','removed','m4','validation'):\n meta=json.loads((E/(label+'.json')).read_text());raw=(E/(label+'.log')).read_bytes();assert sha(raw)==meta['log_sha256']\n meta['raw_log_encoding']='gzip+base64; decode with gzip.decompress(base64.b64decode(value))';meta['raw_log_gzip_base64']=base64.b64encode(gzip.compress(raw,mtime=0)).decode();d['runs'][label]=meta\n if label in ('before','ready-v2','held','removed'):\n  prefix='M4_DIAGNOSTIC ' if label=='before' else 'M4_FIX_PROOF ';x=json.loads(raw.decode().removeprefix(prefix))\n  keys=['mode','test_sha256','checked_test_sha256','helper_prefix_sha256','historical_sha256','waitCalls','fillCalls','insertCalls','actual_wait_function','held_before_release','original_callback_completed','outcome','events','error','versions','causalChecks']\n  d['observations'][label]={k:x[k] for k in keys if k in x}\n  d['observations'][label]['patches']={f:{k:v for k,v in meta.items() if k!='instrumented_source'} for f,meta in x['patches'].items()}\n  d['observations'][label]['complete_result']='decoded runs.'+label+' raw log, including static instrumented JS'\nfor name in ('probe_fix.js','capture_run.py','validate.py'):\n raw=(E/name).read_bytes();d['proof_programs'][name]={'sha256':sha(raw),'source':raw.decode()}\nd['proof_copy']={'path':'/proof/control/test-without-wait.js','derivation':'current test source with exactly patch.wait_block removed once; equals immutable initial HEAD file byte for byte','sha256':d['patch']['removed_copy_sha256']}\nd['selection']={'full_m4':22,'controlled_runs':'same single registered image callback; other 21 registrations not executed','name':'M4 incompatible #btnImageGeneration preserves draft and active control before optimistic effects','no_cumulative_total':True}\nd['auto_audit']={'actual_wait':'native page.waitForFunction receives unchanged predicate from actual registered test callback','already_focused':'release before actual wait entered; original callback and helper assertions complete','held':'native wait unresolved, fill/insert counts zero and focus condition false before independent release; trace wait-resolved precedes fill','removed':'only wait block removed from proof copy; original draft assertion at copy line149 fails after focus/insertion barriers','scope':'only test five-line change plus three live docs and this compact record; old probe/report/JSON and protected files unchanged'}\nP.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\\n');print(str(P));print('bytes',P.stat().st_size)\n"
+    },
+    "cleanup.py": {
+      "sha256": "744c2cdf1aeb0042a4ad4f7e1524a718b697812352a86a4df1424048b960bcb0",
+      "source": "import base64,datetime,gzip,hashlib,json,os,shutil,stat,subprocess\nfrom pathlib import Path\nR=Path('/opt/platform/fridadev');P=R/'app/docs/states/baselines/document-workshop/frida-v1-document-workshop-m4-image-focus-fix-20261010.json'\nd=json.loads(P.read_text());E=Path(d['cleanup']['root'])\nassert E==Path('/tmp/fridadev-obs-m4-focus-fix-20261010') and E.resolve()==E and not E.is_symlink()\nassert E.lstat().st_uid==os.getuid() and stat.S_ISDIR(E.lstat().st_mode)\nassert d['initial']['owned_root_initially_absent'] and d['precommit']['before_cleanup']['status']=='passed'\nassert d['cleanup']['status']=='pending'\nassert subprocess.check_output(['docker','ps','-aq','--filter','label=fridadev.proof=obs-m4-focus-fix-20261010'],text=True).strip()==''\nmanifest=[]\nfor f in sorted(E.iterdir()):\n assert not f.is_symlink() and stat.S_ISREG(f.lstat().st_mode),f\n raw=f.read_bytes();text=raw.decode();key=f.stem\n if f.name in d['proof_programs']:\n  assert text==d['proof_programs'][f.name]['source'];location='proof_programs.'+f.name\n elif f.name=='probe_fix_v1.js':\n  assert text==d['proof_programs']['probe_fix.js']['source'].replace('/proof/control/test-without-wait.js','/proof/test-without-wait.js');location='incidents[0].v1_source_derivation'\n elif f.suffix=='.log' and key in d['runs']:\n  assert raw==gzip.decompress(base64.b64decode(d['runs'][key]['raw_log_gzip_base64']));location='runs.'+key+'.raw_log_gzip_base64'\n elif f.suffix=='.json' and key in d['runs']:\n  assert all(d['runs'][key][k]==v for k,v in json.loads(text).items());location='runs.'+key+' (original metadata subset)'\n elif f.name=='initial.json':\n  assert json.loads(text)==d['initial'];location='initial'\n elif f.name in ('test-before.js','test-without-wait.js'):\n  assert hashlib.sha256(raw).hexdigest()==d['patch']['before_sha256'];location='immutable initial HEAD:'+d['patch']['file']\n elif f.name.endswith('-argv.json'):\n  label=f.name.removesuffix('-argv.json');assert json.loads(text)==d['runs'][label]['argv'];location='runs.'+label+'.argv'\n elif f.name=='effective-isolation.json':\n  assert json.loads(text)==d['isolation']['effective_m4'];location='isolation.effective_m4'\n else:raise AssertionError('Owned file not durably preserved: '+f.name)\n manifest.append({'name':f.name,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest(),'durable_location':location})\nd['cleanup']={'status':'removal_in_progress','root':str(E),'manifest':manifest,'preservation_verified_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'owned_containers_absent':True,'scope':'only this exclusively owned root; no shared cache or foreign resource removed','host_sockets':'none created; browser processes/sockets lived in disposable container tmpfs'}\nP.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\\n')\nshutil.rmtree(E);assert not E.exists() and not E.is_symlink()\nd['cleanup']['status']='removed_verified';d['cleanup']['verified_absent_utc']=datetime.datetime.now(datetime.timezone.utc).isoformat()\nP.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\\n')\nprint(json.dumps({'status':'removed_verified','root':str(E),'archived_files':len(manifest),'owned_containers_absent':True,'shared_caches_preserved':True}))\n"
+    }
+  },
+  "transport": "unchanged M4 simulated fetch; real frontend DOM/CSS/handlers and static HTTP; no Flask/provider/DAV",
+  "isolation": {
+    "argv": "--pull=never --network none --read-only; checkout, existing browser cache and control copy readonly; /tmp tmpfs; env -i",
+    "effective_m4": {
+      "utc": "2026-10-10T10:41:05.408866+00:00",
+      "exit": 0,
+      "output": "true \"none\" [{\"Type\":\"bind\",\"Source\":\"/home/tof/.cache/ms-playwright\",\"Destination\":\"/proof/browsers\",\"Mode\":\"ro\",\"RW\":false,\"Propagation\":\"rprivate\"},{\"Type\":\"bind\",\"Source\":\"/opt/platform/fridadev\",\"Destination\":\"/workspace\",\"Mode\":\"ro\",\"RW\":false,\"Propagation\":\"rprivate\"}]\n",
+      "stderr": ""
+    },
+    "other_runs": "argv inspected; no effective retrospective inspection claimed"
+  },
+  "incidents": [
+    {
+      "record": "runs.ready",
+      "exit": 125,
+      "phase": "before browser creation",
+      "cause": "readonly control mounted on /proof prevented creation of /proof/browsers destination",
+      "resolution": "control moved to /proof/control readonly, sibling of unchanged browser cache; fresh container ready-v2; no assertions/timeout changes or functional retry",
+      "v1_source_sha256": "e1760f1bb26633803cb4b43a4c3c3906fe342d28b915fc0930ba64dd97d26f98",
+      "v1_source_derivation": "proof_programs.probe_fix.js.source replacing /proof/control/test-without-wait.js with /proof/test-without-wait.js"
+    }
+  ],
+  "limits": [
+    "Exact historical AUD-01 attribution and natural frequency remain unknown.",
+    "Controlled order proves the five-line fix with actual registered test callback, not spontaneous scheduling probability.",
+    "In-memory observers and scheduling barriers perturb timing; unchanged 22-test file also executed without instrumentation.",
+    "Negative removed-copy throws original draft assertion; later original assertions and helper pageerror assertion are not reached. Equivalent remaining business checks execute in wrapper.",
+    "No 1691, SQL/M6/M7, Safari, live Flask/provider/DAV or operator runtime tests."
+  ],
+  "reserve": "M7 archive one-barrier reservation preserved; prior AUD/UI/P3 closures, global M8-C and runtime remain separate.",
+  "validation": {
+    "status": "passed",
+    "test_delta": "only exact five-line image wait",
+    "suite": {
+      "tests": 22,
+      "pass": 22,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "selected_callback": "actual registered image case",
+    "held_wait_proven": true,
+    "mutant_original_assertion_red": true,
+    "positive_helper_pageerrors_checked": true,
+    "negative_post_throw_assertions": "not reached; equivalent remaining business checks run in wrapper",
+    "historical_attribution": "unknown",
+    "overlapping_selections": "not cumulated"
+  },
+  "cleanup": {
+    "status": "removed_verified",
+    "root": "/tmp/fridadev-obs-m4-focus-fix-20261010",
+    "manifest": [
+      {
+        "name": "before-argv.json",
+        "bytes": 693,
+        "sha256": "f8ce1c68ca0d71e396842d1f03ea96f7e56e24ea566d68c2b72a5050d9b5d264",
+        "durable_location": "runs.before.argv"
+      },
+      {
+        "name": "before.json",
+        "bytes": 969,
+        "sha256": "449959830d72bd486a3915d0231afabbb7cbbd0cb3fb1c4abea8e6c278875f2f",
+        "durable_location": "runs.before (original metadata subset)"
+      },
+      {
+        "name": "before.log",
+        "bytes": 17875,
+        "sha256": "4ece5d27764f5ed044190b24cbce0a31632f51cd622658e29d9957828a1d1093",
+        "durable_location": "runs.before.raw_log_gzip_base64"
+      },
+      {
+        "name": "capture_run.py",
+        "bytes": 849,
+        "sha256": "1ada5f5f51a789992ba9b487b34c327e1012bd237be7aec8979744d040199440",
+        "durable_location": "proof_programs.capture_run.py"
+      },
+      {
+        "name": "cleanup.py",
+        "bytes": 3198,
+        "sha256": "744c2cdf1aeb0042a4ad4f7e1524a718b697812352a86a4df1424048b960bcb0",
+        "durable_location": "proof_programs.cleanup.py"
+      },
+      {
+        "name": "collect_compact.py",
+        "bytes": 5623,
+        "sha256": "ef5bcc20149673360d918a4dbaf57dd918c48e2c4f103b80c85b4baae8067cd2",
+        "durable_location": "proof_programs.collect_compact.py"
+      },
+      {
+        "name": "effective-isolation.json",
+        "bytes": 417,
+        "sha256": "2a19828eff9914d353d79c9b2e1b053d1f3b57feae109efa76a34799586083fc",
+        "durable_location": "isolation.effective_m4"
+      },
+      {
+        "name": "gate.py",
+        "bytes": 4740,
+        "sha256": "0fc3b4158885d5531a70cba98632d721b5f24a23d174f77eed904a1bd9ccd438",
+        "durable_location": "proof_programs.gate.py"
+      },
+      {
+        "name": "held.json",
+        "bytes": 1013,
+        "sha256": "154def9fe3fe3e64507e26e3253cae927f955dc6d8dba5ebb53e1440dc671a4c",
+        "durable_location": "runs.held (original metadata subset)"
+      },
+      {
+        "name": "held.log",
+        "bytes": 21136,
+        "sha256": "0ec3ddc7a248662fea41f8cc7df587d201c223f5e46f2f7967ec7f09beca1301",
+        "durable_location": "runs.held.raw_log_gzip_base64"
+      },
+      {
+        "name": "initial.json",
+        "bytes": 17140,
+        "sha256": "daeb835df6bac241ddc8e172a517be0ec5186bc09c443389b2cd64fc0ac140f8",
+        "durable_location": "initial"
+      },
+      {
+        "name": "m4.json",
+        "bytes": 1025,
+        "sha256": "e95415c99b9cb575225f54472555c1b6c0a8bab6e18a0d38cc2bddf282e2dd2a",
+        "durable_location": "runs.m4 (original metadata subset)"
+      },
+      {
+        "name": "m4.log",
+        "bytes": 5734,
+        "sha256": "46f294dc00dbac19abd43273a5f1ebb7d48d6ad53671e809d7e724593234a915",
+        "durable_location": "runs.m4.raw_log_gzip_base64"
+      },
+      {
+        "name": "precleanup-gate.json",
+        "bytes": 287,
+        "sha256": "d36f46937f6f3e46fa68131baf8d0647509f2ec4bdbd66ce7051bc7d368c9fc4",
+        "durable_location": "runs.precleanup-gate (original metadata subset)"
+      },
+      {
+        "name": "precleanup-gate.log",
+        "bytes": 888,
+        "sha256": "fdbb15ebac784ef692f514b8cdc42886a51ca34cb6dbda60012737b0e713a85a",
+        "durable_location": "runs.precleanup-gate.raw_log_gzip_base64"
+      },
+      {
+        "name": "probe_fix.js",
+        "bytes": 15908,
+        "sha256": "ed7967fe838fde00d3d0a8c298d1ba7c05ea3e45b27f4c8eb6298915d0f36909",
+        "durable_location": "proof_programs.probe_fix.js"
+      },
+      {
+        "name": "probe_fix_v1.js",
+        "bytes": 15892,
+        "sha256": "e1760f1bb26633803cb4b43a4c3c3906fe342d28b915fc0930ba64dd97d26f98",
+        "durable_location": "incidents[0].v1_source_derivation"
+      },
+      {
+        "name": "ready-argv.json",
+        "bytes": 719,
+        "sha256": "7ca24d527bd6aa2fb6052aeeda3c9bc63b8db0fbff4bdaa289af2cdf8df486de",
+        "durable_location": "runs.ready.argv"
+      },
+      {
+        "name": "ready-v2-argv.json",
+        "bytes": 738,
+        "sha256": "ec14800c3b834312e3d26f67c8852c65dca83766e38292e7fbeb8f3345881d11",
+        "durable_location": "runs.ready-v2.argv"
+      },
+      {
+        "name": "ready-v2.json",
+        "bytes": 1018,
+        "sha256": "c500e12bc223688e37b0144593d4d6ae8f362d0557d52792b05728a8e285a851",
+        "durable_location": "runs.ready-v2 (original metadata subset)"
+      },
+      {
+        "name": "ready-v2.log",
+        "bytes": 20447,
+        "sha256": "2c58c7ad7047623cfe8c4fa8e6dfdacd052f771b4014d68a21b8a6c550238360",
+        "durable_location": "runs.ready-v2.raw_log_gzip_base64"
+      },
+      {
+        "name": "ready.json",
+        "bytes": 999,
+        "sha256": "e45daa67923991fdf4175bca3debff243ff16b9ce6006946223298307598a902",
+        "durable_location": "runs.ready (original metadata subset)"
+      },
+      {
+        "name": "ready.log",
+        "bytes": 497,
+        "sha256": "6e8c5e99c182a46f0235ea0c9068bff9386c2d4940119533b76ef6498824a3fd",
+        "durable_location": "runs.ready.raw_log_gzip_base64"
+      },
+      {
+        "name": "removed.json",
+        "bytes": 1019,
+        "sha256": "bb9e36cd42cdde4cc5f742fcab612b4727d1c1540e78aabdf77ec01f4bcd767a",
+        "durable_location": "runs.removed (original metadata subset)"
+      },
+      {
+        "name": "removed.log",
+        "bytes": 20742,
+        "sha256": "af980a478c5ba534e3e2188688daaf7da8d377271bdae2b2dfe061bdb2e47c45",
+        "durable_location": "runs.removed.raw_log_gzip_base64"
+      },
+      {
+        "name": "test-before.js",
+        "bytes": 29306,
+        "sha256": "3eb5643422e94bb1192230a8727bd19ce422c2d62391cc1ae2496678837554b2",
+        "durable_location": "immutable initial HEAD:app/tests/integration/frontend_browser/test_frontend_browser_document_preparation_m4.js"
+      },
+      {
+        "name": "test-without-wait.js",
+        "bytes": 29306,
+        "sha256": "3eb5643422e94bb1192230a8727bd19ce422c2d62391cc1ae2496678837554b2",
+        "durable_location": "immutable initial HEAD:app/tests/integration/frontend_browser/test_frontend_browser_document_preparation_m4.js"
+      },
+      {
+        "name": "validate.py",
+        "bytes": 5720,
+        "sha256": "d25a07547a92c4dd72dbedd107afa067942326e3c10b531a3d497cd600126775",
+        "durable_location": "proof_programs.validate.py"
+      },
+      {
+        "name": "validation.json",
+        "bytes": 291,
+        "sha256": "07876b7b8677078792730ce1adcfa494401ba5c7be9b21223cbe2f9de689b3b9",
+        "durable_location": "runs.validation (original metadata subset)"
+      },
+      {
+        "name": "validation.log",
+        "bytes": 491,
+        "sha256": "c80bbe89f760eba237f4a7e0b522b9520abcbb1a9ae42feacc29becf644f1795",
+        "durable_location": "runs.validation.raw_log_gzip_base64"
+      }
+    ],
+    "preservation_verified_utc": "2026-10-10T10:47:36.675316+00:00",
+    "owned_containers_absent": true,
+    "scope": "only this exclusively owned root; no shared cache or foreign resource removed",
+    "host_sockets": "none created; browser processes/sockets lived in disposable container tmpfs",
+    "verified_absent_utc": "2026-10-10T10:47:36.677250+00:00"
+  },
+  "git_delivery": {
+    "expected_parent": "500b442bd41cd1427d6e8bf45a2654dcf2f56729",
+    "commit_push_proof": "final return, avoiding self-reference"
+  },
+  "proof_copy": {
+    "path": "/proof/control/test-without-wait.js",
+    "derivation": "current test source with exactly patch.wait_block removed once; equals immutable initial HEAD file byte for byte",
+    "sha256": "3eb5643422e94bb1192230a8727bd19ce422c2d62391cc1ae2496678837554b2"
+  },
+  "selection": {
+    "full_m4": 22,
+    "controlled_runs": "same single registered image callback; other 21 registrations not executed",
+    "name": "M4 incompatible #btnImageGeneration preserves draft and active control before optimistic effects",
+    "no_cumulative_total": true
+  },
+  "auto_audit": {
+    "actual_wait": "native page.waitForFunction receives unchanged predicate from actual registered test callback",
+    "already_focused": "release before actual wait entered; original callback and helper assertions complete",
+    "held": "native wait unresolved, fill/insert counts zero and focus condition false before independent release; trace wait-resolved precedes fill",
+    "removed": "only wait block removed from proof copy; original draft assertion at copy line149 fails after focus/insertion barriers",
+    "scope": "only test five-line change plus three live docs and this compact record; old probe/report/JSON and protected files unchanged"
+  },
+  "executed_source_hashes": {
+    "before": "21eab1c85582df409df544cb5cd5a4da6a54ab003551420dd34b9abb40d43367",
+    "ready": "e1760f1bb26633803cb4b43a4c3c3906fe342d28b915fc0930ba64dd97d26f98",
+    "ready-v2": "ed7967fe838fde00d3d0a8c298d1ba7c05ea3e45b27f4c8eb6298915d0f36909",
+    "held": "ed7967fe838fde00d3d0a8c298d1ba7c05ea3e45b27f4c8eb6298915d0f36909",
+    "removed": "ed7967fe838fde00d3d0a8c298d1ba7c05ea3e45b27f4c8eb6298915d0f36909"
+  },
+  "precommit": {
+    "status": "passed",
+    "before_cleanup": {
+      "status": "passed",
+      "phase": "before-cleanup",
+      "cleanup_complete": false,
+      "allowed_paths": [
+        "app/docs/states/baselines/document-workshop/frida-v1-document-workshop-m4-image-focus-fix-20261010.json",
+        "app/docs/states/specs/frida-v1-document-workshop-m4-contract.md",
+        "app/docs/states/specs/frida-v1-document-workshop-m8c-contract.md",
+        "app/docs/todo-todo/product/frida-v1-document-workshop-todo.md",
+        "app/tests/integration/frontend_browser/test_frontend_browser_document_preparation_m4.js"
+      ],
+      "protected_files": 1599,
+      "local_links": 113,
+      "raw_logs_integrity": 7,
+      "assertions_send_other_modes_timings": "byte-preserved by exact five-line delta",
+      "historical_proofs_and_probe": "unchanged",
+      "refs_scope": "55 captured heads/origin refs plus 27 remote heads unchanged before commit",
+      "runtime_containers_unchanged": 32,
+      "owned_containers_absent": true,
+      "shared_dependencies_preserved": true
+    },
+    "final": {
+      "status": "passed",
+      "phase": "final",
+      "cleanup_complete": true,
+      "allowed_paths": [
+        "app/docs/states/baselines/document-workshop/frida-v1-document-workshop-m4-image-focus-fix-20261010.json",
+        "app/docs/states/specs/frida-v1-document-workshop-m4-contract.md",
+        "app/docs/states/specs/frida-v1-document-workshop-m8c-contract.md",
+        "app/docs/todo-todo/product/frida-v1-document-workshop-todo.md",
+        "app/tests/integration/frontend_browser/test_frontend_browser_document_preparation_m4.js"
+      ],
+      "protected_files": 1599,
+      "local_links": 113,
+      "raw_logs_integrity": 9,
+      "assertions_send_other_modes_timings": "byte-preserved by exact five-line delta",
+      "historical_proofs_and_probe": "unchanged",
+      "refs_scope": "55 captured heads/origin refs plus 27 remote heads unchanged before commit",
+      "runtime_containers_unchanged": 32,
+      "owned_containers_absent": true,
+      "shared_dependencies_preserved": true
+    }
+  }
+}

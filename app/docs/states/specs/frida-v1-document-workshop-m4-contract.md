@@ -207,9 +207,10 @@ vers le prompt image : compositeur vide, garde incompatible effective et zéro
 préparation/chat normal/image/effet optimiste. Témoin inverse et adverse réduit
 éprouvés. Baseline intacte 22/22 et ciblé image 1/1, sans cumul ; deux rouges
 causaux attendus. Attribution exacte du 21/22 historique AUD-01 toujours inconnue,
-raw absent. Attente du focus image avant send proposée dans ce seul cas,
-non appliquée ; correction distincte à autoriser. Aucun statut M4 runtime/global
-fermé, ni finding P2/P3 antérieur rouvert.
+raw absent. [Correctif du harnais du 10 octobre](../baselines/document-workshop/frida-v1-document-workshop-m4-image-focus-fix-20261010.json) : attente du vrai focus image avant send appliquée dans ce seul cas,
+assertions/délais et autres modes conservés. Callback déjà établi et retenu
+éprouvés ; retrait des seules cinq lignes dans une copie → rouge causal original.
+M4 22/22, une fois. Aucun statut M4 runtime/global fermé, ni finding P2/P3 rouvert.
 
 ## Preuves et contre-audit
 

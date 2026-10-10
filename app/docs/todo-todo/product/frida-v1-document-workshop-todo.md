@@ -3766,7 +3766,7 @@ correctif d'archive dans le lot M4 ci-dessous.
 [Rapport](../../states/audits/frida-v1-document-workshop-obs-m4-draft-image-20261010.md),
 [relevé dédié](../../states/baselines/document-workshop/frida-v1-document-workshop-obs-m4-draft-image-20261010.json).
 Base `d3e1f685af88777e363d075fc7f5207f9008c031`, même M8-C propre/synchronisée avant édition.
-Test/fixtures/produit inchangés. Baseline M4 22/22, ciblé exact image 1/1 (21
+Lors du diagnostic, test/fixtures/produit inchangés. Baseline M4 22/22, ciblé exact image 1/1 (21
 exclus, zéro ignoré), observation V1 verte ; aucun cumul de sélections recouvrantes.
 
 Le vrai callback différé de focus image libéré entre la sélection du compositeur
@@ -3779,9 +3779,16 @@ préservée ; zéro effet optimiste et zéro préparation/chat normal/image.
 Mécanisme suffisant de synchronisation du harnais, aucun défaut produit ou runner
 établi. Le premier 21/22 AUD-01 (20,774 s) reste conservé avec raw absent ; aucun
 vert ultérieur ni ordre imposé ne donne son attribution exacte ou sa fréquence.
-Proposition locale : attendre le vrai focus image avant send dans ce seul cas ;
-**non appliquée**, correction à cadrer/autoriser séparément. Sonde autonome,
-preuves et documents seulement, seconde lecture indépendante sans test/Docker.
+Le diagnostic proposait d'attendre le vrai focus image avant send dans ce seul
+cas ; sa seconde lecture indépendante n'exécutait aucun test/Docker.
+**Correctif minimal du harnais appliqué le 10 octobre**, base `500b442b` :
+[relevé compact](../../states/baselines/document-workshop/frida-v1-document-workshop-m4-image-focus-fix-20261010.json).
+Cinq lignes, send/autres modes/assertions/délais conservés ; callback déjà établi
+et retenu verts, saisie bloquée jusqu'à sa libération indépendante. Copie privée
+retirant uniquement l'attente : assertion originale rouge après barrières.
+M4 22/22 une fois (19,498 s), fetch simulé ; incident de montage exit125 conservé.
+Produit/fixtures/helpers et preuves historiques intacts, attribution historique
+toujours inconnue. Aucun correctif produit ni comparaison générale.
 AUD-01/AUD-02, concurrence M7, attente UI et P3 restent fermés dans leurs portées.
 Aucune clôture globale M8-C, runtime, Writer ou suite M8-S/M8-A ; arrêt après
 commit/push pour contre-audit Codex, sans correctif automatique.

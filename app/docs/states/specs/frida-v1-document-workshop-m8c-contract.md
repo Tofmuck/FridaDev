@@ -65,8 +65,10 @@ archive dans le lot M4 suivant.
 cause suffisante actuelle éprouvée avec vrais handlers/DOM/CSS et fetch simulé ;
 garde documentaire effective, zéro voie normale/doc/image. Brouillon0/prompt16
 dans les deux adverses, témoin inverse ; 22/22 intact et ciblé1/1 séparés.
-Attribution exacte du rouge AUD-01 inconnue, trace brute absente. Aucune correction
-appliquée ; proposition locale au test image à cadrer séparément. AUD-01/AUD-02,
+Attribution exacte du rouge AUD-01 inconnue, trace brute absente.
+[Correctif du harnais du 10 octobre](../baselines/document-workshop/frida-v1-document-workshop-m4-image-focus-fix-20261010.json) appliqué au seul cas image : attente du vrai focus, deux ordres positifs,
+copie sans cette attente rouge causal, M4 22/22 une fois ; assertions et produit
+préservés. Incident initial de montage exit125 conservé et qualifié. AUD-01/AUD-02,
 concurrence M7, attente UI et P3 restent fermés dans leurs portées ; M8-C global,
 runtime et suite Writer restent distincts.
 
