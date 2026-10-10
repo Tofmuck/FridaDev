@@ -1,0 +1,1352 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-10",
+  "lot": "M8-A",
+  "status": "application_proved_isolated_runtime_and_counteraudit_open",
+  "base": {
+    "root": "/opt/platform/fridadev",
+    "branch": "FridaV1-Document-Workshop-M8-S",
+    "head": "6827cb50b5d1633875b9864513b30e5c99c94a5b",
+    "clean": true,
+    "head_upstream_remote_equal": true,
+    "divergence": "0/0",
+    "new_branch": "FridaV1-Document-Workshop-M8-A",
+    "protected_local_refs": [
+      {
+        "ref": "refs/heads/Biblio",
+        "sha": "52f7d7272cf6cffb21c2e0c81ea3e173d8eb3c5d"
+      },
+      {
+        "ref": "refs/heads/Frida-Agentic-Response-Surface",
+        "sha": "a2c014555405eb0a41b37a77742f929114a4dfea"
+      },
+      {
+        "ref": "refs/heads/FridaAgenda",
+        "sha": "b2e4e05dc9cd660ac861a9fe767a892113109486"
+      },
+      {
+        "ref": "refs/heads/FridaV1-Before-9B-Test-Remediation",
+        "sha": "54d0e7fd5765829c86b91f93e1aaca0db7341010"
+      },
+      {
+        "ref": "refs/heads/FridaV1-Continuity-Payload-Audit",
+        "sha": "830e0816fc93b4afd4efe3b86c6a9b95ba263c9d"
+      },
+      {
+        "ref": "refs/heads/FridaV1-Document-Workshop-M0",
+        "sha": "3eb2e34aa0622112ebb4a8700dbe0eec02e4a27a"
+      },
+      {
+        "ref": "refs/heads/FridaV1-Document-Workshop-M1",
+        "sha": "c6f648badba96a60f1474db8d3f7404f97a2dda7"
+      },
+      {
+        "ref": "refs/heads/FridaV1-Document-Workshop-M2",
+        "sha": "6e8c61f5059350d8d15ded4b41b68f2e0d9acac3"
+      },
+      {
+        "ref": "refs/heads/FridaV1-Document-Workshop-M3",
+        "sha": "9f10531ae9c799f4afc769c97ea2d48659f1c3d3"
+      },
+      {
+        "ref": "refs/heads/FridaV1-Document-Workshop-M4",
+        "sha": "cc72aa963366660a6a135b66d206e39671556e8b"
+      },
+      {
+        "ref": "refs/heads/FridaV1-Document-Workshop-M5",
+        "sha": "6ea19f93bab0c1fb14fd4465ddc449f60f1531e4"
+      },
+      {
+        "ref": "refs/heads/FridaV1-Document-Workshop-M6",
+        "sha": "b00eb95001755295dcc301232272a8070d26cd78"
+      },
+      {
+        "ref": "refs/heads/FridaV1-Document-Workshop-M7",
+        "sha": "750180fa8595b53c7e188017c9c62be1ae9943fc"
+      },
+      {
+        "ref": "refs/heads/FridaV1-Document-Workshop-M8-C",
+        "sha": "f957a1518ca0c13bd35d52e38bf167683a2b308e"
+      },
+      {
+        "ref": "refs/heads/FridaV1-Document-Workshop-M8-S",
+        "sha": "6827cb50b5d1633875b9864513b30e5c99c94a5b"
+      },
+      {
+        "ref": "refs/heads/FridaV1-Lot9A-Route-Refactors",
+        "sha": "02efcff11773668de7baf8b40eba519cd47c6928"
+      },
+      {
+        "ref": "refs/heads/FridaV1-Mega-Audit-Code-Stack",
+        "sha": "a31711c32bd0323def0f74d4465407b902d29923"
+      },
+      {
+        "ref": "refs/heads/FridaV1-Nextcloud-Folders",
+        "sha": "f3d7c2f0d07caeeb90d0d4ff7ee6273a329ddbc3"
+      },
+      {
+        "ref": "refs/heads/FridaV1-Web-Provenance-Continuity-Fix",
+        "sha": "4020d5b8d066efbd445506843d81299f4ae6c3b4"
+      },
+      {
+        "ref": "refs/heads/feature/active-image-documents",
+        "sha": "4e9f7cdadc6a4a515801125326769347f3006064"
+      },
+      {
+        "ref": "refs/heads/feature/chat-polish",
+        "sha": "42ea4b18715bd72d210a089ad073c4d7a786f2fd"
+      },
+      {
+        "ref": "refs/heads/feature/local-web-search-rebuild",
+        "sha": "0a4ec0ea0e5cce46561819d96293085f7e1065b1"
+      },
+      {
+        "ref": "refs/heads/feature/main-model-gpt51",
+        "sha": "13ed420a98f658b960f3a8e227d629992f844d52"
+      },
+      {
+        "ref": "refs/heads/feature/mutable-refonte",
+        "sha": "127548049a13b63dca30aa0697d07c1828b0dcc5"
+      },
+      {
+        "ref": "refs/heads/feature/workspace-folders",
+        "sha": "948350c2cbe8eef8271eeaff61c3d40d5dd217cb"
+      },
+      {
+        "ref": "refs/heads/identity-new-contract",
+        "sha": "29b179dfc851c575e94bceb4497ddee0b8ff1561"
+      },
+      {
+        "ref": "refs/heads/main",
+        "sha": "e3e0d19290cb7ac275b3fd4b19c4b01dbc89f2cb"
+      },
+      {
+        "ref": "refs/heads/migration",
+        "sha": "b9e87c72a9f4e2d63b4adc369b8f8a6b3c38cd09"
+      }
+    ]
+  },
+  "m8s_closure": {
+    "provenance": "Codex counteraudit transmitted by Tof; not executed or replayed by Celebrimbor",
+    "date": "2026-10-10",
+    "finding": "P2-M8S-AUD-01 closed",
+    "status": "M8-S validated renderer service synthetic evidence",
+    "sauron_fix": "41d8f0322be95f7e226a216a69f9d5034396205c",
+    "sauron_followup": "885352c99fb1065ff6253ded7df13edf3ece4bfb",
+    "pilot_report": "audits/2026-10-10-m8s-aud01-counteraudit/rapport.md",
+    "report_read_here": false,
+    "jobs": 14,
+    "ready_m8c": 11,
+    "discordances_rejected": 3,
+    "corpus": "32/32",
+    "exit": 0,
+    "wall_seconds": 49.884,
+    "release_and_cleanup_verified_by_codex": true,
+    "no_application_receipt_model_nextcloud_inference": true
+  },
+  "isolation": {
+    "python_prefix": [
+      "docker",
+      "run",
+      "--rm",
+      "--pull=never",
+      "--name",
+      "{container_name}",
+      "--network",
+      "none",
+      "--read-only",
+      "--tmpfs",
+      "/tmp:rw,nosuid,nodev",
+      "-v",
+      "/opt/platform/fridadev:/workspace:ro",
+      "-v",
+      "/tmp/fridadev-m8a-20261010.tBwpJV/pg-socket:/proof/sock:ro",
+      "-w",
+      "/workspace/app",
+      "--entrypoint",
+      "/usr/bin/env",
+      "fridadev-audit-py:latest",
+      "-i",
+      "PATH=/usr/local/bin:/usr/bin:/bin",
+      "PYTHONDONTWRITEBYTECODE=1",
+      "PYTHONPATH=/workspace/app:/workspace",
+      "EMBED_BASE_URL=https://embed.invalid",
+      "CRAWL4AI_URL=https://crawl.invalid",
+      "SEARXNG_URL=https://search.invalid",
+      "M1_PROOF_PG_SOCKET=/proof/sock",
+      "M2_PROOF_PG_SOCKET=/proof/sock",
+      "M3_PROOF_PG_SOCKET=/proof/sock",
+      "M4_PROOF_PG_SOCKET=/proof/sock",
+      "M5_PROOF_PG_SOCKET=/proof/sock",
+      "python",
+      "-B",
+      "-m"
+    ],
+    "prefix_usage": "Substitute container_name then append command_suffix. Exact recorded invocations.",
+    "python_image_config_id": "sha256:486a8afeb2f62c7906194d3e1fee839387e55753bcad365120d18306502fafdc",
+    "postgres_image_config_id": "sha256:87e04d274d186c7331d0e13c7c90c8b9f63b0d7ae94476c98a229a94d62c9745",
+    "postgres_setup_argv": [
+      "docker",
+      "run",
+      "-d",
+      "--pull=never",
+      "--name",
+      "frida-m8a-pg",
+      "--network",
+      "none",
+      "--read-only",
+      "--tmpfs",
+      "/tmp:rw,nosuid,nodev",
+      "--tmpfs",
+      "/var/lib/postgresql/data:rw,nosuid,nodev",
+      "-e",
+      "POSTGRES_USER=m1proof",
+      "-e",
+      "POSTGRES_DB=m1proof",
+      "-e",
+      "POSTGRES_HOST_AUTH_METHOD=trust",
+      "-v",
+      "/tmp/fridadev-m8a-20261010.tBwpJV/pg-socket:/var/run/postgresql",
+      "postgres:16-alpine",
+      "-c",
+      "listen_addresses=",
+      "-c",
+      "unix_socket_permissions=0777"
+    ],
+    "no_operator_db": true,
+    "no_network": true,
+    "no_frontend_campaign": true,
+    "no_renderer_rebuild": true,
+    "no_fridadev_rebuild_or_restart": true,
+    "no_permanent_mount_or_host_group_change": true,
+    "owned_directory_setup": [
+      [
+        "mkdir",
+        "/tmp/fridadev-m8a-20261010.tBwpJV/pg-socket"
+      ],
+      [
+        "chmod",
+        "0755",
+        "/tmp/fridadev-m8a-20261010.tBwpJV"
+      ],
+      [
+        "cp",
+        "/opt/platform/fridadev-app/writer-renderer/pins.json",
+        "/tmp/fridadev-m8a-20261010.tBwpJV/writer-pins.json"
+      ],
+      [
+        "sudo",
+        "-n",
+        "install",
+        "-d",
+        "-m",
+        "2770",
+        "-o",
+        "20000",
+        "-g",
+        "20000",
+        "/tmp/fridadev-m8a-20261010.tBwpJV/writer-socket"
+      ]
+    ]
+  },
+  "executions": [
+    {
+      "label": "baseline-unit",
+      "started_utc": "2026-10-10T15:30:30.709394+00:00",
+      "exit": 0,
+      "wall_seconds": 24.118,
+      "summary": "Ran 91 tests in 23.168s\n\nOK",
+      "command_prefix_ref": "isolation.python_prefix",
+      "container_name": "frida-m8a-baseline-unit",
+      "command_suffix": [
+        "unittest",
+        "-v",
+        "tests.unit.core.test_document_renderer_contract",
+        "tests.unit.core.test_document_renderer_structure",
+        "tests.unit.core.test_document_rendering",
+        "tests.unit.core.test_document_rendering_release",
+        "tests.unit.core.test_document_markdown",
+        "tests.unit.core.test_document_workshop_confirmation_route_m5"
+      ],
+      "ids_count": 91,
+      "log_sha256": "189e9972f1ae67d326dc6975ec2c0ffecf6c7ed382969b48465d8850340f159d",
+      "log_bytes": 17701
+    },
+    {
+      "label": "baseline-sql",
+      "started_utc": "2026-10-10T15:30:30.710885+00:00",
+      "exit": 0,
+      "wall_seconds": 80.894,
+      "summary": "Ran 69 tests in 79.829s\n\nOK",
+      "command_prefix_ref": "isolation.python_prefix",
+      "container_name": "frida-m8a-baseline-sql",
+      "command_suffix": [
+        "unittest",
+        "-v",
+        "tests.integration.document_workshop.test_renderer_m8c_postgresql",
+        "tests.integration.document_workshop.test_renderer_release_postgresql",
+        "tests.integration.document_workshop.test_renderer_structure_postgresql",
+        "tests.integration.document_workshop.test_execution_postgresql",
+        "tests.integration.document_workshop.test_execution_concurrency_postgresql",
+        "tests.integration.document_workshop.test_update_m7_postgresql"
+      ],
+      "ids_count": 69,
+      "log_sha256": "fa2e778464cea28a0ea4d5bafa15f2a958eb4a016bd6ec772c22d7717fb71cd1",
+      "log_bytes": 48291
+    },
+    {
+      "label": "red-client",
+      "started_utc": "2026-10-10T15:32:50.569251+00:00",
+      "exit": 1,
+      "wall_seconds": 0.412,
+      "summary": "Ran 10 tests in 0.003s\n\nFAILED (failures=10)",
+      "command_prefix_ref": "isolation.python_prefix",
+      "container_name": "frida-m8a-red-client",
+      "command_suffix": [
+        "unittest",
+        "-v",
+        "tests.unit.core.test_document_renderer_client"
+      ],
+      "ids_count": 10,
+      "log_sha256": "24b90c7c9f1b08fefd94c5a1a0c3c0bce64f73a3e46d0d068ada97ca75921923",
+      "log_bytes": 8553
+    },
+    {
+      "label": "green-client",
+      "started_utc": "2026-10-10T15:34:48.238922+00:00",
+      "exit": 0,
+      "wall_seconds": 3.923,
+      "summary": "Ran 10 tests in 3.181s\n\nOK",
+      "command_prefix_ref": "isolation.python_prefix",
+      "container_name": "frida-m8a-green-client",
+      "command_suffix": [
+        "unittest",
+        "-v",
+        "tests.unit.core.test_document_renderer_client"
+      ],
+      "ids_count": 10,
+      "log_sha256": "ef8ec7af0dfd9b0017b4d332d07d76798876613ec2dd4ebc76f338a4345268b7",
+      "log_bytes": 2107
+    },
+    {
+      "label": "red-snapshots",
+      "started_utc": "2026-10-10T15:36:44.382342+00:00",
+      "exit": 1,
+      "wall_seconds": 0.896,
+      "summary": "Ran 10 tests in 0.003s\n\nFAILED (failures=10)",
+      "command_prefix_ref": "isolation.python_prefix",
+      "container_name": "frida-m8a-red-snapshots",
+      "command_suffix": [
+        "unittest",
+        "-v",
+        "tests.integration.document_workshop.test_renderer_m8a_postgresql"
+      ],
+      "ids_count": 10,
+      "log_sha256": "56acef67668744ac2b0cbcead189bc41d5fe0710f1a92408f4efecff7418f7e0",
+      "log_bytes": 9813
+    },
+    {
+      "label": "green-snapshots",
+      "started_utc": "2026-10-10T15:37:29.264113+00:00",
+      "exit": 1,
+      "wall_seconds": 29.82,
+      "summary": "Ran 10 tests in 28.853s\n\nFAILED (failures=2, errors=1)",
+      "command_prefix_ref": "isolation.python_prefix",
+      "container_name": "frida-m8a-green-snapshots",
+      "command_suffix": [
+        "unittest",
+        "-v",
+        "tests.integration.document_workshop.test_renderer_m8a_postgresql"
+      ],
+      "ids_count": 10,
+      "log_sha256": "601ce4b3dc9cf776eb5c4959aa995ccdab0b5a219747d00f05852ab226b35ac5",
+      "log_bytes": 5873
+    },
+    {
+      "label": "corrected-snapshots",
+      "started_utc": "2026-10-10T15:39:16.718867+00:00",
+      "exit": 0,
+      "wall_seconds": 25.045,
+      "summary": "Ran 11 tests in 24.053s\n\nOK",
+      "command_prefix_ref": "isolation.python_prefix",
+      "container_name": "frida-m8a-corrected-snapshots",
+      "command_suffix": [
+        "unittest",
+        "-v",
+        "tests.integration.document_workshop.test_renderer_m8a_postgresql"
+      ],
+      "ids_count": 11,
+      "log_sha256": "2b307f5da971f693af8404b269cfb3f914c478efe21372e157c3c096d96a0785",
+      "log_bytes": 2757
+    },
+    {
+      "label": "real-writer",
+      "started_utc": "2026-10-10T15:40:24.264493+00:00",
+      "exit": 2,
+      "wall_seconds": 0.323,
+      "summary": "python: can't open file '/workspace/app/tests.support.probe_document_renderer_m8a': [Errno 2] No such file or directory",
+      "argv": [
+        "docker",
+        "run",
+        "--user",
+        "20001:20000",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "-v",
+        "/tmp/fridadev-m8a-20261010.tBwpJV/writer-socket:/run/writer:ro",
+        "-v",
+        "/tmp/fridadev-m8a-20261010.tBwpJV/writer-pins.json:/run/writer-pins.json:ro",
+        "--rm",
+        "--pull=never",
+        "--name",
+        "frida-m8a-real-writer",
+        "--network",
+        "none",
+        "--read-only",
+        "--tmpfs",
+        "/tmp:rw,nosuid,nodev",
+        "-v",
+        "/opt/platform/fridadev:/workspace:ro",
+        "-v",
+        "/tmp/fridadev-m8a-20261010.tBwpJV/pg-socket:/proof/sock:ro",
+        "-w",
+        "/workspace/app",
+        "--entrypoint",
+        "/usr/bin/env",
+        "fridadev-audit-py:latest",
+        "-i",
+        "PATH=/usr/local/bin:/usr/bin:/bin",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "PYTHONPATH=/workspace/app:/workspace",
+        "EMBED_BASE_URL=https://embed.invalid",
+        "CRAWL4AI_URL=https://crawl.invalid",
+        "SEARXNG_URL=https://search.invalid",
+        "M1_PROOF_PG_SOCKET=/proof/sock",
+        "M2_PROOF_PG_SOCKET=/proof/sock",
+        "M3_PROOF_PG_SOCKET=/proof/sock",
+        "M4_PROOF_PG_SOCKET=/proof/sock",
+        "M5_PROOF_PG_SOCKET=/proof/sock",
+        "python",
+        "-B",
+        "tests.support.probe_document_renderer_m8a",
+        "/run/writer/renderer.sock",
+        "/run/writer-pins.json"
+      ],
+      "ids_count": 0,
+      "log_sha256": "7600817046db240e37594e2745c3f7612cb451ea8b7f65d46c3381e230e03198",
+      "log_bytes": 120
+    },
+    {
+      "label": "real-writer-execution",
+      "started_utc": "2026-10-10T15:40:34.143592+00:00",
+      "exit": 0,
+      "wall_seconds": 6.129,
+      "summary": "{\"case\": \"m8a_confirmed_compact_list\", \"renderer\": \"real_isolated_m8s\", \"image_digest\": \"sha256:8737155ab4794d06077d796ec5d3406521790f289b87b4204490735907449bf3\", \"expected_engine_sha256\": \"e9390514e765624a7d5c174ede088a1038ce9e8c0be1a79aecc410a328de6738\", \"pages\": 1, \"docx_bytes\": 8313, \"pdf_bytes\": 14951, \"docx_sha256\": \"9c8ffc2eff5913c291e02ffe7391b0d01be6f9b3c058882e0394bce4881250e7\", \"pdf_sha256\": \"9ac22eb38cb6ba0ae20fbc3f1ba756f13ac7ee2b931c2b0b3b04dfadb048aa79\", \"durable_pair_matches\": true, \"release_acknowledged\": true, \"journal\": 0, \"receipts\": 0, \"no_model\": true, \"no_dav\": true, \"wall_seconds\": 5.204}",
+      "argv": [
+        "docker",
+        "run",
+        "--user",
+        "20001:20000",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "-v",
+        "/tmp/fridadev-m8a-20261010.tBwpJV/writer-socket:/run/writer:ro",
+        "-v",
+        "/tmp/fridadev-m8a-20261010.tBwpJV/writer-pins.json:/run/writer-pins.json:ro",
+        "--rm",
+        "--pull=never",
+        "--name",
+        "frida-m8a-real-writer-execution",
+        "--network",
+        "none",
+        "--read-only",
+        "--tmpfs",
+        "/tmp:rw,nosuid,nodev",
+        "-v",
+        "/opt/platform/fridadev:/workspace:ro",
+        "-v",
+        "/tmp/fridadev-m8a-20261010.tBwpJV/pg-socket:/proof/sock:ro",
+        "-w",
+        "/workspace/app",
+        "--entrypoint",
+        "/usr/bin/env",
+        "fridadev-audit-py:latest",
+        "-i",
+        "PATH=/usr/local/bin:/usr/bin:/bin",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "PYTHONPATH=/workspace/app:/workspace",
+        "EMBED_BASE_URL=https://embed.invalid",
+        "CRAWL4AI_URL=https://crawl.invalid",
+        "SEARXNG_URL=https://search.invalid",
+        "M1_PROOF_PG_SOCKET=/proof/sock",
+        "M2_PROOF_PG_SOCKET=/proof/sock",
+        "M3_PROOF_PG_SOCKET=/proof/sock",
+        "M4_PROOF_PG_SOCKET=/proof/sock",
+        "M5_PROOF_PG_SOCKET=/proof/sock",
+        "python",
+        "-B",
+        "-m",
+        "tests.support.probe_document_renderer_m8a",
+        "/run/writer/renderer.sock",
+        "/run/writer-pins.json"
+      ],
+      "ids_count": 0,
+      "log_sha256": "8a315e48fab528347a1da28c20f9a6033baf07b8c351f1dbc3f83641f67dd81b",
+      "log_bytes": 620
+    },
+    {
+      "label": "after-unit",
+      "started_utc": "2026-10-10T15:40:42.484135+00:00",
+      "exit": 0,
+      "wall_seconds": 25.986,
+      "summary": "Ran 101 tests in 25.101s\n\nOK",
+      "command_prefix_ref": "isolation.python_prefix",
+      "container_name": "frida-m8a-after-unit",
+      "command_suffix": [
+        "unittest",
+        "-v",
+        "tests.unit.core.test_document_renderer_contract",
+        "tests.unit.core.test_document_renderer_structure",
+        "tests.unit.core.test_document_rendering",
+        "tests.unit.core.test_document_rendering_release",
+        "tests.unit.core.test_document_markdown",
+        "tests.unit.core.test_document_workshop_confirmation_route_m5",
+        "tests.unit.core.test_document_renderer_client"
+      ],
+      "ids_count": 101,
+      "log_sha256": "cbf7e4f8844882b822e077275c320f8f1d65268ab882b3c6b2d14b488c81fb39",
+      "log_bytes": 19710
+    },
+    {
+      "label": "after-sql",
+      "started_utc": "2026-10-10T15:40:55.801038+00:00",
+      "exit": 1,
+      "wall_seconds": 107.716,
+      "summary": "Ran 80 tests in 106.594s\n\nFAILED (errors=1)",
+      "command_prefix_ref": "isolation.python_prefix",
+      "container_name": "frida-m8a-after-sql",
+      "command_suffix": [
+        "unittest",
+        "-v",
+        "tests.integration.document_workshop.test_renderer_m8c_postgresql",
+        "tests.integration.document_workshop.test_renderer_release_postgresql",
+        "tests.integration.document_workshop.test_renderer_structure_postgresql",
+        "tests.integration.document_workshop.test_execution_postgresql",
+        "tests.integration.document_workshop.test_execution_concurrency_postgresql",
+        "tests.integration.document_workshop.test_update_m7_postgresql",
+        "tests.integration.document_workshop.test_renderer_m8a_postgresql"
+      ],
+      "ids_count": 80,
+      "log_sha256": "86de0690555fe3bc4a3c1e5ec6f3f3b41ad005d4d7e5044ad6d64bd79f595934",
+      "log_bytes": 52688
+    },
+    {
+      "label": "transport-edges",
+      "started_utc": "2026-10-10T15:42:44.879727+00:00",
+      "exit": 0,
+      "wall_seconds": 4.549,
+      "summary": "Ran 14 tests in 3.812s\n\nOK",
+      "command_prefix_ref": "isolation.python_prefix",
+      "container_name": "frida-m8a-transport-edges",
+      "command_suffix": [
+        "unittest",
+        "-v",
+        "tests.unit.core.test_document_renderer_client"
+      ],
+      "ids_count": 14,
+      "log_sha256": "ee00c2c93b324ca908af56419e47688c66de79634673209228d4821dae1a59c6",
+      "log_bytes": 2923
+    },
+    {
+      "label": "causal-m8c-adapted",
+      "started_utc": "2026-10-10T15:43:11.646777+00:00",
+      "exit": 0,
+      "wall_seconds": 7.195,
+      "summary": "Ran 8 tests in 6.298s\n\nOK",
+      "command_prefix_ref": "isolation.python_prefix",
+      "container_name": "frida-m8a-causal-m8c-adapted",
+      "command_suffix": [
+        "unittest",
+        "-v",
+        "tests.integration.document_workshop.test_renderer_m8c_postgresql"
+      ],
+      "ids_count": 8,
+      "log_sha256": "23825e1ab0aa13bd0d228508308225b9be952ed0509b9c094f7b66b57e1e48d0",
+      "log_bytes": 1872
+    },
+    {
+      "label": "neighbors",
+      "started_utc": "2026-10-10T15:44:38.698483+00:00",
+      "exit": 0,
+      "wall_seconds": 2.886,
+      "summary": "Ran 80 tests in 2.095s\n\nOK",
+      "command_prefix_ref": "isolation.python_prefix",
+      "container_name": "frida-m8a-neighbors",
+      "command_suffix": [
+        "unittest",
+        "-v",
+        "tests.unit.core.test_document_workshop_http_transport",
+        "tests.unit.core.test_document_workshop_provider_progress",
+        "tests.unit.core.test_document_workshop_envelope",
+        "tests.unit.core.test_document_workshop_m4_observability"
+      ],
+      "ids_count": 80,
+      "log_sha256": "e9994efb1ee98b7b2266d70feb0f48dcd179a3f3c6c3c05329a9b55ee358aff4",
+      "log_bytes": 16677
+    },
+    {
+      "label": "final-adapter",
+      "started_utc": "2026-10-10T15:45:30.302268+00:00",
+      "exit": 0,
+      "wall_seconds": 29.162,
+      "summary": "Ran 25 tests in 28.162s\n\nOK",
+      "command_prefix_ref": "isolation.python_prefix",
+      "container_name": "frida-m8a-final-adapter",
+      "command_suffix": [
+        "unittest",
+        "-v",
+        "tests.unit.core.test_document_renderer_client",
+        "tests.integration.document_workshop.test_renderer_m8a_postgresql"
+      ],
+      "ids_count": 25,
+      "log_sha256": "d4f87afdadb95aa338b6c8cc379f8b00b91f1e72c4d7bf37cf0ee506c2020768",
+      "log_bytes": 5581
+    }
+  ],
+  "comparison": {
+    "baseline_unit_ids": {
+      "tests.unit.core.test_document_renderer_contract.RendererContractTests": [
+        "test_absent_zero_over_bool_float_or_pdf_only_pages_refused",
+        "test_archive_actual_expansion_and_entries_exact_then_one_over",
+        "test_archive_duplicate_traversal_symlink_expansion_and_active_content_refused",
+        "test_candidate_mutation_never_changes_measured_snapshot",
+        "test_capabilities_require_explicit_caller_pins",
+        "test_causal_detector_catches_missing_part_completion_mutant",
+        "test_causal_detector_catches_trusted_declared_hash_mutant",
+        "test_complete_request_identity_covers_format_revision_engine_and_source",
+        "test_delete_request_is_closed_and_bound_to_job_identity",
+        "test_docx_relationships_are_passive_admissible_links_or_in_archive_targets",
+        "test_duplicate_unknown_keys_and_types_refused",
+        "test_durable_offline_corpus_matches_expected_decisions",
+        "test_engine_expected_snapshot_cannot_be_learned_from_forged_request",
+        "test_json_and_framing_actual_octets_exact_then_one_over",
+        "test_lengths_digests_and_real_binary_types_refused",
+        "test_multipart_header_duplicates_unexpected_headers_lengths_and_boundaries",
+        "test_multipart_missing_duplicate_unexpected_raw_and_incomplete_refused",
+        "test_pages_one_and_twenty_accepted",
+        "test_passive_links_preserved_and_active_canonical_refused",
+        "test_pdf_active_outline_and_nested_action_refused",
+        "test_pdf_local_outline_and_resource_named_a_remain_passive",
+        "test_protocol_error_never_contains_content_or_exception",
+        "test_result_http_status_must_be_strict_success",
+        "test_result_identity_and_pins_refused",
+        "test_same_source_revision_cannot_claim_a_different_canonical",
+        "test_schema_and_validator_preserve_uppercase_passive_link",
+        "test_source_artifact_real_octets_at_limit_and_one_over",
+        "test_source_forbidden_metadata_and_missing_correspondence",
+        "test_source_modes_distinguish_previous_and_candidate_canonical",
+        "test_unhashable_state_reason_source_are_content_free_protocol_errors",
+        "test_valid_pair_and_strict_snapshot",
+        "test_wire_and_declared_limits_exact_and_plus_one"
+      ],
+      "tests.unit.core.test_document_renderer_structure.RendererStructureTests": [
+        "test_body_direct_children_and_terminal_section_refused",
+        "test_body_metadata_and_paragraph_section_properties_preserved",
+        "test_causal_detector_catches_only_structural_guard_neutralized_in_real_child",
+        "test_element_only_xml_whitespace_preserved_other_text_refused",
+        "test_equivalent_prefixes_default_namespace_and_extra_attributes_preserved",
+        "test_external_and_frida_source_admission_uses_same_structural_guard",
+        "test_malformed_xml_and_active_content_still_refused",
+        "test_optional_body_and_background_structures_preserved",
+        "test_paragraphs_titles_styles_tables_lists_breaks_and_passive_links_preserved",
+        "test_skeleton_qnames_placement_cardinality_and_order_refused",
+        "test_two_bodies_and_foreign_root_child_refused_before_release"
+      ],
+      "tests.unit.core.test_document_rendering.RenderingTests": [
+        "test_authority_checked_before_submit_and_after_each_wait",
+        "test_cleanup_unacknowledged_or_wrong_job_prevents_success",
+        "test_client_exception_is_content_free_and_submit_http_matches_state",
+        "test_collect_validate_freeze_then_release_and_repeat_without_reexecution",
+        "test_conflicting_collect_does_not_cancel_or_release_legitimate_job",
+        "test_exact_inactivity_and_keepalives_do_not_renew",
+        "test_failed_refused_cancelled_terminal_states",
+        "test_fake_terminal_result_and_delete_idempotence_are_not_ready",
+        "test_http_cleanup_error_never_becomes_successful_release_or_cancel",
+        "test_invalid_result_cancelled_before_release_and_not_retained",
+        "test_lost_worker_never_retries",
+        "test_no_wall_deadline_with_monotone_useful_progress",
+        "test_phase_regression_at_same_unit_count_is_refused",
+        "test_regressing_skipped_or_inconsistent_progress_refused",
+        "test_result_late_at_inactivity_is_not_collected_or_released_as_success",
+        "test_same_job_identity_reads_existing_and_incompatible_conflicts",
+        "test_saturation_refuses_without_queue",
+        "test_submit_accepted_with_response_lost_is_abandoned_once",
+        "test_unknown_worker_state_and_reason_fail_closed",
+        "test_useful_multiblock_progress_has_no_total_wall_deadline",
+        "test_wrong_request_cannot_get_result_or_release_existing_job"
+      ],
+      "tests.unit.core.test_document_rendering_release.RenderingReleaseTests": [
+        "test_ack_at_119_999_seconds_is_accepted",
+        "test_ack_at_exact_120_seconds_is_refused_without_cache_or_replay",
+        "test_ack_beyond_120_seconds_is_refused_without_cache_or_replay",
+        "test_ack_lost_after_real_release_is_closed_without_second_cleanup",
+        "test_ack_validation_time_is_included_in_final_decision",
+        "test_cleanup_failure_preserves_initial_inactivity_and_never_replays",
+        "test_final_authority_check_time_is_included_in_final_decision",
+        "test_lost_authority_after_ack_prevents_cache_without_second_cleanup",
+        "test_nominal_ack_is_accepted_and_reused_without_exchange",
+        "test_release_uses_age_already_consumed_in_result",
+        "test_wrong_ack_identity_state_workspace_and_http_are_closed_without_retry"
+      ],
+      "tests.unit.core.test_document_markdown.DocumentMarkdownTests": [
+        "test_adjacent_identically_styled_spans_do_not_make_delimiter_collisions",
+        "test_adjacent_punctuation_does_not_insert_text_to_force_emphasis",
+        "test_heading_paragraph_and_all_style_combinations",
+        "test_html_images_link_syntax_and_code_are_literal_text",
+        "test_link_of_whitespace_still_keeps_its_canonical_target",
+        "test_lists_quotes_and_multiline_text_keep_one_structural_block",
+        "test_non_bmp_combining_spaces_and_text_are_not_truncated_or_normalized",
+        "test_only_validated_canonical_is_accepted",
+        "test_page_break_is_fixed_marker_with_no_page_count_claim",
+        "test_passive_link_destination_cannot_split_a_table_cell",
+        "test_passive_link_has_no_breakout_and_preserves_unicode_label",
+        "test_table_preserves_every_cell_without_inventing_a_header",
+        "test_trailing_spaces_cannot_create_a_markdown_hard_break"
+      ],
+      "tests.unit.core.test_document_workshop_confirmation_route_m5.ConfirmationRouteM5Tests": [
+        "test_constructed_confirmation_is_unavailable_before_any_storage_or_mutation",
+        "test_forged_content_path_etag_does_not_obtain_mutator_authority",
+        "test_get_and_confirm_do_not_alias_a_chat_or_preparation_submission"
+      ]
+    },
+    "baseline_sql_ids": {
+      "tests.integration.document_workshop.test_renderer_m8c_postgresql.RendererPostgresqlTests": [
+        "test_before_confirmation_zero_submit_and_no_mutation",
+        "test_cancellation_scope_lease_and_revision_loss_during_render",
+        "test_causal_detector_catches_renderer_before_real_confirmation_guard",
+        "test_claim_render_validate_freeze_release_exact_order_and_binary_refusal",
+        "test_invalid_confirmation_zero_submit_and_no_claim",
+        "test_markdown_direct_never_calls_renderer_and_mutates_once",
+        "test_owner_and_generation_invalid_zero_submit",
+        "test_public_binary_actions_refused_before_claim_despite_valid_worker_capabilities"
+      ],
+      "tests.integration.document_workshop.test_renderer_release_postgresql.RendererReleasePostgresqlTests": [
+        "test_ack_before_limit_reaches_existing_format_gate_under_real_claim",
+        "test_exact_and_later_ack_refused_before_format_gate_under_real_claim"
+      ],
+      "tests.integration.document_workshop.test_renderer_structure_postgresql.RendererStructurePostgresqlTests": [
+        "test_structure_refusal_under_confirmation_claim_before_product_format_gate"
+      ],
+      "tests.integration.document_workshop.test_execution_postgresql.ExecutionPostgresqlTests": [
+        "test_cancel_during_remote_put_revokes_only_confirmation_and_refuses_late_outcome",
+        "test_crash_after_collection_intention_never_fabricates_absence_or_collection_count",
+        "test_crash_after_put_intent_with_lost_claim_is_unknown_and_never_replayed",
+        "test_each_publication_write_failure_rolls_back_all_rows_and_compensates_exact_creation",
+        "test_every_journal_failure_stops_later_effects_and_preserves_intentions",
+        "test_fake_binary_render_runs_after_claim_and_rejects_failure_pages_cleanup_and_public_formats",
+        "test_get_and_reconfirm_verify_bundle_after_lost_reply_and_cache_read_failure",
+        "test_injected_public_projection_is_closed_and_does_not_claim_confirmation_unavailable",
+        "test_local_collision_and_scope_round_trip_prevent_confirmation_claim_and_mutation",
+        "test_lost_confirmation_cannot_append_remote_outcome_or_publish_or_compensate",
+        "test_missing_durable_success_outcome_projects_unknown_without_replay",
+        "test_mounted_confirm_route_uses_real_dav_headers_sql_publication_and_readback",
+        "test_pending_created_in_2000_remains_confirmable_without_age_limit",
+        "test_publication_proof_requires_remote_identity_size_storage_bytes_and_claim_owner",
+        "test_real_commit_with_lost_reply_is_verified_without_delete_or_second_put",
+        "test_real_m2_fresh_source_at_confirmation_and_remote_change_refuses_put",
+        "test_real_urllib_unknown_put_result_has_one_put_no_delete_no_publication",
+        "test_success_publishes_existing_inventory_exact_names_and_one_atomic_receipt",
+        "test_two_request_ids_share_one_confirmed_execution_and_preserve_preparation_claim",
+        "test_without_injected_executor_refuses_before_new_schema_or_claim",
+        "test_wrong_scope_or_revision_or_hostile_extra_field_mutates_nothing"
+      ],
+      "tests.integration.document_workshop.test_execution_concurrency_postgresql.ExecutionConcurrencyPostgresqlTests": [
+        "test_cancel_expired_confirmation_preserves_active_successor_and_rejects_late_owner",
+        "test_cancelled_and_superseded_pending_never_create_confirmation_claim",
+        "test_chat_or_preparation_claim_excludes_confirmation_without_changing_pending",
+        "test_mkcol_journal_failure_precedes_collection_http_and_reports_no_remote_effect",
+        "test_owner_and_generation_fence_every_mkcol_put_and_compensation_intention",
+        "test_sql_publication_rollback_real_dav_compensation_success_changed_etag_and_unknown_delete",
+        "test_two_processes_confirm_with_different_ids_one_owner_one_put"
+      ],
+      "tests.integration.document_workshop.test_update_m7_postgresql.UpdateM7PostgresqlTests": [
+        "test_change_after_prelecture_is_conflict_412_without_compensation",
+        "test_change_between_prepare_and_confirm_is_conflict_without_put",
+        "test_current_corrupt_cache_refuses_download_and_historical_receipt",
+        "test_current_mime_corruption_is_not_a_complete_publication",
+        "test_explicit_target_path_cannot_be_replaced_by_model_proposal",
+        "test_external_update_retains_identity_and_creation_origin_and_downloads_current_revision",
+        "test_failed_journal_put_intent_prevents_http_effect",
+        "test_interruption_before_effect_cannot_authorize_late_executor",
+        "test_invalid_remote_identity_never_overwrites",
+        "test_lease_loss_at_real_dav_gate_fences_late_owner_and_never_compensates",
+        "test_legacy_constraint_under_same_name_disables_update_before_put",
+        "test_lost_dav_reply_cannot_become_success_from_matching_bytes_and_repeated_confirm_never_puts",
+        "test_migration_preserves_history_is_idempotent_and_never_runs_on_get",
+        "test_missing_etag_never_overwrites",
+        "test_missing_m7_constraint_disables_update_before_any_effect",
+        "test_missing_target_never_creates_replacement",
+        "test_new_remote_change_before_reconciliation_preserves_unknown_and_never_attributes_new_bytes",
+        "test_raw_http_cannot_change_target_revision_or_add_force_fields",
+        "test_real_rollback_after_put_then_get_repairs_metadata_with_new_authority_without_put",
+        "test_repair_expired_new_claim_does_not_restore_old_owner",
+        "test_repair_proof_requires_fingerprint_bound_to_original_action",
+        "test_repair_proof_requires_its_own_durable_intention",
+        "test_replaced_identity_at_same_path_never_overwrites",
+        "test_rollback_at_final_link_update_has_no_partial_publication_then_repairs",
+        "test_successive_updates_keep_old_receipts_and_unique_file_current_download",
+        "test_target_snapshot_immutable_and_cancel_a_preserves_b",
+        "test_two_conversations_old_version_real_triggers_invalidate_other_action",
+        "test_two_inflight_conversations_same_version_at_most_one_publication",
+        "test_two_inflight_updates_nowait_keep_live_claim_until_expiry_then_uncertain",
+        "test_weak_etag_never_overwrites"
+      ]
+    },
+    "new_ids": {
+      "tests.unit.core.test_document_renderer_client.RendererUnixTests": [
+        "test_blocked_socket_cancel_and_inclusive_inactivity_close_transport",
+        "test_capabilities_cannot_choose_the_expected_pins",
+        "test_configuration_has_no_url_relative_path_or_tcp_fallback",
+        "test_http_framing_redirect_compression_extra_body_and_truncation_rejected",
+        "test_late_result_and_late_release_cannot_be_success",
+        "test_lost_and_truncated_submit_response_read_same_job_once",
+        "test_lost_submit_with_worker_disappearance_never_replays",
+        "test_no_reply_to_accepted_submit_is_cancelled_at_inclusive_deadline",
+        "test_nominal_consumes_all_five_endpoints_and_repeats_without_post",
+        "test_real_transport_polls_do_not_extend_useful_progress_deadline",
+        "test_real_transport_useful_progress_can_exceed_120_seconds_total",
+        "test_release_not_acknowledged_and_cleanup_blocked_preserve_initial_error",
+        "test_release_reply_lost_never_causes_a_second_delete_or_success",
+        "test_wrong_identity_revision_hash_pages_pins_and_false_ready_fail_before_freeze"
+      ],
+      "tests.integration.document_workshop.test_renderer_m8a_postgresql.RendererAdapterPostgresqlTests": [
+        "test_authority_loss_interrupts_blocked_transport_and_discards_late_result",
+        "test_double_confirmation_during_blocked_result_has_one_job_and_one_snapshot",
+        "test_fencing_at_release_ack_preserves_snapshot_but_never_returns_success",
+        "test_invalid_ready_hash_pages_or_worker_loss_precedes_snapshot_and_mutation",
+        "test_lost_submit_recovers_state_then_persists_without_second_post",
+        "test_release_refused_keeps_snapshot_without_success_or_second_cleanup",
+        "test_snapshot_committed_before_release_bound_to_action_revision_and_confirmation",
+        "test_snapshot_insert_rollback_cancels_once_without_release_or_partial_row",
+        "test_snapshot_is_immutable",
+        "test_unchanged_markdown_does_not_require_renderer_schema_or_socket",
+        "test_wrong_owner_or_generation_cannot_persist_a_validated_snapshot"
+      ]
+    },
+    "neighbor_ids": {
+      "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests": [
+        "test_body_protocol_rejects_invalid_json_and_utf8_content_free",
+        "test_chunked_json_response_is_consumed",
+        "test_close_interrupts_initial_headers_and_peer_observes_eof",
+        "test_close_interrupts_json_body_and_peer_observes_eof",
+        "test_close_interrupts_real_pending_tls_handshake_without_connection_leak",
+        "test_close_interrupts_sse_body_and_peer_observes_eof",
+        "test_eof_framed_json_response_is_consumed",
+        "test_eof_network_bound_is_enforced_without_waiting_for_peer_close",
+        "test_frozen_admitted_bytes_and_headers_reach_real_socket_verbatim_once",
+        "test_invalid_chunk_size_and_terminator_are_rejected",
+        "test_large_provider_envelope_has_network_space_beyond_canonical_limit",
+        "test_m0_cancellation_aborts_blocked_body_and_leaves_no_exchange_task",
+        "test_m0_inactivity_aborts_blocked_json_and_sse_read_without_late_success",
+        "test_m0_inactivity_aborts_initial_headers_socket_without_provider_event",
+        "test_network_bound_counts_chunked_decoded_bytes",
+        "test_network_bound_includes_chunk_framing_not_only_decoded_body",
+        "test_network_bound_rejects_announced_oversize_before_body_read",
+        "test_oversize_headers_are_bounded_before_end_marker",
+        "test_premature_eof_is_refused_for_content_length_and_chunked",
+        "test_real_chunked_sse_utf8_split_across_chunks_is_consumed",
+        "test_real_m0_consumes_sse_terminal_and_closes_one_exchange",
+        "test_real_m0_success_closes_peer_after_one_json_exchange",
+        "test_request_framing_injection_is_refused_before_any_socket",
+        "test_response_protocol_rejects_ambiguous_framing_encoding_and_headers",
+        "test_sse_lines_accept_cr_lf_and_crlf_across_response_chunks",
+        "test_sse_rejects_invalid_utf8_without_replacement",
+        "test_tls_verifies_certificate_on_real_loopback_connection",
+        "test_trailer_framing_cannot_replace_response_authority"
+      ],
+      "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests": [
+        "test_actual_shared_admission_builder_and_simulated_send",
+        "test_blocked_open_is_also_covered",
+        "test_caller_task_cancellation_closes_transport",
+        "test_cancellation_is_prompt_and_no_late_result_can_succeed",
+        "test_clarify_and_refuse_are_complete_single_exchanges_without_canonical",
+        "test_complete_json_with_length_refused_without_repair",
+        "test_content_tool_calls_and_hidden_reasoning_never_become_envelope",
+        "test_continuous_keepalives_empty_or_reasoning_chunks_do_not_reset",
+        "test_counter_exception_never_sends_and_is_content_free",
+        "test_done_control_or_reasoning_only_cannot_prove_document",
+        "test_first_wait_blocked_read_exact_threshold_and_close",
+        "test_inactivity_late_result_is_neutralized",
+        "test_initial_cancel_and_failed_transport_release_do_not_succeed",
+        "test_invalid_envelope_or_old_canonical_root_has_one_call_and_no_repair",
+        "test_model_change_or_model_absence_refused",
+        "test_nonstream_empty_missing_terminal_invalid_json_or_canonical_refused",
+        "test_oversized_envelope_json_and_stream_fail_without_partial_document",
+        "test_oversized_sse_frame_is_rejected_before_json_decode",
+        "test_provider_context_error_refusal_http_and_exception_have_no_fallthrough",
+        "test_refused_estimate_never_sends",
+        "test_reported_completion_over_budget_refused",
+        "test_reported_context_overflow_without_total_is_refused",
+        "test_reported_usage_reuses_existing_extractor_and_absence_not_invented",
+        "test_same_preparation_does_not_send_twice",
+        "test_source_canary_in_protocol_surface_is_rejected_before_publication",
+        "test_steps_cannot_be_repeated_to_manufacture_progress",
+        "test_stream_is_consumed_and_terminal_usage_preserved",
+        "test_stream_length_no_done_and_error_frames_refused",
+        "test_stream_valid_json_without_finish_and_malformed_usage_refused",
+        "test_streamed_usage_components_merge_before_context_check",
+        "test_synchronous_preparation_cannot_hide_elapsed_inactivity",
+        "test_useful_stream_progress_allows_total_duration_over_120",
+        "test_valid_dense_content_can_have_a_larger_escaped_sse_frame",
+        "test_valid_multiline_sse_and_post_terminal_content_refused"
+      ],
+      "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests": [
+        "test_canonical_validation_and_volume_limits_are_reused",
+        "test_clarify_and_refuse_preserve_real_surface_without_action",
+        "test_clarify_refuse_cannot_smuggle_a_proposal",
+        "test_duplicate_fields_inside_canonical_are_not_repaired",
+        "test_duplicate_keys_nonfinite_truncated_json_and_old_root_are_rejected",
+        "test_limitations_are_typed_unique_known_codes",
+        "test_only_create_copy_markdown_can_be_prepared",
+        "test_ordinary_surface_text_and_non_protocol_json_are_not_rewritten",
+        "test_prepared_content_and_proposal_are_frozen_without_rewriting",
+        "test_protocol_json_cannot_be_published_as_a_surface",
+        "test_root_and_proposal_are_closed_with_strict_types",
+        "test_source_ids_are_uuid_unique_even_with_equivalent_spellings",
+        "test_surface_codepoints_blank_controls_and_type_bounds",
+        "test_target_uses_m0_documents_path_authority",
+        "test_technical_envelope_bound_is_separate_and_never_truncates"
+      ],
+      "tests.unit.core.test_document_workshop_m4_observability.M4ProgressAndObservabilityTests": [
+        "test_closed_documentary_event_schema_accepts_only_technical_values",
+        "test_repeated_steps_or_sources_cannot_forge_progress",
+        "test_upstream_steps_renew_effective_progress_without_total_deadline"
+      ]
+    },
+    "baseline_count": 160,
+    "after_union_count": 185,
+    "new_count": 25,
+    "neighbors_distinct": 80,
+    "baseline_ids_missing": [],
+    "single_185_run_claimed": false,
+    "after_union_provenance": [
+      "after-unit",
+      "after-sql except adapted causal detector",
+      "causal-m8c-adapted",
+      "transport-edges",
+      "final-adapter"
+    ],
+    "no_historical_total_reannounced": true,
+    "inventory_encoding": "Each dictionary key is module.Class; expand each method as key + dot + method for exact unittest ID."
+  },
+  "incidents": [
+    {
+      "label": "green-snapshots",
+      "failures": 2,
+      "errors": 1,
+      "cause": "Harness attempted a normally forbidden immutable revision edit and assumed a fenced but active M5 claim must immediately project non-200.",
+      "resolution": "Corruption injected only in isolated fixture with trigger restored; renderer success/snapshot/mutation assertions retained. Existing executing projection is not a success receipt.",
+      "proof": "corrected-snapshots and final-adapter"
+    },
+    {
+      "label": "real-writer",
+      "exit": 2,
+      "cause": "Disposable launcher slice removed -m; Python never imported the probe or contacted Writer.",
+      "resolution": "Launcher corrected once; real-writer-execution is the only real rendering proof."
+    },
+    {
+      "label": "after-sql",
+      "tests": 80,
+      "errors": 1,
+      "failed_id": "tests.integration.document_workshop.test_renderer_m8c_postgresql.RendererPostgresqlTests.test_causal_detector_catches_renderer_before_real_confirmation_guard",
+      "cause": "New guarded SQL progress stopped the counterfeit owner after deliberately removed initial guard, before old mutant assertion.",
+      "resolution": "Detector now asserts forbidden early submit, retaining new SQL guards. Same ID and all 8 M8-C IDs pass in causal-m8c-adapted. No product guard disabled outside test mutant."
+    },
+    {
+      "label": "report_assembly",
+      "exit": 1,
+      "cause": "Syntax error in disposable JSON assembly script; no artifact produced and no test/runtime effect.",
+      "resolution": "Assembly rewritten as a disposable checked script; no test repeated."
+    }
+  ],
+  "real_writer": {
+    "config_id_docker": "sha256:f3067a8fa6787e72a81cd72f94eb276c3887adf2e7907331a79aec98ca1c1487",
+    "local_oci_manifest": "sha256:8737155ab4794d06077d796ec5d3406521790f289b87b4204490735907449bf3",
+    "expected_engine": {
+      "filters": {
+        "docx": "Office Open XML Text",
+        "pdf": "writer_pdf_Export"
+      },
+      "fonts": [
+        {
+          "file_id": "LiberationSerif-Regular.ttf",
+          "license_id": "OFL-1.1",
+          "role": "regular",
+          "sha256": "9caef765d2e891c10dd73658894f01e660fe0c1c83e0bda7d6edf561d8f623d4"
+        },
+        {
+          "file_id": "LiberationSerif-Bold.ttf",
+          "license_id": "OFL-1.1",
+          "role": "bold",
+          "sha256": "443a4dbd694b6e4689925947b456e0532e10b19c90fa32eb39ea6c2cd9db9ebd"
+        },
+        {
+          "file_id": "LiberationSerif-Italic.ttf",
+          "license_id": "OFL-1.1",
+          "role": "italic",
+          "sha256": "de18fe26337e03241952dca46398d5b66f3c5738d080bfd284f66e67b926f597"
+        },
+        {
+          "file_id": "LiberationSerif-BoldItalic.ttf",
+          "license_id": "OFL-1.1",
+          "role": "bold_italic",
+          "sha256": "4b2635d2ec4d992373dcae577c742a98ecfd841ffc1b8a103b5f10db163dbc7a"
+        }
+      ],
+      "image_id": "frida-writer-m8s-20261010",
+      "locale": "fr-FR",
+      "profile": "frida_document_v1",
+      "renderer_version": "frida-writer-m8s-1",
+      "uno_version": "pyuno-25.2.3.2",
+      "writer_version": "25.2.3.2",
+      "image_digest": "sha256:8737155ab4794d06077d796ec5d3406521790f289b87b4204490735907449bf3"
+    },
+    "pins_file_sha256": "efcfbdfb45e07efb4ebb36d44c9c7141f62947a3c8dc62b030664bbf52849fd6",
+    "caller_uid_gid": "20001:20000",
+    "proof": {
+      "case": "m8a_confirmed_compact_list",
+      "renderer": "real_isolated_m8s",
+      "image_digest": "sha256:8737155ab4794d06077d796ec5d3406521790f289b87b4204490735907449bf3",
+      "expected_engine_sha256": "e9390514e765624a7d5c174ede088a1038ce9e8c0be1a79aecc410a328de6738",
+      "pages": 1,
+      "docx_bytes": 8313,
+      "pdf_bytes": 14951,
+      "docx_sha256": "9c8ffc2eff5913c291e02ffe7391b0d01be6f9b3c058882e0394bce4881250e7",
+      "pdf_sha256": "9ac22eb38cb6ba0ae20fbc3f1ba756f13ac7ee2b931c2b0b3b04dfadb048aa79",
+      "durable_pair_matches": true,
+      "release_acknowledged": true,
+      "journal": 0,
+      "receipts": 0,
+      "no_model": true,
+      "no_dav": true,
+      "wall_seconds": 5.204
+    },
+    "resource_checks": [
+      {
+        "argv": [
+          "docker",
+          "inspect",
+          "frida-m8a-writer-proof",
+          "--format",
+          "{{.Image}} {{.Config.User}} {{.HostConfig.NetworkMode}} {{.HostConfig.ReadonlyRootfs}} {{.HostConfig.Memory}} {{.HostConfig.PidsLimit}}"
+        ],
+        "exit": 0,
+        "wall_seconds": 0.015,
+        "output": "sha256:f3067a8fa6787e72a81cd72f94eb276c3887adf2e7907331a79aec98ca1c1487 20000:20000 none true 1073741824 64"
+      },
+      {
+        "argv": [
+          "docker",
+          "exec",
+          "frida-m8a-writer-proof",
+          "/usr/bin/python3",
+          "-B",
+          "-c",
+          "from pathlib import Path; p=Path(\"/tmp/renderer/jobs\"); print({\"jobs\": len(list(p.iterdir()))})"
+        ],
+        "exit": 0,
+        "wall_seconds": 0.076,
+        "output": "{'jobs': 0}"
+      },
+      {
+        "argv": [
+          "docker",
+          "top",
+          "frida-m8a-writer-proof",
+          "-eo",
+          "pid,comm"
+        ],
+        "exit": 0,
+        "wall_seconds": 0.02,
+        "output": "PID                 COMMAND\n2331138             docker-init\n2331159             python3"
+      },
+      {
+        "argv": [
+          "docker",
+          "inspect",
+          "frida-m8a-writer-proof",
+          "--format",
+          "{{json .HostConfig.CapDrop}} {{json .HostConfig.SecurityOpt}} {{.HostConfig.NanoCpus}} {{.HostConfig.MemorySwap}} {{json .HostConfig.Ulimits}} {{json .HostConfig.Tmpfs}}"
+        ],
+        "exit": 0,
+        "wall_seconds": 0.015,
+        "output": "[\"ALL\"] [\"no-new-privileges\"] 1000000000 1073741824 [{\"Hard\":256,\"Name\":\"nofile\",\"Soft\":256}] {\"/tmp\":\"rw,noexec,nosuid,nodev,size=268435456,uid=20000,gid=20000,mode=0700\"}"
+      }
+    ],
+    "fontconfig_cache": "Ephemeral caches remain outside empty jobs directory until owned test container removal.",
+    "setup_argv": [
+      "docker",
+      "run",
+      "-d",
+      "--pull=never",
+      "--init",
+      "--name",
+      "frida-m8a-writer-proof",
+      "--user",
+      "20000:20000",
+      "--network",
+      "none",
+      "--read-only",
+      "--cpus",
+      "1",
+      "--memory",
+      "1073741824",
+      "--memory-swap",
+      "1073741824",
+      "--pids-limit",
+      "64",
+      "--ulimit",
+      "nofile=256:256",
+      "--cap-drop",
+      "ALL",
+      "--security-opt",
+      "no-new-privileges",
+      "--tmpfs",
+      "/tmp:rw,noexec,nosuid,nodev,size=268435456,uid=20000,gid=20000,mode=0700",
+      "-v",
+      "/tmp/fridadev-m8a-20261010.tBwpJV/writer-socket:/run/writer",
+      "-v",
+      "/tmp/fridadev-m8a-20261010.tBwpJV/writer-pins.json:/run/renderer-pins.json:ro",
+      "sha256:f3067a8fa6787e72a81cd72f94eb276c3887adf2e7907331a79aec98ca1c1487"
+    ]
+  },
+  "auto_audit": {
+    "transport": "Five endpoints consumed by actual client over AF_UNIX HTTP/1.1; hash header and exact EOF enforced.",
+    "false_ready": "Job/revision/hash/length/pages/engine/fonts/incomplete pair rejected before freeze and mutation.",
+    "late_authority": "Real SQL cancellation/scope/lease/generation/revision loss closes blocked result socket; fencing at release ack never returns ReleasedRender.",
+    "resources": "Sockets context-owned, peer EOF observed, server threads drained, one-second best-effort cancel; no second cleanup after release attempt.",
+    "permissive_tests": "Causal initial-guard mutant detects early submit retaining guarded SQL; malformed framing and identities refused.",
+    "markdown": "Unchanged executor succeeds after dropping M8-A table with renderer made inapplicable.",
+    "premature_mutation": "Independent SQL reads prove snapshot before release ack; all error branches keep DAV mutations/journal/success receipts zero."
+  },
+  "remaining": [
+    "Codex M8-A counteraudit",
+    "Sauron permanent socket mount, runtime access identity and independent trusted pins",
+    "Explicit operator migration and authorized FridaDev runtime delivery",
+    "DOCX/PDF public formats inactive; M9/M10 not started"
+  ],
+  "excluded_untouched_neighbors": [
+    "frontend",
+    "streaming",
+    "upload",
+    "Exports",
+    "OCR"
+  ],
+  "source_sha256": {
+    "app/core/document_renderer_client.py": "3ddfbc51806556d7cf67bff7ad588b601e5cd8fcb4ed753426a3cd9e01e02d59",
+    "app/core/document_rendering.py": "115f9570fb5a649e096272070e1672b4e3675d823558661386090d28d20c449f",
+    "app/core/document_renderer_store.py": "8f5eb0b3ae5f09f79c6829e3073c86fdbf2fe224a33c7d3adc600f18918b33f3",
+    "app/core/sql/document_renderer_m8a.sql": "8b6f3430811d67711c2c3cd6d5275030cd8d264ad480af5520b615e241ffecd1",
+    "app/core/document_workshop_execution_store.py": "3592328a2e1246dfbfeecde30a21582d12dca1e3aed5d2e45534b46e40339cd9",
+    "app/tests/unit/core/test_document_renderer_client.py": "18322857bfa247b0f12e859ad89519834cff75d8c4668a9a147048f7c239ba97",
+    "app/tests/integration/document_workshop/test_renderer_m8a_postgresql.py": "ea3bc119d4027ae788dee40284ec04be42f0ddfae60de06d53f0a870a810c6db",
+    "app/tests/integration/document_workshop/test_renderer_m8c_postgresql.py": "dd996668fa964cbf46af31cf78dc3b18ce078533a8735175671b6c163eb6c6e8",
+    "app/tests/support/document_renderer_unix.py": "6039f8df875e6a398a4a40f6ce7123dad42f88047fdfc7f6feffcbe3a58b89a2",
+    "app/tests/support/probe_document_renderer_m8a.py": "56a0c88ae9706781d6c26a300a35725a5c509691c5879ef92707ffd6e8ea15b9"
+  },
+  "cleanup": {
+    "argv": [
+      "docker",
+      "rm",
+      "-f",
+      "frida-m8a-writer-proof",
+      "frida-m8a-pg"
+    ],
+    "exit": 0,
+    "wall_seconds": 0.156,
+    "removed": [
+      "frida-m8a-writer-proof",
+      "frida-m8a-pg"
+    ],
+    "absence_check": {
+      "argv": [
+        "docker",
+        "ps",
+        "-a",
+        "--filter",
+        "name=^/frida-m8a-",
+        "--format",
+        "{{.Names}}"
+      ],
+      "exit": 0,
+      "wall_seconds": 0.013,
+      "remaining": []
+    },
+    "temporary_root": {
+      "path": "/tmp/fridadev-m8a-20261010.tBwpJV",
+      "argv": [
+        "sudo",
+        "-n",
+        "rm",
+        "-rf",
+        "--",
+        "/tmp/fridadev-m8a-20261010.tBwpJV"
+      ],
+      "exit": 0,
+      "wall_seconds": 0.012,
+      "absent": true
+    },
+    "branch_snapshot_temporary_absent": true
+  },
+  "verification": {
+    "source_hashes_match": true,
+    "inventory_ids_resolve_in_current_ast": true,
+    "protected_local_branches_unchanged": true,
+    "modified_relative_links": [
+      {
+        "source": "app/docs/README.md",
+        "target": "todo-todo/product/frida-v1-document-workshop-todo.md"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/specs/frida-v1-document-workshop-m0-contract.md"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/specs/frida-v1-document-workshop-m1-contract.md"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/specs/frida-v1-document-workshop-m2-contract.md"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/specs/frida-v1-document-workshop-m3-contract.md"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/specs/frida-v1-document-workshop-m4-contract.md"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/baselines/document-workshop/frida-v1-document-workshop-m4-20261006.json"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/baselines/document-workshop/frida-v1-document-workshop-p2-m4-01-20261006.json"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/baselines/document-workshop/frida-v1-document-workshop-p2-m4-02-20261006.json"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/baselines/document-workshop/frida-v1-document-workshop-p3-m4-03-20261006.json"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/specs/frida-v1-document-workshop-m5-contract.md"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/baselines/document-workshop/frida-v1-document-workshop-m5-20261006.json"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/specs/frida-v1-document-workshop-m6-contract.md"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/baselines/document-workshop/frida-v1-document-workshop-m6-20261007.json"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/baselines/document-workshop/frida-v1-document-workshop-p3-m6-aud-20261007.json"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/baselines/document-workshop/frida-v1-document-workshop-p3-m6-aud-03-20261007.json"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/specs/frida-v1-document-workshop-m7-contract.md"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/baselines/document-workshop/frida-v1-document-workshop-m7-20261007.json"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/specs/frida-v1-document-workshop-m8c-contract.md"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/baselines/document-workshop/frida-v1-document-workshop-m8c-20261007.json"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/baselines/document-workshop/frida-v1-document-workshop-p2-m8c-aud-01-20261007.json"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/baselines/document-workshop/frida-v1-document-workshop-p2-m8c-aud-02-20261009.json"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/audits/frida-v1-document-workshop-obs-m7-conc-01-20261009.md"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/baselines/document-workshop/frida-v1-document-workshop-obs-m7-conc-01-20261009.json"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/audits/frida-v1-document-workshop-obs-m7-conc-01-fix-20261009.md"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/baselines/document-workshop/frida-v1-document-workshop-obs-m7-conc-01-fix-20261009.json"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/baselines/document-workshop/frida-v1-document-workshop-m4-image-focus-fix-20261010.json"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/specs/frida-v1-document-workshop-m8a-contract.md"
+      },
+      {
+        "source": "app/docs/README.md",
+        "target": "states/baselines/document-workshop/frida-v1-document-workshop-m8a-20261010.json"
+      },
+      {
+        "source": "app/docs/states/specs/frida-v1-document-workshop-m8c-contract.md",
+        "target": "frida-v1-document-workshop-m8a-contract.md"
+      },
+      {
+        "source": "app/docs/states/specs/frida-v1-document-workshop-m8a-contract.md",
+        "target": "../../todo-todo/product/frida-v1-document-workshop-todo.md"
+      },
+      {
+        "source": "app/docs/states/specs/frida-v1-document-workshop-m8a-contract.md",
+        "target": "frida-v1-document-workshop-m8c-contract.md"
+      },
+      {
+        "source": "app/docs/states/specs/frida-v1-document-workshop-m8a-contract.md",
+        "target": "../baselines/document-workshop/frida-v1-document-workshop-m8a-20261010.json"
+      },
+      {
+        "source": "app/docs/todo-todo/product/frida-v1-document-workshop-todo.md",
+        "target": "../../states/specs/frida-v1-document-workshop-m8a-contract.md"
+      },
+      {
+        "source": "app/docs/todo-todo/product/frida-v1-document-workshop-todo.md",
+        "target": "../../states/baselines/document-workshop/frida-v1-document-workshop-m8a-20261010.json"
+      }
+    ]
+  }
+}

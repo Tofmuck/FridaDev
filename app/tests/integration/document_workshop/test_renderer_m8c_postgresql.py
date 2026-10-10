@@ -112,8 +112,12 @@ class RendererPostgresqlTests(unittest.TestCase):
         with self.assertRaises(Exception):self.m.render_confirmed(run,'docx',self.session)
         self.assertEqual(self.worker.events,[])
         with patch.object(self.fx.store,'check',lambda run:None):
+            # M8-A's guarded SQL progress/snapshot may stop this counterfeit
+            # owner later. The causal detector concerns the *earlier* submit;
+            # keep those new SQL fences active in the mutant as well.
+            try:self.m.render_confirmed(run,'docx',self.session)
+            except (claims.ClaimError,self.c.DocumentWorkshopError):pass
             with self.assertRaises(AssertionError):
-                self.m.render_confirmed(run,'docx',self.session)
                 self.assertEqual(self.worker.events,[],'calibration detects submission before confirmation')
         self.assertEqual(self.worker.events.count('submit'),1)
         self.assertEqual(self.fx.rows("SELECT count(*) FROM conversation_turn_claims WHERE kind='confirmation'"),[(0,)])

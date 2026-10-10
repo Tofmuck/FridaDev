@@ -34,6 +34,8 @@ def _db_conn():
 def init_db():
     with _db_conn() as conn:
         conn.execute(_SCHEMA.read_text(encoding='utf-8'))
+    from . import document_renderer_store
+    document_renderer_store.init_db()
     return True
 
 

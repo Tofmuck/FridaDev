@@ -1,4 +1,4 @@
-"""M8-C request-owned collection, useful progress and separate release.
+"""M8-C/M8-A request-owned collection, useful progress and separate release.
 
 Client is explicitly injected. No default worker, socket, retry or binary product
 executor exists. ConfirmedExecution remains the only application authority.
@@ -6,6 +6,7 @@ executor exists. ConfirmedExecution remains the only application authority.
 from dataclasses import dataclass
 import time
 from . import document_renderer_contract as c
+from .document_renderer_client import DocumentRendererClient, RendererTransportLost
 
 @dataclass(frozen=True,repr=False)
 class ReleasedRender:
@@ -34,7 +35,11 @@ class RenderingSession:
     @property
     def expected_engine(self):return c.read_json(self._engine_bytes)
 
-    def _call(self,method,*args,**kwargs):
+    def _call(self,method,*args,guard=None,**kwargs):
+        if isinstance(self.client,DocumentRendererClient):
+            # Client owns/always closes its socket. Authority exceptions from
+            # the live guard must retain their original meaning.
+            return getattr(self.client,method)(*args,check=guard,**kwargs)
         try:return getattr(self.client,method)(*args,**kwargs)
         except c.RendererError:raise
         except Exception:c.fail()
@@ -45,7 +50,7 @@ class RenderingSession:
         if response.http_status not in allowed or response.content_type!='application/json':c.fail()
         return c.read_json(response.body)
 
-    def collect(self,request,*,check):
+    def collect(self,request,*,check,freeze=None,progress=None):
         check()
         if type(request) is not c.RenderRequest:c.fail()
         request=c.read_request(request.wire,expected_engine=self.expected_engine)
@@ -57,14 +62,23 @@ class RenderingSession:
         submitted=False
         release_attempted=False
         last=self._clock();units=0;phase_rank=0
+        def supervise():
+            check()
+            if self._clock()-last>=120:c.fail('renderer_inactivity')
         try:
-            capabilities=self._call('capabilities');check()
+            capabilities=self._call('capabilities',guard=supervise);check()
             c.validate_capabilities(self._json(capabilities,{200}),expected_engine=self.expected_engine)
             check();last=self._clock()
             # A response can be lost after acceptance. Identity-bound DELETE is
             # safe; suppress it only for a validated explicit refusal.
             submitted=True
-            response=self._call('submit',request)
+            try:
+                response=self._call('submit',request,guard=supervise)
+            except RendererTransportLost:
+                # Acceptance is unknown. Read this exact identity once, never
+                # resubmit, manufacture an ID or infer acceptance from EOF.
+                supervise()
+                response=self._call('status',request,guard=supervise)
             status=self._json(response,{200,202,409,422,503})
             c.validate_status(status,request=request)
             check()
@@ -81,21 +95,26 @@ class RenderingSession:
                 rank=c.PHASES.index(value['phase'])
                 if current<units or rank<phase_rank:c.fail()
                 phase_rank=rank
-                if current>units:units=current;last=self._clock()
+                if current>units:
+                    units=current;last=self._clock()
+                    if progress is not None:progress(value)
                 if value['status']!='rendering':
                     if value['status']!='ready':c.fail(value['reason_code'])
                     break
                 check();self._wait();check()
                 if self._clock()-last>=120:c.fail('renderer_inactivity')
-                status=self._json(self._call('status',request),{200});check()
-            check();wire=self._call('result',request);check()
+                status=self._json(self._call('status',request,guard=supervise),{200});check()
+            check();wire=self._call('result',request,guard=supervise);check()
             if self._clock()-last>=120:c.fail('renderer_inactivity')
             if type(wire) is not c.WireMessage or wire.http_status!=200:c.fail('renderer_job_lost' if getattr(wire,'http_status',None) in (404,410) else 'renderer_incomplete')
             # Full immutable bytes/manifests are held locally before worker release.
             self.collected=c.validate_result(wire,request=request,expected_engine=self.expected_engine)
             if self._clock()-last>=120:c.fail('renderer_inactivity')
+            supervise()
+            if freeze is not None:freeze(self.collected)
+            supervise()
             check();release_attempted=True
-            message=self._call('cancel_release',request,cancel=False);check()
+            message=self._call('cancel_release',request,cancel=False,guard=supervise);check()
             ack=c.validate_release_message(message,request=request)
             check()
             # Release acknowledges cleanup, not useful rendering progress.
@@ -106,21 +125,27 @@ class RenderingSession:
             if submitted and not release_attempted:
                 # Cleanup has no publication authority. One best effort only;
                 # lost worker/cleanup failure never hides the original failure.
-                try:c.validate_release_message(self._call('cancel_release',request,cancel=True),request=request,cancel=True)
+                cleanup_until=time.monotonic()+1
+                def cleanup_guard():
+                    if time.monotonic()>=cleanup_until:c.fail('renderer_cleanup_failed')
+                try:c.validate_release_message(self._call('cancel_release',request,cancel=True,guard=cleanup_guard),request=request,cancel=True)
                 except Exception:pass
             raise
 
 
 def render_confirmed(run,format,session):
-    """Inactive binary seam, exercised behind the actual M5 confirmation only."""
+    """Internal binary seam behind actual M5 confirmation; public formats closed."""
     from . import document_workshop_execution_store as store
+    from . import document_renderer_store as snapshots
     store.check(run)
     if type(session) is not RenderingSession:c.fail('renderer_input_invalid')
     try:
         request=c.make_request(job_id=run.token.turn_id,revision_id=run.action['revision_id'],
             canonical=run.revision['canonical'],canonical_sha256=run.revision['canonical_sha256'],
             format=format,engine=session.expected_engine)
-        result=session.collect(request,check=lambda:store.check(run))
+        result=session.collect(request,check=lambda:store.check(run),
+            freeze=lambda value:snapshots.persist(run,request,value),
+            progress=lambda value:snapshots.project_progress(run,value))
         store.check(run)
         return result
     except c.RendererError as error:

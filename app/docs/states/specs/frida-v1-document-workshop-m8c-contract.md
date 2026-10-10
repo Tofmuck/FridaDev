@@ -5,16 +5,19 @@ parent M6 `b00eb95001755295dcc301232272a8070d26cd78`. Branche
 `FridaV1-Document-Workshop-M8-C`, créée avant édition. Autorité : mandat M8-C de
 Tof et [roadmap](../../todo-todo/product/frida-v1-document-workshop-todo.md),
 §§3.9–3.17, M8-C et section 9. Ce document est la remise commune à Sauron.
-Statut courant, mandat de Tof du 10 octobre 2026 : **M8-C fermé sur contrat, code et preuves isolées ; M8-S non commencé.**
-P2-M8C-AUD-01 et P2-M8C-AUD-02 restent fermés après contre-audits indépendants ;
-aucun démarrage M8-S/M8-A. Les statuts des récits datés ci-dessous restent historiques.
+Statut courant au 10 octobre 2026 : **M8-C fermé sur contrat, code et preuves isolées ; M8-S fermé après contre-audit Codex favorable transmis par Tof.**
+P2-M8C-AUD-01 et P2-M8C-AUD-02 restent fermés après contre-audits indépendants.
+Le [contrat M8-A](frida-v1-document-workshop-m8a-contract.md) porte le client AF_UNIX
+et les snapshots internes prouvés en isolation ; raccord runtime et contre-audit
+M8-A ouverts, formats publics inactifs. Les récits datés ci-dessous restent historiques.
 Le relevé initial ci-dessous conserve ses résultats historiques ; le
 [relevé dédié AUD-01](../baselines/document-workshop/frida-v1-document-workshop-p2-m8c-aud-01-20261007.json)
 porte ses exécutions historiques et sa portée. Le
 [relevé AUD-02 du 9 octobre](../baselines/document-workshop/frida-v1-document-workshop-p2-m8c-aud-02-20261009.json)
 porte la correction temporelle et la comparaison actuelle, distinctes des
 déclarations historiques et du contre-audit indépendant du 7 octobre.
-Aucun service Writer ni transport AF_UNIX n'est livré. DOCX/PDF restent inactifs.
+M8-C ne livrait aucun service Writer ni transport AF_UNIX ; leur état courant
+est porté par M8-S et M8-A ci-dessus. DOCX/PDF publics restent inactifs.
 Le [diagnostic séparé OBS-M7-CONC-01 du 9 octobre](../audits/frida-v1-document-workshop-obs-m7-conc-01-20261009.md)
 éprouve un transitoire NOWAIT/lease permis par M7 et contredit l'attente de
 terminalité immédiate du test. Le contre-audit indépendant sur `c1654c25`

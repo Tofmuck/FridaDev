@@ -1,6 +1,6 @@
 # Atelier documentaire agentique Frida V1 — spécification validée et roadmap
 
-Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-05 ; M3/M4/M5 : 2026-10-06 ; M6 : 2026-10-07 ; M8-S plateforme et correctif P2-M8S-AUD-01 : 2026-10-10.
+Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-05 ; M3/M4/M5 : 2026-10-06 ; M6 : 2026-10-07 ; M8-S plateforme/clôture et M8-A applicatif : 2026-10-10.
 
 Statut : **spécification et choix architecturaux validés par Tof ; M0 fermé sur
 composants et preuves internes, contre-audit corrigé sur `FridaV1-Document-Workshop-M0` ;
@@ -18,7 +18,7 @@ M4 livré sur code, P2-M4-01 et P2-M4-02 fermés après contre-audits indépenda
 P3-M4-03 corrigé par erratum documentaire (1 198 déclarés conservés et rectifiés,
 sélection publiée à 1 414, 21 identifiants réutilisables validés) ;
 M4 non intégralement fermé ;
-M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées, livraison runtime ouverte ; M7 fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C fermé après contre-audits indépendants AUD-01/AUD-02 ; M8-S livré et qualifié sur la plateforme, correctif P2-M8S-AUD-01 livré, clôture soumise au contre-audit Codex ; M8-A, M9/M10 et Z non commencés. Seul le renderer isolé est démarré, aucun déploiement FridaDev ou format public activé**.
+M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées, livraison runtime ouverte ; M7 fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; M8-C fermé après contre-audits indépendants AUD-01/AUD-02 ; M8-S fermé après contre-audit Codex favorable transmis par Tof ; M8-A implémenté et éprouvé en isolation, raccord runtime et contre-audit ouverts ; M9/M10 et Z non commencés. Seul le renderer isolé est démarré, aucun déploiement FridaDev ou format public activé**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
 dialogue avec Tof. Création documentaire committée dans `d6b63fd1`, puis validation
@@ -895,8 +895,8 @@ M4 est livré sur code/preuves hermétiques, P2-M4-01 et P2-M4-02 fermés après
 contre-audits indépendants, P3-M4-03 corrigé documentairement ; livraison runtime
 ouverte. M5 est fermé sur code/preuves injectées ; M6 raccorde le parcours réel
 avec preuves isolées, sans déploiement. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; AUD-01 et AUD-02 fermés après contre-audits indépendants.
-**M8-C fermé sur contrat, code et preuves isolées ; M8-S et correctif P2-M8S-AUD-01 livrés/qualifiés, clôture soumise au contre-audit Codex.**
-M8-A, M9/M10 et Z restent non commencés. Spécification et
+**M8-C fermé sur contrat, code et preuves isolées ; M8-S fermé après contre-audit Codex favorable du 10 octobre transmis par Tof.**
+M8-A livré sur périmètre applicatif et preuves isolées ; raccord runtime et contre-audit ouverts. M9/M10 et Z restent non commencés. Spécification et
 décisions amont sont validées et l'exception produit est inscrite.
 Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
 les GO M0–M4 et P3-M4-03 ne valent pour aucun lot suivant ni déploiement.
@@ -3820,14 +3820,14 @@ canonical/révision/profil figés, source temporaire optionnelle, résultat ferm
   AUD-01 et AUD-02 fermés après contre-audits indépendants ; clôture documentaire du 10 octobre ;
   aucune installation ou preuve de disponibilité déclarée accomplie.
 
-**M8-C fermé sur contrat, code et preuves isolées ; M8-S et correctif P2-M8S-AUD-01 livrés/qualifiés, clôture soumise au contre-audit Codex.**
+**M8-C fermé sur contrat, code et preuves isolées ; M8-S fermé après contre-audit Codex favorable du 10 octobre transmis par Tof.**
 La [note de clôture du contrat commun](../../states/specs/frida-v1-document-workshop-m8c-contract.md#clôture-documentaire--10-octobre-2026)
 relie les critères aux preuves existantes et distingue le compte rendu Codex
 transmis par Tof de toute nouvelle exécution. Réserve d'archive M7 maintenue :
 une seule des deux barrières au dernier contre-audit, record Celebrimbor à deux
 barrières séparé ; aucun défaut actuel démontré. Les attributions historiques
 restent inconnues. Contrat remis à Sauron ; disponibilité du service, pins et confinement prouvés
-par M8-S ci-dessous sous GO distinct. Contre-audit M8-S attendu ; aucun lot suivant démarré.
+par M8-S ci-dessous sous GO distinct. Clôture M8-S reportée ci-dessous ; M8-A autorisé séparément et borné à son périmètre applicatif.
 
 **Livraison initiale M8-C — 7 octobre 2026 (`fc911ed3`).** Résultats historiques
 conservés ; la clôture totale est retirée après le contre-audit AUD-01/AUD-02. Base M7 exacte
@@ -4020,7 +4020,21 @@ rollback limité au renderer. Aucun raccord FridaDev, document privé, modèle,
 Nextcloud, Caddy/Authelia ou format public ; M8-A et suivants non commencés.
 
 - [x] Corriger et livrer uniquement P2-M8S-AUD-01 après rouge causal et qualification ciblée.
-- [ ] Contre-audit Codex du correctif et clôture M8-S ; aucun lot suivant démarré.
+- [x] Contre-audit Codex du correctif et clôture M8-S, selon décision transmise par Tof le 10 octobre 2026.
+
+**Clôture M8-S reportée — 10 octobre 2026.**
+Contre-audit **Codex** favorable transmis par Tof : P2-M8S-AUD-01 fermé,
+M8-S validé comme service renderer avec preuves synthétiques. Références Sauron :
+correctif `41d8f0322be95f7e226a216a69f9d5034396205c`, suivi
+`885352c99fb1065ff6253ded7df13edf3ece4bfb`.
+Rejeu indépendant Codex : 14 jobs, 11 ready validés M8-C et 3 discordances
+refusées ; corpus 32/32, exit 0, 49,884 s, libérations et nettoyage vérifiés.
+Rapport conservé sur le poste de pilotage :
+`audits/2026-10-10-m8s-aud01-counteraudit/rapport.md` (hors de ce checkout,
+non relu ici). Ces résultats sont ceux de Codex, **aucun rejeu M8-S dans M8-A**.
+Les récits initiaux/correctifs ci-dessus restent historiques. Cette clôture
+ne prouve aucun raccord applicatif, reçu, modèle ou Nextcloud.
+M8-A est autorisé par un mandat distinct ci-dessous.
 
 ### M8-A — Adaptateur FridaDev, validations et nettoyage
 
@@ -4033,24 +4047,61 @@ locale des types, bytes, pages Writer, version/profile/fonts et résultat termin
 **Propriétaire :** Celebrimbor ; Sauron seul raccorde le montage runtime de socket
 et ses permissions dans sa racine, avec livraison FridaDev coordonnée si nécessaire.
 
-- [ ] Rouge causal : résultat d'un autre job/révision, résultat tardif, transport perdu,
+- [x] Rouge causal : résultat d'un autre job/révision, résultat tardif, transport perdu,
   timeout sans progrès, cleanup non acquitté ou mismatch pages/hash → zéro PUT/MKCOL.
 - [ ] Tests serveur HTTP Unix fake et vraie consommation du transport ; voisins
   claims/confirmation/compensation/projections/streaming/upload/Exports/OCR.
-- [ ] Transférer seulement canonical et octets admissibles ; persister le manifeste
+- [x] Transférer seulement canonical et octets admissibles ; persister le manifeste
   de rendu immutable et les octets figés avant journal/écriture conditionnelle.
-- [ ] Tester confirmation doublée → un job et au plus un PUT ; perte de connexion
+- [x] Tester confirmation doublée → un job et au plus un PUT ; perte de connexion
   → lecture d'état, aucun nouvel ID/retry automatique ; perte de worker → échec fermé.
-- [ ] Projeter seulement progression réelle, 120 s d'inactivité puis annulation/kill ;
+- [x] Projeter seulement progression réelle, 120 s d'inactivité puis annulation/kill ;
   ne pas inventer de deadline murale pendant progrès ni de TTL pending.
-- [ ] Faux verts : client mocké hors transport, hashes non recalculés, résultat récupéré
+- [x] Faux verts : client mocké hors transport, hashes non recalculés, résultat récupéré
   mais jamais libéré, event tardif non exercé, statut ready sans tous les artefacts.
-- [ ] Interdire adresse/URL fournie par utilisateur, mount partagé de documents,
+- [x] Interdire adresse/URL fournie par utilisateur, mount partagé de documents,
   secrets envoyés, mutation avant validation et activation prématurée DOCX/PDF.
 - [ ] Synchroniser adapter/erreurs/observabilité ; preuve interne synthétique réelle
   sous GO distinct, sans modèle ni Nextcloud. Rebuild FridaDev à livraison autorisée.
 - [ ] Fermer avec contrat M8-S réellement consommé, cleanup confirmé et invariants
   M5 préservés ; aucune API renderer publique ni sortie partielle publiée.
+
+**Livraison applicative M8-A — 10 octobre 2026, arrêt pour contre-audit Codex.**
+[Contrat M8-A](../../states/specs/frida-v1-document-workshop-m8a-contract.md) et
+[relevé compact](../../states/baselines/document-workshop/frida-v1-document-workshop-m8a-20261010.json).
+Client HTTP/1.1 AF_UNIX réellement consommé par la session M8-C unique ; pins
+attendus figés indépendamment de capabilities. Même job/hash après réponse
+POST perdue, aucun replay. Attente réseau interruptible sous garde M3 et
+inactivité inclusive ; seuls les comptes validés projettent une phase utile.
+Migration explicite interne `document_renderer_m8a.sql` nécessaire : le store
+Markdown ne peut conserver une paire/manifeste liée à l'action. Snapshot BYTEA
+immutable lié à action/révision/confirmation, commité avant DELETE release ;
+aucun journal ni mutation externe avant validation/gel/acquittement.
+
+Preuves ciblées : 91 IDs unitaires + 69 SQL en baseline ; ces 160 IDs sont
+comparés au delta interne, avec les incidents et adaptations causales conservés
+dans le relevé. 25 nouveaux IDs couvrent vrai serveur HTTP Unix, confirmations
+M3/M5, snapshots, rollback, perte d'autorité pendant socket bloqué, résultat
+et acquittement tardifs, cleanup unique et absence de succès prématuré.
+Les voisins partagés HTTP/provider/enveloppe/observabilité sont distingués ;
+aucune campagne frontend ni rejeu intégral 1 691/stress M8-S. Le critère global
+« voisins » reste non coché pour streaming/upload/Exports/OCR, non modifiés et
+hors sélection de ce lot ; confirmation/exécution/compensation/Markdown sont
+réellement exercés.
+
+La preuve interne réelle autorisée utilise **le client livré**, confirmation
+et claim PostgreSQL réels, un canonical compact avec liste et une instance
+isolée de l'image qualifiée : paire validée d'une page, snapshot durable exact,
+libération acquittée ; zéro modèle, DAV, journal ou reçu. Ce n'est pas un rejeu
+de qualification M8-S. Config ID Docker `f3067a8fa678…`, manifeste OCI local
+`8737155ab479…`, pins complets lus du runbook Sauron en lecture seule.
+
+Restent ouverts : contre-audit Codex M8-A, montage/identité/configuration du
+socket permanent par Sauron, migration opérateur et livraison runtime sous
+mandat distinct. Chemin proposé dans FridaDev `/run/writer/renderer.sock`,
+pins opérateur RO `/run/writer-pins.json`, accès au GID 20000 ; aucun montage,
+groupe hôte, service, secret, DB opérateur ou conteneur FridaDev modifié ici.
+DOCX/PDF publics restent inactifs, Markdown direct. M9/M10 non commencés.
 
 ### M9-A — DOCX Frida create/copy/update et pagination Writer
 
@@ -4194,7 +4245,7 @@ conteneur `platform-frida-writer`, image/worker distincts de `platform-fridadev`
 Socket `/opt/platform/fridadev-app/writer-renderer/socket/renderer.sock` :
 UID/GID 20000:20000, mode 0660, répertoire 2770. Il est monté dans le seul
 renderer ; client synthétique hôte 20001:20000. Le montage et l'identité du
-client FridaDev restent M8-A, sans modification du conteneur FridaDev ici.
+client FridaDev restent à livrer par Sauron ; adaptateur M8-A prouvé en isolation, sans modification du conteneur FridaDev ici.
 Aucun document, state/, secret, DB, volume Nextcloud ou socket Docker partagé.
 Le futur client applicatif est HTTP AF_UNIX de bibliothèque standard,
 sans dépendance bureautique dans son image.
@@ -4434,7 +4485,7 @@ ceux du HEAD de reconnaissance ; aucun refactor cosmétique n'est proposé.
 ### Lot Sauron obligatoire et besoins conditionnels
 
 - [x] M8-S : service Writer/UNO isolé, image/filtres/polices/profil/ressources/socket,
-  sécurité/cleanup/health et preuve synthétique livrés, correctif P2-M8S-AUD-01 inclus ; voir section 8, clôture à contre-auditer.
+  sécurité/cleanup/health et preuve synthétique livrés, correctif P2-M8S-AUD-01 inclus ; voir section 8, clôture Codex favorable reportée.
 - [ ] Prouver identité DAV, préconditions, ETags et Versions si les preuves
   applicatives ne suffisent pas.
 - [ ] Fournir une preuve transactionnelle isolée si environnement SQL absent.
@@ -4457,7 +4508,7 @@ transactions, pagination et parcours produit restent aux lots concernés.
 - [ ] M3 : environnement SQL concurrent isolé de preuve si non établi par le HEAD.
 - [ ] M8-S/M8-A : disponibilité effective du service isolé, permissions de socket,
   capacités/filtres/polices/layout du pin livré, ressources/confinement/cleanup.
-  Partie M8-S prouvée ci-dessus ; raccord M8-A non commencé.
+  M8-S fermé ; client M8-A et preuve réelle isolée livrés, raccord runtime permanent ouvert.
   Ce sont des preuves de livraison, aucun choix de moteur repoussé.
 - [ ] M9-A/M9-B/M10 : stabilité Writer réelle, import/round-trip externe admissible
   et limites détectées du corpus synthétique ; aucune promesse Word universelle.
@@ -4489,7 +4540,7 @@ et de preuve de M0/M4/M8–M10, pas des arbitrages repoussés.
 - [ ] DOCX externe et PDF externe traités avec fidélité honnête.
 - [ ] Writer/UNO isolé livré/épinglé/prouvé par M8-S, adaptateur M8-A ; aucun moteur
   concurrent, cloud/payante, fallback ou LibreOffice dans le conteneur FridaDev.
-  M8-S et correctif P2-M8S-AUD-01 livrés, clôture à contre-auditer ; case globale laissée ouverte pour M8-A.
+  M8-S fermé après contre-audit ; adaptateur M8-A prouvé en isolation, case globale ouverte pour raccord runtime et contre-audit M8-A.
 - [ ] Nextcloud/Collabora/Stirling distincts ; entrée humaine et OCR Stirling préservés.
 - [ ] Aucun secret/capacité DAV dans le renderer, aucun UNO brut ni API publique,
   socket restreint/network none et fichiers éphémères nettoyés, ODT jamais vérité durable.
@@ -4543,9 +4594,8 @@ indépendants, avec leurs résultats conservés ci-dessus ; P3-M4-03 est corrig�
 documentairement, sans fermer la livraison runtime de M4 ;
 M5 est fermé sur code/preuves hermétiques et contre-audit ; M6 est réalisé sur
 code/preuves isolées et contre-audit. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; AUD-01 et AUD-02 fermés après contre-audits indépendants.
-**M8-C fermé sur contrat, code et preuves isolées ; M8-S et correctif P2-M8S-AUD-01 livrés/qualifiés, clôture soumise au contre-audit Codex.**
-M8-A, M9/M10/Z restent non commencés et les
-obligations runtime restent ouvertes.
+**M8-C fermé sur contrat, code et preuves isolées ; M8-S fermé après contre-audit Codex favorable du 10 octobre transmis par Tof.**
+M8-A est implémenté sur périmètre applicatif avec preuves isolées ; son raccord runtime et son contre-audit restent ouverts. M9/M10/Z restent non commencés.
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
 dans AGENTS.md ; l'invariant de consolidation reste applicable hors de cette
 exception. Les seuls composants applicatifs livrables par M0 sont les frontières
