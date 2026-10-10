@@ -3754,6 +3754,38 @@ fermés. M4, runtime, Writer et clôture globale M8-C restent distincts ; aucune
 installation, livraison runtime, M8-S/M8-A ou suite automatique. Commit/push
 sur M8-C uniquement, puis arrêt pour contre-audit Codex de ce micro-lot.
 
+Réserve distincte transmise par Tof le 10 octobre après le dernier contre-audit
+Codex : archive M7 ancienne, une des deux barrières atteinte ; téléphone clair
+arrêté pendant choose initial, sombre armé. Les deux barrières Celebrimbor restent
+un record distinct. Préfixe du lanceur validé, P3 fermé ; aucun diagnostic ni
+correctif d'archive dans le lot M4 ci-dessous.
+
+#### M4-Chromium-intermediate-draft-failure — Diagnostic borné, 10 octobre
+
+**Cause suffisante actuelle prouvée ; attribution historique exacte inconnue.**
+[Rapport](../../states/audits/frida-v1-document-workshop-obs-m4-draft-image-20261010.md),
+[relevé dédié](../../states/baselines/document-workshop/frida-v1-document-workshop-obs-m4-draft-image-20261010.json).
+Base `d3e1f685af88777e363d075fc7f5207f9008c031`, même M8-C propre/synchronisée avant édition.
+Test/fixtures/produit inchangés. Baseline M4 22/22, ciblé exact image 1/1 (21
+exclus, zéro ignoré), observation V1 verte ; aucun cumul de sélections recouvrantes.
+
+Le vrai callback différé de focus image libéré entre la sélection du compositeur
+et l'insertion réelle Playwright dirige les 16 caractères vers le prompt image,
+sans vider un brouillon existant. Témoin callback avant fill : draft16/prompt0 ;
+adverse et réduit sans hooks détaillés : draft0/prompt16, assertion exacte rouge
+après barrières atteintes. Contexte réellement editing, garde incompatible
+préservée ; zéro effet optimiste et zéro préparation/chat normal/image.
+
+Mécanisme suffisant de synchronisation du harnais, aucun défaut produit ou runner
+établi. Le premier 21/22 AUD-01 (20,774 s) reste conservé avec raw absent ; aucun
+vert ultérieur ni ordre imposé ne donne son attribution exacte ou sa fréquence.
+Proposition locale : attendre le vrai focus image avant send dans ce seul cas ;
+**non appliquée**, correction à cadrer/autoriser séparément. Sonde autonome,
+preuves et documents seulement, seconde lecture indépendante sans test/Docker.
+AUD-01/AUD-02, concurrence M7, attente UI et P3 restent fermés dans leurs portées.
+Aucune clôture globale M8-C, runtime, Writer ou suite M8-S/M8-A ; arrêt après
+commit/push pour contre-audit Codex, sans correctif automatique.
+
 ### M8-C — Contrat Writer fermé et raccord simulé
 
 **Objectif :** rendre le service isolé implémentable et le raccord testable sans moteur live.

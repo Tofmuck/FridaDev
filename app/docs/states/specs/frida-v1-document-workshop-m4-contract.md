@@ -198,6 +198,19 @@ relecture GET bloquée libère le garde du compositeur après le tour. Les liste
 upload, multisélection, drag-and-drop et corrections M2 restent éprouvés.
 `document_preparation` a un schéma d'observabilité fermé, content-free par stage.
 
+## Diagnostic M4 brouillon / image — 10 octobre 2026
+
+[Diagnostic M4 du 10 octobre](../audits/frida-v1-document-workshop-obs-m4-draft-image-20261010.md) et [relevé dédié](../baselines/document-workshop/frida-v1-document-workshop-obs-m4-draft-image-20261010.json) : mécanisme suffisant de synchronisation du harnais prouvé au HEAD
+`d3e1f685`, sans correction produit/test/fixture. Le vrai focus différé du panneau
+image, libéré entre sélection de message et insertion Playwright, dirige le texte
+vers le prompt image : compositeur vide, garde incompatible effective et zéro
+préparation/chat normal/image/effet optimiste. Témoin inverse et adverse réduit
+éprouvés. Baseline intacte 22/22 et ciblé image 1/1, sans cumul ; deux rouges
+causaux attendus. Attribution exacte du 21/22 historique AUD-01 toujours inconnue,
+raw absent. Attente du focus image avant send proposée dans ce seul cas,
+non appliquée ; correction distincte à autoriser. Aucun statut M4 runtime/global
+fermé, ni finding P2/P3 antérieur rouvert.
+
 ## Preuves et contre-audit
 
 Le contre-audit postérieur à la livraison initiale a ouvert trois findings.

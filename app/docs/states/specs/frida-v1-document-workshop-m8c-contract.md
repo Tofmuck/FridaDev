@@ -55,6 +55,21 @@ et [relevé dédié](../baselines/document-workshop/frida-v1-document-workshop-p
 rejeux causaux, archive readonly, 1 691/1 691 et 70 + 26 séparés, distincts du
 9 octobre. Aucun changement des clôtures AUD/concurrence ou de la portée M8-C.
 
+Réserve distincte transmise par Tof le 10 octobre : dernier contre-audit Codex
+de l'archive M7 ancienne à une seule des deux barrières (phone light arrêté
+pendant choose initial, phone dark armé). Record Celebrimbor à deux barrières
+conservé séparément ; préfixe validé/P3 fermé. Aucun diagnostic/correctif de cette
+archive dans le lot M4 suivant.
+
+[Diagnostic M4 du 10 octobre](../audits/frida-v1-document-workshop-obs-m4-draft-image-20261010.md) et [relevé dédié](../baselines/document-workshop/frida-v1-document-workshop-obs-m4-draft-image-20261010.json) : course focus/sélection/insertion du harnais,
+cause suffisante actuelle éprouvée avec vrais handlers/DOM/CSS et fetch simulé ;
+garde documentaire effective, zéro voie normale/doc/image. Brouillon0/prompt16
+dans les deux adverses, témoin inverse ; 22/22 intact et ciblé1/1 séparés.
+Attribution exacte du rouge AUD-01 inconnue, trace brute absente. Aucune correction
+appliquée ; proposition locale au test image à cadrer séparément. AUD-01/AUD-02,
+concurrence M7, attente UI et P3 restent fermés dans leurs portées ; M8-C global,
+runtime et suite Writer restent distincts.
+
 ## Plan et frontières
 
 « Existe-t-il un meilleur plan, plus simple, plus sûr et avec moins d'effets de
