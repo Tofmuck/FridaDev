@@ -882,6 +882,11 @@ fixe les représentations, codes et frontières consommables par les prochains l
 
 ## 8. Roadmap par micro-lots
 
+Actualisation runtime du 10 octobre : code et migrations M1–M7 livrés par le
+raccord M8-A ; les réserves de recette produit/DAV/Versions restent ouvertes.
+Les mentions de runtime ouvert dans les récits historiques décrivent leurs
+remises d'alors, pas une absence actuelle de code ou de migrations.
+
 M0 est fermé sur composants et preuves internes, contre-audit corrigé sur sa branche dédiée.
 M1 est fermé sur menu/contexte `editing` et gardes inactifs, sur sa branche issue de M0.
 M2 conserve la contre-revue historique G-R1–G-R4 Approved et le succès 536/536.
@@ -889,14 +894,16 @@ Le correctif indépendant P2-M2-01 du 5 octobre passe historiquement 567/567.
 P2-M2-03 est corrigé dans un lot frontend distinct (594/594 historiques) ;
 P2-M2-02 est ensuite corrigé sur les trois familles ci-dessous, puis P2-M2-04
 sur le contrat backend de listing (713/713 historiques). P2-M2-05 est corrigé
-dans le lot de résumé ci-dessous (716/716). Migration opérateur, rebuild et lecture DAV déployée
-restent ouverts. M3 est fermé sur code/preuves et contre-audit ci-dessous ;
+dans le lot de résumé ci-dessous (716/716). Migrations et code sont livrés sous M8-A ; recette DAV déployée
+reste ouverte. M3 est fermé sur code/preuves et contre-audit ci-dessous ;
 M4 est livré sur code/preuves hermétiques, P2-M4-01 et P2-M4-02 fermés après
-contre-audits indépendants, P3-M4-03 corrigé documentairement ; livraison runtime
-ouverte. M5 est fermé sur code/preuves injectées ; M6 raccorde le parcours réel
-avec preuves isolées, sans déploiement. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; AUD-01 et AUD-02 fermés après contre-audits indépendants.
+contre-audits indépendants, P3-M4-03 corrigé documentairement ; code/prérequis
+livrés via M8-A, recette produit distincte. M5 est fermé sur code/preuves injectées ;
+M6 raccorde le parcours réel avec preuves isolées, code livré via M8-A sans canari DAV.
+M7 est fermé sur code/preuves isolées et contre-audit ; code/migration livrés via
+M8-A, recettes DAV/Versions ouvertes. AUD-01 et AUD-02 fermés après contre-audits indépendants.
 **M8-C fermé sur contrat, code et preuves isolées ; M8-S fermé après contre-audit Codex favorable du 10 octobre transmis par Tof.**
-M8-A livré sur périmètre applicatif et preuves isolées ; raccord runtime et contre-audit ouverts. M9/M10 et Z restent non commencés. Spécification et
+M8-A applicatif validé par contre-audit Codex ; raccord runtime livré par Sauron le 10 octobre. Clôture finale M8-A soumise au contre-audit Codex. M9/M10 et Z restent non commencés. Spécification et
 décisions amont sont validées et l'exception produit est inscrite.
 Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
 les GO M0–M4 et P3-M4-03 ne valent pour aucun lot suivant ni déploiement.
@@ -4061,8 +4068,9 @@ et ses permissions dans sa racine, avec livraison FridaDev coordonnée si néces
   mais jamais libéré, event tardif non exercé, statut ready sans tous les artefacts.
 - [x] Interdire adresse/URL fournie par utilisateur, mount partagé de documents,
   secrets envoyés, mutation avant validation et activation prématurée DOCX/PDF.
-- [ ] Synchroniser adapter/erreurs/observabilité ; preuve interne synthétique réelle
-  sous GO distinct, sans modèle ni Nextcloud. Rebuild FridaDev à livraison autorisée.
+- [x] Synchroniser adapter/erreurs/observabilité ; preuve interne synthétique réelle
+  sous GO distinct, sans modèle ni Nextcloud. Rebuild FridaDev livré par Sauron le 10 octobre ;
+  preuves isolées attribuées à leur livraison et au contre-audit Codex.
 - [ ] Fermer avec contrat M8-S réellement consommé, cleanup confirmé et invariants
   M5 préservés ; aucune API renderer publique ni sortie partielle publiée.
 
@@ -4096,12 +4104,58 @@ libération acquittée ; zéro modèle, DAV, journal ou reçu. Ce n'est pas un r
 de qualification M8-S. Config ID Docker `f3067a8fa678…`, manifeste OCI local
 `8737155ab479…`, pins complets lus du runbook Sauron en lecture seule.
 
-Restent ouverts : contre-audit Codex M8-A, montage/identité/configuration du
-socket permanent par Sauron, migration opérateur et livraison runtime sous
-mandat distinct. Chemin proposé dans FridaDev `/run/writer/renderer.sock`,
-pins opérateur RO `/run/writer-pins.json`, accès au GID 20000 ; aucun montage,
-groupe hôte, service, secret, DB opérateur ou conteneur FridaDev modifié ici.
-DOCX/PDF publics restent inactifs, Markdown direct. M9/M10 non commencés.
+À cette livraison applicative historique, contre-audit, raccord socket,
+migration opérateur et rebuild restaient ouverts. Ce lot applicatif n'avait
+modifié aucun montage, groupe hôte, service ou DB opérateur.
+
+**Contre-audit Codex M8-A favorable — 10 octobre 2026.** Aucun finding bloquant
+sur `7a25eb90bae9abefb1d98e2882660d9e62273663` ; 81 tests ciblés verts
+(59 client/session/libération/Markdown, 22 SQL), plus parcours client livré →
+Writer isolé → snapshot SQL exact → libération acquittée. Résultats attribués
+à Codex, aucun rejeu global par Sauron. Rapport local conservé dans
+`/Users/tof/codex-fridadev/audits/2026-10-10-m8a-counteraudit/rapport.md`.
+
+**Raccord runtime Sauron livré — 10 octobre 2026 ; clôture finale M8-A soumise
+au contre-audit Codex.** Préflight : image e520f196… du 12 septembre, modules
+M1/M8-A et socle atelier absents. Backup root-only
+`/opt/platform/backups/fridadev-m8a-runtime-20261010T162607Z`, dump vérifié et
+restauré dans une DB jetable hors réseau. Sept scripts versionnés manquants
+M1 contextes → M2 adoption → M3 claims → M4 actions → M5 exécution → M7 update
+→ `document_renderer_m8a.sql` répétés puis appliqués une fois en transaction.
+Schéma exact (colonnes/contraintes/index/16 triggers/fonctions), 23 tables
+préexistantes inchangées sur leurs colonnes d'origine, neuf tables atelier vides.
+
+Seul FridaDev construit/recréé depuis le code audité `7a25eb90…` : image
+`sha256:a4fb427f53742c04046a1f460af1e7cd98263102136fc50684a442b47d8b9fde`,
+1 481 fichiers comparés, huit couches de base/20 distributions Python conservées,
+aucun paquet installé ni LibreOffice ajouté. Répertoire socket entier RO vers
+`/run/writer`, pins complets qualifiés RO vers `/run/writer-pins.json` ; injection
+explicite au client/session livrés, aucun env/bootstrap nouveau. Identité root
+**UID/GID 0:0/groupes [0]** préservée, aucun ajout du GID 20000 : le succès root
+ne prouve pas l'admission positive par groupe. Renderer qualifié inchangé,
+config ID `f3067a8fa678…`, manifeste OCI local `8737155ab479…`.
+
+Depuis FridaDev effectivement livré, rendu durable synthétique avec liste :
+job neuf `7048b16f-99d7-41d8-a04a-51320e1ff5f3`, paire M8-C d'une page,
+DOCX 8 324 octets/PDF 15 654 octets, gel local exact avant l'unique release
+acquittée ; 4,421 s internes, commande 5,301 s, exit 0. Mauvais pins refusés
+avant submit (`renderer_profile_mismatch`, zéro POST/DELETE) ; processus
+20002:20002/groupes [20002] refusé EACCES, commande 0,164 s/exit 0. Cette preuve
+runtime n'utilise aucune DB ni confirmation/claim et ne crée aucun objet
+opérateur ; la preuve SQL isolée antérieure reste distincte et attribuée à Codex.
+Workspace vide, seuls init/serveur, probes/paires/conteneurs possédés retirés ;
+32 voisins, renderer compris, strictement inchangés. FridaDev healthy/restart 0,
+HTTP interne 200, racine/admin publics 302 vers Authelia. Rollback défini app
+image/Compose seulement, aucune suppression de table ou compensation DAV.
+
+Preuves, commandes/exits/durées et incidents : dépôt Sauron
+`/Users/tof/Saurons/sauron-frida-system`, branche locale M8-A depuis `885352c…`,
+`reports/2026-10-10-fridadev-m8a-runtime.md` et `runbooks/fridadev-writer-m8a.md` ;
+backup root-only précité. Aucun rejeu des 1 691 tests, des 185 sélections ou
+qualification M8-S. Streaming/upload/Exports/OCR non rejoués : case globale
+correspondante ouverte. DOCX/PDF publics atelier inactifs, Markdown direct ;
+recettes DAV/Versions M1–M7 distinctes et ouvertes. **M9/M10 non commencés ; arrêt
+pour contre-audit Codex.**
 
 ### M9-A — DOCX Frida create/copy/update et pagination Writer
 
@@ -4238,16 +4292,19 @@ ni chaîné derrière Writer. Fusion/découpe/conversion sont décrites par l'en
 humaine observée ; rotation/compression et autres fonctions ne sont pas déclarées
 prouvées sans recette. OCR existant : contrats actuels inchangés.
 
-### 9.2. Forme minimale livrée et raccord restant
+### 9.2. Forme minimale livrée et raccord runtime M8-A
 
 M8-S livre dans `/opt/platform/fridadev-app` le service `writer-renderer`,
 conteneur `platform-frida-writer`, image/worker distincts de `platform-fridadev`.
 Socket `/opt/platform/fridadev-app/writer-renderer/socket/renderer.sock` :
-UID/GID 20000:20000, mode 0660, répertoire 2770. Il est monté dans le seul
-renderer ; client synthétique hôte 20001:20000. Le montage et l'identité du
-client FridaDev restent à livrer par Sauron ; adaptateur M8-A prouvé en isolation, sans modification du conteneur FridaDev ici.
+UID/GID 20000:20000, mode 0660, répertoire 2770. Qualification M8-S : client
+synthétique hôte 20001:20000. Depuis M8-A, répertoire socket entier aussi monté
+RO dans FridaDev vers `/run/writer`, pins complets RO `/run/writer-pins.json`.
+FridaDev conserve root 0:0/groupes [0], sans group_add ni permission renderer
+élargie ; accès root positif distinct de l'admission par groupe. Preuve depuis
+l'image réellement livrée ci-dessus.
 Aucun document, state/, secret, DB, volume Nextcloud ou socket Docker partagé.
-Le futur client applicatif est HTTP AF_UNIX de bibliothèque standard,
+Le client applicatif livré est HTTP AF_UNIX de bibliothèque standard,
 sans dépendance bureautique dans son image.
 
 Le wrapper écoute seulement sur ce socket Unix et pilote UNO sur un pipe local.
@@ -4257,9 +4314,10 @@ vérifiés par M8-S ; aucun shell/SSH/Docker exec offert à FridaDev.
 
 Sauron conserve image/wrapper/runtime et preuves dans son dépôt, avec cette
 seule roadmap modifiée par exception explicite de Tof. Celebrimbor réalise
-adaptateur/orchestration dans le checkout. La future connexion du socket
-peut imposer une recréation ciblée FridaDev gérée par Sauron sous mandat M8-A.
-Aucune recréation FridaDev ni restart global dans M8-S.
+adaptateur/orchestration dans le checkout. Le mandat distinct M8-A a livré
+le code audité et les migrations manquantes, puis recréé uniquement FridaDev.
+Renderer et 31 autres voisins inchangés ; aucune recréation FridaDev ni restart
+global n'avait été effectué dans M8-S.
 
 ### 9.3. Protocole fermé et bornes techniques
 
@@ -4506,9 +4564,11 @@ transactions, pagination et parcours produit restent aux lots concernés.
 - [ ] M2/M5/M7 : comportement DAV effectif, identité distante, préconditions/ETags
   et Versions disponibles sur la chaîne déployée.
 - [ ] M3 : environnement SQL concurrent isolé de preuve si non établi par le HEAD.
-- [ ] M8-S/M8-A : disponibilité effective du service isolé, permissions de socket,
+- [x] M8-S/M8-A : disponibilité effective du service isolé, permissions de socket,
   capacités/filtres/polices/layout du pin livré, ressources/confinement/cleanup.
-  M8-S fermé ; client M8-A et preuve réelle isolée livrés, raccord runtime permanent ouvert.
+  M8-S fermé par Codex ; raccord M8-A livré et preuve depuis FridaDev exécutée.
+  Identité positive root explicitée, refus non admis prouvé ; clôture finale M8-A
+  soumise au contre-audit, aucune requalification M8-S.
   Ce sont des preuves de livraison, aucun choix de moteur repoussé.
 - [ ] M9-A/M9-B/M10 : stabilité Writer réelle, import/round-trip externe admissible
   et limites détectées du corpus synthétique ; aucune promesse Word universelle.
@@ -4540,7 +4600,9 @@ et de preuve de M0/M4/M8–M10, pas des arbitrages repoussés.
 - [ ] DOCX externe et PDF externe traités avec fidélité honnête.
 - [ ] Writer/UNO isolé livré/épinglé/prouvé par M8-S, adaptateur M8-A ; aucun moteur
   concurrent, cloud/payante, fallback ou LibreOffice dans le conteneur FridaDev.
-  M8-S fermé après contre-audit ; adaptateur M8-A prouvé en isolation, case globale ouverte pour raccord runtime et contre-audit M8-A.
+  M8-S fermé après contre-audit ; applicatif M8-A validé par Codex, raccord runtime
+  livré par Sauron. Case globale ouverte pour clôture finale M8-A après contre-audit
+  runtime ; aucun voisin non rejoué déclaré vert.
 - [ ] Nextcloud/Collabora/Stirling distincts ; entrée humaine et OCR Stirling préservés.
 - [ ] Aucun secret/capacité DAV dans le renderer, aucun UNO brut ni API publique,
   socket restreint/network none et fichiers éphémères nettoyés, ODT jamais vérité durable.
@@ -4591,11 +4653,19 @@ séparément avant M4. La livraison initiale M4 est conservée comme déclaratio
 historique explicitement rectifiée par P3-M4-03 ; les identifiants réutilisables
 sont corrigés. P2-M4-01 et P2-M4-02 sont fermés après leurs contre-audits
 indépendants, avec leurs résultats conservés ci-dessus ; P3-M4-03 est corrigé
-documentairement, sans fermer la livraison runtime de M4 ;
+documentairement ; code/prérequis M4 depuis livrés via M8-A, recette produit distincte ;
 M5 est fermé sur code/preuves hermétiques et contre-audit ; M6 est réalisé sur
-code/preuves isolées et contre-audit. M7 est fermé sur code/preuves isolées et contre-audit, livraison runtime ouverte ; AUD-01 et AUD-02 fermés après contre-audits indépendants.
+code/preuves isolées et contre-audit, code livré via M8-A. M7 est fermé sur
+code/preuves isolées et contre-audit, code/migration livrés via M8-A, recettes
+DAV/Versions ouvertes ; AUD-01 et AUD-02 fermés après contre-audits indépendants.
 **M8-C fermé sur contrat, code et preuves isolées ; M8-S fermé après contre-audit Codex favorable du 10 octobre transmis par Tof.**
-M8-A est implémenté sur périmètre applicatif avec preuves isolées ; son raccord runtime et son contre-audit restent ouverts. M9/M10/Z restent non commencés.
+M8-A applicatif validé par contre-audit Codex ; raccord runtime livré par Sauron.
+Clôture finale M8-A soumise au contre-audit Codex ; M9/M10/Z restent non commencés.
+Actualisation runtime du 10 octobre : code et migrations M1–M7 livrés par le
+raccord M8-A ; les réserves de recette produit/DAV/Versions restent ouvertes.
+Les mentions de runtime ouvert dans les récits historiques décrivent leurs
+remises d'alors, pas une absence actuelle de code ou de migrations.
+
 Elle complète les contrats vivants pour la nouvelle capacité bornée autorisée
 dans AGENTS.md ; l'invariant de consolidation reste applicable hors de cette
 exception. Les seuls composants applicatifs livrables par M0 sont les frontières
@@ -4604,6 +4674,7 @@ internes inactives et leurs preuves. M1 ajoute seulement entrée et contexte
 préparation historiquement indisponible. M3 ajoute l’autorité commune ; M4
 raccorde uniquement la préparation Markdown sans écriture. Ces lots applicatifs ne livraient aucune dépendance ou service plateforme.
 M8-S livre désormais le seul renderer isolé, son correctif P2-M8S-AUD-01 et ses preuves synthétiques sous
-mandat distinct ; cette exception documentaire ne raccorde aucun consommateur. La correction P3 M1 est séparée ; la
+mandat distinct ; le raccord interne M8-A a ensuite été livré sous son mandat
+propre, sans activation publique DOCX/PDF. La correction P3 M1 est séparée ; la
 livraison M2 reste limitée à `FridaV1-Document-Workshop-M2`. Aucun merge vers main,
 rebuild, restart, migration opérateur ou déploiement n'est autorisé par ces lots.
