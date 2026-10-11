@@ -10,7 +10,7 @@ import json
 import unicodedata
 from uuid import UUID
 
-from .document_canonical import ValidatedCanonical, strict_json_loads, validate_canonical
+from .document_canonical import ValidatedCanonical, StrictJSONError, strict_json_loads, validate_canonical
 from .document_workshop_contract import DOCUMENT_PROFILE, MAX_CANONICAL_JSON_BYTES, DocumentWorkshopError
 from .workspace_document_paths import validate_document_path
 
@@ -24,24 +24,29 @@ DOCUMENT_LIMITATION_CODES = frozenset({
 })
 
 
-def _invalid() -> None:
-    raise DocumentWorkshopError("document_envelope_invalid")
+def _invalid(site: str) -> None:
+    error = DocumentWorkshopError("document_envelope_invalid")
+    error.envelope_rejection = site
+    raise error from None
 
 
-def _closed(value: object, fields: set[str]) -> dict:
+def _closed(value: object, fields: set[str], site: str) -> dict:
     if type(value) is not dict or set(value) != fields:
-        _invalid()
+        _invalid(site)
     return value
 
 
 def _surface(value: object) -> str:
-    if (type(value) is not str or not value.strip()
-            or len(value) > MAX_DOCUMENT_SURFACE_CODEPOINTS):
-        _invalid()
+    if type(value) is not str:
+        _invalid('surface_type')
+    if not value.strip():
+        _invalid('surface_blank')
+    if len(value) > MAX_DOCUMENT_SURFACE_CODEPOINTS:
+        _invalid('surface_limit')
     if any(unicodedata.category(char) == "Cs"
            or (unicodedata.category(char) == "Cc" and char not in "\r\n\t")
            for char in value):
-        _invalid()
+        _invalid('surface_unicode')
     # Inspect complete JSON objects/arrays even when surrounded by prose or
     # fences. At most 2000 starts are inspected: this is a bounded protocol
     # guard, not a classifier of arbitrary source quotations. Accepted speech
@@ -61,10 +66,10 @@ def _surface(value: object) -> str:
         if type(item) is dict:
             if type(item.get("schema_version")) is int and item["schema_version"] == 1:
                 if item.get("profile") == DOCUMENT_PROFILE and "blocks" in item:
-                    _invalid()
+                    _invalid('surface_protocol')
                 if (type(item.get("status")) is str and item["status"] in {"prepared", "clarify", "refuse"}
                         and "surface_text" in item and "proposal" in item):
-                    _invalid()
+                    _invalid('surface_protocol')
             pending.extend(item.values())
         elif type(item) is list:
             pending.extend(item)
@@ -73,25 +78,27 @@ def _surface(value: object) -> str:
 
 def _source_ids(value: object) -> tuple[str, ...]:
     if type(value) is not list:
-        _invalid()
+        _invalid('sources_type')
     ids = []
     for item in value:
         if type(item) is not str:
-            _invalid()
+            _invalid('source_type')
         try:
             ids.append(str(UUID(item)))
         except (ValueError, AttributeError):
-            _invalid()
+            _invalid('source_uuid')
     if len(set(ids)) != len(ids):
-        _invalid()
+        _invalid('source_duplicate')
     return tuple(ids)
 
 
 def _limitations(value: object) -> tuple[str, ...]:
-    if (type(value) is not list
-            or any(type(code) is not str or code not in DOCUMENT_LIMITATION_CODES for code in value)
-            or len(set(value)) != len(value)):
-        _invalid()
+    if type(value) is not list:
+        _invalid('limitations_type')
+    if any(type(code) is not str or code not in DOCUMENT_LIMITATION_CODES for code in value):
+        _invalid('limitation_code')
+    if len(set(value)) != len(value):
+        _invalid('limitation_duplicate')
     return tuple(value)
 
 
@@ -122,46 +129,47 @@ class DocumentEnvelope:
 
 def read_document_envelope(raw: str) -> DocumentEnvelope:
     if type(raw) is not str:
-        _invalid()
+        _invalid('raw_type')
     try:
         size = len(raw.encode("utf-8"))
     except UnicodeError:
-        _invalid()
+        _invalid('raw_unicode')
     if size > MAX_DOCUMENT_ENVELOPE_BYTES:
         raise DocumentWorkshopError("document_json_envelope_limit")
     try:
         value = strict_json_loads(raw)
-    except DocumentWorkshopError:
-        _invalid()
-    root = _closed(value, {"schema_version", "status", "surface_text", "proposal"})
-    if (type(root["schema_version"]) is not int or root["schema_version"] != 1
-            or type(root["status"]) is not str
-            or root["status"] not in {"prepared", "clarify", "refuse"}):
-        _invalid()
+    except StrictJSONError as error:
+        _invalid(error.site)
+    root = _closed(value, {"schema_version", "status", "surface_text", "proposal"}, 'root_shape')
+    if type(root["schema_version"]) is not int or root["schema_version"] != 1:
+        _invalid('root_version')
+    if type(root["status"]) is not str or root["status"] not in {"prepared", "clarify", "refuse"}:
+        _invalid('root_status')
     surface = _surface(root["surface_text"])
     status = root["status"]
     if status != "prepared":
         if root["proposal"] is not None:
-            _invalid()
+            _invalid('proposal_for_status')
         return DocumentEnvelope(status, surface)
     proposal = _closed(root["proposal"], {
         "operation", "format", "relative_path", "source_file_ids", "limitations", "canonical",
-    })
-    if (type(proposal["operation"]) is not str or proposal["operation"] not in {"create", "copy", "update"}
-            or type(proposal["format"]) is not str or proposal["format"] not in {"markdown", "docx"}):
-        _invalid()
+    }, 'proposal_shape')
+    if type(proposal["operation"]) is not str or proposal["operation"] not in {"create", "copy", "update"}:
+        _invalid('operation')
+    if type(proposal["format"]) is not str or proposal["format"] not in {"markdown", "docx"}:
+        _invalid('format')
     path = validate_document_path(proposal["relative_path"], format=proposal["format"])
     sources = _source_ids(proposal["source_file_ids"])
     if proposal["operation"] == "copy" and not sources:
-        _invalid()
+        _invalid('copy_source_required')
     limitations = _limitations(proposal["limitations"])
     canonical = validate_canonical(proposal["canonical"])
     return DocumentEnvelope(status, surface, canonical, proposal["operation"],
                             path.relative_path, sources, limitations, proposal["format"])
 
 
-# Exactly one root response schema is appended before admission. The nested
-# canonical forms are described here, rather than appending the M0 root schema.
+# One envelope instruction block is appended before admission. The executable
+# OpenRouter schema belongs to document_workshop_output_schema, not this text.
 DOCUMENT_ENVELOPE_INSTRUCTIONS = """Return one complete JSON envelope, no fence or commentary.
 The root has exactly these required keys:
 {schema_version:1, status:"prepared"|"clarify"|"refuse", surface_text:string, proposal:object|null}.

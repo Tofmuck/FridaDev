@@ -18,6 +18,16 @@ DOCUMENT_EXTENSIONS = {"markdown": ".md", "docx": ".docx", "pdf": ".pdf"}
 # substitute for the independent word/codepoint/page bounds, and never truncates.
 MAX_CANONICAL_JSON_BYTES = 1_048_576
 
+# First failed envelope guard only. Never received keys, values or exception text.
+DOCUMENT_ENVELOPE_REJECTION_SITES = (
+    'raw_type', 'raw_unicode', 'json_syntax', 'json_duplicate_key', 'json_nonfinite',
+    'root_shape', 'root_version', 'root_status', 'surface_type', 'surface_blank',
+    'surface_limit', 'surface_unicode', 'surface_protocol', 'proposal_for_status',
+    'proposal_shape', 'operation', 'format', 'sources_type', 'source_type',
+    'source_uuid', 'source_duplicate', 'copy_source_required', 'limitations_type',
+    'limitation_code', 'limitation_duplicate',
+)
+
 
 @dataclass(frozen=True)
 class DocumentSSERejection:
@@ -37,6 +47,7 @@ class DocumentWorkshopError(ValueError):
         super().__init__(reason_code)
         self.reason_code = reason_code
         self.sse_rejection: DocumentSSERejection | None = None
+        self.envelope_rejection: str | None = None
 
 
 def validate_writer_page_count(page_count: object) -> int:

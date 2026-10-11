@@ -157,7 +157,9 @@ class DocumentProviderProgressTests(unittest.IsolatedAsyncioTestCase):
         payload = json.loads(call.body)
         self.assertEqual(payload["max_tokens"], 24000)
         self.assertEqual(payload["reasoning"], {"effort": "medium", "exclude": True})
-        self.assertEqual(call.admission.estimated_input_tokens, token_utils.estimate_tokens(payload["messages"], payload["model"]))
+        measured = payload['messages'] + [dict(role='system', content=json.dumps(
+            payload['response_format'], ensure_ascii=False, separators=(',', ':')))]
+        self.assertEqual(call.admission.estimated_input_tokens, token_utils.estimate_tokens(measured, payload["model"]))
         self.assertEqual(result.canonical.as_dict(), canonical())
         self.assertEqual(result.envelope.surface_text, "Document préparé.")
         self.assertEqual(result.envelope.status, "prepared")

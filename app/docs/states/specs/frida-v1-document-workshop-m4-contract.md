@@ -83,10 +83,15 @@ et envoyé, indépendamment de la longueur d'historique ou d'un voisin de texte 
 Le fournisseur reçoit toujours seulement `role/content` dans ses messages.
 L'éventuel `response_format` ajoute une ligne en fin pour l'estimation seulement :
 elle est absente de `body.messages` et n'acquiert jamais la provenance documentaire.
-Sous ce builder synthétique, le callback et la liste `manifest.messages` comprennent
-aussi cette ligne d'estimation ; cette limite préexistante distincte reste inchangée.
-Le builder runtime courant ne produit pas ce champ. Aucun refactor général du
-manifeste, nouveau marqueur, seconde mesure ou assouplissement du gel n'est ajouté.
+État historique M4 : sous ce builder synthétique, le callback et la liste
+`manifest.messages` comprenaient aussi cette ligne d'estimation ; le builder
+runtime ne produisait pas ce champ. Cette limite est levée sur code par le
+[correctif M9-A du 11 octobre](../audits/frida-v1-document-workshop-output-contract-20261011.md),
+sans refactor du manifeste partagé : schéma documentaire strict avant gel,
+mesure complète conservée, `manifest.messages` limité aux messages HTTP,
+métadonnées fermées `document_output_contract` identifiant le schéma compté
+hors messages. Sampling/stop omis seulement en documentaire ; modèle, budgets,
+reasoning masqué et compteur inchangés. Aucun changement runtime par ce lot.
 
 Le nominal synthétique compte séparément **1 échange principal documentaire,
 0 principal normal et 2 échanges constitutifs de validation** ; ce dernier

@@ -16,22 +16,31 @@ def _invalid() -> None:
     raise DocumentWorkshopError("document_canonical_invalid")
 
 
+class StrictJSONError(DocumentWorkshopError):
+    """Same public failure as before, with a fixed parser guard for the envelope."""
+    def __init__(self, site):
+        super().__init__("document_canonical_invalid")
+        self.site = site
+
+
 def strict_json_loads(raw: str) -> object:
     def object_pairs(pairs):
         result = {}
         for key, value in pairs:
             if key in result:
-                _invalid()
+                raise StrictJSONError('json_duplicate_key')
             result[key] = value
         return result
 
     def constant(_value):
-        _invalid()
+        raise StrictJSONError('json_nonfinite')
 
     try:
         return json.loads(raw, object_pairs_hook=object_pairs, parse_constant=constant)
+    except StrictJSONError:
+        raise
     except (ValueError, TypeError, RecursionError):
-        raise DocumentWorkshopError("document_canonical_invalid") from None
+        raise StrictJSONError('json_syntax') from None
 
 
 def _closed(value: object, keys: set[str]) -> dict:

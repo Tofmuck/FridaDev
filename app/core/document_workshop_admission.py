@@ -11,6 +11,7 @@ from typing import Callable, Mapping, Any
 
 from . import llm_client
 from .document_workshop_envelope import DOCUMENT_ENVELOPE_INSTRUCTIONS
+from .document_workshop_output_schema import document_response_format
 from .document_workshop_contract import (
     DOCUMENT_CONTEXT_TOKENS, DOCUMENT_MODEL, DOCUMENT_OUTPUT_TOKENS,
     DocumentWorkshopError,
@@ -88,9 +89,17 @@ def prepare_document_call(
     reasoning = payload.get("reasoning")
     if not isinstance(reasoning, Mapping) or reasoning.get("exclude") is not True:
         raise DocumentWorkshopError("document_payload_invalid")
-    # Prevent OpenRouter provider failover as well as local retries. This is
-    # request-local and does not alter settings or any normal caller's payload.
-    payload["provider"] = {"allow_fallbacks": False}
+    # Documentary request only. The shared chat builder and its overrides keep
+    # their own options. These inherited controls are not advertised by GPT-5.1
+    # endpoints; requiring them would leave no documented compatible route.
+    for option in ("temperature", "top_p", "stop"):
+        payload.pop(option, None)
+    output_format = document_response_format()
+    if "response_format" in payload and payload["response_format"] != output_format:
+        # No competing schema can silently replace the documentary contract.
+        raise DocumentWorkshopError("document_payload_invalid")
+    payload["response_format"] = output_format
+    payload["provider"] = {"allow_fallbacks": False, "require_parameters": True}
     payload_json = _snapshot(payload)
     try:
         body = payload_json.encode("utf-8")

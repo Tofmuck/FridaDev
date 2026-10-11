@@ -5,6 +5,7 @@ import math
 import re
 from datetime import datetime
 from typing import Any
+from core.document_workshop_contract import DOCUMENT_ENVELOPE_REJECTION_SITES
 
 from observability.observability_payload_guard_safe_code_policy import (
     _dangerous_value_class, _is_safe_code_text,
@@ -79,6 +80,10 @@ PARENT_SUMMARY = {
 
 
 def context_rule(stage: str, path: tuple[str, ...]) -> Any:
+    if stage == 'main_payload_manifest' and path == ('document_output_contract',):
+        return {'response_format_sha256_12': 'hash', 'estimate_includes_response_format': 'bool',
+                'estimation_only_messages': ('int_max', 1), 'response_format_type': ('enum', 'json_schema'),
+                'strict': 'bool', 'require_parameters': 'bool', 'allow_fallbacks': 'bool'}
     if stage == 'document_preparation' and not path:
         return {'status_schema_version': ('enum','agentic_v1'), 'reason_code': 'code', 'error_code': 'code',
                 'action_id': 'uuid', 'context_id': 'uuid',
@@ -88,6 +93,7 @@ def context_rule(stage: str, path: tuple[str, ...]) -> Any:
                           'canonical_validated', 'complete', 'failed'),
                 'state': ('enum', 'preparing', 'succeeded', 'failed', 'cancelled'),
                 'received_content_codepoints': 'int',
+                'envelope_rejection': ('enum', *DOCUMENT_ENVELOPE_REJECTION_SITES),
                 'sse_rejection': {
                     'site': ('enum', 'tool_call', 'content_after_stop', 'unrecognized_terminal_reason',
                              'duplicate_stop', 'done_without_stop', 'sse_without_done'),

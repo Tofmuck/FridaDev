@@ -9,7 +9,13 @@ import unittest
 from unittest.mock import patch
 
 from core import llm_client, token_utils
+from core.document_workshop_output_schema import document_response_format
 from tests.unit.core.test_document_workshop_canonical_paths import canonical
+
+
+def estimation_input(payload):
+    return payload['messages'] + [dict(role='system', content=json.dumps(
+        payload['response_format'], ensure_ascii=False, allow_nan=False, separators=(',', ':')))]
 
 
 class DocumentAdmissionTests(unittest.TestCase):
@@ -81,11 +87,11 @@ class DocumentAdmissionTests(unittest.TestCase):
         transmitted = json.loads(call.body)
         self.assertEqual(transmitted["messages"][:5], original)
         self.assertIn("schema_version", transmitted["messages"][-1]["content"])
-        self.assertEqual(measured, [(transmitted["messages"], "openai/gpt-5.1")])
-        self.assertEqual(call.admission.estimated_input_tokens, token_utils.estimate_tokens(transmitted["messages"], "openai/gpt-5.1"))
+        self.assertEqual(measured, [(estimation_input(transmitted), "openai/gpt-5.1")])
+        self.assertEqual(call.admission.estimated_input_tokens, token_utils.estimate_tokens(estimation_input(transmitted), "openai/gpt-5.1"))
         self.assertEqual(transmitted["max_tokens"], 24000)
         self.assertEqual(transmitted["reasoning"], {"effort": "medium", "exclude": True})
-        self.assertEqual(transmitted["provider"], {"allow_fallbacks": False})
+        self.assertEqual(transmitted["provider"], {"allow_fallbacks": False, "require_parameters": True})
         self.assertEqual(transmitted["metadata"]["frida_slot"], "main_model")
         self.assertEqual(call.url, "https://provider.invalid/api/v1/chat/completions")
         self.assertNotIn("synthetic", repr(call))
@@ -106,7 +112,7 @@ class DocumentAdmissionTests(unittest.TestCase):
         for text in (" " * 1000, "!" * 1000, "é e\u0301 𐐀 👨\u200d👩" * 1000):
             call = self.prepare(messages=[{"role": "user", "content": text}])
             payload = json.loads(call.body)
-            self.assertEqual(call.admission.estimated_input_tokens, token_utils.estimate_tokens(payload["messages"], payload["model"]))
+            self.assertEqual(call.admission.estimated_input_tokens, token_utils.estimate_tokens(estimation_input(payload), payload["model"]))
             self.assertEqual(payload["messages"][0]["content"], text)
 
     def test_model_outside_contract_is_not_replaced_and_secrets_not_resolved(self):
@@ -129,7 +135,7 @@ class DocumentAdmissionTests(unittest.TestCase):
 
     def test_textual_response_schema_outside_messages_has_explicit_estimate_adapter(self):
         original = llm_client.build_payload
-        outside = {"type": "json_schema", "json_schema": {"name": "synthetic", "schema": {"description": "complete schema instructions " * 100}}}
+        outside = document_response_format()
         def builder(*args, **kwargs):
             return {**original(*args, **kwargs), "response_format": outside}
         seen = []
@@ -170,7 +176,7 @@ class DocumentAdmissionTests(unittest.TestCase):
         self.assertIn('canonical', instructions)
         self.assertIn('page_break', instructions)
         self.assertNotIn(CANONICAL_INSTRUCTIONS, instructions)
-        self.assertEqual(call.admission.estimated_input_tokens, token_utils.estimate_tokens(messages, "openai/gpt-5.1"))
+        self.assertEqual(call.admission.estimated_input_tokens, token_utils.estimate_tokens(estimation_input(json.loads(call.body)), "openai/gpt-5.1"))
 
 
 if __name__ == "__main__":

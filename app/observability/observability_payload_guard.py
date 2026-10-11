@@ -145,6 +145,9 @@ def _inspect_manifest_mapping(payload: Mapping[str, Any], issues: dict[str, int]
     for raw_key, value in payload.items():
         key = _safe_key(raw_key)
         lower = key.lower()
+        if context == 'top' and key == 'document_output_contract':
+            _inspect_context(value, context_rule('main_payload_manifest', (key,)), issues, depth + 1)
+            continue
         if not key:
             _add_issue(issues, "manifest_unexpected_key")
             continue

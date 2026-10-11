@@ -84,7 +84,8 @@ class PreparationProvenancePostgresqlTests(unittest.TestCase):
         real_inject = turn.continuity_capsule.inject_continuity_capsule
         real_prepare = provider_module.prepare_document_call
         real_builder = self.env.real_payload
-        outside = dict(type='json_schema', json_schema=dict(name='synthetic', schema=dict(description='schema estimate only')))
+        from core.document_workshop_output_schema import document_response_format
+        outside = document_response_format()
         def inject(messages, result):
             # This observes the real completed source append before the real
             # capsule append; it never finds an occurrence by text or a hash.
@@ -185,17 +186,17 @@ class PreparationProvenancePostgresqlTests(unittest.TestCase):
         self.assertEqual(body['messages'][-1]['content'], DOCUMENT_ENVELOPE_INSTRUCTIONS)
         self.assertTrue(all(set(message)=={'role','content'} for message in body['messages']))
         self.assertEqual(body['max_tokens'], 24000)
-        self.assertEqual(body['provider'], {'allow_fallbacks': False})
+        self.assertEqual(body['provider'], {'allow_fallbacks': False, 'require_parameters': True})
         from core import token_utils
         self.assertEqual(prepared[0].admission.estimated_input_tokens, token_utils.estimate_tokens(measured[0], body['model']))
         self.assertEqual(prepared[0].admission.estimated_total_tokens, prepared[0].admission.estimated_input_tokens+24000)
         self.assertLessEqual(prepared[0].admission.estimated_total_tokens, 400000)
         self.assertEqual(measured[0][:len(body['messages'])], body['messages'])
-        self.assertEqual(len(measured[0]), len(body['messages'])+int(response_format))
+        self.assertEqual(len(measured[0]), len(body['messages'])+1)
         if response_format:
             self.assertEqual(json.loads(measured[0][-1]['content']), outside)
             self.assertEqual(body['response_format'], outside)
-            self.assertNotIn('document_lane', manifest['messages'][len(body['messages'])]['logical_roles'])
+            self.assertNotIn(len(body['messages']), [m['index'] for m in manifest['messages'] if 'document_lane' in m['logical_roles']])
         lane = manifest['lane_statuses']['document_lane']
         self.assertEqual((lane['input_count'],lane['injected_count']), (count,count))
         entries = [entry for entry in manifest['messages'] if 'document_lane' in entry['logical_roles']]

@@ -4193,7 +4193,7 @@ executor et projection de carte ; aucune logique UNO dans le pipeline principal.
 Frida récupérée/validée temporairement, update If-Match sur même ID/nom.
 **Propriétaire :** Celebrimbor ; Sauron traite seulement une non-conformité plateforme prouvée.
 
-**État d'exécution — 11 octobre 2026 : M9-A initial et observabilité runtime contre-audités favorablement ; canari Safari bloqué avant confirmation (OBS-M9A-PREP-01), correctif `duplicate_stop` contre-audité favorablement sur code, reprise Sauron livrée et contre-audit runtime favorable attribué à Codex ; nouveau canari échoué sur `document_envelope_invalid`, diagnostic sans correctif et règle exacte inconnue ; M9-A globalement ouvert.**
+**État d'exécution — 11 octobre 2026 : M9-A initial et observabilité runtime contre-audités favorablement ; canari Safari bloqué avant confirmation (OBS-M9A-PREP-01), correctif `duplicate_stop` contre-audité favorablement sur code, reprise Sauron livrée et contre-audit runtime favorable attribué à Codex ; nouveau canari échoué sur `document_envelope_invalid`, règle exacte inconnue ; contrat de sortie strict et discriminants corrigés sur code seulement, 167 IDs ciblés verts ; M9-A globalement ouvert.**
 Reprise des 25 fichiers WIP autorisés sur la branche existante, HEAD documentaire
 M8-A `1b14e7dcdf68030c2d1df139eb9ee4c5f825143d` ; aucune clôture M8-A refaite,
 aucune absorption d'autre travail. Code livré par `9d423791cfd14a3611ecdb9047e8d840f667fbc7`,
@@ -4498,7 +4498,7 @@ La provenance du code embarqué reste `80885712…`, distincte du commit roadmap
 Aucune case canari/clôture globale acquise ; M9-B/M10/Z non commencés.
 Arrêt pour contre-audit Codex, aucun canari ni lot suivant.
 
-**État courant — 11 octobre 2026, contre-audit runtime favorable puis nouveau
+**Étape historique — 11 octobre 2026, contre-audit runtime favorable puis nouveau
 canari échoué ; diagnostic sans correctif.** Tof transmet le contre-audit
 runtime favorable de Codex pour le code `8088571296a81f5182ce60448ed366ee49450524`
 et l'image `sha256:5d28d36f50006d37710a51022e6166e24a179973ec451af3808df958aaa52d06`.
@@ -4528,6 +4528,29 @@ sans contenu, à autoriser séparément ; aucune instrumentation ou capture live
 
 Aucune clôture canari ni extension M9-B/M10 ; arrêt après livraison documentaire
 pour contre-audit Codex. Les étapes et preuves précédentes sont conservées.
+
+**État courant — 11 octobre 2026, contrat de sortie et diagnostic corrigés sur
+code seulement.** Base `902c3d2d…` propre et alignée, contre-lecture Codex
+attribuée à Codex selon Tof ; ses observations ne constituent pas un rejeu des
+115 tests de Celebrimbor. Le [relevé unique du correctif](../../states/audits/frida-v1-document-workshop-output-contract-20261011.md)
+fixe les choix officiels : `response_format=json_schema`, strict, schéma unique
+avant gel/admission ; `require_parameters=true`, `allow_fallbacks=false` ;
+omission de temperature/top_p/stop uniquement pour le documentaire. Modèle,
+24 000/400 000, reasoning masqué, streaming, validations et confirmation conservés.
+Manifeste fidèle aux messages transmis et schéma estimé identifié séparément.
+Première garde d'enveloppe sous identifiant fermé durable, sans contenu, raison
+publique inchangée et panne du diagnostic sans effet sur le refus.
+
+Baseline 115/115 ; résultat **167 IDs distincts verts** : 132 unitaires ciblés,
+19 SQL/HTTP isolés, 4 schéma, 12 voisins ; 4 contrôles négatifs causaux. IDs et
+assertions historiques conservés, attentes obsolètes actualisées avec accord
+explicite de Tof. Aucun appel modèle/DAV/Writer/canari ni changement runtime.
+Acceptation réelle du schéma et routage effectif non qualifiés ; cause historique
+inchangée. Runtime `80885712…`, image `5d28d36f5000…`, inchangés.
+
+- [x] Écart de contrat corrigé et discriminants éprouvés hors ligne.
+- [ ] Contre-audit Codex du lot ; aucune remise Sauron/runtime dans ce mandat.
+- [ ] OBS-M9A-PREP-01, qualification live et M9-A restent ouverts.
 
 - [x] Rouge causal : canonical/source/empreinte non correspondants, 21e page, version
   renderer différente ou ETag changé durant rendu → refus sans écriture.
@@ -5030,7 +5053,7 @@ par le report documentaire déjà poussé `1b14e7dc…`. M9-A repris le 11 octob
 code `9d423791…` et contre-audit Codex favorable 28/28 ; blocage levé sur
 candidate qualifiée désormais déployée. Runtime contre-audité favorablement
 par Codex le 11 octobre, DOCX conditionnel disponible, PDF public/DOCX externe fermés ;
-canari Safari bloqué avant confirmation (OBS-M9A-PREP-01), cause du premier échec inconnue ; observabilité SSE livrée et contre-auditée sur runtime par Codex, second rejet `duplicate_stop` et correctif contre-audité favorablement sur code par Codex, livré par Sauron après correction ciblée du comparateur ; contre-audit runtime de la reprise favorable attribué à Codex ; nouvelle préparation échouée sur `document_envelope_invalid`, règle exacte inconnue après diagnostic sans correctif ; OBS-M9A-PREP-01 et clôture globale M9-A ouverts. M9-B/M10/Z non commencés.
+canari Safari bloqué avant confirmation (OBS-M9A-PREP-01), cause du premier échec inconnue ; observabilité SSE livrée et contre-auditée sur runtime par Codex, second rejet `duplicate_stop` et correctif contre-audité favorablement sur code par Codex, livré par Sauron après correction ciblée du comparateur ; contre-audit runtime de la reprise favorable attribué à Codex ; nouvelle préparation échouée sur `document_envelope_invalid`, règle exacte inconnue ; contrat de sortie strict et discriminants corrigés sur code seulement (167 IDs verts), sans déploiement ni appel modèle ; OBS-M9A-PREP-01 et clôture globale M9-A ouverts. M9-B/M10/Z non commencés.
 Actualisation runtime du 10 octobre : code et migrations M1–M7 livrés par le
 raccord M8-A ; les réserves de recette produit/DAV/Versions restent ouvertes.
 Les mentions de runtime ouvert dans les récits historiques décrivent leurs

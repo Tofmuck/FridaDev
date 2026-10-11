@@ -1,6 +1,7 @@
 """One canonical documentary turn: shared dialogue inputs, isolated document data."""
 import asyncio
 from dataclasses import asdict
+import hashlib
 import json
 import threading
 from types import SimpleNamespace
@@ -64,12 +65,15 @@ def error_result(reason, status=409):
     return dict(kind='json', payload=dict(ok=False,reason_code=reason,error='Préparation documentaire non confirmée.'), status=status, headers={})
 
 
-def _event(token, snapshot, *, sse_rejection=None):
+def _event(token, snapshot, *, sse_rejection=None, envelope_rejection=None):
     payload = dict(action_id=token.turn_id,context_id=token.context_id,
         phase=snapshot.phase,state=snapshot.state,received_content_codepoints=snapshot.received_content_codepoints)
     if sse_rejection is not None:
         payload['sse_rejection'] = asdict(sse_rejection)
         payload['reason_code'] = 'document_provider_incomplete'
+    if envelope_rejection is not None:
+        payload['envelope_rejection'] = envelope_rejection
+        payload['reason_code'] = 'document_envelope_invalid'
     chat_turn_logger.emit('document_preparation', status='ok' if snapshot.state in ('preparing','succeeded') else 'error',
         reason_code=snapshot.reason_code, payload=payload)
 
@@ -141,9 +145,14 @@ class DocumentTurn:
             if guard in done: guard.result()
             return task.result()
         except DocumentWorkshopError as error:
+            diagnostic = {}
             if error.reason_code == 'document_provider_incomplete' and error.sse_rejection is not None:
+                diagnostic['sse_rejection'] = error.sse_rejection
+            if error.reason_code == 'document_envelope_invalid' and error.envelope_rejection is not None:
+                diagnostic['envelope_rejection'] = error.envelope_rejection
+            if diagnostic:
                 try:
-                    _event(self.token, self.progress.snapshot(), sse_rejection=error.sse_rejection)
+                    _event(self.token, self.progress.snapshot(), **diagnostic)
                 except Exception:
                     # This optional proof cannot change the rejected turn.
                     pass
@@ -236,12 +245,21 @@ class DocumentTurn:
             for s in source_reads),injected_count=len(source_reads),read_status='ok' if source_reads else 'not_selected')
         def counted(final_messages, model):
             estimate = token_utils_module.estimate_tokens(final_messages,model)
-            manifest = main_payload_manifest.build_main_payload_manifest(conversation=conversation,prompt_messages=final_messages,
-                runtime_main_model=DOCUMENT_MODEL,temperature=temperature,top_p=top_p,max_tokens=DOCUMENT_OUTPUT_TOKENS,
+            # Admission always appends exactly one estimation-only representation
+            # of the frozen response_format. It is not an HTTP message or a lane.
+            sent_messages = final_messages[:-1]
+            response_format_text = final_messages[-1]['content']
+            manifest = main_payload_manifest.build_main_payload_manifest(conversation=conversation,prompt_messages=sent_messages,
+                runtime_main_model=DOCUMENT_MODEL,temperature=None,top_p=None,max_tokens=DOCUMENT_OUTPUT_TOKENS,
                 stream_req=True,assistant_output_policy=None,assistant_response_override=None,
                 turn_id=chat_turn_logger.current_turn_id(),memory_traces=memory_traces,context_hints=context_hints,
                 count_tokens_func=lambda *_: estimate,continuity_capsule_result=capsule,
                 active_document_lane=document_lane,document_receipt_lane=receipt_lane,message_sources=message_sources,**manifest_inputs)
+            manifest['document_output_contract'] = dict(
+                response_format_sha256_12=hashlib.sha256(response_format_text.encode('utf-8')).hexdigest()[:12],
+                estimate_includes_response_format=True, estimation_only_messages=1,
+                response_format_type='json_schema', strict=True, require_parameters=True,
+                allow_fallbacks=False)
             main_payload_manifest.emit_main_payload_manifest(manifest,chat_turn_logger_module=chat_turn_logger)
             return estimate
         result = self._run_exchange(messages,counter=counted,temperature=temperature,top_p=top_p,llm_module=llm_module)

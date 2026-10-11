@@ -10,6 +10,19 @@ Nouvelle préparation Safari échouée sur `document_envelope_invalid`, sans
 confirmation ; règle exacte inconnue. OBS-M9A-PREP-01 ouvert.
 Aucune clôture globale M9-A.**
 
+**Correctif de contrat de sortie, 11 octobre, sur code seulement :** l'admission
+documentaire possède désormais un unique `response_format=json_schema`, strict,
+mesuré avant transport, avec `require_parameters=true` et `allow_fallbacks=false`.
+Les options héritées `temperature`, `top_p`, `stop` sont omises uniquement ici,
+selon les capacités publiques annoncées ; chat normal et réglages inchangés.
+Le manifeste distingue messages HTTP et schéma compté hors messages. Les refus
+d'enveloppe portent un discriminant fermé dans le canal durable existant, avec
+la même raison publique et les mêmes validations locales. [Choix officiels,
+167 IDs verts, contrôles négatifs et limites](../audits/frida-v1-document-workshop-output-contract-20261011.md).
+Acceptation par OpenRouter et génération réelle non éprouvées : aucun appel ni
+déploiement. Le runtime reste `80885712…` / image `5d28d36f5000…`. Le rejet du
+canari absent des captures reste inexpliqué ; OBS-M9A-PREP-01 et M9-A ouverts.
+
 Le runtime M9-A initial audité exécutait `9d423791…`, image applicative `0e196a0dd199…`, renderer
 `7a61bd805ca0…` et pins `a788e48f649a…`. Les 28 cas isolés et les deux jobs
 riches du contre-audit runtime restent attribués à Codex, sans rejeu ici. Les

@@ -25,7 +25,7 @@ class DocumentProvenanceBoundaryTests(unittest.TestCase):
             origin_stage='document_preparation_sources', content_kind='document_source_data')}
         manifests, measured = [], []
         original = llm_client.build_payload
-        outside = dict(type='json_schema', json_schema=dict(name='synthetic', schema=dict(description='estimate only')))
+        outside = fixture.document_response_format()
         def builder(*args, **kwargs):
             result = original(*args, **kwargs)
             if response_format:
@@ -62,7 +62,7 @@ class DocumentProvenanceBoundaryTests(unittest.TestCase):
         self.assertTrue(guard_payload(manifests[0]).accepted)
         self.assertNotIn(data, json.dumps(manifests))
         self.assertEqual(measured[0][:len(body['messages'])], body['messages'])
-        self.assertEqual(len(measured[0]), len(body['messages'])+int(response_format))
+        self.assertEqual(len(measured[0]), len(body['messages'])+1)
         if response_format:
             self.assertEqual(json.loads(measured[0][-1]['content']), outside)
             self.assertEqual(body['response_format'], outside)
