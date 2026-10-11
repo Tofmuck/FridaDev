@@ -82,8 +82,10 @@ def register_document_workshop_routes(app, *, get_store, get_conversations, get_
             return jsonify(ok=False, reason_code='document_file_request_invalid'), 400
         from core.document_workshop_receipts import read_content
         try:
-            content, name = read_content(folder_id, file_id)
-            response = send_file(BytesIO(content), mimetype='text/plain; charset=utf-8',
+            content, name, format = read_content(folder_id, file_id)
+            from core.document_renderer_contract import MEDIA_TYPES
+            mime = {'markdown': 'text/plain; charset=utf-8', 'docx': MEDIA_TYPES['docx']}[format]
+            response = send_file(BytesIO(content), mimetype=mime,
                 as_attachment=True, download_name=name, max_age=0)
             response.headers['Cache-Control'] = 'private, no-store'
             response.headers['X-Content-Type-Options'] = 'nosniff'

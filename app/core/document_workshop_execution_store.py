@@ -161,8 +161,11 @@ def begin(action_id,data):
             (data['conversation_id'],)).fetchone():raise claims.ClaimError('conversation_turn_conflict')
         row=actions._read(conn,action_id,lock=True)
         if row['state']!='pending':return None
-        if row['format']!='markdown' or row['operation'] not in ('create','copy','update'):
+        if row['format'] not in ('markdown','docx') or row['operation'] not in ('create','copy','update'):
             raise DocumentWorkshopError('document_operation_unavailable')
+        if row['format']=='docx':
+            from .document_renderer_store import available
+            if not available(conn):raise DocumentWorkshopError('document_format_unavailable')
         _collision(conn,row);revision=_revision(conn,row)
         generation=conn.execute('UPDATE conversations SET turn_generation=turn_generation+1 WHERE id=%s::uuid RETURNING turn_generation',
             (data['conversation_id'],)).fetchone()[0]
@@ -215,12 +218,35 @@ def verify_fresh_sources(run,sources):
     check(run)
 
 
+def rendered(run,conn=None):
+    if run.action['format']=='markdown':
+        content=serialize_markdown(validate_canonical(run.revision['canonical'])).encode('utf-8')
+        if hashlib.sha256(content).hexdigest()!=run.revision['markdown_sha256']:
+            raise DocumentWorkshopError('document_revision_invalid')
+        return content,run.revision['markdown_sha256'],'frida_markdown_v1'
+    from .document_renderer_store import content as snapshot_content
+    if conn is None:
+        with _db_conn() as db:return rendered(run,db)
+    content=snapshot_content(conn,run.action,run.revision)
+    return content,hashlib.sha256(content).hexdigest(),'frida_writer_v1'
+
+
+def file_metadata(run,content):
+    if run.action['format']=='markdown':
+        return 'text/markdown','.md',len(content.decode('utf-8')),hashlib.sha256(content).hexdigest()[:12]
+    from .workspace_document_source_extraction import extract_complete_source
+    from .document_renderer_contract import MEDIA_TYPES
+    text=extract_complete_source(content,filename=run.target.segments[-1],media_type=MEDIA_TYPES['docx']).text
+    return MEDIA_TYPES['docx'],'.docx',len(text),hashlib.sha256(text.encode('utf-8')).hexdigest()[:12]
+
+
 def _append(conn,run,event,*,path=None,state=None,reason=None,http_status=None,etag=None,count=None):
+    _content,content_hash,serializer=rendered(run,conn)
     conn.execute('''INSERT INTO document_execution_journal(id,action_id,confirmation_turn_id,owner_id,generation,event,
         path_sha256,canonical_sha256,content_sha256,serializer_version,state,reason_code,http_status,etag,created_collections_count)
-        VALUES(%s::uuid,%s::uuid,%s::uuid,%s::uuid,%s,%s,%s,%s,%s,'frida_markdown_v1',%s,%s,%s,%s,%s)''',
+        VALUES(%s::uuid,%s::uuid,%s::uuid,%s::uuid,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',
         (str(uuid4()),run.action['id'],run.token.turn_id,run.token.owner_id,run.token.generation,event,
-        hashlib.sha256(path.encode()).hexdigest() if path else None,run.revision['canonical_sha256'],run.revision['markdown_sha256'],
+        hashlib.sha256(path.encode()).hexdigest() if path else None,run.revision['canonical_sha256'],content_hash,serializer,
         state,reason,http_status,etag,count))
 
 
@@ -307,30 +333,31 @@ def discard(prepared):
         except OSError:pass
 
 
-def publish(run,*,result,content,scope_key,storage_root):
+def publish(run,*,result,content,scope_key,storage_root,metadata=None):
     if run.action['operation']=='update':
         from .document_workshop_update_publication import publish
-        return publish(run,result=result,content=content,scope_key=scope_key,storage_root=storage_root)
+        return publish(run,result=result,content=content,scope_key=scope_key,storage_root=storage_root,metadata=metadata)
     target=run.target;resource=result.resource
     etag=validated_strong_etag(result.creation_etag)
     digest=hashlib.sha256(content).hexdigest()
     remote_identity(scope_key,resource.file_id)
     if (result.state!='known_success' or not etag or resource.is_collection or resource.relative_path!=target.relative_path
-        or resource.etag!=etag or resource.byte_size!=len(content) or digest!=run.revision['markdown_sha256']):
+        or resource.etag!=etag or resource.byte_size!=len(content) or content!=rendered(run)[0]):
         raise DocumentWorkshopError('document_remote_changed')
     file_id,receipt_id=str(uuid4()),str(uuid4())
     storage_key=str(uuid4())+'/'+str(uuid4())
     prepared=workspace_files_store.workspace_file_path(storage_root,storage_key)
     commit_started=False
     try:
+        mime,extension,text_chars,text_hash=metadata if metadata is not None else file_metadata(run,content)
         workspace_files_store.write_file_bytes(storage_root,storage_key,content)
         with _db_conn() as conn:
             row=_guard(conn,run);_collision(conn,row)
             name=target.segments[-1]
             conn.execute('''INSERT INTO workspace_files(id,workspace_folder_id,display_name,original_filename,storage_key,
                 content_kind,media_kind,mime_type,source_extension,byte_size,sha256,sha256_12,text_chars,text_sha256_12,status,source_kind)
-                VALUES(%s::uuid,%s::uuid,%s,%s,%s,'document','text','text/markdown','.md',%s,%s,%s,%s,%s,'active','document_workshop')''',
-                (file_id,row['workspace_folder_id'],name,name,storage_key,len(content),digest,digest[:12],len(content.decode('utf-8')),digest[:12]))
+                VALUES(%s::uuid,%s::uuid,%s,%s,%s,'document','text',%s,%s,%s,%s,%s,%s,%s,'active','document_workshop')''',
+                (file_id,row['workspace_folder_id'],name,name,storage_key,mime,extension,len(content),digest,digest[:12],text_chars,text_hash))
             conn.execute('''INSERT INTO workspace_file_nextcloud_links(workspace_file_id,workspace_folder_id,nextcloud_sync_state,
                 nextcloud_document_ref,nextcloud_name_hash,nextcloud_target_name,nextcloud_relative_path,nextcloud_collision_key,
                 nextcloud_file_id,nextcloud_scope_key,nextcloud_etag,observed_at,observed_sha256,document_origin,
@@ -338,16 +365,16 @@ def publish(run,*,result,content,scope_key,storage_root):
                 VALUES(%s::uuid,%s::uuid,'linked',%s,%s,%s,%s,%s,%s,%s,%s,clock_timestamp(),%s,'frida',clock_timestamp(),'upload','folder_document_upload_ok')''',
                 (file_id,row['workspace_folder_id'],'workspace-file:'+file_id,hashlib.sha256(name.encode()).hexdigest()[:12],
                 name,target.relative_path,target.collision_key,resource.file_id,scope_key,etag,digest))
-            conn.execute("INSERT INTO document_revision_renders(revision_id,format,serializer_version,content_sha256,byte_size,storage_key) VALUES(%s::uuid,'markdown','frida_markdown_v1',%s,%s,%s)",
-                (row['revision_id'],digest,len(content),storage_key))
+            conn.execute("INSERT INTO document_revision_renders(revision_id,format,serializer_version,content_sha256,byte_size,storage_key) VALUES(%s::uuid,%s,%s,%s,%s,%s)",
+                (row['revision_id'],row['format'],rendered(run,conn)[2],digest,len(content),storage_key))
             conn.execute('UPDATE document_artifacts SET workspace_file_id=%s::uuid,current_revision_id=%s::uuid WHERE id=%s::uuid',
                 (file_id,row['revision_id'],row['artifact_id']))
             conn.execute('''INSERT INTO document_receipts(id,action_id,confirmation_turn_id,request_turn_id,conversation_id,
                 workspace_folder_id,artifact_id,revision_id,workspace_file_id,operation,format,relative_path,creation_author,
                 revision_author,canonical_sha256,content_sha256,nextcloud_scope_key,nextcloud_file_id,nextcloud_etag,confirmed_at)
-                VALUES(%s::uuid,%s::uuid,%s::uuid,%s::uuid,%s::uuid,%s::uuid,%s::uuid,%s::uuid,%s::uuid,%s,'markdown',%s,'frida','frida',%s,%s,%s,%s,%s,%s)''',
+                VALUES(%s::uuid,%s::uuid,%s::uuid,%s::uuid,%s::uuid,%s::uuid,%s::uuid,%s::uuid,%s::uuid,%s,%s,%s,'frida','frida',%s,%s,%s,%s,%s,%s)''',
                 (receipt_id,row['id'],run.token.turn_id,row['id'],row['conversation_id'],row['workspace_folder_id'],row['artifact_id'],
-                row['revision_id'],file_id,row['operation'],target.relative_path,run.revision['canonical_sha256'],digest,scope_key,resource.file_id,etag,row['confirmed_at']))
+                row['revision_id'],file_id,row['operation'],row['format'],target.relative_path,run.revision['canonical_sha256'],digest,scope_key,resource.file_id,etag,row['confirmed_at']))
             conn.execute("UPDATE document_actions SET state='succeeded',phase='complete',workspace_file_id=%s::uuid,created_collections_count=%s,updated_at=clock_timestamp() WHERE id=%s::uuid",
                 (file_id,len(result.created_collections),row['id']))
             conn.execute("UPDATE conversation_turn_claims SET state='succeeded',outcome='succeeded',finished_at=clock_timestamp() WHERE turn_id=%s::uuid",(run.token.turn_id,))
@@ -362,7 +389,7 @@ def publication_proof(run,*,result,content,scope_key,storage_root):
     if (type(content) is not bytes or result.state!='known_success' or result.resource is None
         or result.resource.relative_path!=run.target.relative_path or result.resource.is_collection
         or result.resource.byte_size!=len(content) or not validated_strong_etag(result.creation_etag)
-        or result.creation_etag!=result.resource.etag or hashlib.sha256(content).hexdigest()!=run.revision['markdown_sha256']):
+        or result.creation_etag!=result.resource.etag or content!=rendered(run)[0]):
         return 'unknown'
     remote_identity(scope_key,result.resource.file_id)
     with _db_conn() as conn,conn.cursor(row_factory=dict_row) as cur:

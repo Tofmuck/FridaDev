@@ -19,6 +19,7 @@ CAPABILITIES = dict(prepare=True, confirm=False, formats=['markdown'], operation
 
 def capabilities(executor=None):
     result=dict(CAPABILITIES,confirm=executor is not None)
+    if getattr(executor,'supports_docx',False):result['formats']=['markdown','docx']
     if getattr(executor,'supports_update',False):result.update(operations=['create','copy','update'],update=True)
     return result
 
@@ -157,13 +158,18 @@ def finalize(token, conversation, envelope, versions, markdown, *, snapshot, tar
         _verify_versions(conn, ctx, source_ids, versions)
         state = envelope.status
         if state == 'prepared':
-            path = validate_document_path(envelope.relative_path, format='markdown')
+            path = validate_document_path(envelope.relative_path, format=envelope.format)
+            if envelope.format=='docx':
+                from .document_renderer_store import available
+                if not available(conn):raise DocumentWorkshopError('document_format_unavailable')
             if not set(envelope.source_file_ids).issubset(source_ids):
                 raise DocumentWorkshopError('document_source_reference_invalid')
             if envelope.operation=='update':
                 from . import document_workshop_update_target as update
                 target_version=update.snapshot(conn,ctx,target_source)
                 if path.relative_path!=target_version['relative_path']:
+                    raise DocumentWorkshopError('document_update_target_invalid')
+                if envelope.format!=('docx' if target_source.source_extension=='.docx' else 'markdown'):
                     raise DocumentWorkshopError('document_update_target_invalid')
             else:target_version=None
             if ctx['target_file_id'] and envelope.operation!='update' and (envelope.operation != 'copy' or str(ctx['target_file_id']) not in envelope.source_file_ids):
@@ -205,7 +211,7 @@ def finalize(token, conversation, envelope, versions, markdown, *, snapshot, tar
         snapshot(conversation, conn)
         target_assignment=',target_version=%s' if envelope.operation=='update' else ''
         values=(state,Jsonb(versions),revision_id,artifact_id,envelope.operation,envelope.format,envelope.relative_path,
-             Jsonb(list(dict.fromkeys(list(envelope.limitations)+[code for code in LIMITATIONS if code!='update_unavailable' or envelope.operation!='update']))))
+             Jsonb(list(dict.fromkeys(list(envelope.limitations)+[code for code in (LIMITATIONS if envelope.format!='docx' else ('write_confirmation_unavailable','writer_pagination_20_pages','pdf_unavailable')) if code!='update_unavailable' or envelope.operation!='update']))))
         conn.execute('''UPDATE document_actions SET state=%s,phase='complete',source_versions=%s,
             revision_id=%s::uuid,artifact_id=%s::uuid,operation=%s,format=%s,relative_path=%s,
             limitations=%s,updated_at=clock_timestamp()'''+target_assignment+' WHERE id=%s::uuid',

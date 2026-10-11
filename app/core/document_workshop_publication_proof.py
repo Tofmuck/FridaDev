@@ -25,9 +25,9 @@ def _bundle(conn,action_id):
         return cur.fetchone()
 
 
-def _cache(root,render,content):
-    if (not render.get('storage_key') or render.get('format')!='markdown'
-            or render.get('serializer_version')!='frida_markdown_v1'
+def _cache(root,render,content,format,serializer):
+    if (not render.get('storage_key') or render.get('format')!=format
+            or render.get('serializer_version')!=serializer
             or render.get('content_sha256')!=hashlib.sha256(content).hexdigest() or render.get('byte_size')!=len(content)):
         return False
     try:
@@ -41,7 +41,7 @@ def _historical(conn,bundle,root):
     a,r,v,d,c,ar=(bundle[k] or {} for k in ('action','receipt','render','revision','claim','artifact'))
     required=('conversation_id','workspace_folder_id','artifact_id','revision_id','operation','format','relative_path')
     if (a.get('state')!='succeeded' or not a.get('workspace_file_id')
-            or a.get('operation') not in ('create','copy','update') or a.get('format')!='markdown'
+            or a.get('operation') not in ('create','copy','update') or a.get('format') not in ('markdown','docx')
             or any(a.get(k)!=r.get(k) for k in required)
             or r.get('action_id')!=a['id'] or r.get('request_turn_id')!=a['id']
             or r.get('confirmation_turn_id')!=a.get('confirmation_turn_id') or r.get('confirmed_at')!=a.get('confirmed_at')
@@ -53,14 +53,18 @@ def _historical(conn,bundle,root):
             or c.get('context_id')!=a.get('context_id')
             or c.get('request_fingerprint')!=store._fingerprint(a['id'],{k:a[k] for k in ('context_id','conversation_id','workspace_folder_id','revision_id')})):
         return False
-    canonical=validate_canonical(d['canonical']);content=serialize_markdown(canonical).encode('utf-8')
+    canonical=validate_canonical(d['canonical']);markdown=serialize_markdown(canonical).encode('utf-8')
+    if a['format']=='docx':
+        from .document_renderer_store import content as snapshot_content
+        content=snapshot_content(conn,a,d);serializer='frida_writer_v1'
+    else:content=markdown;serializer='frida_markdown_v1'
     canonical_hash=hashlib.sha256(store._json(canonical.as_dict()).encode()).hexdigest()
     content_hash=hashlib.sha256(content).hexdigest()
-    if (d.get('canonical_sha256')!=canonical_hash or d.get('markdown_sha256')!=content_hash
+    if (d.get('canonical_sha256')!=canonical_hash or d.get('markdown_sha256')!=hashlib.sha256(markdown).hexdigest()
             or d.get('serializer_version')!='frida_markdown_v1' or d.get('schema_version')!=1
             or d.get('word_count')!=canonical.word_count or d.get('codepoint_count')!=canonical.codepoint_count
             or r.get('canonical_sha256')!=canonical_hash or r.get('content_sha256')!=content_hash
-            or not _cache(root,v,content)):
+            or not _cache(root,v,content,a['format'],serializer)):
         return False
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute("SELECT * FROM document_execution_journal WHERE action_id=%s::uuid ORDER BY created_at,id",(a['id'],));journal=cur.fetchall()
@@ -73,7 +77,7 @@ def _historical(conn,bundle,root):
     for j in intents+puts+outcomes:
         if (str(j['confirmation_turn_id'])!=a['confirmation_turn_id'] or str(j['owner_id'])!=c.get('owner_id')
                 or j['generation']!=c.get('generation') or j['canonical_sha256']!=canonical_hash
-                or j['content_sha256']!=content_hash or j['serializer_version']!='frida_markdown_v1'):
+                or j['content_sha256']!=content_hash or j['serializer_version']!=serializer):
             return False
     if any(j['path_sha256']!=hashlib.sha256(a['relative_path'].encode()).hexdigest() for j in intents+puts):return False
     repaired=[j for j in journal if j['event']=='metadata_published']
@@ -87,7 +91,7 @@ def _historical(conn,bundle,root):
                 or str(repair['context_id'])!=a['context_id'] or j['content_sha256']!=content_hash
                 or j['canonical_sha256']!=canonical_hash or j['etag']!=r['nextcloud_etag']
                 or repair['request_fingerprint']!=hashlib.sha256(('metadata:'+a['id']).encode()).hexdigest()
-                or repair['expected_etag']!=a['target_version']['etag'] or j['serializer_version']!='frida_markdown_v1'):return False
+                or repair['expected_etag']!=a['target_version']['etag'] or j['serializer_version']!=serializer):return False
         initial=repair_intents[0]
         if any(initial[key]!=j[key] for key in ('confirmation_turn_id','owner_id','generation','canonical_sha256',
                 'content_sha256','serializer_version','etag')) or initial['state']!='remote_uncertain' or j['state']!='known_success':return False
@@ -124,10 +128,13 @@ def verify(action_id,*,storage_root):
         version=ca.get('target_version') if ca['operation']=='update' else None
         origin=version['document_origin'] if version else 'frida'
         source_kind=version['source_kind'] if version else 'document_workshop'
-        target=validate_document_path(r['relative_path'],format='markdown')
+        target=validate_document_path(r['relative_path'],format=r['format'])
+        from .document_renderer_contract import MEDIA_TYPES
+        extension='.docx' if r['format']=='docx' else '.md'
+        mime=MEDIA_TYPES['docx'] if r['format']=='docx' else 'text/markdown'
         if (not f or not l or str(f['workspace_folder_id'])!=a['workspace_folder_id'] or f['deleted_at'] is not None
-                or f['status']!='active' or f['content_kind']!='document' or f['media_kind']!='text' or f['source_extension']!='.md'
-                or f['mime_type']!=(version['mime_type'] if version else 'text/markdown')
+                or f['status']!='active' or f['content_kind']!='document' or f['media_kind']!='text' or f['source_extension']!=extension
+                or f['mime_type']!=(version['mime_type'] if version else mime)
                 or version and datetime.fromisoformat(version['created_at'])!=f['created_at']
                 or f['source_kind']!=source_kind or f['display_name']!=target.segments[-1] or f['original_filename']!=target.segments[-1]
                 or f['storage_key']!=v['storage_key'] or f['byte_size']!=v['byte_size'] or f['sha256']!=r['content_sha256']

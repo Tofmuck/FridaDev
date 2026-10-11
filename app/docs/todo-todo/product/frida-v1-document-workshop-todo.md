@@ -1,6 +1,6 @@
 # Atelier documentaire agentique Frida V1 — spécification validée et roadmap
 
-Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-05 ; M3/M4/M5 : 2026-10-06 ; M6 : 2026-10-07 ; M8-S plateforme/clôture et M8-A applicatif : 2026-10-10.
+Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-05 ; M3/M4/M5 : 2026-10-06 ; M6 : 2026-10-07 ; M8-S plateforme/clôture et M8-A applicatif : 2026-10-10 ; reprise M9-A : 2026-10-11.
 
 Statut : **spécification et choix architecturaux validés par Tof ; M0 fermé sur
 composants et preuves internes, contre-audit corrigé sur `FridaV1-Document-Workshop-M0` ;
@@ -18,7 +18,7 @@ M4 livré sur code, P2-M4-01 et P2-M4-02 fermés après contre-audits indépenda
 P3-M4-03 corrigé par erratum documentaire (1 198 déclarés conservés et rectifiés,
 sélection publiée à 1 414, 21 identifiants réutilisables validés) ;
 M4 non intégralement fermé ;
-M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées ; M7 fermé sur code/preuves isolées et contre-audit ; code/migrations M1–M7 livrés via M8-A, recettes DAV/Versions ouvertes ; M8-C fermé après contre-audits indépendants AUD-01/AUD-02 ; M8-S fermé après contre-audit Codex favorable transmis par Tof ; M8-A fermé sur code et raccord runtime après contre-audit Codex favorable du 10 octobre transmis par Tof ; passage à M9-A autorisé, M9/M10 et Z non commencés. FridaDev et le renderer sont livrés ; DOCX/PDF publics atelier encore inactifs**.
+M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées ; M7 fermé sur code/preuves isolées et contre-audit ; code/migrations M1–M7 livrés via M8-A, recettes DAV/Versions ouvertes ; M8-C fermé après contre-audits indépendants AUD-01/AUD-02 ; M8-S fermé après contre-audit Codex favorable transmis par Tof ; M8-A fermé sur code et raccord runtime après contre-audit Codex favorable du 10 octobre transmis par Tof ; M9-A : code et preuves isolées pour livraison Git, blocage renderer levé sur candidate qualifiée non déployée ; contre-audit, runtime et canari ouverts ; M9-B/M10 et Z non commencés. FridaDev et le renderer sont livrés ; DOCX/PDF publics atelier encore inactifs**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
 dialogue avec Tof. Création documentaire committée dans `d6b63fd1`, puis validation
@@ -42,7 +42,7 @@ Une case cochée dans les décisions signifie « décidé par Tof », pas « liv
 Une case ouverte dans les critères ou les lots signifie « à implémenter ou prouver ».
 Les inconnues factuelles sont isolées en section 11. Seules les preuves datées
 dans M0–M4 décrivent des tests exécutés ou des déclarations historiques explicitement
-qualifiées ; M5–M8-A disposent de leurs relevés datés et attributions ci-dessous ; M9 et suivants restent des preuves futures. L'erratum P3-M4-03
+qualifiées ; M5–M8-A disposent de leurs relevés datés et attributions ci-dessous ; M9-A dispose de son relevé isolé du 11 octobre ; M9-B/M10 restent des preuves futures. L'erratum P3-M4-03
 ci-dessous distingue les nouveaux rejeux des résultats antérieurs.
 Une clôture code/preuves ne ferme pas migration opérateur, rebuild ou preuve DAV déployée.
 
@@ -505,8 +505,10 @@ rendu a déjà réussi. Échec de rendu après clic : erreur honnête, zéro éc
 aucune sauvegarde partielle. Aucun second appel modèle ou nouveau bouton rejouable.
 Marqueur documenté pour sauts de page Markdown, dont la pagination dépend du lecteur.
 
-**Preuve à livrer :** contrat applicatif M8-C, service et pins M8-S, adaptateur M8-A,
-pagination/fidélité finales M9/M10, section 9. Aucun renderer encore livré.
+**État courant :** M8-C/M8-S/M8-A validés, renderer et raccord interne livrés.
+M9-A prouve le parcours DOCX et sa pagination en isolation sur candidate qualifiée,
+non déployée ; livraison runtime/canari ouverts. PDF public et import externe
+restent M10/M9-B. Les cases composites DOCX/PDF suivantes restent ouvertes.
 
 - [ ] Même révision pour canonical, rendu, empreintes et version renderer.
 - [ ] Update Frida DOCX/PDF seulement si leur correspondance distante est établie.
@@ -4189,15 +4191,55 @@ executor et projection de carte ; aucune logique UNO dans le pipeline principal.
 Frida récupérée/validée temporairement, update If-Match sur même ID/nom.
 **Propriétaire :** Celebrimbor ; Sauron traite seulement une non-conformité plateforme prouvée.
 
-- [ ] Rouge causal : canonical/source/empreinte non correspondants, 21e page, version
+**État d'exécution — 11 octobre 2026 : code et preuves isolées, livraison Git.**
+Reprise des 25 fichiers WIP autorisés sur la branche existante, HEAD documentaire
+M8-A `1b14e7dcdf68030c2d1df139eb9ee4c5f825143d` ; aucune clôture M8-A refaite,
+aucune absorption d'autre travail. Contre-audit applicatif, runtime et canari
+restent ouverts ; DOCX/PDF publics inactifs dans le runtime durable inchangé.
+
+`M9A-RENDERER-SOURCE-01` fermé sur candidate qualifiée **non déployée**, après
+contre-audit Codex du 10 octobre transmis par Tof : 19 jobs (neuf paires/dix
+refus, libérations acquittées), un refus client avant submit et corpus 32/32.
+Ces résultats sont attribués, jamais présentés comme exécutés ici. Image config
+Docker `7a61bd805ca0…`, manifeste OCI contractuel `61502c57d2fa…` et pins
+`a788e48f649a…` vérifiés séparément ; identités complètes dans le contrat.
+L'arrêt du 10 octobre, son refus riche sur l'ancienne image et ses 128 verts
+historiques restent conservés dans le relevé initial, sans réécriture.
+
+[Contrat M9-A et remise Sauron](../../states/specs/frida-v1-document-workshop-m9a-contract.md),
+[historique du 10 octobre](../../states/baselines/document-workshop/frida-v1-document-workshop-m9a-20261010.json),
+[preuves propres du 11 octobre](../../states/baselines/document-workshop/frida-v1-document-workshop-m9a-20261011.json).
+Raccord réel enveloppe/préparation → carte/claim → session/snapshot/release →
+journal/publication/reçu. Migration additive explicite M9-A testée seulement
+sur DB jetable, incluse malgré `*.sql` ; anciennes migrations inchangées.
+MIME de téléchargement et statut/limitations corrigés. Panne d'extraction de
+métadonnées après PUT reproduite causalement dans le WIP ; extraction unique
+des octets figés avant mutation, puis transmission à la publication : zéro
+PUT/DELETE et aucun reçu sur cette panne pour create/copy/update.
+
+Preuves isolées Celebrimbor : **190 IDs distincts passés**, sans cumul des runs
+répétés ni des résultats historiques/attribués : comparaison finale **131/131**
+(les mêmes 128 IDs + sonde SQL causale + deux voisins HTTP), **13 IDs M9-A**,
+**44 autres voisins** et **deux parcours Chromium natifs**. Le lancement des
+voisins contient deux erreurs de nom de classe avant les deux cas HTTP,
+corrigées dans la comparaison finale ; les 44 vrais cas y sont passés.
+Les incidents initiaux SQL et NOWAIT sont conservés et expliqués dans le
+relevé ; aucune relance sans cause corrigée ni campagne générale/stress.
+Vrais DOCX riches create/copy/update, texte candidat distinct de l'ancien,
+structure/styles/listes/tableau/liens, pages et reçu exact ; refus de
+provenance/pins, 20/21 pages, ETag pendant rendu et vrai 412. Le navigateur
+consomme la composition applicative et HTTP réels ; aucun fetch remplacé.
+Markdown sans Writer vérifié séparément. Aucune livraison runtime/canari.
+
+- [x] Rouge causal : canonical/source/empreinte non correspondants, 21e page, version
   renderer différente ou ETag changé durant rendu → refus sans écriture.
-- [ ] Tests structure/styles/listes/tableaux/liens/pages, réponse/action/reçu/inventaire ;
+- [x] Tests structure/styles/listes/tableaux/liens/pages, réponse/action/reçu/inventaire ;
   voisins DOCX reader/Exports/Notes ETag ; succès → même workspace_file_id.
-- [ ] Prouver Writer rechargé sur les octets DOCX finaux, page_count stabilisé et
+- [x] Prouver Writer rechargé sur les octets DOCX finaux, page_count stabilisé et
   PDF de contrôle issu du même état, sans le publier si seul DOCX est demandé.
-- [ ] Faux verts : docProps ou PDF voisin seul, ancien canonical retrouvé, If-Match
+- [x] Faux verts : docProps ou PDF voisin seul, ancien canonical retrouvé, If-Match
   absent de la requête finale, test de création présenté comme preuve d'update.
-- [ ] Interdire renommage/copie implicites, image, fidélité Word universelle et
+- [x] Interdire renommage/copie implicites, image, fidélité Word universelle et
   écriture après échec de rendu ; conserver MD indépendant d'une panne Writer.
 - [ ] Synchroniser formats/pagination/continuité ; rendu synthétique et canari DOCX
   ont chacun leur GO, canari uniquement après gardes/compensations hermétiques.
@@ -4684,7 +4726,9 @@ DAV/Versions ouvertes ; AUD-01 et AUD-02 fermés après contre-audits indépenda
 **M8-C fermé sur contrat, code et preuves isolées ; M8-S fermé après contre-audit Codex favorable du 10 octobre transmis par Tof.**
 M8-A fermé sur code et raccord runtime livré par Sauron, après contre-audits
 Codex favorables transmis par Tof le 10 octobre ; P3-M8A-RUNTIME-AUD-01 corrigé
-par ce report documentaire. Passage à M9-A autorisé ; M9/M10/Z non commencés.
+par le report documentaire déjà poussé `1b14e7dc…`. M9-A repris le 11 octobre :
+code et preuves isolées pour livraison Git ; blocage levé sur candidate qualifiée
+non déployée, contre-audit/runtime/canari ouverts. M9-B/M10/Z non commencés.
 Actualisation runtime du 10 octobre : code et migrations M1–M7 livrés par le
 raccord M8-A ; les réserves de recette produit/DAV/Versions restent ouvertes.
 Les mentions de runtime ouvert dans les récits historiques décrivent leurs

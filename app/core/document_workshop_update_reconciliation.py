@@ -53,13 +53,14 @@ def reconcile(action_id,executor):
                     or str(outcome['confirmation_turn_id'])!=str(row['confirmation_turn_id'])
                     or str(outcome['owner_id'])!=str(original['owner_id']) or outcome['generation']!=original['generation']):return
             revision=store._revision(conn,row)
-            if outcome['content_sha256']!=revision['markdown_sha256'] or outcome['canonical_sha256']!=revision['canonical_sha256']:return
+            if outcome['canonical_sha256']!=revision['canonical_sha256']:return
             for put in puts:
                 if (str(put['confirmation_turn_id'])!=str(row['confirmation_turn_id']) or str(put['owner_id'])!=str(original['owner_id'])
                         or put['generation']!=original['generation'] or put['path_sha256']!=hashlib.sha256(row['relative_path'].encode()).hexdigest()):return
             folder=store._resources(conn,row)
             old_token=claims.TurnClaim(str(original['turn_id']),str(original['conversation_id']),str(original['owner_id']),original['generation'],str(original['context_id']))
             run=store.ConfirmedExecution(old_token,store._json(row),store._json(revision),store._json(folder))
+            if outcome['content_sha256']!=store.rendered(run,conn)[1]:return
         version=run.action['target_version']
         admission=claims.acquire(conversation_id=run.token.conversation_id,turn_id=str(uuid4()),
             request_fingerprint=hashlib.sha256(('metadata:'+action_id).encode()).hexdigest(),kind='confirmation',
@@ -75,9 +76,7 @@ def reconcile(action_id,executor):
         resource=reader.stat_resource(folder_name,version['relative_path'],expected_etag=outcome['etag'])
         if resource.file_id!=version['remote_file_id']:return
         content=reader.read_file(folder_name,resource)
-        if hashlib.sha256(content).hexdigest()!=run.revision['markdown_sha256']:return
-        expected=executor._render(run)
-        if content!=expected:return
+        if content!=store.rendered(run)[0]:return
         result=SimpleNamespace(state='known_success',resource=resource,creation_etag=resource.etag)
         from .document_workshop_update_publication import publish
         try:

@@ -26,6 +26,40 @@ class RendererAdapterPostgresqlTests(unittest.TestCase):
         self.fx.setUp()
         self.addCleanup(self.fx.doCleanups)
         self.snapshots = __import__('core.document_renderer_store', fromlist=['persist'])
+        # Sample between the real, short authority transactions. A transaction
+        # retained elsewhere during I/O must still fail the NOWAIT probe.
+        self.sample = threading.RLock()
+        actual_check = self.fx.store.check
+        def synchronized_check(run):
+            with self.sample:
+                return actual_check(run)
+        self.enterContext(patch.object(self.fx.store, 'check', synchronized_check))
+
+    def assert_no_transaction(self):
+        with self.sample:
+            self.fx.assert_no_transaction()
+
+    def test_transaction_probe_distinguishes_brief_guard_from_retained_io_lock(self):
+        from psycopg.errors import LockNotAvailable
+        run=self.fx.store.begin(self.fx.request_turn,self.fx.body())
+        entered,resume=threading.Event(),threading.Event()
+        actual_guard=self.fx.store._guard
+        def blocked_guard(conn,value):
+            result=actual_guard(conn,value)
+            entered.set()
+            if not resume.wait(5):raise AssertionError('missing deterministic guard release')
+            return result
+        with patch.object(self.fx.store,'_guard',blocked_guard),ThreadPoolExecutor(1) as pool:
+            task=pool.submit(self.fx.store.check,run)
+            try:
+                self.assertTrue(entered.wait(5))
+                with self.assertRaises(LockNotAvailable):self.fx.assert_no_transaction()
+            finally:
+                resume.set();task.result(10)
+        self.assert_no_transaction()
+        with self.fx.conn() as retained:
+            retained.execute('SELECT id FROM conversations WHERE id=%s::uuid FOR UPDATE',(self.fx.conversation,))
+            with self.assertRaises(LockNotAvailable):self.assert_no_transaction()
 
     def setup_renderer(self, **kwargs):
         self.server = UnixRendererServer(**kwargs)
@@ -57,7 +91,7 @@ class RendererAdapterPostgresqlTests(unittest.TestCase):
         observed = []
         def respond(handler, method, response):
             if method == 'DELETE':
-                self.fx.assert_no_transaction()
+                self.assert_no_transaction()
                 row = self.fx.rows('SELECT action_id::text,revision_id::text,confirmation_turn_id::text,request_sha256,manifest,docx,pdf FROM document_renderer_snapshots')[0]
                 self.assertEqual(row[:3], (self.fx.request_turn, self.fx.action['revision_id'], self.server.request.data['job_id']))
                 self.assertEqual(row[3], self.server.request.identity)
@@ -87,7 +121,7 @@ class RendererAdapterPostgresqlTests(unittest.TestCase):
             first = pool.submit(self.fx.confirm, self.executor)
             try:
                 self.assertTrue(self.server.entered.wait(5))
-                self.fx.assert_no_transaction()
+                self.assert_no_transaction()
                 repeated, status = self.fx.confirm(self.executor)
                 self.assertEqual(status, 200)
                 self.assertEqual(repeated['action']['state'], 'executing')
@@ -136,7 +170,7 @@ class RendererAdapterPostgresqlTests(unittest.TestCase):
                 with ThreadPoolExecutor(1) as pool:
                     task = pool.submit(self.fx.confirm, self.executor)
                     self.assertTrue(self.server.entered.wait(5))
-                    self.fx.assert_no_transaction()
+                    self.assert_no_transaction()
                     self.invalidate(kind)
                     payload, status = task.result(10)
                     self.assertTrue(self.server.disconnected.wait(5))
@@ -202,7 +236,7 @@ class RendererAdapterPostgresqlTests(unittest.TestCase):
         self.assertEqual(self.server.worker.events.count('cancel'), 1)
         self.assertNotIn('release', self.server.worker.events)
         self.assertEqual(self.returned, [])
-        self.fx.assert_no_transaction()
+        self.assert_no_transaction()
         self.zero_mutations()
 
     def test_release_refused_keeps_snapshot_without_success_or_second_cleanup(self):

@@ -95,7 +95,7 @@ def read_content(folder_id, file_id):
     content = workspace_files.read_file_bytes(file['storage_key'])
     if len(content) != file['byte_size'] or hashlib.sha256(content).hexdigest() != receipt['content_sha256']:
         raise DocumentWorkshopError('document_publication_unknown')
-    return content, receipt['name']
+    return content, receipt['name'], receipt['format']
 
 
 @dataclass(frozen=True)

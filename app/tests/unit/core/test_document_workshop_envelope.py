@@ -135,7 +135,7 @@ class DocumentEnvelopeTests(unittest.TestCase):
         self.assertEqual(self.read(envelope(operation="update")).operation, "update")
         for operation in ("delete", None, [], 1):
             self.reject(envelope(operation=operation))
-        for format in ("docx", "pdf", "txt", [], None):
+        for format in ("pdf", "txt", [], None):
             self.reject(envelope(format=format))
         self.reject(envelope(operation="copy"))
 

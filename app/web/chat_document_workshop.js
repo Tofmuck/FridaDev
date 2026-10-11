@@ -44,6 +44,8 @@ const DOCUMENT_WORKSHOP_LIMITATION_LABELS = Object.freeze({
   markdown_pagination_reader_dependent: 'La pagination dépend du lecteur Markdown.',
   markdown_style_reader_dependent: 'La mise en forme dépend du lecteur Markdown.',
   write_confirmation_unavailable: 'L’écriture du document est indisponible.',
+  writer_pagination_20_pages: 'DOCX limité à 20 pages dans le Writer épinglé ; pagination vérifiée après confirmation.',
+  pdf_unavailable: 'La publication PDF est indisponible.',
   docx_pdf_unavailable: 'Les formats DOCX et PDF sont indisponibles.',
   update_unavailable: 'La modification d’un document existant est indisponible.',
 });
@@ -476,15 +478,17 @@ function createDocumentWorkshopController({
     else panelEl.removeAttribute('data-state');
     if (action) panelEl.dataset.actionState = action.state;
     else delete panelEl.dataset.actionState;
+    const formats = ['markdown', 'docx'].filter(format => context?.capabilities?.formats?.includes(format))
+      .map(format => format === 'markdown' ? 'Markdown' : 'DOCX').join(' / ') || 'Format indisponible';
     statusEl.textContent = message || (context
       ? context.state !== 'editing' ? 'Cette préparation est terminée. Rouvrez l’atelier ou choisissez explicitement une cible pour une nouvelle demande. Votre brouillon est conservé.'
       : action?.state === 'preparing' ? preparationLabel(action)
       : context.capabilities.prepare === true
         ? context.capabilities.confirm === true
           ? context.capabilities.update === true
-            ? 'Édition · Décrivez votre demande dans le compositeur. Markdown · création, copie ou modification de la cible sélectionnée après confirmation.'
-            : 'Édition · Décrivez votre demande dans le compositeur. Markdown · création ou copie après confirmation.'
-          : 'Édition · Décrivez votre demande dans le compositeur. Markdown · création ou copie ; écriture indisponible.'
+            ? `Édition · Décrivez votre demande dans le compositeur. ${formats} · création, copie ou modification de la cible sélectionnée après confirmation.`
+            : `Édition · Décrivez votre demande dans le compositeur. ${formats} · création ou copie après confirmation.`
+          : `Édition · Décrivez votre demande dans le compositeur. ${formats} · création ou copie ; écriture indisponible.`
         : 'Édition · La préparation documentaire est indisponible. Votre brouillon est conservé.'
       : busy ? 'Ouverture du contexte…' : 'Choisissez explicitement un répertoire pour cette conversation.');
     if (actionEl) renderAction(actionEl, action);

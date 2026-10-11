@@ -4,6 +4,7 @@ Resolution is lazy and read-only: imports/startup/GET never migrate or contact D
 Each confirmed request owns its mutator and original creation proof.
 """
 import os
+from pathlib import Path
 
 from . import workspace_files, workspace_document_content_service as sources
 from . import document_workshop_execution_store as store
@@ -69,8 +70,19 @@ def get_executor():
                 return None
             from .document_workshop_update_target import available
             supports_update=available(conn)
+            from .document_renderer_store import available as docx_available
+            supports_docx=docx_available(conn)
+        session=None
+        if supports_docx:
+            try:
+                from .document_renderer_contract import read_json
+                from .document_renderer_client import DocumentRendererClient
+                from .document_rendering import RenderingSession
+                session=RenderingSession(client=DocumentRendererClient(socket_path='/run/writer/renderer.sock'),
+                    expected_engine=read_json(Path('/run/writer-pins.json').read_bytes()))
+            except Exception:pass
         return DocumentExecutor(mutation_client=NextcloudDocumentMutationClient(reader.config),supports_update=supports_update,
-            storage_root=root, source_reader=lambda folder_id, file_id:
+            storage_root=root, renderer_session=session, source_reader=lambda folder_id, file_id:
                 sources.read_workspace_document_source(folder_id, file_id, reader=reader))
     except Exception:
         return None

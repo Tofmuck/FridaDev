@@ -133,8 +133,8 @@ class RenderingSession:
             raise
 
 
-def render_confirmed(run,format,session):
-    """Internal binary seam behind actual M5 confirmation; public formats closed."""
+def render_confirmed(run,format,session,*,source=None,source_content=None):
+    """Binary seam behind actual M5 confirmation; session release remains mandatory."""
     from . import document_workshop_execution_store as store
     from . import document_renderer_store as snapshots
     store.check(run)
@@ -142,7 +142,7 @@ def render_confirmed(run,format,session):
     try:
         request=c.make_request(job_id=run.token.turn_id,revision_id=run.action['revision_id'],
             canonical=run.revision['canonical'],canonical_sha256=run.revision['canonical_sha256'],
-            format=format,engine=session.expected_engine)
+            format=format,engine=session.expected_engine,source=source,source_content=source_content)
         result=session.collect(request,check=lambda:store.check(run),
             freeze=lambda value:snapshots.persist(run,request,value),
             progress=lambda value:snapshots.project_progress(run,value))

@@ -39,7 +39,7 @@ RECEIPT_MARKER = 'M6_RECEIPT_METADATA_SENTINEL'
 WORDS_MARKER = 'M6_REAL_DIALOGUE_SENTINEL'
 
 
-def main(*,m7=False):
+def main(*,m7=False,m9=False):
     if not os.environ.get('M5_PROOF_PG_SOCKET') or not os.environ.get('M6_PROOF_ROOT'):
         raise RuntimeError('dedicated proof environment required')
     stores=(conv_store,contexts,claims,actions,execution,workspace_files,workspace_folders,workspace_document_adoption_store,
@@ -51,6 +51,7 @@ def main(*,m7=False):
     if m7:
         with fixture.conn() as db:
             db.execute(Path('/workspace/app/core/sql/document_workshop_update_m7.sql').read_text())
+            if m9:db.execute(Path('/workspace/app/core/sql/document_workshop_docx_m9a.sql').read_text())
     stack = ExitStack()
     dav_release, dav_arrived = threading.Event(), threading.Event()
     inventory_release, inventory_arrived = threading.Event(), threading.Event()
@@ -58,7 +59,7 @@ def main(*,m7=False):
     inventory_release.set()
     state = dict(files={}, collections={'Documents'}, dav=[], providers=[], manifests=[], faculties=[],
                  copy_source=None, inventory_failure=False, block_inventory=False, next_path=f'Documents/Section/{RECEIPT_MARKER}.md',
-                 operation='create', block_put=False, refuse_delete=False,
+                 document_format='docx' if m9 else 'markdown', operation='create', block_put=False, refuse_delete=False,
                  race_put=False,drop_put=False,lose_commit_reply=False,commit_reply_lost=False,
                  document_text=DOCUMENT_MARKER)
     conn = fixture.conn
@@ -142,7 +143,7 @@ def main(*,m7=False):
             if path in state['collections']: return resource(path,file_id=str(1000+sorted(state['collections']).index(path)),href=PREFIX+quote(path,safe='/'))
             file = state['files'][path]
             return resource(path,collection=False,file_id=file['id'],etag=file['etag'],
-                size=len(file['content']),media_type='text/markdown',href=PREFIX+quote(path,safe='/'))
+                size=len(file['content']),media_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document' if path.endswith('.docx') else 'text/markdown',href=PREFIX+quote(path,safe='/'))
 
     class Provider(BaseHTTPRequestHandler):
         def log_message(self,*_): pass
@@ -150,8 +151,12 @@ def main(*,m7=False):
             raw = self.rfile.read(int(self.headers['Content-Length']))
             payload = json.loads(raw)
             state['providers'].append(payload)
-            proposal = dict(operation=state['operation'],format='markdown',relative_path=state['next_path'],
-                source_file_ids=[state['copy_source']] if state['copy_source'] else [],limitations=[],canonical=canonical(state['document_text']))
+            value_canonical=canonical(state['document_text'])
+            if m9:
+                from tests.integration.document_workshop.test_docx_m9a_postgresql import rich
+                value_canonical=rich();value_canonical['blocks'][0]=canonical(state['document_text'])['blocks'][0]
+            proposal = dict(operation=state['operation'],format=state['document_format'],relative_path=state['next_path'],
+                source_file_ids=[state['copy_source']] if state['copy_source'] else [],limitations=[],canonical=value_canonical)
             value = dict(schema_version=1,status='prepared',surface_text='M6 réelle proposition courte.',proposal=proposal)
             lines = [dict(model='openai/gpt-5.1',choices=[dict(index=0,delta=dict(content=json.dumps(value,ensure_ascii=False)),finish_reason=None)]),
                      dict(model='openai/gpt-5.1',choices=[dict(index=0,delta={},finish_reason='stop')])]
@@ -257,7 +262,7 @@ def main(*,m7=False):
     @server.app.post('/__m6/control')
     def proof_control():
         data=request.get_json()
-        for key in ('operation','next_path','copy_source','block_put','refuse_delete','race_put','drop_put','lose_commit_reply','document_text','inventory_failure'):
+        for key in ('operation','next_path','copy_source','block_put','refuse_delete','race_put','drop_put','lose_commit_reply','document_text','inventory_failure','document_format'):
             if key in data:state[key]=data[key]
         if data.get('block_put'):dav_release.clear();dav_arrived.clear()
         if data.get('release_put'):dav_release.set()
@@ -297,7 +302,7 @@ def main(*,m7=False):
         def proof_inventory_arrival():
             return jsonify(arrived=inventory_arrived.wait(5))
 
-    port=8767 if m7 else 8766
+    port=8769 if m9 else 8767 if m7 else 8766
     http=make_server('127.0.0.1',port,server.app,threaded=True)
     def stop(*_):threading.Thread(target=http.shutdown,daemon=True).start()
     signal.signal(signal.SIGTERM,stop)

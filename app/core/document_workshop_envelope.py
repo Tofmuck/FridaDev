@@ -20,7 +20,7 @@ MAX_DOCUMENT_SURFACE_CODEPOINTS = 2_000
 DOCUMENT_LIMITATION_CODES = frozenset({
     "markdown_pagination_reader_dependent", "markdown_style_reader_dependent",
     "write_confirmation_unavailable",
-    "docx_pdf_unavailable", "update_unavailable",
+    "docx_pdf_unavailable", "update_unavailable", "writer_pagination_20_pages", "pdf_unavailable",
 })
 
 
@@ -148,16 +148,16 @@ def read_document_envelope(raw: str) -> DocumentEnvelope:
         "operation", "format", "relative_path", "source_file_ids", "limitations", "canonical",
     })
     if (type(proposal["operation"]) is not str or proposal["operation"] not in {"create", "copy", "update"}
-            or type(proposal["format"]) is not str or proposal["format"] != "markdown"):
+            or type(proposal["format"]) is not str or proposal["format"] not in {"markdown", "docx"}):
         _invalid()
-    path = validate_document_path(proposal["relative_path"], format="markdown")
+    path = validate_document_path(proposal["relative_path"], format=proposal["format"])
     sources = _source_ids(proposal["source_file_ids"])
     if proposal["operation"] == "copy" and not sources:
         _invalid()
     limitations = _limitations(proposal["limitations"])
     canonical = validate_canonical(proposal["canonical"])
     return DocumentEnvelope(status, surface, canonical, proposal["operation"],
-                            path.relative_path, sources, limitations, "markdown")
+                            path.relative_path, sources, limitations, proposal["format"])
 
 
 # Exactly one root response schema is appended before admission. The nested
@@ -171,18 +171,21 @@ Do not put document/source content, canonical JSON or the response envelope in
 surface_text, including a JSON fence. The surface is speech, not a document preview.
 For clarify/refuse, proposal must be null: ask the necessary question or state the refusal.
 For prepared, proposal has exactly these required keys:
-{operation:"create"|"copy"|"update", format:"markdown", relative_path:string,
+{operation:"create"|"copy"|"update", format:"markdown"|"docx", relative_path:string,
  source_file_ids:[UUID strings], limitations:[codes], canonical:object}.
 Update requires the explicitly selected server target and advertised capability.
 For update, use that exact target path/name; never choose another target or identity.
-DOCX and PDF preparation are unavailable. The path is exactly
-Documents/<optional subdirectories>/<name.md>, relative to the selected folder:
+PDF preparation and external DOCX update are unavailable. Copy requires an explicit
+user request; never use copy as an update fallback. DOCX update requires proven
+Frida origin established by the server, never a filename or user declaration.
+The path is exactly Documents/<optional subdirectories>/<name.md or name.docx>, relative to the selected folder:
 at most 8 subdirectories, 180 codepoints/255 UTF-8 bytes per segment, 1024 UTF-8
 bytes for the full path. No traversal, encoded separator or renamed/trimmed target.
 Use only explicitly supplied source file UUIDs, each at most once; copy requires
 at least one source. Limitations are unique codes from
 markdown_pagination_reader_dependent, write_confirmation_unavailable,
-markdown_style_reader_dependent, docx_pdf_unavailable, update_unavailable.
+markdown_style_reader_dependent, docx_pdf_unavailable, update_unavailable,
+writer_pagination_20_pages, pdf_unavailable.
 No free-form limitations or extra keys.
 The nested canonical has exactly {schema_version:1, profile:"frida_document_v1", blocks:[...]}.
 blocks is nonempty. Required, closed block forms:
@@ -199,6 +202,8 @@ with 2.5cm margins; Markdown cannot establish that binary layout.
 The complete response envelope is at most 1114112 UTF-8 bytes.
 No truncation, summary or rewriting to evade limits. Markdown pagination depends
 on the reader; inline style delimiters also depend on the reader and adjacency.
-No page count or full style fidelity is established. Preparation cannot write;
+DOCX final pagination is measured after confirmation in the pinned Writer, at most
+20 pages; never promise universal Microsoft Word pagination. No rendered result
+is established at preparation. Preparation cannot write;
 execution requires separate human confirmation and the advertised server capability.
 """

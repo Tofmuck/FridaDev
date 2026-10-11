@@ -2,7 +2,7 @@
 
 No source selection, prompt injection, model call or assumption of local freshness.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import hashlib
 from . import workspace_files, workspace_folders
@@ -26,6 +26,7 @@ class WorkspaceDocumentSource:
     media_type: str
     byte_size: int
     text: str
+    content: bytes | None = field(default=None, repr=False)
 
 
 def _local(folder_id,file_id,folders,files):
@@ -66,7 +67,8 @@ def read_workspace_document_source(folder_id,file_id,*,reader=None,folders=works
                 or any(current_link.get(k) != link.get(k) for k in ('nextcloud_relative_path','nextcloud_file_id','nextcloud_scope_key','nextcloud_etag','observed_sha256'))):
             raise DocumentWorkshopError('document_remote_changed')
         return WorkspaceDocumentSource(folder_id,file_id,path.relative_path,identity,resource.etag,digest,
-            datetime.now(timezone.utc).isoformat(),extraction.source_extension,extraction.media_type,len(content),extraction.text)
+            datetime.now(timezone.utc).isoformat(),extraction.source_extension,extraction.media_type,len(content),extraction.text,
+            content if extraction.source_extension=='.docx' else None)
     except DocumentWorkshopError:
         raise
     except Exception:

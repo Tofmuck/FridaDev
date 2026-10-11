@@ -39,7 +39,7 @@ def snapshot(conn, context, source):
     if (source is None or source.workspace_file_id!=file_id
             or source.workspace_folder_id!=str(context['workspace_folder_id'])
             or source.relative_path!=context['target_relative_path']
-            or source.remote_identity!=context['target_remote_identity'] or source.source_extension!='.md'
+            or source.remote_identity!=context['target_remote_identity'] or source.source_extension not in ('.md','.docx')
             or not validated_strong_etag(source.etag)):
         raise DocumentWorkshopError('document_update_target_invalid')
     with conn.cursor(row_factory=dict_row) as cur:
@@ -47,7 +47,7 @@ def snapshot(conn, context, source):
         cur.execute('SELECT * FROM workspace_file_nextcloud_links WHERE workspace_file_id=%s::uuid FOR SHARE NOWAIT',(file_id,));link=cur.fetchone()
     if (not file or not link or file['deleted_at'] or file['status']!='active'
             or str(file['workspace_folder_id'])!=str(context['workspace_folder_id'])
-            or file['content_kind']!='document' or file['media_kind']!='text' or file['source_extension']!='.md'
+            or file['content_kind']!='document' or file['media_kind']!='text' or file['source_extension']!=source.source_extension
             or link['nextcloud_sync_state']!='linked' or link['nextcloud_document_ref']!=context['target_document_ref']
             or str(link['workspace_folder_id'])!=str(context['workspace_folder_id'])
             or remote_identity(link['nextcloud_scope_key'],link['nextcloud_file_id'])!=source.remote_identity
@@ -57,6 +57,10 @@ def snapshot(conn, context, source):
             or file['original_filename']!=source.relative_path.split('/')[-1]
             or file['display_name']!=file['original_filename'] or link['document_origin'] not in ('frida','external')):
         raise DocumentWorkshopError('document_remote_changed')
+    if source.source_extension=='.docx':
+        proof=docx_origin(conn,file_id,link)
+        if getattr(source,'content',None) is not None and source.content!=proof['content']:
+            raise DocumentWorkshopError('document_remote_changed')
     return dict(workspace_file_id=file_id,workspace_folder_id=str(context['workspace_folder_id']),
         relative_path=source.relative_path,remote_identity=source.remote_identity,etag=source.etag,
         sha256=source.sha256,byte_size=source.byte_size,observed_at=source.observed_at,
@@ -76,7 +80,7 @@ def verify_local(conn, action):
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute('SELECT * FROM document_workshop_contexts WHERE id=%s::uuid',(action['context_id'],));context=cur.fetchone()
     from types import SimpleNamespace
-    observed=SimpleNamespace(**{k:version[k] for k in ('workspace_file_id','workspace_folder_id','relative_path','remote_identity','etag','sha256','byte_size','observed_at')},source_extension='.md')
+    observed=SimpleNamespace(**{k:version[k] for k in ('workspace_file_id','workspace_folder_id','relative_path','remote_identity','etag','sha256','byte_size','observed_at')},source_extension='.docx' if action['format']=='docx' else '.md')
     current=snapshot(conn,context,observed)
     if any(current[k]!=version[k] for k in current):raise DocumentWorkshopError('document_remote_changed')
     artifact=conn.execute('SELECT workspace_file_id::text,current_revision_id::text FROM document_artifacts WHERE id=%s::uuid FOR UPDATE NOWAIT',(action['artifact_id'],)).fetchone()
@@ -89,3 +93,48 @@ def verify_fresh(action, source):
     if source is None or any(getattr(source,k)!=version[k] for k in
             ('workspace_file_id','workspace_folder_id','relative_path','remote_identity','etag','sha256','byte_size')):
         raise DocumentWorkshopError('document_remote_changed')
+
+
+def docx_origin(conn,file_id,link):
+    """Proven current Frida revision, never extension/name/origin declaration alone."""
+    from .document_workshop_publication_proof import _bundle, _historical
+    from . import workspace_files
+    from .document_renderer_store import content as snapshot_content
+    matches=conn.execute("""SELECT a.id::text FROM document_artifacts ar
+        JOIN document_actions a ON a.artifact_id=ar.id AND a.revision_id=ar.current_revision_id
+        WHERE ar.workspace_file_id=%s::uuid AND a.state='succeeded' AND a.format='docx'""",(file_id,)).fetchall()
+    if len(matches)!=1:raise DocumentWorkshopError('document_update_target_invalid')
+    bundle=_bundle(conn,matches[0][0])
+    if not _historical(conn,bundle,workspace_files._storage_root()):
+        raise DocumentWorkshopError('document_update_target_invalid')
+    r=bundle['receipt'];a=bundle['action'];d=bundle['revision']
+    if (r['creation_author']!='frida' or link['document_origin']!='frida'
+            or r['workspace_file_id']!=file_id or r['relative_path']!=link['nextcloud_relative_path']
+            or r['workspace_folder_id']!=str(link['workspace_folder_id'])
+            or r['nextcloud_scope_key']!=link['nextcloud_scope_key']
+            or r['nextcloud_file_id']!=link['nextcloud_file_id']
+            or r['nextcloud_etag']!=link['nextcloud_etag'] or r['content_sha256']!=link['observed_sha256']):
+        raise DocumentWorkshopError('document_remote_changed')
+    return dict(revision_id=d['id'],canonical=d['canonical'],canonical_sha256=d['canonical_sha256'],
+        content=snapshot_content(conn,a,d))
+
+
+def renderer_source(run,source):
+    """Bind temporary fresh source bytes to the distinct durable base revision."""
+    from . import document_workshop_execution_store as store
+    import hashlib
+    verify_fresh(run.action,source)
+    if (type(source.content) is not bytes or len(source.content)!=source.byte_size
+            or hashlib.sha256(source.content).hexdigest()!=source.sha256):
+        raise DocumentWorkshopError('document_remote_changed')
+    with store._db_conn() as conn:
+        store._guard(conn,run)
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute('SELECT * FROM workspace_file_nextcloud_links WHERE workspace_file_id=%s::uuid',
+                (source.workspace_file_id,));link=cur.fetchone()
+        proof=docx_origin(conn,source.workspace_file_id,link)
+    if (proof['revision_id']!=run.action['target_version']['base_revision_id']
+            or proof['revision_id']==run.action['revision_id'] or proof['content']!=source.content):
+        raise DocumentWorkshopError('document_remote_changed')
+    return dict(kind='docx',origin='frida',byte_size=source.byte_size,sha256=source.sha256,
+        source_revision_id=proof['revision_id'],canonical=proof['canonical'],canonical_sha256=proof['canonical_sha256'])

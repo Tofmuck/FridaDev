@@ -1,0 +1,161 @@
+# Atelier documentaire — M9-A, DOCX Frida et pagination Writer
+
+11 octobre 2026. Branche `FridaV1-Document-Workshop-M9-A`, issue du commit
+documentaire M8-A poussé `1b14e7dcdf68030c2d1df139eb9ee4c5f825143d`.
+Mandat : [roadmap M9-A](../../todo-todo/product/frida-v1-document-workshop-todo.md#m9-a--docx-frida-createcopyupdate-et-pagination-writer).
+**Code et preuves isolées pour livraison Git ; contre-audit, livraison runtime
+et canari autorisé restent ouverts. Aucune clôture globale M9-A.**
+
+## Raccord retenu
+
+Les propriétaires existants sont étendus ensemble : enveloppe/préparation et
+capacités, confirmation/claim M3, client/session/snapshots M8-A, publication
+M5/M7, reçus/historiques, inventaire et lecture fraîche M2. Aucun second
+pipeline, moteur, validateur, inventaire, route ou détecteur lexical de demande.
+Le modèle, le compteur partagé et les budgets restent inchangés.
+
+- Entrée documentaire explicite, compréhension agentique, proposition durable,
+  confirmation humaine puis exécution unique. Une copie exige une demande
+  explicite ; aucune copie implicite ou copie de secours d'un update.
+- Create/copy : cible confirmée sous Documents, un seul DOCX, PUT
+  `If-None-Match: *`. Compensations M5 conservées exclusivement sous autorité
+  valide, création prouvée et ETag fort d'origine.
+- Update : provenance depuis la révision courante Frida, rendu, snapshot,
+  journal et reçu durables concordants, puis octets fraîchement lus. Ni nom,
+  extension ni déclaration ne prouvent cette origine. Source absente ou
+  désynchronisée : refus honnête, aucun reclassement en externe.
+- La source temporaire est liée au canonical de sa **révision source** ; le
+  canonical candidat confirmé appartient à une révision distincte. Le renderer
+  reçoit seulement ces octets admissibles et le contrat source M8-C.
+- La vraie session valide le DOCX final rechargé et paginé Writer, le PDF de
+  contrôle du même état et leurs empreintes, fige la paire immutable en SQL,
+  puis attend la libération acquittée. Le journal précède toute mutation DAV.
+  Un snapshot conservé après refus de libération ne vaut jamais publication.
+- Après Writer : autorité, identité et version revérifiées. Le PUT d'update
+  conserve l'ETag préparé exact en `If-Match`. Changement : conflit, sans
+  préparation automatique, refresh d'ETag, second PUT, DELETE ou restauration.
+  Succès : mêmes ID, nom, chemin et lien ; anciennes révisions et reçus intacts.
+- Seul le DOCX confirmé est publié. Le PDF compagnon reste interne. Le
+  téléchargement prouve la révision courante et prend son MIME depuis le
+  format validé serveur. Reload sans mutation, reçu de métadonnées seul au
+  tour suivant ; aucun contenu documentaire dans les facultés.
+
+Canonical : 10 000 mots/75 000 points de code. Profil A4, 12 points,
+interligne 1,5, marges 2,5 cm ; maximum 20 pages mesurées Writer, sans troncature
+ni réduction silencieuse. Aucune pagination universelle Microsoft Word.
+Markdown conserve son parcours et son téléchargement sans Writer.
+DOCX externe en update (M9-B) et publication PDF (M10) restent fermés.
+
+## Migration et capacités
+
+[Migration M9-A explicite](../../../core/sql/document_workshop_docx_m9a.sql),
+additive en capacités : contraintes format actions/reçus/rendus étendues à
+Markdown/DOCX, liaison format/serializer et journal `frida_writer_v1`.
+Aucune migration appliquée antérieurement n'est réécrite ; aucun startup ou
+GET n'applique cette migration. Répétition et préservation des lignes testées
+sur PostgreSQL jetable. Son seul chemin est ajouté à Git malgré `*.sql`, sans
+changer `.gitignore`. Aucune migration opérateur dans ce mandat.
+
+DOCX est annoncé seulement avec schéma M9-A effectif et session/client munis
+des pins locaux attendus ; incompatibilité du worker refusée avant submit.
+Le statut et les limitations projetées suivent ces capacités, sans annoncer
+PDF ni retravail externe. Markdown reste disponible en l'absence de Writer.
+
+## Défauts applicatifs repris et corrigés
+
+- Téléchargement DOCX anciennement `text/plain` : rouge sur la vraie route,
+  puis MIME DOCX issu du format prouvé, attachment et `nosniff` préservés.
+- Statut limité à Markdown et limitation de carte contradictoire avec DOCX :
+  rouges navigateur/route, puis projection cohérente, sans réécrire les
+  limitations historiques persistées.
+- Risque d'extraction après PUT **confirmé causalement** : panne OSError du
+  vrai worker de métadonnées provoquée uniquement à cette frontière, après
+  un rendu réussi ; WIP initial effectuait un PUT dans chacune des trois
+  opérations avant l'erreur. Correction minimale : extraction unique sur les
+  octets figés avant journal/mutation, puis métadonnées transmises à la
+  publication. Même panne : zéro PUT/DELETE et aucun reçu pour create/copy/update.
+  Le fallback de réparation SQL reste dans `PublicationFailure`, sans mutation DAV.
+- Régression du WIP M2 : octets temporaires ajoutés au dataclass atteignaient
+  une sérialisation Jsonb Markdown du harnais ; ils sont désormais réservés
+  au DOCX et exclus des projections documentaires par liste de champs.
+- Sondes M8-A : collisions NOWAIT avec les vraies gardes SQL courtes. Le
+  harnais synchronise ses quatre observations, conserve chaque vrai check et
+  démontre avec PostgreSQL que la sonde brute voit la garde courte bloquée et
+  que la sonde synchronisée détecte toujours une transaction retenue ailleurs.
+  Aucun sleep ajouté ni garde produit assouplie.
+
+Revue indépendante en lecture seule : deux findings (texte candidat non
+asserté, limitation Markdown) corrigés et revus ; aucun autre finding établi.
+Le test riche vérifie désormais le nouveau paragraphe et exclut l'ancien dans
+le DOCX final, en plus de l'égalité stricte snapshot/PUT/téléchargement.
+
+## Candidate et attribution plateforme
+
+`M9A-RENDERER-SOURCE-01` fermé **sur candidate non déployée**, par contre-audit
+Codex du 10 octobre transmis par Tof. Docker config ID :
+`sha256:7a61bd805ca0e371873184f9b050ad47945ee32562c952437b65c793a6f4da10`.
+Manifeste OCI local contractuel, distinct de ce config ID :
+`sha256:61502c57d2fafbeb41e194a0f46087e65fcea7d32be431a09ec5f848cc412c93`.
+Pins complets :
+`/opt/platform/backups/writer-m9a-source01-20261010T201715Z/candidate-m9a-source01-pins.json`,
+SHA-256 `a788e48f649a84eed24af05ab340c1f2f080fe1f14c1827a86cf95d2a2900021`.
+Ces trois identités ont été vérifiées localement avant consommation isolée.
+
+Report **attribué, pas exécuté ici** : Codex a reproduit le refus riche sur
+l'ancienne image, validé 19 jobs candidats (neuf paires, dix refus, toutes
+libérations acquittées), un refus client avant submit et le corpus 32/32.
+Le parcours riche reprend les octets exacts avec leur canonical source puis
+modifie un texte. Rapport transmis :
+`/Users/tof/codex-fridadev/audits/2026-10-10-m9a-source01-counteraudit/rapport.md`.
+Son absence dans l'IDE ne bloque pas ce report ; il n'est pas présenté comme lu.
+
+## Preuves propres et histoire conservée
+
+[Relevé du 11 octobre](../baselines/document-workshop/frida-v1-document-workshop-m9a-20261011.json) :
+commandes composables, IDs uniques, exits/durées, rouges et incidents, identités,
+frontières HTTP réelles/simulées et nettoyage. Les tests consomment les vrais
+propriétaires applicatifs, jamais une capacité DOCX réservée aux fixtures.
+
+- Vrais create → copie explicite → update riche avec client DAV de production,
+  DAV HTTP synthétique, PostgreSQL et Writer candidat isolés. Structure, styles,
+  listes, tableau, liens, pagination, candidat distinct, identité et anciens
+  reçus, octets exacts et PDF non publié.
+- Sources/canonical/hash et pins discordants, 20 pages acceptées/21 refusées,
+  ETag changé pendant rendu sans PUT, vrai 412 observé avec If-Match préparé.
+  Rollback SQL DOCX compensé avec le seul ETag de création ; réponse DAV perdue
+  maintenue inconnue, sans replay ni faux reçu.
+- Mêmes 128 identifiants de baseline comparés après corrections ; annulation,
+  répétition, perte d'autorité, libération non acquittée, rollbacks et réponses
+  perdues réutilisent les preuves M3/M5/M7/M8-A. Résultats et incidents exacts
+  dans le relevé, sans addition de runs répétés.
+- Chromium desktop clair : carte/confirmation/reçu/téléchargement/reload et
+  continuité via composition et HTTP réels, provider/facultés synthétiques.
+  Aucun fetch remplacé. Parcours Markdown sans montage Writer séparé.
+  Voisins reader DOCX/Exports et Notes/ETag, admission/provenance ciblés.
+  Aucun rejeu des 1 691 tests ni des stress M8-S.
+
+L'[historique arrêté du 10 octobre](../baselines/document-workshop/frida-v1-document-workshop-m9a-20261010.json)
+est conservé sans réécriture : 128 verts alors exécutés, essais rouges de
+create/copy/update et arrêt approuvé par Tof. Ancienne image durable inchangée :
+`sha256:f3067a8fa6787e72a81cd72f94eb276c3887adf2e7907331a79aec98ca1c1487`.
+Son premier refus isolé portait sur `w:rStyle`/`w:start`/`w:end` omis de la garde
+source, pas sur une non-conformité applicative démontrée.
+[DOCX synthétique exact conservé](../../../tests/fixtures/document_renderer_v1/m9a-frida-rich-source.docx) :
+8 967 octets, SHA-256 `99deac658b3aae599572b732a82cd3c88d54a925cfd6619de5370c85948e5ae9`.
+Les 128 verts historiques et les preuves Codex ne sont jamais ajoutés aux
+nouveaux résultats Celebrimbor.
+
+## Remise Sauron après contre-audit Git
+
+Utiliser le commit applicatif M9-A remis en fin de mandat, la migration
+explicite ci-dessus et **la candidate avec ses pins complets qualifiés**.
+Livraison runtime à autoriser séparément : raccord socket/pins/migrations,
+health et capacités DOCX réelles, gardes d'identité et refus sur pin discordant,
+Markdown sans Writer, carte/confirmation/téléchargement et libération acquittée.
+Puis canari Nextcloud create/copy/update/conflits et continuité, avec GO distinct.
+Les recettes DAV/Versions des lots antérieurs restent distinctes.
+
+Aucun déploiement, rebuild/restart durable, remplacement de pins durables,
+migration opérateur, appel OpenRouter réel ou DAV live effectué ici.
+Les seules ressources de preuve possédées sont nettoyées et leur disparition
+vérifiée dans le relevé. Arrêt après livraison Git pour contre-audit Codex.

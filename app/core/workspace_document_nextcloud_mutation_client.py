@@ -281,13 +281,13 @@ class NextcloudDocumentMutationClient:
         return CompensationResult("remote_uncertain", "document_compensation_uncertain", status)
 
     def update_document(self, folder_name, target, content, *, prepared_etag,
-                        expected_file_id, before_mutation):
+                        expected_file_id, before_mutation, format="markdown"):
         """One PUT of the prepared version; the executor owns the fresh read.
 
         The shared result's creation_etag is the observed output version here,
         but it never grants the creation compensation capability.
         """
-        target = _target(target, "markdown")
+        target = _target(target, format)
         from .workspace_document_adoption_store import remote_identity
         remote_identity(self.scope_key(folder_name), expected_file_id)
         if (type(content) is not bytes or not 0 < len(content) <= MAX_SOURCE_BYTES
@@ -299,7 +299,7 @@ class NextcloudDocumentMutationClient:
         try:
             _authorize(before_mutation, "PUT", target.relative_path)
             status, headers = self._mutation_request("PUT", folder_name, target, data=content,
-                headers={"If-Match": prepared_etag, "Content-Type": _MEDIA_TYPES["markdown"]})
+                headers={"If-Match": prepared_etag, "Content-Type": _MEDIA_TYPES[format]})
             if status not in {200, 204}:
                 if status not in _REJECTED_STATUSES:
                     raise _UnknownMutation(status)

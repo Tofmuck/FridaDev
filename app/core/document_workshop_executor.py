@@ -1,6 +1,5 @@
 """M5 request-owned execution with explicit clients; no live default mutator."""
 from dataclasses import dataclass
-import hashlib
 
 from . import document_workshop_execution_store as store
 from .chat_turn_reservation import ChatReservation
@@ -18,20 +17,34 @@ class ExecutionResult:
 
 
 class DocumentExecutor:
-    def __init__(self,*,mutation_client,storage_root,source_reader=None,supports_update=False):
+    def __init__(self,*,mutation_client,storage_root,source_reader=None,supports_update=False,renderer_session=None):
         if mutation_client is None or storage_root is None:
             raise DocumentWorkshopError('document_execution_unavailable')
         self.client,self.storage_root,self.source_reader=mutation_client,storage_root,source_reader
         self.supports_update=supports_update
+        self.renderer_session=renderer_session
+        self.supports_docx=renderer_session is not None
 
     def reconcile(self,action_id):
         from .document_workshop_update_reconciliation import reconcile
         reconcile(action_id,self)
 
     def _render(self,run):
+        if run.action['format']=='docx':
+            if not self.supports_docx:raise DocumentWorkshopError('document_format_unavailable')
+            from .document_rendering import render_confirmed
+            source=source_content=None
+            if run.action['operation']=='update':
+                from .document_workshop_update_target import renderer_source
+                target=self.source_reader(run.action['workspace_folder_id'],run.action['target_version']['workspace_file_id'])
+                source=renderer_source(run,target);source_content=target.content
+            released=render_confirmed(run,'docx',self.renderer_session,source=source,source_content=source_content)
+            # Only collect's acknowledged release permits leaving this boundary.
+            if released.docx!=store.rendered(run)[0]:raise DocumentWorkshopError('document_render_invalid')
+            return released.docx
         canonical=validate_canonical(run.revision['canonical'])
         content=serialize_markdown(canonical).encode('utf-8')
-        if hashlib.sha256(content).hexdigest()!=run.revision['markdown_sha256']:
+        if content!=store.rendered(run)[0]:
             raise DocumentWorkshopError('document_revision_invalid')
         return content
 
@@ -48,15 +61,16 @@ class DocumentExecutor:
                 sources.append(self.source_reader(run.action['workspace_folder_id'],file_id))
             store.verify_fresh_sources(run,sources)
             content=self._render(run)
-            if type(content) is not bytes or hashlib.sha256(content).hexdigest()!=run.revision['markdown_sha256']:
+            if type(content) is not bytes or content!=store.rendered(run)[0]:
                 raise DocumentWorkshopError('document_format_unavailable')
+            metadata=store.file_metadata(run,content)
             store.check(run)
             folder=run.folder['nextcloud_target_name']
-            missing=self.client.inspect_create_target(folder,run.target,format='markdown')
+            missing=self.client.inspect_create_target(folder,run.target,format=run.action['format'])
             if type(missing) is not tuple or any(path not in run.collections for path in missing):
                 raise DocumentWorkshopError('document_mutation_not_authorized')
             store.intent(run)
-            result=self.client.create_document(folder,run.target,content,format='markdown',
+            result=self.client.create_document(folder,run.target,content,format=run.action['format'],
                 confirmed_collections=run.collections,
                 before_mutation=lambda method,path:store.before_mutation(run,method,path))
             store.observe(run,'remote_outcome',result)
@@ -66,7 +80,7 @@ class DocumentExecutor:
                     created_collections_count=None if result.state=='remote_uncertain' else len(result.created_collections))
                 return ExecutionResult('closed')
             try:
-                store.publish(run,result=result,content=content,scope_key=self.client.scope_key(folder),storage_root=self.storage_root)
+                store.publish(run,result=result,content=content,metadata=metadata,scope_key=self.client.scope_key(folder),storage_root=self.storage_root)
             except store.PublicationFailure as failure:
                 if failure.ambiguous:
                     publication_unknown=True
@@ -82,7 +96,7 @@ class DocumentExecutor:
                 # Definite rollback and the original, still live owner are both
                 # required. A lost lease can never authorize compensating DELETE.
                 store.check(run)
-                compensation=self.client.compensate_created_document(folder,run.target,result,format='markdown',
+                compensation=self.client.compensate_created_document(folder,run.target,result,format=run.action['format'],
                     before_mutation=lambda method,path:store.before_mutation(run,method,path,compensation=True))
                 store.observe(run,'compensation_outcome',compensation)
                 store.finish(run,'failed' if compensation.state=='absence_certain' else 'remote_uncertain',
@@ -119,6 +133,7 @@ class DocumentExecutor:
             observations=[self.source_reader(run.action['workspace_folder_id'],file_id) for file_id in run.action['source_file_ids']]
             store.verify_fresh_sources(run,observations)
             content=self._render(run)
+            metadata=store.file_metadata(run,content)
             version=run.action['target_version']
             # Last complete M2 observation uses the originally prepared version.
             # It never refreshes the PUT precondition or silently adopts changes.
@@ -127,14 +142,14 @@ class DocumentExecutor:
             store.check(run);store.intent(run)
             folder=run.folder['nextcloud_target_name']
             result=self.client.update_document(folder,run.target,content,prepared_etag=version['etag'],
-                expected_file_id=version['remote_file_id'],before_mutation=lambda method,path:store.before_mutation(run,method,path))
+                expected_file_id=version['remote_file_id'],**(dict(format='docx') if run.action['format']=='docx' else {}),before_mutation=lambda method,path:store.before_mutation(run,method,path))
             store.observe(run,'remote_outcome',result)
             if result.state!='known_success':
                 state='remote_uncertain' if result.state=='remote_uncertain' else 'conflict' if result.http_status==412 else 'failed'
                 store.finish(run,state,result.reason_code,created_collections_count=0)
                 return ExecutionResult('closed')
             try:
-                store.publish(run,result=result,content=content,scope_key=self.client.scope_key(folder),storage_root=self.storage_root)
+                store.publish(run,result=result,content=content,metadata=metadata,scope_key=self.client.scope_key(folder),storage_root=self.storage_root)
             except store.PublicationFailure as failure:
                 if failure.ambiguous:
                     proof=store.publication_proof(run,result=result,content=content,scope_key=self.client.scope_key(folder),storage_root=self.storage_root)
