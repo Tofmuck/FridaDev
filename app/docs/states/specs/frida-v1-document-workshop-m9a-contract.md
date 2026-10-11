@@ -22,7 +22,20 @@ Nextcloud réelle : Documents vide ; 33 conteneurs inchangés. La cause exacte
 ne se déduit pas de ce reason_code partagé et les trames terminales manquent.
 Aucun retry ni patch ; copie/update/conflit/continuité restent non éprouvés
 live. [Preuves du canari](../baselines/document-workshop/frida-v1-document-workshop-m9a-canari-20261011.json).
-Le prochain diagnostic reste un lot distinct ; M9-B/M10 non commencés.
+Ces constats de recette sont attribués à Codex. Diagnostic applicatif
+Celebrimbor du 11 octobre, en lecture seule : action/claim et 27 événements
+corrélés relus, neuf fichiers du chemin identiques au code runtime audité,
+55 lignes serveur corrélées sans terminaison exploitable. Le rejet est localisé
+dans le lecteur SSE documentaire, avant validation de l'enveloppe ; sa branche
+exacte reste indéterminée (fin sans DONE, stop absent/dupliqué, raison non
+reconnue, contenu après stop ou appel d'outil). `upstream_error` est une
+projection HTTP applicative, pas la preuve d'une panne OpenRouter. Aucun
+correctif fonctionnel justifié sur ces seules traces ; un discriminant fermé
+du site de rejet et les témoins stop/DONE/fin HTTP manquent pour départager.
+[Rapport du diagnostic et commandes](../baselines/document-workshop/frida-v1-document-workshop-obs-m9a-prep-01-20261011.json).
+Arrêt sur limite de preuve pour contre-audit, sans sonde ni nouvel essai live.
+OBS-M9A-PREP-01 reste ouvert et non corrigé ; instrumentation éventuelle et
+reprise exigent un mandat distinct. M9-A ouvert, M9-B/M10 non commencés.
 
 ## Raccord retenu
 

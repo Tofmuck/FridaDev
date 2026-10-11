@@ -4281,8 +4281,18 @@ continuité non atteints. Répertoire/conversation conservés, aucun document
 préexistant modifié. Les preuves isolées et le contre-audit runtime favorables
 restent acquis dans leur périmètre ; ils ne ferment pas ce canari.
 [Relevé compact du canari](../../states/baselines/document-workshop/frida-v1-document-workshop-m9a-canari-20261011.json).
-Prochaine étape : diagnostic applicatif borné de la terminaison du flux, sous
-mandat distinct ; aucune attribution à Writer ou à une panne OpenRouter établie.
+Ces constats de recette sont attribués à Codex. Diagnostic Celebrimbor du
+11 octobre remis pour contre-audit : 27 événements SQL relus en lecture seule,
+55 lignes serveur corrélées et neuf fichiers concordant avec le runtime audité.
+Rejet localisé dans le lecteur SSE documentaire avant validation de l'enveloppe,
+mais branche exacte non départageable : aucun témoin stop/DONE/fin HTTP ni site
+de rejet conservé. `upstream_error` est une projection HTTP applicative ; aucune
+panne OpenRouter ou Writer établie. Aucun essai synthétique/live ni correctif.
+[Rapport borné, sources et commandes](../../states/baselines/document-workshop/frida-v1-document-workshop-obs-m9a-prep-01-20261011.json).
+OBS-M9A-PREP-01 reste ouvert et non corrigé. Prochaine étape proposée seulement :
+micro-lot distinct d'observabilité content-free du site de rejet et de la
+terminaison, avant tout nouveau GO de préparation live. Aucun critère de
+canari ni clôture M9-A acquis par ce diagnostic ; M9-B/M10 hors périmètre.
 
 - [x] Rouge causal : canonical/source/empreinte non correspondants, 21e page, version
   renderer différente ou ETag changé durant rendu → refus sans écriture.

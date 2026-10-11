@@ -1,0 +1,477 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-11",
+  "observation_id": "OBS-M9A-PREP-01",
+  "author": "Celebrimbor (agent Codex dans VS Code, OVH)",
+  "scope": "Diagnostic uniquement ; code, tests, configuration et runtime inchangés.",
+  "status": "diagnostic_arrete_sur_limite_de_preuve_pour_contre_audit",
+  "conclusion": "L'échec est localisé dans la lecture sémantique SSE documentaire, avant validation de l'enveloppe/canonical. La branche exacte et la cause historique restent indéterminées. Aucun défaut Writer ni panne OpenRouter établis.",
+  "base": {
+    "checkout": "/opt/platform/fridadev",
+    "branch": "FridaV1-Document-Workshop-M9-A",
+    "head_upstream_remote": "b977895a3b90f41a0db772f4ddc45161f0eb85fd",
+    "divergence": [
+      0,
+      0
+    ],
+    "clean": true,
+    "runtime_code": "9d423791cfd14a3611ecdb9047e8d840f667fbc7",
+    "runtime_image": "sha256:0e196a0dd199ae90827ee12ac2b53187ad6cef8c4cdf84b2d01ab80d482f973a",
+    "runtime_health": "healthy",
+    "runtime_source_files_checked": 9,
+    "runtime_source_mismatches": []
+  },
+  "attribution": {
+    "historical_author": "Codex, recette Safari du 11 octobre transmise par Tof et relevé historique",
+    "historical_record": "app/docs/states/baselines/document-workshop/frida-v1-document-workshop-m9a-canari-20261011.json",
+    "historical_record_sha256": "f4a3a79132ef5c74d15398605b4ec8167a46725867ca10daf3e6c815a06e9c4e",
+    "historical_facts": "Notes désactivé, préparation unique, aucune carte/confirmation/révision/exécution Writer/publication/reçu ; Documents vérifié vide par la recette. Aucun accès DAV ni navigateur rejoué ici.",
+    "prior_counteraudits": "28 cas isolés et deux rendus riches runtime attribués à Codex, non rejoués.",
+    "current_author": "Celebrimbor : lectures SQL/logs existants, comparaison des sources runtime et analyse statique seulement.",
+    "openrouter": "Fournisseur attribué par le mandat : OpenRouter. Le parcours emploie DocumentHTTPTransport et les helpers serveur or_headers/or_chat_completions_url, avec le modèle openai/gpt-5.1 ; aucun SDK ou contrat OpenAI direct substitué.",
+    "synthetic": "Aucun essai synthétique exécuté : la condition d'arrêt sur indétermination des traces existantes est atteinte ; aucune trame absente reconstruite."
+  },
+  "execution_path": [
+    {
+      "source": "app/core/chat_service.py",
+      "lines": [
+        608,
+        622
+      ],
+      "fact": "Le tour canonique porte les références de contexte/action puis démarre DocumentTurn."
+    },
+    {
+      "source": "app/core/document_workshop_turn.py",
+      "lines": [
+        123,
+        141
+      ],
+      "fact": "_exchange impose stream=True et instancie le vrai DocumentHTTPTransport ; garde d'autorité séparée."
+    },
+    {
+      "source": "app/core/document_workshop_admission.py",
+      "lines": [
+        100,
+        127
+      ],
+      "fact": "Admission et résolution serveur des headers/URL ; corps figé, un seul échange."
+    },
+    {
+      "source": "app/core/llm_client.py",
+      "lines": [
+        234,
+        235
+      ],
+      "fact": "URL chat/completions issue de la base runtime serveur ; aucun endpoint ou credential exporté."
+    },
+    {
+      "source": "app/core/document_workshop_http_transport.py",
+      "lines": [
+        114,
+        144
+      ],
+      "fact": "Connexion HTTP/1.1 réelle, envoi unique, statut et framing lus ; exceptions génériques converties en document_provider_error."
+    },
+    {
+      "source": "app/core/document_workshop_http_transport.py",
+      "lines": [
+        237,
+        306
+      ],
+      "fact": "Le framing HTTP peut se terminer normalement par chunk zéro, Content-Length consommé ou EOF en mode close-delimited. Fin HTTP ne prouve pas terminaison SSE."
+    },
+    {
+      "source": "app/core/document_workshop_http_transport.py",
+      "lines": [
+        319,
+        345
+      ],
+      "fact": "Décodage UTF-8 strict et lignes CR/LF/CRLF ; fournit les lignes au lecteur SSE, sans preuve terminale durable."
+    },
+    {
+      "source": "app/core/document_workshop_provider.py",
+      "lines": [
+        165,
+        250
+      ],
+      "fact": "_sse_events assemble les data ; _read_exchange valide chaque événement et exige [DONE] avec un unique finish_reason stop avant l'enveloppe."
+    },
+    {
+      "source": "app/core/document_workshop_provider.py",
+      "lines": [
+        278,
+        304
+      ],
+      "fact": "DocumentWorkshopError propage seulement reason_code, transport fermé ; pas de résultat fournisseur sur échec."
+    },
+    {
+      "source": "app/core/chat_service.py",
+      "lines": [
+        535,
+        545
+      ],
+      "fact": "Le reason_code passe à DocumentTurn.failure ; une exception non classée aurait document_preparation_failed."
+    },
+    {
+      "source": "app/core/document_workshop_turn.py",
+      "lines": [
+        270,
+        284
+      ],
+      "fact": "Réponse courte d'échec persistée via actions.fail, retour JSON HTTP 503, sans canonical candidat ni carte pending."
+    },
+    {
+      "source": "app/core/document_workshop_actions.py",
+      "lines": [
+        225,
+        235
+      ],
+      "fact": "Échec transactionnel sous autorité : action failed/phase failed/reason ; claim failed/outcome interrupted, reason du claim NULL sauf inactivité."
+    },
+    {
+      "source": "app/chat_transport_routes.py",
+      "lines": [
+        229,
+        236
+      ],
+      "fact": "L'erreur HTTP applicative est projetée en événement chat_response_error avec code classifié ou upstream_error ; ce code ne prouve pas une erreur reçue d'OpenRouter."
+    }
+  ],
+  "incomplete_branches_in_stream_order": [
+    {
+      "source": "app/core/document_workshop_provider.py",
+      "lines": [
+        124,
+        134
+      ],
+      "condition": "_content(delta) : tool_calls ou function_call non vide ; refus contrôlé avant extraction du contenu de cette trame."
+    },
+    {
+      "source": "app/core/document_workshop_provider.py",
+      "lines": [
+        240,
+        249
+      ],
+      "condition": "Contenu non vide après le premier stop reconnu ; rejet avant ajout de ce contenu et avant _finish de la même trame."
+    },
+    {
+      "source": "app/core/document_workshop_provider.py",
+      "lines": [
+        137,
+        148
+      ],
+      "condition": "_finish : raison non nulle autre que stop/length/content_filter/error, ou second stop. length/content_filter/error ont leurs propres codes et passent avant ce rejet ; None est ignoré."
+    },
+    {
+      "source": "app/core/document_workshop_provider.py",
+      "lines": [
+        151,
+        161
+      ],
+      "condition": "À [DONE], _validated_result vérifie d'abord progress.check(), puis refuse l'absence de stop, avant modèle/contenu/enveloppe."
+    },
+    {
+      "source": "app/core/document_workshop_provider.py",
+      "lines": [
+        249,
+        250
+      ],
+      "condition": "Fin de l'itération SSE sans [DONE] : incomplete inconditionnel, même si stop a été reconnu. Ni stop_seen, ni framing de fin n'est enregistré."
+    },
+    {
+      "source": "app/core/document_workshop_provider.py",
+      "lines": [
+        201,
+        219
+      ],
+      "condition": "Hors chemin historique : JSON non stream avec choices vide, ou résultat sans stop ; appelant effectif impose stream=True."
+    }
+  ],
+  "information_loss": [
+    {
+      "source": "app/core/document_workshop_provider.py",
+      "lines": [
+        58,
+        62
+      ],
+      "fact": "_Evidence conserve seulement modèle/stop accepté/usage dans une variable locale. Le finish_reason rejeté n'est jamais copié dans l'exception."
+    },
+    {
+      "source": "app/core/document_workshop_contract.py",
+      "lines": [
+        19,
+        24
+      ],
+      "fact": "DocumentWorkshopError porte uniquement reason_code ; les différents sites incomplete sont confondus."
+    },
+    {
+      "source": "app/core/document_workshop_turn.py",
+      "lines": [
+        259,
+        264
+      ],
+      "fact": "Les métadonnées fournisseur sont transmises à l'observabilité seulement sur succès, après finalisation ; aucune métadonnée documentaire terminale sur ce rejet."
+    },
+    {
+      "source": "app/core/document_workshop_progress.py",
+      "lines": [
+        93,
+        105
+      ],
+      "fact": "Le compteur compte les points de code des contenus admis et la projection peut être échantillonnée par le superviseur. Les 1 624 persistés ne prouvent ni le total final exact, ni un JSON complet, ni un candidat validé."
+    },
+    {
+      "source": "app/core/document_workshop_turn.py",
+      "lines": [
+        93,
+        117
+      ],
+      "fact": "Le superviseur projette des snapshots/contrôle l'autorité ; il ne conserve pas les trames terminales."
+    }
+  ],
+  "current_reads": {
+    "action": {
+      "id": "3ac28772-b3de-4ed4-a9be-8c23520fea80",
+      "context_id": "c6e42ade-a9ac-44c7-a464-03254f4a169f",
+      "conversation_id": "db03bc08-faa1-44ae-8eea-90e526528fe4",
+      "state": "failed",
+      "phase": "failed",
+      "reason_code": "document_provider_incomplete",
+      "received_content_codepoints": 1624,
+      "revision_id": null,
+      "confirmation_turn_id": null,
+      "confirmed_at": null,
+      "created_at": "2026-10-11 09:57:06.667668+00:00",
+      "updated_at": "2026-10-11 09:57:43.560175+00:00"
+    },
+    "claim": {
+      "turn_id": "3ac28772-b3de-4ed4-a9be-8c23520fea80",
+      "kind": "preparation",
+      "state": "failed",
+      "outcome": "interrupted",
+      "reason_code": null,
+      "generation": 1,
+      "lease_until": "2026-10-11 09:59:06.709137+00:00",
+      "created_at": "2026-10-11 09:57:06.625210+00:00",
+      "finished_at": "2026-10-11 09:57:43.561451+00:00"
+    },
+    "context": {
+      "state": "editing",
+      "created_at": "2026-10-11 09:56:42.019450+00:00"
+    },
+    "event_count": 27,
+    "read_only": "on",
+    "relevant_events": [
+      {
+        "ts": "2026-10-11 09:57:06+00:00",
+        "stage": "document_preparation",
+        "status": "ok",
+        "duration_ms": null,
+        "metadata": {
+          "phase": "user_saved",
+          "state": "preparing",
+          "received_content_codepoints": 0
+        }
+      },
+      {
+        "ts": "2026-10-11 09:57:15+00:00",
+        "stage": "prompt_prepared",
+        "status": "ok",
+        "duration_ms": null
+      },
+      {
+        "ts": "2026-10-11 09:57:43+00:00",
+        "stage": "error",
+        "status": "error",
+        "duration_ms": null,
+        "metadata": {
+          "error_code": "upstream_error",
+          "error_class": "chat_response_error"
+        }
+      },
+      {
+        "ts": "2026-10-11 09:57:43+00:00",
+        "stage": "turn_end",
+        "status": "error",
+        "duration_ms": 37058
+      }
+    ],
+    "secondary_calls": [
+      {
+        "stage": "llm_call",
+        "status": "ok",
+        "provider_caller": "stimmung_agent"
+      },
+      {
+        "stage": "llm_call",
+        "status": "ok",
+        "provider_caller": "validation_agent"
+      }
+    ],
+    "documentary_terminal_metadata_available": false
+  },
+  "existing_server_logs": {
+    "docker_logs_exit": 0,
+    "window_utc": [
+      "09:57:04",
+      "09:57:46"
+    ],
+    "lines_in_window": 81,
+    "correlated_lines": 55,
+    "correlated_markers": {},
+    "uncorrelated_terminal_or_exception_marker_lines": 0,
+    "raw_lines_exported": false
+  },
+  "hypotheses": [
+    {
+      "status": "demontre",
+      "hypothesis": "Rejet avant enveloppe/canonical dans le chemin streaming.",
+      "basis": "Code runtime identique ; compteur fournisseur non nul ; raison incomplete ; aucune révision/confirmation. La branche nonstream n'est pas celle de l'appelant effectif."
+    },
+    {
+      "status": "compatible_non_departageable",
+      "hypothesis": "EOF SSE sans [DONE], avec ou sans stop préalablement reconnu.",
+      "basis": "Même code de rejet ; aucun témoin DONE/EOF/stop conservé."
+    },
+    {
+      "status": "compatible_non_departageable",
+      "hypothesis": "[DONE] reçu sans stop ; stop dupliqué ; raison terminale non reconnue ; contenu après stop ; tool_calls/function_call après les fragments déjà admis.",
+      "basis": "Tous ces sites produisent incomplete ; 1 624 points de code antérieurs sont compatibles avec chacun."
+    },
+    {
+      "status": "exclu_comme_branche_directe",
+      "hypothesis": "Refus de modes/estimation initiale, HTTP initial non 2xx ou connexion initiale impossible.",
+      "basis": "Ils précèdent l'admission de tout contenu et portent d'autres reason_codes."
+    },
+    {
+      "status": "exclu_comme_branche_directe",
+      "hypothesis": "Inactivité reconnue de 120 s, annulation reconnue, perte d'autorité empêchant la persistance, finish_reason length/content_filter/error reconnu, erreur de framing HTTP détectée ou exception réseau convertie.",
+      "basis": "Codes distincts ; tour de 37 058 ms, contexte editing, claim fini avant échéance, échec sauvegardé sous garde. Ne prouve pas l'absence d'une fermeture réseau normale ou d'une cause fournisseur non signalée."
+    },
+    {
+      "status": "exclu_pour_cet_echec",
+      "hypothesis": "Erreur Writer, pagination, DAV de publication ou validation du canonical.",
+      "basis": "Frontières ultérieures non atteintes selon lecture/code et recette attribuée ; aucune nouvelle sonde Writer/DAV."
+    },
+    {
+      "status": "non_etabli",
+      "hypothesis": "Panne OpenRouter ou défaut fonctionnel du lecteur.",
+      "basis": "upstream_error est une projection HTTP générique ; aucune terminaison fournisseur historique exploitable. Aucune règle de compatibilité fournisseur modifiée ou postulée."
+    }
+  ],
+  "stop": {
+    "criterion": "Les traces existantes ne départagent plus les causes.",
+    "functional_patch_justified": false,
+    "diagnostic_gap_demonstrated": true,
+    "minimum_missing_metadata": "Discriminant content-free du site de rejet : tool_call, content_after_stop, finish_unrecognized, finish_duplicate, done_without_stop ou sse_eof ; sur EOF, stop_seen. Un framing HTTP de fin classifié permettrait de distinguer une fin correctement encadrée d'une fermeture close-delimited sans prétendre attribuer sa cause.",
+    "next_proposed_not_executed": "Micro-lot distinct d'observabilité au rejet dans le lecteur/transport documentaire : ce discriminant, stop_seen/DONE_seen et fin HTTP classifiée, valeurs fermées sans trame, contenu, URL ou exception brute. Conserver les gardes/conditions d'acceptation et les budgets. Nouvelle préparation synthétique uniquement après autorisation live distincte. Contre-audit d'abord."
+  },
+  "commands": [
+    {
+      "id": "C0-base",
+      "command": "pwd\n git rev-parse --show-toplevel\n git status --short --branch\n git rev-parse HEAD '@{upstream}'\n git rev-list --left-right --count 'HEAD...@{upstream}'",
+      "exit": 0,
+      "result": "/opt/platform/fridadev ; branche attendue ; b977895a commun ; propre ; 0/0."
+    },
+    {
+      "id": "C1-distant-runtime",
+      "command": "git fetch origin --prune --quiet\n git ls-remote --heads origin refs/heads/FridaV1-Document-Workshop-M9-A\n git rev-parse HEAD '@{upstream}'\n git status --short --branch\n git rev-list --left-right --count 'HEAD...@{upstream}'\n docker inspect --format '{{.Name}} {{.Image}} {{.State.Health.Status}}' platform-fridadev",
+      "exit": 0,
+      "result": "Distant/HEAD/upstream b977895a3b90f41a0db772f4ddc45161f0eb85fd ; 0/0 ; image attendue, healthy."
+    },
+    {
+      "id": "C2-sql-initial",
+      "command": "docker exec -i platform-fridadev python - <<'PY'\nimport json\nfrom core.document_workshop_execution_store import _db_conn\nfrom psycopg.rows import dict_row\nconv='db03bc08-faa1-44ae-8eea-90e526528fe4'\naction='3ac28772-b3de-4ed4-a9be-8c23520fea80'\nturn='turn-53f5dfa2-d246-452d-8185-fe3cefe58052'\nwith _db_conn() as conn:\n conn.execute('SET TRANSACTION READ ONLY')\n conn.execute(\"SET LOCAL TIME ZONE 'UTC'\")\n with conn.cursor(row_factory=dict_row) as cur:\n  cur.execute('SELECT id,context_id,conversation_id,state,phase,reason_code,received_content_codepoints,revision_id,confirmation_turn_id,confirmed_at,created_at,updated_at FROM document_actions WHERE id=%s::uuid AND conversation_id=%s::uuid',(action,conv))\n  print(json.dumps({'action':cur.fetchone()},default=str))\n  cur.execute('SELECT turn_id,kind,state,outcome,reason_code,generation,lease_until,created_at,finished_at FROM conversation_turn_claims WHERE turn_id=%s::uuid AND conversation_id=%s::uuid',(action,conv))\n  print(json.dumps({'claim':cur.fetchone()},default=str))\n  cur.execute('SELECT state,created_at,updated_at FROM document_workshop_contexts WHERE id=(SELECT context_id FROM document_actions WHERE id=%s::uuid)',(action,))\n  print(json.dumps({'context':cur.fetchone()},default=str))\n  cur.execute('SELECT ts,stage,status,duration_ms,model,prompt_kind,payload_json FROM observability.chat_log_events WHERE conversation_id=%s AND turn_id=%s ORDER BY ts,event_id',(conv,turn))\n  rows=cur.fetchall()\n  allowed={'error_code','error_class','reason_code','status','state','phase','finish_reason','native_finish_reason','provider_finish_reason','provider_model','provider_prompt_tokens','provider_completion_tokens','provider_total_tokens','provider_caller','received_content_codepoints','duration_ms','http_status','stream','stream_req','completion_tokens','prompt_tokens','total_tokens','response_chars','request_id','provider_request_id','exception_class'}\n  def projected(d):\n   if isinstance(d,dict):\n    out={}\n    for k,v in d.items():\n     if k in allowed and (v is None or type(v) in (str,int,float,bool)):\n      if type(v)!=str or len(v)<=120:out[k]=v\n     elif isinstance(v,(dict,list)):\n      sub=projected(v)\n      if sub:out[k]=sub\n    return out\n   if isinstance(d,list):return [s for v in d if (s:=projected(v))]\n   return None\n  for row in rows:\n   payload=row.pop('payload_json')\n   row['payload_keys']=sorted(payload) if isinstance(payload,dict) else []\n   row['metadata']=projected(payload)\n   print(json.dumps({'event':row},default=str))\n  print(json.dumps({'event_count':len(rows),'read_only':conn.execute('SHOW transaction_read_only').fetchone()[0]}))\nPY",
+      "exit": 1,
+      "result": "Action et claim lus ; SELECT contexte interrompu par UndefinedColumn updated_at. Transaction READ ONLY annulée ; aucune mutation."
+    },
+    {
+      "id": "C3-sql-corrige",
+      "command": "docker exec -i platform-fridadev python - <<'PY'\nimport json\nfrom core.document_workshop_execution_store import _db_conn\nfrom psycopg.rows import dict_row\nconv='db03bc08-faa1-44ae-8eea-90e526528fe4'\naction='3ac28772-b3de-4ed4-a9be-8c23520fea80'\nturn='turn-53f5dfa2-d246-452d-8185-fe3cefe58052'\nwith _db_conn() as conn:\n conn.execute('SET TRANSACTION READ ONLY')\n conn.execute(\"SET LOCAL TIME ZONE 'UTC'\")\n with conn.cursor(row_factory=dict_row) as cur:\n  cur.execute('SELECT id,context_id,conversation_id,state,phase,reason_code,received_content_codepoints,revision_id,confirmation_turn_id,confirmed_at,created_at,updated_at FROM document_actions WHERE id=%s::uuid AND conversation_id=%s::uuid',(action,conv))\n  print(json.dumps({'action':cur.fetchone()},default=str))\n  cur.execute('SELECT turn_id,kind,state,outcome,reason_code,generation,lease_until,created_at,finished_at FROM conversation_turn_claims WHERE turn_id=%s::uuid AND conversation_id=%s::uuid',(action,conv))\n  print(json.dumps({'claim':cur.fetchone()},default=str))\n  cur.execute('SELECT state,created_at FROM document_workshop_contexts WHERE id=(SELECT context_id FROM document_actions WHERE id=%s::uuid)',(action,))\n  print(json.dumps({'context':cur.fetchone()},default=str))\n  cur.execute('SELECT ts,stage,status,duration_ms,payload_json FROM observability.chat_log_events WHERE conversation_id=%s AND turn_id=%s ORDER BY ts,event_id',(conv,turn))\n  rows=cur.fetchall()\n  allowed={'error_code','error_class','reason_code','status','state','phase','finish_reason','native_finish_reason','provider_finish_reason','provider_model','provider_prompt_tokens','provider_completion_tokens','provider_total_tokens','provider_caller','received_content_codepoints','duration_ms','http_status','stream','stream_req','completion_tokens','prompt_tokens','total_tokens','response_chars','request_id','provider_request_id','exception_class'}\n  def projected(d):\n   if isinstance(d,dict):\n    out={}\n    for k,v in d.items():\n     if k in allowed and (v is None or type(v) in (str,int,float,bool)):\n      if type(v)!=str or len(v)<=120:out[k]=v\n     elif isinstance(v,(dict,list)):\n      sub=projected(v)\n      if sub:out[k]=sub\n    return out\n   if isinstance(d,list):return [s for v in d if (s:=projected(v))]\n   return None\n  for row in rows:\n   payload=row.pop('payload_json')\n   row['payload_keys']=sorted(payload) if isinstance(payload,dict) else []\n   row['metadata']=projected(payload)\n   print(json.dumps({'event':row},default=str))\n  print(json.dumps({'event_count':len(rows),'read_only':conn.execute('SHOW transaction_read_only').fetchone()[0]}))\nPY",
+      "exit": 0,
+      "result": "27 événements corrélés ; action/claim/contexte ci-dessus. Adaptation de commande au schéma réel : contexte sans updated_at ; modèle/prompt_kind ne sont pas des colonnes de chat_log_events."
+    },
+    {
+      "id": "C4-logs-identite",
+      "command": "python3 - <<'PY'\nimport hashlib,json,re,subprocess\nfrom pathlib import Path\nids=('db03bc08-faa1-44ae-8eea-90e526528fe4','3ac28772-b3de-4ed4-a9be-8c23520fea80','turn-53f5dfa2-d246-452d-8185-fe3cefe58052')\nr=subprocess.run(['docker','logs','--timestamps','--since','2026-10-11T09:57:04Z','--until','2026-10-11T09:57:46Z','platform-fridadev'],capture_output=True,text=True)\nlines=(r.stdout+'\\n'+r.stderr).splitlines()\nmatched=[s for s in lines if any(i in s for i in ids)]\nmarkers=('document_provider_incomplete','finish_reason','native_finish_reason','[DONE]','Traceback','TimeoutError','ConnectionResetError','CancelledError','document_cancelled','document_inactivity','document_transport_closed')\nprint(json.dumps({'docker_logs_exit':r.returncode,'window_utc':['09:57:04','09:57:46'],'lines_in_window':len([s for s in lines if s]),'correlated_lines':len(matched),'correlated_markers':{m:sum(m in s for s in matched) for m in markers if any(m in s for s in matched)},'uncorrelated_terminal_or_exception_marker_lines':sum(any(m in s for m in markers[1:]) for s in lines if s not in matched),'raw_lines_exported':False}))\nbase='9d423791cfd14a3611ecdb9047e8d840f667fbc7'\npaths=['app/core/'+p+'.py' for p in ('document_workshop_provider','document_workshop_http_transport','document_workshop_turn','document_workshop_progress','document_workshop_actions','document_workshop_admission','document_workshop_contract','chat_service','llm_client')]\ncode='import hashlib,json;from pathlib import Path;paths='+repr(paths)+';print(json.dumps({p:hashlib.sha256(Path(\"/app\",p.removeprefix(\"app/\")).read_bytes()).hexdigest() for p in paths}))'\nr=subprocess.run(['docker','exec','platform-fridadev','python','-c',code],capture_output=True,check=True,text=True)\nruntime=json.loads(r.stdout); mismatches=[]\nfor p in paths:\n b=subprocess.run(['git','show',base+':'+p],capture_output=True,check=True).stdout\n if hashlib.sha256(b).hexdigest()!=runtime[p] or Path(p).read_bytes()!=b:mismatches.append(p)\nprint(json.dumps({'reference':base,'files_checked':len(paths),'mismatches':mismatches}))\nPY",
+      "exit": 0,
+      "result": [
+        {
+          "docker_logs_exit": 0,
+          "window_utc": [
+            "09:57:04",
+            "09:57:46"
+          ],
+          "lines_in_window": 81,
+          "correlated_lines": 55,
+          "correlated_markers": {},
+          "uncorrelated_terminal_or_exception_marker_lines": 0,
+          "raw_lines_exported": false
+        },
+        {
+          "reference": "9d423791cfd14a3611ecdb9047e8d840f667fbc7",
+          "files_checked": 9,
+          "mismatches": []
+        }
+      ]
+    },
+    {
+      "id": "C5-sources",
+      "command": "nl -ba app/core/document_workshop_provider.py | sed -n '125,165p'\n nl -ba app/core/document_workshop_provider.py | sed -n '200,310p'\n nl -ba app/core/document_workshop_turn.py | sed -n '119,163p'\n nl -ba app/core/document_workshop_turn.py | sed -n '232,345p'\n nl -ba app/core/document_workshop_actions.py | sed -n '209,237p'\n nl -ba app/core/chat_service.py | sed -n '524,552p'\n nl -ba app/chat_transport_routes.py | sed -n '213,245p'",
+      "exit": 0,
+      "result": "Lectures statiques ; sites et propagation décrits ci-dessus. Aucun test exécuté."
+    },
+    {
+      "id": "C6-documents",
+      "command": "set -e\npython3 - <<'PY'\nimport hashlib,json,re,subprocess\nfrom pathlib import Path\nroot=Path('/opt/platform/fridadev')\nreport_path=root/'app/docs/states/baselines/document-workshop/frida-v1-document-workshop-obs-m9a-prep-01-20261011.json'\nd=json.loads(report_path.read_text())\nhistorical=root/d['attribution']['historical_record']\nassert hashlib.sha256(historical.read_bytes()).hexdigest()==d['attribution']['historical_record_sha256']\nchecked=0\nfor section in ('execution_path','incomplete_branches_in_stream_order','information_loss'):\n for ref in d[section]:\n  p=root/ref['source']; assert p.is_file(),str(p)\n  a,b=ref['lines'];assert 0<a<=b<=len(p.read_text().splitlines()),ref\n  checked+=1\nchanged=subprocess.run(['git','diff','--name-only'],check=True,capture_output=True,text=True).stdout.splitlines()\nnew=subprocess.run(['git','ls-files','--others','--exclude-standard'],check=True,capture_output=True,text=True).stdout.splitlines()\nexpected={'app/docs/todo-todo/product/frida-v1-document-workshop-todo.md','app/docs/states/specs/frida-v1-document-workshop-m9a-contract.md',str(report_path.relative_to(root))}\nassert set(changed+new)==expected,(changed,new)\nlinked=0\nfor f in changed:\n diff=subprocess.run(['git','diff','--unified=0','--',f],check=True,capture_output=True,text=True).stdout\n added='\\n'.join(s[1:] for s in diff.splitlines() if s.startswith('+') and not s.startswith('+++'))\n for target in re.findall(r'\\]\\(([^)]+)\\)',added):\n  assert '://' not in target\n  p=(root/f).parent/target.split('#',1)[0];assert p.is_file(),str(p)\n  linked+=1\npatterns=[r'sk-[A-Za-z0-9_-]{16,}',r'(?i)Bearer\\s+(?!synthetic)[A-Za-z0-9._-]{16,}',r'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY',r'(?i)postgres(?:ql)?://[^\\s]+',r'gh[pousr]_[A-Za-z0-9]{20,}']\nfor f in expected:\n data=(root/f).read_text()\n for pattern in patterns:assert not re.search(pattern,data),(f,pattern)\nprint(json.dumps({'scope_paths':len(expected),'source_ranges_checked':checked,'modified_links_checked':linked,'historical_sha256_unchanged':True,'secret_pattern_hits':0,'owned_temporaries':0,'report_lines':len(report_path.read_text().splitlines())}))\nPY\n git diff --check\n git status --short --branch\n git diff -- app/docs/todo-todo/product/frida-v1-document-workshop-todo.md app/docs/states/specs/frida-v1-document-workshop-m9a-contract.md",
+      "exit": 0,
+      "result": {
+        "scope_paths": 3,
+        "source_ranges_checked": 24,
+        "modified_links_checked": 2,
+        "historical_sha256_unchanged": true,
+        "secret_pattern_hits": 0,
+        "owned_temporaries": 0,
+        "diff_check_exit": 0
+      }
+    }
+  ],
+  "incidents": [
+    "C2 : nom de colonne contexte trop large, corrigé après lecture des propriétaires ; aucun écart de baseline ni écriture SQL.",
+    "Recherches exploratoires sur deux noms de fichiers telemetry inexistants ; propriétaires réels retrouvés dans chat_transport_routes.py, aucun résultat manquant utilisé comme preuve.",
+    "Validation documentaire : fins de références HTTP 346→345 et provider 307→304 corrigées aux lignes réelles. La première commande groupée finissait sur git diff malgré l’assertion Python ; validation finale réexécutée avec set -e, exit 0. Aucun test produit concerné."
+  ],
+  "boundaries": {
+    "model_live_calls": 0,
+    "dav_calls": 0,
+    "sql_writes": 0,
+    "card_confirmations": 0,
+    "writer_jobs": 0,
+    "installs": 0,
+    "rebuilds": 0,
+    "restarts": 0,
+    "deployments": 0,
+    "product_or_historical_test_changes": 0,
+    "persistent_instrumentation": false,
+    "tests_run": 0,
+    "probe_added": false,
+    "owned_temporaries": 0,
+    "retained_canary_objects_untouched": true,
+    "m9a_closed": false,
+    "observation_corrected": false,
+    "m9b_or_m10_started": false,
+    "hub_changed": false
+  },
+  "verification": {
+    "historical_record_sha256_before_docs": "f4a3a79132ef5c74d15398605b4ec8167a46725867ca10daf3e6c815a06e9c4e",
+    "all_heads_remotes_unchanged_before_docs": true,
+    "delivery_checks": "Diff, références locales, absence de contenu sensible, historique inchangé, scope des trois documents et diff --check vérifiés avant commit ; alignement après push indiqué dans le retour de livraison.",
+    "scope_paths": 3,
+    "source_ranges_checked": 24,
+    "modified_links_checked": 2,
+    "historical_sha256_unchanged": true,
+    "secret_pattern_hits": 0,
+    "owned_temporaries": 0,
+    "diff_check_exit": 0
+  }
+}
