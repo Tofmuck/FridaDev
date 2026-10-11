@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-11",
+  "scope": "M9-A live canary, Safari native automation and independent SSH read-only evidence",
+  "status": "blocked_before_confirmation",
+  "observation_id": "OBS-M9A-PREP-01",
+  "baseline": {
+    "git_head": "fe32cc4b8f7906933f72c85f95287cbd465d5f34",
+    "code_commit": "9d423791cfd14a3611ecdb9047e8d840f667fbc7",
+    "branch": "FridaV1-Document-Workshop-M9-A",
+    "clean": true,
+    "containers": 33
+  },
+  "authorization": {
+    "user_authorized_synthetic_canary": true,
+    "user_authorized_agent_to_choose_test_folder": true,
+    "browser": "Safari",
+    "delegated_card_clicks_scoped_to_test_objects": true,
+    "confirmation_clicks_executed": 0
+  },
+  "attributed_prior_proofs": {
+    "codex_application_cases": 28,
+    "codex_runtime_rich_jobs": 2,
+    "replayed_in_this_canary": false,
+    "runtime_counteraudit": "favorable 2026-10-11"
+  },
+  "browser": {
+    "authenticated": true,
+    "credentials_entered_by_agent": false,
+    "new_folder": true,
+    "new_conversation": true,
+    "initial_notes_guard": "refused before preparation; draft preserved; Notes then explicitly disabled",
+    "documentary_submissions": 1,
+    "final_ui": "preparation failed; no document written",
+    "confirmation_card_shown": false,
+    "subsequent_scenarios_reached": []
+  },
+  "server": {
+    "captured_at": "2026-10-11T09:59:45.240297+00:00",
+    "folders": [
+      {
+        "id": "fb9b4690-eacf-4ef8-b974-f2c6b0ae0792",
+        "display_name": "Canari M9-A 2026-10-11",
+        "created_at": "2026-10-11T09:55:59.033668+00:00"
+      }
+    ],
+    "conversations": [
+      {
+        "id": "db03bc08-faa1-44ae-8eea-90e526528fe4",
+        "created_at": "2026-10-11T09:56:11+00:00",
+        "message_count": 2,
+        "turn_generation": 1
+      }
+    ],
+    "actions": [
+      {
+        "id": "3ac28772-b3de-4ed4-a9be-8c23520fea80",
+        "context_id": "c6e42ade-a9ac-44c7-a464-03254f4a169f",
+        "conversation_id": "db03bc08-faa1-44ae-8eea-90e526528fe4",
+        "state": "failed",
+        "phase": "failed",
+        "reason_code": "document_provider_incomplete",
+        "received_content_codepoints": 1624,
+        "operation": null,
+        "format": null,
+        "relative_path": null,
+        "revision_id": null,
+        "artifact_id": null,
+        "confirmation_turn_id": null,
+        "confirmed_at": null,
+        "workspace_file_id": null,
+        "target_etag": null,
+        "created_at": "2026-10-11T09:57:06.667668+00:00",
+        "updated_at": "2026-10-11T09:57:43.560175+00:00"
+      }
+    ],
+    "receipts": [],
+    "journal": [],
+    "snapshots": [],
+    "files": [],
+    "claims": [
+      {
+        "turn_id": "3ac28772-b3de-4ed4-a9be-8c23520fea80",
+        "conversation_id": "db03bc08-faa1-44ae-8eea-90e526528fe4",
+        "kind": "preparation",
+        "state": "failed",
+        "outcome": "interrupted",
+        "reason_code": null,
+        "lease_until": "2026-10-11T09:59:06.709137+00:00",
+        "created_at": "2026-10-11T09:57:06.62521+00:00",
+        "finished_at": "2026-10-11T09:57:43.561451+00:00"
+      }
+    ]
+  },
+  "observability": {
+    "turn_id": "turn-53f5dfa2-d246-452d-8185-fe3cefe58052",
+    "turn_duration_ms": 37058,
+    "upstream_event_error_code": "upstream_error",
+    "finish_reason_recorded": false,
+    "provider_terminal_frames_retained": false,
+    "main_model_prompt_prepared": true,
+    "received_content_codepoints": 1624
+  },
+  "checks": {
+    "no_revision": true,
+    "no_confirmation": true,
+    "no_execution_journal": true,
+    "no_renderer_snapshot": true,
+    "no_receipt": true,
+    "no_workspace_file": true,
+    "nextcloud_documents_entries": 0,
+    "nextcloud_read": "production read client, real PROPFIND Depth:1, SQL default read-only",
+    "renderer_workspace_empty": true,
+    "renderer_worker_absent": true,
+    "durable_containers_unchanged": 33,
+    "branch_refs_unchanged_before_docs": true
+  },
+  "limits": [
+    "No creation/copy/update/conflict/download/reload/receipt-continuity success.",
+    "Failure reason alone does not identify the failing provider-reader branch or prove a provider outage.",
+    "No raw provider stream retained, no provider replay or injected instrumentation.",
+    "No Writer job or document mutation reached; folder creation itself is an authorized live mutation.",
+    "No product/platform patch or deployment; M9-A remains open, M9-B/M10 not started."
+  ],
+  "auxiliary_incidents": [
+    "Read-only preflight first used nonexistent lease_expires_at; schema confirms lease_until; corrected count query passed before first UI mutation.",
+    "Final read-only probe initially treated list_collection return as a list; actual (resource, tuple(children)) contract then used and empty Documents verified.",
+    "All-ref comparison observed rotation of two refs/codex/turn-diffs/checkpoints to the same object; heads/remotes and checkout unchanged.",
+    "Native agent corrected approximate timestamps; database timestamps are authoritative."
+  ],
+  "retained_objects": {
+    "folder_id": "fb9b4690-eacf-4ef8-b974-f2c6b0ae0792",
+    "conversation_id": "db03bc08-faa1-44ae-8eea-90e526528fe4",
+    "documents": 0
+  },
+  "local_evidence_directory": "/Users/tof/codex-fridadev/audits/2026-10-11-m9a-canari-safari"
+}

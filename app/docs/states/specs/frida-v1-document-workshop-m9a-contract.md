@@ -3,8 +3,26 @@
 11 octobre 2026. Branche `FridaV1-Document-Workshop-M9-A`, issue du commit
 documentaire M8-A poussé `1b14e7dcdf68030c2d1df139eb9ee4c5f825143d`.
 Mandat : [roadmap M9-A](../../todo-todo/product/frida-v1-document-workshop-todo.md#m9-a--docx-frida-createcopyupdate-et-pagination-writer).
-**Code et preuves isolées pour livraison Git ; contre-audit, livraison runtime
-et canari autorisé restent ouverts. Aucune clôture globale M9-A.**
+**Code et livraison runtime contre-audités favorablement par Codex le 11 octobre.
+Canari Safari autorisé mais arrêté avant confirmation : OBS-M9A-PREP-01 ouvert.
+Aucune clôture globale M9-A.**
+
+Le runtime exécute `9d423791…`, image applicative `0e196a0dd199…`, renderer
+`7a61bd805ca0…` et pins `a788e48f649a…`. Les 28 cas isolés et les deux jobs
+riches du contre-audit runtime restent attribués à Codex, sans rejeu ici. Les
+mentions de candidate non déployée et de remise Sauron ci-dessous décrivent
+les étapes antérieures.
+
+Le canari Safari natif du 11 octobre a créé un répertoire/conversation de test.
+La garde initiale a refusé les modes incompatibles ; Notes désactivé, une unique
+préparation a été soumise. Action `3ac28772-b3de-4ed4-a9be-8c23520fea80` :
+1 624 caractères reçus puis `document_provider_incomplete`, sans carte,
+confirmation, révision, rendu, journal d'exécution, reçu ou fichier. Lecture
+Nextcloud réelle : Documents vide ; 33 conteneurs inchangés. La cause exacte
+ne se déduit pas de ce reason_code partagé et les trames terminales manquent.
+Aucun retry ni patch ; copie/update/conflit/continuité restent non éprouvés
+live. [Preuves du canari](../baselines/document-workshop/frida-v1-document-workshop-m9a-canari-20261011.json).
+Le prochain diagnostic reste un lot distinct ; M9-B/M10 non commencés.
 
 ## Raccord retenu
 
