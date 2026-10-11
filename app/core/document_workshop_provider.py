@@ -15,7 +15,7 @@ from .document_canonical import ValidatedCanonical, strict_json_loads
 from .document_workshop_admission import PreparedDocumentCall, prepare_document_call
 from .document_workshop_contract import (
     DOCUMENT_CONTEXT_TOKENS, DOCUMENT_OUTPUT_TOKENS,
-    DocumentWorkshopError,
+    DocumentWorkshopError, DocumentSSERejection,
 )
 from .document_workshop_progress import DocumentPreparation
 from .document_workshop_envelope import (
@@ -219,35 +219,57 @@ async def _read_exchange(prepared: PreparedDocumentCall, transport: DocumentTran
         return _validated_result(content, evidence, progress)
     fragments: list[str] = []
     content_bytes = 0
-    async for data in _sse_events(transport, progress):
-        if data == "[DONE]":
-            return _validated_result("".join(fragments), evidence, progress)
-        try:
-            payload = strict_json_loads(data)
-        except DocumentWorkshopError:
-            raise DocumentWorkshopError("document_provider_protocol_invalid") from None
-        if type(payload) is not dict:
-            raise DocumentWorkshopError("document_provider_protocol_invalid")
-        payload = llm_client.strip_provider_reasoning_fields(payload)
-        _error(payload)
-        _merge_metadata(payload, evidence)
-        choice = _choice(payload)
-        if choice is None:
-            continue
-        delta = choice.get("delta")
-        if type(delta) is not dict:
-            raise DocumentWorkshopError("document_provider_protocol_invalid")
-        content = _content(delta)
-        if content:
-            if evidence.finish_reason is not None:
-                raise DocumentWorkshopError("document_provider_incomplete")
-            content_bytes += len(content.encode("utf-8"))
-            if content_bytes > MAX_DOCUMENT_ENVELOPE_BYTES:
-                raise DocumentWorkshopError("document_json_envelope_limit")
-            fragments.append(content)
-            progress._receive_provider_content(content)
-        _finish(choice.get("finish_reason"), evidence)
-    raise DocumentWorkshopError("document_provider_incomplete")
+    stop_observed = done_observed = False
+    try:
+        async for data in _sse_events(transport, progress):
+            if data == "[DONE]":
+                done_observed = True
+                site = "done_without_stop"
+                return _validated_result("".join(fragments), evidence, progress)
+            try:
+                payload = strict_json_loads(data)
+            except DocumentWorkshopError:
+                raise DocumentWorkshopError("document_provider_protocol_invalid") from None
+            if type(payload) is not dict:
+                raise DocumentWorkshopError("document_provider_protocol_invalid")
+            payload = llm_client.strip_provider_reasoning_fields(payload)
+            _error(payload)
+            _merge_metadata(payload, evidence)
+            choice = _choice(payload)
+            if choice is None:
+                continue
+            delta = choice.get("delta")
+            if type(delta) is not dict:
+                raise DocumentWorkshopError("document_provider_protocol_invalid")
+            reason = choice.get("finish_reason")
+            if reason == "stop":
+                stop_observed = True
+            site = "tool_call"
+            content = _content(delta)
+            if content:
+                if evidence.finish_reason is not None:
+                    site = "content_after_stop"
+                    raise DocumentWorkshopError("document_provider_incomplete")
+                content_bytes += len(content.encode("utf-8"))
+                if content_bytes > MAX_DOCUMENT_ENVELOPE_BYTES:
+                    raise DocumentWorkshopError("document_json_envelope_limit")
+                fragments.append(content)
+                progress._receive_provider_content(content)
+            site = "duplicate_stop" if reason == "stop" else "unrecognized_terminal_reason"
+            _finish(reason, evidence)
+        site = "sse_without_done"
+        raise DocumentWorkshopError("document_provider_incomplete")
+    except DocumentWorkshopError as error:
+        if error.reason_code == "document_provider_incomplete":
+            try:
+                http_end = getattr(transport, "http_end", "not_observed")
+                if http_end not in ("chunked_terminated", "content_length_consumed", "body_eof"):
+                    http_end = "not_observed"
+                error.sse_rejection = DocumentSSERejection(site, stop_observed, done_observed, http_end)
+            except Exception:
+                # Diagnostic failure must preserve the original business error.
+                pass
+        raise
 
 
 def _consume_task(task: asyncio.Task) -> None:

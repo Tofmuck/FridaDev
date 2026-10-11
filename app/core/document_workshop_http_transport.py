@@ -45,6 +45,8 @@ class DocumentHTTPTransport:
         self._remaining: int | None = None
         self._chunked = False
         self._response_bytes = 0
+        # Consumed framing only; close()/wait_closed() never change this witness.
+        self.http_end = 'not_observed'
 
     def _check(self) -> None:
         if self._closed:
@@ -263,6 +265,7 @@ class DocumentHTTPTransport:
                             if trailer_bytes > MAX_HEADER_BYTES:
                                 raise DocumentWorkshopError("document_provider_network_limit")
                             if trailer == b"\r\n":
+                                self.http_end = 'chunked_terminated'
                                 return
                             name, _ = self._header(trailer)
                             if name in {b"content-length", b"transfer-encoding", b"content-encoding", b"content-type"}:
@@ -279,6 +282,7 @@ class DocumentHTTPTransport:
                         _invalid()
                 else:
                     if self._remaining == 0:
+                        self.http_end = 'content_length_consumed'
                         return
                     allowance = MAX_RESPONSE_BYTES - self._response_bytes + 1
                     size = min(_READ_BYTES, allowance)
@@ -288,12 +292,15 @@ class DocumentHTTPTransport:
                     if not data:
                         if self._remaining is not None:
                             _invalid()
+                        self.http_end = 'body_eof'
                         return
                     received += len(data)
                     if received > MAX_RESPONSE_BYTES:
                         raise DocumentWorkshopError("document_provider_network_limit")
                     if self._remaining is not None:
                         self._remaining -= len(data)
+                        if self._remaining == 0:
+                            self.http_end = 'content_length_consumed'
                     yield data
         except asyncio.CancelledError:
             self.close()

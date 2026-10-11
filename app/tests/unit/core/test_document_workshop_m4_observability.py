@@ -4,6 +4,19 @@ from core.document_workshop_progress import DocumentPreparation
 from core.document_workshop_contract import DocumentWorkshopError
 
 class M4ProgressAndObservabilityTests(unittest.TestCase):
+    def test_sse_diagnostic_guard_rejects_free_values_and_extra_content(self):
+        diagnostic = dict(site='unrecognized_terminal_reason', stop_observed=False,
+                          done_observed=False, http_end='not_observed')
+        self.assertTrue(guard_payload(dict(sse_rejection=diagnostic), stage='document_preparation').accepted)
+        for change in (dict(site='PRIVATE_SENTINEL'), dict(http_end='PRIVATE_SENTINEL'),
+                       dict(stop_observed=1), dict(done_observed='true'), dict(content='PRIVATE_SENTINEL'),
+                       dict(frame={}), dict(exception='PRIVATE_SENTINEL')):
+            with self.subTest(change=change):
+                decision = guard_payload(dict(sse_rejection=diagnostic | change), stage='document_preparation')
+                self.assertFalse(decision.accepted)
+                self.assertNotIn('PRIVATE_SENTINEL', str(decision.payload))
+        self.assertFalse(guard_payload(dict(sse_rejection=diagnostic), stage='other').accepted)
+
     def test_closed_documentary_event_schema_accepts_only_technical_values(self):
         payload = dict(action_id='11111111-1111-4111-8111-111111111111',context_id='22222222-2222-4222-8222-222222222222',
             state='preparing',phase='provider_content',received_content_codepoints=123)

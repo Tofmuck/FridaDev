@@ -11,6 +11,7 @@ import psycopg
 from core import document_workshop_turn as turn
 from core.document_workshop_http_transport import DocumentHTTPTransport
 from core.document_workshop_progress import DocumentPreparation
+from observability import chat_turn_logger, log_store
 from tests.integration.document_workshop import test_preparation_postgresql as base
 
 @unittest.skipUnless(os.environ.get('M4_PROOF_PG_SOCKET'),'isolated PostgreSQL proof required')
@@ -20,7 +21,7 @@ class HTTPPreparationPostgresqlTests(unittest.TestCase):
         self.env.setUp();self.addCleanup(self.env.doCleanups)
 
     @contextmanager
-    def upstream(self, *, blocked=False, keepalive=False, transport_type=DocumentHTTPTransport):
+    def upstream(self, *, blocked=False, keepalive=False, transport_type=DocumentHTTPTransport, wire=None):
         arrived, closed=threading.Event(),threading.Event()
         received, admitted=[],[]
         value=base.envelope()
@@ -28,7 +29,8 @@ class HTTPPreparationPostgresqlTests(unittest.TestCase):
         for choices in ([dict(index=0,delta=dict(content=json.dumps(value,ensure_ascii=False)),finish_reason=None)],
                         [dict(index=0,delta={},finish_reason='stop')]):
             frames.append('data: '+json.dumps(dict(model='openai/gpt-5.1',choices=choices),ensure_ascii=False)+'\n\n')
-        wire=(''.join(frames)+'data: [DONE]\n\n').encode()
+        if wire is None:
+            wire=(''.join(frames)+'data: [DONE]\n\n').encode()
         class Handler(BaseHTTPRequestHandler):
             protocol_version='HTTP/1.1'
             def log_message(self,*_):pass
@@ -70,6 +72,68 @@ class HTTPPreparationPostgresqlTests(unittest.TestCase):
         self.assertEqual(payload['max_tokens'],24000)
         self.assertIn('Synthetic request',str(payload['messages']))
         self.assertEqual(self.env.public_action()['state'],'pending')
+
+    def test_sse_rejection_reaches_existing_durable_channel_with_turn_and_action(self):
+        log_store.init_log_storage(conn_factory=self.env.conn)
+        insert = log_store.insert_chat_log_event
+        start_traces = []
+        def persist(event):
+            if event['stage'] == 'turn_start':
+                start_traces.append(chat_turn_logger.current_turn_id())
+            return insert(event, conn_factory=self.env.conn)
+        wire = b'data: {"choices":[{"index":0,"delta":{"content":"PRIVATE_SENTINEL"},"finish_reason":"PRIVATE_SENTINEL"}]}\n\n'
+        with self.upstream(wire=wire) as (arrived,closed,received,admitted,(normal,_)), \
+             patch.object(log_store, 'insert_chat_log_event', persist):
+            response = self.env.document()
+            self.assertTrue(arrived.wait(2)); self.assertTrue(closed.wait(2))
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json['reason_code'], 'document_provider_incomplete')
+        self.assertEqual(len(received), 1); self.assertEqual(received, admitted); self.assertEqual(normal, [])
+        self.assertEqual(self.env.public_action()['state'], 'failed')
+        self.assertEqual(len(start_traces), 1)
+        with self.env.conn() as conn:
+            rows = conn.execute("SELECT conversation_id,turn_id,payload_json FROM observability.chat_log_events "
+                                "WHERE turn_id=%s AND payload_json ? 'sse_rejection'", (start_traces[0],)).fetchall()
+            self.assertEqual(len(rows), 1)
+            conversation, trace, payload = rows[0]
+            self.assertEqual(conversation, base.C)
+            self.assertEqual(start_traces, [trace])
+            self.assertTrue(trace.startswith('turn-'))
+            self.assertEqual(payload['action_id'], base.T)
+            self.assertEqual(payload['context_id'], self.env.context['id'])
+            self.assertEqual(payload['reason_code'], 'document_provider_incomplete')
+            self.assertEqual(payload['state'], 'failed')
+            self.assertEqual(payload['received_content_codepoints'], 16)
+            self.assertEqual(payload['sse_rejection'], dict(site='unrecognized_terminal_reason',
+                stop_observed=False, done_observed=False, http_end='content_length_consumed'))
+            self.assertEqual(set(payload['sse_rejection']), {'site','stop_observed','done_observed','http_end'})
+            self.assertNotIn('PRIVATE_SENTINEL', json.dumps(payload))
+            all_payloads = conn.execute('SELECT payload_json FROM observability.chat_log_events WHERE turn_id=%s',
+                                        (trace,)).fetchall()
+            self.assertNotIn('PRIVATE_SENTINEL', json.dumps(all_payloads))
+            self.assertEqual(conn.execute('SELECT count(*) FROM document_revisions').fetchone()[0], 0)
+            self.assertEqual(conn.execute('SELECT count(*) FROM workspace_files').fetchone()[0], 0)
+
+    def test_diagnostic_emission_failure_keeps_public_error_failed_action_and_close(self):
+        event = turn._event
+        attempted = []
+        def broken_diagnostic(*args, **kwargs):
+            if kwargs.get('sse_rejection') is not None:
+                attempted.append(1)
+                raise RuntimeError('PRIVATE_SENTINEL')
+            return event(*args, **kwargs)
+        with self.upstream(wire=b'data: [DONE]\n\n') as (arrived,closed,received,admitted,(normal,_)), \
+             patch.object(turn, '_event', broken_diagnostic):
+            response = self.env.document()
+            self.assertTrue(arrived.wait(2)); self.assertTrue(closed.wait(2))
+        self.assertEqual(attempted, [1])
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json['reason_code'], 'document_provider_incomplete')
+        self.assertNotIn('PRIVATE_SENTINEL', response.get_data(as_text=True))
+        self.assertEqual(self.env.public_action()['state'], 'failed')
+        self.assertEqual(len(received), 1); self.assertEqual(received, admitted); self.assertEqual(normal, [])
+        with self.env.conn() as conn:
+            self.assertEqual(conn.execute('SELECT count(*) FROM document_revisions').fetchone()[0], 0)
 
     @contextmanager
     def held_supervisor_authority(self, provider_arrived):

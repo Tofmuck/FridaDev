@@ -1,6 +1,9 @@
 """Inactive workshop M0 bounds. No renderer, transaction or product wiring."""
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Literal
+
 DOCUMENT_MODEL = "openai/gpt-5.1"
 DOCUMENT_OUTPUT_TOKENS = 24_000
 DOCUMENT_CONTEXT_TOKENS = 400_000
@@ -16,12 +19,24 @@ DOCUMENT_EXTENSIONS = {"markdown": ".md", "docx": ".docx", "pdf": ".pdf"}
 MAX_CANONICAL_JSON_BYTES = 1_048_576
 
 
+@dataclass(frozen=True)
+class DocumentSSERejection:
+    """Only reader-observed, content-free evidence for an incomplete SSE."""
+
+    site: Literal['tool_call', 'content_after_stop', 'unrecognized_terminal_reason',
+                  'duplicate_stop', 'done_without_stop', 'sse_without_done']
+    stop_observed: bool
+    done_observed: bool
+    http_end: Literal['not_observed', 'chunked_terminated', 'content_length_consumed', 'body_eof']
+
+
 class DocumentWorkshopError(ValueError):
     """Content-free internal failure; never accepts an upstream exception/text."""
 
     def __init__(self, reason_code: str):
         super().__init__(reason_code)
         self.reason_code = reason_code
+        self.sse_rejection: DocumentSSERejection | None = None
 
 
 def validate_writer_page_count(page_count: object) -> int:

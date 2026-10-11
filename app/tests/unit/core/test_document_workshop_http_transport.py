@@ -278,6 +278,143 @@ class DocumentHTTPTransportTests(unittest.IsolatedAsyncioTestCase):
             await asyncio.wait_for(peer.peer_closed.wait(), 2)
             self.assertEqual(len(peer.requests), 1)
 
+    async def test_sse_incomplete_preserves_closed_site_and_observed_terminals(self):
+        def frame(delta=None, reason=None):
+            return 'data: ' + json.dumps(dict(choices=[dict(index=0, delta=delta or {}, finish_reason=reason)])) + '\n\n'
+        stop = frame(reason='stop')
+        cases = (
+            (frame(dict(tool_calls=[dict(name='PRIVATE_SENTINEL')])), 'tool_call', False, False),
+            (frame(dict(function_call=dict(name='PRIVATE_SENTINEL')), 'stop'), 'tool_call', True, False),
+            (stop + frame(dict(content='PRIVATE_SENTINEL')), 'content_after_stop', True, False),
+            (frame(reason='PRIVATE_SENTINEL'), 'unrecognized_terminal_reason', False, False),
+            (stop + stop, 'duplicate_stop', True, False),
+            ('data: [DONE]\n\n', 'done_without_stop', False, True),
+            (stop, 'sse_without_done', True, False),
+            (': comment\n\n', 'sse_without_done', False, False),
+        )
+        for wire, site, stop_seen, done_seen in cases:
+            with self.subTest(site=site, stop=stop_seen):
+                self.transport = self.module.DocumentHTTPTransport()
+                body = wire.encode()
+                response = [b'HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: '
+                            + str(len(body)).encode() + b'\r\n\r\n', body]
+                async with LoopbackProvider(response).running() as peer:
+                    with patch.object(llm_client, 'or_chat_completions_url', return_value=peer.url):
+                        with self.assertRaises(DocumentWorkshopError) as raised:
+                            await prepare_and_read_document([dict(role='user', content='Synthetic')],
+                                transport=self.transport, count_tokens_func=token_utils.estimate_tokens, stream=True)
+                    self.assertEqual(raised.exception.reason_code, 'document_provider_incomplete')
+                    self.assertEqual(str(raised.exception), 'document_provider_incomplete')
+                    diagnostic = getattr(raised.exception, 'sse_rejection', None)
+                    self.assertIsNotNone(diagnostic, 'SSE rejection evidence lost')
+                    self.assertEqual(diagnostic.site, site)
+                    self.assertIs(diagnostic.stop_observed, stop_seen)
+                    self.assertIs(diagnostic.done_observed, done_seen)
+                    self.assertEqual(diagnostic.http_end, 'content_length_consumed')
+                    self.assertNotIn('PRIVATE_SENTINEL', repr(diagnostic))
+                    await asyncio.wait_for(peer.peer_closed.wait(), 2)
+                    self.assertEqual(len(peer.requests), 1)
+
+    async def test_sse_eof_classifies_only_http_ends_consumed_by_real_transport(self):
+        body = b'data: {"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\n'
+        head = b'HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\n'
+        cases = (
+            ([head + b'Transfer-Encoding: chunked\r\n\r\n',
+              hex(len(body))[2:].encode() + b'\r\n' + body + b'\r\n0\r\nX-Synthetic: yes\r\n\r\n'], False, 'chunked_terminated'),
+            ([head + b'Content-Length: ' + str(len(body)).encode() + b'\r\n\r\n', body], False, 'content_length_consumed'),
+            ([head + b'\r\n', body], True, 'body_eof'),
+        )
+        for response, eof, expected in cases:
+            with self.subTest(http_end=expected):
+                self.transport = self.module.DocumentHTTPTransport()
+                async with LoopbackProvider(response, eof=eof).running() as peer:
+                    with patch.object(llm_client, 'or_chat_completions_url', return_value=peer.url):
+                        with self.assertRaises(DocumentWorkshopError) as raised:
+                            await asyncio.wait_for(prepare_and_read_document([dict(role='user', content='Synthetic')],
+                                transport=self.transport, count_tokens_func=token_utils.estimate_tokens, stream=True), 2)
+                    diagnostic = raised.exception.sse_rejection
+                    self.assertEqual(raised.exception.reason_code, 'document_provider_incomplete')
+                    self.assertEqual(diagnostic.site, 'sse_without_done')
+                    self.assertTrue(diagnostic.stop_observed)
+                    self.assertFalse(diagnostic.done_observed)
+                    self.assertEqual(diagnostic.http_end, expected)
+                    await self.release(peer)
+                    self.assertEqual(self.transport.http_end, expected)
+
+    async def test_early_sse_rejection_does_not_drain_or_count_cleanup_as_http_end(self):
+        body = b'data: [DONE]\n\n'
+        head = b'HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\n'
+        chunk_size = hex(len(body))[2:].encode() + b'\r\n'
+        cases = (
+            # Terminal bytes are already supplied, but not consumed by _body.
+            ([head + b'Transfer-Encoding: chunked\r\n\r\n', chunk_size + body + b'\r\n0\r\n\r\n'], False, len(chunk_size)),
+            ([head + b'\r\n', body], True, 0),
+            # A read to seek completion would block; the peer keeps the socket open.
+            ([head + b'Content-Length: 1000\r\n\r\n', body], False, 0),
+        )
+        for response, eof, framing_read in cases:
+            with self.subTest(framing=response[0]):
+                self.transport = self.module.DocumentHTTPTransport()
+                async with LoopbackProvider(response, eof=eof).running() as peer:
+                    before = asyncio.all_tasks()
+                    with patch.object(llm_client, 'or_chat_completions_url', return_value=peer.url):
+                        with self.assertRaises(DocumentWorkshopError) as raised:
+                            await asyncio.wait_for(prepare_and_read_document([dict(role='user', content='Synthetic')],
+                                transport=self.transport, count_tokens_func=token_utils.estimate_tokens, stream=True), 2)
+                    diagnostic = raised.exception.sse_rejection
+                    self.assertEqual(raised.exception.reason_code, 'document_provider_incomplete')
+                    self.assertEqual(diagnostic.site, 'done_without_stop')
+                    self.assertFalse(diagnostic.stop_observed)
+                    self.assertTrue(diagnostic.done_observed)
+                    self.assertEqual(diagnostic.http_end, 'not_observed')
+                    self.assertEqual(self.transport._response_bytes, len(response[0]) + framing_read + len(body))
+                    await self.release(peer)
+                    self.assertEqual(self.transport.http_end, 'not_observed')
+                    self.assertEqual(len(peer.requests), 1)
+                await asyncio.sleep(0)
+                self.assertEqual({t for t in asyncio.all_tasks() - before if not t.done()}, set())
+
+    async def test_json_incomplete_and_other_sse_errors_do_not_gain_rejection_diagnostic(self):
+        cases = (
+            (False, dict(choices=[]), 'document_provider_incomplete'),
+            (False, dict(choices=[dict(index=0, finish_reason=None, message={})]), 'document_provider_incomplete'),
+            (False, dict(choices=[dict(index=0, finish_reason='stop', message=dict(tool_calls=['PRIVATE_SENTINEL']))]), 'document_provider_incomplete'),
+            (True, dict(choices=[dict(index=0, delta={}, finish_reason='length')]), 'document_provider_length'),
+            (True, dict(choices=[dict(index=0, delta={}, finish_reason='content_filter')]), 'document_provider_refused'),
+            (True, dict(choices=[dict(index=0, delta={}, finish_reason='error')]), 'document_provider_error'),
+            (True, dict(choices=[dict(index=0, delta=dict(refusal='PRIVATE_SENTINEL'), finish_reason='stop')]), 'document_provider_refused'),
+            (True, dict(choices=[dict(index=0, delta=dict(content=42))]), 'document_provider_protocol_invalid'),
+        )
+        for stream, payload, reason in cases:
+            with self.subTest(stream=stream, reason=reason):
+                self.transport = self.module.DocumentHTTPTransport()
+                body = json.dumps(payload).encode()
+                response = json_response(body) if not stream else [
+                    b'HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: '
+                    + str(len(body) + 8).encode() + b'\r\n\r\n', b'data: ' + body + b'\n\n']
+                async with LoopbackProvider(response).running() as peer:
+                    with patch.object(llm_client, 'or_chat_completions_url', return_value=peer.url):
+                        with self.assertRaises(DocumentWorkshopError) as raised:
+                            await prepare_and_read_document([dict(role='user', content='Synthetic')],
+                                transport=self.transport, count_tokens_func=token_utils.estimate_tokens, stream=stream)
+                    self.assertEqual(raised.exception.reason_code, reason)
+                    self.assertEqual(str(raised.exception), reason)
+                    self.assertIsNone(raised.exception.sse_rejection)
+                    await self.release(peer)
+
+    async def test_diagnostic_construction_failure_preserves_rejection_and_physical_close(self):
+        from core import document_workshop_provider as provider
+        response = [b'HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\n\r\ndata: [DONE]\n\n']
+        async with LoopbackProvider(response).running() as peer:
+            with patch.object(llm_client, 'or_chat_completions_url', return_value=peer.url), \
+                 patch.object(provider, 'DocumentSSERejection', side_effect=RuntimeError('PRIVATE_SENTINEL')):
+                with self.assertRaises(DocumentWorkshopError) as raised:
+                    await prepare_and_read_document([dict(role='user', content='Synthetic')],
+                        transport=self.transport, count_tokens_func=token_utils.estimate_tokens, stream=True)
+            self.assertEqual(str(raised.exception), 'document_provider_incomplete')
+            self.assertIsNone(raised.exception.sse_rejection)
+            await self.release(peer)
+
     async def test_m0_inactivity_aborts_initial_headers_socket_without_provider_event(self):
         clock = VirtualClock()
         progress = DocumentPreparation(monotonic=clock, wait_until=clock.wait_until)

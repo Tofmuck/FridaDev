@@ -87,7 +87,12 @@ def context_rule(stage: str, path: tuple[str, ...]) -> Any:
                           'payload_prepared', 'admitted', 'provider_content', 'provider_finished',
                           'canonical_validated', 'complete', 'failed'),
                 'state': ('enum', 'preparing', 'succeeded', 'failed', 'cancelled'),
-                'received_content_codepoints': 'int'}
+                'received_content_codepoints': 'int',
+                'sse_rejection': {
+                    'site': ('enum', 'tool_call', 'content_after_stop', 'unrecognized_terminal_reason',
+                             'duplicate_stop', 'done_without_stop', 'sse_without_done'),
+                    'stop_observed': 'bool', 'done_observed': 'bool',
+                    'http_end': ('enum', 'not_observed', 'chunked_terminated', 'content_length_consumed', 'body_eof')}}
     if stage == 'memory_chain_snapshot' and not path:
         return MEMORY_SNAPSHOT
     if stage == 'biblio':

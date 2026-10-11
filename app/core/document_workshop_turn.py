@@ -1,5 +1,6 @@
 """One canonical documentary turn: shared dialogue inputs, isolated document data."""
 import asyncio
+from dataclasses import asdict
 import json
 import threading
 from types import SimpleNamespace
@@ -63,10 +64,14 @@ def error_result(reason, status=409):
     return dict(kind='json', payload=dict(ok=False,reason_code=reason,error='Préparation documentaire non confirmée.'), status=status, headers={})
 
 
-def _event(token, snapshot):
+def _event(token, snapshot, *, sse_rejection=None):
+    payload = dict(action_id=token.turn_id,context_id=token.context_id,
+        phase=snapshot.phase,state=snapshot.state,received_content_codepoints=snapshot.received_content_codepoints)
+    if sse_rejection is not None:
+        payload['sse_rejection'] = asdict(sse_rejection)
+        payload['reason_code'] = 'document_provider_incomplete'
     chat_turn_logger.emit('document_preparation', status='ok' if snapshot.state in ('preparing','succeeded') else 'error',
-        reason_code=snapshot.reason_code, payload=dict(action_id=token.turn_id,context_id=token.context_id,
-            phase=snapshot.phase,state=snapshot.state,received_content_codepoints=snapshot.received_content_codepoints))
+        reason_code=snapshot.reason_code, payload=payload)
 
 
 class DocumentTurn:
@@ -135,6 +140,14 @@ class DocumentTurn:
             done, _ = await asyncio.wait((task,guard),return_when=asyncio.FIRST_COMPLETED)
             if guard in done: guard.result()
             return task.result()
+        except DocumentWorkshopError as error:
+            if error.reason_code == 'document_provider_incomplete' and error.sse_rejection is not None:
+                try:
+                    _event(self.token, self.progress.snapshot(), sse_rejection=error.sse_rejection)
+                except Exception:
+                    # This optional proof cannot change the rejected turn.
+                    pass
+            raise
         finally:
             guard.cancel(); task.cancel()
             await asyncio.gather(task,guard,return_exceptions=True)

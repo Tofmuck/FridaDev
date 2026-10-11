@@ -1,0 +1,223 @@
+{
+  "schema_version": 1,
+  "observation": "OBS-M9A-PREP-01 — observabilité minimale du rejet SSE",
+  "date_utc": "2026-10-11",
+  "author": "Celebrimbor (agent applicatif Codex sur OVH)",
+  "status": "Code soumis au contre-audit ; OBS-M9A-PREP-01 et M9-A ouverts",
+  "base": {
+    "checkout": "/opt/platform/fridadev",
+    "branch": "FridaV1-Document-Workshop-M9-A",
+    "head_upstream_remote": "70df0d6d59b2dd6d0f3098682797e78d619d481b",
+    "worktree": "propre",
+    "divergence": "0/0",
+    "other_refs_checked": 60
+  },
+  "plan_minimal": "Étendre l'événement document_preparation existant avec une preuve fermée portée par l'exception SSE. Relever seulement la lecture actuelle ; aucun drainage, retry, nouveau canal ou correctif fonctionnel.",
+  "attribution": {
+    "prior_live": "Recette Codex du 11 octobre : 1 624 caractères puis échec sans carte ni écriture documentaire ; non rejouée ici.",
+    "prior_diagnosis": "Diagnostic Celebrimbor conservé : 27 événements / 55 lignes, sans terminaison exploitable. Contre-audit Codex favorable transmis par Tof dans le mandat courant ; non exécuté ici.",
+    "current": "Lectures de sources et essais synthétiques hors ligne décrits ci-dessous par Celebrimbor ; aucune cause historique reconstruite."
+  },
+  "runtime": {
+    "code": "9d423791cfd14a3611ecdb9047e8d840f667fbc7",
+    "image": "sha256:0e196a0dd199ae90827ee12ac2b53187ad6cef8c4cdf84b2d01ab80d482f973a",
+    "started_at": "2026-10-11T08:30:30.051014615Z",
+    "health": "healthy",
+    "status": "inchangé, observabilité non déployée",
+    "read_only_command": "docker inspect --format '{{.Name}} {{.Image}} {{.State.StartedAt}} {{.State.Health.Status}}' platform-fridadev",
+    "exit": 0
+  },
+  "delta": {
+    "diagnostic": "sse_rejection, uniquement pour document_provider_incomplete SSE",
+    "sites": [
+      "tool_call",
+      "content_after_stop",
+      "unrecognized_terminal_reason",
+      "duplicate_stop",
+      "done_without_stop",
+      "sse_without_done"
+    ],
+    "witnesses": [
+      "stop_observed (booléen)",
+      "done_observed (booléen)"
+    ],
+    "http_end": [
+      "not_observed",
+      "chunked_terminated",
+      "content_length_consumed",
+      "body_eof"
+    ],
+    "semantics": "Content-Length : dernière consommation ou corps de longueur zéro ; chunked : dernier CRLF des trailers consommé ; EOF : read vide sans longueur. close/wait_closed ne changent jamais ce témoin. Des octets disponibles ou une fermeture distante ne prouvent pas leur consommation.",
+    "propagation": "DocumentWorkshopError.sse_rejection → DocumentTurn._exchange → _event → garde documentaire fermée → chat_turn_logger → log_store.insert_chat_log_event → observability.chat_log_events.",
+    "correlation": "conversation_id et turn_id du contexte logger ; action_id/context_id du token M3. La raison publique est explicitée dans le seul payload diagnostique, le logger ne la recopiant pas pour status=error.",
+    "failure_policy": "Construction et émission diagnostiques best-effort : leurs exceptions ne remplacent pas le refus métier. Pas de fallback ni de nouvelle garantie si le stockage est indisponible."
+  },
+  "sources": [
+    "app/core/document_workshop_contract.py:23",
+    "app/core/document_workshop_provider.py:222",
+    "app/core/document_workshop_http_transport.py:49",
+    "app/core/document_workshop_http_transport.py:268",
+    "app/core/document_workshop_http_transport.py:285",
+    "app/core/document_workshop_http_transport.py:295",
+    "app/core/document_workshop_http_transport.py:303",
+    "app/core/document_workshop_turn.py:67",
+    "app/core/document_workshop_turn.py:143",
+    "app/observability/observability_payload_guard_context_schema.py:82",
+    "app/observability/chat_turn_logger.py:69",
+    "app/observability/log_store.py:240"
+  ],
+  "environment": {
+    "python_image": "fridadev-audit-py:latest",
+    "python_image_id": "sha256:486a8afeb2f62c7906194d3e1fee839387e55753bcad365120d18306502fafdc",
+    "postgres_image": "postgres:16-alpine",
+    "postgres_image_id": "sha256:87e04d274d186c7331d0e13c7c90c8b9f63b0d7ae94476c98a229a94d62c9745",
+    "isolation": "Images déjà installées, --pull=never, --network none, checkout monté ro, runtime env vide puis explicitement synthétique ; HTTP sur loopback, PostgreSQL jetable sur socket Unix exclusivement. Aucune base opérateur.",
+    "setup_commands": [
+      "mkdir -m 700 /tmp/fridadev-obs-sse-20261011-proof && mkdir /tmp/fridadev-obs-sse-20261011-proof/pg-socket && chmod 777 /tmp/fridadev-obs-sse-20261011-proof/pg-socket",
+      "docker run -d --name fridadev-obs-sse-20261011-proof-pg --pull=never --network none --read-only --tmpfs /tmp:rw,nosuid,nodev --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev -v /tmp/fridadev-obs-sse-20261011-proof/pg-socket:/var/run/postgresql -e POSTGRES_USER=m1proof -e POSTGRES_DB=m1proof -e POSTGRES_HOST_AUTH_METHOD=trust postgres:16-alpine -c listen_addresses=",
+      "docker exec fridadev-obs-sse-20261011-proof-pg pg_isready -U m1proof -d m1proof"
+    ],
+    "setup_exits": [
+      0,
+      0,
+      0
+    ]
+  },
+  "proof_commands": {
+    "unit_three_suites": "docker run --rm --pull=never --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -w /workspace/app --entrypoint /usr/bin/env fridadev-audit-py:latest -i PATH=/usr/local/bin:/usr/bin:/bin PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/workspace/app:/workspace EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid SEARXNG_URL=https://search.invalid python -m unittest tests.unit.core.test_document_workshop_provider_progress tests.unit.core.test_document_workshop_http_transport tests.unit.core.test_document_workshop_m4_observability",
+    "red_single": "docker run --rm --pull=never --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -w /workspace/app --entrypoint /usr/bin/env fridadev-audit-py:latest -i PATH=/usr/local/bin:/usr/bin:/bin PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/workspace/app:/workspace EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid SEARXNG_URL=https://search.invalid python -m unittest tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_sse_incomplete_preserves_closed_site_and_observed_terminals",
+    "guard_neighbors": "docker run --rm --pull=never --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -w /workspace/app --entrypoint /usr/bin/env fridadev-audit-py:latest -i PATH=/usr/local/bin:/usr/bin:/bin PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/workspace/app:/workspace EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid SEARXNG_URL=https://search.invalid python -m unittest tests.unit.logs.test_observability_payload_guard tests.unit.logs.test_observability_payload_guard_golden_matrix tests.unit.logs.test_observability_payload_guard_schema_boundaries",
+    "sql_initial_two": "docker run --rm --pull=never --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /tmp/fridadev-obs-sse-20261011-proof/pg-socket:/proof/sock:ro -w /workspace/app --entrypoint /usr/bin/env fridadev-audit-py:latest -i PATH=/usr/local/bin:/usr/bin:/bin PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/workspace/app:/workspace EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid SEARXNG_URL=https://search.invalid M1_PROOF_PG_SOCKET=/proof/sock M2_PROOF_PG_SOCKET=/proof/sock M3_PROOF_PG_SOCKET=/proof/sock M4_PROOF_PG_SOCKET=/proof/sock python -m unittest tests.integration.document_workshop.test_preparation_http_postgresql.HTTPPreparationPostgresqlTests.test_sse_rejection_reaches_existing_durable_channel_with_turn_and_action tests.integration.document_workshop.test_preparation_http_postgresql.HTTPPreparationPostgresqlTests.test_diagnostic_emission_failure_keeps_public_error_failed_action_and_close",
+    "sql_six_final": "docker run --rm --pull=never --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /tmp/fridadev-obs-sse-20261011-proof/pg-socket:/proof/sock:ro -w /workspace/app --entrypoint /usr/bin/env fridadev-audit-py:latest -i PATH=/usr/local/bin:/usr/bin:/bin PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/workspace/app:/workspace EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid SEARXNG_URL=https://search.invalid M1_PROOF_PG_SOCKET=/proof/sock M2_PROOF_PG_SOCKET=/proof/sock M3_PROOF_PG_SOCKET=/proof/sock M4_PROOF_PG_SOCKET=/proof/sock python -m unittest tests.integration.document_workshop.test_preparation_http_postgresql"
+  },
+  "runs": [
+    {
+      "selection": "unit_three_suites",
+      "stage": "baseline avant patch produit",
+      "tests": 65,
+      "exit": 0,
+      "seconds": 2.172
+    },
+    {
+      "selection": "red_single",
+      "stage": "test ajouté avant patch produit",
+      "tests": 1,
+      "subtest_failures": 8,
+      "exit": 1,
+      "result": "Les huit variantes refusent avec le même code mais sse_rejection est absent."
+    },
+    {
+      "selection": "red_single",
+      "stage": "après raccord lecteur/transport",
+      "tests": 1,
+      "exit": 0,
+      "seconds": 0.142
+    },
+    {
+      "selection": "unit_three_suites",
+      "stage": "après nouveaux cas hors ligne",
+      "tests": 71,
+      "exit": 0,
+      "seconds": 2.784
+    },
+    {
+      "selection": "sql_initial_two",
+      "stage": "premier raccord durable",
+      "tests": 2,
+      "errors": 1,
+      "exit": 1,
+      "result": "Diagnostic persisté mais reason_code absent ; champ ajouté au seul payload de rejet SSE."
+    },
+    {
+      "selection": "sql_six_final",
+      "stage": "contrôle des voisins après ce delta",
+      "tests": 6,
+      "failures": 1,
+      "exit": 1,
+      "result": "Deux relevés de tours distincts dans le schéma observability conservé entre runs ; requête du test bornée au tour courant, sans purge ni changement produit."
+    },
+    {
+      "selection": "guard_neighbors",
+      "stage": "final",
+      "tests": 48,
+      "exit": 0,
+      "seconds": 0.026
+    },
+    {
+      "selection": "sql_six_final",
+      "stage": "final après bornage SQL du test",
+      "tests": 6,
+      "exit": 0,
+      "seconds": 6.866
+    },
+    {
+      "selection": "unit_three_suites",
+      "stage": "final mêmes suites après dernier delta produit",
+      "tests": 71,
+      "exit": 0,
+      "seconds": 2.631
+    }
+  ],
+  "targeted_cases": [
+    "test_sse_incomplete_preserves_closed_site_and_observed_terminals : six sites / huit variantes réelles, y compris stop dans la même trame qu'un appel d'outil ; refus public inchangé.",
+    "test_sse_eof_classifies_only_http_ends_consumed_by_real_transport : trois fins HTTP réellement consommées, stop sans DONE.",
+    "test_early_sse_rejection_does_not_drain_or_count_cleanup_as_http_end : chunked terminal fourni mais non lu, EOF distant fourni mais non consommé, Content-Length incomplet gardé ouvert ; not_observed, compteurs exacts, un seul échange, aucune tâche résiduelle.",
+    "test_json_incomplete_and_other_sse_errors_do_not_gain_rejection_diagnostic : trois incomplets JSON, length/filter/error/refusal/protocole SSE inchangés.",
+    "test_diagnostic_construction_failure_preserves_rejection_and_physical_close : refus initial conservé et socket fermée.",
+    "test_sse_diagnostic_guard_rejects_free_values_and_extra_content : enums/booléens exacts, refus de trame/contenu/exception ou valeurs libres.",
+    "test_sse_rejection_reaches_existing_durable_channel_with_turn_and_action : vraie route /api/chat, lecteur/HTTP/claims/SQL réels ; un relevé du tour relu depuis PostgreSQL indépendant, action/contexte exacts, reason_code et HTTP 503 conservés, sentinelle absente de tous ses événements ; zéro révision/fichier.",
+    "test_diagnostic_emission_failure_keeps_public_error_failed_action_and_close : panne diagnostique injectée seulement hors ligne, refus et action failed conservés.",
+    "Voisins conservés : succès SSE/JSON, framing/TLS/budgets/compteurs, annulation, inactivité, fermeture, autorité PostgreSQL et absence de transaction pendant l'attente HTTP."
+  ],
+  "limits": [
+    "Mécanismes synthétiques prouvés, cause historique toujours inconnue : ni panne OpenRouter ni panne Writer établie.",
+    "Aucun appel modèle/OpenRouter, DAV, Writer, canari, confirmation ou mutation opérateur. Aucun déploiement, installation, rebuild, restart, configuration ou migration.",
+    "Pas de campagne générale ; nombres des runs non cumulés. Les 71 + 48 + 6 sélections finales sont distinctes des preuves historiques attribuées.",
+    "Diagnostics du harnais isolé conservés : OSError adminlog sur checkout ro et UndefinedTable conv_active_summary dans la fixture minimale ; pas d'erreur de test dans le run final.",
+    "Édition intermédiaire via python indisponible sur hôte : exit 127, aucun delta produit par cette commande ; édition réalisée avec apply_patch.",
+    "Canari et diagnostic historiques préservés octet pour octet ; observabilité livrée sur code uniquement, remise Sauron et éventuel GO live distincts."
+  ],
+  "historical_sha256": {
+    "frida-v1-document-workshop-obs-m9a-prep-01-20261011.json": "0f99b2349eaae2b3981e4cbab75e5f2659404a1db61e60819edf0c7cd9d6b241",
+    "frida-v1-document-workshop-m9a-canari-20261011.json": "f4a3a79132ef5c74d15398605b4ec8167a46725867ca10daf3e6c815a06e9c4e"
+  },
+  "cleanup": {
+    "commands": [
+      "docker rm -f fridadev-obs-sse-20261011-proof-pg",
+      "rm /tmp/fridadev-obs-sse-20261011-proof/sql-final.log",
+      "rmdir /tmp/fridadev-obs-sse-20261011-proof/pg-socket /tmp/fridadev-obs-sse-20261011-proof",
+      "sudo -n rm -- /tmp/fridadev-obs-sse-20261011-proof/pg-socket/.s.PGSQL.5432 /tmp/fridadev-obs-sse-20261011-proof/pg-socket/.s.PGSQL.5432.lock",
+      "rmdir /tmp/fridadev-obs-sse-20261011-proof/pg-socket /tmp/fridadev-obs-sse-20261011-proof"
+    ],
+    "exits": [
+      0,
+      0,
+      1,
+      0,
+      0
+    ],
+    "result": "Seuls le PostgreSQL jetable et ses temporaires possédés sont supprimés ; sockets/lock laissés par l'arrêt forcé retirés explicitement. Objets du canari intacts."
+  },
+  "delivery": "Commit/push et vérifications finales HEAD/upstream/distant/0-0/worktree/60 autres références rapportés dans le retour de livraison ; aucun raccord runtime.",
+  "validation": {
+    "commands": [
+      "git status --short --branch",
+      "git diff --check",
+      "python3 -m json.tool app/docs/states/baselines/document-workshop/frida-v1-document-workshop-obs-m9a-prep-01-observability-20261011.json > /dev/null",
+      "git rev-parse HEAD '@{upstream}'",
+      "git ls-remote --heads origin FridaV1-Document-Workshop-M9-A",
+      "git rev-list --left-right --count HEAD...'@{upstream}'",
+      "git for-each-ref --format='%(refname) %(objectname)' refs/heads refs/remotes"
+    ],
+    "exits": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "result": "Base toujours alignée avant commit ; diff contrôlé sur les seuls fichiers du lot, liens Markdown ajoutés et références source existants, JSON valide, deux empreintes historiques intactes, 60 autres références identiques au départ, temporaires possédés absents. Relecture du delta sans contenu privé ni secret."
+  }
+}

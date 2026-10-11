@@ -1,6 +1,6 @@
 # Atelier documentaire agentique Frida V1 — spécification validée et roadmap
 
-Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-05 ; M3/M4/M5 : 2026-10-06 ; M6 : 2026-10-07 ; M8-S plateforme/clôture et M8-A applicatif : 2026-10-10 ; reprise M9-A : 2026-10-11.
+Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-05 ; M3/M4/M5 : 2026-10-06 ; M6 : 2026-10-07 ; M8-S plateforme/clôture et M8-A applicatif : 2026-10-10 ; reprise M9-A et observabilité SSE sur code : 2026-10-11.
 
 Statut : **spécification et choix architecturaux validés par Tof ; M0 fermé sur
 composants et preuves internes, contre-audit corrigé sur `FridaV1-Document-Workshop-M0` ;
@@ -18,7 +18,7 @@ M4 livré sur code, P2-M4-01 et P2-M4-02 fermés après contre-audits indépenda
 P3-M4-03 corrigé par erratum documentaire (1 198 déclarés conservés et rectifiés,
 sélection publiée à 1 414, 21 identifiants réutilisables validés) ;
 M4 non intégralement fermé ;
-M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées ; M7 fermé sur code/preuves isolées et contre-audit ; code/migrations M1–M7 livrés via M8-A, recettes DAV/Versions ouvertes ; M8-C fermé après contre-audits indépendants AUD-01/AUD-02 ; M8-S fermé après contre-audit Codex favorable transmis par Tof ; M8-A fermé sur code et raccord runtime après contre-audit Codex favorable du 10 octobre transmis par Tof ; M9-A : code et runtime contre-audités favorablement par Codex le 11 octobre ; candidate renderer qualifiée déployée ; canari Safari arrêté avant confirmation sur `document_provider_incomplete` (OBS-M9A-PREP-01), cause non établie ; M9-A globalement ouvert ; M9-B/M10 et Z non commencés. FridaDev et le renderer sont livrés ; DOCX atelier disponible sous ses prérequis M9-A, PDF public et retravail DOCX externe fermés**.
+M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées ; M7 fermé sur code/preuves isolées et contre-audit ; code/migrations M1–M7 livrés via M8-A, recettes DAV/Versions ouvertes ; M8-C fermé après contre-audits indépendants AUD-01/AUD-02 ; M8-S fermé après contre-audit Codex favorable transmis par Tof ; M8-A fermé sur code et raccord runtime après contre-audit Codex favorable du 10 octobre transmis par Tof ; M9-A : code et runtime contre-audités favorablement par Codex le 11 octobre ; candidate renderer qualifiée déployée ; canari Safari arrêté avant confirmation sur `document_provider_incomplete` (OBS-M9A-PREP-01), cause non établie ; observabilité SSE ajoutée sur code seulement, contre-audit attendu et runtime inchangé ; M9-A globalement ouvert ; M9-B/M10 et Z non commencés. FridaDev et le renderer sont livrés ; DOCX atelier disponible sous ses prérequis M9-A, PDF public et retravail DOCX externe fermés**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
 dialogue avec Tof. Création documentaire committée dans `d6b63fd1`, puis validation
@@ -4293,6 +4293,22 @@ OBS-M9A-PREP-01 reste ouvert et non corrigé. Prochaine étape proposée seuleme
 micro-lot distinct d'observabilité content-free du site de rejet et de la
 terminaison, avant tout nouveau GO de préparation live. Aucun critère de
 canari ni clôture M9-A acquis par ce diagnostic ; M9-B/M10 hors périmètre.
+
+**Mandat distinct suivant — OBS-M9A-PREP-01, observabilité SSE ajoutée sur code,
+contre-audit attendu.** Diagnostic précédent validé par le contre-audit Codex
+du 11 octobre transmis par Tof ; cause historique toujours inconnue. Six sites
+fermés, témoins stop/DONE et fin HTTP réellement consommée (sinon
+`not_observed`) traversent maintenant l'exception jusqu'à l'événement durable
+`document_preparation` existant, avec corrélation tour/action/contexte. Aucune
+lecture supplémentaire ni valeur fournisseur libre ; nettoyage distinct de la
+terminaison observée. Reason_codes, refus, HTTP, JSON non streaming et gardes
+conservés. Preuves hors ligne Celebrimbor : baseline 65/65, rouge préalable
+sur huit variantes, final 71/71 ciblés + 48/48 voisins garde + 6/6 HTTP/SQL
+isolés ; sentinelle absente du stockage, défaillance diagnostique sans changement
+métier. [Relevé compact du micro-lot](../../states/baselines/document-workshop/frida-v1-document-workshop-obs-m9a-prep-01-observability-20261011.json).
+Runtime inchangé, aucun déploiement, appel live ou canari ; aucun correctif
+fonctionnel établi. OBS-M9A-PREP-01 et M9-A restent ouverts. Arrêt pour
+contre-audit, puis remise Sauron éventuelle sous mandat distinct.
 
 - [x] Rouge causal : canonical/source/empreinte non correspondants, 21e page, version
   renderer différente ou ETag changé durant rendu → refus sans écriture.

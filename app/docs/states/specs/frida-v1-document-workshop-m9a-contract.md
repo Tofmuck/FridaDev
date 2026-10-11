@@ -37,6 +37,35 @@ Arrêt sur limite de preuve pour contre-audit, sans sonde ni nouvel essai live.
 OBS-M9A-PREP-01 reste ouvert et non corrigé ; instrumentation éventuelle et
 reprise exigent un mandat distinct. M9-A ouvert, M9-B/M10 non commencés.
 
+**Mandat distinct suivant du 11 octobre — observabilité SSE sur code seulement,
+soumise au contre-audit.** Le contre-audit Codex transmis par Tof valide le
+diagnostic précédent ; la cause historique reste inconnue. Le rejet SSE
+`document_provider_incomplete` porte désormais `sse_rejection` : site fermé
+(`tool_call`, `content_after_stop`, `unrecognized_terminal_reason`,
+`duplicate_stop`, `done_without_stop`, `sse_without_done`), booléens
+`stop_observed`/`done_observed` et `http_end` fermé (`not_observed`,
+`chunked_terminated`, `content_length_consumed`, `body_eof`). Le témoin HTTP
+décrit uniquement les octets/framing déjà consommés ; aucun drainage ajouté,
+aucune terminaison déduite du nettoyage. La raison fournisseur libre n'est pas
+copiée. L'exception transmet ces seules preuves au même événement durable
+`document_preparation`, corrélé conversation/tour/action/contexte dans
+`observability.chat_log_events`, sans nouvelle table ni surface.
+
+Preuves hors ligne Celebrimbor : baseline 65/65 ; rouge préalable sur huit
+variantes via lecteur/HTTP réels, puis 71/71 ciblés, 48/48 voisins du garde et
+6/6 HTTP/PostgreSQL isolés. Refus, HTTP 503, JSON non streaming, succès,
+compteurs, annulation/autorité/nettoyage conservés dans cette sélection.
+Sentinelle absente du diagnostic et des événements persistés du tour ; panne
+du diagnostic sans changement du refus métier. L'émission garde la garantie
+best-effort du canal existant : aucune persistance promise si le sink échoue.
+[Relevé compact, commandes et limites](../baselines/document-workshop/frida-v1-document-workshop-obs-m9a-prep-01-observability-20261011.json).
+Runtime inchangé (`9d423791…`, image `0e196a0dd199…`), aucun appel live,
+déploiement ou nouveau canari. OBS-M9A-PREP-01 et M9-A restent ouverts ; aucun
+correctif fonctionnel établi. Remise Sauron future : quatre propriétaires
+`app/core/document_workshop_{contract,http_transport,provider,turn}.py` et
+`app/observability/observability_payload_guard_context_schema.py` ; aucun
+raccord runtime autorisé ici. Arrêt pour contre-audit.
+
 ## Raccord retenu
 
 Les propriétaires existants sont étendus ensemble : enveloppe/préparation et
