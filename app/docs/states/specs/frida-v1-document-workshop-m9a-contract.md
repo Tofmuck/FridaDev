@@ -4,9 +4,10 @@
 documentaire M8-A poussé `1b14e7dcdf68030c2d1df139eb9ee4c5f825143d`.
 Mandat : [roadmap M9-A](../../todo-todo/product/frida-v1-document-workshop-todo.md#m9-a--docx-frida-createcopyupdate-et-pagination-writer).
 **Code M9-A initial et runtime, puis runtime d'observabilité, contre-audités
-favorablement par Codex le 11 octobre. Correctif `duplicate_stop` sur code
-soumis au contre-audit, non déployé.
-Canari Safari autorisé mais arrêté avant confirmation : OBS-M9A-PREP-01 ouvert.
+favorablement par Codex le 11 octobre. Correctif `duplicate_stop` ensuite
+livré et contre-audité favorablement sur runtime par Codex, selon Tof.
+Nouvelle préparation Safari échouée sur `document_envelope_invalid`, sans
+confirmation ; règle exacte inconnue. OBS-M9A-PREP-01 ouvert.
 Aucune clôture globale M9-A.**
 
 Le runtime M9-A initial audité exécutait `9d423791…`, image applicative `0e196a0dd199…`, renderer
@@ -68,7 +69,7 @@ correctif fonctionnel établi. Remise Sauron future : quatre propriétaires
 `app/observability/observability_payload_guard_context_schema.py` ; aucun
 raccord runtime autorisé ici. Arrêt pour contre-audit.
 
-**État courant du 11 octobre — correctif `duplicate_stop` sur code, runtime
+**Étape historique du 11 octobre — correctif `duplicate_stop` sur code, runtime
 encore inchangé par ce micro-lot.** L'observabilité `fa3ad27a…` a ensuite été
 livrée par Sauron, image `958d361bd537…`. Son contre-audit runtime favorable
 (code exact, SSE isolé, configuration et voisins préservés) est attribué à
@@ -105,6 +106,31 @@ Cette reproduction justifie le correctif applicatif ; elle ne reconstitue pas
 les trames historiques. Aucun déploiement, appel live, Writer ou DAV ici.
 OBS-M9A-PREP-01 et M9-A restent ouverts pour contre-audit, livraison runtime
 et recette ultérieures ; M9-B/M10 hors mandat.
+
+## État courant — diagnostic d'enveloppe du 11 octobre
+
+Après livraison et contre-audit runtime favorables du correctif `duplicate_stop`
+(constats attribués à Codex, transmis par Tof), une seule nouvelle préparation
+Safari a été soumise, sans nouvel envoi après l'échec. Code embarqué
+`8088571296a81f5182ce60448ed366ee49450524`, image `5d28d36f5000…`.
+Action `bdb3bc4c-0dd2-4e62-b9a9-784359e9ad8b`, tour
+`turn-f3ff770b-0669-4154-9623-420c7d2ce10d` : échec
+`document_envelope_invalid` à `15:44:46.993963Z`, 1 510 caractères reçus,
+20 370 ms journalisés. Zéro révision, confirmation, reçu, snapshot, fichier
+et journal d'exécution ; claim terminé. Ces observations Codex sont corrélées
+en lecture seule aux 27 événements et objets SQL existants, sans DAV.
+
+[Diagnostic Celebrimbor, requête/validateur et sources officielles](../audits/frida-v1-document-workshop-envelope-diagnostic-20261011.md) :
+15 propriétaires runtime/commit/checkout concordants. Rejet dans la frontière
+enveloppe, qui fusionne parsing, structure et gardes locales ; réponse exacte
+absente des traces consultées. Stop/DONE déduits du chemin, aucune capture
+terminale et aucun second stop affirmé. Consigne textuelle présente, mais aucun
+`response_format`/schéma/strict ; `allow_fallbacks=false`, sans
+`require_parameters`. Écart de garantie établi, cause historique non établie.
+115/115 tests ciblés hermétiques, sans modification produit ni sonde nouvelle.
+Proposition seulement : identifiant fermé de la première règle rejetée dans
+un micro-lot distinct, sans contenu ; ni instrumentation ni reprise ici.
+OBS-M9A-PREP-01 et M9-A restent ouverts ; M9-B/M10 hors périmètre.
 
 ## Raccord retenu
 
