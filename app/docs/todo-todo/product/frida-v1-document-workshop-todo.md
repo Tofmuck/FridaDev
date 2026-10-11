@@ -1,6 +1,6 @@
 # Atelier documentaire agentique Frida V1 — spécification validée et roadmap
 
-Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-05 ; M3/M4/M5 : 2026-10-06 ; M6 : 2026-10-07 ; M8-S plateforme/clôture et M8-A applicatif : 2026-10-10 ; reprise M9-A et observabilité SSE code/runtime : 2026-10-11.
+Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-05 ; M3/M4/M5 : 2026-10-06 ; M6 : 2026-10-07 ; M8-S plateforme/clôture et M8-A applicatif : 2026-10-10 ; reprise M9-A, observabilité SSE code/runtime et correctif duplicate_stop sur code : 2026-10-11.
 
 Statut : **spécification et choix architecturaux validés par Tof ; M0 fermé sur
 composants et preuves internes, contre-audit corrigé sur `FridaV1-Document-Workshop-M0` ;
@@ -18,7 +18,7 @@ M4 livré sur code, P2-M4-01 et P2-M4-02 fermés après contre-audits indépenda
 P3-M4-03 corrigé par erratum documentaire (1 198 déclarés conservés et rectifiés,
 sélection publiée à 1 414, 21 identifiants réutilisables validés) ;
 M4 non intégralement fermé ;
-M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées ; M7 fermé sur code/preuves isolées et contre-audit ; code/migrations M1–M7 livrés via M8-A, recettes DAV/Versions ouvertes ; M8-C fermé après contre-audits indépendants AUD-01/AUD-02 ; M8-S fermé après contre-audit Codex favorable transmis par Tof ; M8-A fermé sur code et raccord runtime après contre-audit Codex favorable du 10 octobre transmis par Tof ; M9-A : code et runtime contre-audités favorablement par Codex le 11 octobre ; candidate renderer qualifiée déployée ; canari Safari arrêté avant confirmation sur `document_provider_incomplete` (OBS-M9A-PREP-01), cause non établie ; observabilité SSE contre-auditée favorablement sur code par Codex puis livrée par Sauron, contre-audit runtime attendu ; M9-A globalement ouvert ; M9-B/M10 et Z non commencés. FridaDev et le renderer sont livrés ; DOCX atelier disponible sous ses prérequis M9-A, PDF public et retravail DOCX externe fermés**.
+M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées ; M7 fermé sur code/preuves isolées et contre-audit ; code/migrations M1–M7 livrés via M8-A, recettes DAV/Versions ouvertes ; M8-C fermé après contre-audits indépendants AUD-01/AUD-02 ; M8-S fermé après contre-audit Codex favorable transmis par Tof ; M8-A fermé sur code et raccord runtime après contre-audit Codex favorable du 10 octobre transmis par Tof ; M9-A : code et runtime contre-audités favorablement par Codex le 11 octobre ; candidate renderer qualifiée déployée ; canari Safari arrêté avant confirmation sur `document_provider_incomplete` (OBS-M9A-PREP-01), cause non établie ; observabilité SSE livrée par Sauron et contre-auditée favorablement sur runtime par Codex ; seconde préparation bloquée sur `duplicate_stop`, correctif sur code soumis au contre-audit ; M9-A globalement ouvert ; M9-B/M10 et Z non commencés. FridaDev et le renderer sont livrés ; DOCX atelier disponible sous ses prérequis M9-A, PDF public et retravail DOCX externe fermés**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
 dialogue avec Tof. Création documentaire committée dans `d6b63fd1`, puis validation
@@ -4191,7 +4191,7 @@ executor et projection de carte ; aucune logique UNO dans le pipeline principal.
 Frida récupérée/validée temporairement, update If-Match sur même ID/nom.
 **Propriétaire :** Celebrimbor ; Sauron traite seulement une non-conformité plateforme prouvée.
 
-**État d'exécution — 11 octobre 2026 : code et runtime contre-audités favorablement ; canari Safari bloqué avant confirmation (OBS-M9A-PREP-01), M9-A globalement ouvert.**
+**État d'exécution — 11 octobre 2026 : M9-A initial et observabilité runtime contre-audités favorablement ; canari Safari bloqué avant confirmation (OBS-M9A-PREP-01), correctif `duplicate_stop` sur code soumis au contre-audit, M9-A globalement ouvert.**
 Reprise des 25 fichiers WIP autorisés sur la branche existante, HEAD documentaire
 M8-A `1b14e7dcdf68030c2d1df139eb9ee4c5f825143d` ; aucune clôture M8-A refaite,
 aucune absorption d'autre travail. Code livré par `9d423791cfd14a3611ecdb9047e8d840f667fbc7`,
@@ -4310,8 +4310,8 @@ métier. [Relevé compact du micro-lot](../../states/baselines/document-workshop
 canari ; aucun correctif fonctionnel établi. OBS-M9A-PREP-01 et M9-A restent
 ouverts. Arrêt alors pour contre-audit, avant le mandat Sauron ci-dessous.
 
-**Livraison Sauron du 11 octobre — observabilité SSE livrée, soumise au
-contre-audit runtime.** Le contre-audit Codex indépendant est favorable, sans
+**Livraison Sauron du 11 octobre — observabilité SSE livrée, initialement soumise au
+contre-audit runtime désormais favorable selon Codex transmis par Tof.** Le contre-audit Codex indépendant du code est favorable, sans
 finding bloquant : **125 tests distincts verts (71 ciblés, 48 voisins, 6
 HTTP/PostgreSQL)**. Ces résultats sont attribués à Codex et n'ont pas été
 rejoués par Sauron. Rapport primaire :
@@ -4358,12 +4358,39 @@ et ancienne image conservées. Rapport Sauron :
 - [x] Contre-audit Codex favorable du code d'observabilité SSE, résultats attribués.
 - [x] Livraison FridaDev seule et preuve HTTP/SSE isolée, health/auth/identité,
   code/dépendances/montages, renderer/32 voisins et objets du canari vérifiés.
-- [ ] Contre-audit Codex du runtime d'observabilité livré.
+- [x] Contre-audit Codex favorable du runtime d'observabilité livré, transmis par Tof ; non rejoué ici.
 
 **Cause historique inconnue ; OBS-M9A-PREP-01 et M9-A restent ouverts.**
-Aucune case canari ni clôture globale acquise ; aucune nouvelle préparation.
+Aucune case canari ni clôture globale acquise ; à cette remise Sauron, aucune nouvelle préparation.
 M9-B/M10 hors mandat. Le commit documentaire de ce report ne change pas la
 provenance `fa3ad27a…` du code embarqué. Arrêt pour contre-audit Codex.
+
+**OBS-M9A-PREP-01 — seconde préparation et correctif `duplicate_stop`, sur code
+seulement.** Contre-audit runtime de l'observabilité favorable selon Codex
+(code exact, SSE isolé, configuration et voisins préservés), non rejoué ici.
+Une nouvelle préparation Safari dans le canari conservé, attribuée à Codex :
+action `e883206a-9748-4c1e-8e89-38c81d5818b8`, tour
+`turn-954f51e4-d681-4f9c-af41-5f354c6de44f`, échec le 11 octobre à
+`12:58:04 UTC`, 27 200 ms / 1 513 caractères, `document_provider_incomplete` /
+`duplicate_stop`, stop=true/DONE=false/HTTP=`not_observed`. Aucune
+confirmation, révision, publication ou rendu, aucune relance. Rejet anticipé :
+les fins non observées ne sont pas prouvées absentes. Trames exactes inconnues ;
+cause du premier échec toujours inconnue, sans attribution rétroactive.
+
+La trame finale d'usage OpenRouter répétant stop avant DONE est documentée et
+refusée causalement par le lecteur livré, avec canonical valide et témoin
+nominal vert. Correctif minimal du seul provider documentaire : une unique
+répétition de stop avec usage standard validé, index 0 explicite, delta sans
+contenu/outil/refus et rôle assistant optionnel devient du comptage.
+Métadonnées/plafonds vérifiés avant cette exception, DONE toujours requis,
+doublons nus/contradictions/contenus tardifs/usages invalides ou excessifs
+refusés. Baseline Celebrimbor 71/71 ; rouge/vert puis rouge au retrait du seul
+correctif ; final **76/76 ciblés + 7/7 HTTP/PostgreSQL isolés**, sans double
+compte. Révision exacte et succès durables, diagnostic et gardes conservés.
+[Relevé compact](../../states/baselines/document-workshop/frida-v1-document-workshop-obs-m9a-duplicate-stop-20261011.json).
+Runtime toujours `fa3ad27a…` / image `958d361bd537…`, aucun déploiement ou appel
+live dans ce lot. OBS-M9A-PREP-01 et M9-A ouverts pour contre-audit, livraison
+et recette ultérieures ; M9-B/M10 hors mandat. Arrêt après livraison Git.
 
 - [x] Rouge causal : canonical/source/empreinte non correspondants, 21e page, version
   renderer différente ou ETag changé durant rendu → refus sans écriture.
@@ -4866,7 +4893,7 @@ par le report documentaire déjà poussé `1b14e7dc…`. M9-A repris le 11 octob
 code `9d423791…` et contre-audit Codex favorable 28/28 ; blocage levé sur
 candidate qualifiée désormais déployée. Runtime contre-audité favorablement
 par Codex le 11 octobre, DOCX conditionnel disponible, PDF public/DOCX externe fermés ;
-canari Safari bloqué avant confirmation (OBS-M9A-PREP-01), cause historique inconnue ; observabilité SSE livrée, contre-audit runtime attendu ; OBS-M9A-PREP-01 et clôture globale M9-A ouverts. M9-B/M10/Z non commencés.
+canari Safari bloqué avant confirmation (OBS-M9A-PREP-01), cause du premier échec inconnue ; observabilité SSE livrée et contre-auditée sur runtime par Codex, second rejet `duplicate_stop` et correctif sur code soumis au contre-audit ; OBS-M9A-PREP-01 et clôture globale M9-A ouverts. M9-B/M10/Z non commencés.
 Actualisation runtime du 10 octobre : code et migrations M1–M7 livrés par le
 raccord M8-A ; les réserves de recette produit/DAV/Versions restent ouvertes.
 Les mentions de runtime ouvert dans les récits historiques décrivent leurs

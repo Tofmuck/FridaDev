@@ -1,4 +1,5 @@
 """Mounted chat + PostgreSQL authority + consumed, physically closed HTTP socket."""
+import hashlib
 import json
 import os
 import threading
@@ -72,6 +73,52 @@ class HTTPPreparationPostgresqlTests(unittest.TestCase):
         self.assertEqual(payload['max_tokens'],24000)
         self.assertIn('Synthetic request',str(payload['messages']))
         self.assertEqual(self.env.public_action()['state'],'pending')
+
+    def test_final_accounting_stop_commits_exact_revision_without_execution(self):
+        value = base.envelope()
+        frames = [dict(model='openai/gpt-5.1', choices=[dict(index=0, delta=delta, finish_reason=reason)])
+                  for delta, reason in ((dict(content=json.dumps(value, ensure_ascii=False)), None),
+                                        (dict(content='', role='assistant'), 'stop'),
+                                        (dict(content='', role='assistant'), 'stop'))]
+        frames[-1]['usage'] = dict(prompt_tokens=123, completion_tokens=17, total_tokens=140)
+        wire = (''.join('data: ' + json.dumps(frame) + '\n\n' for frame in frames) + 'data: [DONE]\n\n').encode()
+        log_store.init_log_storage(conn_factory=self.env.conn)
+        insert = log_store.insert_chat_log_event
+        traces = []
+        def persist(event):
+            if event['stage'] == 'turn_start':
+                traces.append(chat_turn_logger.current_turn_id())
+            return insert(event, conn_factory=self.env.conn)
+        with self.upstream(wire=wire) as (arrived,closed,received,admitted,(normal,_)), \
+             patch.object(log_store, 'insert_chat_log_event', persist):
+            response = self.env.document()
+            self.assertTrue(arrived.wait(2)); self.assertTrue(closed.wait(2))
+        self.assertEqual(response.status_code, 200, response.get_json())
+        self.assertEqual(len(received), 1); self.assertEqual(received, admitted); self.assertEqual(normal, [])
+        action = self.env.public_action()
+        self.assertEqual(action['state'], 'pending')
+        self.assertEqual(len(traces), 1)
+        with self.env.conn() as conn:
+            revisions = conn.execute('SELECT id::text,canonical,canonical_sha256 FROM document_revisions').fetchall()
+            self.assertEqual(len(revisions), 1)
+            revision, stored, digest = revisions[0]
+            self.assertEqual(revision, action['revision_id'])
+            self.assertEqual(stored, value['proposal']['canonical'])
+            self.assertEqual(digest, hashlib.sha256(json.dumps(stored,ensure_ascii=False,sort_keys=True,
+                                                            separators=(',',':')).encode()).hexdigest())
+            messages = conn.execute("SELECT role,content,meta FROM conversation_messages WHERE role<>'system' ORDER BY seq").fetchall()
+            self.assertEqual([row[0] for row in messages], ['user','assistant'])
+            self.assertEqual(messages[1][1], value['surface_text'])
+            self.assertEqual(messages[1][2]['document_workshop']['revision_id'], revision)
+            events = conn.execute("SELECT conversation_id,payload_json FROM observability.chat_log_events "
+                                  "WHERE turn_id=%s AND stage='document_preparation'", (traces[0],)).fetchall()
+            completed = [(conversation, payload) for conversation, payload in events if payload.get('state') == 'succeeded']
+            self.assertEqual(len(completed), 1)
+            self.assertEqual(completed[0][0], base.C)
+            self.assertEqual(completed[0][1]['action_id'], base.T)
+            self.assertEqual(completed[0][1]['context_id'], self.env.context['id'])
+            self.assertFalse(any('sse_rejection' in payload for _, payload in events))
+            self.assertEqual(conn.execute('SELECT count(*) FROM workspace_files').fetchone()[0], 0)
 
     def test_sse_rejection_reaches_existing_durable_channel_with_turn_and_action(self):
         log_store.init_log_storage(conn_factory=self.env.conn)

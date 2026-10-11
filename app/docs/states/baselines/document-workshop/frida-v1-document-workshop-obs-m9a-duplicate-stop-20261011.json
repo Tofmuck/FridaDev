@@ -1,0 +1,286 @@
+{
+  "schema_version": 1,
+  "lot": "OBS-M9A-PREP-01 — duplicate_stop",
+  "date_utc": "2026-10-11",
+  "author": "Celebrimbor (agent applicatif)",
+  "status": "Correctif sur code soumis au contre-audit ; OBS-M9A-PREP-01 et M9-A ouverts",
+  "base": {
+    "checkout": "/opt/platform/fridadev",
+    "branch": "FridaV1-Document-Workshop-M9-A",
+    "head_upstream_remote": "79d24becb2d84326bc7804161783175ac684f29a",
+    "worktree": "propre",
+    "divergence": "0/0"
+  },
+  "runtime": {
+    "code": "fa3ad27a76e5b63b21c6b53ccba85ea8343cc851",
+    "image": "sha256:958d361bd53708d4cce4aded1f0763a1e9ad18b133e2ede4994b2552916926fd",
+    "started_at": "2026-10-11T11:44:33.880015348Z",
+    "health": "healthy",
+    "status": "inchangé, correctif non déployé",
+    "command": "docker inspect --format '{{.Name}} {{.Image}} {{.State.StartedAt}} {{.State.Health.Status}}' platform-fridadev",
+    "exit": 0
+  },
+  "attributed_to_codex": {
+    "runtime_counteraudit": "Favorable : code exact, preuve SSE isolée, configuration et voisins préservés. Transmis par Tof ; non rejoué par Celebrimbor.",
+    "new_safari_observation": {
+      "conversation": "db03bc08-faa1-44ae-8eea-90e526528fe4",
+      "action": "e883206a-9748-4c1e-8e89-38c81d5818b8",
+      "turn": "turn-954f51e4-d681-4f9c-af41-5f354c6de44f",
+      "started_paris": "2026-10-11 14:57:37",
+      "failed_utc": "2026-10-11 12:58:04",
+      "duration_ms": 27200,
+      "received_content_codepoints": 1513,
+      "reason_code": "document_provider_incomplete",
+      "site": "duplicate_stop",
+      "stop_observed": true,
+      "done_observed": false,
+      "http_end": "not_observed",
+      "not_reached": [
+        "confirmation",
+        "révision",
+        "publication",
+        "rendu"
+      ],
+      "replayed": false
+    },
+    "limits": "Trames exactes non conservées ; le rejet anticipé ne prouve pas l'absence future de DONE/fin HTTP. Aucune attribution rétroactive au premier échec historique."
+  },
+  "primary_source": {
+    "url": "https://openrouter.ai/docs/api_reference/streaming",
+    "section": "The final usage chunk (Chat Completions)",
+    "read_current_task": "2026-10-11, documentation publique via web.open, lignes 94–100",
+    "summary": "OpenRouter documente un choix final de comptage sans contenu, répétant finish_reason avant DONE ; distinct du contrat OpenAI direct."
+  },
+  "plan": "Une reproduction avec canonical valide et témoin nominal, puis une exception locale au seul lecteur documentaire après ses validations existantes. Aucune modification du transport, du chat commun ou de l'observabilité.",
+  "finding": "Incompatibilité démontrée : contenu → stop → usage valide répétant stop → DONE est refusé duplicate_stop sur la base, alors que le nominal est accepté.",
+  "patch": {
+    "runtime_files": [
+      "app/core/document_workshop_provider.py"
+    ],
+    "added_lines": 12,
+    "acceptance": "Une seule répétition normalisée stop concordant, index 0 explicite, usage dict contenant au moins un compteur standard validé dans cette trame ; delta limité à content absent/null/vide et rôle assistant optionnel. Les gardes d'erreur/refus/outils et de métadonnées/plafonds passent avant l'exception.",
+    "unchanged": "DONE et canonical exact requis ; JSON non streaming, compteurs/plafonds, modèle/prompt/admission/compteur partagé, raison/statut des refus voisins, M3, annulation/inactivité, nettoyage et diagnostic borné.",
+    "removed_fix_control": "Overlay ro du propriétaire de base exact, sans toucher au checkout ni aux tests ; retirer les seules 12 lignes produit exactement ce fichier.",
+    "provider_base_sha256": "34f5e6f20670e05cd72217340238e5d6f4e13911c03aaf206ea8b9423174fe4a"
+  },
+  "commands": {
+    "baseline": "docker run --rm --pull=never --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -w /workspace/app --entrypoint /usr/bin/env fridadev-audit-py:latest -i PATH=/usr/local/bin:/usr/bin:/bin PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/workspace/app:/workspace EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid SEARXNG_URL=https://search.invalid python -m unittest tests.unit.core.test_document_workshop_provider_progress tests.unit.core.test_document_workshop_http_transport tests.unit.core.test_document_workshop_m4_observability",
+    "causal_and_control": "docker run --rm --pull=never --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -w /workspace/app --entrypoint /usr/bin/env fridadev-audit-py:latest -i PATH=/usr/local/bin:/usr/bin:/bin PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/workspace/app:/workspace EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid SEARXNG_URL=https://search.invalid python -m unittest tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_real_m0_consumes_sse_terminal_and_closes_one_exchange tests.unit.core.test_document_workshop_final_usage.FinalUsageHTTPTests.test_documented_final_usage_repeating_stop_keeps_exact_canonical_and_usage",
+    "targeted_boundaries": "docker run --rm --pull=never --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -w /workspace/app --entrypoint /usr/bin/env fridadev-audit-py:latest -i PATH=/usr/local/bin:/usr/bin:/bin PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/workspace/app:/workspace EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid SEARXNG_URL=https://search.invalid python -m unittest tests.unit.core.test_document_workshop_final_usage",
+    "removed_fix": "docker run --rm --pull=never --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /tmp/fridadev-duplicate-stop-20261011-proof/provider-without-fix.py:/workspace/app/core/document_workshop_provider.py:ro -w /workspace/app --entrypoint /usr/bin/env fridadev-audit-py:latest -i PATH=/usr/local/bin:/usr/bin:/bin PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/workspace/app:/workspace EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid SEARXNG_URL=https://search.invalid python -m unittest tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_real_m0_consumes_sse_terminal_and_closes_one_exchange tests.unit.core.test_document_workshop_final_usage.FinalUsageHTTPTests.test_documented_final_usage_repeating_stop_keeps_exact_canonical_and_usage",
+    "final_unit": "docker run --rm --pull=never --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -w /workspace/app --entrypoint /usr/bin/env fridadev-audit-py:latest -i PATH=/usr/local/bin:/usr/bin:/bin PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/workspace/app:/workspace EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid SEARXNG_URL=https://search.invalid python -m unittest tests.unit.core.test_document_workshop_provider_progress tests.unit.core.test_document_workshop_http_transport tests.unit.core.test_document_workshop_m4_observability tests.unit.core.test_document_workshop_final_usage",
+    "final_sql": "docker run --rm --pull=never --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /tmp/fridadev-duplicate-stop-20261011-proof/pg-socket:/proof/sock:ro -w /workspace/app --entrypoint /usr/bin/env fridadev-audit-py:latest -i PATH=/usr/local/bin:/usr/bin:/bin PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/workspace/app:/workspace EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid SEARXNG_URL=https://search.invalid M1_PROOF_PG_SOCKET=/proof/sock M2_PROOF_PG_SOCKET=/proof/sock M3_PROOF_PG_SOCKET=/proof/sock M4_PROOF_PG_SOCKET=/proof/sock python -m unittest tests.integration.document_workshop.test_preparation_http_postgresql",
+    "collect_ids_without_running_tests": "docker run --rm -i --pull=never --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -w /workspace/app --entrypoint /usr/bin/env fridadev-audit-py:latest -i PATH=/usr/local/bin:/usr/bin:/bin PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/workspace/app:/workspace EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid SEARXNG_URL=https://search.invalid python - <<'PY'\nimport unittest\nnames=['tests.unit.core.test_document_workshop_provider_progress','tests.unit.core.test_document_workshop_http_transport','tests.unit.core.test_document_workshop_m4_observability','tests.unit.core.test_document_workshop_final_usage','tests.integration.document_workshop.test_preparation_http_postgresql']\ndef walk(suite):\n for item in suite:\n  if isinstance(item,unittest.TestSuite): yield from walk(item)\n  else: yield item.id()\nids=list(walk(unittest.defaultTestLoader.loadTestsFromNames(names)))\nassert len(ids)==len(set(ids))==83\nprint('\\n'.join(ids))\nPY"
+  },
+  "runs": [
+    {
+      "command": "baseline",
+      "tests": 71,
+      "exit": 0,
+      "seconds": 2.604
+    },
+    {
+      "command": "causal_and_control",
+      "stage": "avant correctif",
+      "tests": 2,
+      "passed": 1,
+      "failed": 1,
+      "exit": 1,
+      "seconds": 0.046,
+      "result": "Témoin nominal vert ; cas documenté rouge duplicate_stop / stop=true / DONE=false / HTTP=content_length_consumed."
+    },
+    {
+      "command": "causal_and_control",
+      "stage": "après correctif",
+      "tests": 2,
+      "exit": 0,
+      "seconds": 0.046
+    },
+    {
+      "command": "targeted_boundaries",
+      "tests": 5,
+      "exit": 0,
+      "seconds": 0.914
+    },
+    {
+      "command": "removed_fix",
+      "tests": 2,
+      "passed": 1,
+      "failed": 1,
+      "exit": 1,
+      "seconds": 0.05,
+      "result": "Même rouge, nominal toujours vert ; seul le correctif retiré via bind ro du vrai propriétaire."
+    },
+    {
+      "command": "final_unit",
+      "tests": 76,
+      "exit": 0,
+      "seconds": 3.514
+    },
+    {
+      "command": "final_sql",
+      "tests": 7,
+      "exit": 0,
+      "seconds": 7.88
+    },
+    {
+      "command": "collect_ids_without_running_tests",
+      "distinct_ids": 83,
+      "exit": 0,
+      "result": "Inventaire uniquement ; aucune exécution supplémentaire."
+    }
+  ],
+  "final_ids": [
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_actual_shared_admission_builder_and_simulated_send",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_blocked_open_is_also_covered",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_caller_task_cancellation_closes_transport",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_cancellation_is_prompt_and_no_late_result_can_succeed",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_clarify_and_refuse_are_complete_single_exchanges_without_canonical",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_complete_json_with_length_refused_without_repair",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_content_tool_calls_and_hidden_reasoning_never_become_envelope",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_continuous_keepalives_empty_or_reasoning_chunks_do_not_reset",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_counter_exception_never_sends_and_is_content_free",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_done_control_or_reasoning_only_cannot_prove_document",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_first_wait_blocked_read_exact_threshold_and_close",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_inactivity_late_result_is_neutralized",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_initial_cancel_and_failed_transport_release_do_not_succeed",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_invalid_envelope_or_old_canonical_root_has_one_call_and_no_repair",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_model_change_or_model_absence_refused",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_nonstream_empty_missing_terminal_invalid_json_or_canonical_refused",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_oversized_envelope_json_and_stream_fail_without_partial_document",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_oversized_sse_frame_is_rejected_before_json_decode",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_provider_context_error_refusal_http_and_exception_have_no_fallthrough",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_refused_estimate_never_sends",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_reported_completion_over_budget_refused",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_reported_context_overflow_without_total_is_refused",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_reported_usage_reuses_existing_extractor_and_absence_not_invented",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_same_preparation_does_not_send_twice",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_source_canary_in_protocol_surface_is_rejected_before_publication",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_steps_cannot_be_repeated_to_manufacture_progress",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_stream_is_consumed_and_terminal_usage_preserved",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_stream_length_no_done_and_error_frames_refused",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_stream_valid_json_without_finish_and_malformed_usage_refused",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_streamed_usage_components_merge_before_context_check",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_synchronous_preparation_cannot_hide_elapsed_inactivity",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_useful_stream_progress_allows_total_duration_over_120",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_valid_dense_content_can_have_a_larger_escaped_sse_frame",
+    "tests.unit.core.test_document_workshop_provider_progress.DocumentProviderProgressTests.test_valid_multiline_sse_and_post_terminal_content_refused",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_body_protocol_rejects_invalid_json_and_utf8_content_free",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_chunked_json_response_is_consumed",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_close_interrupts_initial_headers_and_peer_observes_eof",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_close_interrupts_json_body_and_peer_observes_eof",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_close_interrupts_real_pending_tls_handshake_without_connection_leak",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_close_interrupts_sse_body_and_peer_observes_eof",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_diagnostic_construction_failure_preserves_rejection_and_physical_close",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_early_sse_rejection_does_not_drain_or_count_cleanup_as_http_end",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_eof_framed_json_response_is_consumed",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_eof_network_bound_is_enforced_without_waiting_for_peer_close",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_frozen_admitted_bytes_and_headers_reach_real_socket_verbatim_once",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_invalid_chunk_size_and_terminator_are_rejected",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_json_incomplete_and_other_sse_errors_do_not_gain_rejection_diagnostic",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_large_provider_envelope_has_network_space_beyond_canonical_limit",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_m0_cancellation_aborts_blocked_body_and_leaves_no_exchange_task",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_m0_inactivity_aborts_blocked_json_and_sse_read_without_late_success",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_m0_inactivity_aborts_initial_headers_socket_without_provider_event",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_network_bound_counts_chunked_decoded_bytes",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_network_bound_includes_chunk_framing_not_only_decoded_body",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_network_bound_rejects_announced_oversize_before_body_read",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_oversize_headers_are_bounded_before_end_marker",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_premature_eof_is_refused_for_content_length_and_chunked",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_real_chunked_sse_utf8_split_across_chunks_is_consumed",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_real_m0_consumes_sse_terminal_and_closes_one_exchange",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_real_m0_success_closes_peer_after_one_json_exchange",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_request_framing_injection_is_refused_before_any_socket",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_response_protocol_rejects_ambiguous_framing_encoding_and_headers",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_sse_eof_classifies_only_http_ends_consumed_by_real_transport",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_sse_incomplete_preserves_closed_site_and_observed_terminals",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_sse_lines_accept_cr_lf_and_crlf_across_response_chunks",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_sse_rejects_invalid_utf8_without_replacement",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_tls_verifies_certificate_on_real_loopback_connection",
+    "tests.unit.core.test_document_workshop_http_transport.DocumentHTTPTransportTests.test_trailer_framing_cannot_replace_response_authority",
+    "tests.unit.core.test_document_workshop_m4_observability.M4ProgressAndObservabilityTests.test_closed_documentary_event_schema_accepts_only_technical_values",
+    "tests.unit.core.test_document_workshop_m4_observability.M4ProgressAndObservabilityTests.test_repeated_steps_or_sources_cannot_forge_progress",
+    "tests.unit.core.test_document_workshop_m4_observability.M4ProgressAndObservabilityTests.test_sse_diagnostic_guard_rejects_free_values_and_extra_content",
+    "tests.unit.core.test_document_workshop_m4_observability.M4ProgressAndObservabilityTests.test_upstream_steps_renew_effective_progress_without_total_deadline",
+    "tests.unit.core.test_document_workshop_final_usage.FinalUsageHTTPTests.test_accounting_exception_keeps_nearby_rejections_and_diagnostics",
+    "tests.unit.core.test_document_workshop_final_usage.FinalUsageHTTPTests.test_accounting_frame_merges_valid_partial_usage_after_content_bearing_stop",
+    "tests.unit.core.test_document_workshop_final_usage.FinalUsageHTTPTests.test_cancellation_and_inactivity_after_accounting_still_abort_real_socket",
+    "tests.unit.core.test_document_workshop_final_usage.FinalUsageHTTPTests.test_documented_final_usage_repeating_stop_keeps_exact_canonical_and_usage",
+    "tests.unit.core.test_document_workshop_final_usage.FinalUsageHTTPTests.test_final_usage_still_requires_done_and_cannot_repeat_twice",
+    "tests.integration.document_workshop.test_preparation_http_postgresql.HTTPPreparationPostgresqlTests.test_diagnostic_emission_failure_keeps_public_error_failed_action_and_close",
+    "tests.integration.document_workshop.test_preparation_http_postgresql.HTTPPreparationPostgresqlTests.test_exact_admitted_http_bytes_consume_sse_and_commit_before_close",
+    "tests.integration.document_workshop.test_preparation_http_postgresql.HTTPPreparationPostgresqlTests.test_final_accounting_stop_commits_exact_revision_without_execution",
+    "tests.integration.document_workshop.test_preparation_http_postgresql.HTTPPreparationPostgresqlTests.test_keepalive_only_does_not_renew_inactivity_and_closes_real_socket",
+    "tests.integration.document_workshop.test_preparation_http_postgresql.HTTPPreparationPostgresqlTests.test_other_request_cancels_consumed_socket_and_prevents_late_commit",
+    "tests.integration.document_workshop.test_preparation_http_postgresql.HTTPPreparationPostgresqlTests.test_request_transaction_probe_rejects_transaction_held_during_real_http_wait",
+    "tests.integration.document_workshop.test_preparation_http_postgresql.HTTPPreparationPostgresqlTests.test_sse_rejection_reaches_existing_durable_channel_with_turn_and_action"
+  ],
+  "cases": {
+    "positive": "Canonical/enveloppe exacts, finish stop, usage (123 prompt / 17 completion / 140 total / 3 reasoning), une requête et fermeture physique. Usage partiel fusionné après stop portant le contenu ; delta vide/null/role assistant contrôlés.",
+    "rejected": "Doublon nu, usage vide/null/sans compteur reconnu, contenu tardif, tool/function calls, refus, champs de delta supplémentaires même vides, rôle/index incorrects ou index absent, terminal contradictoire, erreur fournisseur/modèle incohérent, types/valeurs d'usage invalides et plafonds completion/reasoning/contexte dépassés.",
+    "after_accounting": "DONE absent, seconde répétition de stop, contenu tardif et dépassement de contexte après comptage refusés ; annulation et inactivité à 120 s d’horloge virtuelle pendant la vraie attente HTTP ferment la socket, sans succès précoce.",
+    "durable_sql": "Route /api/chat, transport/lecteur et claims réels, PostgreSQL isolé : HTTP 200, action pending, une révision/canonical/empreinte exacts, assistant court lié à cette révision et événement de succès corrélé conversation/tour/action/contexte, zéro fichier publié. Six voisins incluent persistance content-free du rejet, panne diagnostique, annulation/autorité/inactivité.",
+    "counting": "83 IDs finaux distincts (76 + 7). Contrôles et runs intermédiaires non cumulés, sous-cas non recomptés comme tests distincts."
+  },
+  "isolation": {
+    "runner_images": [
+      "fridadev-audit-py:latest@sha256:486a8afeb2f62c7906194d3e1fee839387e55753bcad365120d18306502fafdc",
+      "postgres:16-alpine@sha256:87e04d274d186c7331d0e13c7c90c8b9f63b0d7ae94476c98a229a94d62c9745"
+    ],
+    "setup": [
+      "mkdir -m 700 /tmp/fridadev-duplicate-stop-20261011-proof && mkdir /tmp/fridadev-duplicate-stop-20261011-proof/pg-socket && chmod 777 /tmp/fridadev-duplicate-stop-20261011-proof/pg-socket",
+      "docker run -d --name fridadev-duplicate-stop-20261011-proof-pg --pull=never --network none --read-only --tmpfs /tmp:rw,nosuid,nodev --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev -v /tmp/fridadev-duplicate-stop-20261011-proof/pg-socket:/var/run/postgresql -e POSTGRES_USER=m1proof -e POSTGRES_DB=m1proof -e POSTGRES_HOST_AUTH_METHOD=trust postgres:16-alpine -c listen_addresses=",
+      "docker exec fridadev-duplicate-stop-20261011-proof-pg pg_isready -U m1proof -d m1proof",
+      "git show HEAD:app/core/document_workshop_provider.py > /tmp/fridadev-duplicate-stop-20261011-proof/provider-without-fix.py"
+    ],
+    "exits": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "guarantees": "Images existantes, --pull=never, réseau none, checkout ro, env synthétique explicite ; seuls HTTP loopback et socket Unix PostgreSQL jetable. Aucune base, credential ou donnée opérateur.",
+    "reproduce_base_provider": "Pour rejouer après livraison, remplacer HEAD dans la commande git show historique par 79d24becb2d84326bc7804161783175ac684f29a (HEAD au moment du contrôle)."
+  },
+  "incidents": [
+    "Aucun échec inattendu des tests. Les deux rouges sont causaux attendus.",
+    "Logs du harnais minimal ro : OSError adminlog et UndefinedTable conv_active_summary conservés ; final SQL vert.",
+    "Édition documentaire : assertion sur une ancienne formulation de date, exit 1 avant écriture ; relue et adaptée à la formulation courante.",
+    "Premier inventaire IDs sans docker -i : exit 0 mais aucune entrée stdin consommée, aucune preuve acquise ; même commande adaptée avec -i, inventaire 83 IDs vérifié.",
+    "Vérification documentaire finale : noms historiques résolus initialement depuis la racine au lieu du répertoire du relevé, FileNotFoundError / exit 1 sans écriture ; chemin adapté, 83 IDs, 34 liens locaux et trois empreintes historiques vérifiés / exit 0."
+  ],
+  "historical_sha256": {
+    "frida-v1-document-workshop-obs-m9a-prep-01-20261011.json": "0f99b2349eaae2b3981e4cbab75e5f2659404a1db61e60819edf0c7cd9d6b241",
+    "frida-v1-document-workshop-obs-m9a-prep-01-observability-20261011.json": "22e2daebc2b61d508938c1f8b42f07f507be1fa2963ebbdf0f18ea0e2bdde3de",
+    "frida-v1-document-workshop-m9a-canari-20261011.json": "f4a3a79132ef5c74d15398605b4ec8167a46725867ca10daf3e6c815a06e9c4e"
+  },
+  "cleanup": {
+    "command": "docker stop --time 5 fridadev-duplicate-stop-20261011-proof-pg && docker rm fridadev-duplicate-stop-20261011-proof-pg && rm -- /tmp/fridadev-duplicate-stop-20261011-proof/provider-without-fix.py /tmp/fridadev-duplicate-stop-20261011-proof/sql-final.log && rmdir /tmp/fridadev-duplicate-stop-20261011-proof/pg-socket /tmp/fridadev-duplicate-stop-20261011-proof",
+    "exit": 0,
+    "result": "Seuls les temporaires possédés et le PostgreSQL jetable supprimés."
+  },
+  "limits": "Reproduction de l'incompatibilité suffisante pour ce correctif, sans reconstitution des trames Safari. Premier échec toujours indéterminé. Aucun modèle live/API authentifiée, DAV, navigateur, Writer, canari, configuration/migration/plateforme/dépendance, build/restart/déploiement. OBS-M9A-PREP-01 et M9-A ouverts ; M9-B/M10 hors mandat.",
+  "delivery": "Roadmap, contrat et seul résumé M9-A périmé du hub réconciliés ; historiques et attribution conservés. Commit/push et preuve finale Git dans le retour de livraison. Arrêt pour contre-audit Codex.",
+  "source_locations": [
+    "app/core/document_workshop_provider.py:75",
+    "app/core/document_workshop_provider.py:137",
+    "app/core/document_workshop_provider.py:223",
+    "app/core/document_workshop_provider.py:259",
+    "app/core/document_workshop_turn.py:143"
+  ],
+  "verification": {
+    "commands": [
+      "git status --short --branch",
+      "git diff --check",
+      "git diff -- app/core/document_workshop_provider.py app/tests/integration/document_workshop/test_preparation_http_postgresql.py",
+      "git for-each-ref --format='%(refname) %(objectname)' refs/heads refs/remotes"
+    ],
+    "exits": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "result": "Périmètre de sept fichiers possédés ; source runtime unique, delta 12 lignes, tests historiques non affaiblis. JSON/83 IDs distincts et liens ajoutés vérifiés ; trois relevés historiques identiques au HEAD de départ, temporaires absents, image/démarrage runtime identiques, 60 autres références Git préservées avant livraison. Vérifications finales après push dans le retour."
+  }
+}

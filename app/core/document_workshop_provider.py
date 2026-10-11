@@ -220,6 +220,7 @@ async def _read_exchange(prepared: PreparedDocumentCall, transport: DocumentTran
     fragments: list[str] = []
     content_bytes = 0
     stop_observed = done_observed = False
+    final_usage_seen = False
     try:
         async for data in _sse_events(transport, progress):
             if data == "[DONE]":
@@ -256,6 +257,17 @@ async def _read_exchange(prepared: PreparedDocumentCall, transport: DocumentTran
                 fragments.append(content)
                 progress._receive_provider_content(content)
             site = "duplicate_stop" if reason == "stop" else "unrecognized_terminal_reason"
+            # OpenRouter's one final accounting choice repeats the stop.
+            # Metadata/budgets and delta guards above still apply to this frame.
+            usage = payload.get("usage")
+            if (reason == evidence.finish_reason == "stop" and not final_usage_seen
+                    and type(usage) is dict
+                    and any(key in usage for key in ("prompt_tokens", "completion_tokens", "total_tokens"))
+                    and choice.get("index") == 0
+                    and not content and set(delta) <= {"content", "role"}
+                    and delta.get("role", "assistant") == "assistant"):
+                final_usage_seen = True
+                continue
             _finish(reason, evidence)
         site = "sse_without_done"
         raise DocumentWorkshopError("document_provider_incomplete")

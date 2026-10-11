@@ -3,17 +3,19 @@
 11 octobre 2026. Branche `FridaV1-Document-Workshop-M9-A`, issue du commit
 documentaire M8-A poussé `1b14e7dcdf68030c2d1df139eb9ee4c5f825143d`.
 Mandat : [roadmap M9-A](../../todo-todo/product/frida-v1-document-workshop-todo.md#m9-a--docx-frida-createcopyupdate-et-pagination-writer).
-**Code et livraison runtime contre-audités favorablement par Codex le 11 octobre.
+**Code M9-A initial et runtime, puis runtime d'observabilité, contre-audités
+favorablement par Codex le 11 octobre. Correctif `duplicate_stop` sur code
+soumis au contre-audit, non déployé.
 Canari Safari autorisé mais arrêté avant confirmation : OBS-M9A-PREP-01 ouvert.
 Aucune clôture globale M9-A.**
 
-Le runtime exécute `9d423791…`, image applicative `0e196a0dd199…`, renderer
+Le runtime M9-A initial audité exécutait `9d423791…`, image applicative `0e196a0dd199…`, renderer
 `7a61bd805ca0…` et pins `a788e48f649a…`. Les 28 cas isolés et les deux jobs
 riches du contre-audit runtime restent attribués à Codex, sans rejeu ici. Les
 mentions de candidate non déployée et de remise Sauron ci-dessous décrivent
 les étapes antérieures.
 
-Le canari Safari natif du 11 octobre a créé un répertoire/conversation de test.
+Le premier canari Safari natif du 11 octobre a créé un répertoire/conversation de test.
 La garde initiale a refusé les modes incompatibles ; Notes désactivé, une unique
 préparation a été soumise. Action `3ac28772-b3de-4ed4-a9be-8c23520fea80` :
 1 624 caractères reçus puis `document_provider_incomplete`, sans carte,
@@ -37,8 +39,8 @@ Arrêt sur limite de preuve pour contre-audit, sans sonde ni nouvel essai live.
 OBS-M9A-PREP-01 reste ouvert et non corrigé ; instrumentation éventuelle et
 reprise exigent un mandat distinct. M9-A ouvert, M9-B/M10 non commencés.
 
-**Mandat distinct suivant du 11 octobre — observabilité SSE sur code seulement,
-soumise au contre-audit.** Le contre-audit Codex transmis par Tof valide le
+**Étape historique du 11 octobre — observabilité SSE sur code seulement,
+initialement soumise au contre-audit.** Le contre-audit Codex transmis par Tof valide le
 diagnostic précédent ; la cause historique reste inconnue. Le rejet SSE
 `document_provider_incomplete` porte désormais `sse_rejection` : site fermé
 (`tool_call`, `content_after_stop`, `unrecognized_terminal_reason`,
@@ -59,12 +61,50 @@ Sentinelle absente du diagnostic et des événements persistés du tour ; panne
 du diagnostic sans changement du refus métier. L'émission garde la garantie
 best-effort du canal existant : aucune persistance promise si le sink échoue.
 [Relevé compact, commandes et limites](../baselines/document-workshop/frida-v1-document-workshop-obs-m9a-prep-01-observability-20261011.json).
-Runtime inchangé (`9d423791…`, image `0e196a0dd199…`), aucun appel live,
+À cette remise sur code : runtime inchangé (`9d423791…`, image `0e196a0dd199…`), aucun appel live,
 déploiement ou nouveau canari. OBS-M9A-PREP-01 et M9-A restent ouverts ; aucun
 correctif fonctionnel établi. Remise Sauron future : quatre propriétaires
 `app/core/document_workshop_{contract,http_transport,provider,turn}.py` et
 `app/observability/observability_payload_guard_context_schema.py` ; aucun
 raccord runtime autorisé ici. Arrêt pour contre-audit.
+
+**État courant du 11 octobre — correctif `duplicate_stop` sur code, runtime
+encore inchangé par ce micro-lot.** L'observabilité `fa3ad27a…` a ensuite été
+livrée par Sauron, image `958d361bd537…`. Son contre-audit runtime favorable
+(code exact, SSE isolé, configuration et voisins préservés) est attribué à
+Codex, transmis par Tof et non rejoué ici.
+
+Deuxième préparation Safari, attribuée à Codex : action
+`e883206a-9748-4c1e-8e89-38c81d5818b8`, tour
+`turn-954f51e4-d681-4f9c-af41-5f354c6de44f`, échec à `12:58:04 UTC` après
+27 200 ms et 1 513 caractères reçus. Rejet `document_provider_incomplete`,
+`site=duplicate_stop`, stop=true/DONE=false/HTTP=`not_observed`, sans
+confirmation, révision, publication ou rendu. Rejet anticipé : DONE et fin
+HTTP non observés ne prouvent pas leur absence future. Les trames brutes
+manquent ; aucune attribution rétroactive au premier échec.
+
+La [documentation OpenRouter, trame finale usage](https://openrouter.ai/docs/api_reference/streaming#the-final-usage-chunk-chat-completions)
+décrit un choix sans contenu répétant la terminaison avant DONE. Incompatibilité
+reproduite sur lecteur/HTTP réels avec canonical valide : nominal vert, trame
+de comptage refusée `duplicate_stop`. Le seul propriétaire runtime modifié est
+`app/core/document_workshop_provider.py` : une unique répétition concordante
+de `stop` est traitée en comptage après validation des métadonnées/plafonds,
+avec index explicite 0, au moins un compteur standard validé dans cette trame
+et delta limité à contenu absent/null/vide et rôle assistant optionnel.
+Outil, refus, autre champ de delta, doublon nu ou seconde trame répétant stop
+restent refusés. DONE et canonical exact restent requis ; aucun retry,
+drainage, modification de modèle/prompt/budget/compteur partagé ou du chat commun.
+
+Preuves Celebrimbor hors ligne : baseline 71/71, rouge causal avec témoin vert,
+vert après correctif puis même rouge au retrait de ses seules 12 lignes ;
+final 76/76 lecteur/transport/observabilité et 7/7 HTTP/PostgreSQL isolés.
+Révision/canonical/empreinte et événement de succès persistés sous le bon
+tour/action, sans exécution ; frontières, annulation/inactivité/autorité et
+diagnostic borné vérifiés. [Relevé compact et commandes](../baselines/document-workshop/frida-v1-document-workshop-obs-m9a-duplicate-stop-20261011.json).
+Cette reproduction justifie le correctif applicatif ; elle ne reconstitue pas
+les trames historiques. Aucun déploiement, appel live, Writer ou DAV ici.
+OBS-M9A-PREP-01 et M9-A restent ouverts pour contre-audit, livraison runtime
+et recette ultérieures ; M9-B/M10 hors mandat.
 
 ## Raccord retenu
 
