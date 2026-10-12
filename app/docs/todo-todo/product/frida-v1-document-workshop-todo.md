@@ -4707,7 +4707,18 @@ restent gardés. Aucun backend, route produit, dépendance ou migration modifié
 - [x] Course des deux arrivées sous PostgreSQL isolé, stores/claims réels et DAV synthétique : un rendu applicatif, un PUT, un reçu, aucune compensation ; relectures/répétitions sans second effet.
 - [x] HTTP natif synthétique : 303 suivi vers HTML avant handler, reconnexion/reload simulés puis nouveau clic ; réponse de publication perdue et succès retrouvé par GET.
 - [x] Documentation et preuves ciblées ; historique M5 et inconnues conservés.
-- [ ] Contre-audit Codex M9A-CONFIRM-REAUTH-01.
+
+**Contre-audit applicatif Codex transmis par Tof, favorable et non rejoué dans
+cette session :** 86 tests verts (53 navigateur, 32 serveur/SQL, 1 HTTP natif)
+et trois rouges par retrait du correctif, attribués à Codex. Le P3 documentaire
+P3-M9A-CONFIRM-REAUTH-AUD-01 est corrigé le 12 octobre : les 32 IDs de
+`comparison.final_sql_ids`, dont la méthode était répétée, proviennent désormais
+des vrais `TestCase.id()`. Vérification isolée par `unittest.TestLoader` :
+**32 identifiants chargeables et uniques**, zéro erreur, un vrai test par ID,
+`id()` exact et égalité avec les trois modules publiés ; aucun test exécuté.
+Erratum et commande consignés dans le relevé, preuves historiques conservées.
+
+- [x] Contre-audit applicatif Codex M9A-CONFIRM-REAUTH-01 favorable, attribué à Codex ; P3 documentaire corrigé après vérification de chargement seule.
 - [ ] Livraison runtime du correctif et recette Safari réelle futures, sous autorisations distinctes.
 - [ ] OBS-M9A-PREP-01 et clôture globale M9-A toujours ouverts ; M9-B/M10 non commencés.
 
