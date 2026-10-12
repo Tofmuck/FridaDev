@@ -4787,6 +4787,37 @@ OBS-M9A-PREP-01/M9-A globalement ouverts, causes historiques/session inconnues.
 Aucune session Safari inspectée/modifiée, confirmation/canari, appel modèle/DAV,
 rendu Writer ou migration. M9-B/M10 non commencés. **ARRÊT POUR CONTRE-AUDIT CODEX.**
 
+#### M9A — diagnostic hors ligne de la copie DOCX, 12 octobre 2026
+
+**Constats live attribués à Codex, non rejoués :** la création de
+`preuve-m9a-original.docx` est acquise (fichier `3de947db…`, révision
+`ba1ab726…`, un fichier/un reçu, DAV 201). La préparation de copie suivante,
+action `c072a324…`, a échoué `document_source_reference_invalid` après
+1 521 caractères et 65 424 ms : cible explicite correcte, sélection de lecture
+vide, aucune révision, confirmation, publication ou nouveau rendu. Original
+et preuves antérieures préservés ; réponse fournisseur exacte inconnue.
+
+**Diagnostic applicatif sur `f5f689ce…`, sans correctif :** trois cas ciblés
+sur les vrais propriétaires et PostgreSQL jetable, **3/3, exit 0, 4,002 s
+unittest / 5,071 s runner**. A : cible seule, copie citant la cible → refus
+ligne 166 de `document_workshop_actions.py`. B : seule la sélection de lecture
+change, même cible également source → une préparation `pending`. C : référence
+étrangère → refus à la même garde. Aucun document exécuté ou confirmé.
+La cible est fraîchement lue et fournie au modèle dans A, mais ne rejoint ni
+les sources autorisées ni leurs versions. Pour une copie avec cible T,
+`T ∈ références ⊆ sources autorisées` impose une sélection de lecture de T.
+Les tests de copie existants fournissent déjà cette source ; ils ne couvrent
+pas le geste cible seule. Ce mécanisme est prouvé hors ligne ; l’enveloppe et
+la branche exactes historiques ne sont pas reconstituées.
+
+[Rapport, commandes, trois IDs, reproducer, incidents et limites](../../states/audits/frida-v1-document-workshop-copy-source-diagnostic-20261012.md).
+Recommandation non appliquée : expliciter cette précondition dans la
+préparation existante et demander une clarification/sélection humaine si elle
+manque, sans assouplir les gardes ni auto-sélectionner la cible comme source.
+Sources/données synthétiques, aucun appel live, Writer, correctif ou déploiement ;
+ressources possédées nettoyées. **OBS-M9A-PREP-01 et M9-A restent ouverts ;
+M9-B/M10 non commencés. Arrêt après livraison documentaire Git.**
+
 ### M9-B — Retravail DOCX externe avec fidélité honnête
 
 **Objectif :** retravailler une cible externe explicitement mobilisée, sans promettre
