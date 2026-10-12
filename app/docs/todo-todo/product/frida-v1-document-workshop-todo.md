@@ -288,6 +288,12 @@ de confirmation autorise la mutation.
 - [ ] Conserver même DOM, contrôleur et callbacks sur desktop/mobile.
 - [ ] Garder une sélection de source distincte d'une cible d'update.
 
+Précision M9-A du 12 octobre : pour copier, sélectionner le document comme
+source de lecture ; pour modifier, sélectionner la cible explicite, sans
+sélection de lecture supplémentaire obligatoire. Une cible fournie comme
+donnée au modèle n'autorise pas sa copie. Une source de copie manquante appelle
+`clarify` et le geste humain de sélection ; les gardes serveur restent l'autorité.
+
 ### 3.4. Préparation conversationnelle
 
 **Décision :** vraie parole utilisateur, réponse courte et pending durable.
@@ -4817,6 +4823,34 @@ manque, sans assouplir les gardes ni auto-sélectionner la cible comme source.
 Sources/données synthétiques, aucun appel live, Writer, correctif ou déploiement ;
 ressources possédées nettoyées. **OBS-M9A-PREP-01 et M9-A restent ouverts ;
 M9-B/M10 non commencés. Arrêt après livraison documentaire Git.**
+
+#### M9A — correctif minimal de la précondition de copie, 12 octobre 2026
+
+Base `0ad34c6f…`, même branche et worktree initialement propre. Le contre-audit
+Codex indépendant (A/B/C : 3/3 hors ligne) est confirmé par le rejeu ciblé du
+reproducer ci-dessus. La création réelle antérieure reste acquise selon Codex ;
+l'enveloppe exacte de l'échec live de copie reste inconnue.
+
+**Sur code seulement :** panneau et consignes distinguent sélection de lecture
+pour copier et cible explicite pour modifier. Le contexte documentaire transmet
+les seuls IDs déjà validés dans `authorized_source_file_ids`, avant gel/mesure.
+Source nécessaire absente : consigne de `clarify`, sans proposition préparée
+ni annonce de création. Gardes 95/141/166 et 175–176 intactes, aucune sélection
+automatique, union implicite ou transformation d'un refus en clarification.
+
+Preuves finales : **14 IDs distincts verts** (9 Python/PostgreSQL isolé et
+5 Chromium), sans addition des baselines/rejeux. Cible seule + clarify sans
+révision/carte confirmable ; copie cible seule et référence étrangère toujours
+refusées ligne 166 ; copie sourcée et update cible seule en `pending`, identité
+et préconditions préservées. Voisins création sans source, fraîcheur/facultés,
+payload/comptage et absence de replay conservés. Rouges causaux UI/payload
+distincts des gardes déjà vertes ; aucune obéissance OpenRouter live prouvée.
+
+[Contrat](../../states/specs/frida-v1-document-workshop-m9a-contract.md#état-courant--précondition-de-copie-m9-a-12-octobre-2026) ·
+[Relevé compact et auto-audit](../../states/baselines/document-workshop/frida-v1-document-workshop-m9a-copy-source-precondition-20261012.json).
+Correctif non déclaré live ; aucune livraison runtime ni reprise du canari.
+**Copie réelle, OBS-M9A-PREP-01 et M9-A restent ouverts ; M9-B/M10 non commencés.
+Arrêt après commit/push pour contre-audit Codex.**
 
 ### M9-B — Retravail DOCX externe avec fidélité honnête
 

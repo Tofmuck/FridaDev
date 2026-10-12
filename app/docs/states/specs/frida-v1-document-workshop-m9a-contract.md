@@ -1,6 +1,36 @@
 # Atelier documentaire — M9-A, DOCX Frida et pagination Writer
 
-## État courant — M9A-CONFIRM-REAUTH-01, 12 octobre 2026
+## État courant — précondition de copie M9-A, 12 octobre 2026
+
+**Correctif sur code, non déployé.** La création réelle antérieure reste
+acquise, selon Codex ; la copie réelle reste ouverte. Le
+[diagnostic conservé](../audits/frida-v1-document-workshop-copy-source-diagnostic-20261012.md)
+et son contre-audit indépendant attribué à Codex, transmis par Tof, établissent
+hors ligne que la cible seule ne donne pas l'autorité de copie.
+L'enveloppe exacte de l'échec live reste inconnue.
+
+Le panneau indique de sélectionner le document comme source de lecture pour
+copier, et la cible explicite pour modifier. Les consignes documentaires
+distinguent la cible fournie comme donnée des sources autorisées. Le contexte
+modèle contient `authorized_source_file_ids`, uniquement les IDs déjà validés
+par l'autorité initiale, avant gel et mesure du payload documentaire.
+Une copie avec cible T exige `T ∈ références ⊆ sources autorisées`. Si une
+source nécessaire manque, le modèle doit demander sa sélection en lecture
+avec `clarify`, sans proposition préparée ni annonce de fichier créé.
+
+Les gardes source/version/scope et cible restent inchangées ; une réponse
+préparée non autorisée reste refusée. Aucun auto-cochage, union implicite,
+requalification silencieuse ou nouveau schéma. L'update cible seule avec zéro
+source de lecture, la copie explicitement sourcée et la création sans source
+conservent leurs chemins. Confirmation humaine et facultés inchangées.
+
+[Relevé du correctif, commandes, IDs et limites](../baselines/document-workshop/frida-v1-document-workshop-m9a-copy-source-precondition-20261012.json) :
+14 IDs distincts verts sur l'état final, rouges causaux sur indications et
+payload, PostgreSQL jetable sans Writer. Les réponses synthétiques prouvent
+les branches applicatives, pas l'obéissance future d'OpenRouter. Copie live,
+OBS-M9A-PREP-01 et M9-A restent ouverts ; aucun déploiement ni reprise du canari.
+
+## Étape précédente — M9A-CONFIRM-REAUTH-01, 12 octobre 2026
 
 **Attribution Codex, transmise par Tof, sans rejeu live Celebrimbor :**
 contre-audit runtime du contrat de sortie favorable le 12 octobre, puis

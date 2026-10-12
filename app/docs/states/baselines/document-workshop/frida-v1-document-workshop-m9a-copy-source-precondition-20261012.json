@@ -1,0 +1,244 @@
+{
+  "title": "M9-A — correctif minimal de la précondition de copie",
+  "date": "2026-10-12",
+  "base": {
+    "root": "/opt/platform/fridadev",
+    "branch": "FridaV1-Document-Workshop-M9-A",
+    "head": "0ad34c6fe6f9d240f0b31fba497d7450df4fa9d4",
+    "upstream": "0ad34c6fe6f9d240f0b31fba497d7450df4fa9d4",
+    "remote": "0ad34c6fe6f9d240f0b31fba497d7450df4fa9d4",
+    "divergence": "0/0",
+    "worktree": "clean"
+  },
+  "attribution": {
+    "prior_independent_counteraudit": "Codex, 3/3 hors ligne, transmis par Tof ; distinct du rejeu Celebrimbor ci-dessous",
+    "live": "Création antérieure acquise selon Codex ; copie réelle ouverte, enveloppe exacte inconnue, aucun rejeu live",
+    "current_evidence": "Celebrimbor : vrais propriétaires applicatifs, entrées et fournisseurs synthétiques"
+  },
+  "defect": "Cible seule lue et fournie comme donnée, sans autorité de source pour copier ; panneau et consignes ambigus. T ∈ références ⊆ sources autorisées.",
+  "runtime_files": [
+    "app/core/document_workshop_turn.py",
+    "app/web/chat_document_workshop.js"
+  ],
+  "patch": "Indications existantes et consignes seules ; authorized_source_file_ids issu de self.source_ids déjà validé par save_initial/_source_rows, dans le contexte documentaire avant admission/gel/mesure ; clarify demandé si source de copie manquante.",
+  "final_unique_ids": {
+    "count": 14,
+    "python": [
+      "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_target_only_clarify_has_measured_authority_instructions",
+      "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_target_only_copy_still_rejected_at_same_guard",
+      "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_explicit_source_copy_pending_with_only_selected_authority",
+      "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_foreign_reference_still_rejected_at_same_guard",
+      "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_target_only_update_pending_preserves_target_preconditions",
+      "tests.integration.document_workshop.test_preparation_postgresql.PreparationPostgresqlTests.test_real_documentary_turn_prepares_one_action_without_normal_exchange",
+      "tests.integration.document_workshop.test_preparation_postgresql.PreparationPostgresqlTests.test_source_fresh_m2_is_complete_late_and_absent_from_faculties_and_transcript",
+      "tests.integration.document_workshop.test_output_contract_postgresql.OutputContractPostgresqlTests.test_real_assembly_schema_routing_measurement_and_exact_revision",
+      "tests.integration.document_workshop.test_claim_transport_postgresql.ClaimTransportPostgresqlTests.test_repeat_success_and_incompatible_id_do_not_duplicate_or_call_provider"
+    ],
+    "browser_file": "app/tests/integration/frontend_browser/test_frontend_browser_document_copy_sources.js",
+    "browser_ids": [
+      "M9A copy guidance and unchanged selection: target only desktop",
+      "M9A copy guidance and unchanged selection: explicit source phone",
+      "M9A copy guidance and unchanged selection: copy without update",
+      "M9A copy guidance and unchanged selection: preparation without writing"
+    ],
+    "browser_neighbor_file": "app/tests/integration/frontend_browser/test_frontend_browser_document_preparation_m4.js",
+    "browser_neighbor_id": "M4 mounted preparation uses one canonical turn, selected sources and compact pending: desktop light",
+    "counting": "9 Python + 5 Chromium ; baselines, rouges, contrôle négatif et répétitions non additionnés. Aucun skip dans les 14 IDs retenus."
+  },
+  "observations": {
+    "A": "Panneau réellement monté ; case et requête restent vides pour cible seule, seules les sélections humaines deviennent source IDs. Payload final distingue cible et seuls IDs sélectionnés ; mêmes messages mesurés avant transport, schéma strict compté séparément.",
+    "B": "Cible seule + clarify programmé : HTTP 200, clarify, zéro nouvelle révision, confirmation=false, aucune proposition confirmable ; réponse courte persistée.",
+    "C": "Cible seule + copy citant T : HTTP 503, failed/document_source_reference_invalid, même garde ligne 166, zéro révision ; aucune conversion en clarify/succès.",
+    "D": "T sélectionnée : copy pending, une version source et une révision préparée ; référence étrangère : même refus ligne 166.",
+    "E": "Update cible seule : pending, zéro source/version de lecture, chemin/ID/ETag/SHA/base_revision_id identiques ; création sans source couverte par le voisin Markdown existant.",
+    "effects": "Historique synthétique original, fichier/liens, cache, reçu, journal, snapshots et renders identiques avant/après ; aucune confirmation/exécution/lecture Writer."
+  },
+  "setup": {
+    "images": {
+      "python": "sha256:486a8afeb2f62c7906194d3e1fee839387e55753bcad365120d18306502fafdc",
+      "postgres": "sha256:87e04d274d186c7331d0e13c7c90c8b9f63b0d7ae94476c98a229a94d62c9745"
+    },
+    "source": "git archive HEAD app à la base, puis copie explicite du nouveau test Python et du propriétaire documentaire modifié ; UI depuis le checkout. Aucun autre changement de source dans le runner.",
+    "reproducer": "Extraction inchangée du bloc REPRODUCER de app/docs/states/audits/frida-v1-document-workshop-copy-source-diagnostic-20261012.md pour la baseline.",
+    "isolation": "PG jetable, network none, aucun port publié, données tmpfs et socket Unix possédé ; runner sans réseau, env -i, source/socket RO, rootfs RO, cap-drop ALL/no-new-privileges. Aucune donnée/secret/DB opérateur ni socket Writer monté.",
+    "pg_command": "docker run -d --name frida-m9a-copy-fix-wn9jrk-pg --pull=never --network none --read-only --memory 768m --pids-limit 128 --tmpfs /tmp:rw,nosuid,nodev --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev -v /tmp/frida-m9a-copy-fix-_wn9jrk_/pg-socket:/var/run/postgresql -e POSTGRES_USER=m1proof -e POSTGRES_DB=m1proof -e POSTGRES_HOST_AUTH_METHOD=trust sha256:87e04d274d186c7331d0e13c7c90c8b9f63b0d7ae94476c98a229a94d62c9745 -c listen_addresses=",
+    "pg_start_exit": 0,
+    "pg_ready_command": "docker exec frida-m9a-copy-fix-wn9jrk-pg pg_isready -U m1proof -d m1proof",
+    "pg_ready_exit": 0,
+    "python_runner": "#!/bin/bash\nset -euo pipefail\nproof_dir=/tmp/frida-m9a-copy-fix-_wn9jrk_\ndocker run --rm --name frida-m9a-copy-fix-wn9jrk-runner --pull=never --network none \\\n --read-only --cap-drop ALL --security-opt no-new-privileges --memory 2g --pids-limit 256 \\\n --tmpfs /tmp:rw,nosuid,nodev -v \"$proof_dir/source/app:/workspace/app:ro\" \\\n -v \"$proof_dir/pg-socket:/proof/sock:ro\" -v \"$proof_dir/reproduce_copy.py:/proof/reproduce_copy.py:ro\" \\\n -w /workspace/app --entrypoint /usr/bin/env \\\n sha256:486a8afeb2f62c7906194d3e1fee839387e55753bcad365120d18306502fafdc -i \\\n PATH=/usr/local/bin:/usr/bin:/bin PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/workspace/app:/proof \\\n EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid SEARXNG_URL=https://search.invalid \\\n M2_PROOF_PG_SOCKET=/proof/sock M3_PROOF_PG_SOCKET=/proof/sock M4_PROOF_PG_SOCKET=/proof/sock M5_PROOF_PG_SOCKET=/proof/sock \\\n python -m unittest -v \"$@\"\n",
+    "replay": "Créer un répertoire possédé et des noms Docker absents ; reprendre le setup/cleanup du diagnostic référencé, archiver le commit à vérifier, extraire le reproducer ; adapter uniquement les chemins/noms du runner et utiliser les sélections listées. Aucun pull/install.",
+    "browser": "Node v20.19.2, Playwright/Chromium installés ; serveur statique local et fetch synthétique via fixtures existantes, polices interceptées ; aucun Safari."
+  },
+  "runs": [
+    {
+      "run": "baseline-python",
+      "command": "bash /tmp/frida-m9a-copy-fix-_wn9jrk_/run-python.sh reproduce_copy.CopySourceDiagnostic.test_A_target_only reproduce_copy.CopySourceDiagnostic.test_B_target_also_source reproduce_copy.CopySourceDiagnostic.test_C_foreign_reference tests.integration.document_workshop.test_preparation_postgresql.PreparationPostgresqlTests.test_real_documentary_turn_prepares_one_action_without_normal_exchange",
+      "exit": 0,
+      "scope": "4 IDs baseline, dont les 3 du reproducer conservé",
+      "result": [
+        "Ran 4 tests in 4.674s",
+        "OK"
+      ],
+      "temporary_log_sha256": "da2288b00b55c5c63bdb10f5572861d2e12d83c74a7825eb06511916ac4ea8c0"
+    },
+    {
+      "run": "baseline-browser",
+      "command": "node --test --test-name-pattern='^M4 mounted preparation uses one canonical turn, selected sources and compact pending: desktop light$' app/tests/integration/frontend_browser/test_frontend_browser_document_preparation_m4.js",
+      "exit": 0,
+      "scope": "1 exécuté, 21 hors sélection ignorés par Node",
+      "result": [
+        "# tests 22",
+        "# pass 1",
+        "# fail 0",
+        "# skipped 21",
+        "# duration_ms 1585.075426"
+      ],
+      "temporary_log_sha256": "1c8dd5713202a2942e36a5fcc2fba8fb7fd19d62237f4136b37d648717c647f5"
+    },
+    {
+      "run": "red-python",
+      "command": "bash /tmp/frida-m9a-copy-fix-_wn9jrk_/run-python.sh tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_target_only_clarify_has_measured_authority_instructions",
+      "exit": 1,
+      "scope": "1 échec attendu : liste des IDs autorisés absente du payload final",
+      "result": [
+        "Ran 1 test in 1.732s",
+        "FAILED (failures=1)"
+      ],
+      "temporary_log_sha256": "68e79a44a5d041b07c21dd21df503fbe725a79bee88706be39a5886696ba9517"
+    },
+    {
+      "run": "red-browser",
+      "command": "node --test app/tests/integration/frontend_browser/test_frontend_browser_document_copy_sources.js",
+      "exit": 1,
+      "scope": "4 échecs attendus : indication de sélection de lecture absente du DOM affiché",
+      "result": [
+        "# tests 4",
+        "# pass 0",
+        "# fail 4",
+        "# skipped 0",
+        "# duration_ms 3245.070955"
+      ],
+      "temporary_log_sha256": "0d32fc536c9e2f31c2d84bd2a5a2220a1e426e612c4cbb89f8fdca9ec1eab716"
+    },
+    {
+      "run": "green-python",
+      "command": "bash /tmp/frida-m9a-copy-fix-_wn9jrk_/run-python.sh tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests",
+      "exit": 0,
+      "scope": "5 verts après patch",
+      "result": [
+        "Ran 5 tests in 6.522s",
+        "OK"
+      ],
+      "temporary_log_sha256": "c1362b649184e97115958d526046ab9d0911bd28a4e7d2bb7bebde61420599bd"
+    },
+    {
+      "run": "green-browser",
+      "command": "node --test app/tests/integration/frontend_browser/test_frontend_browser_document_copy_sources.js",
+      "exit": 0,
+      "scope": "4 verts après patch",
+      "result": [
+        "# tests 4",
+        "# pass 4",
+        "# fail 0",
+        "# skipped 0",
+        "# duration_ms 3546.371807"
+      ],
+      "temporary_log_sha256": "1eabc9fc6e6d6175427b0fb0f12a130e529e592cfbe11ae100294bcbf2dc452b"
+    },
+    {
+      "run": "negative-prompt",
+      "command": "bash /tmp/frida-m9a-copy-fix-_wn9jrk_/run-python.sh tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_target_only_clarify_has_measured_authority_instructions",
+      "exit": 1,
+      "scope": "1 échec attendu : ancien PROMPT seul dans la copie isolée, nouvelle liste conservée ; copie restaurée ensuite",
+      "result": [
+        "Ran 1 test in 1.906s",
+        "FAILED (failures=1)"
+      ],
+      "temporary_log_sha256": "0ae04600ae489a445190e67f21bcd59e8cec7d1d72df36690ab97322081ae736"
+    },
+    {
+      "run": "neighbors-python",
+      "command": "bash /tmp/frida-m9a-copy-fix-_wn9jrk_/run-python.sh tests.integration.document_workshop.test_preparation_postgresql.PreparationPostgresqlTests.test_real_documentary_turn_prepares_one_action_without_normal_exchange tests.integration.document_workshop.test_preparation_postgresql.PreparationPostgresqlTests.test_source_fresh_m2_is_complete_late_and_absent_from_faculties_and_transcript tests.integration.document_workshop.test_output_contract_postgresql.OutputContractPostgresqlTests.test_real_assembly_schema_routing_measurement_and_exact_revision tests.integration.document_workshop.test_claim_transport_postgresql.ClaimTransportPostgresqlTests.test_repeat_success_and_incompatible_id_do_not_duplicate_or_call_provider",
+      "exit": 0,
+      "scope": "4 voisins verts",
+      "result": [
+        "Ran 4 tests in 2.961s",
+        "OK"
+      ],
+      "temporary_log_sha256": "9fc3bc88ce428731759a02bd48fbb7b87629cc8e04f4368f54f960a975d0ef5d"
+    },
+    {
+      "run": "neighbors-browser",
+      "command": "node --test --test-name-pattern='^M4 mounted preparation uses one canonical turn, selected sources and compact pending: desktop light$' app/tests/integration/frontend_browser/test_frontend_browser_document_preparation_m4.js",
+      "exit": 0,
+      "scope": "1 exécuté vert, 21 hors sélection ignorés par Node",
+      "result": [
+        "# tests 22",
+        "# pass 1",
+        "# fail 0",
+        "# skipped 21",
+        "# duration_ms 1465.771788"
+      ],
+      "temporary_log_sha256": "d494c933c03abafe59a3c3356085dfb30a8c052eea3f9ccf1e2bb36ee6f1df24"
+    },
+    {
+      "run": "final-python",
+      "command": "bash /tmp/frida-m9a-copy-fix-_wn9jrk_/run-python.sh tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests",
+      "exit": 0,
+      "scope": "5 verts après remplacement des imports de classes fixtures par leurs modules pour éviter leur collecte implicite ; dernière retouche de docstring sans effet",
+      "result": [
+        "Ran 5 tests in 6.463s",
+        "OK"
+      ],
+      "temporary_log_sha256": "281e601f35c7aa82a8ab02f3f0eb28173de4f7d28a2b9bc17e299aa000fd7872"
+    }
+  ],
+  "auto_audit": {
+    "refus": "document_workshop_actions.py byte-identique à la base : lignes 95/141/166/175–176 conservées ; rejets ligne 166 éprouvés par vrais propriétaires. Gardes version/scope non réimplémentées dans les tests.",
+    "update": "Cible seule toujours admise par le contrôleur ; test réel DOCX atteint pending avec zéro source de lecture et préconditions exactes.",
+    "authority": "Aucune autorité ajoutée : copie source déjà sélectionnée uniquement. Aucun auto-cochage, union, détecteur lexical, nouvelle route/état/parcours ou schéma de sortie.",
+    "chat_faculties": "Injection après construction des facultés, dans DocumentTurn uniquement. Voisin source/facultés/transcript, échange principal ordinaire et absence de replay verts ; aucune modification des facultés ou du chat normal.",
+    "budgets": "Liste et consignes présentes dans les messages finaux mesurés ; budgets et compteur inchangés, schéma strict inchangé ; la taille réelle du prompt augmente et est comptée.",
+    "false_greens": "Le Provider programmé pour clarify peut passer même si un modèle réel choisit une copie invalide. Les assertions de consignes/payload et les rouges prouvent leur présence, pas compréhension/obéissance. Le fetch navigateur synthétique ne prouve ni API live ni Safari ; la réponse HTTP 503 du mock ne prouve aucun refus serveur. Les gardes SQL sont vérifiées séparément.",
+    "causal": "Rouges initiaux sur DOM et liste absente ; ancien PROMPT seul réintroduit dans la copie isolée : échec sur instruction absente malgré liste présente. Gardes déjà vertes séparées de cette causalité."
+  },
+  "limits": [
+    "Aucun modèle/DAV live, canari, Safari, Writer, déploiement, migration opérateur, rebuild/restart durable ou message Sauron.",
+    "Aucun nouveau rendu/copier exécuté : pending prouve la préparation seulement. Copie réelle, OBS-M9A-PREP-01 et M9-A restent ouverts ; M9-B/M10 non commencés.",
+    "Logs de fixture : admin_log_write_failed/OSError (filesystem RO), conv_active_summary_read_failed/UndefinedTable (table hors fixture), déjà présents en baseline ; aucune garde ni finalisation court-circuitée.",
+    "Les logs synthétiques temporaires ne sont pas conservés ; leurs digests et résultats utiles sont consignés. Aucun prompt/document utilisateur ou secret dans ce relevé."
+  ],
+  "cleanup": {
+    "status": "complete",
+    "commands": [
+      {
+        "command": "docker stop -t 10 frida-m9a-copy-fix-wn9jrk-pg",
+        "exit": 0
+      },
+      {
+        "command": "docker rm frida-m9a-copy-fix-wn9jrk-pg",
+        "exit": 0
+      }
+    ],
+    "absent_containers": [
+      "frida-m9a-copy-fix-wn9jrk-pg",
+      "frida-m9a-copy-fix-wn9jrk-runner"
+    ],
+    "absent_directory": "/tmp/frida-m9a-copy-fix-_wn9jrk_",
+    "scope": "Uniquement les ressources possédées ; aucun service/image/cache partagé supprimé."
+  },
+  "git": {
+    "commit_push": "Autorisé sur M9-A après contrôle du lot ; hash et vérification finale remis dans la réponse, pas de hash auto-référent.",
+    "other_branches": "Empreintes refs/heads et refs/remotes/origin enregistrées avant lot ; comparaison après push requise."
+  },
+  "checks": {
+    "diff_check_exit": 0,
+    "changed_files": 7,
+    "added_relative_links_and_anchor_validated": 4,
+    "guard_and_output_schema_byte_identical": true,
+    "syntactic_secret_scan": "clear, complété par relecture du diff utile",
+    "other_refs_baseline_sha256": "abd307a89ead1c7027f5475311704d43a912bf931083a278b76f8cfaee417e6a",
+    "other_remote_heads_baseline_sha256": "e314606174644b3eb614a29e7eb95c1db930351d84e94e6085761582205a78be",
+    "staged_whitespace": "Premier contrôle indexé exit 2 : ligne vide finale du nouveau test retirée avant commit ; aucun changement sémantique."
+  }
+}

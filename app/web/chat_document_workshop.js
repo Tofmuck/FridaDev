@@ -528,9 +528,9 @@ function createDocumentWorkshopController({
       : context.capabilities.prepare === true
         ? context.capabilities.confirm === true
           ? context.capabilities.update === true
-            ? `Édition · Décrivez votre demande dans le compositeur. ${formats} · création, copie ou modification de la cible sélectionnée après confirmation.`
-            : `Édition · Décrivez votre demande dans le compositeur. ${formats} · création ou copie après confirmation.`
-          : `Édition · Décrivez votre demande dans le compositeur. ${formats} · création ou copie ; écriture indisponible.`
+            ? `Édition · Décrivez votre demande dans le compositeur. ${formats} · création, copie ou modification après confirmation. Pour copier, sélectionnez le document comme source de lecture. Pour modifier, sélectionnez la cible explicite.`
+            : `Édition · Décrivez votre demande dans le compositeur. ${formats} · création ou copie après confirmation. Pour copier, sélectionnez le document comme source de lecture.`
+          : `Édition · Décrivez votre demande dans le compositeur. ${formats} · création ou copie ; écriture indisponible. Pour copier, sélectionnez le document comme source de lecture.`
         : 'Édition · La préparation documentaire est indisponible. Votre brouillon est conservé.'
       : busy ? 'Ouverture du contexte…' : 'Choisissez explicitement un répertoire pour cette conversation.');
     if (actionEl) renderAction(actionEl, action);
