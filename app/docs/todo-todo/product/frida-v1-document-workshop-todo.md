@@ -1,6 +1,6 @@
 # Atelier documentaire agentique Frida V1 — spécification validée et roadmap
 
-Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-05 ; M3/M4/M5 : 2026-10-06 ; M6 : 2026-10-07 ; M8-S plateforme/clôture et M8-A applicatif : 2026-10-10 ; reprise M9-A et arrêt initial du harnais : 2026-10-11 ; harnais corrigé, contrat de sortie et diagnostic des rejets livrés dans FridaDev, contre-audit runtime Codex favorable attribué, préparation réussie puis confirmation interceptée par Authelia, correctif hors ligne M9A-CONFIRM-REAUTH-01 : 2026-10-12.
+Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-05 ; M3/M4/M5 : 2026-10-06 ; M6 : 2026-10-07 ; M8-S plateforme/clôture et M8-A applicatif : 2026-10-10 ; reprise M9-A et arrêt initial du harnais : 2026-10-11 ; harnais corrigé, contrat de sortie et diagnostic des rejets livrés dans FridaDev, contre-audit runtime Codex favorable attribué, préparation réussie puis confirmation interceptée par Authelia, correctif M9A-CONFIRM-REAUTH-01 contre-audité sur code, P3 fermé par Codex, livré par Sauron dans FridaDev seul ; contre-audit runtime Codex attendu : 2026-10-12.
 
 Statut : **spécification et choix architecturaux validés par Tof ; M0 fermé sur
 composants et preuves internes, contre-audit corrigé sur `FridaV1-Document-Workshop-M0` ;
@@ -18,7 +18,7 @@ M4 livré sur code, P2-M4-01 et P2-M4-02 fermés après contre-audits indépenda
 P3-M4-03 corrigé par erratum documentaire (1 198 déclarés conservés et rectifiés,
 sélection publiée à 1 414, 21 identifiants réutilisables validés) ;
 M4 non intégralement fermé ;
-M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées ; M7 fermé sur code/preuves isolées et contre-audit ; code/migrations M1–M7 livrés via M8-A, recettes DAV/Versions ouvertes ; M8-C fermé après contre-audits indépendants AUD-01/AUD-02 ; M8-S fermé après contre-audit Codex favorable transmis par Tof ; M8-A fermé sur code et raccord runtime après contre-audit Codex favorable du 10 octobre transmis par Tof ; M9-A : code et runtime contre-audités favorablement par Codex le 11 octobre ; candidate renderer qualifiée déployée ; canari Safari arrêté avant confirmation sur `document_provider_incomplete` (OBS-M9A-PREP-01), cause non établie ; observabilité SSE livrée par Sauron et contre-auditée favorablement sur runtime par Codex ; seconde préparation bloquée sur `duplicate_stop`, correctif contre-audité favorablement sur code par Codex, livré par Sauron après correction ciblée du comparateur ; contre-audit runtime de la reprise favorable attribué à Codex ; nouvelle préparation échouée sur `document_envelope_invalid`, cause historique inconnue ; contrat de sortie et discriminants contre-audités sur code par Codex (167 IDs), arrêt initial du harnais conservé ; reprise autorisée du 12 octobre, harnais corrigé et trois cas ciblés conformes, candidate existante livrée dans FridaDev seul ; code actif `0552d701…` / image `1397bef58c50…`, contre-audit runtime favorable attribué à Codex le 12 octobre, préparation Safari réussie puis confirmation interceptée par Authelia ; reprise humaine corrigée hors ligne (M9A-CONFIRM-REAUTH-01), contre-audit et livraison runtime du correctif ouverts ; M9-A globalement ouvert ; M9-B/M10 et Z non commencés. FridaDev et le renderer sont livrés ; DOCX atelier disponible sous ses prérequis M9-A, PDF public et retravail DOCX externe fermés**.
+M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées ; M7 fermé sur code/preuves isolées et contre-audit ; code/migrations M1–M7 livrés via M8-A, recettes DAV/Versions ouvertes ; M8-C fermé après contre-audits indépendants AUD-01/AUD-02 ; M8-S fermé après contre-audit Codex favorable transmis par Tof ; M8-A fermé sur code et raccord runtime après contre-audit Codex favorable du 10 octobre transmis par Tof ; M9-A : code et runtime contre-audités favorablement par Codex le 11 octobre ; candidate renderer qualifiée déployée ; canari Safari arrêté avant confirmation sur `document_provider_incomplete` (OBS-M9A-PREP-01), cause non établie ; observabilité SSE livrée par Sauron et contre-auditée favorablement sur runtime par Codex ; seconde préparation bloquée sur `duplicate_stop`, correctif contre-audité favorablement sur code par Codex, livré par Sauron après correction ciblée du comparateur ; contre-audit runtime de la reprise favorable attribué à Codex ; nouvelle préparation échouée sur `document_envelope_invalid`, cause historique inconnue ; contrat de sortie et discriminants contre-audités sur code par Codex (167 IDs), arrêt initial du harnais conservé ; reprise autorisée du 12 octobre, harnais corrigé et trois cas ciblés conformes, candidate existante livrée dans FridaDev seul ; code alors livré `0552d701…` / image `1397bef58c50…`, contre-audit runtime favorable attribué à Codex le 12 octobre, préparation Safari réussie puis confirmation interceptée par Authelia ; reprise humaine M9A-CONFIRM-REAUTH-01 contre-auditée sur code (86 IDs), P3 fermé par Codex, livrée par Sauron dans FridaDev seul (code `8298209f…` / image `93bcf68a9d95…`) ; contre-audit runtime Codex et recette Safari ouverts ; M9-A globalement ouvert ; M9-B/M10 et Z non commencés. FridaDev et le renderer sont livrés ; DOCX atelier disponible sous ses prérequis M9-A, PDF public et retravail DOCX externe fermés**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
 dialogue avec Tof. Création documentaire committée dans `d6b63fd1`, puis validation
@@ -4193,7 +4193,7 @@ executor et projection de carte ; aucune logique UNO dans le pipeline principal.
 Frida récupérée/validée temporairement, update If-Match sur même ID/nom.
 **Propriétaire :** Celebrimbor ; Sauron traite seulement une non-conformité plateforme prouvée.
 
-**État d'exécution — 12 octobre 2026 : M9-A initial et observabilité runtime contre-audités favorablement ; canari Safari bloqué avant confirmation (OBS-M9A-PREP-01), correctif `duplicate_stop` contre-audité favorablement sur code, reprise Sauron livrée et contre-audit runtime favorable attribué à Codex ; nouveau canari échoué sur `document_envelope_invalid`, règle exacte inconnue ; contrat de sortie strict et discriminants contre-audités favorablement sur code par Codex, 167 IDs distincts verts ; arrêt initial du harnais conservé, puis reprise autorisée du 12 octobre : amorçage corrigé et trois cas ciblés conformes, candidate existante livrée dans FridaDev seul ; contre-audit runtime favorable attribué à Codex le 12 octobre, préparation réelle réussie puis confirmation interceptée par Authelia ; correctif hors ligne M9A-CONFIRM-REAUTH-01 à contre-auditer et livrer, M9-A globalement ouvert.**
+**État d'exécution — 12 octobre 2026 : M9-A initial et observabilité runtime contre-audités favorablement ; canari Safari bloqué avant confirmation (OBS-M9A-PREP-01), correctif `duplicate_stop` contre-audité favorablement sur code, reprise Sauron livrée et contre-audit runtime favorable attribué à Codex ; nouveau canari échoué sur `document_envelope_invalid`, règle exacte inconnue ; contrat de sortie strict et discriminants contre-audités favorablement sur code par Codex, 167 IDs distincts verts ; arrêt initial du harnais conservé, puis reprise autorisée du 12 octobre : amorçage corrigé et trois cas ciblés conformes, candidate existante livrée dans FridaDev seul ; contre-audit runtime favorable attribué à Codex le 12 octobre, préparation réelle réussie puis confirmation interceptée par Authelia ; correctif M9A-CONFIRM-REAUTH-01 contre-audité sur code (86 IDs), P3 fermé par Codex, livré par Sauron dans FridaDev seul ; contre-audit runtime Codex et recette Safari attendus, M9-A globalement ouvert.**
 Reprise des 25 fichiers WIP autorisés sur la branche existante, HEAD documentaire
 M8-A `1b14e7dcdf68030c2d1df139eb9ee4c5f825143d` ; aucune clôture M8-A refaite,
 aucune absorption d'autre travail. Code livré par `9d423791cfd14a3611ecdb9047e8d840f667fbc7`,
@@ -4717,15 +4717,75 @@ des vrais `TestCase.id()`. Vérification isolée par `unittest.TestLoader` :
 **32 identifiants chargeables et uniques**, zéro erreur, un vrai test par ID,
 `id()` exact et égalité avec les trois modules publiés ; aucun test exécuté.
 Erratum et commande consignés dans le relevé, preuves historiques conservées.
+**P3 fermé par contre-audit Codex indépendant du 12 octobre** : les 32 IDs
+chargent chacun un vrai test avec id() exact et correspondent aux trois modules ;
+aucun test ni setUp exécuté. Les 86 verts et trois négatifs restent attribués
+au contre-audit applicatif Codex, sans résultat fonctionnel ajouté par cet erratum.
 
 - [x] Contre-audit applicatif Codex M9A-CONFIRM-REAUTH-01 favorable, attribué à Codex ; P3 documentaire corrigé après vérification de chargement seule.
-- [ ] Livraison runtime du correctif et recette Safari réelle futures, sous autorisations distinctes.
+- [x] Livraison runtime Sauron du correctif dans FridaDev seul, cinq preuves ciblées et invariance vérifiées le 12 octobre.
+- [ ] Contre-audit runtime Codex de cette livraison ; aucun résultat anticipé.
+- [ ] Recette Safari réelle future sous mandat distinct ; session et préparation pending préservées.
 - [ ] OBS-M9A-PREP-01 et clôture globale M9-A toujours ouverts ; M9-B/M10 non commencés.
 
 [Relevé des commandes, IDs, exits, incidents et limites](../../states/baselines/document-workshop/frida-v1-document-workshop-m9a-confirm-reauth-01-20261012.json).
 Base propre `3f66b4626f53325d783afcb580b2c95bab045a9e`, branche M9-A conservée.
-Aucun déploiement/rebuild/restart, appel modèle/DAV live, canari ou modification
-des marqueurs et objets de Tof. Arrêt après commit/push pour contre-audit Codex.
+Lot applicatif historique : aucun déploiement/rebuild/restart, appel modèle/DAV
+live, canari ou modification des marqueurs et objets de Tof ; arrêt après son
+commit/push pour contre-audit Codex.
+
+
+**Livraison runtime Sauron — 12 octobre 2026, 14:28 UTC (16:28 Europe/Paris).**
+Base Sauron propre `c5d6065…`, branche dédiée Confirm-Reauth-Runtime ; application
+propre/alignée au commit exact `8298209f06092b509e87400543128acd1b25c8d7`, parent
+`4029e506…`. Seul delta produit depuis le runtime `0552d701…` :
+`app/web/chat_document_workshop.js`. Aucun delta non audité absorbé.
+Les 86 IDs, les deux ordres PostgreSQL et trois rouges causaux restent attribués
+à Codex ; aucun rejeu général/SQL/SSE/Writer Sauron.
+
+Backup frais root-only de l'image réellement active `1397bef58c50…` et Compose,
+quatre SHA/config ID vérifiés, aucun dump DB ; repli vers cette base fraîche.
+Archive Git exacte sur socle/dépendances conservés, build hors réseau sans pull/
+apt/pip (exit 0/1,554 s) ; candidate
+`sha256:93bcf68a9d95f15b227d5474ab12e4ca15b795bd7e23710cbc3614f652cb0795`,
+code embarqué `8298209f…`, 1 504 fichiers exacts/20 distributions/21 couches
+source conservés. Contrôleur extrait de l'image finale : 53 850 octets, SHA
+`6bbb6c6c4a4e875fe79fabfd278cbb15dc7dc9c9833da74adde8ede9dab78017`, égal à Git.
+Comparateur Sauron inchangé, six contrôles conformes, aucune nouvelle exclusion.
+
+Cinq IDs existants vérifiés avant exécution, puis une seule sélection Playwright
+sur les tests/fixtures du commit audité et ce contrôleur extrait : **5/5, exit
+0/5,692 s**, zéro échec/skip/annulation. Trois reprises auth_html/invalid_json/
+not_received avec identité et request_id conservés, nouveau geste requis ;
+retour tardif face à une nouvelle tentative et reload pendant confirmation
+non résolue gardés. Aucun POST automatique ni second envoi local concurrent.
+Réseau none/fichiers RO/env synthétique, caches existants RO, sans secrets,
+données opérateur, DB ou socket Writer. Ces cinq cas ne qualifient ni Safari/
+Authelia réel, ni Nextcloud/DAV live, SQL ou Writer.
+
+Préflight revalidé sans préparation/exécution active ni claim actif non expiré.
+Préparation opérateur `d9e62817…` / révision `ba1ab726…` pending/complete
+conservée, deux champs confirmation nuls : aucune annulation/réparation.
+Seule recréation FridaDev --no-deps --no-build --pull never : exit 0/12,121 s,
+healthy en 42,603 s. Capture après bascule conservée avant assertions.
+Actif `225f95f72d99…`, démarrage `2026-10-12T14:28:14.895903354Z`, healthy/
+restart 0/root 0:0/[0], image `93bcf68a…`, code `8298209f…`, 1 504 fichiers
+exacts/20 distributions. Contrôleur servi HTTP200 : mêmes octets/SHA ; interne
+200, racine/admin publics 302 Authelia. Configuration/secrets/réseaux/droits/
+montages socket/pins RO préservés hors image/provenance/hash attendu.
+32 voisins invariants, Writer ed1e6726cabc/image7a61bd805ca0/démarrage inchangé,
+pins a788e48f649a… et droits/inodes/montages conservés ; aucun rendu.
+Sept tables documentaires et objets/119 événements canari identiques.
+Aucun repli nécessaire. Jetables/contexte/helpers/caches possédés nettoyés,
+images de repli/sauvegardes/caches partagés préservés. Preuves root-only sous
+`/opt/platform/backups/fridadev-confirm-reauth-runtime-20261012T142206Z`.
+
+[Rapport Sauron](</Users/tof/Saurons/sauron-frida-system/reports/2026-10-12-fridadev-confirm-reauth-runtime.md>).
+**Correctif livré ; contre-audit runtime Codex attendu.** Code embarqué
+`8298209f…`, distinct du futur commit documentaire de cette roadmap.
+OBS-M9A-PREP-01/M9-A globalement ouverts, causes historiques/session inconnues.
+Aucune session Safari inspectée/modifiée, confirmation/canari, appel modèle/DAV,
+rendu Writer ou migration. M9-B/M10 non commencés. **ARRÊT POUR CONTRE-AUDIT CODEX.**
 
 ### M9-B — Retravail DOCX externe avec fidélité honnête
 
@@ -5211,7 +5271,7 @@ par le report documentaire déjà poussé `1b14e7dc…`. M9-A repris le 11 octob
 code `9d423791…` et contre-audit Codex favorable 28/28 ; blocage levé sur
 candidate qualifiée désormais déployée. Runtime contre-audité favorablement
 par Codex le 11 octobre, DOCX conditionnel disponible, PDF public/DOCX externe fermés ;
-canari Safari bloqué avant confirmation (OBS-M9A-PREP-01), cause du premier échec inconnue ; observabilité SSE livrée et contre-auditée sur runtime par Codex, second rejet `duplicate_stop` et correctif contre-audité favorablement sur code par Codex, livré par Sauron après correction ciblée du comparateur ; contre-audit runtime de la reprise favorable attribué à Codex ; nouvelle préparation échouée sur `document_envelope_invalid`, règle exacte inconnue ; contrat de sortie strict et discriminants contre-audités sur code par Codex (167 IDs verts), arrêt initial du harnais conservé ; reprise du 12 octobre, harnais corrigé et trois cas ciblés conformes, candidate existante livrée dans FridaDev seul ; code `0552d701…` / image `1397bef58c50…`, contre-audit runtime favorable attribué à Codex le 12 octobre, préparation réelle réussie puis confirmation interceptée par Authelia ; correctif de reprise humaine M9A-CONFIRM-REAUTH-01 hors ligne, contre-audit/livraison runtime/recette futurs ; OBS-M9A-PREP-01 et clôture globale M9-A ouverts. M9-B/M10/Z non commencés.
+canari Safari bloqué avant confirmation (OBS-M9A-PREP-01), cause du premier échec inconnue ; observabilité SSE livrée et contre-auditée sur runtime par Codex, second rejet `duplicate_stop` et correctif contre-audité favorablement sur code par Codex, livré par Sauron après correction ciblée du comparateur ; contre-audit runtime de la reprise favorable attribué à Codex ; nouvelle préparation échouée sur `document_envelope_invalid`, règle exacte inconnue ; contrat de sortie strict et discriminants contre-audités sur code par Codex (167 IDs verts), arrêt initial du harnais conservé ; reprise du 12 octobre, harnais corrigé et trois cas ciblés conformes, candidate existante livrée dans FridaDev seul ; code `0552d701…` / image `1397bef58c50…`, contre-audit runtime favorable attribué à Codex le 12 octobre, préparation réelle réussie puis confirmation interceptée par Authelia ; correctif de reprise humaine M9A-CONFIRM-REAUTH-01 contre-audité sur code (86 IDs), P3 fermé par Codex, livré par Sauron dans FridaDev seul (code `8298209f…` / image `93bcf68a9d95…`), contre-audit runtime Codex et recette Safari futurs ; OBS-M9A-PREP-01 et clôture globale M9-A ouverts. M9-B/M10/Z non commencés.
 Actualisation runtime du 10 octobre : code et migrations M1–M7 livrés par le
 raccord M8-A ; les réserves de recette produit/DAV/Versions restent ouvertes.
 Les mentions de runtime ouvert dans les récits historiques décrivent leurs
