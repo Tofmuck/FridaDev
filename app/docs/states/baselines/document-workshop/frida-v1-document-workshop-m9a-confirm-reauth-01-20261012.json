@@ -1,0 +1,586 @@
+{
+  "lot": "M9A-CONFIRM-REAUTH-01",
+  "date": "2026-10-12",
+  "author": "Celebrimbor",
+  "branch": "FridaV1-Document-Workshop-M9-A",
+  "base": "3f66b4626f53325d783afcb580b2c95bab045a9e",
+  "base_clean": true,
+  "base_divergence": [
+    0,
+    0
+  ],
+  "attribution": {
+    "source": "Codex facts supplied by Tof; no live replay and external reports not read locally",
+    "reports": [
+      "audits/2026-10-12-m9a-creation-followup/rapport.md",
+      "audits/2026-10-12-output-contract-live-preparation/rapport.md"
+    ],
+    "runtime_counteraudit": "favorable",
+    "preparation": "succeeded",
+    "confirm": "303 anonymous interception before application handler; pending/complete unchanged",
+    "session_absence_cause": "unknown",
+    "historical_preparation_failure_causes": "unknown"
+  },
+  "change": {
+    "runtime_files": [
+      "app/web/chat_document_workshop.js"
+    ],
+    "server_changes": false,
+    "identity": "Same action and all five body fields, including request_id; legacy attempted/unknown markers retained, observed closed.",
+    "permission": "Validated GET pending/complete, same identities, confirm true, both server confirmation fields null; new human click consumes an ephemeral generation/cancellation-bound permit on all cards. Context creation POST cannot grant this permission.",
+    "uniqueness": "Production SQL conversation lock and atomic pending consumption with claim; pending GET never proves a previous POST cannot arrive.",
+    "late_guards": [
+      "Pre-click context GET cannot grant permission",
+      "Old fallback cannot release a newer local in-flight gate"
+    ],
+    "storage": "Malformed/unavailable storage fails closed and is not overwritten; no global marker reset."
+  },
+  "environment": {
+    "browser": "Existing Playwright/Chromium; Browser plugin unavailable; no installation",
+    "images": {
+      "fridadev-audit-py:latest": "sha256:486a8afeb2f62c7906194d3e1fee839387e55753bcad365120d18306502fafdc",
+      "postgres:16-alpine": "sha256:87e04d274d186c7331d0e13c7c90c8b9f63b0d7ae94476c98a229a94d62c9745",
+      "mcr.microsoft.com/playwright:v1.54.0-jammy": "sha256:55dfaaa282c98d5f4d328676e36eca5203b6494b97d9ef3ba0608d9e939e9523"
+    },
+    "isolation": "Network none, read-only checkout/rootfs, tmpfs data; only owned PostgreSQL Unix socket and synthetic HTTP namespace; no runtime DB/secrets/Writer socket/pins",
+    "temporary_root": "/tmp/frida-confirm-reauth-20261012-a88u8v6e"
+  },
+  "reproduction": {
+    "rule": "Create a fresh owned proof directory with pg-socket writable to the isolated PostgreSQL user; substitute temporary_root in commands. Existing images/browser cache only. Run SQL selections sequentially; fixture resets its isolated schema. HTTP fixture must finish before SQL runs. Stop/remove only the named frida-reauth proof containers.",
+    "postgres_command": "docker run -d --pull=never --name frida-reauth-pg --network none --read-only --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev --tmpfs /tmp:rw,nosuid,nodev -v /tmp/frida-confirm-reauth-20261012-a88u8v6e/pg-socket:/var/run/postgresql -e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_USER=m1proof -e POSTGRES_DB=m1proof postgres:16-alpine -c listen_addresses=",
+    "http_command": "docker run -d --pull=never --name frida-reauth-http --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /tmp/frida-confirm-reauth-20261012-a88u8v6e/pg-socket:/proof/sock:ro -v /tmp/frida-confirm-reauth-20261012-a88u8v6e/native:/proof/output -w /workspace/app --entrypoint /usr/bin/env fridadev-audit-py:latest -i PATH=/usr/local/bin:/usr/bin:/bin PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/workspace/app:/workspace EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid SEARXNG_URL=https://search.invalid M4_PROVENANCE_TRACE=1 M6_PROOF_ROOT=/proof/output M1_PROOF_PG_SOCKET=/proof/sock M2_PROOF_PG_SOCKET=/proof/sock M3_PROOF_PG_SOCKET=/proof/sock M4_PROOF_PG_SOCKET=/proof/sock M5_PROOF_PG_SOCKET=/proof/sock python -B -m tests.support.document_workshop_m9a_http",
+    "negative": "git show 3f66b4626f53325d783afcb580b2c95bab045a9e:app/web/chat_document_workshop.js > <proof_root>/baseline-controller.js; overlay read-only on the single controller in the browser container; no working-tree rollback.",
+    "readiness": "PostgreSQL pg_isready; native fixture creates M6_PROOF_ROOT/http-ready after initialization; native browser network joins only the isolated HTTP container."
+  },
+  "runs": [
+    {
+      "id": "baseline-ui",
+      "command": "docker run --rm --pull=never --name frida-reauth-baseline-ui --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /home/tof/.cache/ms-playwright:/proof/browsers:ro -w /workspace --entrypoint /usr/bin/env mcr.microsoft.com/playwright:v1.54.0-jammy -i PATH=/usr/local/bin:/usr/bin:/bin PLAYWRIGHT_BROWSERS_PATH=/proof/browsers node --test --test-concurrency=1 app/tests/integration/frontend_browser/test_frontend_browser_document_confirmation_m5.js app/tests/integration/frontend_browser/test_frontend_browser_document_workshop.js",
+      "exit": 0,
+      "seconds": 26.905,
+      "counts": {
+        "tests": 28,
+        "pass": 28,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "log_sha256": "5fe84787a708e343780d43365027b521e979ad2520618bb71809c84f9095b5d1"
+    },
+    {
+      "id": "baseline-sql",
+      "command": "docker run --rm --pull=never --name frida-reauth-baseline-sql --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /tmp/frida-confirm-reauth-20261012-a88u8v6e/pg-socket:/proof/sock:ro -w /workspace/app --entrypoint /usr/bin/env fridadev-audit-py:latest -i PATH=/usr/local/bin:/usr/bin:/bin PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/workspace/app:/workspace EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid SEARXNG_URL=https://search.invalid M1_PROOF_PG_SOCKET=/proof/sock M2_PROOF_PG_SOCKET=/proof/sock M3_PROOF_PG_SOCKET=/proof/sock M4_PROOF_PG_SOCKET=/proof/sock M5_PROOF_PG_SOCKET=/proof/sock python -B -m unittest -v tests.integration.document_workshop.test_execution_postgresql tests.integration.document_workshop.test_execution_concurrency_postgresql tests.unit.core.test_document_workshop_confirmation_route_m5",
+      "exit": 0,
+      "seconds": 38.581,
+      "counts": {
+        "tests": 31,
+        "pass_count": 31,
+        "skipped": 0
+      },
+      "log_sha256": "94ef171180977280b4ee8247dff14774a4adf8d336275df7a471e49e331e5a6a"
+    },
+    {
+      "id": "red-ui",
+      "command": "docker run --rm --pull=never --name frida-reauth-red-ui --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /home/tof/.cache/ms-playwright:/proof/browsers:ro -w /workspace --entrypoint /usr/bin/env mcr.microsoft.com/playwright:v1.54.0-jammy -i PATH=/usr/local/bin:/usr/bin:/bin PLAYWRIGHT_BROWSERS_PATH=/proof/browsers node --test --test-concurrency=1 --test-name-pattern=M9A-REAUTH app/tests/integration/frontend_browser/test_frontend_browser_document_confirmation_m5.js",
+      "exit": 1,
+      "seconds": 3.702,
+      "counts": {
+        "tests": 3,
+        "pass": 0,
+        "fail": 3,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "log_sha256": "1cb4692f2ec7687bc5c32ac2c8f849fcc2a268d103bab240b9e89b3bec17363c"
+    },
+    {
+      "id": "green-causal",
+      "command": "docker run --rm --pull=never --name frida-reauth-green-causal --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /home/tof/.cache/ms-playwright:/proof/browsers:ro -w /workspace --entrypoint /usr/bin/env mcr.microsoft.com/playwright:v1.54.0-jammy -i PATH=/usr/local/bin:/usr/bin:/bin PLAYWRIGHT_BROWSERS_PATH=/proof/browsers node --test --test-concurrency=1 --test-name-pattern=M9A-REAUTH app/tests/integration/frontend_browser/test_frontend_browser_document_confirmation_m5.js",
+      "exit": 0,
+      "seconds": 3.78,
+      "counts": {
+        "tests": 3,
+        "pass": 3,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "log_sha256": "ffeb78d3b51d680b00ddbca17ce573c0f0aad7543124f2a617927cabf260af6d"
+    },
+    {
+      "id": "race-sql",
+      "command": "docker run --rm --pull=never --name frida-reauth-race-sql --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /tmp/frida-confirm-reauth-20261012-a88u8v6e/pg-socket:/proof/sock:ro -w /workspace/app --entrypoint /usr/bin/env fridadev-audit-py:latest -i PATH=/usr/local/bin:/usr/bin:/bin PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/workspace/app:/workspace EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid SEARXNG_URL=https://search.invalid M1_PROOF_PG_SOCKET=/proof/sock M2_PROOF_PG_SOCKET=/proof/sock M3_PROOF_PG_SOCKET=/proof/sock M4_PROOF_PG_SOCKET=/proof/sock M5_PROOF_PG_SOCKET=/proof/sock python -B -m unittest -v tests.integration.document_workshop.test_execution_concurrency_postgresql.ExecutionConcurrencyPostgresqlTests.test_reauth_pending_read_then_delayed_original_and_same_id_resumption_execute_once",
+      "exit": 0,
+      "seconds": 2.984,
+      "counts": {
+        "tests": 1,
+        "pass_count": 1,
+        "skipped": 0
+      },
+      "log_sha256": "ec9429eac1c53ab586cdebddfbc144b77ca144640a03e07ad3acf4aac000d471"
+    },
+    {
+      "id": "guards-ui",
+      "command": "docker run --rm --pull=never --name frida-reauth-guards-ui --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /home/tof/.cache/ms-playwright:/proof/browsers:ro -w /workspace --entrypoint /usr/bin/env mcr.microsoft.com/playwright:v1.54.0-jammy -i PATH=/usr/local/bin:/usr/bin:/bin PLAYWRIGHT_BROWSERS_PATH=/proof/browsers node --test --test-concurrency=1 app/tests/integration/frontend_browser/test_frontend_browser_document_confirmation_m5.js",
+      "exit": 1,
+      "seconds": 36.499,
+      "counts": {
+        "tests": 37,
+        "pass": 35,
+        "fail": 2,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "log_sha256": "e177330cecfed0453aabfc36dede6e2bbdff995db4c2da456c5e45885db3f651"
+    },
+    {
+      "id": "corrected-guards",
+      "command": "docker run --rm --pull=never --name frida-reauth-corrected-guards --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /home/tof/.cache/ms-playwright:/proof/browsers:ro -w /workspace --entrypoint /usr/bin/env mcr.microsoft.com/playwright:v1.54.0-jammy -i PATH=/usr/local/bin:/usr/bin:/bin PLAYWRIGHT_BROWSERS_PATH=/proof/browsers node --test --test-concurrency=1 '--test-name-pattern=M5 not_received|legacy attempted' app/tests/integration/frontend_browser/test_frontend_browser_document_confirmation_m5.js",
+      "exit": 0,
+      "seconds": 3.041,
+      "counts": {
+        "tests": 2,
+        "pass": 2,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "log_sha256": "4d4923536b2924bbe60cbef9b33b019a4cc74fdfc2203e9c02db2d44742450aa"
+    },
+    {
+      "id": "native-first",
+      "command": "docker run --rm --pull=never --name frida-reauth-native-first --network container:frida-reauth-http --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /home/tof/.cache/ms-playwright:/proof/browsers:ro -w /workspace --entrypoint /usr/bin/env mcr.microsoft.com/playwright:v1.54.0-jammy -i PATH=/usr/local/bin:/usr/bin:/bin PLAYWRIGHT_BROWSERS_PATH=/proof/browsers M9A_HTTP_BASE=http://127.0.0.1:8769 node --test --test-concurrency=1 --test-name-pattern=M9A-REAUTH app/tests/integration/frontend_browser/test_frontend_browser_document_http_m9a.js",
+      "exit": 0,
+      "seconds": 5.539,
+      "counts": {
+        "tests": 1,
+        "pass": 1,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "log_sha256": "ad21a928bd107729f8c76da40ba1911ee807ba8cbf90f589a83dbee360c22301"
+    },
+    {
+      "id": "stale-red",
+      "command": "docker run --rm --pull=never --name frida-reauth-stale-red --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /home/tof/.cache/ms-playwright:/proof/browsers:ro -w /workspace --entrypoint /usr/bin/env mcr.microsoft.com/playwright:v1.54.0-jammy -i PATH=/usr/local/bin:/usr/bin:/bin PLAYWRIGHT_BROWSERS_PATH=/proof/browsers node --test --test-concurrency=1 '--test-name-pattern=context GET started' app/tests/integration/frontend_browser/test_frontend_browser_document_confirmation_m5.js",
+      "exit": 1,
+      "seconds": 1.46,
+      "counts": {
+        "tests": 1,
+        "pass": 0,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "log_sha256": "57389dd4eff2972b2b0f5035b82bcb86ad1eb6549f16cf14407b3e294f9339d8"
+    },
+    {
+      "id": "stale-green",
+      "command": "docker run --rm --pull=never --name frida-reauth-stale-green --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /home/tof/.cache/ms-playwright:/proof/browsers:ro -w /workspace --entrypoint /usr/bin/env mcr.microsoft.com/playwright:v1.54.0-jammy -i PATH=/usr/local/bin:/usr/bin:/bin PLAYWRIGHT_BROWSERS_PATH=/proof/browsers node --test --test-concurrency=1 '--test-name-pattern=context GET started|legacy observed' app/tests/integration/frontend_browser/test_frontend_browser_document_confirmation_m5.js",
+      "exit": 0,
+      "seconds": 2.433,
+      "counts": {
+        "tests": 2,
+        "pass": 2,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "log_sha256": "62f47400c6c994ab34652f731424d3c048d2c6c6e3bcab6e8283ece6a945df23"
+    },
+    {
+      "id": "inflight-red",
+      "command": "docker run --rm --pull=never --name frida-reauth-inflight-red --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /home/tof/.cache/ms-playwright:/proof/browsers:ro -w /workspace --entrypoint /usr/bin/env mcr.microsoft.com/playwright:v1.54.0-jammy -i PATH=/usr/local/bin:/usr/bin:/bin PLAYWRIGHT_BROWSERS_PATH=/proof/browsers node --test --test-concurrency=1 '--test-name-pattern=late fallback cannot clear' app/tests/integration/frontend_browser/test_frontend_browser_document_confirmation_m5.js",
+      "exit": 1,
+      "seconds": 1.488,
+      "counts": {
+        "tests": 1,
+        "pass": 0,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "log_sha256": "3a347569e65364d3c78d9425a10b3828c3b8426037eb4064e173ed5d47422d14"
+    },
+    {
+      "id": "inflight-green",
+      "command": "docker run --rm --pull=never --name frida-reauth-inflight-green --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /home/tof/.cache/ms-playwright:/proof/browsers:ro -w /workspace --entrypoint /usr/bin/env mcr.microsoft.com/playwright:v1.54.0-jammy -i PATH=/usr/local/bin:/usr/bin:/bin PLAYWRIGHT_BROWSERS_PATH=/proof/browsers node --test --test-concurrency=1 '--test-name-pattern=late fallback cannot clear' app/tests/integration/frontend_browser/test_frontend_browser_document_confirmation_m5.js",
+      "exit": 0,
+      "seconds": 1.474,
+      "counts": {
+        "tests": 1,
+        "pass": 1,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "log_sha256": "c175a285eacd121f1b193d0940a930636737e4d4287efefb6fbab0fc86fc4228"
+    },
+    {
+      "id": "negative-without-fix",
+      "command": "docker run --rm --pull=never --name frida-reauth-negative-without-fix --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /tmp/frida-confirm-reauth-20261012-a88u8v6e/baseline-controller.js:/workspace/app/web/chat_document_workshop.js:ro -v /home/tof/.cache/ms-playwright:/proof/browsers:ro -w /workspace --entrypoint /usr/bin/env mcr.microsoft.com/playwright:v1.54.0-jammy -i PATH=/usr/local/bin:/usr/bin:/bin PLAYWRIGHT_BROWSERS_PATH=/proof/browsers node --test --test-concurrency=1 '--test-name-pattern=reload preserves the attempt' app/tests/integration/frontend_browser/test_frontend_browser_document_confirmation_m5.js",
+      "exit": 1,
+      "seconds": 3.708,
+      "counts": {
+        "tests": 3,
+        "pass": 0,
+        "fail": 3,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "log_sha256": "6aebeec1b482721c26dfd36fdf0a1d862ce1db8086ca96fa813d7cedb03c91a2"
+    },
+    {
+      "id": "final-ui",
+      "command": "docker run --rm --pull=never --name frida-reauth-final-ui --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /home/tof/.cache/ms-playwright:/proof/browsers:ro -w /workspace --entrypoint /usr/bin/env mcr.microsoft.com/playwright:v1.54.0-jammy -i PATH=/usr/local/bin:/usr/bin:/bin PLAYWRIGHT_BROWSERS_PATH=/proof/browsers node --test --test-concurrency=1 app/tests/integration/frontend_browser/test_frontend_browser_document_confirmation_m5.js app/tests/integration/frontend_browser/test_frontend_browser_document_workshop.js",
+      "exit": 0,
+      "seconds": 46.395,
+      "counts": {
+        "tests": 52,
+        "pass": 52,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "log_sha256": "eca764edfc61aeb7860cd8ff40864f935a9d62cf19effe4edc8e9b998cf11d85"
+    },
+    {
+      "id": "final-native",
+      "command": "docker run --rm --pull=never --name frida-reauth-final-native --network container:frida-reauth-http --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /home/tof/.cache/ms-playwright:/proof/browsers:ro -w /workspace --entrypoint /usr/bin/env mcr.microsoft.com/playwright:v1.54.0-jammy -i PATH=/usr/local/bin:/usr/bin:/bin PLAYWRIGHT_BROWSERS_PATH=/proof/browsers M9A_HTTP_BASE=http://127.0.0.1:8769 node --test --test-concurrency=1 --test-name-pattern=M9A-REAUTH app/tests/integration/frontend_browser/test_frontend_browser_document_http_m9a.js",
+      "exit": 0,
+      "seconds": 6.269,
+      "counts": {
+        "tests": 1,
+        "pass": 1,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "log_sha256": "797364c9d1b747576d2cb276eb74cf19cb9e37b3ee6ed656478eeffa4725615d"
+    },
+    {
+      "id": "final-ui-storage",
+      "command": "docker run --rm --pull=never --name frida-reauth-final-ui-storage --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /home/tof/.cache/ms-playwright:/proof/browsers:ro -w /workspace --entrypoint /usr/bin/env mcr.microsoft.com/playwright:v1.54.0-jammy -i PATH=/usr/local/bin:/usr/bin:/bin PLAYWRIGHT_BROWSERS_PATH=/proof/browsers node --test --test-concurrency=1 app/tests/integration/frontend_browser/test_frontend_browser_document_confirmation_m5.js app/tests/integration/frontend_browser/test_frontend_browser_document_workshop.js",
+      "exit": 0,
+      "seconds": 45.43,
+      "counts": {
+        "tests": 53,
+        "pass": 53,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "log_sha256": "c18d7140911b56aa6cac7d847a8fba991e07665dd46f5075d780550853e24ba3"
+    },
+    {
+      "id": "final-sql",
+      "command": "docker run --rm --pull=never --name frida-reauth-final-sql --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /tmp/frida-confirm-reauth-20261012-a88u8v6e/pg-socket:/proof/sock:ro -w /workspace/app --entrypoint /usr/bin/env fridadev-audit-py:latest -i PATH=/usr/local/bin:/usr/bin:/bin PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/workspace/app:/workspace EMBED_BASE_URL=https://embed.invalid CRAWL4AI_URL=https://crawl.invalid SEARXNG_URL=https://search.invalid M1_PROOF_PG_SOCKET=/proof/sock M2_PROOF_PG_SOCKET=/proof/sock M3_PROOF_PG_SOCKET=/proof/sock M4_PROOF_PG_SOCKET=/proof/sock M5_PROOF_PG_SOCKET=/proof/sock python -B -m unittest -v tests.integration.document_workshop.test_execution_postgresql tests.integration.document_workshop.test_execution_concurrency_postgresql tests.unit.core.test_document_workshop_confirmation_route_m5",
+      "exit": 0,
+      "seconds": 37.454,
+      "counts": {
+        "tests": 32,
+        "pass_count": 32,
+        "skipped": 0
+      },
+      "log_sha256": "dcb88c49a3e32204080c0fe8c7921e48faaca4517a7c9cb809a5bcd4f50e2834"
+    },
+    {
+      "id": "final-native-storage",
+      "command": "docker run --rm --pull=never --name frida-reauth-final-native-storage --network container:frida-reauth-http --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /home/tof/.cache/ms-playwright:/proof/browsers:ro -w /workspace --entrypoint /usr/bin/env mcr.microsoft.com/playwright:v1.54.0-jammy -i PATH=/usr/local/bin:/usr/bin:/bin PLAYWRIGHT_BROWSERS_PATH=/proof/browsers M9A_HTTP_BASE=http://127.0.0.1:8769 node --test --test-concurrency=1 --test-name-pattern=M9A-REAUTH app/tests/integration/frontend_browser/test_frontend_browser_document_http_m9a.js",
+      "exit": 0,
+      "seconds": 5.37,
+      "counts": {
+        "tests": 1,
+        "pass": 1,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "log_sha256": "c1527e078e9d329c98005765aaf8f41b25cab60cceb1daab595c17fcbf8dfb5c"
+    },
+    {
+      "id": "final-native-composable",
+      "command": "docker run --rm --pull=never --name frida-reauth-final-native-composable --network container:frida-reauth-http --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /home/tof/.cache/ms-playwright:/proof/browsers:ro -w /workspace --entrypoint /usr/bin/env mcr.microsoft.com/playwright:v1.54.0-jammy -i PATH=/usr/local/bin:/usr/bin:/bin PLAYWRIGHT_BROWSERS_PATH=/proof/browsers M9A_HTTP_BASE=http://127.0.0.1:8769 node --test --test-concurrency=1 --test-name-pattern=M9A-REAUTH app/tests/integration/frontend_browser/test_frontend_browser_document_http_m9a.js",
+      "exit": 0,
+      "seconds": 5.831,
+      "counts": {
+        "tests": 1,
+        "pass": 1,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "log_sha256": "445f8daab147b2b75e9c66db4749f431c68b779a619f7f75f31e2a06806dd055"
+    },
+    {
+      "id": "get-only-red",
+      "command": "docker run --rm --pull=never --name frida-reauth-get-only-red --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /home/tof/.cache/ms-playwright:/proof/browsers:ro -w /workspace --entrypoint /usr/bin/env mcr.microsoft.com/playwright:v1.54.0-jammy -i PATH=/usr/local/bin:/usr/bin:/bin PLAYWRIGHT_BROWSERS_PATH=/proof/browsers node --test --test-concurrency=1 '--test-name-pattern=failed reread and storage failure' app/tests/integration/frontend_browser/test_frontend_browser_document_confirmation_m5.js",
+      "exit": 1,
+      "seconds": 1.701,
+      "counts": {
+        "tests": 1,
+        "pass": 0,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "log_sha256": "9b11da236adabeaf3012d590fd2cf4e01d30da8711c5b2e9ec12473d6eb1ac38"
+    },
+    {
+      "id": "final-ui-get",
+      "command": "docker run --rm --pull=never --name frida-reauth-final-ui-get --network none --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /home/tof/.cache/ms-playwright:/proof/browsers:ro -w /workspace --entrypoint /usr/bin/env mcr.microsoft.com/playwright:v1.54.0-jammy -i PATH=/usr/local/bin:/usr/bin:/bin PLAYWRIGHT_BROWSERS_PATH=/proof/browsers node --test --test-concurrency=1 app/tests/integration/frontend_browser/test_frontend_browser_document_confirmation_m5.js app/tests/integration/frontend_browser/test_frontend_browser_document_workshop.js",
+      "exit": 0,
+      "seconds": 45.693,
+      "counts": {
+        "tests": 53,
+        "pass": 53,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "log_sha256": "640fe71efc46230f5be201ec9cd1e538b0c8445f5b4c40ab281b464cc5d7d789"
+    },
+    {
+      "id": "final-native-get",
+      "command": "docker run --rm --pull=never --name frida-reauth-native-get --network container:frida-reauth-http --read-only --tmpfs /tmp:rw,nosuid,nodev -v /opt/platform/fridadev:/workspace:ro -v /home/tof/.cache/ms-playwright:/proof/browsers:ro -w /workspace --entrypoint /usr/bin/env mcr.microsoft.com/playwright:v1.54.0-jammy -i PATH=/usr/local/bin:/usr/bin:/bin PLAYWRIGHT_BROWSERS_PATH=/proof/browsers M9A_HTTP_BASE=http://127.0.0.1:8769 node --test --test-concurrency=1 --test-name-pattern=M9A-REAUTH app/tests/integration/frontend_browser/test_frontend_browser_document_http_m9a.js",
+      "exit": 0,
+      "seconds": 5.357,
+      "counts": {
+        "tests": 1,
+        "pass": 1,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "log_sha256": "c783cd9cf4a58364c6922646da31d8b317a61cf55cbd24670ebfd940048ad021"
+    }
+  ],
+  "comparison": {
+    "baseline": {
+      "browser": 28,
+      "sql_and_routes": 31
+    },
+    "final": {
+      "browser": 53,
+      "sql_and_routes": 32,
+      "native_http": 1,
+      "total_distinct": 86
+    },
+    "added": 27,
+    "exits": 0,
+    "skips": 0,
+    "selected_only": true,
+    "baseline_browser_titles_adjusted": {
+      "M5 not_received rereads honest state and refresh never posts or rearms": "M5 not_received rereads honest state and refresh never posts; only pending permits a new gesture",
+      "M5 after_received rereads honest state and refresh never posts or rearms": "M5 after_received rereads honest state and refresh never posts; only pending permits a new gesture"
+    },
+    "contract_adjustment": "The two historical error/reload cases now distinguish pending human resumption from remote_uncertain closure. Historical A conflict permits resumption only after its GET, while B polling remains active.",
+    "final_ui_ids": [
+      "M5 confirmation synchronously removes every button and rejects detached double clicks: desktop light",
+      "M5 confirmation synchronously removes every button and rejects detached double clicks: desktop dark",
+      "M5 confirmation synchronously removes every button and rejects detached double clicks: phone light",
+      "M5 confirmation synchronously removes every button and rejects detached double clicks: phone dark",
+      "M5 keyboard confirmation consumes the same action once",
+      "M5 not_received rereads honest state and refresh never posts; only pending permits a new gesture",
+      "M5 after_received rereads honest state and refresh never posts; only pending permits a new gesture",
+      "M5 a late pending reread cannot restore a consumed confirmation",
+      "M5 a delayed fallback read cannot overwrite the cancellation of its execution",
+      "M5 confirming historical A does not stop the active preparation B rereads",
+      "M5 refresh during an unresolved confirmation reads executing and never posts again",
+      "M5 navigation isolates a late result from the other conversation and folder",
+      "M5 public unavailable capability cannot be activated by changing a disabled DOM button",
+      "M5 unavailable local attempt storage prevents sending a confirmation",
+      "M5 retained collections are reported honestly with known creation count",
+      "M5 retained collections are reported honestly with unknown creation count",
+      "M5 retained collections are reported honestly with zero observed creation count",
+      "M9A-REAUTH auth_html: reload preserves the attempt and only a new gesture resumes",
+      "M9A-REAUTH invalid_json: reload preserves the attempt and only a new gesture resumes",
+      "M9A-REAUTH not_received: reload preserves the attempt and only a new gesture resumes",
+      "M9A-REAUTH legacy attempted marker resumes unchanged; stale detached buttons never do",
+      "M9A-REAUTH changed server observation stays closed: {\"state\":\"executing\"}",
+      "M9A-REAUTH changed server observation stays closed: {\"state\":\"succeeded\"}",
+      "M9A-REAUTH changed server observation stays closed: {\"state\":\"remote_uncertain\"}",
+      "M9A-REAUTH changed server observation stays closed: {\"state\":\"invalidated\"}",
+      "M9A-REAUTH changed server observation stays closed: {\"revision_id\":\"e1111111-1111-4111-8111-111111111111\"}",
+      "M9A-REAUTH changed server observation stays closed: {\"conversation_id\":\"conv-b\"}",
+      "M9A-REAUTH changed server observation stays closed: {\"workspace_folder_id\":\"folder-b\"}",
+      "M9A-REAUTH changed server observation stays closed: {\"context_id\":\"other-context\"}",
+      "M9A-REAUTH changed server observation stays closed: {\"phase\":null}",
+      "M9A-REAUTH changed server observation stays closed: {\"confirmation_turn_id\":\"e1111111-1111-4111-8111-111111111111\"}",
+      "M9A-REAUTH changed server observation stays closed: {\"confirmed_at\":\"2026-10-12T00:00:00Z\"}",
+      "M9A-REAUTH changed server observation stays closed: {\"state\":\"not-a-state\"}",
+      "M9A-REAUTH failed reread and storage failure revoke an offered resumption without sending",
+      "M9A-REAUTH malformed stored marker fails closed: {}",
+      "M9A-REAUTH malformed stored marker fails closed: [{\"action_id\":\"broken\"}]",
+      "M9A-REAUTH malformed stored marker fails closed: not-json",
+      "M9A-REAUTH malformed stored marker fails closed: [{\"action_id\":\"a1111111-1111-4111-8111-111111111111\",\"context_id\":\"context-0\",\"conversation_id\":\"conv-a\",\"workspace_folder_id\":\"folder-a\",\"revision_id\":\"b1111111-1111-4111-8111-111111111111\",\"request_id\":\"broken\",\"state\":\"unknown\"}]",
+      "M9A-REAUTH context GET started before the click cannot authorize after a failed fallback",
+      "M9A-REAUTH legacy observed marker remains closed even if a read says pending",
+      "M9A-REAUTH late fallback cannot clear the newer in-flight attempt guard",
+      "M9A-REAUTH partially malformed storage is never rewritten by a server observation",
+      "M1 mounted menu, real picker/change/upload and editing guard: desktop light",
+      "M1 mounted menu, real picker/change/upload and editing guard: desktop dark",
+      "M1 mounted menu, real picker/change/upload and editing guard: mobile light",
+      "M1 mounted menu, real picker/change/upload and editing guard: mobile dark",
+      "M1 missing conversation: create once, explicit folder association, then context; failure creates none",
+      "M1 double click and late context response cannot reopen another conversation",
+      "M1 upload stays sequential, errors and drag/drop/removal keep their real listeners",
+      "M1 deferred GET is invalidated by navigation and never reopens editing",
+      "M1 folder reassignment through existing drop binding invalidates deferred POST",
+      "M1 late conversation creation is fenced before selection and creates no context",
+      "M1 opening refusal projects no editing state, preserves draft and offers an explicit exit"
+    ],
+    "final_sql_ids": [
+      "tests.integration.document_workshop.test_execution_postgresql.ExecutionPostgresqlTests.test_cancel_during_remote_put_revokes_only_confirmation_and_refuses_late_outcome.test_cancel_during_remote_put_revokes_only_confirmation_and_refuses_late_outcome",
+      "tests.integration.document_workshop.test_execution_postgresql.ExecutionPostgresqlTests.test_crash_after_collection_intention_never_fabricates_absence_or_collection_count.test_crash_after_collection_intention_never_fabricates_absence_or_collection_count",
+      "tests.integration.document_workshop.test_execution_postgresql.ExecutionPostgresqlTests.test_crash_after_put_intent_with_lost_claim_is_unknown_and_never_replayed.test_crash_after_put_intent_with_lost_claim_is_unknown_and_never_replayed",
+      "tests.integration.document_workshop.test_execution_postgresql.ExecutionPostgresqlTests.test_each_publication_write_failure_rolls_back_all_rows_and_compensates_exact_creation.test_each_publication_write_failure_rolls_back_all_rows_and_compensates_exact_creation",
+      "tests.integration.document_workshop.test_execution_postgresql.ExecutionPostgresqlTests.test_every_journal_failure_stops_later_effects_and_preserves_intentions.test_every_journal_failure_stops_later_effects_and_preserves_intentions",
+      "tests.integration.document_workshop.test_execution_postgresql.ExecutionPostgresqlTests.test_fake_binary_render_runs_after_claim_and_rejects_failure_pages_cleanup_and_public_formats.test_fake_binary_render_runs_after_claim_and_rejects_failure_pages_cleanup_and_public_formats",
+      "tests.integration.document_workshop.test_execution_postgresql.ExecutionPostgresqlTests.test_get_and_reconfirm_verify_bundle_after_lost_reply_and_cache_read_failure.test_get_and_reconfirm_verify_bundle_after_lost_reply_and_cache_read_failure",
+      "tests.integration.document_workshop.test_execution_postgresql.ExecutionPostgresqlTests.test_injected_public_projection_is_closed_and_does_not_claim_confirmation_unavailable.test_injected_public_projection_is_closed_and_does_not_claim_confirmation_unavailable",
+      "tests.integration.document_workshop.test_execution_postgresql.ExecutionPostgresqlTests.test_local_collision_and_scope_round_trip_prevent_confirmation_claim_and_mutation.test_local_collision_and_scope_round_trip_prevent_confirmation_claim_and_mutation",
+      "tests.integration.document_workshop.test_execution_postgresql.ExecutionPostgresqlTests.test_lost_confirmation_cannot_append_remote_outcome_or_publish_or_compensate.test_lost_confirmation_cannot_append_remote_outcome_or_publish_or_compensate",
+      "tests.integration.document_workshop.test_execution_postgresql.ExecutionPostgresqlTests.test_missing_durable_success_outcome_projects_unknown_without_replay.test_missing_durable_success_outcome_projects_unknown_without_replay",
+      "tests.integration.document_workshop.test_execution_postgresql.ExecutionPostgresqlTests.test_mounted_confirm_route_uses_real_dav_headers_sql_publication_and_readback.test_mounted_confirm_route_uses_real_dav_headers_sql_publication_and_readback",
+      "tests.integration.document_workshop.test_execution_postgresql.ExecutionPostgresqlTests.test_pending_created_in_2000_remains_confirmable_without_age_limit.test_pending_created_in_2000_remains_confirmable_without_age_limit",
+      "tests.integration.document_workshop.test_execution_postgresql.ExecutionPostgresqlTests.test_publication_proof_requires_remote_identity_size_storage_bytes_and_claim_owner.test_publication_proof_requires_remote_identity_size_storage_bytes_and_claim_owner",
+      "tests.integration.document_workshop.test_execution_postgresql.ExecutionPostgresqlTests.test_real_commit_with_lost_reply_is_verified_without_delete_or_second_put.test_real_commit_with_lost_reply_is_verified_without_delete_or_second_put",
+      "tests.integration.document_workshop.test_execution_postgresql.ExecutionPostgresqlTests.test_real_m2_fresh_source_at_confirmation_and_remote_change_refuses_put.test_real_m2_fresh_source_at_confirmation_and_remote_change_refuses_put",
+      "tests.integration.document_workshop.test_execution_postgresql.ExecutionPostgresqlTests.test_real_urllib_unknown_put_result_has_one_put_no_delete_no_publication.test_real_urllib_unknown_put_result_has_one_put_no_delete_no_publication",
+      "tests.integration.document_workshop.test_execution_postgresql.ExecutionPostgresqlTests.test_success_publishes_existing_inventory_exact_names_and_one_atomic_receipt.test_success_publishes_existing_inventory_exact_names_and_one_atomic_receipt",
+      "tests.integration.document_workshop.test_execution_postgresql.ExecutionPostgresqlTests.test_two_request_ids_share_one_confirmed_execution_and_preserve_preparation_claim.test_two_request_ids_share_one_confirmed_execution_and_preserve_preparation_claim",
+      "tests.integration.document_workshop.test_execution_postgresql.ExecutionPostgresqlTests.test_without_injected_executor_refuses_before_new_schema_or_claim.test_without_injected_executor_refuses_before_new_schema_or_claim",
+      "tests.integration.document_workshop.test_execution_postgresql.ExecutionPostgresqlTests.test_wrong_scope_or_revision_or_hostile_extra_field_mutates_nothing.test_wrong_scope_or_revision_or_hostile_extra_field_mutates_nothing",
+      "tests.integration.document_workshop.test_execution_concurrency_postgresql.ExecutionConcurrencyPostgresqlTests.test_cancel_expired_confirmation_preserves_active_successor_and_rejects_late_owner.test_cancel_expired_confirmation_preserves_active_successor_and_rejects_late_owner",
+      "tests.integration.document_workshop.test_execution_concurrency_postgresql.ExecutionConcurrencyPostgresqlTests.test_cancelled_and_superseded_pending_never_create_confirmation_claim.test_cancelled_and_superseded_pending_never_create_confirmation_claim",
+      "tests.integration.document_workshop.test_execution_concurrency_postgresql.ExecutionConcurrencyPostgresqlTests.test_chat_or_preparation_claim_excludes_confirmation_without_changing_pending.test_chat_or_preparation_claim_excludes_confirmation_without_changing_pending",
+      "tests.integration.document_workshop.test_execution_concurrency_postgresql.ExecutionConcurrencyPostgresqlTests.test_mkcol_journal_failure_precedes_collection_http_and_reports_no_remote_effect.test_mkcol_journal_failure_precedes_collection_http_and_reports_no_remote_effect",
+      "tests.integration.document_workshop.test_execution_concurrency_postgresql.ExecutionConcurrencyPostgresqlTests.test_owner_and_generation_fence_every_mkcol_put_and_compensation_intention.test_owner_and_generation_fence_every_mkcol_put_and_compensation_intention",
+      "tests.integration.document_workshop.test_execution_concurrency_postgresql.ExecutionConcurrencyPostgresqlTests.test_reauth_pending_read_then_delayed_original_and_same_id_resumption_execute_once.test_reauth_pending_read_then_delayed_original_and_same_id_resumption_execute_once",
+      "tests.integration.document_workshop.test_execution_concurrency_postgresql.ExecutionConcurrencyPostgresqlTests.test_sql_publication_rollback_real_dav_compensation_success_changed_etag_and_unknown_delete.test_sql_publication_rollback_real_dav_compensation_success_changed_etag_and_unknown_delete",
+      "tests.integration.document_workshop.test_execution_concurrency_postgresql.ExecutionConcurrencyPostgresqlTests.test_two_processes_confirm_with_different_ids_one_owner_one_put.test_two_processes_confirm_with_different_ids_one_owner_one_put",
+      "tests.unit.core.test_document_workshop_confirmation_route_m5.ConfirmationRouteM5Tests.test_constructed_confirmation_is_unavailable_before_any_storage_or_mutation.test_constructed_confirmation_is_unavailable_before_any_storage_or_mutation",
+      "tests.unit.core.test_document_workshop_confirmation_route_m5.ConfirmationRouteM5Tests.test_forged_content_path_etag_does_not_obtain_mutator_authority.test_forged_content_path_etag_does_not_obtain_mutator_authority",
+      "tests.unit.core.test_document_workshop_confirmation_route_m5.ConfirmationRouteM5Tests.test_get_and_confirm_do_not_alias_a_chat_or_preparation_submission.test_get_and_confirm_do_not_alias_a_chat_or_preparation_submission"
+    ],
+    "final_native_ids": [
+      "M9A-REAUTH native 303 followed to HTML, reload and same-attempt human resumption"
+    ],
+    "authoritative_runs": [
+      "final-ui-get",
+      "final-sql",
+      "final-native-get"
+    ]
+  },
+  "evidence": {
+    "red": "Three initial causal failures: reload preserved marker and pending but enabled button count 0 instead of 1 (auth HTML, invalid JSON, network error).",
+    "negative": "Same three assertion failures at exit 1 with only the production controller restored to baseline in an isolated mount.",
+    "race": "Separate process/connections; original sent but held before handler, pending read with zero claims; two causally gated arrival orders, same request_id. One production _render entry (Markdown), one PUT, one render row and one receipt, zero DELETE/MKCOL; original preparation claim unchanged. Repeated same/new IDs after publication cause no render or effect.",
+    "native": "Real Chromium fetch, actual HTTP 303 followed to HTML before production handler; restored synthetic auth and reload with zero new POST; human click with identical five fields, successful SQL/DAV publication followed by lost JSON reply, coherent GET/read receipt and reload without effects. Relative counters verified with an earlier synthetic publication present.",
+    "transport_boundaries": "Browser M5 replaces fetch; native M9A test does not. Both provider/faculties and DAV peer in native test are synthetic loopback. SQL race uses production store/claims/executor with synthetic DAV; no Writer process.",
+    "guards": "Desktop/phone light/dark existing double-card click checks; keyboard, detached buttons, navigation, cancellation, stale context/fallback, revision/scope, malformed state and storage, legacy attempted/unknown/observed; remote_uncertain stays closed."
+  },
+  "incidents": [
+    {
+      "id": "guards-ui",
+      "exit": 1,
+      "pass_count": 35,
+      "fail_count": 2,
+      "failures": [
+        {
+          "test": "M5 not_received rereads honest state and refresh never posts; only pending permits a new gesture",
+          "error": "AssertionError: 1 !== 2 at line 114; assertion ran before context reload response rendered",
+          "resolution": "Wait for existing Reload control to settle, then keep the exact two-button assertion"
+        },
+        {
+          "test": "M9A-REAUTH legacy attempted marker resumes unchanged; stale detached buttons never do",
+          "error": "locator.click timeout 5000ms: form subtree intercepted pointer events over log card",
+          "resolution": "Focus the log-card button and use Enter, a real supported gesture; no forced click"
+        }
+      ]
+    },
+    {
+      "id": "stale-red",
+      "exit": 1,
+      "error": "2 enabled buttons instead of 0: pre-click context GET granted a resumption in intermediate patch",
+      "resolution": "Snapshot cancellation generation at context read; stale-green and final selection pass"
+    },
+    {
+      "id": "inflight-red",
+      "exit": 1,
+      "error": "2 enabled buttons instead of 0: old fallback cleared newer in-flight guard in intermediate patch",
+      "resolution": "Own the local flight by object identity; inflight-green and final selection pass"
+    },
+    {
+      "id": "baseline-sql and final-sql",
+      "status": "preexisting diagnostic, not a test failure",
+      "message": "admin_log_write_error reason=admin_log_write_failed err_class=OSError",
+      "qualification": "Existing isolated read-only fixture has no operator log sink. Present on baseline; no assertions suppressed and no production logging change."
+    },
+    {
+      "id": "self-review-native",
+      "status": "test isolation correction before final selection",
+      "qualification": "Absolute counters would assume an empty fixture after the existing M9-A test; changed to exact relative counts and unique synthetic path, verified on a fixture already containing a synthetic publication."
+    },
+    {
+      "id": "runtime-mount-check",
+      "status": "read-only command assumption corrected",
+      "qualification": "The first app-name filter matched no container; explicit platform-fridadev inspection then rejected the overbroad assertion that nothing under the checkout was mounted. Only state/data is mounted at /app/data; the changed controller is not runtime-mounted. All 33 baseline container identities/images/start times/restart counts remain unchanged."
+    },
+    {
+      "id": "get-only-red",
+      "exit": 1,
+      "error": "Opening-context POST offered one enabled button instead of zero in intermediate patch.",
+      "resolution": "Only a context GET can grant resumption; explicit Reload obtains it after reopen. Final 53 browser tests and native test pass."
+    }
+  ],
+  "code_sha256": {
+    "app/tests/integration/document_workshop/test_execution_concurrency_postgresql.py": "c2ece5c87fe7e2f5bd6362a07ed3937932e337020533210358e7f57ee300df51",
+    "app/tests/integration/frontend_browser/test_frontend_browser_document_confirmation_m5.js": "1b300bc594c8aca995735189046d6f6ee555ae1ad9cb6f38f07c877d4ed0adfa",
+    "app/tests/integration/frontend_browser/test_frontend_browser_document_http_m9a.js": "cb7180ca8ff66ef7ed79442f2cfa9d6380a44fa018d630ef969fe47799be99d6",
+    "app/tests/support/document_workshop_m6_http.py": "080ae318e828675a0c892c95b7473b693547ec6b44e842df614467f9696ac28d",
+    "app/web/chat_document_workshop.js": "6bbb6c6c4a4e875fe79fabfd278cbb15dc7dc9c9833da74adde8ede9dab78017"
+  },
+  "invariance": {
+    "containers_unchanged": 33,
+    "heads_unchanged": true,
+    "remote_heads_unchanged": true,
+    "runtime_sha256": "72950af68329b293ce36771de1b72518d78eae138e758be04448de907d9b90ae",
+    "app_image": "sha256:1397bef58c5074add40d7c0119cd9e758bc4398b85ff91b0792b9987c6261ce3",
+    "app_id": "2257c4a007787f6e4570bb75c150c8f2a87fd32d00196d36e0b2d19da98ec778",
+    "app_started": "2026-10-12T06:30:04.461776467Z",
+    "changed_code_mounted": false,
+    "checkout_state_data_mounted": true,
+    "protected_local_heads_sha256": "6c5bca7b520a7c4a386b479fd1e810b6dc17fb45a3107965afa4267139e64d26",
+    "protected_remote_heads_sha256": "7d2e31300019598280b2ce70edbcf51081bb2d08d60eabedcb514639b1f95796"
+  },
+  "review": {
+    "scope": "Single production controller; no old competing path, new product route/dependency/migration or backend change.",
+    "authority": "Only a new human gesture may POST; server consumption and closed uncertainty states untouched; no distributed exactly-once claim.",
+    "data": "Markers contain identities/state only, no new logs or persisted content; synthetic fixtures only.",
+    "docs": "M5 adjustment explicit, historical guarantees preserved, M9-A and roadmap synchronized; hub links unchanged.",
+    "limits": [
+      "No Safari hardware validation",
+      "No runtime delivery",
+      "No actual Writer render in this lot; render-entry uniqueness measured on Markdown production executor",
+      "No live provider/DAV/canary",
+      "OBS-M9A-PREP-01 and M9-A remain open",
+      "Stop for Codex counteraudit after requested commit/push"
+    ],
+    "last_change": "GET-only resumption gate verified by causal red then the full selected browser comparison and native HTTP test; backend selection unchanged."
+  },
+  "cleanup": {
+    "status": "completed",
+    "containers_removed": [
+      "frida-reauth-http",
+      "frida-reauth-pg"
+    ],
+    "proof_containers_remaining": 0,
+    "runtime_containers_unchanged": 33,
+    "temporary_root_removed": true,
+    "preserved": "Existing images/browser cache, production containers and mounts, all protected Git refs; no install or live data access.",
+    "additional_final_check_root_removed": "/tmp/frida-reauth-final-check"
+  }
+}

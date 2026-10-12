@@ -83,18 +83,22 @@ function createDocumentWorkshopController({
   const executionReads = new Map();
   const receiptInventories = new Map();
   // Local evidence of an attempted click only; it grants no server authority.
-  // Keep every consumed action through navigation/refresh, including a POST
-  // that never reached the server. Reads may establish state, never replay it.
+  // Keep the original identity through navigation/refresh, including a POST
+  // that never reached the server. Only a fresh read and a new click may resume it.
   const confirmations = new Map();
+  const confirmationResumptions = new Map();
+  const confirmationsInFlight = new Map();
   let confirmationStorageAvailable = true;
   try {
     const records = JSON.parse(storage.getItem(confirmationKey));
-    if (Array.isArray(records)) for (const record of records) {
+    if (records !== null && !Array.isArray(records)) throw new Error('invalid_confirmation_storage');
+    for (const record of records || []) {
       const keys = ['action_id', 'context_id', 'conversation_id', 'workspace_folder_id', 'revision_id', 'request_id', 'state'];
-      if (record && keys.every(key => typeof record[key] === 'string' && record[key].length <= 128)
-          && Object.keys(record).length === keys.length && ['attempted', 'unknown', 'observed'].includes(record.state)) {
-        confirmations.set(record.action_id, record);
-      }
+      if (!record || !keys.every(key => typeof record[key] === 'string' && record[key].length > 0 && record[key].length <= 128)
+          || Object.keys(record).length !== keys.length || !['attempted', 'unknown', 'observed'].includes(record.state)
+          || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(record.request_id)
+          || confirmations.has(record.action_id)) throw new Error('invalid_confirmation_storage');
+      confirmations.set(record.action_id, record);
     }
     storage.setItem(confirmationKey, JSON.stringify([...confirmations.values()]));
   } catch { confirmationStorageAvailable = false; }
@@ -121,8 +125,29 @@ function createDocumentWorkshopController({
     pollTimer = null;
   }
   function saveConfirmations() {
+    if (!confirmationStorageAvailable) return false;
     try { storage.setItem(confirmationKey, JSON.stringify([...confirmations.values()])); return true; }
     catch { confirmationStorageAvailable = false; return false; }
+  }
+  function resumableConfirmation(record) {
+    const marker = confirmations.get(record.id);
+    return confirmationStorageAvailable && marker && marker.state !== 'observed'
+      && !confirmationsInFlight.has(record.id) && record.state === 'pending' && record.phase === 'complete'
+      && record.capabilities?.confirm === true && record.confirmation_turn_id === null && record.confirmed_at === null
+      && marker.action_id === record.id && ['context_id', 'conversation_id', 'workspace_folder_id', 'revision_id']
+        .every(key => typeof record[key] === 'string' && record[key] === marker[key]);
+  }
+  function resumptionFor(record) {
+    const permit = confirmationResumptions.get(record.id);
+    return permit && permit.generation === generation
+      && permit.cancellation === cancellationGenerations.get(record.id)
+      && resumableConfirmation(record) ? permit : null;
+  }
+  function observeConfirmation(record) {
+    confirmationResumptions.delete(record.id);
+    if (resumableConfirmation(record)) {
+      confirmationResumptions.set(record.id, { generation, cancellation: cancellationGenerations.get(record.id) });
+    }
   }
   function validAction(record, expected, contextId, actionId) {
     return record && record.id === actionId && record.context_id === contextId
@@ -188,7 +213,7 @@ function createDocumentWorkshopController({
         if (!mayRead()) return;
         if (!response.ok || payload?.ok !== true || !validAction(payload.action, expected, record.context_id, record.id)) return;
         executionReads.delete(record.id);
-        publishAction(payload.action);
+        publishAction(payload.action, { reread: true });
       } catch { /* Read unavailable: retain state and the explicit Reload action. */ }
       finally {
         if (executionReads.get(record.id) === read) {
@@ -254,11 +279,12 @@ function createDocumentWorkshopController({
         if (typeof value !== 'string' || !value) continue;
         const detail = doc.createElement('div'); detail.textContent = value; card.appendChild(detail);
       }
-      if (!confirmations.has(record.id)) {
+      const resumption = resumptionFor(record);
+      if (!confirmations.has(record.id) || resumption) {
         const available = record.capabilities?.confirm === true && confirmationStorageAvailable;
         const confirm = doc.createElement('button'); confirm.type = 'button'; confirm.disabled = !available;
-        confirm.dataset.documentConfirm = ''; confirm.textContent = available ? record.operation === 'update' ? 'Modifier le fichier' : 'Confirmer la création' : 'Écriture indisponible';
-        if (available) confirm.addEventListener('click', () => void confirmAction(record));
+        confirm.dataset.documentConfirm = ''; confirm.textContent = resumption ? 'Reprendre la confirmation' : available ? record.operation === 'update' ? 'Modifier le fichier' : 'Confirmer la création' : 'Écriture indisponible';
+        if (available) confirm.addEventListener('click', () => void confirmAction(record, resumption));
         card.appendChild(confirm);
       }
     }
@@ -269,7 +295,9 @@ function createDocumentWorkshopController({
     }
     container.appendChild(card);
   }
-  function publishAction(record) {
+  function publishAction(record, { reread = false } = {}) {
+    if (reread) observeConfirmation(record);
+    else confirmationResumptions.delete(record.id);
     const marker = confirmations.get(record.id);
     if (marker && record.state !== 'pending') {
       marker.state = 'observed'; saveConfirmations();
@@ -290,13 +318,18 @@ function createDocumentWorkshopController({
     watchExecution(record);
     void refreshReceiptInventory(record);
   }
-  async function confirmAction(record) {
+  async function confirmAction(record, resumption) {
     const expected = currentScope();
-    if (record.state !== 'pending' || record.capabilities?.confirm !== true || !confirmationStorageAvailable || confirmations.has(record.id)
+    if (record.state !== 'pending' || record.capabilities?.confirm !== true || !confirmationStorageAvailable
+        || (confirmations.has(record.id) && (!resumption || resumption !== resumptionFor(record)))
         || signature(scope(record)) !== signature(expected) || typeof record.revision_id !== 'string') return;
     const token = generation;
-    const marker = { action_id: record.id, context_id: record.context_id, ...expected,
+    const marker = confirmations.get(record.id) || { action_id: record.id, context_id: record.context_id, ...expected,
       revision_id: record.revision_id, request_id: doc.defaultView.crypto.randomUUID(), state: 'attempted' };
+    marker.state = 'attempted';
+    confirmationResumptions.delete(record.id);
+    const flight = {};
+    confirmationsInFlight.set(record.id, flight);
     confirmations.set(record.id, marker);
     const markerSaved = saveConfirmations();
     cancellationGenerations.set(record.id, (cancellationGenerations.get(record.id) || 0) + 1);
@@ -312,6 +345,7 @@ function createDocumentWorkshopController({
     }
     if (action?.id === record.id) render();
     if (!markerSaved) {
+      confirmationsInFlight.delete(record.id);
       marker.state = 'unknown';
       if (visible) render('Confirmation non envoyée : stockage de tentative indisponible.');
       return;
@@ -339,7 +373,9 @@ function createDocumentWorkshopController({
       marker.state = payload.action.state === 'pending' ? 'unknown' : 'observed'; saveConfirmations();
       publishAction(payload.action);
     } catch {
-      marker.state = 'unknown'; saveConfirmations();
+      if (marker.state !== 'observed') marker.state = 'unknown';
+      saveConfirmations();
+      confirmationsInFlight.delete(record.id);
       if (!stillHere()) return;
       // This read is deliberately independent of workshop visibility: a card
       // in the canonical transcript may be confirmed after the panel is closed.
@@ -348,7 +384,7 @@ function createDocumentWorkshopController({
         const payload = await response.json();
         if (stillHere() && response.ok && payload?.ok === true
             && validAction(payload.action, expected, record.context_id, record.id)) {
-          publishAction(payload.action); return;
+          publishAction(payload.action, { reread: true }); return;
         }
       } catch { /* Unknown remains unknown; there is no POST retry. */ }
       if (stillHere()) {
@@ -357,12 +393,16 @@ function createDocumentWorkshopController({
         }
         if (visible && action?.id === record.id) render('Confirmation non confirmée. Relisez l’état ; aucun nouvel envoi automatique.');
       }
+    } finally {
+      // A delayed fallback must not release a newer click's local gate.
+      if (confirmationsInFlight.get(record.id) === flight) confirmationsInFlight.delete(record.id);
     }
   }
   async function readAction() {
     if (!context || !action || !visible) return;
     stopPolling();
     const token = generation, expected = scope(context), contextId = context.id, actionId = action.id;
+    confirmationResumptions.delete(actionId);
     const serial = ++actionReadSerial, cancellation = cancellationGenerations.get(actionId);
     const validRead = () => current(token, expected) && context?.id === contextId && action?.id === actionId
       && serial === actionReadSerial && cancellation === cancellationGenerations.get(actionId);
@@ -378,7 +418,7 @@ function createDocumentWorkshopController({
         if (!validRead()) return;
         if (!contextResponse.ok || contextPayload?.ok !== true) throw new Error('document_state_unavailable');
         const record = contextPayload.context?.preparation;
-        if (validAction(record, expected, contextId, actionId)) publishAction(record);
+        if (validAction(record, expected, contextId, actionId)) publishAction(record, { reread: true });
         else if (submissionSettled) {
           saveAttempt({ id: actionId, state: 'unknown' });
           action = null;
@@ -389,7 +429,7 @@ function createDocumentWorkshopController({
         if (!response.ok || payload?.ok !== true || !validAction(payload.action, expected, contextId, actionId)) {
           throw new Error('document_state_unavailable');
         }
-        publishAction(payload.action);
+        publishAction(payload.action, { reread: true });
       }
       if (action.state === 'preparing') pollTimer = doc.defaultView.setTimeout(() => void readAction(), 750);
     } catch {
@@ -430,6 +470,7 @@ function createDocumentWorkshopController({
   async function renderMessage(wrapper, messageRecord) {
     const reference = messageRecord?.meta?.document_workshop;
     if (!reference?.context_id || !reference.action_id || !wrapper) return;
+    confirmationResumptions.delete(reference.action_id);
     const token = generation, expected = currentScope();
     const cancellation = cancellationGenerations.get(reference.action_id);
     const validNode = () => token === generation && wrapper.isConnected
@@ -439,6 +480,7 @@ function createDocumentWorkshopController({
       const payload = await response.json();
       if (!validNode() || !response.ok || payload?.ok !== true
           || !validAction(payload.action, expected, reference.context_id, reference.action_id)) return;
+      publishAction(payload.action, { reread: true });
       // The user and assistant carry the same references. Show one card, under
       // the assistant when present, or the durable user for an interrupted turn.
       for (const [container, existing] of cards) {
@@ -541,6 +583,7 @@ function createDocumentWorkshopController({
   }
   async function requestContext(expected, targetId, contextId = null) {
     const token = ++generation;
+    const confirmationsAtRead = new Map(cancellationGenerations);
     stopPolling(); action = null;
     pendingScope = expected; busy = true; context = null;
     resetRemote();
@@ -567,7 +610,10 @@ function createDocumentWorkshopController({
       render();
       saveAttempt();
       if (action?.state === 'preparing') void readAction();
-      if (action) { watchExecution(action); void refreshReceiptInventory(action); }
+      // A context GET begun before a click/cancellation is not fresh evidence
+      // for resuming that attempt, even if it eventually returns pending.
+      if (action) publishAction(action, { reread: Boolean(contextId)
+        && confirmationsAtRead.get(action.id) === cancellationGenerations.get(action.id) });
     } catch {
       if (!current(token, expected)) return;
       busy = false; context = null; pendingScope = expected;

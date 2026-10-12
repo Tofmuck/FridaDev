@@ -168,3 +168,69 @@ class ExecutionConcurrencyPostgresqlTests(unittest.TestCase):
                 if case!='changed':self.assertEqual(writes[-1][1]['If-Match'],'"created-v1"')
                 self.assertEqual(self.fx.rows('SELECT count(*) FROM document_receipts'),[(0,)])
                 self.assertEqual(self.fx.rows('SELECT count(*) FROM workspace_files'),[(0,)])
+
+    def test_reauth_pending_read_then_delayed_original_and_same_id_resumption_execute_once(self):
+        from concurrent.futures import ThreadPoolExecutor
+        from unittest.mock import patch
+        # Both arrival orders are causally gated, never inferred from a timeout.
+        for winner in ('original', 'resumption'):
+            with self.subTest(winner=winner):
+                if winner != 'original':self.fx.doCleanups();self.fx.setUp()
+                ctx=multiprocessing.get_context('fork')
+                sent,deliver,arrived,release=(ctx.Event() for _ in range(4))
+                results=ctx.Queue();body=self.fx.body()
+                def original():
+                    client=fixture.SyntheticDAV(self.fx);client.arrived,client.release=arrived,release
+                    executor=self.fx.executor(client)
+                    sent.set()
+                    if not deliver.wait(10):raise AssertionError('original transport was not released')
+                    with patch.object(executor,'_render',wraps=executor._render) as render:
+                        payload,status=self.fx.confirm(executor,body)
+                        results.put((status,payload['action']['state'],client.mutations,render.call_count))
+                process=ctx.Process(target=original);process.start()
+                client=fixture.SyntheticDAV(self.fx);client.arrived,client.release=arrived,release
+                executor=self.fx.executor(client)
+                try:
+                    self.assertTrue(sent.wait(5))
+                    pending=self.fx.service.project_action(actions.get_action(self.fx.request_turn),executor=executor)
+                    self.assertEqual(pending['state'],'pending')
+                    self.assertTrue(pending['capabilities']['confirm'])
+                    self.assertIsNone(pending['confirmation_turn_id'])
+                    self.assertEqual(self.fx.rows("SELECT count(*) FROM conversation_turn_claims WHERE kind='confirmation'"),[(0,)])
+                    with patch.object(executor,'_render',wraps=executor._render) as render,ThreadPoolExecutor(1) as pool:
+                        if winner=='original':
+                            deliver.set();self.assertTrue(arrived.wait(5))
+                            repeated,status=self.fx.confirm(executor,body)
+                            self.assertEqual((status,repeated['action']['state']),(200,'executing'))
+                            release.set();child=results.get(timeout=10)
+                        else:
+                            request=pool.submit(self.fx.confirm,executor,body)
+                            try:
+                                self.assertTrue(arrived.wait(5));deliver.set()
+                                child=results.get(timeout=10)
+                                self.assertEqual(child[:2],(200,'executing'))
+                            finally:release.set()
+                            repeated,status=request.result(timeout=10)
+                            self.assertEqual((status,repeated['action']['state']),(200,'succeeded'))
+                        self.assertEqual(client.mutations+child[2],['PUT'])
+                        self.assertEqual(render.call_count+child[3],1,'one production render entry, no second execution')
+                    self.assertEqual(self.fx.rows("SELECT count(*) FROM conversation_turn_claims WHERE kind='confirmation'"),[(1,)])
+                    self.assertEqual(self.fx.rows('SELECT count(*) FROM document_receipts'),[(1,)])
+                    self.assertEqual(self.fx.rows('SELECT count(*) FROM document_revision_renders'),[(1,)])
+                    final=self.fx.service.project_action(actions.get_action(self.fx.request_turn),executor=executor)
+                    self.assertEqual(final['state'],'succeeded');self.assertEqual(final['confirmation_turn_id'],body['request_id'])
+                    # A lost response after publication and a replay with a new ID
+                    # still observe the consumed action; neither obtains a new claim.
+                    before=list(client.mutations)
+                    with patch.object(executor,'_render',wraps=executor._render) as replay_render:
+                        for attempt in (body,self.fx.body()):
+                            again,status=self.fx.confirm(executor,attempt)
+                            self.assertEqual(status,200);self.assertEqual(again['action']['receipt'],final['receipt'])
+                        self.assertEqual(replay_render.call_count,0)
+                    self.assertEqual(client.mutations,before)
+                    self.assertEqual(fixture.claims.read(self.fx.request_turn),self.fx.before_claim)
+                    process.join(5);self.assertEqual(process.exitcode,0)
+                finally:
+                    deliver.set();release.set()
+                    if process.is_alive():process.terminate();process.join(5)
+                    results.close()

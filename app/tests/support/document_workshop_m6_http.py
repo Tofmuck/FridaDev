@@ -62,6 +62,8 @@ def main(*,m7=False,m9=False):
                  document_format='docx' if m9 else 'markdown', operation='create', block_put=False, refuse_delete=False,
                  race_put=False,drop_put=False,lose_commit_reply=False,commit_reply_lost=False,
                  document_text=DOCUMENT_MARKER)
+    confirmation_requests=[]
+    confirmation_transport={'mode':'normal','handled':0}
     conn = fixture.conn
     for module in (workspace_file_selections, active_conversation_documents):
         stack.enter_context(patch.object(module,'_db_conn',conn))
@@ -244,6 +246,27 @@ def main(*,m7=False,m9=False):
         observe(obj,name,label)
     stack.enter_context(patch.object(main_payload_manifest,'emit_main_payload_manifest',lambda value,**_:state['manifests'].append(copy.deepcopy(value))))
 
+    if m9:
+        # Synthetic authentication boundary before the real application handler.
+        # Native fetch follows the 303 to HTML, just as a login redirect can.
+        @server.app.before_request
+        def confirmation_transport_gate():
+            if request.method=='POST' and request.path.endswith('/confirm'):
+                confirmation_requests.append(request.get_json())
+                if confirmation_transport['mode']=='reauth':
+                    return '',303,{'Location':'/__m9a/login'}
+                confirmation_transport['handled']+=1
+
+        @server.app.get('/__m9a/login')
+        def synthetic_login():
+            return '<html><title>Synthetic login</title>Authentication required</html>'
+
+        @server.app.after_request
+        def confirmation_lost_reply(response):
+            if request.path.endswith('/confirm') and response.status_code==200 and confirmation_transport['mode']=='lost_reply':
+                return server.app.response_class('<html>Response lost after acceptance</html>',mimetype='text/html')
+            return response
+
     @server.app.get('/__m6/state')
     def proof_state():
         with conn() as db:
@@ -252,7 +275,7 @@ def main(*,m7=False,m9=False):
             counts['confirmations']=db.execute("SELECT count(*) FROM conversation_turn_claims WHERE kind='confirmation'").fetchone()[0]
             origins=dict(db.execute('SELECT workspace_file_id::text,document_origin FROM workspace_file_nextcloud_links').fetchall())
             versions=[dict(file_id=str(row[0]),etag=row[1],remote_id=row[2],sha256=row[3]) for row in db.execute('SELECT workspace_file_id,nextcloud_etag,nextcloud_file_id,observed_sha256 FROM workspace_file_nextcloud_links').fetchall()]
-        return jsonify(conversation=fixture.conversation,other_conversation=other,folder=fixture.folder,
+        return jsonify(**(dict(confirmation_requests=confirmation_requests,confirmation_handled=confirmation_transport['handled']) if m9 else {}),conversation=fixture.conversation,other_conversation=other,folder=fixture.folder,
             dav=state['dav'],counts=counts,origins=origins,versions=versions,put_arrived=dav_arrived.is_set(),
             remote={path:dict(size=len(file['content']),sha256=hashlib.sha256(file['content']).hexdigest()) for path,file in state['files'].items()},
             providers=state['providers'],manifests=state['manifests'],faculties=state['faculties'],commit_reply_lost=state['commit_reply_lost'],
@@ -262,6 +285,8 @@ def main(*,m7=False,m9=False):
     @server.app.post('/__m6/control')
     def proof_control():
         data=request.get_json()
+        if m9 and 'confirmation_transport' in data:
+            confirmation_transport['mode']=data['confirmation_transport']
         for key in ('operation','next_path','copy_source','block_put','refuse_delete','race_put','drop_put','lose_commit_reply','document_text','inventory_failure','document_format'):
             if key in data:state[key]=data[key]
         if data.get('block_put'):dav_release.clear();dav_arrived.clear()

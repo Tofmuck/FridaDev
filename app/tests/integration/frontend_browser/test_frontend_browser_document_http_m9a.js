@@ -85,3 +85,47 @@ test('M9-A native DOCX card confirmation download reload and metadata continuity
     if(process.env.M9A_SCREENSHOT)await page.screenshot({path:process.env.M9A_SCREENSHOT});
   } finally {await browser.close();}
 });
+
+test('M9A-REAUTH native 303 followed to HTML, reload and same-attempt human resumption',async()=>{
+  assert.ok(base,'dedicated native HTTP fixture required');
+  const browser=await chromium.launch({headless:true});
+  try {
+    const page=await browser.newPage({locale:'fr-FR',viewport:{width:390,height:844}});page.setDefaultTimeout(15000);
+    const errors=[];page.on('pageerror',error=>errors.push(error.message));
+    const state=async()=>(await page.request.get(base+'/__m6/state')).json();
+    const control=async data=>assert.equal((await page.request.post(base+'/__m6/control',{data})).status(),200);
+    const choose=async()=>{const s=await state();await showFolder(page,s.folder);await page.locator(`[data-conversation-id="${s.conversation}"]`).click();
+      await page.waitForFunction(id=>document.querySelector('#threads li.active')?.dataset.conversationId===id,s.conversation);};
+    await page.goto(base,{waitUntil:'domcontentloaded'});assert.equal(new URL(page.url()).origin,base);assert.ok(await page.title());
+    await choose();await openWorkshop(page);await page.waitForSelector('#documentWorkshop[data-state="editing"]');
+    const initial=await state(),priorRequests=initial.confirmation_requests.length;
+    await control({document_format:'markdown',next_path:'Documents/Reauth-'+randomUUID()+'.md',confirmation_transport:'reauth'});
+    await page.fill('#message','Créer ce Markdown synthétique pour vérifier la confirmation.');
+    await page.locator('button[type="submit"][aria-label="Envoyer"]').click();
+    await page.waitForSelector('#documentWorkshop .document-action-card[data-state="pending"]');
+    const redirected=page.waitForResponse(r=>r.url()===base+'/__m9a/login'&&r.status()===200);
+    await page.locator('#documentWorkshop [data-document-confirm]').click();await redirected;
+    await page.waitForFunction(()=>JSON.parse(sessionStorage.getItem('frida.document-workshop.confirmations'))[0]?.state==='unknown');
+    const before=await state(),first=before.confirmation_requests.at(-1);
+    assert.equal(before.confirmation_requests.length,priorRequests+1);assert.equal(before.confirmation_handled,initial.confirmation_handled);
+    assert.equal(before.counts.confirmations,initial.counts.confirmations);assert.equal(before.counts.document_receipts,initial.counts.document_receipts);assert.equal(before.dav.slice(initial.dav.length).some(r=>r.method==='PUT'),false);
+    const marker=await page.evaluate(()=>JSON.parse(sessionStorage.getItem('frida.document-workshop.confirmations'))[0]);
+    const read=await (await page.request.get(base+'/api/document-workshop/actions/'+marker.action_id)).json();
+    assert.equal(read.action.state,'pending');assert.equal(read.action.phase,'complete');assert.equal(read.action.revision_id,first.revision_id);
+    assert.equal(read.action.confirmation_turn_id,null);assert.equal(read.action.confirmed_at,null);
+    await control({confirmation_transport:'lost_reply'}); // Auth restored; lose the application's successful reply next.
+    await page.reload();await choose();await openWorkshop(page);
+    await page.waitForSelector('#documentWorkshop .document-action-card[data-state="pending"]');
+    assert.equal((await state()).confirmation_requests.length,priorRequests+1,'reload does not POST');
+    assert.equal(await page.locator('#documentWorkshop [data-document-confirm]:enabled').count(),1,'new human gesture is possible after real HTTP reread');
+    await page.locator('#documentWorkshop [data-document-confirm]').click();
+    await page.waitForSelector('#documentWorkshop .document-action-card[data-state="succeeded"]');
+    const after=await state();assert.deepEqual(after.confirmation_requests.slice(priorRequests),[first,first]);assert.equal(after.confirmation_handled,initial.confirmation_handled+1);
+    assert.equal(after.counts.confirmations,initial.counts.confirmations+1);assert.equal(after.counts.document_receipts,initial.counts.document_receipts+1);assert.equal(after.counts.document_revision_renders,initial.counts.document_revision_renders+1);
+    assert.deepEqual(after.dav.slice(initial.dav.length).filter(r=>['PUT','DELETE','MKCOL'].includes(r.method)).map(r=>r.method),['PUT']);
+    assert.equal(await page.locator('[data-document-confirm]').count(),0);
+    await page.reload();await choose();await page.waitForSelector('#log [data-document-receipt-link]');
+    const final=await state();assert.equal(final.confirmation_requests.length,priorRequests+2);assert.equal(final.counts.document_receipts,initial.counts.document_receipts+1);
+    assert.equal(final.dav.slice(initial.dav.length).filter(r=>r.method==='PUT').length,1);assert.deepEqual(errors,[]);
+  } finally {await browser.close();}
+});

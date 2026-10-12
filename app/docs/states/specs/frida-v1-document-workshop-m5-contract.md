@@ -1,5 +1,39 @@
 # Atelier documentaire Frida V1 — contrat M5
 
+## Ajustement borné M9A-CONFIRM-REAUTH-01 — 12 octobre 2026
+
+Le mandat du 12 octobre ajuste l'interdiction historique de réarmement **local**
+après erreur, décrite plus bas. Il ne rouvre jamais une action consommée côté
+serveur. Le marqueur existant, sans nouveau format, conserve `action_id` et les
+cinq identités du corps, dont `request_id`. Les marqueurs `attempted` et
+`unknown` déjà enregistrés sont pris en charge ; `observed` reste fermé.
+
+Après un GET valide du même scope/action/révision, `pending`, phase `complete`,
+capacité `confirm=true` et confirmation serveur explicitement absente (les deux
+champs nuls), le contrôleur commun peut proposer « Reprendre la confirmation ».
+Cette permission éphémère ne survit pas à la génération/navigation, au clic ni
+à une nouvelle relecture échouée ; un ancien bouton détaché ne la récupère pas.
+Un GET commencé avant le clic/annulation n'autorise pas sa reprise. Une tentative
+locale encore en vol reste fermée ; son ancien retour ne libère pas le verrou
+d'une tentative plus récente. Toutes les cartes consomment la permission
+synchroniquement. Le nouveau geste humain renvoie **le même corps**, sans nouvel
+identifiant, effacement de marqueur, préparation ou POST automatique.
+
+Une erreur réseau, JSON, ou une redirection suivie jusqu'au HTML n'atteste jamais
+l'absence d'effet. Le GET pending n'exclut pas un POST encore en transit :
+l'unicité dépend de `document_workshop_execution_store.begin`, qui verrouille
+la conversation, vérifie les identités et consomme pending avec son claim dans
+une transaction. Le perdant relit l'action consommée sans nouvelle exécution,
+rendu, PUT ou compensation. Aucun backend, schéma, protocole DAV ou retry de
+mutation n'est modifié. `executing`, `succeeded`, `remote_uncertain`, invalidation,
+révision/scope discordants, état incomplet et stockage indisponible ou mal formé
+ne confèrent aucune permission. Un stockage mal formé n'est pas réécrit par une
+observation ultérieure.
+
+[Preuves ciblées, rouges, contrôles négatifs et incidents](../baselines/document-workshop/frida-v1-document-workshop-m9a-confirm-reauth-01-20261012.json).
+Correctif hors ligne, à contre-auditer ; livraison runtime et recette Safari
+futures. Les sections historiques et résultats M5 ci-dessous sont conservés.
+
 ## Évolution M8-C — 7 octobre 2026
 
 La frontière synthétique historique `BinaryRenderEvidence` / `_validated_binary`

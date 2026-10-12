@@ -1,5 +1,43 @@
 # Atelier documentaire — M9-A, DOCX Frida et pagination Writer
 
+## État courant — M9A-CONFIRM-REAUTH-01, 12 octobre 2026
+
+**Attribution Codex, transmise par Tof, sans rejeu live Celebrimbor :**
+contre-audit runtime du contrat de sortie favorable le 12 octobre, puis
+préparation Safari réelle réussie (action `d9e62817-007d-495c-939c-30667b6c9569`,
+révision `ba1ab726-d73f-483e-a5d8-544c0eedf54c`). Après un clic unique déclaré
+par Tof, Authelia a intercepté le POST confirm à
+`2026-10-12T10:23:23.458586723Z` (anonymous, refus, 303), avant le handler.
+Aucun POST correspondant capturé par FridaDev ; GET 200 ensuite. Action
+`pending/complete`, même révision, sans confirmation, claim d'exécution,
+fichier, reçu, journal ni snapshot. La cause de l'absence de session reste
+inconnue. Aucun défaut Writer/OpenRouter/DAV démontré. Sources transmises :
+`audits/2026-10-12-m9a-creation-followup/rapport.md` et
+`audits/2026-10-12-output-contract-live-preparation/rapport.md` sur le poste
+d'ingénierie ; ces rapports ne sont pas présentés comme lus ici.
+
+**Correctif applicatif hors ligne :** le marqueur de tentative masquait
+indéfiniment le bouton après reconnexion. Le contrôleur commun conserve le
+marqueur et propose un nouveau geste humain après une relecture valide de la
+même action/révision, selon l'[ajustement M5](frida-v1-document-workshop-m5-contract.md#ajustement-borné-m9a-confirm-reauth-01--12-octobre-2026).
+Le même `request_id` et les cinq identités sont renvoyés ; aucun POST automatique.
+L'autorité atomique existante absorbe la course avec un premier POST tardif.
+Backend et runtime inchangés ; aucun nouveau mécanisme de retry DAV.
+
+[Relevé hors ligne](../baselines/document-workshop/frida-v1-document-workshop-m9a-confirm-reauth-01-20261012.json) :
+navigateur à fetch simulé, HTTP natif synthétique avec 303 suivi vers HTML,
+PostgreSQL isolé et effets DAV synthétiques distingués. La course et la perte
+de réponse préservent l'exécution et la publication uniques. Ces preuves ne
+valident ni Safari matériel, ni Writer réel, ni une écriture Nextcloud live.
+
+OBS-M9A-PREP-01 et M9-A restent globalement ouverts ; les anciennes causes
+inconnues restent inconnues. Contre-audit Codex du correctif, livraison runtime
+et recette future sont trois étapes distinctes. Aucun déploiement/rebuild/
+restart, changement Authelia, modèle/DAV live, canari ou action sur les marqueurs
+de Tof dans ce lot. M9-B/M10 hors périmètre.
+
+## Historique arrêté au 11 octobre (conservé)
+
 11 octobre 2026. Branche `FridaV1-Document-Workshop-M9-A`, issue du commit
 documentaire M8-A poussé `1b14e7dcdf68030c2d1df139eb9ee4c5f825143d`.
 Mandat : [roadmap M9-A](../../todo-todo/product/frida-v1-document-workshop-todo.md#m9-a--docx-frida-createcopyupdate-et-pagination-writer).
@@ -120,7 +158,7 @@ les trames historiques. Aucun déploiement, appel live, Writer ou DAV ici.
 OBS-M9A-PREP-01 et M9-A restent ouverts pour contre-audit, livraison runtime
 et recette ultérieures ; M9-B/M10 hors mandat.
 
-## État courant — diagnostic d'enveloppe du 11 octobre
+## Étape historique — diagnostic d'enveloppe du 11 octobre
 
 Après livraison et contre-audit runtime favorables du correctif `duplicate_stop`
 (constats attribués à Codex, transmis par Tof), une seule nouvelle préparation

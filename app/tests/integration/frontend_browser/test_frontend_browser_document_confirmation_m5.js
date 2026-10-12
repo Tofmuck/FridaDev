@@ -10,7 +10,7 @@ function confirmationScript({ available = true, failure = null } = {}) {
     const baseFetch=window.fetch, json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json'}});
     const context={id:'context-0',conversation_id:'conv-a',workspace_folder_id:'folder-a',target_file_id:null,target_relative_path:null,state:'editing',capabilities:{prepare:true,confirm:${available},update:false}};
     const state=window.__m5={calls:[],failure:${JSON.stringify(failure)},action:{id:'a1111111-1111-4111-8111-111111111111',context_id:context.id,conversation_id:'conv-a',workspace_folder_id:'folder-a',
-      state:'pending',revision_id:'b1111111-1111-4111-8111-111111111111',operation:'create',format:'markdown',name:'Synthétique.md',relative_path:'Documents/Section/Synthétique.md',collections:['Documents/Section'],limitations:[]}};
+      state:'pending',phase:'complete',confirmation_turn_id:null,confirmed_at:null,revision_id:'b1111111-1111-4111-8111-111111111111',operation:'create',format:'markdown',name:'Synthétique.md',relative_path:'Documents/Section/Synthétique.md',collections:['Documents/Section'],limitations:[]}};
     state.actions={[state.action.id]:state.action};
     const project=(record=state.action)=>({...record,capabilities:{confirm:${available}&&record.state==='pending',cancel:['preparing','pending','executing'].includes(record.state)}});
     let restored;
@@ -19,6 +19,7 @@ function confirmationScript({ available = true, failure = null } = {}) {
       await restore();
       const path=new URL(input,location.origin).pathname,method=init.method||'GET',body=typeof init.body==='string'?JSON.parse(init.body):null;
       state.calls.push({path,method,body});
+      if(method==='GET'&&state.failReads&&path.startsWith('/api/document-workshop/'))return new Response('<html>Login</html>',{status:200});
       if(path.startsWith('/api/document-workshop/contexts')){
         const snapshot={...context,preparation:project()};
         if(method==='GET'&&state.delayContextRead){state.delayContextRead=false;await new Promise(resolve=>state.releaseRead=resolve);}
@@ -30,6 +31,8 @@ function confirmationScript({ available = true, failure = null } = {}) {
         if(path.endsWith('/confirm')){
           state.sent=body;
           if(state.rejectConfirm)return json({ok:false,reason_code:'conversation_turn_conflict'},409);
+          if(state.failure==='auth_html')return new Response('<html>Connexion synthétique</html>',{status:200,headers:{'Content-Type':'text/html'}});
+          if(state.failure==='invalid_json')return new Response('{',{status:200});
           if(state.failure==='not_received')throw new TypeError('synthetic lost before server');
           if(state.failure==='after_received'){state.action.state='remote_uncertain';throw new TypeError('synthetic lost after server');}
           if(state.failure==='reply_lost'){state.action.state='executing';throw new TypeError('synthetic execution reply lost');}
@@ -87,14 +90,13 @@ test('M5 keyboard confirmation consumes the same action once',async()=>{
     await page.evaluate(()=>window.__m5.release());
   });
 });
-for(const failure of ['not_received','after_received'])test(`M5 ${failure} rereads honest state and refresh never posts or rearms`,async()=>{
+for(const failure of ['not_received','after_received'])test(`M5 ${failure} rereads honest state and refresh never posts; only pending permits a new gesture`,async()=>{
   let snapshot=null;
   await openBrowserPage({mockScript:confirmationScript({failure}),beforePage:page=>page.exposeFunction('__m5ReadServer',()=>snapshot)},async page=>{
     await ready(page);
     const reads=await page.evaluate(()=>window.__m5.calls.filter(c=>c.path.startsWith('/api/document-workshop/actions/')&&c.method==='GET').length);
     await page.locator('#documentWorkshop [data-document-confirm]').click();
     await page.waitForFunction(count=>window.__m5.calls.filter(c=>c.path.startsWith('/api/document-workshop/actions/')&&c.method==='GET').length>count,reads);
-    assert.equal(await page.locator('[data-document-confirm]').count(),0);
     if(failure==='not_received'){
       // The request counter observes dispatch, before its JSON response renders.
       await page.waitForFunction(()=>/non établie|non confirmée|incertain/i.test(document.querySelector('#documentWorkshop .document-action-card')?.textContent||''));
@@ -106,10 +108,11 @@ for(const failure of ['not_received','after_received'])test(`M5 ${failure} rerea
     assert.ok(stored);assert.equal(/Synthétique|Documents|canonical|Proposition/.test(stored),false);
     snapshot=await page.evaluate(()=>window.__m5.action);
     await page.reload();await ready(page, failure==='not_received'?'pending':'remote_uncertain');
-    assert.equal(await page.locator('[data-document-confirm]').count(),0);
+    assert.equal(await page.locator('[data-document-confirm]').count(),failure==='not_received'?2:0);
     assert.deepEqual(await page.evaluate(confirms),[]);
     await page.click('#documentWorkshopReload');
-    assert.deepEqual(await page.evaluate(confirms),[]);assert.equal(await page.locator('[data-document-confirm]').count(),0);
+    await page.waitForFunction(()=>!document.querySelector('#documentWorkshopReload').disabled);
+    assert.deepEqual(await page.evaluate(confirms),[]);assert.equal(await page.locator('[data-document-confirm]').count(),failure==='not_received'?2:0);
   });
 });
 test('M5 a late pending reread cannot restore a consumed confirmation',async()=>{
@@ -154,7 +157,7 @@ test('M5 confirming historical A does not stop the active preparation B rereads'
     await page.waitForFunction(()=>document.querySelector('#documentWorkshopStatus').textContent.includes('17 caractères reçus'));
     assert.equal(await page.locator('#documentWorkshop').getAttribute('data-action-state'),'preparing');
     assert.equal(await page.evaluate(confirms).then(rows=>rows.length),1);
-    assert.equal(await page.locator('#log [data-document-confirm]').count(),0);
+    assert.equal(await page.locator('#log [data-document-confirm]').count(),1,'fresh pending A may be resumed manually without stopping B');
   });
 });
 test('M5 refresh during an unresolved confirmation reads executing and never posts again',async()=>{
@@ -211,6 +214,160 @@ for(const count of [1,null,0])test(`M5 retained collections are reported honestl
       else assert.match(message,/Exécution documentaire échouée/);
     }
     assert.equal(await page.locator('[data-document-confirm]').count(),0);
+    assert.deepEqual(await page.evaluate(confirms),[]);
+  });
+});
+
+for(const failure of ['auth_html','invalid_json','not_received'])test(`M9A-REAUTH ${failure}: reload preserves the attempt and only a new gesture resumes`,async()=>{
+  let snapshot=null;
+  await openBrowserPage({mockScript:confirmationScript({failure}),beforePage:page=>page.exposeFunction('__m5ReadServer',()=>snapshot)},async page=>{
+    await ready(page);
+    await page.locator('#documentWorkshop [data-document-confirm]').click();
+    await page.waitForFunction(()=>JSON.parse(sessionStorage.getItem('frida.document-workshop.confirmations'))?.[0]?.state==='unknown');
+    snapshot=await page.evaluate(()=>window.__m5.action);
+    assert.equal(snapshot.state,'pending');assert.equal(snapshot.confirmation_turn_id,null);
+    const attempt=await page.evaluate(()=>JSON.parse(sessionStorage.getItem('frida.document-workshop.confirmations'))[0]);
+    const first=await page.evaluate(()=>window.__m5.sent);
+    await page.reload();await ready(page);
+    assert.deepEqual(await page.evaluate(confirms),[],'return/reload must never POST');
+    assert.deepEqual(await page.evaluate(()=>JSON.parse(sessionStorage.getItem('frida.document-workshop.confirmations'))[0]),attempt);
+    assert.equal(await page.locator('#documentWorkshop [data-document-confirm]:enabled').count(),1,'fresh pending reread must allow a new human gesture with the retained attempt');
+    await page.evaluate(()=>{window.__m5.failure=null;window.__resumeButtons=[...document.querySelectorAll('[data-document-confirm]')];});
+    await page.locator('#documentWorkshop [data-document-confirm]').focus();await page.keyboard.press('Enter');
+    await page.waitForFunction(()=>typeof window.__m5.release==='function');
+    await page.evaluate(()=>window.__resumeButtons.forEach(button=>button.click()));await page.keyboard.press('Enter');
+    assert.equal(await page.evaluate(confirms).then(rows=>rows.length),1);
+    assert.deepEqual(await page.evaluate(()=>window.__m5.sent),first,'all five body identities must remain exact');
+    assert.equal(await page.locator('[data-document-confirm]').count(),0);
+    await page.evaluate(()=>window.__m5.release());
+    await page.waitForSelector('#documentWorkshop .document-action-card[data-state="succeeded"]');
+    assert.equal(await page.locator('[data-document-confirm]').count(),0);
+  });
+});
+
+test('M9A-REAUTH legacy attempted marker resumes unchanged; stale detached buttons never do',async()=>{
+  let snapshot=null,attempt;
+  await openBrowserPage({mockScript:confirmationScript({failure:'not_received'}),beforePage:page=>page.exposeFunction('__m5ReadServer',()=>snapshot)},async page=>{
+    await ready(page);await page.locator('#documentWorkshop [data-document-confirm]').click();
+    await page.waitForFunction(()=>document.querySelector('#documentWorkshop [data-document-confirm]')?.textContent==='Reprendre la confirmation');
+    snapshot=await page.evaluate(()=>window.__m5.action);
+    attempt=await page.evaluate(()=>{
+      const rows=JSON.parse(sessionStorage.getItem('frida.document-workshop.confirmations'));rows[0].state='attempted';
+      sessionStorage.setItem('frida.document-workshop.confirmations',JSON.stringify(rows));return rows[0];
+    });
+    await page.reload();await ready(page);
+    assert.deepEqual(await page.evaluate(confirms),[]);
+    assert.equal(await page.locator('[data-document-confirm]:enabled').count(),2);
+    await page.evaluate(()=>window.__stale=[...document.querySelectorAll('[data-document-confirm]')]);
+    await page.click('#documentWorkshopReload');
+    await page.waitForFunction(()=>document.querySelector('#documentWorkshop [data-document-confirm]')&&!window.__stale.includes(document.querySelector('#documentWorkshop [data-document-confirm]')));
+    await page.evaluate(()=>window.__stale.forEach(b=>b.click()));assert.deepEqual(await page.evaluate(confirms),[]);
+    await page.evaluate(()=>window.__m5.failure=null);await page.locator('#log [data-document-confirm]').focus();await page.keyboard.press('Enter');
+    await page.waitForFunction(()=>typeof window.__m5.release==='function');
+    assert.equal((await page.evaluate(()=>window.__m5.sent)).request_id,attempt.request_id);
+    await page.evaluate(()=>window.__m5.release());
+  });
+});
+
+for(const change of [{state:'executing'},{state:'succeeded'},{state:'remote_uncertain'},{state:'invalidated'},
+  {revision_id:'e1111111-1111-4111-8111-111111111111'},{conversation_id:'conv-b'},{workspace_folder_id:'folder-b'},
+  {context_id:'other-context'},{phase:null},{confirmation_turn_id:'e1111111-1111-4111-8111-111111111111'},
+  {confirmed_at:'2026-10-12T00:00:00Z'},{state:'not-a-state'}])test(`M9A-REAUTH changed server observation stays closed: ${JSON.stringify(change)}`,async()=>{
+  await openBrowserPage({mockScript:confirmationScript({failure:'not_received'})},async page=>{
+    await ready(page);await page.locator('#documentWorkshop [data-document-confirm]').click();
+    await page.waitForFunction(()=>document.querySelector('#documentWorkshop [data-document-confirm]')?.textContent==='Reprendre la confirmation');
+    await page.evaluate(change=>{window.__stale=[...document.querySelectorAll('[data-document-confirm]')];Object.assign(window.__m5.action,change);},change);
+    await page.click('#documentWorkshopReload');
+    await page.waitForFunction(()=>!document.querySelector('#documentWorkshopReload').disabled);
+    assert.equal(await page.locator('#documentWorkshop [data-document-confirm]:enabled').count(),0);
+    await page.evaluate(()=>window.__stale.forEach(b=>b.click()));
+    assert.equal(await page.evaluate(confirms).then(rows=>rows.length),1);
+  });
+});
+
+test('M9A-REAUTH failed reread and storage failure revoke an offered resumption without sending',async()=>{
+  await openBrowserPage({mockScript:confirmationScript({failure:'not_received'})},async page=>{
+    await ready(page);await page.locator('#documentWorkshop [data-document-confirm]').click();
+    await page.waitForFunction(()=>document.querySelector('#documentWorkshop [data-document-confirm]')?.textContent==='Reprendre la confirmation');
+    await page.evaluate(()=>{window.__stale=[...document.querySelectorAll('[data-document-confirm]')];window.__m5.failReads=true;});
+    await page.click('#documentWorkshopReload');
+    await page.waitForFunction(()=>document.querySelector('#documentWorkshopStatus').textContent.includes('Impossible'));
+    await page.evaluate(()=>window.__stale.forEach(b=>b.click()));
+    assert.equal(await page.evaluate(confirms).then(rows=>rows.length),1);
+    await page.evaluate(()=>window.__m5.failReads=false);
+    // No context after read failure: return to chat and reopen the same server preparation.
+    await page.click('#documentWorkshopExit');await openWorkshop(page);
+    await page.waitForSelector('#documentWorkshop[data-state="editing"]');
+    assert.equal(await page.locator('#documentWorkshop [data-document-confirm]:enabled').count(),0,'opening POST is not the required reread');
+    await page.click('#documentWorkshopReload');
+    await page.waitForSelector('#documentWorkshop [data-document-confirm]:enabled');
+    await page.evaluate(()=>{const set=Storage.prototype.setItem;Storage.prototype.setItem=function(k,v){if(k==='frida.document-workshop.confirmations')throw new DOMException('quota');return set.call(this,k,v);};});
+    await page.locator('#documentWorkshop [data-document-confirm]').click();
+    assert.equal(await page.evaluate(confirms).then(rows=>rows.length),1);
+    assert.equal(await page.locator('[data-document-confirm]:enabled').count(),0);
+  });
+});
+
+for(const stored of ['{}','[{"action_id":"broken"}]','not-json',JSON.stringify([{action_id:'a1111111-1111-4111-8111-111111111111',context_id:'context-0',conversation_id:'conv-a',workspace_folder_id:'folder-a',revision_id:'b1111111-1111-4111-8111-111111111111',request_id:'broken',state:'unknown'}])])test(`M9A-REAUTH malformed stored marker fails closed: ${stored}`,async()=>{
+  await openBrowserPage({mockScript:confirmationScript(),beforePage:page=>page.addInitScript(value=>sessionStorage.setItem('frida.document-workshop.confirmations',value),stored)},async page=>{
+    await ready(page);assert.equal(await page.locator('[data-document-confirm]:enabled').count(),0);
+    assert.equal(await page.evaluate(()=>sessionStorage.getItem('frida.document-workshop.confirmations')),stored,'never erase malformed prior evidence');
+    assert.deepEqual(await page.evaluate(confirms),[]);
+  });
+});
+
+test('M9A-REAUTH context GET started before the click cannot authorize after a failed fallback',async()=>{
+  await openBrowserPage({mockScript:confirmationScript({failure:'not_received'})},async page=>{
+    await ready(page);await page.evaluate(()=>window.__m5.delayContextRead=true);await page.click('#documentWorkshopReload');
+    await page.waitForFunction(()=>typeof window.__m5.releaseRead==='function');
+    await page.evaluate(()=>window.__m5.failReads=true);
+    await page.locator('#log [data-document-confirm]').click();
+    await page.waitForFunction(()=>JSON.parse(sessionStorage.getItem('frida.document-workshop.confirmations'))[0]?.state==='unknown');
+    await page.evaluate(()=>window.__m5.releaseRead());
+    await page.waitForFunction(()=>!document.querySelector('#documentWorkshopReload').disabled);
+    assert.equal(await page.locator('[data-document-confirm]:enabled').count(),0,'pre-click context read is stale evidence');
+    assert.equal(await page.evaluate(confirms).then(rows=>rows.length),1);
+  });
+});
+
+test('M9A-REAUTH legacy observed marker remains closed even if a read says pending',async()=>{
+  await openBrowserPage({mockScript:confirmationScript({failure:'not_received'})},async page=>{
+    await ready(page);await page.locator('#documentWorkshop [data-document-confirm]').click();
+    await page.waitForFunction(()=>document.querySelector('#documentWorkshop [data-document-confirm]')?.textContent==='Reprendre la confirmation');
+    await page.evaluate(()=>{const rows=JSON.parse(sessionStorage.getItem('frida.document-workshop.confirmations'));rows[0].state='observed';sessionStorage.setItem('frida.document-workshop.confirmations',JSON.stringify(rows));});
+    await page.reload();await ready(page);
+    assert.equal(await page.locator('[data-document-confirm]:enabled').count(),0);
+    assert.deepEqual(await page.evaluate(confirms),[]);
+  });
+});
+
+test('M9A-REAUTH late fallback cannot clear the newer in-flight attempt guard',async()=>{
+  await openBrowserPage({mockScript:confirmationScript({failure:'not_received'})},async page=>{
+    await ready(page);await page.evaluate(()=>window.__m5.delayRead=true);
+    await page.locator('#documentWorkshop [data-document-confirm]').click();
+    await page.waitForFunction(()=>typeof window.__m5.releaseRead==='function');
+    // An explicit reload obtains a newer valid pending read while the older
+    // fallback remains in transit. Its new click has the same durable identity.
+    await page.click('#documentWorkshopReload');await page.waitForSelector('#documentWorkshop [data-document-confirm]:enabled');
+    await page.evaluate(()=>window.__m5.failure=null);
+    await page.locator('#documentWorkshop [data-document-confirm]').click();await page.waitForFunction(()=>typeof window.__m5.release==='function');
+    await page.evaluate(()=>{window.__m5.action.state='pending';window.__m5.releaseRead();});
+    await page.waitForFunction(()=>window.__m5.readReleased);
+    await page.click('#documentWorkshopReload');await page.waitForFunction(()=>!document.querySelector('#documentWorkshopReload').disabled);
+    assert.equal(await page.locator('[data-document-confirm]:enabled').count(),0,'late fallback must not clear the newer in-flight gate');
+    assert.equal(await page.evaluate(confirms).then(rows=>rows.length),2);
+    await page.evaluate(()=>window.__m5.release());
+  });
+});
+
+
+test('M9A-REAUTH partially malformed storage is never rewritten by a server observation',async()=>{
+  const stored=JSON.stringify([{action_id:'a1111111-1111-4111-8111-111111111111',context_id:'context-0',conversation_id:'conv-a',workspace_folder_id:'folder-a',revision_id:'b1111111-1111-4111-8111-111111111111',request_id:'c1111111-1111-4111-8111-111111111111',state:'unknown'},{}]);
+  await openBrowserPage({mockScript:confirmationScript(),beforePage:page=>page.addInitScript(value=>sessionStorage.setItem('frida.document-workshop.confirmations',value),stored)},async page=>{
+    await ready(page);assert.equal(await page.locator('[data-document-confirm]:enabled').count(),0);
+    await page.evaluate(()=>window.__m5.action.state='remote_uncertain');await page.click('#documentWorkshopReload');
+    await page.waitForSelector('#documentWorkshop .document-action-card[data-state="remote_uncertain"]');
+    assert.equal(await page.evaluate(()=>sessionStorage.getItem('frida.document-workshop.confirmations')),stored);
     assert.deepEqual(await page.evaluate(confirms),[]);
   });
 });
