@@ -1,6 +1,6 @@
 # Atelier documentaire agentique Frida V1 — spécification validée et roadmap
 
-Date : 2026-09-29. Dernière décision : clôture M9-B autorisée par Tof le 2026-10-13 après contre-audit Codex favorable du code et du runtime livré. Report documentaire sur preuves acquises, sans nouveau test ni canari. M9-A reste fermé ; M10/Z non commencés ; incident initial conservé.
+Date : 2026-09-29. Dernière décision : livraison runtime M10 autorisée par Tof et réalisée le 2026-10-13, après contre-audits Codex du code et de P3-M10-AUD-01. FridaDev et seule migration M10 ; renderer durable inchangé. Contre-audit runtime Codex attendu, clôture globale M10 ouverte. M9-A/M9-B fermés ; aucun canari dans ce lot, Z non commencé.
 
 Statut : **spécification et choix architecturaux validés par Tof ; M0 fermé sur
 composants et preuves internes, contre-audit corrigé sur `FridaV1-Document-Workshop-M0` ;
@@ -18,7 +18,7 @@ M4 livré sur code, P2-M4-01 et P2-M4-02 fermés après contre-audits indépenda
 P3-M4-03 corrigé par erratum documentaire (1 198 déclarés conservés et rectifiés,
 sélection publiée à 1 414, 21 identifiants réutilisables validés) ;
 M4 non intégralement fermé ;
-M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées ; M7 fermé sur code/preuves isolées et contre-audit ; code/migrations M1–M7 livrés via M8-A, recettes DAV/Versions ouvertes ; M8-C fermé après contre-audits indépendants AUD-01/AUD-02 ; M8-S fermé après contre-audit Codex favorable transmis par Tof ; M8-A fermé sur code et raccord runtime après contre-audit Codex favorable du 10 octobre transmis par Tof ; M9-A fermé le 13 octobre 2026 sur code, runtime et recette acceptée par Tof ; création, copie et modification DOCX réelles réussies, préparation périmée invalidée sans seconde écriture, téléchargement validé par Tof. OBS-M9A-PREP-01 conservée comme réserve historique non bloquante, causes initiales non reconstruites ; M9-B fermé le 13 octobre 2026 après contre-audits Codex du code (36 IDs) et du runtime livré ; DOCX externe simple et refus indispensables couverts, aucune recette externe live revendiquée. M10 et Z non commencés ; PDF public fermé**.
+M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées ; M7 fermé sur code/preuves isolées et contre-audit ; code/migrations M1–M7 livrés via M8-A, recettes DAV/Versions ouvertes ; M8-C fermé après contre-audits indépendants AUD-01/AUD-02 ; M8-S fermé après contre-audit Codex favorable transmis par Tof ; M8-A fermé sur code et raccord runtime après contre-audit Codex favorable du 10 octobre transmis par Tof ; M9-A fermé le 13 octobre 2026 sur code, runtime et recette acceptée par Tof ; création, copie et modification DOCX réelles réussies, préparation périmée invalidée sans seconde écriture, téléchargement validé par Tof. OBS-M9A-PREP-01 conservée comme réserve historique non bloquante, causes initiales non reconstruites ; M9-B fermé le 13 octobre 2026 après contre-audits Codex du code (36 IDs) et du runtime livré ; DOCX externe simple et refus indispensables couverts, aucune recette externe live revendiquée. M10 livré dans FridaDev le 13 octobre 2026, PDF disponible après la seule migration M10 et avec la session Writer épinglée ; contre-audit runtime Codex et clôture globale M10 ouverts. Aucun canari M10 effectué ; Z non commencé**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
 dialogue avec Tof. Création documentaire committée dans `d6b63fd1`, puis validation
@@ -42,7 +42,7 @@ Une case cochée dans les décisions signifie « décidé par Tof », pas « liv
 Une case ouverte dans les critères ou les lots signifie « à implémenter ou prouver ».
 Les inconnues factuelles sont isolées en section 11. Seules les preuves datées
 dans M0–M4 décrivent des tests exécutés ou des déclarations historiques explicitement
-qualifiées ; M5–M8-A disposent de leurs relevés datés et attributions ci-dessous ; M9-A dispose de son relevé isolé du 11 octobre et de sa clôture du 13 octobre sur les preuves acquises ; M9-B dispose du relevé ciblé du 13 octobre ; M10 reste une preuve future. L'erratum P3-M4-03
+qualifiées ; M5–M8-A disposent de leurs relevés datés et attributions ci-dessous ; M9-A dispose de son relevé isolé du 11 octobre et de sa clôture du 13 octobre sur les preuves acquises ; M9-B dispose du relevé ciblé du 13 octobre ; M10 dispose de ses preuves isolées, de contre-audits code/documentation favorables et de la livraison runtime du 13 octobre ; contre-audit runtime et clôture globale ouverts. L'erratum P3-M4-03
 ci-dessous distingue les nouveaux rejeux des résultats antérieurs.
 Une clôture code/preuves ne ferme pas migration opérateur, rebuild ou preuve DAV déployée.
 
@@ -5126,12 +5126,12 @@ restent non commencés ; leurs exécutions restent des lots distincts.
 
 ### M10 — PDF Writer, source externe et intégration finale des formats
 
-**M10 commencé le 13 octobre 2026, code et preuves isolées sous mandat distinct.**
+**Runtime M10 livré le 13 octobre 2026, contre-audit Codex attendu.**
 Base exacte `dcbd3e7540fbc6414defad9bf913c2470a3f6d38`, branche
 `FridaV1-Document-Workshop-M10`. M9-A/M9-B restent fermés.
 [Contrat et remise M10](../../states/specs/frida-v1-document-workshop-m10-contract.md),
 [commandes, IDs et limites](../../states/baselines/document-workshop/frida-v1-document-workshop-m10-20261013.json).
-Livraison runtime, canari et clôture globale M10 restent ouverts ; Z non commencé.
+Code et P3-M10-AUD-01 contre-audités favorablement ; livraison runtime acquise ci-dessous. Contre-audit runtime, canari sous GO distinct et clôture globale M10 restent ouverts ; Z non commencé.
 
 **Objectif :** publier le PDF du même moteur/révision ; préserver la politique des PDF sources.
 **Dépendances :** M9-B, donc tous les sous-lots M8/M9 fermés ; zéro pipeline PDF parallèle.
@@ -5160,7 +5160,9 @@ PDF Frida lié au canonical, PDF externe source vers nouveau document demandé.
 - [x] Politique PDF/provenance/refus, migration explicite et preuves isolées
   documentées. HTTP navigateur natif : carte, reconnexion sans POST automatique,
   confirmation humaine, reçu/réhydratation et téléchargement PDF exact.
-- [ ] Canari sous GO distinct et livraison runtime/rebuild FridaDev autorisés.
+- [x] Construction hors réseau, seule migration M10 transactionnelle et livraison FridaDev autorisées puis réalisées le 13 octobre ; renderer durable inchangé.
+- [ ] Contre-audit runtime Codex de cette livraison.
+- [ ] Canari M10 sous GO distinct ; aucune préparation ou confirmation exécutée par ce lot.
 - [ ] Fermer les trois formats et les deux politiques PDF, sécurité/cleanup et
   continuité end-to-end ; moteur inchangé, aucun service bureautique supplémentaire.
 
@@ -5172,7 +5174,7 @@ incidents et IDs dans le relevé M10 ; les répétitions ne gonflent pas le tota
 Limite conservée : sous le Chromium du harnais, le nom Unicode téléchargé devient
 `download` malgré octets et en-tête exacts ; comportement HTTP général reproduit,
 hors delta PDF. Nom ASCII navigateur et identité Unicode serveur prouvés ;
-Safari matériel non éprouvé. Contre-audit Codex attendu avant livraison runtime.
+Safari matériel non éprouvé. Le contre-audit code Codex et celui de l’erratum sont désormais favorables ; la livraison runtime est décrite ci-dessous.
 
 **Erratum P3-M10-AUD-01 — 13 octobre 2026.** Le
 [relevé M10](../../states/baselines/document-workshop/frida-v1-document-workshop-m10-20261013.json)
@@ -5189,6 +5191,67 @@ historiques restent inchangés. Les **58 tests indépendants verts** (52 Python,
 Codex**, sans rejeu ni attribution à cette correction documentaire.
 M9-A/M9-B restent fermés ; runtime et clôture globale M10 ouverts, Z non commencé.
 Code audité, renderer et runtime inchangés ; arrêt pour contre-audit de l'erratum.
+
+#### Livraison runtime Sauron — 13 octobre 2026
+
+**Runtime M10 livré, contre-audit Codex attendu.** P3-M10-AUD-01 fermé après
+contre-audit documentaire Codex ; ses 80 occurrences corrigées ne sont pas des
+nouveaux tests. Les **58 tests indépendants verts** (52 Python, 4 schéma,
+2 Chromium) demeurent attribués à Codex, sans rejeu général Sauron.
+
+Image active **`sha256:2c28bf3fce72c57cf1f18162143bc0b35dd151cdba63be1a2c75ee8c1f4ecb8d`**, construite hors réseau depuis
+**`654373529a50ab1492ac9fc0812f9678a8e25c80`** ; code produit audité du parent
+**`82865d94efca8a43bb8a91a6834b407b95fc8fd8`**. Le commit de cette mise à jour de roadmap
+est documentaire et distinct de la source embarquée. 1 516 fichiers exacts,
+18 propriétaires runtime et migration conformes au relevé, 20 distributions
+inchangées ; 27 couches du socle conservées, aucun apt/pip/pull ou nouveau moteur.
+
+Sauvegarde root-only image/Compose et DB, dump intégral restauré dans PostgreSQL
+isolé de même image. Seul document_workshop_pdf_m10.sql appliqué puis répété :
+**quatre contraintes étendues**, 37 tables/séquences et autres objets inchangés.
+Ancienne image : capacités de schéma DOCX/update conservées en lecture seule ;
+aucune preuve fonctionnelle sur les données opérateur restaurées. Repli défini :
+ancienne image/Compose FridaDev, schéma élargi conservé ; aucune restauration
+DB générale automatique.
+
+Une seule sélection Sauron, propriétaires extraits de candidate et fixtures du
+commit exact, PostgreSQL/DAV/modèle synthétiques et Writer éphémère qualifié,
+réseau externe coupé, aucun secret/volume/DB/socket Writer opérateur :
+
+- **2/2 SQL, exit 0 / 18,756 s** :
+  `tests.integration.document_workshop.test_pdf_m10_postgresql.PdfM10PostgresqlTests.test_pdf_create_update_exact_pair_bytes_identity_and_single_confirmation`
+  et `tests.integration.document_workshop.test_pdf_m10_postgresql.PdfM10PostgresqlTests.test_capability_migration_repeatable_and_missing_prerequisites_preserve_neighbors`.
+- **1/1 Chromium, exit 0 / 11,624 s**, seul cas
+  `M10 native external PDF clarifies then explicitly selected copy to new PDF`
+  dans `app/tests/integration/frontend_browser/test_frontend_browser_document_http_m10.js`.
+  M10_PROOF=1 ; source/nom/destination explicites, source intacte. Autre cas
+  navigateur exclu, pas compté vert ; zéro skip/annulation/échec, aucun rejeu.
+
+Après préflight renouvelé, migration opérateur unique en transaction, exit
+0 / 0,164 s ; quatre CHECK et invariance des données vérifiés. FridaDev seul
+recréé sans dépendance/build/pull implicite ; instantané après avant assertions.
+Conteneur `5deaf9f2fa5e6551844183c3e8b9e3069835731ac48c9bec4e6af52acabfd7f3`, démarrage `2026-10-13T16:23:25.081387242Z`,
+healthy/restart 0/root 0:0/[0]. Capacités DOCX/PDF et pins attendus conformes sans
+préparation/rendu ; contrôleur HTTP exact 54 327 octets/SHA 4ca7d6a6a1de… ;
+HTTP interne 200 et racine/admin publics 302 Authelia. Configuration, secrets,
+réseaux, droits et montages RO préservés hors image/provenance/hash Compose.
+
+**32 voisins invariants**, Writer durable image 7a61bd80/conteneur ed1e6726cabc,
+démarrage du 11 octobre 08:29:57.936553238Z et pins a788e48f649a… inchangés.
+37 tables/séquences et 241 événements du canari conservés. Aucun rendu durable,
+modèle/DAV live, Safari, préparation, confirmation ou canari. Aucun repli requis.
+Jetables, sockets, copies/build/helpers possédés retirés ; backups/images/caches
+partagés conservés. Trois messages admin_log_write_error dans le runner SQL RO
+conservés, sans échec de test ni correctif ; logs runtime sans marqueur d'erreur.
+
+Preuves/commandes/sauvegardes Sauron :
+`/opt/platform/backups/fridadev-m10-runtime-20261013T161722Z` ; rapports locaux
+`reports/2026-10-13-fridadev-m10-runtime.md` et `runbooks/fridadev-m10-runtime.md`,
+copies accessibles dans ce backup. Comparateur inchangé 6/6, refus réels de
+permissions/configuration conservés. Limite Unicode Chromium, Safari non éprouvé,
+OpenRouter/DAV live non qualifiés et causes initiales OBS conservés. 20/21 pages,
+fonts/layout hérités, pas une nouvelle campagne renderer. **M9-A/M9-B fermés ;
+clôture globale M10 ouverte, Z non commencé. ARRÊT POUR CONTRE-AUDIT CODEX.**
 
 ### Z — Clôture bornée
 
@@ -5422,7 +5485,7 @@ ultérieure est prouvée comme telle sans réécrire cette origine. Une preuve c
 ne devient jamais un import externe de secours. La limitation
 `external_docx_v1_reformat` est imposée dans l'action persistée avant confirmation.
 
-Raccord applicatif M10, encore non livré au runtime : PDF choisi dans le snapshot
+Raccord applicatif M10 livré au runtime le 13 octobre, contre-audit runtime attendu : PDF choisi dans le snapshot
 de paire existant ; source PDF Frida liée à sa preuve durable et aux octets frais.
 PDF externe : clarification existante si la nouvelle destination ou la sélection
 de lecture manque, jamais copie automatique. Capacités PDF conditionnées au schéma
@@ -5639,9 +5702,10 @@ bloquante, sans prétendre reconstruire ses premières causes. M9-B est contre-a
 et livré dans FridaDev seul après reprise autorisée du montage de preuve et succès
 du seul navigateur manquant, sans rebuild ni rejeu SQL. Incident initial conservé ;
 contre-audit runtime Codex favorable et clôture M9-B autorisée par Tof le 13 octobre,
-sur preuves acquises sans nouveau test ni canari. M10 commencé sur code/preuves isolées
-le 13 octobre, livraison runtime et clôture ouvertes ; PDF public du runtime
-non activé par ce lot. Z non commencé.
+sur preuves acquises sans nouveau test ni canari. M10 livré le 13 octobre après
+contre-audits code/erratum favorables, migration seule et trois preuves Sauron
+isolées ; PDF disponible avec schéma/session/pins attendus. Contre-audit runtime
+et clôture globale M10 ouverts, aucun canari M10 effectué. Z non commencé.
 Actualisation runtime du 10 octobre : code et migrations M1–M7 livrés par le
 raccord M8-A ; les réserves de recette produit/DAV/Versions restent ouvertes.
 Les mentions de runtime ouvert dans les récits historiques décrivent leurs
