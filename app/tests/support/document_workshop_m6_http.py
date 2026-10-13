@@ -157,6 +157,9 @@ def main(*,m7=False,m9=False):
             if m9:
                 from tests.integration.document_workshop.test_docx_m9a_postgresql import rich
                 value_canonical=rich();value_canonical['blocks'][0]=canonical(state['document_text'])['blocks'][0]
+                if state.get('external_docx_candidate'):
+                    from tests.support.document_renderer_fixtures import external_candidate
+                    value_canonical=external_candidate()
             proposal = dict(operation=state['operation'],format=state['document_format'],relative_path=state['next_path'],
                 source_file_ids=[state['copy_source']] if state['copy_source'] else [],limitations=[],canonical=value_canonical)
             value = dict(schema_version=1,status='prepared',surface_text='M6 réelle proposition courte.',proposal=proposal)
@@ -287,6 +290,11 @@ def main(*,m7=False,m9=False):
         data=request.get_json()
         if m9 and 'confirmation_transport' in data:
             confirmation_transport['mode']=data['confirmation_transport']
+        if m9 and 'external_docx_candidate' in data:
+            state['external_docx_candidate']=data['external_docx_candidate']
+        if m9 and data.get('seed_external_docx'):
+            from tests.support.document_renderer_fixtures import external_docx
+            state['files']['Documents/External.docx']=dict(content=external_docx(),etag='"external-docx-v1"',id='7778')
         for key in ('operation','next_path','copy_source','block_put','refuse_delete','race_put','drop_put','lose_commit_reply','document_text','inventory_failure','document_format'):
             if key in data:state[key]=data[key]
         if data.get('block_put'):dav_release.clear();dav_arrived.clear()

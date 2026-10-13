@@ -274,3 +274,165 @@ class DocxM9APostgresqlTests(unittest.TestCase):
         before=len(self.puts());self.confirm(a)
         self.assertEqual(len(self.puts()),before);self.assertEqual(len([r for r in self.dav['seen'] if r[0]=='DELETE']),1)
         self.assertEqual(self.fx.rows('SELECT count(*) FROM document_receipts'),[(0,)])
+
+    def adopt_external(self,content=None,*,path='Documents/External.docx'):
+        from core import workspace_document_adoption_store as adoption, workspace_folders
+        from core.workspace_document_nextcloud_read_client import NextcloudDocumentReadClient
+        from core.workspace_document_source_extraction import extract_complete_source
+        from tests.support.document_renderer_fixtures import external_docx
+        body=external_docx() if content is None else content
+        context=self.client.post('/api/document-workshop/contexts',json=dict(
+            conversation_id=self.conversation,workspace_folder_id=self.folder))
+        self.assertEqual(context.status_code,201,context.json)
+        self.dav['files'][path]=dict(content=body,id=str(7777+len(self.dav['files'])),etag='"external-v1"',version=1)
+        reader=NextcloudDocumentReadClient.from_env()
+        resource=reader.stat_resource('Scope',path);fresh=reader.read_file('Scope',resource)
+        result=adoption.publish_adoption(folder_id=self.folder,context_id=context.json['context']['id'],
+            folder=workspace_folders.get_workspace_folder(self.folder),scope_key=reader.scope_key('Scope'),
+            resource=resource,content=fresh,extraction=extract_complete_source(fresh,filename='External.docx',media_type=resource.media_type),
+            storage_root=self.fx.env.root)
+        return result['file']['id']
+
+    def test_m9b_external_update_real_pair_stable_identity_origin_and_subsequent_revision(self):
+        from tests.support.document_renderer_fixtures import external_docx,external_candidate
+        original=external_docx();file_id=self.adopt_external(original);path='Documents/External.docx'
+        before=workspace_files.get_workspace_file_storage_row(self.folder,file_id)
+        self.assertEqual(self.fx.rows('SELECT count(*) FROM document_receipts'),[(0,)])
+        self.assertEqual(self.fx.rows('SELECT count(*) FROM document_artifacts WHERE workspace_file_id=%s::uuid',(file_id,)),[(0,)])
+        freezes=[];actual=snapshots.persist
+        def capture(run,request,result):
+            actual(run,request,result);freezes.append((request,result))
+            self.assertEqual(len(self.puts()),len(freezes)-1,'snapshot before PUT')
+        previous=None
+        for index in range(2):
+            candidate=external_candidate('Revised text ' if index==0 else 'Again revised ')
+            action=self.prepare(operation='update',target=file_id,path=path,value=candidate)
+            self.assertIn('external_docx_v1_reformat',action['limitations'])
+            version=self.fx.rows('SELECT target_version FROM document_actions WHERE id=%s::uuid',(action['id'],))[0][0]
+            self.assertEqual(version['base_revision_id'],previous['revision_id'] if previous else None)
+            with patch.object(snapshots,'persist',capture):response=self.confirm(action)
+            self.assertEqual(response.status_code,200,response.json)
+            receipt=response.json['action']['receipt'];request,result=freezes[-1]
+            self.assertEqual(request.source_content,original if index==0 else freezes[0][1].docx)
+            source=request.data['source']
+            self.assertEqual(source['origin'],'external' if index==0 else 'frida')
+            if index==0:
+                for key in ('source_revision_id','canonical','canonical_sha256'):self.assertIsNone(source[key])
+            else:self.assertEqual(source['source_revision_id'],previous['revision_id'])
+            self.assertEqual(result.manifest['source_evidence'],dict(
+                inspection='external_docx_preflight_uno' if index==0 else 'frida_correspondence',
+                source_sha256=source['sha256'],inventory_complete=True,representable=True,repair_used=False,loss_detected=False))
+            self.assertEqual(receipt['creation_author'],'external');self.assertEqual(receipt['revision_author'],'frida')
+            self.assertEqual(receipt['workspace_file_id'],file_id);self.assertEqual(receipt['nextcloud_file_id'],'7777')
+            self.assertEqual(receipt['name'],'External.docx');self.assertEqual(receipt['relative_path'],path)
+            self.assertEqual(self.puts()[-1][2]['If-Match'],previous['nextcloud_etag'] if previous else '"external-v1"')
+            self.assertEqual(self.puts()[-1][3],result.docx)
+            self.assertEqual(len(self.puts()),index+1);self.assertEqual(self.fx.rows('SELECT count(*) FROM document_receipts'),[(index+1,)])
+            self.confirm(action);self.assertEqual(len(self.puts()),index+1,'reconfirmation never replays PUT')
+            self.assertEqual(self.client.get(receipt['product_link']).data,result.docx)
+            self.assertEqual(result.manifest['page_evidence']['writer_pages'],1)
+            self.assertEqual(result.manifest['artifacts']['pdf']['pdf_pages'],1)
+            with zipfile.ZipFile(io.BytesIO(result.docx)) as z:
+                ns={'w':'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+                body=ET.fromstring(z.read('word/document.xml'))
+                paragraphs=[''.join(t.text or '' for t in p.findall('.//w:t',ns)) for p in body.findall('.//w:p',ns)]
+                self.assertEqual([p for p in paragraphs if p],['External title',candidate['blocks'][1]['spans'][0]['text']+'bold and italic','First item','Second item','A','B','C','D'])
+                self.assertEqual(len(body.findall('.//w:tbl',ns)),1);self.assertEqual(len(body.findall('.//w:tr',ns)),2)
+                self.assertEqual([len(row.findall('w:tc',ns)) for row in body.findall('.//w:tr',ns)],[2,2])
+                numbered=[p for p in body.findall('.//w:p',ns)
+                    if (n:=p.find('w:pPr/w:numPr/w:numId',ns)) is not None and n.get('{'+ns['w']+'}val')!='0']
+                self.assertEqual([''.join(t.text or '' for t in p.findall('.//w:t',ns)) for p in numbered],['First item','Second item'])
+                title=body.find('.//w:p',ns)
+                self.assertEqual(title.find('w:pPr/w:pStyle',ns).get('{'+ns['w']+'}val'),'Heading1')
+                for text,tag in (('bold','b'),('italic','i')):
+                    run=next(r for r in body.findall('.//w:r',ns) if ''.join(t.text or '' for t in r.findall('w:t',ns))==text)
+                    self.assertIsNotNone(run.find('w:rPr/w:'+tag,ns),text)
+            print('M9B proof '+json.dumps(dict(action_id=action['id'],revision_id=receipt['revision_id'],
+                receipt_id=receipt['id'],workspace_file_id=file_id,nextcloud_file_id=receipt['nextcloud_file_id'],
+                renderer_job_id=request.data['job_id'],source_origin=source['origin'],
+                source_revision_id=source['source_revision_id'],source_sha256=source['sha256'],
+                docx_sha256=result.manifest['artifacts']['docx']['sha256'],
+                pdf_sha256=result.manifest['artifacts']['pdf']['sha256'],writer_pages=1,put_count=index+1)),flush=True)
+            previous=receipt
+        after=workspace_files.get_workspace_file_storage_row(self.folder,file_id)
+        for key in ('id','display_name','original_filename','source_kind','created_at'):self.assertEqual(before[key],after[key],key)
+        self.assertEqual(workspace_files.get_nextcloud_link(file_id,preserve_target_identity=True)['document_origin'],'external')
+        self.assertEqual(self.fx.rows('SELECT count(*) FROM workspace_files'),[(1,)])
+        self.assertEqual(len(self.dav['files']),1)
+        self.assertFalse(any(r[0] in ('DELETE','MKCOL') for r in self.dav['seen']))
+        with self.conn() as conn:conn.execute('DELETE FROM document_renderer_snapshots')
+        with self.assertRaises(DocumentWorkshopError):
+            self.prepare(operation='update',target=file_id,path=path,value=external_candidate())
+        self.assertEqual(len(self.puts()),2,'broken external revision proof never falls back to import')
+
+    def test_m9b_external_stale_before_confirmation_and_during_writer_never_puts(self):
+        from tests.support.document_renderer_fixtures import external_candidate
+        file_id=self.adopt_external();path='Documents/External.docx';actual=snapshots.persist
+        for stage in ('before','during'):
+            action=self.prepare(operation='update',target=file_id,path=path,value=external_candidate())
+            def change(run,request,result):
+                actual(run,request,result);self.dav['files'][path]['etag']='"outside"'
+            if stage=='before':self.dav['files'][path]['etag']='"outside"'
+            with patch.object(snapshots,'persist',change):response=self.confirm(action)
+            self.assertEqual(response.status_code,409,response.json)
+            self.assertEqual(response.json['action']['state'],'conflict')
+            self.assertEqual(self.puts(),[]);self.assertEqual(self.fx.rows('SELECT count(*) FROM document_receipts'),[(0,)])
+            snapshots_count=0 if stage=='before' else 1
+            self.assertEqual(self.fx.rows('SELECT count(*) FROM document_renderer_snapshots'),[(snapshots_count,)])
+            self.dav['files'][path]['etag']='"external-v1"'
+
+    def test_m9b_external_unsupported_content_refused_without_publication(self):
+        from tests.support.document_renderer_fixtures import external_docx,external_candidate
+        from tests.unit.core.test_workspace_document_source_extraction_m2 import archive_bytes
+        with zipfile.ZipFile(io.BytesIO(external_docx())) as z:original={n:z.read(n) for n in z.namelist()}
+        cases={
+            'macro':('entry','word/vbaProject.bin',b'not executable; synthetic marker'),
+            'field':('xml',b'<w:r><w:t xml:space="preserve">Original text ',b'<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:t xml:space="preserve">Original text '),
+            'image':('xml',b'<w:r><w:t xml:space="preserve">Original text ',b'<w:r><w:drawing/></w:r><w:r><w:t xml:space="preserve">Original text '),
+            'revision':('xml',b'<w:r><w:t xml:space="preserve">Original text ',b'<w:ins w:id="1"><w:r><w:t>Tracked</w:t></w:r></w:ins><w:r><w:t xml:space="preserve">Original text '),
+            'style':('xml',b'w:val="Heading1"',b'w:val="ArbitraryStyle"'),
+            'section':('xml',b'<w:sectPr>',b'<w:sectPr><w:cols w:num="2"/>'),
+        }
+        for name,(kind,old,new) in cases.items():
+            with self.subTest(case=name):
+                parts=dict(original)
+                if kind=='entry':parts[old]=new
+                else:
+                    self.assertIn(old,parts['word/document.xml'])
+                    parts['word/document.xml']=parts['word/document.xml'].replace(old,new)
+                body=archive_bytes(parts.items());path='Documents/Refused-'+name+'.docx'
+                try:file_id=self.adopt_external(body,path=path)
+                except DocumentWorkshopError as error:
+                    self.assertIn(error.reason_code,('document_extraction_incomplete','document_source_unsupported'))
+                    stage='M2'
+                else:
+                    action=self.prepare(operation='update',target=file_id,path=path,value=external_candidate())
+                    response=self.confirm(action)
+                    self.assertEqual(response.status_code,503,response.json)
+                    self.assertEqual(response.json['reason_code'],'document_render_invalid')
+                    self.assertEqual(response.json['action']['state'],'failed');stage='renderer'
+                print('M9B refusal',name,stage,flush=True)
+                self.assertEqual(self.puts(),[]);self.assertEqual(self.fx.rows('SELECT count(*) FROM document_receipts'),[(0,)])
+                self.assertEqual(self.fx.rows('SELECT count(*) FROM document_renderer_snapshots'),[(0,)])
+                self.assertEqual(self.dav['files'][path]['content'],body)
+
+    def test_m9b_incomplete_repaired_or_lossy_source_evidence_never_reaches_put(self):
+        from core import document_renderer_contract as c
+        from core.document_renderer_client import DocumentRendererClient
+        from tests.support.document_renderer_fixtures import external_candidate
+        file_id=self.adopt_external();actual=DocumentRendererClient.result
+        for key,value in (('inventory_complete',False),('repair_used',True),('loss_detected',True)):
+            with self.subTest(field=key):
+                action=self.prepare(operation='update',target=file_id,path='Documents/External.docx',value=external_candidate())
+                intercepted=[]
+                def corrupt(client,request,**kwargs):
+                    wire=actual(client,request,**kwargs);parts=c.parse_multipart(wire,limit=c.MAX_RESULT_BYTES)
+                    manifest=c.read_json(parts[0][2]);self.assertEqual(manifest['status'],'ready')
+                    self.assertEqual(manifest['source_evidence']['inspection'],'external_docx_preflight_uno')
+                    manifest['source_evidence'][key]=value;intercepted.append(key)
+                    return c.encode_multipart([(parts[0][0],parts[0][1],c.json_bytes(manifest)),*parts[1:]],limit=c.MAX_RESULT_BYTES)
+                with patch.object(DocumentRendererClient,'result',corrupt):response=self.confirm(action)
+                self.assertEqual(intercepted,[key]);self.assertEqual(response.status_code,503,response.json)
+                self.assertEqual(response.json['reason_code'],'document_render_invalid')
+                self.assertEqual(self.puts(),[]);self.assertEqual(self.fx.rows('SELECT count(*) FROM document_receipts'),[(0,)])
+                self.assertEqual(self.fx.rows('SELECT count(*) FROM document_renderer_snapshots'),[(0,)])

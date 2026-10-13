@@ -1,0 +1,323 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-13",
+  "base": "0781f0014e291d84562bfd36cefc1418575f6318",
+  "branch": "FridaV1-Document-Workshop-M9-B",
+  "status": "code and isolated proofs ready for external Codex counteraudit; not deployed; M9-A remains closed",
+  "initial_git": {
+    "pwd": "/opt/platform/fridadev",
+    "root": "/opt/platform/fridadev",
+    "branch": "FridaV1-Document-Workshop-M9-A",
+    "upstream": "origin/FridaV1-Document-Workshop-M9-A",
+    "clean": true,
+    "divergence": [0, 0],
+    "fetch_prune": true,
+    "preserved_refs_rule": "git for-each-ref --format=%(refname) %(objectname) refs/heads/ refs/remotes/origin/; exclude new M9-B local/tracking refs, keep trailing newline",
+    "preserved_refs_sha256": "2156ebc336d411521bb70883ceec76b9d50c7feb4dd571b437e195202ec0eead"
+  },
+  "images": {
+    "writer": "sha256:7a61bd805ca0e371873184f9b050ad47945ee32562c952437b65c793a6f4da10",
+    "python": "sha256:486a8afeb2f62c7906194d3e1fee839387e55753bcad365120d18306502fafdc",
+    "postgres": "sha256:87e04d274d186c7331d0e13c7c90c8b9f63b0d7ae94476c98a229a94d62c9745",
+    "browser": "sha256:55dfaaa282c98d5f4d328676e36eca5203b6494b97d9ef3ba0608d9e939e9523"
+  },
+  "pins": {
+    "sha256": "a788e48f649a84eed24af05ab340c1f2f080fe1f14c1827a86cf95d2a2900021",
+    "seed": "/opt/platform/backups/writer-m9a-source01-20261010T201715Z/candidate-m9a-source01-pins.json",
+    "usage": "exact read-only copy into owned temporary root, no operator mount"
+  },
+  "reproduction": {
+    "temporary_root": "/tmp/frida-m9b-20261013-k55mzsol",
+    "setup": [
+      ["docker", "run", "-d", "--pull=never", "--name", "frida-m9b13-pg", "--network", "none", "--read-only", "--tmpfs", "/var/lib/postgresql/data:rw,nosuid,nodev", "--tmpfs", "/tmp:rw,nosuid,nodev", "-v", "/tmp/frida-m9b-20261013-k55mzsol/pg-socket:/var/run/postgresql", "-e", "POSTGRES_HOST_AUTH_METHOD=trust", "-e", "POSTGRES_USER=m1proof", "-e", "POSTGRES_DB=m1proof", "postgres:16-alpine", "-c", "listen_addresses="],
+      ["docker", "run", "-d", "--pull=never", "--name", "frida-m9b13-writer", "--init", "--user", "20000:20000", "--network", "none", "--read-only", "--cpus", "1", "--memory", "1073741824", "--memory-swap", "1073741824", "--pids-limit", "64", "--ulimit", "nofile=256:256", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--tmpfs", "/tmp:rw,noexec,nosuid,nodev,size=268435456,uid=20000,gid=20000,mode=0700", "-v", "/tmp/frida-m9b-20261013-k55mzsol/writer-socket:/run/writer", "-v", "/tmp/frida-m9b-20261013-k55mzsol/writer-pins.json:/run/renderer-pins.json:ro", "sha256:7a61bd805ca0e371873184f9b050ad47945ee32562c952437b65c793a6f4da10"]
+    ],
+    "python_docker_prefix": ["docker", "run", "--rm", "--pull=never", "--name", "frida-m9b13-{label}", "--network", "none", "--read-only", "--tmpfs", "/tmp:rw,nosuid,nodev", "-v", "/opt/platform/fridadev:/workspace:ro", "-v", "/tmp/frida-m9b-20261013-k55mzsol/pg-socket:/proof/sock:ro", "-v", "/tmp/frida-m9b-20261013-k55mzsol/writer-socket:/run/writer:ro", "-v", "/tmp/frida-m9b-20261013-k55mzsol/writer-pins.json:/run/writer-pins.json:ro", "-w", "/workspace/app", "--entrypoint", "/usr/bin/env", "fridadev-audit-py:latest", "-i", "PATH=/usr/local/bin:/usr/bin:/bin", "PYTHONDONTWRITEBYTECODE=1", "PYTHONPATH=/workspace/app:/workspace", "EMBED_BASE_URL=https://embed.invalid", "CRAWL4AI_URL=https://crawl.invalid", "SEARXNG_URL=https://search.invalid", "M1_PROOF_PG_SOCKET=/proof/sock", "M2_PROOF_PG_SOCKET=/proof/sock", "M3_PROOF_PG_SOCKET=/proof/sock", "M4_PROOF_PG_SOCKET=/proof/sock", "M5_PROOF_PG_SOCKET=/proof/sock"],
+    "browser_setup": ["docker", "run", "-d", "--pull=never", "--name", "frida-m9b13-http", "--network", "none", "--read-only", "--tmpfs", "/tmp:rw,nosuid,nodev", "-v", "/opt/platform/fridadev:/workspace:ro", "-v", "/tmp/frida-m9b-20261013-k55mzsol/pg-socket:/proof/sock:ro", "-v", "/tmp/frida-m9b-20261013-k55mzsol/writer-socket:/run/writer:ro", "-v", "/tmp/frida-m9b-20261013-k55mzsol/writer-pins.json:/run/writer-pins.json:ro", "-v", "/tmp/frida-m9b-20261013-k55mzsol/output:/proof/output", "-w", "/workspace/app", "--entrypoint", "/usr/bin/env", "fridadev-audit-py:latest", "-i", "PATH=/usr/local/bin:/usr/bin:/bin", "PYTHONDONTWRITEBYTECODE=1", "PYTHONPATH=/workspace/app:/workspace", "EMBED_BASE_URL=https://embed.invalid", "CRAWL4AI_URL=https://crawl.invalid", "SEARXNG_URL=https://search.invalid", "M1_PROOF_PG_SOCKET=/proof/sock", "M2_PROOF_PG_SOCKET=/proof/sock", "M3_PROOF_PG_SOCKET=/proof/sock", "M4_PROOF_PG_SOCKET=/proof/sock", "M5_PROOF_PG_SOCKET=/proof/sock", "M6_PROOF_ROOT=/proof/output", "M4_PROVENANCE_TRACE=1", "python", "-B", "-m", "tests.support.document_workshop_m9a_http"],
+    "prerequisites": "Create an empty owned root, pg-socket and writer-socket (20000:20000), output writable by runner; copy the qualified pins and verify SHA. Replace the recorded temporary root consistently. Run SQL/native harnesses sequentially: each resets its own disposable public schema. Stop/remove the native HTTP harness before Python SQL tests. No durable socket, services, credentials, model or DAV are used.",
+    "browser_docker_prefix": ["docker", "run", "--rm", "--pull=never", "--name", "frida-m9b13-browser", "--network", "container:frida-m9b13-http", "--read-only", "--tmpfs", "/tmp:rw,nosuid,nodev", "-v", "/opt/platform/fridadev:/workspace:ro", "-v", "/home/tof/.cache/ms-playwright:/proof/browsers:ro", "-v", "/tmp/frida-m9b-20261013-k55mzsol/output:/proof/output", "-w", "/workspace", "--entrypoint", "/usr/bin/env", "mcr.microsoft.com/playwright:v1.54.0-jammy", "-i", "PATH=/usr/local/bin:/usr/bin:/bin", "PLAYWRIGHT_BROWSERS_PATH=/proof/browsers", "M9A_HTTP_BASE=http://127.0.0.1:8769", "M9B_SCREENSHOT=/proof/output/{screenshot}"]
+  },
+  "test_ids": [
+    "tests.unit.core.test_document_workshop_docx_m9a.DocxPreparationTests.test_docx_create_copy_update_reach_existing_envelope_with_exact_target",
+    "tests.unit.core.test_document_workshop_docx_m9a.DocxPreparationTests.test_pdf_and_copy_without_explicit_source_stay_closed",
+    "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_canonical_validation_and_volume_limits_are_reused",
+    "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_clarify_and_refuse_preserve_real_surface_without_action",
+    "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_clarify_refuse_cannot_smuggle_a_proposal",
+    "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_duplicate_fields_inside_canonical_are_not_repaired",
+    "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_duplicate_keys_nonfinite_truncated_json_and_old_root_are_rejected",
+    "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_limitations_are_typed_unique_known_codes",
+    "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_only_create_copy_markdown_can_be_prepared",
+    "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_ordinary_surface_text_and_non_protocol_json_are_not_rewritten",
+    "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_prepared_content_and_proposal_are_frozen_without_rewriting",
+    "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_protocol_json_cannot_be_published_as_a_surface",
+    "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_root_and_proposal_are_closed_with_strict_types",
+    "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_source_ids_are_uuid_unique_even_with_equivalent_spellings",
+    "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_surface_codepoints_blank_controls_and_type_bounds",
+    "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_target_uses_m0_documents_path_authority",
+    "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_technical_envelope_bound_is_separate_and_never_truncates",
+    "tests.unit.core.test_document_workshop_output_schema.DocumentOutputSchemaTests.test_all_statuses_operations_formats_blocks_and_rich_shapes",
+    "tests.unit.core.test_document_workshop_output_schema.DocumentOutputSchemaTests.test_closed_required_variants_enums_types_and_references",
+    "tests.unit.core.test_document_workshop_output_schema.DocumentOutputSchemaTests.test_schema_conformance_does_not_replace_local_business_guards",
+    "tests.unit.core.test_document_workshop_output_schema.DocumentOutputSchemaTests.test_schema_uses_only_documented_subset_and_fresh_owned_objects",
+    "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_explicit_source_copy_pending_with_only_selected_authority",
+    "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_foreign_reference_still_rejected_at_same_guard",
+    "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_target_only_clarify_has_measured_authority_instructions",
+    "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_target_only_copy_still_rejected_at_same_guard",
+    "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_target_only_update_pending_preserves_target_preconditions",
+    "tests.integration.document_workshop.test_renderer_m8a_postgresql.RendererAdapterPostgresqlTests.test_unchanged_markdown_does_not_require_renderer_schema_or_socket",
+    "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_real_create_explicit_copy_update_preserve_identity_histories_and_exact_bytes",
+    "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_missing_or_desynchronized_frida_provenance_refuses_preparation",
+    "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_fresh_source_bytes_and_durable_canonical_or_hash_mismatch_refuse_without_put",
+    "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_metadata_worker_failure_precedes_any_create_copy_or_update_put",
+    "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_changed_etag_during_writer_conflicts_before_put_and_real_412_preserves_prepared_if_match",
+    "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_m9b_external_update_real_pair_stable_identity_origin_and_subsequent_revision",
+    "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_m9b_external_stale_before_confirmation_and_during_writer_never_puts",
+    "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_m9b_external_unsupported_content_refused_without_publication",
+    "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_m9b_incomplete_repaired_or_lossy_source_evidence_never_reaches_put",
+    "tests.unit.core.test_workspace_document_source_extraction_m2.CompleteDocumentSourceM2Tests.test_docx_missing_main_or_detectably_omitted_parts_are_refused"
+  ],
+  "browser_test_ids": [
+    "M9-A native DOCX card confirmation download reload and metadata continuity",
+    "M9A-REAUTH native 303 followed to HTML, reload and same-attempt human resumption",
+    "M9-B native external DOCX target-only warning before click, update and stale refusal"
+  ],
+  "groups": {
+    "baseline": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 28, 29, 22, 23, 24, 25, 26, 27],
+    "final_python_passed_directly": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 34, 35, 36, 37],
+    "final_schema": [18, 19, 20, 21],
+    "final_nominal": [33]
+  },
+  "counts": {
+    "baseline": 25,
+    "final_distinct_python_passed": 37,
+    "final_distinct_browser_passed": 3,
+    "total_distinct_passed": 40,
+    "new_distinct_ids": 5,
+    "rule": "latest valid result per exact ID; subtests, repeated runs and intentional reds never add IDs; not one monolithic 40-test run",
+    "group_id_rule": "1-based indexes in test_ids; browser IDs are named separately"
+  },
+  "runs": [
+    {
+      "command": ["python", "-B", "-m", "unittest", "-v", "tests.unit.core.test_document_workshop_docx_m9a", "tests.unit.core.test_document_workshop_envelope", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_real_create_explicit_copy_update_preserve_identity_histories_and_exact_bytes", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_missing_or_desynchronized_frida_provenance_refuses_preparation", "tests.integration.document_workshop.test_copy_source_precondition_postgresql", "tests.integration.document_workshop.test_renderer_m8a_postgresql.RendererAdapterPostgresqlTests.test_unchanged_markdown_does_not_require_renderer_schema_or_socket"],
+      "exit": 0,
+      "seconds": 36.843,
+      "label": "baseline",
+      "result": "25/25 pass, prepatch targeted baseline.",
+      "log_sha256": "ef39f515dbc8e2b46c4a129580975cb0faa21425b71ab8dca0f5dc10e2d95aae",
+      "prefix": "python_docker_prefix",
+      "parameters": {
+        "label": "baseline"
+      }
+    },
+    {
+      "command": ["python", "-B", "-m", "unittest", "-v", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_m9b_external_update_real_pair_stable_identity_origin_and_subsequent_revision"],
+      "exit": 1,
+      "seconds": 2.87,
+      "label": "red-external",
+      "result": "Expected causal refusal at docx_origin before render/PUT; external target not yet admitted.",
+      "log_sha256": "e5aeeb62a44059164398acde00b6b39e81e3d70e2b9e6084c520e72232e14541",
+      "prefix": "python_docker_prefix",
+      "parameters": {
+        "label": "red-external"
+      }
+    },
+    {
+      "command": ["python", "-B", "-m", "unittest", "-v", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_m9b_external_update_real_pair_stable_identity_origin_and_subsequent_revision"],
+      "exit": 1,
+      "seconds": 10.66,
+      "label": "green-external",
+      "result": "Real publication succeeded; assertion regenerated a ZIP with a different timestamp. Fixture assertion failure, no renderer defect.",
+      "log_sha256": "2b2177c012a486ddfc48332ea249b448a0b4b3ca681afe26338f95ff4ad9259a",
+      "prefix": "python_docker_prefix",
+      "parameters": {
+        "label": "green-external"
+      }
+    },
+    {
+      "command": ["python", "-B", "-m", "unittest", "-v", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_m9b_external_update_real_pair_stable_identity_origin_and_subsequent_revision"],
+      "exit": 0,
+      "seconds": 19.517,
+      "label": "green-external-fixed-fixture",
+      "result": "1/1 pass, original adopted bytes retained for exact comparison.",
+      "log_sha256": "bd7ebababf08850745343c59c7872a4656c2bf3ce1cfeaa672df2db2d51f0bc1",
+      "prefix": "python_docker_prefix",
+      "parameters": {
+        "label": "green-external-fixed-fixture"
+      }
+    },
+    {
+      "command": ["python", "-B", "-m", "unittest", "-v", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_m9b_external_unsupported_content_refused_without_publication", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_m9b_external_stale_before_confirmation_and_during_writer_never_puts", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_m9b_incomplete_repaired_or_lossy_source_evidence_never_reaches_put"],
+      "exit": 1,
+      "seconds": 37.382,
+      "label": "targeted-refusals",
+      "result": "2/3 pass. Refusal fixture errors: three XML search strings omitted xml:space, then obsolete adoption context. Corrected only fixtures.",
+      "log_sha256": "a7c419f2a1567c5f3fddda87675e645387fc1b00f68e0dc3d8134405c789c4e8",
+      "prefix": "python_docker_prefix",
+      "parameters": {
+        "label": "targeted-refusals"
+      }
+    },
+    {
+      "command": ["python", "-B", "-m", "unittest", "-v", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_m9b_external_unsupported_content_refused_without_publication"],
+      "exit": 0,
+      "seconds": 10.488,
+      "label": "green-refusals",
+      "result": "1/1 pass; six independent unsupported source variants, no PUT/success receipt.",
+      "log_sha256": "8fa9a0ac3d66be8d7910d2232679c4dab53570c9f1f95ae87eca0585754de717",
+      "prefix": "python_docker_prefix",
+      "parameters": {
+        "label": "green-refusals"
+      }
+    },
+    {
+      "command": ["node", "--test", "--test-concurrency=1", "--test-name-pattern=M9-B", "app/tests/integration/frontend_browser/test_frontend_browser_document_http_m9a.js"],
+      "exit": 1,
+      "seconds": 3.035,
+      "label": "browser-m9b",
+      "result": "Warning assertions passed; element screenshot detached during existing card polling. Switched only screenshot to page capture.",
+      "log_sha256": "2e0a8eecbc849e8f6edc29fb7a4fc02b877eb85a66e7d91546ae5563fcebcb00",
+      "parameters": {
+        "screenshot": "m9b-warning.png"
+      },
+      "prefix": "browser_docker_prefix"
+    },
+    {
+      "command": ["node", "--test", "--test-concurrency=1", "--test-name-pattern=M9-B", "app/tests/integration/frontend_browser/test_frontend_browser_document_http_m9a.js"],
+      "exit": 0,
+      "seconds": 14.11,
+      "label": "browser-green",
+      "result": "1/1 pass, targeted native external flow.",
+      "log_sha256": "6bf62f5738fe6103ae1a88c6168ce29080d6846bc28748a3b623f7569c6b5cf0",
+      "parameters": {
+        "screenshot": "browser-green.png"
+      },
+      "prefix": "browser_docker_prefix"
+    },
+    {
+      "command": ["node", "--test", "--test-concurrency=1", "app/tests/integration/frontend_browser/test_frontend_browser_document_http_m9a.js"],
+      "exit": 0,
+      "seconds": 53.345,
+      "label": "browser-final",
+      "result": "3/3 pass, full existing M9-A HTTP browser file including new M9-B case.",
+      "log_sha256": "c781259c0b0cb09621803280d676dda1a435c228096af73c30a815c3c50f1eec",
+      "parameters": {
+        "screenshot": "browser-final.png"
+      },
+      "prefix": "browser_docker_prefix"
+    },
+    {
+      "command": ["python", "-B", "-m", "unittest", "-v", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_m9b_external_update_real_pair_stable_identity_origin_and_subsequent_revision"],
+      "exit": 1,
+      "seconds": 2.97,
+      "label": "red-warning",
+      "result": "Expected causal failure: temporary removal of the server limitation append; restored in finally before following tests.",
+      "log_sha256": "018a2c48b999c555685bcfeec0aad1f637dbd2e5a1170e400f668c9313ee2eeb",
+      "prefix": "python_docker_prefix",
+      "parameters": {
+        "label": "red-warning"
+      }
+    },
+    {
+      "command": ["python", "-B", "-m", "unittest", "-v", "tests.unit.core.test_document_workshop_docx_m9a", "tests.unit.core.test_document_workshop_envelope", "tests.unit.core.test_document_workshop_output_schema", "tests.integration.document_workshop.test_copy_source_precondition_postgresql", "tests.integration.document_workshop.test_renderer_m8a_postgresql.RendererAdapterPostgresqlTests.test_unchanged_markdown_does_not_require_renderer_schema_or_socket", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_real_create_explicit_copy_update_preserve_identity_histories_and_exact_bytes", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_missing_or_desynchronized_frida_provenance_refuses_preparation", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_fresh_source_bytes_and_durable_canonical_or_hash_mismatch_refuse_without_put", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_metadata_worker_failure_precedes_any_create_copy_or_update_put", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_changed_etag_during_writer_conflicts_before_put_and_real_412_preserves_prepared_if_match", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_m9b_external_update_real_pair_stable_identity_origin_and_subsequent_revision", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_m9b_external_stale_before_confirmation_and_during_writer_never_puts", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_m9b_external_unsupported_content_refused_without_publication", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_m9b_incomplete_repaired_or_lossy_source_evidence_never_reaches_put", "tests.unit.core.test_workspace_document_source_extraction_m2.CompleteDocumentSourceM2Tests.test_docx_missing_main_or_detectably_omitted_parts_are_refused"],
+      "exit": 1,
+      "seconds": 147.279,
+      "label": "final-python",
+      "result": "32 passed, one fixture assertion failed (nine numPr include numId=0 resets; only two actively numbered paragraphs), four setup errors (jsonschema missing from historical runner). No product change; only affected IDs rerun below.",
+      "log_sha256": "6f52706fa493334c20c99ff8e739257b57a31dc21ff8966092f4e6685e013ffa",
+      "prefix": "python_docker_prefix",
+      "parameters": {
+        "label": "final-python"
+      }
+    },
+    {
+      "command": ["docker", "run", "--rm", "--pull=never", "--name", "frida-m9b13-schema", "--network", "none", "--read-only", "--tmpfs", "/tmp:rw,nosuid,nodev", "-v", "/usr:/usr:ro", "-v", "/opt/platform/fridadev:/workspace:ro", "-w", "/workspace/app", "--entrypoint", "/usr/bin/env", "fridadev-audit-py:latest", "-i", "PATH=/usr/bin:/bin", "PYTHONDONTWRITEBYTECODE=1", "PYTHONPATH=/workspace/app:/workspace", "python3", "-B", "-m", "unittest", "-v", "tests.unit.core.test_document_workshop_output_schema"],
+      "exit": 0,
+      "seconds": 0.539,
+      "label": "final-schema",
+      "result": "4/4 pass using existing host Python/jsonschema libraries read-only in network-none container; no installation.",
+      "log_sha256": "16037282ccf0948e3fe577e4d05063b368070812130f586255a3bb85d8e9e5c7"
+    },
+    {
+      "command": ["python", "-B", "-m", "unittest", "-v", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_m9b_external_update_real_pair_stable_identity_origin_and_subsequent_revision"],
+      "exit": 0,
+      "seconds": 20.033,
+      "label": "final-nominal",
+      "result": "1/1 pass with active-list assertions, exact bold/italic/title/table, revision continuation and corrupt-proof refusal.",
+      "log_sha256": "ba86d9c7a124dc5b328b792976bb88c9848be29e4950bc1d9288aecf9817ff01",
+      "prefix": "python_docker_prefix",
+      "parameters": {
+        "label": "final-nominal"
+      }
+    }
+  ],
+  "nominal_revision_proofs": [
+    {
+      "action_id": "7b0f91d7-43b3-47e5-8cd9-8b30be8fbb8e",
+      "revision_id": "f8341ef9-fa19-4e9f-b1c8-939e400333b2",
+      "receipt_id": "bc9a6990-26bc-43bf-ba38-31b3658636e5",
+      "workspace_file_id": "e2dfbed3-9067-42b1-8c43-aa25038cf826",
+      "nextcloud_file_id": "7777",
+      "renderer_job_id": "73f61085-8d63-4f2a-9b46-833d43d59e1c",
+      "source_origin": "external",
+      "source_revision_id": null,
+      "source_sha256": "ebe7538743ec9eb1c8942cfae39e97a97bb5a64813434faeff3c6c6d62bd7cf0",
+      "docx_sha256": "6650229742f0d79221682d6368d33e59e284b7410a383f41ae108d2d86d1567b",
+      "pdf_sha256": "0f9e0ade42823de71eabd70a21a1d6e8c7b7e4ddcd218e96b395588ab8be6ca2",
+      "writer_pages": 1,
+      "put_count": 1
+    },
+    {
+      "action_id": "dc13a54a-5982-4e46-831c-ab6ffa207342",
+      "revision_id": "76edf30f-b737-4273-a594-6628c1ddf2b8",
+      "receipt_id": "b19f9103-bc0d-46aa-96d8-e8c044ad7fc9",
+      "workspace_file_id": "e2dfbed3-9067-42b1-8c43-aa25038cf826",
+      "nextcloud_file_id": "7777",
+      "renderer_job_id": "1cf2e5e6-15ae-404a-a6fa-87bcd7ae4808",
+      "source_origin": "frida",
+      "source_revision_id": "f8341ef9-fa19-4e9f-b1c8-939e400333b2",
+      "source_sha256": "6650229742f0d79221682d6368d33e59e284b7410a383f41ae108d2d86d1567b",
+      "docx_sha256": "b2c34efc1547a834fcf3db172214587dd276b6bb1c065dc0ea03a74500ad7b10",
+      "pdf_sha256": "ba81a141bedac7cb19794b5ae4da29585162811b9e025ff5b6096741184cbada",
+      "writer_pages": 1,
+      "put_count": 2
+    }
+  ],
+  "refusal_stages": {
+    "macro": "M2",
+    "field": "M2",
+    "image": "M2",
+    "tracked_revision": "application renderer contract",
+    "style": "qualified renderer",
+    "section": "qualified renderer",
+    "incomplete_repaired_lossy_manifest": "actual result envelope deliberately altered before application validation; not a repaired UNO import"
+  },
+  "screenshot": {
+    "file": "browser-final.png",
+    "sha256": "35d0555b4ae148fd28148db06ce9080f26651f5424a5ee30828daaad6caf743e",
+    "observation": "pending card warning visible before enabled confirm; inspected browser-green equivalent capture; desktop 1280x900; temporary capture removed at cleanup"
+  },
+  "review": {
+    "internal_static": "targeted read-only subagent review of provenance, warning, authority, publication and tests: no validated finding; no tests run by reviewer",
+    "external_codex": "pending, not replaced by internal review"
+  },
+  "runtime_files_sha256": {
+    "app/core/document_workshop_actions.py": "2305a2ccfc180e71a493608d590e189f678e758d98c4e2b4e64611c7df3fbbd2",
+    "app/core/document_workshop_envelope.py": "dad55149393717a83f2591687c832a6f141f7ad6de66fc23994afbed3969bd55",
+    "app/core/document_workshop_turn.py": "f6842dd5376544a7384d65a2359e0f5c330968983ae8c9c650cd98f74694f9ac",
+    "app/core/document_workshop_update_target.py": "7541195214394fba75829f54d5372afb9fc919a847bb6118602858d316337e70",
+    "app/web/chat_document_workshop.js": "b62378f609ced14cc433a394a6dfa855555cb985b29773a2839b903a06f9f6bd"
+  },
+  "migrations": {
+    "new": [],
+    "existing_required": ["app/core/sql/document_workshop_update_m7.sql", "app/core/sql/document_workshop_docx_m9a.sql"],
+    "operator_applied": false
+  },
+  "limits": ["No deployment, rebuild, installation, durable Writer use or renderer change.", "No OpenRouter/model or Nextcloud DAV live, private documents, canary, M10 or Z.", "Synthetic provider answers prove application wiring, not future model obedience.", "Complex/unrepresentable source refusal remains bounded by the qualified M2/renderer; no universal Word fidelity.", "Repair/incomplete/loss evidence negatives alter real result manifests; no real repaired source import claimed.", "Native UI proof is Chromium, not hardware Safari.", "Existing isolated fixtures emit content-free admin_log OSError and absent-summary-table diagnostics; same baseline family, no product fix inferred."],
+  "cleanup": {
+    "owned_containers": ["frida-m9b13-pg", "frida-m9b13-writer", "frida-m9b13-http"],
+    "status": "owned containers stopped/removed; temporary root removed after evidence capture",
+    "jobs_before_stop": 0,
+    "soffice_before_stop": 0,
+    "remaining_owned_containers": 0
+  }
+}

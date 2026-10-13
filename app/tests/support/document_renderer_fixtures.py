@@ -51,3 +51,54 @@ def result(c,request,*,pages=1):
 
 def response(c,manifest,d,p):
     return c.encode_multipart([('manifest','application/json',c.json_bytes(manifest)),('docx',c.MEDIA_TYPES['docx'],d),('pdf',c.MEDIA_TYPES['pdf'],p)],limit=c.MAX_RESULT_BYTES)
+
+
+def external_docx():
+    """Independent synthetic OOXML, authored here; never emitted by Frida/Writer.
+
+    Same ZIP builder as M2; explicit styles, flat numbering and a 2x2 table.
+    No canonical/revision/receipt is embedded or used to generate the bytes.
+    """
+    from tests.unit.core.test_workspace_document_source_extraction_m2 import archive_bytes, WORD
+    return archive_bytes([
+        ('[Content_Types].xml', '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+         '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+         '<Default Extension="xml" ContentType="application/xml"/>'
+         '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+         '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>'
+         '<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/></Types>'),
+        ('_rels/.rels', '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+         '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'),
+        ('word/_rels/document.xml.rels', '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+         '<Relationship Id="styles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+         '<Relationship Id="numbers" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/></Relationships>'),
+        ('word/styles.xml', f'<w:styles xmlns:w="{WORD}"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>'
+         '<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/>'
+         '<w:pPr><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/></w:rPr></w:style></w:styles>'),
+        ('word/numbering.xml', f'<w:numbering xmlns:w="{WORD}"><w:abstractNum w:abstractNumId="0"><w:multiLevelType w:val="singleLevel"/>'
+         '<w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/></w:lvl></w:abstractNum>'
+         '<w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num></w:numbering>'),
+        ('word/document.xml', f'<w:document xmlns:w="{WORD}"><w:body>'
+         '<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>External title</w:t></w:r></w:p>'
+         '<w:p><w:r><w:t xml:space="preserve">Original text </w:t></w:r><w:r><w:rPr><w:b/></w:rPr><w:t>bold</w:t></w:r>'
+         '<w:r><w:t xml:space="preserve"> and </w:t></w:r><w:r><w:rPr><w:i/></w:rPr><w:t>italic</w:t></w:r></w:p>'
+         '<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>First item</w:t></w:r></w:p>'
+         '<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>Second item</w:t></w:r></w:p>'
+         '<w:tbl><w:tblPr><w:tblW w:w="9000" w:type="dxa"/></w:tblPr><w:tblGrid><w:gridCol w:w="4500"/><w:gridCol w:w="4500"/></w:tblGrid>'
+         '<w:tr><w:tc><w:tcPr><w:tcW w:w="4500" w:type="dxa"/></w:tcPr><w:p><w:r><w:t>A</w:t></w:r></w:p></w:tc>'
+         '<w:tc><w:tcPr><w:tcW w:w="4500" w:type="dxa"/></w:tcPr><w:p><w:r><w:t>B</w:t></w:r></w:p></w:tc></w:tr>'
+         '<w:tr><w:tc><w:tcPr><w:tcW w:w="4500" w:type="dxa"/></w:tcPr><w:p><w:r><w:t>C</w:t></w:r></w:p></w:tc>'
+         '<w:tc><w:tcPr><w:tcW w:w="4500" w:type="dxa"/></w:tcPr><w:p><w:r><w:t>D</w:t></w:r></w:p></w:tc></w:tr></w:tbl>'
+         '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134"/></w:sectPr>'
+         '</w:body></w:document>')])
+
+
+def external_candidate(text='Revised text '):
+    """Synthetic model answer; independent of the OOXML fixture writer above."""
+    from tests.unit.core.test_document_workshop_canonical_paths import span
+    value=canonical()
+    value['blocks']=[dict(type='heading',level=1,spans=[span('External title')]),
+        dict(type='paragraph',spans=[span(text),span('bold')|dict(bold=True),span(' and '),span('italic')|dict(italic=True)]),
+        dict(type='list',ordered=True,items=[[span('First item')],[span('Second item')]]),
+        dict(type='table',rows=[[[span('A')],[span('B')]],[[span('C')],[span('D')]]])]
+    return value

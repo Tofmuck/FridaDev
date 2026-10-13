@@ -59,7 +59,7 @@ def snapshot(conn, context, source):
         raise DocumentWorkshopError('document_remote_changed')
     if source.source_extension=='.docx':
         proof=docx_origin(conn,file_id,link)
-        if getattr(source,'content',None) is not None and source.content!=proof['content']:
+        if proof is not None and getattr(source,'content',None) is not None and source.content!=proof['content']:
             raise DocumentWorkshopError('document_remote_changed')
     return dict(workspace_file_id=file_id,workspace_folder_id=str(context['workspace_folder_id']),
         relative_path=source.relative_path,remote_identity=source.remote_identity,etag=source.etag,
@@ -96,10 +96,17 @@ def verify_fresh(action, source):
 
 
 def docx_origin(conn,file_id,link):
-    """Proven current Frida revision, never extension/name/origin declaration alone."""
+    """Prove a current Frida revision; only an unrevisioned external has none.
+
+    Creation origin survives an update. A broken revision proof never becomes
+    permission to reimport an external, including one already revised by Frida.
+    """
     from .document_workshop_publication_proof import _bundle, _historical
     from . import workspace_files
     from .document_renderer_store import content as snapshot_content
+    artifact=conn.execute('SELECT current_revision_id FROM document_artifacts WHERE workspace_file_id=%s::uuid',
+        (file_id,)).fetchone()
+    if link['document_origin']=='external' and (not artifact or artifact[0] is None):return None
     matches=conn.execute("""SELECT a.id::text FROM document_artifacts ar
         JOIN document_actions a ON a.artifact_id=ar.id AND a.revision_id=ar.current_revision_id
         WHERE ar.workspace_file_id=%s::uuid AND a.state='succeeded' AND a.format='docx'""",(file_id,)).fetchall()
@@ -108,7 +115,7 @@ def docx_origin(conn,file_id,link):
     if not _historical(conn,bundle,workspace_files._storage_root()):
         raise DocumentWorkshopError('document_update_target_invalid')
     r=bundle['receipt'];a=bundle['action'];d=bundle['revision']
-    if (r['creation_author']!='frida' or link['document_origin']!='frida'
+    if (link['document_origin'] not in ('frida','external') or r['creation_author']!=link['document_origin']
             or r['workspace_file_id']!=file_id or r['relative_path']!=link['nextcloud_relative_path']
             or r['workspace_folder_id']!=str(link['workspace_folder_id'])
             or r['nextcloud_scope_key']!=link['nextcloud_scope_key']
@@ -133,6 +140,11 @@ def renderer_source(run,source):
             cur.execute('SELECT * FROM workspace_file_nextcloud_links WHERE workspace_file_id=%s::uuid',
                 (source.workspace_file_id,));link=cur.fetchone()
         proof=docx_origin(conn,source.workspace_file_id,link)
+    if proof is None:
+        if run.action['target_version']['base_revision_id'] is not None:
+            raise DocumentWorkshopError('document_remote_changed')
+        return dict(kind='docx',origin='external',byte_size=source.byte_size,sha256=source.sha256,
+            source_revision_id=None,canonical=None,canonical_sha256=None)
     if (proof['revision_id']!=run.action['target_version']['base_revision_id']
             or proof['revision_id']==run.action['revision_id'] or proof['content']!=source.content):
         raise DocumentWorkshopError('document_remote_changed')

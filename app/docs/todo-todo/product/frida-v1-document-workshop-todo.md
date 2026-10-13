@@ -1,6 +1,6 @@
 # Atelier documentaire agentique Frida V1 — spécification validée et roadmap
 
-Date : 2026-09-29. Dernière décision : clôture M9-A le 2026-10-13, sur preuves déjà acquises et validation utilisateur du téléchargement ; aucun nouveau test ni canari. Historique des livraisons et incidents conservé dans les lots ci-dessous.
+Date : 2026-09-29. Dernière décision : M9-B autorisé le 2026-10-13 pour le raccord applicatif DOCX externe simple et ses preuves isolées, sans déploiement ni canari. M9-A reste fermé sur les preuves acquises le même jour. Historique des livraisons et incidents conservé dans les lots ci-dessous.
 
 Statut : **spécification et choix architecturaux validés par Tof ; M0 fermé sur
 composants et preuves internes, contre-audit corrigé sur `FridaV1-Document-Workshop-M0` ;
@@ -18,7 +18,7 @@ M4 livré sur code, P2-M4-01 et P2-M4-02 fermés après contre-audits indépenda
 P3-M4-03 corrigé par erratum documentaire (1 198 déclarés conservés et rectifiés,
 sélection publiée à 1 414, 21 identifiants réutilisables validés) ;
 M4 non intégralement fermé ;
-M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées ; M7 fermé sur code/preuves isolées et contre-audit ; code/migrations M1–M7 livrés via M8-A, recettes DAV/Versions ouvertes ; M8-C fermé après contre-audits indépendants AUD-01/AUD-02 ; M8-S fermé après contre-audit Codex favorable transmis par Tof ; M8-A fermé sur code et raccord runtime après contre-audit Codex favorable du 10 octobre transmis par Tof ; M9-A fermé le 13 octobre 2026 sur code, runtime et recette acceptée par Tof ; création, copie et modification DOCX réelles réussies, préparation périmée invalidée sans seconde écriture, téléchargement validé par Tof. OBS-M9A-PREP-01 conservée comme réserve historique non bloquante, causes initiales non reconstruites ; M9-B/M10 et Z non commencés. FridaDev et le renderer sont livrés ; DOCX atelier disponible sous ses prérequis M9-A, PDF public et retravail DOCX externe fermés**.
+M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées ; M7 fermé sur code/preuves isolées et contre-audit ; code/migrations M1–M7 livrés via M8-A, recettes DAV/Versions ouvertes ; M8-C fermé après contre-audits indépendants AUD-01/AUD-02 ; M8-S fermé après contre-audit Codex favorable transmis par Tof ; M8-A fermé sur code et raccord runtime après contre-audit Codex favorable du 10 octobre transmis par Tof ; M9-A fermé le 13 octobre 2026 sur code, runtime et recette acceptée par Tof ; création, copie et modification DOCX réelles réussies, préparation périmée invalidée sans seconde écriture, téléchargement validé par Tof. OBS-M9A-PREP-01 conservée comme réserve historique non bloquante, causes initiales non reconstruites ; M9-B implémenté sur code et preuves isolées, en attente de contre-audit ; M10 et Z non commencés. Le runtime reste M9-A ; retravail externe M9-B non déployé, PDF public fermé**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
 dialogue avec Tof. Création documentaire committée dans `d6b63fd1`, puis validation
@@ -42,7 +42,7 @@ Une case cochée dans les décisions signifie « décidé par Tof », pas « liv
 Une case ouverte dans les critères ou les lots signifie « à implémenter ou prouver ».
 Les inconnues factuelles sont isolées en section 11. Seules les preuves datées
 dans M0–M4 décrivent des tests exécutés ou des déclarations historiques explicitement
-qualifiées ; M5–M8-A disposent de leurs relevés datés et attributions ci-dessous ; M9-A dispose de son relevé isolé du 11 octobre et de sa clôture du 13 octobre sur les preuves acquises ; M9-B/M10 restent des preuves futures. L'erratum P3-M4-03
+qualifiées ; M5–M8-A disposent de leurs relevés datés et attributions ci-dessous ; M9-A dispose de son relevé isolé du 11 octobre et de sa clôture du 13 octobre sur les preuves acquises ; M9-B dispose du relevé ciblé du 13 octobre ; M10 reste une preuve future. L'erratum P3-M4-03
 ci-dessous distingue les nouveaux rejeux des résultats antérieurs.
 Une clôture code/preuves ne ferme pas migration opérateur, rebuild ou preuve DAV déployée.
 
@@ -913,7 +913,7 @@ M6 raccorde le parcours réel avec preuves isolées, code livré via M8-A sans c
 M7 est fermé sur code/preuves isolées et contre-audit ; code/migration livrés via
 M8-A, recettes DAV/Versions ouvertes. AUD-01 et AUD-02 fermés après contre-audits indépendants.
 **M8-C fermé sur contrat, code et preuves isolées ; M8-S fermé après contre-audit Codex favorable du 10 octobre transmis par Tof.**
-M8-A fermé après contre-audit du raccord runtime livré le 10 octobre. M9-A fermé le 13 octobre sur preuves acquises et recette acceptée ; M9-B/M10 et Z non commencés. Spécification et
+M8-A fermé après contre-audit du raccord runtime livré le 10 octobre. M9-A fermé le 13 octobre sur preuves acquises et recette acceptée ; M9-B implémenté sur code/preuves isolées, contre-audit et runtime ouverts ; M10 et Z non commencés. Spécification et
 décisions amont sont validées et l'exception produit est inscrite.
 Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
 les GO M0–M4 et P3-M4-03 ne valent pour aucun lot suivant ni déploiement.
@@ -4961,6 +4961,11 @@ Ces lots restent non commencés et leur exécution exige leur GO distinct.
 
 ### M9-B — Retravail DOCX externe avec fidélité honnête
 
+**État au 13 octobre 2026 :** raccord applicatif et preuves isolées acquis ;
+contre-audit Codex, livraison runtime et éventuelle recette sous GO distinct ouverts.
+M9-A reste fermé. [Contrat M9-B](../../states/specs/frida-v1-document-workshop-m9b-contract.md)
+et [relevé ciblé](../../states/baselines/document-workshop/frida-v1-document-workshop-m9b-20261013.json).
+
 **Objectif :** retravailler une cible externe explicitement mobilisée, sans promettre
 une conservation parfaite d'une mise en page arbitraire ou supprimer du contenu caché.
 **Dépendances :** M9-A ; garde d'adoption/fraîcheur M2, policy externe de section 9.5.
@@ -4973,20 +4978,32 @@ le mode fermé dans M8-S selon M8-C ; M9-B consomme ce mode déjà prouvé, sans
 nouvelle livraison plateforme requise. Toute correction reste dans sa racine,
 sans patch applicatif.
 
-- [ ] Rouge causal : macro, champ dynamique, contenu image/objet, révision suivie,
+- [x] Rouge causal : macro, champ dynamique, contenu image/objet, révision suivie,
   style/section non représentables, texte incomplet ou import réparé → refus honnête.
-- [ ] Tester sources simples admissibles et conversion/round-trip avec tables/styles ;
+- [x] Tester sources simples admissibles et conversion/round-trip avec tables/styles ;
   limites annoncées sur la carte avant clic, changement source avant/durant rendu.
-- [ ] Comparer inventaire de contenu admissible/source textuelle et sortie canonical ;
+- [x] Comparer inventaire de contenu admissible/source textuelle et sortie canonical ;
   aucune perte détectée cachée, aucune copie automatique ; update même nom/ID/If-Match.
-- [ ] Faux verts : même texte mais champs/images effacés, extraction ZIP sans inventaire,
+- [x] Faux verts : même texte mais champs/images effacés, extraction ZIP sans inventaire,
   échantillon exclusivement créé par Frida présenté comme DOCX externe, limites non visibles.
-- [ ] Interdire fidélité complexe garantie, code actif, images ajoutées ou supprimées
+- [x] Interdire fidélité complexe garantie, code actif, images ajoutées ou supprimées
   silencieusement, import de n'importe quel format et ODT durable concurrent.
-- [ ] Synchroniser politique de fidélité/refus ; corpus externe exclusivement synthétique,
-  rendu réel et canari update sous GO séparés ; rebuild applicatif à livraison.
+- [x] Politique de fidélité/refus synchronisée ; corpus externe exclusivement synthétique
+  et rendu réel dans le Writer éphémère qualifié.
+- [ ] Livraison runtime/rebuild applicatif et éventuel canari update sous GO distinct.
 - [ ] Fermer sur cas simple utile et cas complexes refusés causalement, avec provenance
   externe conservée et révision Frida liée au même fichier après succès.
+
+Preuves nouvelles : source OOXML indépendante de Frida avec titre, gras/italique,
+liste et tableau ; import puis seconde révision du même fichier, origine externe
+conservée, un PUT/reçu par confirmation. Carte garantie par le serveur avant clic,
+sources périmées avant confirmation et après rendu refusées. Refus M2/renderer
+réutilisés pour macro, champ, image, révision, style et section ; preuve de garde
+sur manifest réel altéré pour inventaire incomplet, réparation ou perte annoncée.
+Ces trois altérations ne sont pas des imports effectivement réparés par Writer.
+Aucun nouveau moteur, validateur OOXML applicatif, migration, workflow ou service.
+Aucun appel modèle/DAV live ; les réponses synthétiques ne prouvent pas
+l'obéissance future d'OpenRouter. **ARRÊT POUR CONTRE-AUDIT CODEX.**
 
 ### M10 — PDF Writer, source externe et intégration finale des formats
 
@@ -5239,6 +5256,12 @@ passé dans Writer. Conflit → aucune fusion/écriture aveugle. Sauron ne reço
 ni cible DAV ni secret ; Nextcloud reste autorité de Versions. Le reçu relie
 résultat, identité stable, format, cible et révision, sans injecter le contenu.
 
+Raccord M9-B : l'origine de création externe reste durable. Le premier import
+transmet des références canonical/révision source nulles ; une révision Frida
+ultérieure est prouvée comme telle sans réécrire cette origine. Une preuve cassée
+ne devient jamais un import externe de secours. La limitation
+`external_docx_v1_reformat` est imposée dans l'action persistée avant confirmation.
+
 ### 9.6. Confinement et exploitation prouvés côté renderer M8-S
 
 - [x] Utilisateur non privilégié, rootfs read-only compatible ; tmpfs writable
@@ -5444,8 +5467,8 @@ sans nouveau test ni canari dans la clôture. Création/copie/modification réel
 invalidation de préparation périmée et téléchargement validé par Tof sont
 consignés dans la note de clôture M9-A ; les preuves et incidents historiques
 ci-dessus restent conservés. OBS-M9A-PREP-01 est une réserve historique non
-bloquante, sans prétendre reconstruire ses premières causes. M9-B/M10/Z restent
-non commencés ; PDF public et retravail DOCX externe non activés.
+bloquante, sans prétendre reconstruire ses premières causes. M9-B est implémenté sur code et preuves isolées, en attente de contre-audit
+et non déployé ; M10/Z non commencés, PDF public fermé.
 Actualisation runtime du 10 octobre : code et migrations M1–M7 livrés par le
 raccord M8-A ; les réserves de recette produit/DAV/Versions restent ouvertes.
 Les mentions de runtime ouvert dans les récits historiques décrivent leurs

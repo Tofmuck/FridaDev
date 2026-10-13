@@ -32,8 +32,11 @@ Create/copy require an advertised format;
 copy requires an explicit user request, never an update fallback;
 update is available only when the server advertises it and an explicit server
 target is selected. Preserve that exact target path/name/identity; never substitute
-a source, previous receipt or another file. DOCX update requires Frida provenance
-proved by the server; external DOCX update and PDF publication are unavailable.
+a source, previous receipt or another file. The server proves any existing Frida
+revision. A simple external DOCX may be updated after complete inspection by Writer;
+it is reformatted in the V1 profile, with no arbitrary layout preservation guarantee.
+Preserve all content and representable structures except the explicitly requested changes;
+refuse unsupported content rather than silently discarding it. PDF publication is unavailable.
 Preparation never renders; only separate human confirmation
 can execute a prepared action when the server announces that capability.
 For prepared, choose an unambiguous validated Documents relative path and references only from

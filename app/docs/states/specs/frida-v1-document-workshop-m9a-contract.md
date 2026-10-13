@@ -14,8 +14,9 @@ Aucun test ni canari exécuté pour cette clôture documentaire. Le 412 et la
 continuité gardent leurs preuves isolées ; pas de 412 live, de récupération
 Versions ni de tour de continuité supplémentaire revendiqués. OBS-M9A-PREP-01
 devient une réserve historique non bloquante ; causes initiales inconnues
-conservées. Gardes et confirmations humaines inchangées. M9-B/M10/Z restent
-non commencés ; PDF public et retravail DOCX externe non activés.
+conservées. Gardes et confirmations humaines inchangées. [M9-B](frida-v1-document-workshop-m9b-contract.md)
+est désormais implémenté sur code/preuves isolées, en attente de contre-audit
+et non déployé ; M10/Z non commencés, PDF public fermé.
 
 
 ## Historique — précondition de copie M9-A, 12 octobre 2026

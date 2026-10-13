@@ -210,8 +210,12 @@ def finalize(token, conversation, envelope, versions, markdown, *, snapshot, tar
         conversation['workspace_folder_id'] = str(current['workspace_folder_id'])
         snapshot(conversation, conn)
         target_assignment=',target_version=%s' if envelope.operation=='update' else ''
+        limitations=list(envelope.limitations)
+        if (envelope.operation=='update' and envelope.format=='docx'
+                and target_version['document_origin']=='external'):
+            limitations.append('external_docx_v1_reformat')
         values=(state,Jsonb(versions),revision_id,artifact_id,envelope.operation,envelope.format,envelope.relative_path,
-             Jsonb(list(dict.fromkeys(list(envelope.limitations)+[code for code in (LIMITATIONS if envelope.format!='docx' else ('write_confirmation_unavailable','writer_pagination_20_pages','pdf_unavailable')) if code!='update_unavailable' or envelope.operation!='update']))))
+             Jsonb(list(dict.fromkeys(limitations+[code for code in (LIMITATIONS if envelope.format!='docx' else ('write_confirmation_unavailable','writer_pagination_20_pages','pdf_unavailable')) if code!='update_unavailable' or envelope.operation!='update']))))
         conn.execute('''UPDATE document_actions SET state=%s,phase='complete',source_versions=%s,
             revision_id=%s::uuid,artifact_id=%s::uuid,operation=%s,format=%s,relative_path=%s,
             limitations=%s,updated_at=clock_timestamp()'''+target_assignment+' WHERE id=%s::uuid',

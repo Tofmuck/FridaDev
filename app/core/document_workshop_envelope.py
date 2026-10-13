@@ -21,6 +21,7 @@ DOCUMENT_LIMITATION_CODES = frozenset({
     "markdown_pagination_reader_dependent", "markdown_style_reader_dependent",
     "write_confirmation_unavailable",
     "docx_pdf_unavailable", "update_unavailable", "writer_pagination_20_pages", "pdf_unavailable",
+    "external_docx_v1_reformat",
 })
 
 
@@ -183,9 +184,11 @@ For prepared, proposal has exactly these required keys:
  source_file_ids:[UUID strings], limitations:[codes], canonical:object}.
 Update requires the explicitly selected server target and advertised capability.
 For update, use that exact target path/name; never choose another target or identity.
-PDF preparation and external DOCX update are unavailable. Copy requires an explicit
-user request; never use copy as an update fallback. DOCX update requires proven
-Frida origin established by the server, never a filename or user declaration.
+PDF preparation is unavailable. Copy requires an explicit user request; never use
+copy as an update fallback. The server proves any existing Frida revision.
+Simple external DOCX update requires complete Writer inspection and reformats in
+the V1 profile, without arbitrary layout preservation guarantees. Never discard
+unsupported content to obtain a result; preserve structures and all unmodified content.
 The path is exactly Documents/<optional subdirectories>/<name.md or name.docx>, relative to the selected folder:
 at most 8 subdirectories, 180 codepoints/255 UTF-8 bytes per segment, 1024 UTF-8
 bytes for the full path. No traversal, encoded separator or renamed/trimmed target.
@@ -193,7 +196,7 @@ Use only explicitly supplied source file UUIDs, each at most once; copy requires
 at least one source. Limitations are unique codes from
 markdown_pagination_reader_dependent, write_confirmation_unavailable,
 markdown_style_reader_dependent, docx_pdf_unavailable, update_unavailable,
-writer_pagination_20_pages, pdf_unavailable.
+writer_pagination_20_pages, pdf_unavailable, external_docx_v1_reformat.
 No free-form limitations or extra keys.
 The nested canonical has exactly {schema_version:1, profile:"frida_document_v1", blocks:[...]}.
 blocks is nonempty. Required, closed block forms:

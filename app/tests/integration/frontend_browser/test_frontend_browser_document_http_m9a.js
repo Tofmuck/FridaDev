@@ -129,3 +129,53 @@ test('M9A-REAUTH native 303 followed to HTML, reload and same-attempt human resu
     assert.equal(final.dav.slice(initial.dav.length).filter(r=>r.method==='PUT').length,1);assert.deepEqual(errors,[]);
   } finally {await browser.close();}
 });
+
+test('M9-B native external DOCX target-only warning before click, update and stale refusal',async()=>{
+  assert.ok(base,'dedicated native HTTP fixture required');
+  const browser=await chromium.launch({headless:true});
+  try {
+    const page=await browser.newPage({locale:'fr-FR',viewport:{width:1280,height:900}});page.setDefaultTimeout(20000);
+    const errors=[];page.on('pageerror',error=>errors.push(error.message));
+    const state=async()=>(await page.request.get(base+'/__m6/state')).json();
+    const control=async data=>assert.equal((await page.request.post(base+'/__m6/control',{data})).status(),200);
+    const choose=async()=>{const s=await state();await showFolder(page,s.folder);await page.locator(`[data-conversation-id="${s.conversation}"]`).click();
+      await page.waitForFunction(id=>document.querySelector('#threads li.active')?.dataset.conversationId===id,s.conversation);};
+    await page.goto(base,{waitUntil:'domcontentloaded'});await choose();
+    await control({seed_external_docx:true,external_docx_candidate:true,confirmation_transport:'normal'});
+    await openWorkshop(page);await page.waitForSelector('#documentWorkshop[data-state="editing"]');
+    await page.click('#documentWorkshopBrowse');
+    await page.getByRole('button',{name:'Adopter External.docx',exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('#documentRemoteStatus').textContent.includes('Adoption enregistrée'));
+    const s=await state(),path='Documents/External.docx';
+    const file=(await (await page.request.get(base+'/api/workspace-folders/'+s.folder+'/files')).json()).items.find(f=>f.document_relative_path===path);
+    assert.ok(file);assert.equal(s.origins[file.id],'external');
+    const initialPuts=s.dav.filter(r=>r.method==='PUT').length,initialReceipts=s.counts.document_receipts;
+    for(const stale of [false,true]) {
+      if(stale){await page.click('#documentWorkshopExit');await openWorkshop(page);await page.waitForSelector('#documentWorkshop[data-state="editing"]');}
+      await page.selectOption('#documentWorkshopTarget',file.id);
+      await page.waitForFunction(id=>document.querySelector('#documentWorkshopTarget').value===id&&document.querySelector('#documentWorkshop').dataset.state==='editing',file.id);
+      await control({operation:'update',next_path:path,copy_source:null,document_format:'docx'});
+      await page.fill('#message','Remplacer uniquement Original text par Revised text dans la cible DOCX externe.');
+      await page.locator('button[type="submit"][aria-label="Envoyer"]').click();
+      await page.waitForSelector('#documentWorkshop .document-action-card[data-state="pending"]');
+      const card=page.locator('#documentWorkshop .document-action-card');
+      assert.match(await card.textContent(),/Ce DOCX externe sera remis en forme dans le profil Writer V1/);
+      assert.match(await card.textContent(),/conservation d’une mise en page arbitraire n’est pas garantie/);
+      assert.equal(await card.locator('[data-document-confirm]:enabled').count(),1);
+      if(!stale && process.env.M9B_SCREENSHOT)await page.screenshot({path:process.env.M9B_SCREENSHOT,fullPage:true});
+      const pending=await state();assert.equal(pending.dav.filter(r=>r.method==='PUT').length,initialPuts+(stale?1:0));
+      // The synthetic model returns limitations=[]; the application owns this warning.
+      const sourceData=pending.providers.at(-1).messages.find(m=>m.content.startsWith('Untrusted document data'));
+      assert.ok(sourceData);assert.match(sourceData.content,/selected_update_target/);
+      if(stale)await control({change_path:path});
+      await card.locator('[data-document-confirm]').click();
+      await page.waitForSelector('#documentWorkshop .document-action-card[data-state="'+(stale?'conflict':'succeeded')+'"]');
+      const after=await state();
+      assert.equal(after.dav.filter(r=>r.method==='PUT').length,initialPuts+1);
+      assert.equal(after.counts.document_receipts,initialReceipts+1);assert.equal(after.origins[file.id],'external');
+      const put=after.dav.filter(r=>r.method==='PUT').at(-1);assert.equal(put.path,path);assert.equal(put.if_match,'"external-docx-v1"');
+      assert.equal(after.counts.workspace_files,s.counts.workspace_files);
+    }
+    assert.deepEqual(errors,[]);
+  } finally {await browser.close();}
+});

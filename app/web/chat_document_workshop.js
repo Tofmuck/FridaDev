@@ -45,6 +45,7 @@ const DOCUMENT_WORKSHOP_LIMITATION_LABELS = Object.freeze({
   markdown_style_reader_dependent: 'La mise en forme dépend du lecteur Markdown.',
   write_confirmation_unavailable: 'L’écriture du document est indisponible.',
   writer_pagination_20_pages: 'DOCX limité à 20 pages dans le Writer épinglé ; pagination vérifiée après confirmation.',
+  external_docx_v1_reformat: 'Ce DOCX externe sera remis en forme dans le profil Writer V1. La conservation d’une mise en page arbitraire n’est pas garantie. Tout contenu non représentable ou import incomplet sera refusé.',
   pdf_unavailable: 'La publication PDF est indisponible.',
   docx_pdf_unavailable: 'Les formats DOCX et PDF sont indisponibles.',
   update_unavailable: 'La modification d’un document existant est indisponible.',
