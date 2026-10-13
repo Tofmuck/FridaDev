@@ -3,8 +3,9 @@
 13 octobre 2026. Base exacte `dcbd3e7540fbc6414defad9bf913c2470a3f6d38`,
 branche `FridaV1-Document-Workshop-M10`. M9-A/M9-B restent fermés.
 Mandat : [M10 et §9.5 de la roadmap](../../todo-todo/product/frida-v1-document-workshop-todo.md#m10--pdf-writer-source-externe-et-intégration-finale-des-formats).
-Code et preuves isolées soumis au contre-audit ; livraison runtime et clôture
-M10 ouvertes. Z non commencé.
+**M10 fermé le 13 octobre 2026**, après contre-audits Codex favorables du code,
+de P3-M10-AUD-01 et du runtime livré. Clôture autorisée par Tof sur preuves
+acquises, sans nouveau test ni canari. Z non commencé.
 
 ## Plan et propriétaires
 
@@ -67,7 +68,9 @@ synthétiques : elles prouvent le raccord, pas l'obéissance future d'un modèle
 Migration explicite additive :
 [`document_workshop_pdf_m10.sql`](../../../core/sql/document_workshop_pdf_m10.sql),
 après M9-A. Quatre contraintes existantes étendues au PDF, sans modification des
-migrations précédentes. Aucune application au startup, GET ou DB opérateur.
+migrations précédentes. Aucune application automatique au startup ou sur GET.
+Sauron l’a appliquée à la DB opérateur le 13 octobre, en transaction, après
+sauvegarde/restauration et répétition isolée ; état effectif contre-audité.
 Elle est incluse explicitement à Git malgré l'ignore `*.sql`.
 
 La capacité PDF exige son schéma effectif et la session munie des pins locaux.
@@ -78,8 +81,9 @@ Aucun changement d'image, code renderer, pins, socket ou ressources durables.
 La liste exhaustive des fichiers runtime et la migration à remettre à Sauron,
 les commandes/IDs/exits et les incidents sont dans le
 [relevé M10](../baselines/document-workshop/frida-v1-document-workshop-m10-20261013.json).
-Aucun déploiement, rebuild, installation, migration opérateur, modèle/DAV live,
-canari ou démarrage Z. Les confirmations, reconnexion sans POST automatique,
+La livraison applicative initiale n’a exécuté aucun déploiement, migration
+opérateur ou appel live. La livraison runtime Sauron du 13 octobre et son
+contre-audit sont acquis ; aucun canari M10 ou démarrage Z. Les confirmations, reconnexion sans POST automatique,
 claims/fencing, reçus et continuité restent les parcours existants.
 
 ## Attribution et limites de preuve
@@ -117,3 +121,19 @@ M10 porte donc sur un nom ASCII et un contenu accentué ; nom Unicode côté
 serveur/identité prouvé, nom Unicode téléchargé et Safari matériel non validés.
 Ce constat reste visible pour le contre-audit ; aucune fidélité navigateur
 universelle revendiquée, aucun correctif opportuniste de téléchargement commun.
+
+## Clôture sur preuves acquises — 13 octobre 2026
+
+[Décision, preuves et limites de clôture](../../todo-todo/product/frida-v1-document-workshop-todo.md#clôture-m10-sur-preuves-acquises--13-octobre-2026).
+Code audité `82865d94…`, erratum `65437352…`, report runtime `820cd2d2…`.
+Codex a rejoué 58 IDs distincts lors du contre-audit de code ; les trois preuves
+ciblées Sauron (2 SQL, 1 navigateur) ont été vérifiées sans nouveau rejeu au
+contre-audit runtime. Aucun finding bloquant confirmé.
+
+Image FridaDev livrée :
+`sha256:2c28bf3fce72c57cf1f18162143bc0b35dd151cdba63be1a2c75ee8c1f4ecb8d`,
+1 516 fichiers exacts depuis `65437352…` ; quatre contraintes M10 effectives
+conformes, Writer/pins et voisins inchangés. Les preuves live PDF Safari,
+OpenRouter/DAV et le nom Unicode téléchargé ne sont pas acquis par ce lot ;
+les preuves physiques 20/21 pages et fonts/layout restent héritées. Clôture
+M10 autorisée par Tof avec ces limites, sans nouveau test ni canari.
