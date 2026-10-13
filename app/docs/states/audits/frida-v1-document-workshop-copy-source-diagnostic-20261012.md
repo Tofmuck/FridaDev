@@ -37,7 +37,7 @@ déjà présent, détaché à `e3e0d192…`, est laissé intact. Instructions ra
 applicatives lues ; aucune instruction locale supplémentaire trouvée.
 Aucun reset, changement de branche, merge, rebase ou travail tiers absorbé.
 
-Lecture ciblée : section M9-A de la [roadmap](../../todo-todo/product/frida-v1-document-workshop-todo.md),
+Lecture ciblée : section M9-A de la [roadmap](../../todo-done/product/frida-v1-document-workshop-todo.md),
 [contrat M9-A](../specs/frida-v1-document-workshop-m9a-contract.md), propriétaires
 de préparation/enveloppe/schéma, raccord UI cible/sources, stores nécessaires
 aux préconditions et fixtures existantes de préparation/copie. Aucun audit

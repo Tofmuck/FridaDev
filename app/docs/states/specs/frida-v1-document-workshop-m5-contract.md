@@ -1,5 +1,12 @@
 # Atelier documentaire Frida V1 — contrat M5
 
+**Actualisation documentaire Z — 13 octobre 2026 :** code et prérequis M1–M8-A
+livrés via M8-A le 10 octobre ; DOCX puis PDF activés par M9-A/M10. Le premier
+palier est clos sur preuves acquises, selon le
+[bilan et les limites Z](../../todo-done/product/frida-v1-document-workshop-todo.md#bilan-de-clôture-z--13-octobre-2026).
+Les mentions d'inactivité, migration/runtime ouverts ou lots non commencés dans
+les remises datées ci-dessous sont historiques. Aucune recette live ajoutée.
+
 ## Ajustement borné M9A-CONFIRM-REAUTH-01 — 12 octobre 2026
 
 Le mandat du 12 octobre ajuste l'interdiction historique de réarmement **local**
@@ -64,7 +71,7 @@ runtime ou mutation Nextcloud opérateur n'est attestée.
 
 Date : 2026-10-06. Statut : code et preuves hermétiques fermés ;
 aucune livraison runtime. Autorité :
-[roadmap active](../../todo-todo/product/frida-v1-document-workshop-todo.md#m5--confirmation-et-exécution-hermétiquement-protégées)
+[roadmap archivée](../../todo-done/product/frida-v1-document-workshop-todo.md#m5--confirmation-et-exécution-hermétiquement-protégées)
 et mandat explicite M5 du 6 octobre 2026. Base exacte :
 `cc72aa963366660a6a135b66d206e39671556e8b`, parent
 `674150d913e3402819a1c307876427d59d6791e4`, vérifiés avant création de

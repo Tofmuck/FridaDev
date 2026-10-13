@@ -1,7 +1,14 @@
 # Atelier documentaire Frida V1 — contrat M7
 
+**Actualisation documentaire Z — 13 octobre 2026 :** code et prérequis M1–M8-A
+livrés via M8-A le 10 octobre ; DOCX puis PDF activés par M9-A/M10. Le premier
+palier est clos sur preuves acquises, selon le
+[bilan et les limites Z](../../todo-done/product/frida-v1-document-workshop-todo.md#bilan-de-clôture-z--13-octobre-2026).
+Les mentions d'inactivité, migration/runtime ouverts ou lots non commencés dans
+les remises datées ci-dessous sont historiques. Aucune recette live ajoutée.
+
 Date : 7 octobre 2026. Autorité : mandat M7 explicite de Tof et
-[roadmap active](../../todo-todo/product/frida-v1-document-workshop-todo.md#m7--update-markdown-id-stable-et-conflit).
+[roadmap archivée](../../todo-done/product/frida-v1-document-workshop-todo.md#m7--update-markdown-id-stable-et-conflit).
 Base exacte M6 : `b00eb95001755295dcc301232272a8070d26cd78`, parent
 `47a85218e02aa749372e524ec9bc4d72ae9a1c10`. Branche nouvelle
 `FridaV1-Document-Workshop-M7`, créée avant toute édition, sans merge/rebase.

@@ -1,5 +1,12 @@
 # Atelier documentaire Frida V1 — contrat M3
 
+**Actualisation documentaire Z — 13 octobre 2026 :** code et prérequis M1–M8-A
+livrés via M8-A le 10 octobre ; DOCX puis PDF activés par M9-A/M10. Le premier
+palier est clos sur preuves acquises, selon le
+[bilan et les limites Z](../../todo-done/product/frida-v1-document-workshop-todo.md#bilan-de-clôture-z--13-octobre-2026).
+Les mentions d'inactivité, migration/runtime ouverts ou lots non commencés dans
+les remises datées ci-dessous sont historiques. Aucune recette live ajoutée.
+
 ## Évolution M7 — 7 octobre 2026
 
 Le clic crée un claim confirmation distinct et fige aussi son ETag préparé. Une réparation ciblée des seules métadonnées utilise un nouveau claim, sans rendre son autorité au détenteur original et sans aucune mutation DAV. Voir le [contrat M7](frida-v1-document-workshop-m7-contract.md) et son relevé daté. Code et preuves isolées ; migration opérateur, rebuild, préconditions Nextcloud et Versions réels restent ouverts sous GO distinct. M8-C et suivants non commencés. Les sections précédentes ci-dessous gardent leur périmètre et leurs résultats historiques datés.
@@ -24,7 +31,7 @@ hermétiques et les limites ; migrations opérateur, runtime, modèle/DAV live e
 
 
 Date : 2026-10-06. Base : M2 `6e8c61f5059350d8d15ded4b41b68f2e0d9acac3`.
-Autorité : [roadmap](../../todo-todo/product/frida-v1-document-workshop-todo.md),
+Autorité : [roadmap](../../todo-done/product/frida-v1-document-workshop-todo.md),
 §§3.4, 3.6, 3.7, 4 et M3. M4 reste non commencé.
 Code et migrations livrés sur `FridaV1-Document-Workshop-M3` ; application
 opérateur et rebuild requis restent ouverts. Git ne constitue pas une livraison runtime.
@@ -177,7 +184,7 @@ appliqué sur la base opérateur. Le nouveau chat échoue fermé si le schéma m
 la livraison runtime exige une migration opérateur coordonnée avant son rebuild.
 
 Les commandes, sélecteurs, résultats, durées, défauts de harnais et contre-audit
-sont consignés dans [M3 de la roadmap](../../todo-todo/product/frida-v1-document-workshop-todo.md#m3--réservation-durable-et-concurrence).
+sont consignés dans [M3 de la roadmap](../../todo-done/product/frida-v1-document-workshop-todo.md#m3--réservation-durable-et-concurrence).
 Le P3 préexistant de l'inventaire golden des routes est corrigé séparément le
 2026-10-06, tests/docs-only : cinq entrées explicites, classification de test des
 contextes, cardinalité 128 et sensibilités strictes. Rouge ciblé conservé ; vert

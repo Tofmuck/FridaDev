@@ -8,7 +8,7 @@ hermétiques et les limites ; migrations opérateur, runtime, modèle/DAV live e
 
 
 Date : 2026-10-04. Statut : code et preuves hermétiques M1 ; activation différée.
-La [roadmap autoritative](../../todo-todo/product/frida-v1-document-workshop-todo.md)
+La [roadmap autoritative](../../todo-done/product/frida-v1-document-workshop-todo.md)
 reste l'unique spécification du chantier. Le [contrat M0](frida-v1-document-workshop-m0-contract.md)
 conserve ses comptes, budgets, modèle et transport de préparation. Le
 [contrat M2](frida-v1-document-workshop-m2-contract.md) précise désormais les
@@ -158,7 +158,7 @@ explicite ; l'ouverture/relecture du contexte seule reste sans DAV ni extraction
 
 ## Preuves et réserves
 
-L'[exécution M1 de la roadmap](../../todo-todo/product/frida-v1-document-workshop-todo.md#m1--menu-fichier-et-contexte-explicite)
+L'[exécution M1 de la roadmap](../../todo-done/product/frida-v1-document-workshop-todo.md#m1--menu-fichier-et-contexte-explicite)
 donne runners, commandes, nombres, durées et contre-audit. Suites :
 `test_server_document_workshop_contexts_contract.py` (routes montées, effets à
 zéro), `test_context_store_postgresql.py` (SQL réel isolé),

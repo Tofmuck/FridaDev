@@ -1,8 +1,15 @@
 # Atelier documentaire — adaptateur Writer M8-A
 
+**Actualisation documentaire Z — 13 octobre 2026 :** code et prérequis M1–M8-A
+livrés via M8-A le 10 octobre ; DOCX puis PDF activés par M9-A/M10. Le premier
+palier est clos sur preuves acquises, selon le
+[bilan et les limites Z](../../todo-done/product/frida-v1-document-workshop-todo.md#bilan-de-clôture-z--13-octobre-2026).
+Les mentions d'inactivité, migration/runtime ouverts ou lots non commencés dans
+les remises datées ci-dessous sont historiques. Aucune recette live ajoutée.
+
 Date : 10 octobre 2026. Base exacte `6827cb50b5d1633875b9864513b30e5c99c94a5b`,
 branche `FridaV1-Document-Workshop-M8-A`. Autorité : mandat de Tof, M8-A et §9
-de la [roadmap](../../todo-todo/product/frida-v1-document-workshop-todo.md),
+de la [roadmap](../../todo-done/product/frida-v1-document-workshop-todo.md),
 [protocole M8-C](frida-v1-document-workshop-m8c-contract.md). Lot interne ;
 clôture globale et raccord runtime non revendiqués.
 

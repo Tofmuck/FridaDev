@@ -1,8 +1,13 @@
 # Atelier documentaire — M10, publication PDF Writer
 
+**État courant au 13 octobre 2026 :** M9-A/M9-B/M10 restent fermés ; Z est clos
+documentairement selon le [bilan archivé](../../todo-done/product/frida-v1-document-workshop-todo.md#bilan-de-clôture-z--13-octobre-2026).
+Les remises et clôtures successives ci-dessous conservent leur chronologie et
+leurs limites ; aucun nouveau test ni canari dans Z.
+
 13 octobre 2026. Base exacte `dcbd3e7540fbc6414defad9bf913c2470a3f6d38`,
 branche `FridaV1-Document-Workshop-M10`. M9-A/M9-B restent fermés.
-Mandat : [M10 et §9.5 de la roadmap](../../todo-todo/product/frida-v1-document-workshop-todo.md#m10--pdf-writer-source-externe-et-intégration-finale-des-formats).
+Mandat : [M10 et §9.5 de la roadmap](../../todo-done/product/frida-v1-document-workshop-todo.md#m10--pdf-writer-source-externe-et-intégration-finale-des-formats).
 **M10 fermé le 13 octobre 2026**, après contre-audits Codex favorables du code,
 de P3-M10-AUD-01 et du runtime livré. Clôture autorisée par Tof sur preuves
 acquises, sans nouveau test ni canari. Z non commencé.
@@ -124,7 +129,7 @@ universelle revendiquée, aucun correctif opportuniste de téléchargement commu
 
 ## Clôture sur preuves acquises — 13 octobre 2026
 
-[Décision, preuves et limites de clôture](../../todo-todo/product/frida-v1-document-workshop-todo.md#clôture-m10-sur-preuves-acquises--13-octobre-2026).
+[Décision, preuves et limites de clôture](../../todo-done/product/frida-v1-document-workshop-todo.md#clôture-m10-sur-preuves-acquises--13-octobre-2026).
 Code audité `82865d94…`, erratum `65437352…`, report runtime `820cd2d2…`.
 Codex a rejoué 58 IDs distincts lors du contre-audit de code ; les trois preuves
 ciblées Sauron (2 SQL, 1 navigateur) ont été vérifiées sans nouveau rejeu au

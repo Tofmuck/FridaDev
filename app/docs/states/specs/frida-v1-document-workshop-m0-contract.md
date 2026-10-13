@@ -20,7 +20,7 @@ hermétiques et les limites ; migrations opérateur, runtime, modèle/DAV live e
 
 
 Date : 2026-10-04. Spécification autoritative :
-[roadmap active](../../todo-todo/product/frida-v1-document-workshop-todo.md).
+[roadmap archivée](../../todo-done/product/frida-v1-document-workshop-todo.md).
 Ce contrat décrit les composants internes inactifs de M0. Il ne livre aucune
 route, UI, transaction, écriture Nextcloud ou capacité de rendu.
 

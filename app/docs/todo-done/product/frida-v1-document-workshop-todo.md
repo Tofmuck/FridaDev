@@ -1,6 +1,21 @@
 # Atelier documentaire agentique Frida V1 — spécification validée et roadmap
 
-Date : 2026-09-29. Dernière décision : clôture M10 autorisée par Tof le 2026-10-13 sur les preuves acquises et les contre-audits Codex favorables du code, de P3-M10-AUD-01 et du runtime livré. Aucun nouveau test ni canari pour cette clôture documentaire. M9-A/M9-B restent fermés ; limites PDF live conservées, renderer inchangé. Z non commencé.
+Date : 2026-09-29. Clôture documentaire bornée Z : **2026-10-13**, sous mandat
+explicite de Tof, sur les preuves acquises. M0–M10 et Z clos dans ce périmètre ;
+aucun nouveau test, collecte de tests, canari ou changement runtime. Le
+[bilan Z](#bilan-de-clôture-z--13-octobre-2026) porte les preuves, leurs auteurs
+et les limites acceptées ; contre-audit Codex de cette clôture documentaire attendu.
+
+État courant : préparation/confirmation/publication Markdown, DOCX et PDF
+livrées. M4/M6 ne sont plus des étapes produit inactives : M5/M6/M7 et les
+livraisons M8-A/M9/M10 ont complété leurs raccords. Les migrations M1–M8-A
+ont été appliquées le 10 octobre ; les contraintes DOCX puis PDF ont été livrées
+avec M9-A puis M10. Code produit audité `82865d94…`, runtime M10 construit depuis
+`65437352…`, clôture M10 documentaire `6a2d60c25e28570ee61cf69e86a9e5bbea5a9576`.
+Cette archive ne constitue ni une nouvelle recette ni une observation runtime Z.
+
+**Résumé de remise antérieur à Z, conservé comme historique** (les réserves
+transitoires M4/M6 et live y décrivent les remises d'alors) :
 
 Statut : **spécification et choix architecturaux validés par Tof ; M0 fermé sur
 composants et preuves internes, contre-audit corrigé sur `FridaV1-Document-Workshop-M0` ;
@@ -39,12 +54,19 @@ l'exécution des lots concernés, sans recommencer une reconnaissance générale
 ## Lecture des cases et portes d'autorisation
 
 Une case cochée dans les décisions signifie « décidé par Tof », pas « livré ».
-Une case ouverte dans les critères ou les lots signifie « à implémenter ou prouver ».
+Depuis le recadrage Z du 13 octobre, les cases des spécifications initiales
+(§§3–7) et des récits datés conservent leur état historique. Elles ne constituent
+plus une liste de travaux ouverts : les acquis sont réconciliés en §12 et les
+exigences de nouvelle campagne sont requalifiées dans Z. Aucune case de recette
+non exécutée n'est cochée ; les limites acceptées restent visibles en §11.
 Les inconnues factuelles sont isolées en section 11. Seules les preuves datées
 dans M0–M4 décrivent des tests exécutés ou des déclarations historiques explicitement
 qualifiées ; M5–M8-A disposent de leurs relevés datés et attributions ci-dessous ; M9-A dispose de son relevé isolé du 11 octobre et de sa clôture du 13 octobre sur les preuves acquises ; M9-B dispose du relevé ciblé du 13 octobre ; M10 est fermé sur ses preuves isolées, les contre-audits code/documentation/runtime favorables et la livraison du 13 octobre ; aucune recette PDF live nouvelle. L'erratum P3-M4-03
 ci-dessous distingue les nouveaux rejeux des résultats antérieurs.
-Une clôture code/preuves ne ferme pas migration opérateur, rebuild ou preuve DAV déployée.
+Une clôture code/preuves ne ferme pas à elle seule une migration ou une recette.
+Les livraisons ultérieures explicitement attribuées et le bilan Z font foi pour
+l'état courant ; une mention historique « non appliqué/inactif » n'annule pas
+une livraison postérieure.
 
 - [x] Reconnaissance et proposition de design produites dans le dialogue.
 - [x] Création de cette TODO autorisée par Tof.
@@ -1396,6 +1418,10 @@ worktree propre, avance/retard 0/0 vérifiés avant création de M2.
 
 ### M2 — Adoption et lecture distante ciblées
 
+**Lecture courante Z — 13 octobre :** code et migrations M1/M2 livrés via M8-A.
+Le critère de migration ci-dessous est acquis par cette livraison ;
+une recette DAV dédiée M2 n'est pas inventée. Portée live et limites en §11.
+
 **Statut : P2-M2-01 corrigé sur code/preuves (comparaison historique 567/567),
 après le succès historique 536/536 et G-R1–G-R4 Approved ; P2-M2-03 corrigé
 séparément en frontend (594/594 historiques) ; P2-M2-02 corrigé séparément
@@ -1420,8 +1446,8 @@ service d'adoption et navigateur UI.
 - [x] Aucun scan récursif, polling, URL frontend exécutée ni origine Frida inventée.
 - [x] Documents/fraîcheur et contrats vivants synchronisés ; quatre catégories
   d'adoption et publication SQL fichier/lien sur une seule transaction prouvées.
-- [ ] Appliquer les migrations opérateur M1/M2, puis rebuild du seul service
-  applicatif lors d'une livraison distinctement autorisée ; health/surface à prouver.
+- [x] Migrations opérateur M1/M2 et rebuild du seul service applicatif livrés via
+  M8-A le 10 octobre ; health/surfaces contrôlés dans cette livraison et son contre-audit.
 - [ ] Lecture DAV déployée ciblée sous GO distinct, artefact content-free ; aucune
   preuve live inférée des fixtures. M3–M10 et Z restent non commencés.
 
@@ -2745,6 +2771,10 @@ M3–M10/Z non commencés ; arrêt après vérification Git.
 
 ### M3 — Réservation durable et concurrence
 
+**Lecture courante Z — 13 octobre :** environnement PostgreSQL concurrent prouvé
+par M3 et ses corrections ; migration/rebuild livrés via M8-A. La porte runtime
+historique n'est plus un prérequis ouvert ; aucune nouvelle preuve SQL Z.
+
 **Statut au 6 octobre 2026 :** code/preuves hermétiques et contre-audit fermés sur
 `FridaV1-Document-Workshop-M3`. Migration opérateur, rebuild/restart, health et
 smoke runtime restent ouverts et hors autorisation. À la clôture M3, M4 était
@@ -2774,7 +2804,7 @@ lease technique ; aucun TTL du pending, carte/action/révision/exécution M4/M5.
   préparation utile au-delà de 120 secondes ; confirmation interne ancienne valide.
 - [x] Contre-audit indépendant et corrections causales fermés ; aucune route,
   préparation publique, M4, fournisseur live, DAV live ou runtime opérateur activé.
-- [ ] **Rebuild requis à livraison runtime**, après migration opérateur coordonnée.
+- [x] Migration opérateur et rebuild livrés via M8-A le 10 octobre.
   Les courses SQL/lease/fencing/invalidation sont prouvées en isolation seulement.
 
 #### Base et plan revalidés avant édition
@@ -3073,6 +3103,12 @@ M2/M1/M0/main inchangées. Aucun merge/rebase/reset/force-push, migration opéra
 rebuild/restart, modèle/DAV live, canari, renderer ou démarrage M4.
 
 ### M4 — Préparation Markdown dans un tour canonique
+
+**Lecture courante Z — 13 octobre :** M4 consolidé sur preuves acquises, corrections
+P2/P3 et correctif de focus du 10 octobre ; code/prérequis livrés via M8-A.
+Confirmation/exécution M5 et parcours M6 sont acquis. Les cases de la remise
+initiale restent historiques ; Safari/live ne sont établis que dans la portée
+DOCX M9-A consignée à sa clôture, pas comme une recette Markdown supplémentaire.
 
 **Objectif :** vraie parole, appel documentaire unique, réponse/pending réhydratables.
 **Dépendances :** M0–M3.
@@ -3513,6 +3549,12 @@ réservé à M6 ; aucune preuve de rendu, de DAV live ou de déploiement.
 
 ### M6 — Markdown create/copy, reçu et continuité
 
+**Lecture courante Z — 13 octobre :** parcours et corrections P3 consolidés,
+code livré via M8-A ; lien/inventaire/reçu/continuité couverts par les preuves
+isolées M6. Les deux portes live initiales ci-dessous sont requalifiées : rebuild
+acquis via M8-A, canari Markdown dédié non revendiqué et non requis pour Z selon
+le mandat borné du 13 octobre. Aucun succès live ajouté à la preuve isolée.
+
 **Objectif :** premier parcours complet de création confirmée.
 **Dépendances :** M5.
 **Fichiers :** raccord Nextcloud, publication fichier/lien/révision/reçu, UI et lane.
@@ -3571,6 +3613,11 @@ zéro skip/annulation ; **70 voisins séparés**. Les cinq parcours HTTP natifs 
 À cette livraison historique P3-M6-AUD-03, runtime et canari restaient ouverts ; **M7 non commencé**.
 
 ### M7 — Update Markdown, ID stable et conflit
+
+**Lecture courante Z — 13 octobre :** migration/rebuild acquis via M8-A.
+If-Match, conflit et réparation sans PUT restent prouvés par les pairs isolés ;
+la récupération Nextcloud Versions non exercée est une limite acceptée (§11),
+pas un lot automatique. La case composite historique n'est pas cochée en bloc.
 
 **Objectif :** modifier la cible explicite sans écrasement concurrent.
 **Dépendances :** M6.
@@ -4053,6 +4100,12 @@ ne prouve aucun raccord applicatif, reçu, modèle ou Nextcloud.
 M8-A est autorisé par un mandat distinct ci-dessous.
 
 ### M8-A — Adaptateur FridaDev, validations et nettoyage
+
+**Lecture courante Z — 13 octobre :** M8-A fermé sur code et runtime, selon la
+clôture datée ci-dessous. La case composite de voisins est requalifiée : client
+Unix, confirmations/claims/compensations et Markdown prouvés dans M8-A ; les
+suites streaming/upload/Exports/OCR non rejouées dans M8-A le restent. Le mandat
+Z remplace la campagne supplémentaire par les preuves voisines déjà acquises.
 
 **Objectif :** orchestrer le service livré sans capacité de stockage déléguée.
 **Dépendances :** M8-C et M8-S fermés ; configuration du socket livrée par Sauron.
@@ -4850,7 +4903,7 @@ et préconditions préservées. Voisins création sans source, fraîcheur/facult
 payload/comptage et absence de replay conservés. Rouges causaux UI/payload
 distincts des gardes déjà vertes ; aucune obéissance OpenRouter live prouvée.
 
-[Contrat](../../states/specs/frida-v1-document-workshop-m9a-contract.md#état-courant--précondition-de-copie-m9-a-12-octobre-2026) ·
+[Contrat](../../states/specs/frida-v1-document-workshop-m9a-contract.md#historique--précondition-de-copie-m9-a-12-octobre-2026) ·
 [Relevé compact et auto-audit](../../states/baselines/document-workshop/frida-v1-document-workshop-m9a-copy-source-precondition-20261012.json).
 État initial conservé : correctif non déployé lors de la preuve applicative du 12.
 
@@ -5299,6 +5352,24 @@ code, test, migration, configuration, service ou objet opérateur modifié.
 
 ### Z — Clôture bornée
 
+**Recadrage explicite de Tof — 13 octobre 2026.** Z est documentaire seulement.
+Les anciennes demandes de matrice finale servent à retrouver les preuves déjà
+acquises ; elles n'autorisent aucun nouveau test, collecte exécutable, fixture,
+navigateur, rendu, SQL, appel modèle/DAV ou canari. Aucun correctif produit,
+installation, rebuild, restart, déploiement ni lot suivant. La base documentaire
+est `6a2d60c25e28570ee61cf69e86a9e5bbea5a9576`, branche de travail
+`FridaV1-Document-Workshop-Z` ; les contre-audits code/runtime M10 restent ceux
+consignés dans leur clôture, sans relecture supposée des rapports du poste Codex.
+
+« Existe-t-il un meilleur plan, plus simple, plus sûr et avec moins d'effets de
+bord ? » Retenir la plus petite réconciliation : bilan sourcé, statuts courants,
+limites explicites, déplacement de cette même roadmap et liens de navigation.
+Aucun relevé brut, commande, identifiant ou chemin historique de preuve réécrit.
+
+**Cahier de clôture initial conservé ci-dessous.** Ses demandes de nouvelles
+campagnes/rebuild sont remplacées par le recadrage daté ci-dessus ; les cases
+restantes ne prescrivent plus de travaux. Les acquis actuels suivent dans le bilan.
+
 **Objectif :** fermer le premier palier sans chantier permanent.
 **Dépendances :** M0–M7, M8-C/M8-S/M8-A, M9-A/M9-B et M10.
 **Frontières :** parcours complets, preuves et contrats vivants.
@@ -5322,6 +5393,55 @@ code, test, migration, configuration, service ou objet opérateur modifié.
   sans finding vivant caché ; ne pas ouvrir une nouvelle capacité pour prolonger la clôture.
 - [ ] Aucun moteur secondaire, suite bureautique supplémentaire ou pipeline PDF
   parallèle sans décision produit explicite ; aucun lot ajouté pour prolonger Z.
+
+#### Bilan de clôture Z — 13 octobre 2026
+
+Les références renvoient aux preuves originales et aux attributions de leurs
+contre-audits. **Aucun test exécuté dans Z.** Aucun total cumulé : comparaisons,
+sous-sélections et contre-audits se recoupent. Les 58 succès indépendants M10
+restent ceux de Codex ; les trois preuves de livraison M10 restent celles de
+Sauron, examinées sans rejeu par Codex. P3-M10-AUD-01 ne compte aucun test exécuté.
+
+| Capacité livrée / invariant | Preuve déjà acquise | Limite conservée |
+| --- | --- | --- |
+| Markdown : préparation, create/copy/update confirmés | [M4](#m4--préparation-markdown-dans-un-tour-canonique), [M6](#m6--markdown-createcopy-reçu-et-continuité), [M7](#m7--update-markdown-id-stable-et-conflit) et leurs relevés ; runtime via [M8-A](#m8-a--adaptateur-fridadev-validations-et-nettoyage) | Pairs modèle/DAV synthétiques ; pas de nouvelle recette Markdown live ; pagination dépendante du lecteur. |
+| DOCX Frida et copie explicitement sourcée | [Clôture M9-A](#clôture-m9-a-sur-preuves-acquises--13-octobre-2026) : code/rendu isolés, runtime Sauron/Codex, création/copie/update Safari et téléchargement validés par Tof | Continuité live supplémentaire et 412 live non revendiqués ; causes initiales OBS-M9A-PREP-01 inconnues. |
+| DOCX externe simple, avertissement et révision Frida ultérieure | [Clôture M9-B](#clôture-m9-b-sur-preuves-acquises--13-octobre-2026), [contrat/refus](../../states/specs/frida-v1-document-workshop-m9b-contract.md) | Profil V1, contenu non représentable refusé ; aucune fidélité bureautique universelle ni recette externe live. |
+| PDF exact, update Frida prouvé ; externe vers nouveau document/nom acceptés | [Clôture M10](#clôture-m10-sur-preuves-acquises--13-octobre-2026), [relevé corrigé](../../states/baselines/document-workshop/frida-v1-document-workshop-m10-20261013.json) | Pas de canari PDF Safari ni OpenRouter/DAV live PDF ; nom Unicode téléchargé proposé comme `download` sous le Chromium du harnais. |
+| Confirmation, claim/fencing et absence de replay | [M3](#m3--réservation-durable-et-concurrence), [M5](#m5--confirmation-et-exécution-hermétiquement-protégées), [reconnexion M9-A](#m9a-confirm-reauth-01--reprise-humaine-après-reconnexion-12-octobre), M10 HTTP natif | Reprise humaine ; aucune promesse d'exactly-once distribué ; une incertitude distante ne réarme pas un POST. |
+| Provenance, lecture fraîche, If-Match exact, identité stable | [M2](#m2--adoption-et-lecture-distante-ciblées), M7 et clôtures M9-A/M9-B/M10 | 412 effectif prouvé sur pair isolé ; invalidation périmée live M9-A distincte ; récupération Versions non exercée. |
+| Paire Writer/révision/pins/pages, gel puis libération avant mutation | [M8-S](#m8-s--service-writeruno-isolé-et-preuve-plateforme), M8-A, [qualification M9-A](../../states/specs/frida-v1-document-workshop-m9a-contract.md#candidate-et-attribution-plateforme) | 20/21 pages physiques et fonts/layout hérités, non rejoués dans M10/Z ; comparaison textuelle seule insuffisante. |
+| Refus et bornes : source inexploitable, preuve cassée, troncature, paire partielle, dépassement | [M0](#m0--implémentation-et-preuve-des-bornes-décidées), M4, M8-C/M8-A et contrats M9-B/M10 | Manifeste altéré prouve le refus applicatif, pas un export réellement divergent du Writer ; aucun OCR implicite. |
+| Reçu/publication atomique, téléchargement et réhydratation | M5/M6/M7, M9-A/M10 HTTP ; [contrat M6](../../states/specs/frida-v1-document-workshop-m6-contract.md) | Succès distant seul insuffisant ; réparation SQL connue sans nouveau PUT, sans restauration automatique ; Unicode/Safari PDF limités comme ci-dessus. |
+| Voisins et facultés : sélection/upload, Notes/Exports/Images, chat et non-contamination | Relevés M1–M7 et correctifs ; [M8-A](../../states/specs/frida-v1-document-workshop-m8a-contract.md), M9-B/M10 pour les voisins du delta ; invariance des services dans les clôtures runtime | Pas de nouvelle matrice générale mobile/conversations/crashs ni campagne Biblio/OCR/Stirling ; pairs constitutifs synthétiques, aucune nouvelle garantie modèle live. |
+
+Réconciliation des portes historiques : M1–M7 et leur socle SQL sont livrés via
+M8-A le 10 octobre ; M9-A a ouvert DOCX, M10 PDF avec sa seule migration le
+13 octobre. M4/M6 sont consolidés dans ce premier palier. Les anciens refus
+« format public inactif », demandes de migration et étapes futures décrivent
+leurs remises datées ; ils ne sont plus l'état courant. La case composite M8-A
+ne prétend pas couvrir les voisins non rejoués : elle est remplacée par
+l'attribution explicite de la dernière ligne du bilan. Aucune recette manquante
+n'est cochée ni rendue implicitement obligatoire pour fermer Z.
+
+- [x] Relier chaque famille de capacités et de gardes aux preuves datées existantes.
+- [x] Distinguer code audité, source de construction runtime et commits documentaires.
+- [x] Réconcilier statuts/cases selon le mandat borné, avec limites acceptées (§11).
+- [x] Conserver incidents, errata, causes inconnues et attributions sans addition de suites.
+- [x] Archiver cette même roadmap dans `app/docs/todo-done/product/` et actualiser
+  les liens de navigation ; aucun relevé brut ni chemin historique de preuve modifié.
+
+**Z fermé documentairement sur preuves acquises le 13 octobre 2026.** Aucun
+finding bloquant vivant n'est consigné dans les clôtures et correctifs consultés.
+Cette conclusion est documentaire, sans audit produit ou runtime supplémentaire.
+Les limites ci-dessus restent acceptées ; elles n'ouvrent aucun nouveau chantier.
+M9-A/M9-B/M10 restent fermés. Arrêt pour contre-audit Codex de la clôture Z.
+
+Contrôles documentaires Z : 324 renvois locaux/ancres vérifiés, dont 59 vers
+l'archive ; une ancre M9-A préexistante corrigée. Quatre références de rapports
+du poste d'ingénierie conservées sans lecture locale revendiquée. Les 26 blocs
+de commandes et 35 sous-relevés datés sont préservés (seule cette ancre de
+navigation change) ; relevés bruts, code, tests et migrations inchangés.
 
 ## 9. Architecture serveur Writer/UNO et preuves à livrer
 
@@ -5483,7 +5603,7 @@ la publication Nextcloud et la persistance applicative restent M8-A et suivants 
   Export partiel, désaccord de pages, plus de 20 pages ou layout non établi : refus.
 - [x] Le nombre de pages contractuel est celui de ce Writer épinglé, avec ces polices ;
   aucune identité mathématique universelle avec Microsoft Word n'est revendiquée.
-- [ ] Canonical Frida seule source structurée durable ; DOCX/PDF liés à sa révision
+- [x] Canonical Frida seule source structurée durable ; DOCX/PDF liés à sa révision
   et au manifeste de rendu. ODT éventuel strictement temporaire dans le job, jamais
   adopté, inventorié ou promu en deuxième vérité.
 - [x] Tests synthétiques Unicode français/styles/tableaux/sauts/pagination, stabilité
@@ -5619,9 +5739,9 @@ ceux du HEAD de reconnaissance ; aucun refactor cosmétique n'est proposé.
 
 - [x] M8-S : service Writer/UNO isolé, image/filtres/polices/profil/ressources/socket,
   sécurité/cleanup/health et preuve synthétique livrés, correctif P2-M8S-AUD-01 inclus ; voir section 8, clôture Codex favorable reportée.
-- [ ] Prouver identité DAV, préconditions, ETags et Versions si les preuves
-  applicatives ne suffisent pas.
-- [ ] Fournir une preuve transactionnelle isolée si environnement SQL absent.
+- [x] Besoin conditionnel DAV réconcilié en §11 : preuves applicatives et recette
+  M9-A acquises ; récupération Versions non exercée, limite acceptée pour Z.
+- [x] Environnement transactionnel isolé établi par M3 et lots suivants ; condition levée.
 
 M8-S est une vraie frontière plateforme, sans accès Nextcloud et sans surface
 publique. Permissions DAV ou environnement SQL partagé relèvent de besoins
@@ -5631,83 +5751,105 @@ modifie aucune stack, réseau, secret ou fichier sous sa racine plateforme.
 
 ## 11. Faits externes restant à prouver
 
-Toutes les décisions produit et architecturales amont sont fermées. Budgets,
-volume, source longue, progression/pending, chemins et moteur ne sont plus des
-inconnues ou des comparaisons. M0 ferme leurs gardes internes ; raccordements,
-transactions, pagination et parcours produit restent aux lots concernés.
+**Réconciliation Z du 13 octobre 2026.** Les points conditionnels initiaux sont
+séparés entre acquis documentés et limites acceptées. Ils n'autorisent aucune
+nouvelle collecte ou recette dans Z ; le bilan ci-dessus fait autorité.
 
-- [ ] M2/M5/M7 : comportement DAV effectif, identité distante, préconditions/ETags
-  et Versions disponibles sur la chaîne déployée.
-- [ ] M3 : environnement SQL concurrent isolé de preuve si non établi par le HEAD.
-- [x] M8-S/M8-A : disponibilité effective du service isolé, permissions de socket,
-  capacités/filtres/polices/layout du pin livré, ressources/confinement/cleanup.
-  M8-S fermé par Codex ; raccord M8-A livré et preuve depuis FridaDev exécutée.
-  Identité positive root explicitée, refus non admis prouvé ; M8-A fermé après
-  contre-audit runtime Codex transmis par Tof, aucune preuve positive GID 20000
-  ni requalification M8-S.
-  Ce sont des preuves de livraison, aucun choix de moteur repoussé.
-- [ ] M9-A/M9-B/M10 : stabilité Writer réelle, import/round-trip externe admissible
-  et limites détectées du corpus synthétique ; aucune promesse Word universelle.
+- [x] M3 : environnement PostgreSQL isolé et concurrence réellement éprouvés
+  dans M3/M4/M7 et leurs correctifs ; la condition « si absent » est levée.
+- [x] M2/M5/M7 : identité, fraîcheur, préconditions/ETags et headers du client
+  prouvés en isolation ; création/copie/update et identité stable en DAV déployé
+  dans la seule recette DOCX Frida M9-A. Pas d'extrapolation à un 412 live.
+- [x] M8-S/M8-A : service/pins/profil/permissions et raccord livrés, contre-audits
+  Codex favorables. Identité runtime root 0:0/[0] ; refus non admis prouvé,
+  aucune preuve positive d'admission par le GID 20000.
+- [x] M9-A/M9-B/M10 : Writer réel qualifié, paire et import externe admissible
+  sur corpus ciblés, limites/refus détectés ; migrations DOCX/PDF livrées.
+
+**Limites maintenues, sans recette supplémentaire exigée pour ce palier :**
+
+- Récupération Nextcloud Versions non exercée ; 412 isolé seulement, distinct
+  de l'invalidation live de préparation périmée M9-A. Pas de restauration automatique.
+- Recettes externes DOCX et PDF live/Safari, appel OpenRouter/DAV live PDF et nom
+  Unicode téléchargé non qualifiés. `download` reste l'observation Chromium du
+  harnais ; nom ASCII navigateur et identité Unicode serveur ont leurs preuves.
+- Sources longues admises selon l'entrée complète, sans plafond source 20 pages.
+  Sortie Writer A4/12 points/1,5/2,5 cm et 20/21 pages/fonts/layout selon les preuves
+  héritées ; aucune fidélité universelle Microsoft Word/éditeur/machine.
+- Causes historiques inconnues des incidents M4/M7/OBS-M9A-PREP-01 conservées,
+  sans attribution rétroactive. Les corrections et requalifications sont datées.
+- Les voisins non rejoués dans un lot ne deviennent pas des succès de ce lot ;
+  les modèles synthétiques ne prouvent pas l'obéissance future du modèle live.
 
 Collabora n'est pas prouvé actif par la lecture non sensible de ce lot. Son rôle
 d'éditeur humain est conservé ; sa disponibilité n'est pas une dépendance de
 l'atelier et son installation ne devient pas un lot implicite de cette roadmap.
+Nextcloud reste le stockage autoritatif ; Stirling et l'OCR explicite restent
+séparés de la composition Writer, sans contrôle live nouveau dans Z.
 
-Ces faits ne justifient pas de changer les décisions : précondition non prouvée
-→ refus fermé ; besoin de plateforme → lot Sauron ciblé et autorisé. Le calcul
-d'admission, la progression et la pagination sont des obligations d'implémentation
-et de preuve de M0/M4/M8–M10, pas des arbitrages repoussés.
+Ces limites n'affaiblissent aucune garde : précondition absente ou incohérente
+→ refus fermé. Aucun besoin plateforme ni chantier suivant ouvert par la clôture.
 
 ## 12. Contre-audit et critères de clôture
 
-- [ ] Distinguer décisions validées, faits du HEAD, implémentation future et preuves.
-- [ ] Ne conserver aucun ancien OPEN fermé par le design consolidé.
-- [ ] Une soumission, une vraie parole utilisateur, un échange documentaire.
-- [ ] Upload/picker/change/drag-and-drop conservés, sans duplication mobile.
-- [ ] Navigation/adoption ciblées ; aucun synchroniseur global.
-- [ ] Aucune mutation distante avant confirmation et claim valides.
-- [ ] Canonical/profil/cible figés avant confirmation ; octets binaires/manifeste
+**Acquis documentés au 13 octobre, selon le bilan Z et les limites du §11.**
+Ces cases réconcilient la spécification initiale (§§3–7), pas une exécution Z.
+M0/M4 portent bornes/admission/tour ; M1/M2 sélection/adoption ; M3/M5–M7
+confirmation, concurrence et publication ; M8–M10 paire, formats et refus.
+Les recettes live sont uniquement celles attribuées dans la clôture M9-A.
+
+- [x] Distinguer décisions validées, faits du HEAD, implémentation future et preuves.
+- [x] Ne conserver aucun ancien OPEN fermé par le design consolidé.
+- [x] Une soumission, une vraie parole utilisateur, un échange documentaire.
+- [x] Upload/picker/change/drag-and-drop conservés, sans duplication mobile.
+- [x] Navigation/adoption ciblées ; aucun synchroniseur global.
+- [x] Aucune mutation distante avant confirmation et claim valides.
+- [x] Canonical/profil/cible figés avant confirmation ; octets binaires/manifeste
   figés et validés après claim, avant MKCOL/PUT ; correspondance distante vérifiée.
-- [ ] Reçu séparé des paroles et des tool results ; réhydratation durable.
-- [ ] Inventaire unique workspace_files, ID stable en update.
-- [ ] ETag frais et If-Match réellement envoyés ; aucun écrasement implicite.
-- [ ] Journal et remote_uncertain sans promesse d'exactly-once distribué.
-- [ ] Aucun DELETE sans propriété ni rollback récursif de collections.
-- [ ] DOCX externe et PDF externe traités avec fidélité honnête.
+- [x] Reçu séparé des paroles et des tool results ; réhydratation durable.
+- [x] Inventaire unique workspace_files, ID stable en update.
+- [x] ETag frais et If-Match réellement envoyés ; aucun écrasement implicite.
+- [x] Journal et remote_uncertain sans promesse d'exactly-once distribué.
+- [x] Aucun DELETE sans propriété ni rollback récursif de collections.
+- [x] DOCX externe et PDF externe traités avec fidélité honnête.
 - [x] Writer/UNO isolé livré/épinglé/prouvé par M8-S, adaptateur M8-A ; aucun moteur
   concurrent, cloud/payante, fallback ou LibreOffice dans le conteneur FridaDev.
   M8-S fermé après contre-audit ; applicatif et raccord runtime M8-A validés par
   Codex selon décision transmise par Tof le 10 octobre ; livraison Sauron vérifiée.
-  Aucun voisin non rejoué déclaré vert ; case composite M8-A toujours ouverte.
-- [ ] Nextcloud/Collabora/Stirling distincts ; entrée humaine et OCR Stirling préservés.
-- [ ] Aucun secret/capacité DAV dans le renderer, aucun UNO brut ni API publique,
+  Aucun voisin non rejoué déclaré vert ; case composite M8-A requalifiée par Z.
+- [x] Frontières Nextcloud/Collabora/Stirling conservées ; aucun raccord de composition
+  ou OCR implicite ajouté. Disponibilité Collabora et recette humaine Stirling
+  non revendiquées par Z.
+- [x] Aucun secret/capacité DAV dans le renderer, aucun UNO brut ni API publique,
   socket restreint/network none et fichiers éphémères nettoyés, ODT jamais vérité durable.
-- [ ] Pagination réelle du DOCX final rechargé dans Writer et PDF du même état,
+- [x] Pagination réelle du DOCX final rechargé dans Writer et PDF du même état,
   sans docProps fictif ou équivalence Word universelle.
-- [ ] Graphe M8-C→M8-S→M8-A→M9-A→M9-B→M10 sans dépendance circulaire.
-- [ ] Document produit <=10 000 mots et <=75 000 caractères Unicode ; DOCX/PDF
+- [x] Graphe M8-C→M8-S→M8-A→M9-A→M9-B→M10 sans dépendance circulaire.
+- [x] Document produit <=10 000 mots et <=75 000 caractères Unicode ; DOCX/PDF
   rendus <=20 pages Writer A4, corps 12 points/interligne 1,5/marges 2,5 cm.
-- [ ] Markdown sans pagination stable ; aucun plafond de 20 pages appliqué aux sources.
-- [ ] Source longue admise si entrée complète admissible ; sinon réduction/sélection
+- [x] Markdown sans pagination stable ; aucun plafond de 20 pages appliqué aux sources.
+- [x] Source longue admise si entrée complète admissible ; sinon réduction/sélection
   ou refus avant appel, aucune troncature/résumé/échantillonnage silencieux.
-- [ ] Un appel documentaire gpt-5.1, plafond dédié 24 000, chat inchangé 8 192,
+- [x] Un appel documentaire gpt-5.1, plafond dédié 24 000, chat inchangé 8 192,
   entrée estimée par le compteur partagé plus 24 000 <=400 000 ; aucune promesse d'équivalence
   tokens/mots/caractères/pages.
-- [ ] Refus sur finish_reason=length, canonical incomplet ou dépassement ; aucune
+- [x] Refus sur finish_reason=length, canonical incomplet ou dépassement ; aucune
   sauvegarde partielle, réparation, continuation ou fallback.
-- [ ] Progression réelle honnêtement projetée ; 120 secondes sans progrès → échec
+- [x] Progression réelle honnêtement projetée ; 120 secondes sans progrès → échec
   fermé ; aucune deadline murale tant que la progression continue.
-- [ ] Annulation utilisateur, invalidation pending et lease technique distingués ;
+- [x] Annulation utilisateur, invalidation pending et lease technique distingués ;
   pending sans expiration temporelle et confirmation avec fraîcheur/ETag/scope/claim.
-- [ ] Bornes de chemin décidées appliquées localement/DAV et au nom de fichier,
-  sans raccourcissement/renommage/normalisation destructive silencieuse.
-- [ ] Memory/Identity/Summary/Biblio/Stimmung préservés et non contaminés.
-- [ ] Service tool-ready appelable sans DOM, aucun tool principal implémenté.
-- [ ] Tous les parcours create/read/adopt/update/copy et les trois formats prouvés.
-- [ ] Preuves live éventuelles explicitement autorisées et content-free.
-- [ ] Docs/limites/statuts synchronisés ; aucun finding vivant caché.
-- [ ] Lot Z fermé ; suites images/continuations/édition enrichie hors ce chantier.
-- [ ] Aucun moteur secondaire, suite bureautique supplémentaire ou pipeline PDF
+- [x] Bornes de chemin décidées appliquées localement/DAV et au nom de fichier,
+  sans raccourcissement/renommage/normalisation destructive de la cible publiée.
+  Nom Unicode proposé au téléchargement : limite Chromium maintenue (§11).
+- [x] Memory/Identity/Summary/Biblio/Stimmung préservés et non contaminés.
+- [x] Service tool-ready appelable sans DOM, aucun tool principal implémenté.
+- [x] Parcours create/read/adopt/update/copy et trois formats couverts par les preuves
+  ciblées du bilan Z, sans matrice exhaustive ni recette live PDF prétendue.
+- [x] Preuves live éventuelles explicitement autorisées et content-free.
+- [x] Docs/limites/statuts synchronisés ; aucun finding vivant caché.
+- [x] Lot Z fermé ; suites images/continuations/édition enrichie hors ce chantier.
+- [x] Aucun moteur secondaire, suite bureautique supplémentaire ou pipeline PDF
   parallèle sans nouvelle décision produit ; aucune extension opportuniste.
 
 ## 13. Statut de publication documentaire
@@ -5729,11 +5871,12 @@ séparément avant M4. La livraison initiale M4 est conservée comme déclaratio
 historique explicitement rectifiée par P3-M4-03 ; les identifiants réutilisables
 sont corrigés. P2-M4-01 et P2-M4-02 sont fermés après leurs contre-audits
 indépendants, avec leurs résultats conservés ci-dessus ; P3-M4-03 est corrigé
-documentairement ; code/prérequis M4 depuis livrés via M8-A, recette produit distincte ;
-M5 est fermé sur code/preuves hermétiques et contre-audit ; M6 est réalisé sur
-code/preuves isolées et contre-audit, code livré via M8-A. M7 est fermé sur
-code/preuves isolées et contre-audit, code/migration livrés via M8-A, recettes
-DAV/Versions ouvertes ; AUD-01 et AUD-02 fermés après contre-audits indépendants.
+documentairement ; code/prérequis M4 livrés via M8-A, consolidation close dans Z.
+M5 est fermé sur code/preuves hermétiques et contre-audit ; M6 est fermé dans ce
+palier sur code/preuves isolées, corrections et runtime livré via M8-A. M7 est
+fermé sur code/preuves isolées et contre-audit, code/migration livrés via M8-A ;
+portée DAV acquise et limite Versions réconciliées en §11. AUD-01 et AUD-02
+restent fermés après contre-audits indépendants.
 **M8-C fermé sur contrat, code et preuves isolées ; M8-S fermé après contre-audit Codex favorable du 10 octobre transmis par Tof.**
 M8-A fermé sur code et raccord runtime livré par Sauron, après contre-audits
 Codex favorables transmis par Tof le 10 octobre ; P3-M8A-RUNTIME-AUD-01 corrigé
@@ -5750,9 +5893,13 @@ sur preuves acquises sans nouveau test ni canari. M10 fermé le 13 octobre aprè
 contre-audits code/erratum/runtime favorables, migration seule et trois preuves
 Sauron isolées ; PDF disponible avec schéma/session/pins attendus. Clôture
 autorisée par Tof sans nouveau test ni canari ; limites PDF live et Unicode
-conservées dans la note de clôture M10. Z non commencé.
-Actualisation runtime du 10 octobre : code et migrations M1–M7 livrés par le
-raccord M8-A ; les réserves de recette produit/DAV/Versions restent ouvertes.
+conservées dans la note de clôture M10. **Z fermé documentairement le 13 octobre
+sur preuves acquises**, selon son mandat distinct, sans nouveau test ni canari.
+Cette même roadmap est archivée sous `app/docs/todo-done/product/` ; le contre-audit
+Codex de sa clôture reste attendu. Aucun lot suivant.
+Actualisation runtime : code/migrations M1–M7 livrés via M8-A le 10 octobre,
+DOCX via M9-A puis PDF via M10 le 13 octobre. Les réserves live/Versions sont
+les limites acceptées du §11, pas des tâches implicites de Z.
 Les mentions de runtime ouvert dans les récits historiques décrivent leurs
 remises d'alors, pas une absence actuelle de code ou de migrations.
 

@@ -1,5 +1,12 @@
 # Atelier documentaire Frida V1 — contrat M4
 
+**Actualisation documentaire Z — 13 octobre 2026 :** code et prérequis M1–M8-A
+livrés via M8-A le 10 octobre ; DOCX puis PDF activés par M9-A/M10. Le premier
+palier est clos sur preuves acquises, selon le
+[bilan et les limites Z](../../todo-done/product/frida-v1-document-workshop-todo.md#bilan-de-clôture-z--13-octobre-2026).
+Les mentions d'inactivité, migration/runtime ouverts ou lots non commencés dans
+les remises datées ci-dessous sont historiques. Aucune recette live ajoutée.
+
 ## Évolution M7 — 7 octobre 2026
 
 Le parseur accepte la syntaxe update Markdown ; la finalisation durable exige la cible serveur explicite, sa preuve fraîche et les prérequis M7 avant de rendre une action confirmable. La révision confirmée reste celle préparée ; aucune préparation ni appel modèle au clic. Voir le [contrat M7](frida-v1-document-workshop-m7-contract.md) et son relevé daté. Code et preuves isolées ; migration opérateur, rebuild, préconditions Nextcloud et Versions réels restent ouverts sous GO distinct. M8-C et suivants non commencés. Les sections précédentes ci-dessous gardent leur périmètre et leurs résultats historiques datés.
@@ -27,7 +34,7 @@ Base exacte : correctif P3 `9f10531ae9c799f4afc769c97ea2d48659f1c3d3`, poussé
 sur M3 et vérifié propre, HEAD = upstream = distant, divergence `0/0`, avant
 création de `FridaV1-Document-Workshop-M4`. Le hash M4 et les contrôles du push
 sont rapportés après livraison dans le retour final ; aucune fusion vers main.
-Autorité : [roadmap](../../todo-todo/product/frida-v1-document-workshop-todo.md),
+Autorité : [roadmap](../../todo-done/product/frida-v1-document-workshop-todo.md),
 §§3.3–3.7, 3.10–3.16, 4–7 et M4 ; [M0](frida-v1-document-workshop-m0-contract.md),
 [M1](frida-v1-document-workshop-m1-contract.md), [M2](frida-v1-document-workshop-m2-contract.md)
 et [M3](frida-v1-document-workshop-m3-contract.md).

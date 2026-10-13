@@ -1,5 +1,12 @@
 # Atelier documentaire Frida V1 — contrat M2
 
+**Actualisation documentaire Z — 13 octobre 2026 :** code et prérequis M1–M8-A
+livrés via M8-A le 10 octobre ; DOCX puis PDF activés par M9-A/M10. Le premier
+palier est clos sur preuves acquises, selon le
+[bilan et les limites Z](../../todo-done/product/frida-v1-document-workshop-todo.md#bilan-de-clôture-z--13-octobre-2026).
+Les mentions d'inactivité, migration/runtime ouverts ou lots non commencés dans
+les remises datées ci-dessous sont historiques. Aucune recette live ajoutée.
+
 ## Évolution M7 — 7 octobre 2026
 
 La cible Markdown explicitement sélectionnée est lue fraîchement par M2 avant préparation et avant PUT. Une source de lecture reste distincte ; source et cible identiques partagent une seule observation lors de la préparation. Le propriétaire et l’identité de l’inventaire commun sont conservés. Voir le [contrat M7](frida-v1-document-workshop-m7-contract.md) et son relevé daté. Code et preuves isolées ; migration opérateur, rebuild, préconditions Nextcloud et Versions réels restent ouverts sous GO distinct. M8-C et suivants non commencés. Les sections précédentes ci-dessous gardent leur périmètre et leurs résultats historiques datés.
@@ -30,7 +37,7 @@ historiques) ; P2-M2-02 corrigé séparément sur Exports/Images/Notes,
 P2-M2-04 backend corrigé séparément (713/713 historiques) ; P2-M2-05 corrigé
 séparément sur le résumé de réconciliation (716/716) ;
 livraison runtime ouverte. Le retour final porte la livraison Git dédiée.
-La [roadmap](../../todo-todo/product/frida-v1-document-workshop-todo.md#m2--adoption-et-lecture-distante-ciblées)
+La [roadmap](../../todo-done/product/frida-v1-document-workshop-todo.md#m2--adoption-et-lecture-distante-ciblées)
 reste l'unique spécification et porte les commandes, résultats et dispositions
 des contre-audits. M2 part de M1 corrigé `c6f648ba`. Migration opérateur,
 rebuild et lecture DAV déployée exigent une autorisation distincte. M3–M10 et Z
@@ -327,7 +334,7 @@ exit 0, zéro skip. La première comparaison Chromium 94/95 (garde chat dépenda
 d’une temporisation de fixture) reste documentée ; reprise des mêmes modules en
 série, sans changer fixture ni assertion. Les commandes exactes, durées, codes
 de sortie, contre-audit et nettoyage figurent dans la
-[correction P2-M2-01](../../todo-todo/product/frida-v1-document-workshop-todo.md#correction-indépendante-p2-m2-01--5-octobre-2026).
+[correction P2-M2-01](../../todo-done/product/frida-v1-document-workshop-todo.md#correction-indépendante-p2-m2-01--5-octobre-2026).
 
 À la livraison P2-M2-01, deux findings frontend hérités restaient ouverts
 **hors de ce correctif**, avant le lot P2-M2-03 décrit ci-dessous :
@@ -386,7 +393,7 @@ simulaient pas ce listing ajoutent seulement sa réponse nominale vide valide.
 Le cas chat temporisé conserve timers et assertions, ainsi que le résultat
 historique 94/95 dans la provenance P2-M2-01. Résultats, sélecteurs, durées,
 exits et contre-audit figurent dans la
-[correction P2-M2-03](../../todo-todo/product/frida-v1-document-workshop-todo.md#correction-indépendante-p2-m2-03--5-octobre-2026).
+[correction P2-M2-03](../../todo-done/product/frida-v1-document-workshop-todo.md#correction-indépendante-p2-m2-03--5-octobre-2026).
 
 **Limite serveur constatée à la livraison P2-M2-03.** P2-M2-04 restait
 ouvert : le store convertissait une exception DB/sérialisation en `[]`, puis
@@ -408,7 +415,7 @@ suivent les routes existantes : `exports`, `generated_images`, `items` pour
 Notes. Trois preuves Chromium montées exercent les vrais boutons de création,
 le POST simulé unique et le rendu final ; aucune preuve Images/Notes n'est
 inférée de la seule inspection Exports. Résultats et commandes sont dans la
-[correction P2-M2-02](../../todo-todo/product/frida-v1-document-workshop-todo.md#correction-indépendante-p2-m2-02--5-octobre-2026).
+[correction P2-M2-02](../../todo-done/product/frida-v1-document-workshop-todo.md#correction-indépendante-p2-m2-02--5-octobre-2026).
 
 Chaque famille conserve ses Maps de données/statut chez `chat_threads_sidebar`.
 Un token opaque par famille ET répertoire coordonne le lecteur individuel et
@@ -514,7 +521,7 @@ reste fondée sur le snapshot initial, sans nouvelle relecture. Le consommateur
 Documents dynamique conserve sa frontière d'erreur existante
 `folder_document_existing_inventory_failed`, avant DAV ; son test est renforcé
 avec le vrai wrapper/store. Tous les appelants recensés sont décrits dans la
-[correction P2-M2-04](../../todo-todo/product/frida-v1-document-workshop-todo.md#correction-indépendante-p2-m2-04--5-octobre-2026).
+[correction P2-M2-04](../../todo-done/product/frida-v1-document-workshop-todo.md#correction-indépendante-p2-m2-04--5-octobre-2026).
 
 Le frontend P2-M2-03 reste inchangé. Une fixture capturée du vrai Flask/store est
 comparée aux réponses réelles par le test Python puis utilisée par Chromium :
@@ -571,7 +578,7 @@ isolé**, zéro skip, 43 sélecteurs inchangés : 713 historiques conservés (do
 12 cas préexistants du voisin renommage), trois cas Python ajoutés. Avant patch,
 contrôle vert et rouge causal ; après patch, six cas ciblés et 103 voisins verts.
 Commandes exactes, durées, résultats et nettoyage dans la
-[correction P2-M2-05](../../todo-todo/product/frida-v1-document-workshop-todo.md#correction-indépendante-p2-m2-05--5-octobre-2026).
+[correction P2-M2-05](../../todo-done/product/frida-v1-document-workshop-todo.md#correction-indépendante-p2-m2-05--5-octobre-2026).
 
 P2-M2-05 est fermé sur code/preuves ; aucun finding indépendant ajouté au lot.
 Les DB/DAV du ciblé sont synthétiques, PostgreSQL de comparaison est réel et

@@ -1,9 +1,16 @@
 # Atelier documentaire — contrat Writer M8-C v1
 
+**Actualisation documentaire Z — 13 octobre 2026 :** code et prérequis M1–M8-A
+livrés via M8-A le 10 octobre ; DOCX puis PDF activés par M9-A/M10. Le premier
+palier est clos sur preuves acquises, selon le
+[bilan et les limites Z](../../todo-done/product/frida-v1-document-workshop-todo.md#bilan-de-clôture-z--13-octobre-2026).
+Les mentions d'inactivité, migration/runtime ouverts ou lots non commencés dans
+les remises datées ci-dessous sont historiques. Aucune recette live ajoutée.
+
 Date : 7 octobre 2026. Base M7 exacte : `750180fa8595b53c7e188017c9c62be1ae9943fc`,
 parent M6 `b00eb95001755295dcc301232272a8070d26cd78`. Branche
 `FridaV1-Document-Workshop-M8-C`, créée avant édition. Autorité : mandat M8-C de
-Tof et [roadmap](../../todo-todo/product/frida-v1-document-workshop-todo.md),
+Tof et [roadmap](../../todo-done/product/frida-v1-document-workshop-todo.md),
 §§3.9–3.17, M8-C et section 9. Ce document est la remise commune à Sauron.
 Statut courant au 10 octobre 2026 : **M8-C fermé sur contrat, code et preuves isolées ; M8-S fermé après contre-audit Codex favorable transmis par Tof.**
 P2-M8C-AUD-01 et P2-M8C-AUD-02 restent fermés après contre-audits indépendants.

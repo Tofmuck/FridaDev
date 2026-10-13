@@ -1,10 +1,15 @@
 # Atelier documentaire — M9-B, DOCX externe simple
 
+**État courant au 13 octobre 2026 :** M9-A/M9-B/M10 restent fermés ; Z est clos
+documentairement selon le [bilan archivé](../../todo-done/product/frida-v1-document-workshop-todo.md#bilan-de-clôture-z--13-octobre-2026).
+Les remises et clôtures successives ci-dessous conservent leur chronologie et
+leurs limites ; aucun nouveau test ni canari dans Z.
+
 13 octobre 2026. Base exacte `0781f0014e291d84562bfd36cefc1418575f6318`,
 branche `FridaV1-Document-Workshop-M9-B`. M9-A reste fermé.
 **M9-B fermé le 13 octobre 2026**, après contre-audits Codex favorables du code
 et du runtime livré ; clôture autorisée par Tof sur preuves acquises, sans nouveau test ni canari.
-[Mandat et critères](../../todo-todo/product/frida-v1-document-workshop-todo.md#m9-b--retravail-docx-externe-avec-fidélité-honnête),
+[Mandat et critères](../../todo-done/product/frida-v1-document-workshop-todo.md#m9-b--retravail-docx-externe-avec-fidélité-honnête),
 [commandes, IDs exacts et exits](../baselines/document-workshop/frida-v1-document-workshop-m9b-20261013.json).
 
 ## Raccord minimal
@@ -86,6 +91,6 @@ Le runtime a depuis été livré par Sauron puis contre-audité par Codex : imag
 `f31d02e67af2…`, code `df6b6afbd321f2dbd8772b1fb271067abc6c96ac`, renderer inchangé.
 Les 36 tests Codex antérieurs, deux SQL Sauron et seul navigateur de reprise
 conservent leur attribution, sans rejeu dans cette clôture.
-[Clôture, provenance et limites](../../todo-todo/product/frida-v1-document-workshop-todo.md#clôture-m9-b-sur-preuves-acquises--13-octobre-2026).
+[Clôture, provenance et limites](../../todo-done/product/frida-v1-document-workshop-todo.md#clôture-m9-b-sur-preuves-acquises--13-octobre-2026).
 Aucune recette externe live ni fidélité Word universelle revendiquée.
 **M9-B fermé ; M10 et Z non commencés.**

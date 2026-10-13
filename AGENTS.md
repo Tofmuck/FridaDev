@@ -207,7 +207,7 @@ qualitatif de Tof ont ete valides hors voiture puis en usage automobile le
 
 Exception produit explicite et strictement bornee decidee par Tof le
 29 septembre 2026 : l'atelier documentaire Frida V1 est autorise selon la
-[roadmap active](app/docs/todo-todo/product/frida-v1-document-workshop-todo.md),
+[roadmap archivée](app/docs/todo-done/product/frida-v1-document-workshop-todo.md),
 lots M0 a M10 et Z. Cette exception couvre la lecture et l'adoption ciblees
 d'un fichier explicitement mobilise ; la preparation puis la creation,
 modification ou copie explicitement demandee de documents Markdown, DOCX et PDF

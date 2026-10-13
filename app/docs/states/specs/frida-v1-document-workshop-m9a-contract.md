@@ -1,22 +1,29 @@
 # Atelier documentaire — M9-A, DOCX Frida et pagination Writer
 
+**État courant au 13 octobre 2026 :** M9-A/M9-B/M10 restent fermés ; Z est clos
+documentairement selon le [bilan archivé](../../todo-done/product/frida-v1-document-workshop-todo.md#bilan-de-clôture-z--13-octobre-2026).
+Les remises et clôtures successives ci-dessous conservent leur chronologie et
+leurs limites ; aucun nouveau test ni canari dans Z.
+
 ## État courant — M9-A fermé, 13 octobre 2026
 
 Clôture autorisée par Tof sur les preuves déjà acquises : code et runtime
 contre-audités, création/copie/modification DOCX réussies dans Safari,
 préparation périmée invalidée sans seconde écriture. Téléchargement validé par
 Tof pour son usage du 12 octobre, sans nouveau rejeu Codex. La
-[note de clôture et les provenances](../../todo-todo/product/frida-v1-document-workshop-todo.md#clôture-m9-a-sur-preuves-acquises--13-octobre-2026)
+[note de clôture et les provenances](../../todo-done/product/frida-v1-document-workshop-todo.md#clôture-m9-a-sur-preuves-acquises--13-octobre-2026)
 fixe la portée exacte et remplace les états transitoires historiques ci-dessous.
 
-Code runtime `469e30fc…`, image FridaDev `d5e013b8a978…`, Writer `7a61bd805ca0…`.
+Runtime de référence de la clôture M9-A : code `469e30fc…`, image FridaDev
+`d5e013b8a978…`, Writer `7a61bd805ca0…`.
 Aucun test ni canari exécuté pour cette clôture documentaire. Le 412 et la
 continuité gardent leurs preuves isolées ; pas de 412 live, de récupération
 Versions ni de tour de continuité supplémentaire revendiqués. OBS-M9A-PREP-01
 devient une réserve historique non bloquante ; causes initiales inconnues
 conservées. Gardes et confirmations humaines inchangées. [M9-B](frida-v1-document-workshop-m9b-contract.md)
-est désormais implémenté sur code/preuves isolées, en attente de contre-audit
-et non déployé ; M10/Z non commencés, PDF public fermé.
+et [M10](frida-v1-document-workshop-m10-contract.md) sont depuis fermés sur code
+et runtime contre-audités ; PDF livré via M10. Z clôt documentairement le palier
+sur preuves acquises, sans nouvelle recette live.
 
 
 ## Historique — précondition de copie M9-A, 12 octobre 2026
@@ -89,7 +96,7 @@ de Tof dans ce lot. M9-B/M10 hors périmètre.
 
 11 octobre 2026. Branche `FridaV1-Document-Workshop-M9-A`, issue du commit
 documentaire M8-A poussé `1b14e7dcdf68030c2d1df139eb9ee4c5f825143d`.
-Mandat : [roadmap M9-A](../../todo-todo/product/frida-v1-document-workshop-todo.md#m9-a--docx-frida-createcopyupdate-et-pagination-writer).
+Mandat : [roadmap M9-A](../../todo-done/product/frida-v1-document-workshop-todo.md#m9-a--docx-frida-createcopyupdate-et-pagination-writer).
 **Code M9-A initial et runtime, puis runtime d'observabilité, contre-audités
 favorablement par Codex le 11 octobre. Correctif `duplicate_stop` ensuite
 livré et contre-audité favorablement sur runtime par Codex, selon Tof.

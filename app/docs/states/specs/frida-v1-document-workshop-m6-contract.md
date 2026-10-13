@@ -1,5 +1,12 @@
 # Atelier documentaire Frida V1 — contrat M6
 
+**Actualisation documentaire Z — 13 octobre 2026 :** code et prérequis M1–M8-A
+livrés via M8-A le 10 octobre ; DOCX puis PDF activés par M9-A/M10. Le premier
+palier est clos sur preuves acquises, selon le
+[bilan et les limites Z](../../todo-done/product/frida-v1-document-workshop-todo.md#bilan-de-clôture-z--13-octobre-2026).
+Les mentions d'inactivité, migration/runtime ouverts ou lots non commencés dans
+les remises datées ci-dessous sont historiques. Aucune recette live ajoutée.
+
 ## Évolution M7 — 7 octobre 2026
 
 Les cartes, le GET, le propriétaire d’inventaire et la lane tardive existants portent maintenant aussi update. La preuve historique conserve les octets de sa révision ; le lien fichier suit la révision courante complète. Les cinq parcours natifs et dix à transport simulé M6 restent conservés. Voir le [contrat M7](frida-v1-document-workshop-m7-contract.md) et son relevé daté. Code et preuves isolées ; migration opérateur, rebuild, préconditions Nextcloud et Versions réels restent ouverts sous GO distinct. M8-C et suivants non commencés. Les sections précédentes ci-dessous gardent leur périmètre et leurs résultats historiques datés.
@@ -8,7 +15,7 @@ Date : 2026-10-07. Périmètre : code et preuves isolées du parcours Markdown
 create/copy. Livraison runtime, migrations opérateur, rebuild, canari DAV et
 modèle réel restent ouverts. M7 reste non commencé.
 
-Autorité : [roadmap active](../../todo-todo/product/frida-v1-document-workshop-todo.md#m6--markdown-createcopy-reçu-et-continuité),
+Autorité : [roadmap archivée](../../todo-done/product/frida-v1-document-workshop-todo.md#m6--markdown-createcopy-reçu-et-continuité),
 mandat M6 du 7 octobre et [contrat M5](frida-v1-document-workshop-m5-contract.md).
 Branche nouvelle `FridaV1-Document-Workshop-M6`, créée avant édition depuis M5
 exact `6ea19f93bab0c1fb14fd4465ddc449f60f1531e4`, parent M4 exact
