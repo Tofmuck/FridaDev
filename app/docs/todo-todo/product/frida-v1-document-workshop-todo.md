@@ -5174,6 +5174,22 @@ Limite conservée : sous le Chromium du harnais, le nom Unicode téléchargé de
 hors delta PDF. Nom ASCII navigateur et identité Unicode serveur prouvés ;
 Safari matériel non éprouvé. Contre-audit Codex attendu avant livraison runtime.
 
+**Erratum P3-M10-AUD-01 — 13 octobre 2026.** Le
+[relevé M10](../../states/baselines/document-workshop/frida-v1-document-workshop-m10-20261013.json)
+dupliquait le nom de méthode dans `baseline.test_ids` (24), `final.python_ids`
+(52) et `final.schema_ids` (4) : **80 occurrences documentaires**, pas 80 tests
+distincts. Listes rectifiées par collecte des vrais `TestCase.id()` : baseline
+sur archive RO du parent `dcbd3e7540fbc6414defad9bf913c2470a3f6d38`, noms anciens
+conservés ; final sur archive RO du code M10 `82865d94efca8a43bb8a91a6834b407b95fc8fd8`.
+Chargements **24/52/4, exits 0** : unicité, un test par ID, `id()` exact et égalité
+aux sélections ; zéro erreur ou `_FailedTest`. **Zéro test ou fixture exécuté.**
+Les deux IDs navigateur, commandes, durées, exits, incidents et résultats
+historiques restent inchangés. Les **58 tests indépendants verts** (52 Python,
+4 schéma, 2 Chromium) communiqués par Tof restent attribués au **contre-audit
+Codex**, sans rejeu ni attribution à cette correction documentaire.
+M9-A/M9-B restent fermés ; runtime et clôture globale M10 ouverts, Z non commencé.
+Code audité, renderer et runtime inchangés ; arrêt pour contre-audit de l'erratum.
+
 ### Z — Clôture bornée
 
 **Objectif :** fermer le premier palier sans chantier permanent.
