@@ -1,6 +1,6 @@
 # Atelier documentaire agentique Frida V1 — spécification validée et roadmap
 
-Date : 2026-09-29. Dernière décision : M9-B autorisé le 2026-10-13 pour le raccord applicatif DOCX externe simple et ses preuves isolées, sans déploiement ni canari. M9-A reste fermé sur les preuves acquises le même jour. Historique des livraisons et incidents conservé dans les lots ci-dessous.
+Date : 2026-09-29. Dernière décision : livraison FridaDev seule de M9-B autorisée le 2026-10-13 après contre-audit applicatif Codex favorable ; candidate construite, arrêt avant bascule sur échec de montage du runner navigateur. M9-A reste fermé. Aucun canari, M10/Z non commencés ; historique des preuves et incidents conservé.
 
 Statut : **spécification et choix architecturaux validés par Tof ; M0 fermé sur
 composants et preuves internes, contre-audit corrigé sur `FridaV1-Document-Workshop-M0` ;
@@ -18,7 +18,7 @@ M4 livré sur code, P2-M4-01 et P2-M4-02 fermés après contre-audits indépenda
 P3-M4-03 corrigé par erratum documentaire (1 198 déclarés conservés et rectifiés,
 sélection publiée à 1 414, 21 identifiants réutilisables validés) ;
 M4 non intégralement fermé ;
-M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées ; M7 fermé sur code/preuves isolées et contre-audit ; code/migrations M1–M7 livrés via M8-A, recettes DAV/Versions ouvertes ; M8-C fermé après contre-audits indépendants AUD-01/AUD-02 ; M8-S fermé après contre-audit Codex favorable transmis par Tof ; M8-A fermé sur code et raccord runtime après contre-audit Codex favorable du 10 octobre transmis par Tof ; M9-A fermé le 13 octobre 2026 sur code, runtime et recette acceptée par Tof ; création, copie et modification DOCX réelles réussies, préparation périmée invalidée sans seconde écriture, téléchargement validé par Tof. OBS-M9A-PREP-01 conservée comme réserve historique non bloquante, causes initiales non reconstruites ; M9-B implémenté sur code et preuves isolées, en attente de contre-audit ; M10 et Z non commencés. Le runtime reste M9-A ; retravail externe M9-B non déployé, PDF public fermé**.
+M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées ; M7 fermé sur code/preuves isolées et contre-audit ; code/migrations M1–M7 livrés via M8-A, recettes DAV/Versions ouvertes ; M8-C fermé après contre-audits indépendants AUD-01/AUD-02 ; M8-S fermé après contre-audit Codex favorable transmis par Tof ; M8-A fermé sur code et raccord runtime après contre-audit Codex favorable du 10 octobre transmis par Tof ; M9-A fermé le 13 octobre 2026 sur code, runtime et recette acceptée par Tof ; création, copie et modification DOCX réelles réussies, préparation périmée invalidée sans seconde écriture, téléchargement validé par Tof. OBS-M9A-PREP-01 conservée comme réserve historique non bloquante, causes initiales non reconstruites ; M9-B contre-audité sur code (36 IDs Codex), candidate construite mais livraison arrêtée avant bascule ; M10 et Z non commencés. Le runtime reste M9-A ; retravail externe M9-B non déployé, PDF public fermé**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
 dialogue avec Tof. Création documentaire committée dans `d6b63fd1`, puis validation
@@ -4961,8 +4961,10 @@ Ces lots restent non commencés et leur exécution exige leur GO distinct.
 
 ### M9-B — Retravail DOCX externe avec fidélité honnête
 
-**État au 13 octobre 2026 :** raccord applicatif et preuves isolées acquis ;
-contre-audit Codex, livraison runtime et éventuelle recette sous GO distinct ouverts.
+**État au 13 octobre 2026 :** raccord applicatif et contre-audit Codex favorables ;
+candidate construite, deux preuves PostgreSQL vertes, preuve navigateur non exécutée
+(Docker 125 avant Node). Livraison arrêtée avant bascule ; contre-audit de cet arrêt
+attendu, reprise et éventuelle recette sous mandat distinct.
 M9-A reste fermé. [Contrat M9-B](../../states/specs/frida-v1-document-workshop-m9b-contract.md)
 et [relevé ciblé](../../states/baselines/document-workshop/frida-v1-document-workshop-m9b-20261013.json).
 
@@ -5004,6 +5006,48 @@ Ces trois altérations ne sont pas des imports effectivement réparés par Write
 Aucun nouveau moteur, validateur OOXML applicatif, migration, workflow ou service.
 Aucun appel modèle/DAV live ; les réponses synthétiques ne prouvent pas
 l'obéissance future d'OpenRouter. **ARRÊT POUR CONTRE-AUDIT CODEX.**
+
+#### Contre-audit applicatif et tentative runtime Sauron — 13 octobre 2026
+
+Codex a rejoué **36 IDs distincts verts : 33 Python/PostgreSQL et 3 Chromium**,
+exits 0, 156,863 s et 53,250 s. Les quatre tests de schéma restent attribués à
+l'agent applicatif ; aucun nouveau total global ou rejeu général revendiqué.
+
+Sauron a construit hors réseau la candidate
+`sha256:f31d02e67af28266117f5d31cb3f3f719c80ae865817de988dba8fb5014cd9ed` depuis le code exact
+`df6b6afbd321f2dbd8772b1fb271067abc6c96ac`, parent 0781f001 : 1 510 fichiers Git,
+20 distributions inchangées, 25 couches source conservées, cinq propriétaires
+runtime extraits de l'image puis vérifiés. Aucun correctif applicatif/migration.
+Comparateur qualifié 6/6, collectes des deux IDs Python et du seul ID navigateur conformes.
+
+Une exécution des IDs DocxM9APostgresqlTests
+`test_m9b_external_update_real_pair_stable_identity_origin_and_subsequent_revision`
+et `test_missing_or_desynchronized_frida_provenance_refuses_preparation` :
+**2/2, exit 0/27,121 s**, PostgreSQL et Writer éphémères qualifiés, modèle/DAV synthétiques.
+
+Le cas `M9-B native external DOCX target-only warning before click, update and stale refusal`
+**n'a pas été exécuté** : Docker exit 125/0,134 s avant Node. La racine source
+était montée RO sur /workspace et la destination du bind imbriqué node_modules
+n'existait pas. La collecte montait seulement app et ne couvrait pas ce montage.
+Cause d'orchestration Sauron, aucun défaut produit établi ; aucun correctif/retry.
+Les deux autres cas navigateur étaient exclus, sans être comptés verts ou en échec.
+
+**Aucune bascule.** Image active `sha256:d5e013b8a978765aa96d07ec930c1aeda72f52e52cc5a66878e80387325149b5`,
+code `469e30fcfb98381a5e2a6749164f310f2c367b0c`, ID/démarrage inchangés, healthy/restart 0.
+33 conteneurs durables, Writer/pins/montages/droits et dix tables/241 événements
+invariants. Backup frais image active/Compose root-only, quatre SHA vérifiés,
+sans dump DB. Jetables/sockets/build/helpers possédés retirés ; images et caches conservés.
+Preuves et cause : `/opt/platform/backups/fridadev-m9b-runtime-20261013T121315Z`.
+Seule cette roadmap est éditée côté application ; son futur commit documentaire
+ne change ni le code candidat df6b6af ni le code actif 469e30fc.
+
+- [x] Contre-audit code Codex reçu avec attribution 36 distincts.
+- [x] Candidate exacte construite, deux preuves PostgreSQL acquises et échec de montage conservé.
+- [ ] Contre-audit Codex de l'arrêt ; reprise navigateur/livraison sous nouveau mandat.
+
+M9-A reste fermé ; OBS-M9A-PREP-01 historique non bloquant, causes initiales
+non reconstruites. M9-B reste ouvert ; aucune acceptation OpenRouter, fidélité
+Word universelle ou recette canari qualifiée ici. **ARRÊT POUR CONTRE-AUDIT CODEX.**
 
 ### M10 — PDF Writer, source externe et intégration finale des formats
 
@@ -5467,8 +5511,10 @@ sans nouveau test ni canari dans la clôture. Création/copie/modification réel
 invalidation de préparation périmée et téléchargement validé par Tof sont
 consignés dans la note de clôture M9-A ; les preuves et incidents historiques
 ci-dessus restent conservés. OBS-M9A-PREP-01 est une réserve historique non
-bloquante, sans prétendre reconstruire ses premières causes. M9-B est implémenté sur code et preuves isolées, en attente de contre-audit
-et non déployé ; M10/Z non commencés, PDF public fermé.
+bloquante, sans prétendre reconstruire ses premières causes. M9-B est contre-audité sur code
+et construit en candidate ; la preuve navigateur a été arrêtée avant Node sur une
+erreur de montage du runner. Runtime inchangé, livraison non effectuée ;
+contre-audit de l’arrêt attendu. M10/Z non commencés, PDF public fermé.
 Actualisation runtime du 10 octobre : code et migrations M1–M7 livrés par le
 raccord M8-A ; les réserves de recette produit/DAV/Versions restent ouvertes.
 Les mentions de runtime ouvert dans les récits historiques décrivent leurs
