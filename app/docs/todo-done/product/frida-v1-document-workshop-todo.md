@@ -4,7 +4,9 @@ Date : 2026-09-29. Clôture documentaire bornée Z : **2026-10-13**, sous mandat
 explicite de Tof, sur les preuves acquises. M0–M10 et Z clos dans ce périmètre ;
 aucun nouveau test, collecte de tests, canari ou changement runtime. Le
 [bilan Z](#bilan-de-clôture-z--13-octobre-2026) porte les preuves, leurs auteurs
-et les limites acceptées ; contre-audit Codex de cette clôture documentaire attendu.
+et les limites acceptées. Contre-audit Codex favorable acquis le 13 octobre ;
+**clôture définitive de l’atelier documentaire Frida V1 autorisée par Tof**
+dans ce périmètre, sans nouveau test ni canari.
 
 État courant : préparation/confirmation/publication Markdown, DOCX et PDF
 livrées. M4/M6 ne sont plus des étapes produit inactives : M5/M6/M7 et les
@@ -5435,13 +5437,33 @@ n'est cochée ni rendue implicitement obligatoire pour fermer Z.
 finding bloquant vivant n'est consigné dans les clôtures et correctifs consultés.
 Cette conclusion est documentaire, sans audit produit ou runtime supplémentaire.
 Les limites ci-dessus restent acceptées ; elles n'ouvrent aucun nouveau chantier.
-M9-A/M9-B/M10 restent fermés. Arrêt pour contre-audit Codex de la clôture Z.
+M9-A/M9-B/M10 restent fermés. Contre-audit Codex favorable acquis ci-dessous ;
+clôture définitive autorisée par Tof.
 
 Contrôles documentaires Z : 324 renvois locaux/ancres vérifiés, dont 59 vers
 l'archive ; une ancre M9-A préexistante corrigée. Quatre références de rapports
 du poste d'ingénierie conservées sans lecture locale revendiquée. Les 26 blocs
 de commandes et 35 sous-relevés datés sont préservés (seule cette ancre de
 navigation change) ; relevés bruts, code, tests et migrations inchangés.
+
+
+#### Contre-audit Codex favorable et clôture définitive — 13 octobre 2026
+
+Contre-audit indépendant du commit Z `7db717b34b1a45ec1cc71b90d68ec8be0d7fa070`,
+parent `6a2d60c25e28570ee61cf69e86a9e5bbea5a9576` : **aucun finding bloquant confirmé**.
+Codex a vérifié les 17 fichiers documentaires, les 324 renvois/ancres et les
+26 blocs de commandes historiques ; code/tests/migrations inchangés. Les
+33 conteneurs étaient inchangés, FridaDev et Writer healthy. Aucun test ni
+canari exécuté pendant ce contre-audit ; les preuves antérieures gardent leurs auteurs.
+Rapport durable : `/Users/tof/codex-fridadev/audits/2026-10-13-z-counteraudit/rapport.md`.
+
+Sur ce verdict, Tof autorise le report et la **clôture définitive du premier
+palier de l’atelier documentaire Frida V1**. Les limites du §11 sont maintenues :
+PDF live/Safari, nom Unicode téléchargé, Versions non exercées, causes historiques
+inconnues et preuves physiques héritées. Elles ne deviennent ni des succès
+supplémentaires ni des travaux implicites. Aucun correctif ou lot complémentaire
+requis pour cette clôture ; présent report documentaire seul, sans nouveau test,
+canari ou changement runtime. Arrêt après commit/push et vérification Git.
 
 ## 9. Architecture serveur Writer/UNO et preuves à livrer
 
@@ -5895,8 +5917,10 @@ Sauron isolées ; PDF disponible avec schéma/session/pins attendus. Clôture
 autorisée par Tof sans nouveau test ni canari ; limites PDF live et Unicode
 conservées dans la note de clôture M10. **Z fermé documentairement le 13 octobre
 sur preuves acquises**, selon son mandat distinct, sans nouveau test ni canari.
-Cette même roadmap est archivée sous `app/docs/todo-done/product/` ; le contre-audit
-Codex de sa clôture reste attendu. Aucun lot suivant.
+Cette même roadmap reste archivée sous `app/docs/todo-done/product/`. Le
+contre-audit Codex de Z est favorable ; **clôture définitive de l’atelier V1
+autorisée par Tof le 13 octobre**, dans le périmètre et avec les limites acceptés.
+Aucun nouveau test ni canari, aucun lot suivant.
 Actualisation runtime : code/migrations M1–M7 livrés via M8-A le 10 octobre,
 DOCX via M9-A puis PDF via M10 le 13 octobre. Les réserves live/Versions sont
 les limites acceptées du §11, pas des tâches implicites de Z.
