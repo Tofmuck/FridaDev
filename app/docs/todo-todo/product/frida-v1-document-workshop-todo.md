@@ -1,6 +1,6 @@
 # Atelier documentaire agentique Frida V1 — spécification validée et roadmap
 
-Date : 2026-09-29. Mise à jour M0–M2 : 2026-10-05 ; M3/M4/M5 : 2026-10-06 ; M6 : 2026-10-07 ; M8-S plateforme/clôture et M8-A applicatif : 2026-10-10 ; reprise M9-A et arrêt initial du harnais : 2026-10-11 ; harnais corrigé, contrat de sortie et diagnostic des rejets livrés dans FridaDev, contre-audit runtime Codex favorable attribué, préparation réussie puis confirmation interceptée par Authelia, correctif M9A-CONFIRM-REAUTH-01 contre-audité sur code, P3 fermé par Codex, livré par Sauron dans FridaDev seul ; création réelle ensuite acquise selon Codex, copie rejetée avant confirmation ; correctif de précondition de copie contre-audité sur code par Codex et livré dans FridaDev seul, contre-audit runtime Codex attendu : 2026-10-13.
+Date : 2026-09-29. Dernière décision : clôture M9-A le 2026-10-13, sur preuves déjà acquises et validation utilisateur du téléchargement ; aucun nouveau test ni canari. Historique des livraisons et incidents conservé dans les lots ci-dessous.
 
 Statut : **spécification et choix architecturaux validés par Tof ; M0 fermé sur
 composants et preuves internes, contre-audit corrigé sur `FridaV1-Document-Workshop-M0` ;
@@ -18,7 +18,7 @@ M4 livré sur code, P2-M4-01 et P2-M4-02 fermés après contre-audits indépenda
 P3-M4-03 corrigé par erratum documentaire (1 198 déclarés conservés et rectifiés,
 sélection publiée à 1 414, 21 identifiants réutilisables validés) ;
 M4 non intégralement fermé ;
-M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées ; M7 fermé sur code/preuves isolées et contre-audit ; code/migrations M1–M7 livrés via M8-A, recettes DAV/Versions ouvertes ; M8-C fermé après contre-audits indépendants AUD-01/AUD-02 ; M8-S fermé après contre-audit Codex favorable transmis par Tof ; M8-A fermé sur code et raccord runtime après contre-audit Codex favorable du 10 octobre transmis par Tof ; M9-A : code et runtime contre-audités favorablement par Codex le 11 octobre ; candidate renderer qualifiée déployée ; canari Safari arrêté avant confirmation sur `document_provider_incomplete` (OBS-M9A-PREP-01), cause non établie ; observabilité SSE livrée par Sauron et contre-auditée favorablement sur runtime par Codex ; seconde préparation bloquée sur `duplicate_stop`, correctif contre-audité favorablement sur code par Codex, livré par Sauron après correction ciblée du comparateur ; contre-audit runtime de la reprise favorable attribué à Codex ; nouvelle préparation échouée sur `document_envelope_invalid`, cause historique inconnue ; contrat de sortie et discriminants contre-audités sur code par Codex (167 IDs), arrêt initial du harnais conservé ; reprise autorisée du 12 octobre, harnais corrigé et trois cas ciblés conformes, candidate existante livrée dans FridaDev seul ; code alors livré `0552d701…` / image `1397bef58c50…`, contre-audit runtime favorable attribué à Codex le 12 octobre, préparation Safari réussie puis confirmation interceptée par Authelia ; reprise humaine M9A-CONFIRM-REAUTH-01 contre-auditée sur code (86 IDs), P3 fermé par Codex, livrée par Sauron dans FridaDev seul (code `8298209f…` / image `93bcf68a9d95…`) ; création réelle ensuite acquise selon Codex ; copie rejetée avant confirmation, enveloppe exacte inconnue ; correctif de précondition de copie `469e30fc…` contre-audité sur code par Codex (14 IDs), livré par Sauron le 13 octobre (image `d5e013b8a978…`, neuf cas ciblés), contre-audit runtime Codex attendu ; copie réelle et M9-A globalement ouverts ; M9-B/M10 et Z non commencés. FridaDev et le renderer sont livrés ; DOCX atelier disponible sous ses prérequis M9-A, PDF public et retravail DOCX externe fermés**.
+M5 fermé sur code/preuves hermétiques et contre-audit ; M6 implémenté sur code et preuves isolées ; M7 fermé sur code/preuves isolées et contre-audit ; code/migrations M1–M7 livrés via M8-A, recettes DAV/Versions ouvertes ; M8-C fermé après contre-audits indépendants AUD-01/AUD-02 ; M8-S fermé après contre-audit Codex favorable transmis par Tof ; M8-A fermé sur code et raccord runtime après contre-audit Codex favorable du 10 octobre transmis par Tof ; M9-A fermé le 13 octobre 2026 sur code, runtime et recette acceptée par Tof ; création, copie et modification DOCX réelles réussies, préparation périmée invalidée sans seconde écriture, téléchargement validé par Tof. OBS-M9A-PREP-01 conservée comme réserve historique non bloquante, causes initiales non reconstruites ; M9-B/M10 et Z non commencés. FridaDev et le renderer sont livrés ; DOCX atelier disponible sous ses prérequis M9-A, PDF public et retravail DOCX externe fermés**.
 
 Provenance : reconnaissance architecturale puis design consolidé dans le même
 dialogue avec Tof. Création documentaire committée dans `d6b63fd1`, puis validation
@@ -42,7 +42,7 @@ Une case cochée dans les décisions signifie « décidé par Tof », pas « liv
 Une case ouverte dans les critères ou les lots signifie « à implémenter ou prouver ».
 Les inconnues factuelles sont isolées en section 11. Seules les preuves datées
 dans M0–M4 décrivent des tests exécutés ou des déclarations historiques explicitement
-qualifiées ; M5–M8-A disposent de leurs relevés datés et attributions ci-dessous ; M9-A dispose de son relevé isolé du 11 octobre ; M9-B/M10 restent des preuves futures. L'erratum P3-M4-03
+qualifiées ; M5–M8-A disposent de leurs relevés datés et attributions ci-dessous ; M9-A dispose de son relevé isolé du 11 octobre et de sa clôture du 13 octobre sur les preuves acquises ; M9-B/M10 restent des preuves futures. L'erratum P3-M4-03
 ci-dessous distingue les nouveaux rejeux des résultats antérieurs.
 Une clôture code/preuves ne ferme pas migration opérateur, rebuild ou preuve DAV déployée.
 
@@ -913,7 +913,7 @@ M6 raccorde le parcours réel avec preuves isolées, code livré via M8-A sans c
 M7 est fermé sur code/preuves isolées et contre-audit ; code/migration livrés via
 M8-A, recettes DAV/Versions ouvertes. AUD-01 et AUD-02 fermés après contre-audits indépendants.
 **M8-C fermé sur contrat, code et preuves isolées ; M8-S fermé après contre-audit Codex favorable du 10 octobre transmis par Tof.**
-M8-A applicatif validé par contre-audit Codex ; raccord runtime livré par Sauron le 10 octobre. Clôture finale M8-A soumise au contre-audit Codex. M9/M10 et Z restent non commencés. Spécification et
+M8-A fermé après contre-audit du raccord runtime livré le 10 octobre. M9-A fermé le 13 octobre sur preuves acquises et recette acceptée ; M9-B/M10 et Z non commencés. Spécification et
 décisions amont sont validées et l'exception produit est inscrite.
 Le GO de chaque lot applicatif/plateforme reste préalable à son exécution ;
 les GO M0–M4 et P3-M4-03 ne valent pour aucun lot suivant ni déploiement.
@@ -4199,7 +4199,9 @@ executor et projection de carte ; aucune logique UNO dans le pipeline principal.
 Frida récupérée/validée temporairement, update If-Match sur même ID/nom.
 **Propriétaire :** Celebrimbor ; Sauron traite seulement une non-conformité plateforme prouvée.
 
-**État d'exécution — 12 octobre 2026 : M9-A initial et observabilité runtime contre-audités favorablement ; canari Safari bloqué avant confirmation (OBS-M9A-PREP-01), correctif `duplicate_stop` contre-audité favorablement sur code, reprise Sauron livrée et contre-audit runtime favorable attribué à Codex ; nouveau canari échoué sur `document_envelope_invalid`, règle exacte inconnue ; contrat de sortie strict et discriminants contre-audités favorablement sur code par Codex, 167 IDs distincts verts ; arrêt initial du harnais conservé, puis reprise autorisée du 12 octobre : amorçage corrigé et trois cas ciblés conformes, candidate existante livrée dans FridaDev seul ; contre-audit runtime favorable attribué à Codex le 12 octobre, préparation réelle réussie puis confirmation interceptée par Authelia ; correctif M9A-CONFIRM-REAUTH-01 contre-audité sur code (86 IDs), P3 fermé par Codex, livré par Sauron dans FridaDev seul ; contre-audit runtime Codex et recette Safari attendus, M9-A globalement ouvert.**
+**État courant — 13 octobre 2026 : M9-A fermé sur les preuves déjà acquises, après décision explicite de Tof. Clôture documentaire sans nouveau test, canari, appel modèle/DAV ni changement runtime. Voir la note de clôture en fin de ce lot.**
+
+**Historique des livraisons et incidents :** les mentions datées « ouvert », « attendu » ou « non déployé » ci-dessous décrivent leur étape d'alors ; elles ne remplacent pas cette décision courante.
 Reprise des 25 fichiers WIP autorisés sur la branche existante, HEAD documentaire
 M8-A `1b14e7dcdf68030c2d1df139eb9ee4c5f825143d` ; aucune clôture M8-A refaite,
 aucune absorption d'autre travail. Code livré par `9d423791cfd14a3611ecdb9047e8d840f667fbc7`,
@@ -4680,10 +4682,13 @@ Le code embarqué reste `0552d701…`, distinct du futur commit documentaire.
   écriture après échec de rendu ; conserver MD indépendant d'une panne Writer.
 - [x] Livrer le code audité, la migration explicite M9-A et la candidate/pins qualifiés ; vérifier identité, schéma, capacités et health réels.
 - [x] Prouver le raccord riche synthétique livré, gel/release, refus pins/identité et Markdown sans Writer ; préserver voisins et données opérateur.
-- [ ] Synchroniser formats/pagination/continuité ; rendu synthétique et canari DOCX
-  ont chacun leur GO, canari uniquement après gardes/compensations hermétiques.
-- [ ] Rebuild applicatif à livraison ; fermer create/copy/update, conflits réels,
-  correspondance canonical/rendu et reçu au tour suivant.
+- [x] Synchroniser formats/pagination/continuité sur les contrats et preuves acquis ;
+  rendu synthétique et canari DOCX ont eu leurs GO. Clôture du 13 octobre acceptée
+  sans nouveau tour de continuité live ; preuves isolées antérieures conservées.
+- [x] Livraison applicative et recette create/copy/update acquises ; correspondance
+  canonical/rendu/reçu vérifiée. Protection contre préparation périmée observée
+  par invalidation applicative ; 412 couvert en isolation, non provoqué live.
+  La décision ci-dessous remplace l'exigence de rejouer ces variantes en canari.
 
 #### M9A-CONFIRM-REAUTH-01 — reprise humaine après reconnexion, 12 octobre
 
@@ -4910,6 +4915,49 @@ absence vérifiée ; anciennes images, sauvegardes et caches partagés préserv�
 
 **Copie réelle, OBS-M9A-PREP-01 et M9-A restent ouverts ; M9-B/M10 non commencés.
 ARRÊT POUR CONTRE-AUDIT CODEX.**
+
+#### Clôture M9-A sur preuves acquises — 13 octobre 2026
+
+**Décision explicite de Tof : fermer M9-A et avancer, sans nouveau test ni canari.**
+Le périmètre utile est celui de son système mono-utilisateur : créer, copier et
+modifier ses DOCX Frida après confirmation humaine. Cette clôture ne modifie
+aucune garde, aucun refus ni capacité produit et ne clôt pas M9-B/M10/Z.
+
+Preuves déjà acquises, relues par Codex pour ce report, sans réexécution :
+
+| Étape | Provenance et résultat |
+| --- | --- |
+| Code/rendu isolés M9-A | Relevé du 11 octobre : 190 IDs de l'agent applicatif ; contre-audit indépendant Codex 28 cas, attribués séparément. DOCX riche, pagination 20/21, refus et 412 synthétique couverts. |
+| Runtime de précondition de copie | Sauron puis contre-audit Codex favorable du 13 octobre : code `469e30fc…`, image FridaDev `d5e013b8a978…` ; Writer `7a61bd805ca0…` préservé. Les neuf cas Sauron et 14 cas Codex antérieurs ne sont pas rejoués ni additionnés. |
+| Création Safari du 12 octobre | Action `d9e62817…`, reçu `689a41fe…` : confirmation humaine unique, un PUT réussi 201, fichier/lien et paire Writer d'une page cohérents. |
+| Copie Safari du 13 octobre | Action `3f37c2cb…`, reçu `1cba2bc3…` : original explicitement sélectionné comme source, une confirmation humaine, un PUT 201, copie publiée et original intact. Contrôle complet définitivement achevé après le geste humain, comme consigné dans le rapport. |
+| Modification Safari du 13 octobre | Action `5ce442b6…`, reçu `b155f30e…` : carte contrôlée avant confirmation, un PUT 204, même nom/fichier/identité Nextcloud, seul changement demandé dans le canonical, copie intacte. |
+| Préparation périmée du 13 octobre | Deux préparations depuis la même révision ; A `dc4c2e7d…` réussit après un clic humain unique ; B `0b79d267…` est invalidée avant confirmation, sans rendu/PUT/reçu. Aucun 412 live revendiqué. |
+| Téléchargement | Validation d'usage déclarée par Tof le 13 octobre, pour son essai du 12 octobre. Aucun nouveau téléchargement ni inspection binaire revendiqués par Codex. |
+
+Sources conservées sur le poste d'ingénierie `/Users/tof/codex-fridadev/` :
+`audits/2026-10-13-copy-precondition-runtime-counteraudit/rapport.md`,
+`audits/2026-10-12-m9a-confirmation-live-resume/rapport.md`,
+`audits/2026-10-13-m9a-copy-live/rapport.md`,
+`audits/2026-10-13-m9a-update-live/rapport.md` et
+`audits/2026-10-13-m9a-conflict-live/rapport.md` ; chacun conserve ses limites.
+Ces chemins désignent des preuves locales, pas des fichiers de ce dépôt.
+
+**Limites acceptées, non converties en nouveaux travaux M9-A :** la continuité
+conserve les preuves isolées déjà consignées, sans tour live supplémentaire ;
+le 412 reste une preuve isolée et la récupération Nextcloud Versions n'a pas
+été exercée. La fidélité universelle Word n'est pas promise. OBS-M9A-PREP-01
+est reclassée en réserve historique non bloquante au vu des préparations et
+publications réelles réussies après les corrections livrées : ses causes
+initiales inconnues restent inconnues, sans fausse attribution rétroactive.
+Aucun finding produit confirmé non corrigé n'est masqué par cette décision.
+
+Suite concrète : M9-B (DOCX externe simple et refus explicites), puis M10
+(publication PDF issue du même Writer), puis Z (consolidation des preuves et
+clôture finale). Réutiliser les preuves disponibles ; un contrôle supplémentaire
+doit répondre à un défaut observé, un risque concret pour les données ou une
+exigence utile non couverte, sans nouvelle campagne par simple ajout de cas.
+Ces lots restent non commencés et leur exécution exige leur GO distinct.
 
 ### M9-B — Retravail DOCX externe avec fidélité honnête
 
@@ -5391,11 +5439,13 @@ DAV/Versions ouvertes ; AUD-01 et AUD-02 fermés après contre-audits indépenda
 **M8-C fermé sur contrat, code et preuves isolées ; M8-S fermé après contre-audit Codex favorable du 10 octobre transmis par Tof.**
 M8-A fermé sur code et raccord runtime livré par Sauron, après contre-audits
 Codex favorables transmis par Tof le 10 octobre ; P3-M8A-RUNTIME-AUD-01 corrigé
-par le report documentaire déjà poussé `1b14e7dc…`. M9-A repris le 11 octobre :
-code `9d423791…` et contre-audit Codex favorable 28/28 ; blocage levé sur
-candidate qualifiée désormais déployée. Runtime contre-audité favorablement
-par Codex le 11 octobre, DOCX conditionnel disponible, PDF public/DOCX externe fermés ;
-canari Safari bloqué avant confirmation (OBS-M9A-PREP-01), cause du premier échec inconnue ; observabilité SSE livrée et contre-auditée sur runtime par Codex, second rejet `duplicate_stop` et correctif contre-audité favorablement sur code par Codex, livré par Sauron après correction ciblée du comparateur ; contre-audit runtime de la reprise favorable attribué à Codex ; nouvelle préparation échouée sur `document_envelope_invalid`, règle exacte inconnue ; contrat de sortie strict et discriminants contre-audités sur code par Codex (167 IDs verts), arrêt initial du harnais conservé ; reprise du 12 octobre, harnais corrigé et trois cas ciblés conformes, candidate existante livrée dans FridaDev seul ; code `0552d701…` / image `1397bef58c50…`, contre-audit runtime favorable attribué à Codex le 12 octobre, préparation réelle réussie puis confirmation interceptée par Authelia ; correctif de reprise humaine M9A-CONFIRM-REAUTH-01 contre-audité sur code (86 IDs), P3 fermé par Codex, livré par Sauron dans FridaDev seul (code `8298209f…` / image `93bcf68a9d95…`), création réelle ensuite acquise selon Codex, copie rejetée avant confirmation ; correctif de précondition de copie 469e30fc contre-audité sur code par Codex (14 IDs), livré par Sauron le 13 octobre dans FridaDev seul (image d5e013b8a978…, neuf cas ciblés), contre-audit runtime Codex attendu ; copie réelle, OBS-M9A-PREP-01 et clôture globale M9-A ouverts. M9-B/M10/Z non commencés.
+par le report documentaire déjà poussé `1b14e7dc…`. M9-A fermé le 13 octobre 2026 sur code, runtime et recette acceptée par Tof,
+sans nouveau test ni canari dans la clôture. Création/copie/modification réelles,
+invalidation de préparation périmée et téléchargement validé par Tof sont
+consignés dans la note de clôture M9-A ; les preuves et incidents historiques
+ci-dessus restent conservés. OBS-M9A-PREP-01 est une réserve historique non
+bloquante, sans prétendre reconstruire ses premières causes. M9-B/M10/Z restent
+non commencés ; PDF public et retravail DOCX externe non activés.
 Actualisation runtime du 10 octobre : code et migrations M1–M7 livrés par le
 raccord M8-A ; les réserves de recette produit/DAV/Versions restent ouvertes.
 Les mentions de runtime ouvert dans les récits historiques décrivent leurs

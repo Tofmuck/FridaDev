@@ -1,6 +1,24 @@
 # Atelier documentaire — M9-A, DOCX Frida et pagination Writer
 
-## État courant — précondition de copie M9-A, 12 octobre 2026
+## État courant — M9-A fermé, 13 octobre 2026
+
+Clôture autorisée par Tof sur les preuves déjà acquises : code et runtime
+contre-audités, création/copie/modification DOCX réussies dans Safari,
+préparation périmée invalidée sans seconde écriture. Téléchargement validé par
+Tof pour son usage du 12 octobre, sans nouveau rejeu Codex. La
+[note de clôture et les provenances](../../todo-todo/product/frida-v1-document-workshop-todo.md#clôture-m9-a-sur-preuves-acquises--13-octobre-2026)
+fixe la portée exacte et remplace les états transitoires historiques ci-dessous.
+
+Code runtime `469e30fc…`, image FridaDev `d5e013b8a978…`, Writer `7a61bd805ca0…`.
+Aucun test ni canari exécuté pour cette clôture documentaire. Le 412 et la
+continuité gardent leurs preuves isolées ; pas de 412 live, de récupération
+Versions ni de tour de continuité supplémentaire revendiqués. OBS-M9A-PREP-01
+devient une réserve historique non bloquante ; causes initiales inconnues
+conservées. Gardes et confirmations humaines inchangées. M9-B/M10/Z restent
+non commencés ; PDF public et retravail DOCX externe non activés.
+
+
+## Historique — précondition de copie M9-A, 12 octobre 2026
 
 **Correctif sur code, non déployé.** La création réelle antérieure reste
 acquise, selon Codex ; la copie réelle reste ouverte. Le
