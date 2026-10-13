@@ -19,7 +19,7 @@ def docx_dav():
                 return resource(path, href=PREFIX+quote(path, safe='/'))
             f = state['files'][path]
             return resource(path, collection=False, file_id=f['id'], etag=f['etag'], size=len(f['content']),
-                media_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                media_type='application/pdf' if path.endswith('.pdf') else 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                 href=PREFIX+quote(path, safe='/'))
 
         def reply(self):

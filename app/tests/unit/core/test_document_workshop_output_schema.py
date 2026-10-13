@@ -37,7 +37,7 @@ class DocumentOutputSchemaTests(unittest.TestCase):
     def test_all_statuses_operations_formats_blocks_and_rich_shapes(self):
         for status in ('prepared', 'clarify', 'refuse'):
             for operation in ('create', 'copy', 'update'):
-                for fmt, suffix in (('markdown', 'md'), ('docx', 'docx')):
+                for fmt, suffix in (('markdown', 'md'), ('docx', 'docx'), ('pdf','pdf')):
                     value = envelope(); value['status'] = status
                     proposal = value['proposal']
                     proposal.update(operation=operation, format=fmt, relative_path='Documents/Synthetic.' + suffix,
@@ -59,7 +59,7 @@ class DocumentOutputSchemaTests(unittest.TestCase):
                 cases.append(value)
         for key, bad in (('schema_version', True), ('schema_version', 2), ('status', 'other'), ('surface_text', 3)):
             value = envelope(); value[key] = bad; cases.append(value)
-        for key, bad in (('operation', 'delete'), ('format', 'pdf'), ('source_file_ids', [1]),
+        for key, bad in (('operation', 'delete'), ('format', 'odt'), ('source_file_ids', [1]),
                          ('limitations', ['other']), ('canonical', None)):
             value = envelope(); value['proposal'][key] = bad; cases.append(value)
         for bad in (dict(type='page_break', spans=None), dict(type='heading', level=7, spans=[]),

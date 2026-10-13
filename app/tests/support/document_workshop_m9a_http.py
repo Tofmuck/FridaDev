@@ -2,4 +2,5 @@
 from tests.support.document_workshop_m6_http import main
 
 if __name__ == "__main__":
-    main(m7=True,m9=True)
+    import os
+    main(m7=True,m9=True,m10=os.environ.get('M10_PROOF')=='1')

@@ -39,7 +39,7 @@ RECEIPT_MARKER = 'M6_RECEIPT_METADATA_SENTINEL'
 WORDS_MARKER = 'M6_REAL_DIALOGUE_SENTINEL'
 
 
-def main(*,m7=False,m9=False):
+def main(*,m7=False,m9=False,m10=False):
     if not os.environ.get('M5_PROOF_PG_SOCKET') or not os.environ.get('M6_PROOF_ROOT'):
         raise RuntimeError('dedicated proof environment required')
     stores=(conv_store,contexts,claims,actions,execution,workspace_files,workspace_folders,workspace_document_adoption_store,
@@ -52,6 +52,7 @@ def main(*,m7=False,m9=False):
         with fixture.conn() as db:
             db.execute(Path('/workspace/app/core/sql/document_workshop_update_m7.sql').read_text())
             if m9:db.execute(Path('/workspace/app/core/sql/document_workshop_docx_m9a.sql').read_text())
+            if m10:db.execute(Path('/workspace/app/core/sql/document_workshop_pdf_m10.sql').read_text())
     stack = ExitStack()
     dav_release, dav_arrived = threading.Event(), threading.Event()
     inventory_release, inventory_arrived = threading.Event(), threading.Event()
@@ -145,7 +146,7 @@ def main(*,m7=False,m9=False):
             if path in state['collections']: return resource(path,file_id=str(1000+sorted(state['collections']).index(path)),href=PREFIX+quote(path,safe='/'))
             file = state['files'][path]
             return resource(path,collection=False,file_id=file['id'],etag=file['etag'],
-                size=len(file['content']),media_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document' if path.endswith('.docx') else 'text/markdown',href=PREFIX+quote(path,safe='/'))
+                size=len(file['content']),media_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document' if path.endswith('.docx') else 'application/pdf' if path.endswith('.pdf') else 'text/markdown',href=PREFIX+quote(path,safe='/'))
 
     class Provider(BaseHTTPRequestHandler):
         def log_message(self,*_): pass
@@ -163,6 +164,8 @@ def main(*,m7=False,m9=False):
             proposal = dict(operation=state['operation'],format=state['document_format'],relative_path=state['next_path'],
                 source_file_ids=[state['copy_source']] if state['copy_source'] else [],limitations=[],canonical=value_canonical)
             value = dict(schema_version=1,status='prepared',surface_text='M6 réelle proposition courte.',proposal=proposal)
+            if m10 and state.get('clarify_pdf'):
+                value.update(status='clarify',surface_text='Créer un nouveau document sous quel nouveau nom, après sélection du PDF en lecture ?',proposal=None)
             lines = [dict(model='openai/gpt-5.1',choices=[dict(index=0,delta=dict(content=json.dumps(value,ensure_ascii=False)),finish_reason=None)]),
                      dict(model='openai/gpt-5.1',choices=[dict(index=0,delta={},finish_reason='stop')])]
             wire=(''.join('data: '+json.dumps(line,ensure_ascii=False)+'\n\n' for line in lines)+'data: [DONE]\n\n').encode()
@@ -292,9 +295,13 @@ def main(*,m7=False,m9=False):
             confirmation_transport['mode']=data['confirmation_transport']
         if m9 and 'external_docx_candidate' in data:
             state['external_docx_candidate']=data['external_docx_candidate']
+        if m10 and data.get('seed_external_pdf'):
+            from tests.unit.core.test_workspace_document_source_extraction_m2 import pdf_bytes
+            state['files']['Documents/External.pdf']=dict(content=pdf_bytes(count=1),etag='"external-pdf-v1"',id='7780')
         if m9 and data.get('seed_external_docx'):
             from tests.support.document_renderer_fixtures import external_docx
             state['files']['Documents/External.docx']=dict(content=external_docx(),etag='"external-docx-v1"',id='7778')
+        if m10 and 'clarify_pdf' in data:state['clarify_pdf']=data['clarify_pdf']
         for key in ('operation','next_path','copy_source','block_put','refuse_delete','race_put','drop_put','lose_commit_reply','document_text','inventory_failure','document_format'):
             if key in data:state[key]=data[key]
         if data.get('block_put'):dav_release.clear();dav_arrived.clear()

@@ -66,7 +66,7 @@ class DocxM9APostgresqlTests(unittest.TestCase):
                 raise
         self.enterContext(patch.object(RenderingSession,'collect',collect))
 
-    def prepare(self, *, operation='create', target=None, source=None, value=None, path='Documents/M9.docx'):
+    def prepare(self, *, operation='create', target=None, source=None, value=None, path='Documents/M9.docx', format='docx'):
         context=self.client.post('/api/document-workshop/contexts',json=dict(conversation_id=self.conversation,
             workspace_folder_id=self.folder,**(dict(target_file_id=target) if target else {})))
         self.assertEqual(context.status_code,201,context.json)
@@ -82,7 +82,7 @@ class DocxM9APostgresqlTests(unittest.TestCase):
         versions=[{k:getattr(s,k) for k in ('workspace_file_id','remote_identity','etag','sha256','relative_path','observed_at')} for s in observations]
         target_source=sources.read_workspace_document_source(self.folder,target) if target else None
         envelope=read_document_envelope(json.dumps(dict(schema_version=1,status='prepared',surface_text='Prêt.',
-            proposal=dict(operation=operation,format='docx',relative_path=path,source_file_ids=ids,limitations=[],canonical=value or rich()))))
+            proposal=dict(operation=operation,format=format,relative_path=path,source_file_ids=ids,limitations=[],canonical=value or rich()))))
         conversation['messages'].append(dict(role='assistant',content='Prêt.',timestamp='2026-10-10T00:00:01Z',meta={'document_workshop':{}}))
         actions.finalize(token,conversation,envelope,versions,serialize_markdown(envelope.canonical),
             snapshot=self.fx.snapshot,target_source=target_source)
@@ -289,7 +289,7 @@ class DocxM9APostgresqlTests(unittest.TestCase):
         resource=reader.stat_resource('Scope',path);fresh=reader.read_file('Scope',resource)
         result=adoption.publish_adoption(folder_id=self.folder,context_id=context.json['context']['id'],
             folder=workspace_folders.get_workspace_folder(self.folder),scope_key=reader.scope_key('Scope'),
-            resource=resource,content=fresh,extraction=extract_complete_source(fresh,filename='External.docx',media_type=resource.media_type),
+            resource=resource,content=fresh,extraction=extract_complete_source(fresh,filename=path.rsplit('/',1)[-1],media_type=resource.media_type),
             storage_root=self.fx.env.root)
         return result['file']['id']
 

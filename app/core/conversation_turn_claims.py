@@ -124,7 +124,7 @@ def _scope(conn, conversation, context_id, expected_etag=None):
             if (not target or target['deleted_at'] or target['status'] != 'active'
                     or target['workspace_folder_id'] != ctx['workspace_folder_id']
                     or target['content_kind'] != 'document' or target['media_kind'] != 'text'
-                    or target['source_extension'] not in ('.md', '.docx')
+                    or target['source_extension'] not in ('.md', '.docx', '.pdf')
                     or not link or link['workspace_folder_id'] != ctx['workspace_folder_id']
                     or link['nextcloud_sync_state'] != 'linked'
                     or link['nextcloud_document_ref'] != ctx['target_document_ref']

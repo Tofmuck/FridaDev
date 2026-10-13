@@ -22,7 +22,7 @@ def project_action(record,*,executor=None):
             result.update(state='remote_uncertain',reason_code='document_publication_unknown')
         else:
             result['receipt']=receipt
-    eligible=record.get('state')=='pending' and (record.get('format')=='markdown' or record.get('format')=='docx' and getattr(executor,'supports_docx',False)) and (record.get('operation') in ('create','copy')
+    eligible=record.get('state')=='pending' and (record.get('format')=='markdown' or record.get('format') in ('docx','pdf') and getattr(executor,'supports_'+record['format'],False)) and (record.get('operation') in ('create','copy')
         or record.get('operation')=='update' and getattr(executor,'supports_update',False))
     collections=[]
     if record.get('relative_path'):
@@ -34,7 +34,9 @@ def project_action(record,*,executor=None):
     if record.get('operation')=='update':result['collections']=[]
     if executor is not None:
         result['limitations']=[code for code in record.get('limitations',[]) if code!='write_confirmation_unavailable']
-        if getattr(executor,'supports_docx',False):
+        if getattr(executor,'supports_pdf',False):
+            result['limitations']=[code for code in result['limitations'] if code not in ('docx_pdf_unavailable','pdf_unavailable')]
+        elif getattr(executor,'supports_docx',False):
             result['limitations']=list(dict.fromkeys('pdf_unavailable' if code=='docx_pdf_unavailable' else code
                 for code in result['limitations']))
     result['capabilities']=dict(confirm=executor is not None and eligible,cancel=record.get('state') in ('preparing','pending','executing'))
@@ -52,7 +54,7 @@ def confirm(action_id,data,*,executor=None):
         record=actions.get_action(action_id)
         if record and record.get('operation')=='update' and not getattr(executor,'supports_update',False):
             return dict(ok=False,reason_code='document_update_unavailable'),503
-        if record and record.get('format')=='docx' and not getattr(executor,'supports_docx',False):
+        if record and record.get('format') in ('docx','pdf') and not getattr(executor,'supports_'+record['format'],False):
             return dict(ok=False,reason_code='document_format_unavailable'),503
         run=store.begin(action_id,data)
         if run is not None:

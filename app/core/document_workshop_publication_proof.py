@@ -41,7 +41,7 @@ def _historical(conn,bundle,root):
     a,r,v,d,c,ar=(bundle[k] or {} for k in ('action','receipt','render','revision','claim','artifact'))
     required=('conversation_id','workspace_folder_id','artifact_id','revision_id','operation','format','relative_path')
     if (a.get('state')!='succeeded' or not a.get('workspace_file_id')
-            or a.get('operation') not in ('create','copy','update') or a.get('format') not in ('markdown','docx')
+            or a.get('operation') not in ('create','copy','update') or a.get('format') not in ('markdown','docx','pdf')
             or any(a.get(k)!=r.get(k) for k in required)
             or r.get('action_id')!=a['id'] or r.get('request_turn_id')!=a['id']
             or r.get('confirmation_turn_id')!=a.get('confirmation_turn_id') or r.get('confirmed_at')!=a.get('confirmed_at')
@@ -54,7 +54,7 @@ def _historical(conn,bundle,root):
             or c.get('request_fingerprint')!=store._fingerprint(a['id'],{k:a[k] for k in ('context_id','conversation_id','workspace_folder_id','revision_id')})):
         return False
     canonical=validate_canonical(d['canonical']);markdown=serialize_markdown(canonical).encode('utf-8')
-    if a['format']=='docx':
+    if a['format'] in ('docx','pdf'):
         from .document_renderer_store import content as snapshot_content
         content=snapshot_content(conn,a,d);serializer='frida_writer_v1'
     else:content=markdown;serializer='frida_markdown_v1'
@@ -130,8 +130,8 @@ def verify(action_id,*,storage_root):
         source_kind=version['source_kind'] if version else 'document_workshop'
         target=validate_document_path(r['relative_path'],format=r['format'])
         from .document_renderer_contract import MEDIA_TYPES
-        extension='.docx' if r['format']=='docx' else '.md'
-        mime=MEDIA_TYPES['docx'] if r['format']=='docx' else 'text/markdown'
+        extension='.'+r['format'] if r['format'] in ('docx','pdf') else '.md'
+        mime=MEDIA_TYPES[r['format']] if r['format'] in ('docx','pdf') else 'text/markdown'
         if (not f or not l or str(f['workspace_folder_id'])!=a['workspace_folder_id'] or f['deleted_at'] is not None
                 or f['status']!='active' or f['content_kind']!='document' or f['media_kind']!='text' or f['source_extension']!=extension
                 or f['mime_type']!=(version['mime_type'] if version else mime)

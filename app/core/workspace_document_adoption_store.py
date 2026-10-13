@@ -131,7 +131,7 @@ def _lock_scope(cur, folder_id, context_id, folder):
     if context['target_file_id'] is not None:
         cur.execute('''SELECT wf.id FROM workspace_files wf JOIN workspace_file_nextcloud_links l ON l.workspace_file_id=wf.id
             WHERE wf.id=%s AND wf.workspace_folder_id=%s::uuid AND wf.deleted_at IS NULL
-              AND wf.status='active' AND wf.content_kind='document' AND wf.media_kind='text' AND wf.source_extension IN ('.md','.docx')
+              AND wf.status='active' AND wf.content_kind='document' AND wf.media_kind='text' AND wf.source_extension IN ('.md','.docx','.pdf')
               AND l.workspace_folder_id=wf.workspace_folder_id AND l.nextcloud_sync_state='linked'
               AND l.nextcloud_document_ref=%s
               AND COALESCE(l.nextcloud_relative_path,'Documents/' || l.nextcloud_target_name)=%s

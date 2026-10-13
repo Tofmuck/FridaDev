@@ -39,8 +39,9 @@ def persist(run, request, result):
              result.manifest_bytes, result.docx, result.pdf))
 
 
-def available(conn):
-    """Effective M9-A schema, read-only; Markdown never needs this capability."""
+def available(conn, format='docx'):
+    """Effective format schema, read-only; Markdown never needs this capability."""
+    if format not in ('docx','pdf'):return False
     required = {
         'document_actions_format_check', 'document_receipts_format_check',
         'document_revision_renders_format_check', 'document_revision_renders_serializer_version_check',
@@ -51,7 +52,7 @@ def available(conn):
         'document_revision_renders'::regclass,'document_execution_journal'::regclass)
         AND conname=ANY(%s)''', (list(required),)).fetchall()
     definitions = dict(rows)
-    return (set(definitions) == required and all("'docx'" in definitions[k] for k in required if 'journal' not in k)
+    return (set(definitions) == required and all("'"+format+"'" in definitions[k] for k in required if 'journal' not in k)
         and "'frida_writer_v1'" in definitions['document_execution_journal_serializer_version_check']
         and "'frida_writer_v1'" in definitions['document_revision_renders_serializer_version_check']
         and bool(conn.execute('''SELECT 1 FROM pg_trigger WHERE
@@ -79,4 +80,6 @@ def content(conn, action, revision):
         artifact = manifest['artifacts'][fmt]
         if artifact['sha256'] != c.digest(body) or artifact['byte_size'] != len(body):
             raise c.DocumentWorkshopError('document_revision_invalid')
-    return row[5]
+    if action['format'] not in ('docx','pdf'):
+        raise c.DocumentWorkshopError('document_revision_invalid')
+    return row[5] if action['format']=='docx' else row[6]

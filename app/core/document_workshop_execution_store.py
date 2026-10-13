@@ -161,11 +161,11 @@ def begin(action_id,data):
             (data['conversation_id'],)).fetchone():raise claims.ClaimError('conversation_turn_conflict')
         row=actions._read(conn,action_id,lock=True)
         if row['state']!='pending':return None
-        if row['format'] not in ('markdown','docx') or row['operation'] not in ('create','copy','update'):
+        if row['format'] not in ('markdown','docx','pdf') or row['operation'] not in ('create','copy','update'):
             raise DocumentWorkshopError('document_operation_unavailable')
-        if row['format']=='docx':
+        if row['format'] in ('docx','pdf'):
             from .document_renderer_store import available
-            if not available(conn):raise DocumentWorkshopError('document_format_unavailable')
+            if not available(conn,row['format']):raise DocumentWorkshopError('document_format_unavailable')
         _collision(conn,row);revision=_revision(conn,row)
         generation=conn.execute('UPDATE conversations SET turn_generation=turn_generation+1 WHERE id=%s::uuid RETURNING turn_generation',
             (data['conversation_id'],)).fetchone()[0]
@@ -236,8 +236,8 @@ def file_metadata(run,content):
         return 'text/markdown','.md',len(content.decode('utf-8')),hashlib.sha256(content).hexdigest()[:12]
     from .workspace_document_source_extraction import extract_complete_source
     from .document_renderer_contract import MEDIA_TYPES
-    text=extract_complete_source(content,filename=run.target.segments[-1],media_type=MEDIA_TYPES['docx']).text
-    return MEDIA_TYPES['docx'],'.docx',len(text),hashlib.sha256(text.encode('utf-8')).hexdigest()[:12]
+    text=extract_complete_source(content,filename=run.target.segments[-1],media_type=MEDIA_TYPES[run.action['format']]).text
+    return MEDIA_TYPES[run.action['format']],'.'+run.action['format'],len(text),hashlib.sha256(text.encode('utf-8')).hexdigest()[:12]
 
 
 def _append(conn,run,event,*,path=None,state=None,reason=None,http_status=None,etag=None,count=None):

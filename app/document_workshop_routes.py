@@ -84,7 +84,7 @@ def register_document_workshop_routes(app, *, get_store, get_conversations, get_
         try:
             content, name, format = read_content(folder_id, file_id)
             from core.document_renderer_contract import MEDIA_TYPES
-            mime = {'markdown': 'text/plain; charset=utf-8', 'docx': MEDIA_TYPES['docx']}[format]
+            mime = {'markdown': 'text/plain; charset=utf-8', **MEDIA_TYPES}[format]
             response = send_file(BytesIO(content), mimetype=mime,
                 as_attachment=True, download_name=name, max_age=0)
             response.headers['Cache-Control'] = 'private, no-store'

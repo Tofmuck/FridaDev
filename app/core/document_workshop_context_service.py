@@ -36,7 +36,7 @@ def _scope(fields, *, conversations, folders, files):
     extension = target.get('source_extension')
     if str(target.get('id')) != target_id or str(target.get('workspace_folder_id')) != fields['workspace_folder_id'] \
             or target.get('status') != 'active' or target.get('content_kind') != 'document' \
-            or target.get('media_kind') != 'text' or extension not in ('.md', '.docx'):
+            or target.get('media_kind') != 'text' or extension not in ('.md', '.docx', '.pdf'):
         raise DocumentWorkshopError('document_context_target_ineligible')
     link = files.get_nextcloud_link(target_id, fail_closed=True, preserve_target_identity=True)
     if not link or str(link.get('workspace_folder_id')) != fields['workspace_folder_id'] \
@@ -50,7 +50,7 @@ def _scope(fields, *, conversations, folders, files):
         if type(name) is not str or '/' in name:
             raise DocumentWorkshopError('document_context_target_ineligible')
         relative_path = 'Documents/' + name
-    path = validate_document_path(relative_path, format='markdown' if extension == '.md' else 'docx')
+    path = validate_document_path(relative_path, format='markdown' if extension == '.md' else extension[1:])
     identity = None
     if link.get('nextcloud_file_id') is not None or link.get('nextcloud_scope_key') is not None:
         from .workspace_document_adoption_store import remote_identity

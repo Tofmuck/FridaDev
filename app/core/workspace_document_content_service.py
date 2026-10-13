@@ -68,7 +68,7 @@ def read_workspace_document_source(folder_id,file_id,*,reader=None,folders=works
             raise DocumentWorkshopError('document_remote_changed')
         return WorkspaceDocumentSource(folder_id,file_id,path.relative_path,identity,resource.etag,digest,
             datetime.now(timezone.utc).isoformat(),extraction.source_extension,extraction.media_type,len(content),extraction.text,
-            content if extraction.source_extension=='.docx' else None)
+            content if extraction.source_extension in ('.docx','.pdf') else None)
     except DocumentWorkshopError:
         raise
     except Exception:

@@ -190,7 +190,7 @@ class CopySourcePreconditionTests(unittest.TestCase):
                 return real_finalize(token, conversation, envelope, versions, markdown, **kw)
             except DocumentWorkshopError as error:
                 entry['reason'] = error.reason_code
-                entry['guard'] = [f.lineno for f in traceback.extract_tb(error.__traceback__)
+                entry['guard'] = [(f.name,f.line) for f in traceback.extract_tb(error.__traceback__)
                     if f.filename == actions.__file__][-1]
                 raise
         with self.pipeline(provider) as (normal, observed), patch.object(actions, 'finalize', observe), \
@@ -223,7 +223,7 @@ class CopySourcePreconditionTests(unittest.TestCase):
             self.assertEqual(response.json['reason_code'], 'document_source_reference_invalid')
             self.assertEqual(row[1], 'document_source_reference_invalid')
             self.assertEqual(row[3], [])
-            self.assertEqual(finalizations[0]['guard'], 166)
+            self.assertEqual(finalizations[0]['guard'], ('finalize',"raise DocumentWorkshopError('document_source_reference_invalid')"))
             self.assertIsNone(row[4])
             self.assertNotEqual(assistant, surface)
         else:

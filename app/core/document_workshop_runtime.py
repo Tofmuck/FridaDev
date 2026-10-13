@@ -72,6 +72,7 @@ def get_executor():
             supports_update=available(conn)
             from .document_renderer_store import available as docx_available
             supports_docx=docx_available(conn)
+            supports_pdf=docx_available(conn,'pdf')
         session=None
         if supports_docx:
             try:
@@ -82,7 +83,7 @@ def get_executor():
                     expected_engine=read_json(Path('/run/writer-pins.json').read_bytes()))
             except Exception:pass
         return DocumentExecutor(mutation_client=NextcloudDocumentMutationClient(reader.config),supports_update=supports_update,
-            storage_root=root, renderer_session=session, source_reader=lambda folder_id, file_id:
+            storage_root=root, renderer_session=session, supports_pdf=supports_pdf, source_reader=lambda folder_id, file_id:
                 sources.read_workspace_document_source(folder_id, file_id, reader=reader))
     except Exception:
         return None

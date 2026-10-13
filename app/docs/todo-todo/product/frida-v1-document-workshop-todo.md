@@ -5126,6 +5126,13 @@ restent non commencés ; leurs exécutions restent des lots distincts.
 
 ### M10 — PDF Writer, source externe et intégration finale des formats
 
+**M10 commencé le 13 octobre 2026, code et preuves isolées sous mandat distinct.**
+Base exacte `dcbd3e7540fbc6414defad9bf913c2470a3f6d38`, branche
+`FridaV1-Document-Workshop-M10`. M9-A/M9-B restent fermés.
+[Contrat et remise M10](../../states/specs/frida-v1-document-workshop-m10-contract.md),
+[commandes, IDs et limites](../../states/baselines/document-workshop/frida-v1-document-workshop-m10-20261013.json).
+Livraison runtime, canari et clôture globale M10 restent ouverts ; Z non commencé.
+
 **Objectif :** publier le PDF du même moteur/révision ; préserver la politique des PDF sources.
 **Dépendances :** M9-B, donc tous les sous-lots M8/M9 fermés ; zéro pipeline PDF parallèle.
 **Frontières :** export Writer via adapter, reader PDF existant, policy de cible,
@@ -5134,20 +5141,38 @@ manifeste de rendus, confirmation/reçus et UI des trois formats.
 PDF Frida lié au canonical, PDF externe source vers nouveau document demandé.
 **Propriétaire :** Celebrimbor ; Sauron seulement pour non-conformité du service livré.
 
-- [ ] Rouge causal : externe pris comme cible update, PDF Frida désynchronisé,
-  export partiel/21 pages ou divergence de pages Writer/PDF → zéro mutation.
-- [ ] Tests Unicode/fonts/pagination/tableaux/liens, PDF chiffré/scanné, canonical
-  absent/octets modifiés ; voisins readers/Exports/OCR et read/copy/update inter-formats.
-- [ ] Vérifier <=20 pages Writer, A4/12 points/1,5/2,5 cm et le PDF final ; aucune
-  sauvegarde partielle, ODT caché, page réduite ou appel Stirling de composition.
-- [ ] Faux verts : texte présent sans layout, PDF compagnon d'une autre révision,
-  timestamp/hashes ignorés, PDF externe chargé dans Draw comme édition fidèle.
-- [ ] Interdire PDF externe édité en place, OCR implicite, image, fallback ou
-  désynchronisation canonical/rendus ; seul le format demandé est écrit.
-- [ ] Synchroniser politique PDF/provenance/refus ; preuve interne synthétique et
-  canari sous GO distincts ; rebuild FridaDev à livraison autorisée.
+- [x] Refus applicatifs prouvés : PDF Frida désynchronisé, paire partielle,
+  manifeste de 21 pages ou pages divergentes → zéro PUT/reçu de succès.
+  Deux contrôles causaux rouges : mauvais binaire sélectionné et garde d'update
+  externe retirée ; restauration exacte puis succès ciblés.
+- [x] Contenu accentué, titre/paragraphe/liste/tableau/lien passif, source PDF
+  chiffrée/scannée/inexploitable, canonical/révision/bytes périmés ; voisins
+  atteints Markdown sans Writer, DOCX Frida/externe et copie explicitement sourcée.
+  Pas de suite générale readers/Exports/OCR ni matrice inter-formats exhaustive.
+- [x] Même validation de paire/manifeste/pins et même profil A4/12 points/1,5/2,5 cm.
+  Raccord PDF prouvé ; exports physiques 20/21 pages et qualification fonts/layout
+  hérités de M9-A/M8-S, sans nouvelle campagne renderer. Aucun ODT caché,
+  contournement de pagination ou appel Stirling de composition.
+- [x] Faux verts verrouillés : mauvais binaire/révision, hashes et fraîcheur ;
+  manifeste et paire contrôlés en plus du texte. Aucun import PDF dans Draw.
+- [x] PDF externe refusé en update ; lecture complète puis nouveau document/nom
+  explicitement acceptés, source intacte. Seul le format demandé est écrit.
+- [x] Politique PDF/provenance/refus, migration explicite et preuves isolées
+  documentées. HTTP navigateur natif : carte, reconnexion sans POST automatique,
+  confirmation humaine, reçu/réhydratation et téléchargement PDF exact.
+- [ ] Canari sous GO distinct et livraison runtime/rebuild FridaDev autorisés.
 - [ ] Fermer les trois formats et les deux politiques PDF, sécurité/cleanup et
   continuité end-to-end ; moteur inchangé, aucun service bureautique supplémentaire.
+
+Relevé du 13 octobre : **58 IDs distincts verts par union**, pas un run unique
+de 58 tests : 52 Python (50 succès initiaux puis les deux oracles de ligne source
+adaptés et rejoués), 4 schéma, 2 navigateur. Le dernier rejeu ciblé après contrôles
+causaux est **4/4**. Baseline **24/24**, comptée séparément. Commandes, exits,
+incidents et IDs dans le relevé M10 ; les répétitions ne gonflent pas le total.
+Limite conservée : sous le Chromium du harnais, le nom Unicode téléchargé devient
+`download` malgré octets et en-tête exacts ; comportement HTTP général reproduit,
+hors delta PDF. Nom ASCII navigateur et identité Unicode serveur prouvés ;
+Safari matériel non éprouvé. Contre-audit Codex attendu avant livraison runtime.
 
 ### Z — Clôture bornée
 
@@ -5381,6 +5406,14 @@ ultérieure est prouvée comme telle sans réécrire cette origine. Une preuve c
 ne devient jamais un import externe de secours. La limitation
 `external_docx_v1_reformat` est imposée dans l'action persistée avant confirmation.
 
+Raccord applicatif M10, encore non livré au runtime : PDF choisi dans le snapshot
+de paire existant ; source PDF Frida liée à sa preuve durable et aux octets frais.
+PDF externe : clarification existante si la nouvelle destination ou la sélection
+de lecture manque, jamais copie automatique. Capacités PDF conditionnées au schéma
+effectif et à la session épinglée ; Markdown/DOCX conservés sans migration PDF.
+Le [contrat M10](../../states/specs/frida-v1-document-workshop-m10-contract.md)
+attribue les preuves et limites ; M9-A/M9-B restent fermés.
+
 ### 9.6. Confinement et exploitation prouvés côté renderer M8-S
 
 - [x] Utilisateur non privilégié, rootfs read-only compatible ; tmpfs writable
@@ -5590,7 +5623,9 @@ bloquante, sans prétendre reconstruire ses premières causes. M9-B est contre-a
 et livré dans FridaDev seul après reprise autorisée du montage de preuve et succès
 du seul navigateur manquant, sans rebuild ni rejeu SQL. Incident initial conservé ;
 contre-audit runtime Codex favorable et clôture M9-B autorisée par Tof le 13 octobre,
-sur preuves acquises sans nouveau test ni canari. M10/Z non commencés, PDF public fermé.
+sur preuves acquises sans nouveau test ni canari. M10 commencé sur code/preuves isolées
+le 13 octobre, livraison runtime et clôture ouvertes ; PDF public du runtime
+non activé par ce lot. Z non commencé.
 Actualisation runtime du 10 octobre : code et migrations M1–M7 livrés par le
 raccord M8-A ; les réserves de recette produit/DAV/Versions restent ouvertes.
 Les mentions de runtime ouvert dans les récits historiques décrivent leurs

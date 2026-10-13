@@ -1,0 +1,389 @@
+{
+  "schema_version": 1,
+  "lot": "M10",
+  "date": "2026-10-13",
+  "base": "dcbd3e7540fbc6414defad9bf913c2470a3f6d38",
+  "branch": "FridaV1-Document-Workshop-M10",
+  "status": "Application code and isolated proofs submitted for Codex counteraudit; runtime/global M10 open; Z not started.",
+  "author": "Celebrimbor; no runs attributed to external Codex in M10",
+  "isolation": {
+    "temporary_root": "/tmp/frida-m10-20261013-9u6k7qnz",
+    "writer_image": "sha256:7a61bd805ca0e371873184f9b050ad47945ee32562c952437b65c793a6f4da10",
+    "pins_sha256": "a788e48f649a84eed24af05ab340c1f2f080fe1f14c1827a86cf95d2a2900021",
+    "python_image": "sha256:486a8afeb2f62c7906194d3e1fee839387e55753bcad365120d18306502fafdc",
+    "postgres_image": "sha256:87e04d274d186c7331d0e13c7c90c8b9f63b0d7ae94476c98a229a94d62c9745",
+    "browser_image": "sha256:55dfaaa282c98d5f4d328676e36eca5203b6494b97d9ef3ba0608d9e939e9523",
+    "pins_seed": "/opt/platform/backups/writer-m9a-source01-20261010T201715Z/candidate-m9a-source01-pins.json",
+    "pins_handling": "Exact approved pins copied into owned root after SHA verification; no operator mount/content/socket."
+  },
+  "reproduction": {
+    "commands": {
+      "setup-0": ["docker", "run", "-d", "--pull=never", "--name", "frida-m10-13-pg", "--network", "none", "--read-only", "--tmpfs", "/var/lib/postgresql/data:rw,nosuid,nodev", "--tmpfs", "/tmp:rw,nosuid,nodev", "-v", "/tmp/frida-m10-20261013-9u6k7qnz/pg-socket:/var/run/postgresql", "-e", "POSTGRES_HOST_AUTH_METHOD=trust", "-e", "POSTGRES_USER=m1proof", "-e", "POSTGRES_DB=m1proof", "postgres:16-alpine", "-c", "listen_addresses="],
+      "setup-1": ["docker", "run", "-d", "--pull=never", "--name", "frida-m10-13-writer", "--init", "--user", "20000:20000", "--network", "none", "--read-only", "--cpus", "1", "--memory", "1073741824", "--memory-swap", "1073741824", "--pids-limit", "64", "--ulimit", "nofile=256:256", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--tmpfs", "/tmp:rw,noexec,nosuid,nodev,size=268435456,uid=20000,gid=20000,mode=0700", "-v", "/tmp/frida-m10-20261013-9u6k7qnz/writer-socket:/run/writer", "-v", "/tmp/frida-m10-20261013-9u6k7qnz/writer-pins.json:/run/renderer-pins.json:ro", "sha256:7a61bd805ca0e371873184f9b050ad47945ee32562c952437b65c793a6f4da10"],
+      "python": ["docker", "run", "--rm", "--pull=never", "--name", "frida-m10-13-{label}", "--network", "none", "--read-only", "--tmpfs", "/tmp:rw,nosuid,nodev", "-v", "/opt/platform/fridadev:/workspace:ro", "-v", "/tmp/frida-m10-20261013-9u6k7qnz/pg-socket:/proof/sock:ro", "-v", "/tmp/frida-m10-20261013-9u6k7qnz/writer-socket:/run/writer:ro", "-v", "/tmp/frida-m10-20261013-9u6k7qnz/writer-pins.json:/run/writer-pins.json:ro", "-w", "/workspace/app", "--entrypoint", "/usr/bin/env", "fridadev-audit-py:latest", "-i", "PATH=/usr/local/bin:/usr/bin:/bin", "PYTHONDONTWRITEBYTECODE=1", "PYTHONPATH=/workspace/app:/workspace", "EMBED_BASE_URL=https://embed.invalid", "CRAWL4AI_URL=https://crawl.invalid", "SEARXNG_URL=https://search.invalid", "M1_PROOF_PG_SOCKET=/proof/sock", "M2_PROOF_PG_SOCKET=/proof/sock", "M3_PROOF_PG_SOCKET=/proof/sock", "M4_PROOF_PG_SOCKET=/proof/sock", "M5_PROOF_PG_SOCKET=/proof/sock"],
+      "http": ["docker", "run", "-d", "--pull=never", "--name", "frida-m10-13-http", "--network", "none", "--read-only", "--tmpfs", "/tmp:rw,nosuid,nodev", "-v", "/opt/platform/fridadev:/workspace:ro", "-v", "/tmp/frida-m10-20261013-9u6k7qnz/pg-socket:/proof/sock:ro", "-v", "/tmp/frida-m10-20261013-9u6k7qnz/writer-socket:/run/writer:ro", "-v", "/tmp/frida-m10-20261013-9u6k7qnz/writer-pins.json:/run/writer-pins.json:ro", "-v", "/tmp/frida-m10-20261013-9u6k7qnz/output:/proof/output", "-w", "/workspace/app", "--entrypoint", "/usr/bin/env", "fridadev-audit-py:latest", "-i", "PATH=/usr/local/bin:/usr/bin:/bin", "PYTHONDONTWRITEBYTECODE=1", "PYTHONPATH=/workspace/app:/workspace", "EMBED_BASE_URL=https://embed.invalid", "CRAWL4AI_URL=https://crawl.invalid", "SEARXNG_URL=https://search.invalid", "M1_PROOF_PG_SOCKET=/proof/sock", "M2_PROOF_PG_SOCKET=/proof/sock", "M3_PROOF_PG_SOCKET=/proof/sock", "M4_PROOF_PG_SOCKET=/proof/sock", "M5_PROOF_PG_SOCKET=/proof/sock", "M6_PROOF_ROOT=/proof/output", "M4_PROVENANCE_TRACE=1", "M10_PROOF=1", "python", "-B", "-m", "tests.support.document_workshop_m9a_http"],
+      "browser": ["docker", "run", "--rm", "--pull=never", "--name", "frida-m10-13-browser", "--network", "container:frida-m10-13-http", "--read-only", "--tmpfs", "/tmp:rw,nosuid,nodev", "-v", "/opt/platform/fridadev:/workspace:ro", "-v", "/home/tof/.cache/ms-playwright:/proof/browsers:ro", "-v", "/tmp/frida-m10-20261013-9u6k7qnz/output:/proof/output", "-w", "/workspace", "--entrypoint", "/usr/bin/env", "mcr.microsoft.com/playwright:v1.54.0-jammy", "-i", "PATH=/usr/local/bin:/usr/bin:/bin", "PLAYWRIGHT_BROWSERS_PATH=/proof/browsers", "M9A_HTTP_BASE=http://127.0.0.1:8769", "M9B_SCREENSHOT=/proof/output/{screenshot}"],
+      "schema": ["docker", "run", "--rm", "--pull=never", "--name", "frida-m10-13-schema", "--network", "none", "--read-only", "--tmpfs", "/tmp:rw,nosuid,nodev", "-v", "/usr:/usr:ro", "-v", "/opt/platform/fridadev:/workspace:ro", "-w", "/workspace/app", "--entrypoint", "/usr/bin/env", "fridadev-audit-py:latest", "-i", "PATH=/usr/bin:/bin", "PYTHONDONTWRITEBYTECODE=1", "PYTHONPATH=/workspace/app:/workspace"]
+    },
+    "instructions": "Create an owned empty root and pg-socket/writer-socket/output; writer-socket owner 20000:20000. Copy qualified pins, verify SHA. Substitute root consistently. Run setup-0/setup-1. Each Python SQL test resets the disposable schema: sequential only. Compose named prefix + run.command, substitute label/screenshot. HTTP uses M10_PROOF=1; wait for __m6/state HTTP 200. Browser uses the HTTP container network only. Stop/remove HTTP before SQL. No installation/rebuild or durable service used. Historical browser runs before file separation recorded their original filename; final reproduction uses test_frontend_browser_document_http_m10.js."
+  },
+  "runs": [
+    {
+      "label": "baseline",
+      "exit": 0,
+      "seconds": 9.192,
+      "log_sha256": "91d486f50be27ab57d7444e62249084f1005d017f2a042a220ee68d780d9213d",
+      "prefix": "python",
+      "command": ["python", "-B", "-m", "unittest", "-v", "tests.unit.core.test_document_workshop_docx_m9a", "tests.unit.core.test_document_workshop_envelope", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_migration_is_explicit_repeatable_preserves_existing_rows_and_pdf_stays_closed", "tests.integration.document_workshop.test_renderer_m8a_postgresql.RendererAdapterPostgresqlTests.test_unchanged_markdown_does_not_require_renderer_schema_or_socket", "tests.integration.document_workshop.test_copy_source_precondition_postgresql"],
+      "result": "24/24 before patch; no Writer job required."
+    },
+    {
+      "label": "red-schema",
+      "exit": 1,
+      "seconds": 0.398,
+      "log_sha256": "e2e8fc95ee139bb79c0b1c8928e66613016102b3c81aba8296919f02b45c4c50",
+      "prefix": "python",
+      "command": ["python", "-B", "-m", "unittest", "-v", "tests.unit.core.test_document_workshop_pdf_m10"],
+      "result": "Expected red: closed envelope rejects PDF before implementation."
+    },
+    {
+      "label": "pdf-green",
+      "exit": 1,
+      "seconds": 57.702,
+      "log_sha256": "df94f49315f261e6722da0afe833cc5b95e53b49a55c18e6fe29c8f816e9ff2f",
+      "prefix": "python",
+      "command": ["python", "-B", "-m", "unittest", "-v", "tests.unit.core.test_document_workshop_pdf_m10", "tests.integration.document_workshop.test_pdf_m10_postgresql.PdfM10PostgresqlTests"],
+      "result": "5/8 pass; three PDF target paths rejected by the existing context format guard. Incomplete application delta, corrected."
+    },
+    {
+      "label": "pdf-fix-target",
+      "exit": 1,
+      "seconds": 16.58,
+      "log_sha256": "363a02402b2b098bf93c74a9d1f1b940b99d95b62b860264d1266de15946496f",
+      "prefix": "python",
+      "command": ["python", "-B", "-m", "unittest", "-v", "tests.integration.document_workshop.test_pdf_m10_postgresql.PdfM10PostgresqlTests.test_pdf_create_update_exact_pair_bytes_identity_and_single_confirmation", "tests.integration.document_workshop.test_pdf_m10_postgresql.PdfM10PostgresqlTests.test_external_pdf_refuses_update_then_explicit_selected_copy_to_docx_preserves_source", "tests.integration.document_workshop.test_pdf_m10_postgresql.PdfM10PostgresqlTests.test_frida_missing_proof_fresh_bytes_canonical_revision_and_stale_etag_refuse"],
+      "result": "0/3; context accepts PDF but shared claim scope still rejects it. Same missing format extension, corrected."
+    },
+    {
+      "label": "pdf-path",
+      "exit": 0,
+      "seconds": 43.128,
+      "log_sha256": "f0016072fc91a14f7224c7d7cee32cb725cabea0364b21b54bdd7af45bd565aa",
+      "prefix": "python",
+      "command": ["python", "-B", "-m", "unittest", "-v", "tests.integration.document_workshop.test_pdf_m10_postgresql.PdfM10PostgresqlTests.test_pdf_create_update_exact_pair_bytes_identity_and_single_confirmation", "tests.integration.document_workshop.test_pdf_m10_postgresql.PdfM10PostgresqlTests.test_external_pdf_refuses_update_then_explicit_selected_copy_to_docx_preserves_source", "tests.integration.document_workshop.test_pdf_m10_postgresql.PdfM10PostgresqlTests.test_frida_missing_proof_fresh_bytes_canonical_revision_and_stale_etag_refuse"],
+      "result": "3/3 pass: real PDF create/update, explicit external copy and provenance/freshness refusals."
+    },
+    {
+      "label": "http-1",
+      "exit": 0,
+      "seconds": 0.219,
+      "log_sha256": "42a015404382d004ac0d4bc26796a66a4606d0cbe49983e4254d7fba8cb7c117",
+      "prefix": "http",
+      "result": "Owned HTTP fixture start; wait for __m6/state HTTP 200 before browser."
+    },
+    {
+      "label": "browser-m10",
+      "exit": 1,
+      "seconds": 34.13,
+      "log_sha256": "f15078ee3f9edbe1bb134248c3561c158fcf5a5def9ede040598fda3e6520bf6",
+      "prefix": "browser",
+      "command": ["node", "--test", "--test-concurrency=1", "--test-name-pattern=M10", "app/tests/integration/frontend_browser/test_frontend_browser_document_http_m9a.js"],
+      "result": "0/2: Unicode suggested download name and unsynchronized target change in the new test.",
+      "screenshot": "browser-m10.png"
+    },
+    {
+      "label": "browser-diagnosis",
+      "exit": 1,
+      "seconds": 11.227,
+      "log_sha256": "552ee48cc085cca8cbea332a3ee78e6f0418dbff2200e75c893b752d439be498",
+      "prefix": "browser",
+      "command": ["node", "--test", "--test-concurrency=1", "--test-name-pattern=M10 native PDF", "app/tests/integration/frontend_browser/test_frontend_browser_document_http_m10.js"],
+      "result": "0/1: download bytes succeed, suggested Unicode name remains download.",
+      "screenshot": "browser-diagnosis.png"
+    },
+    {
+      "label": "browser-download",
+      "exit": 1,
+      "seconds": 11.752,
+      "log_sha256": "5c1a0e65a56c695bd89fe23608a53d5c50381158d11ccb0fd9fecb2a1532967e",
+      "prefix": "browser",
+      "command": ["node", "--test", "--test-concurrency=1", "--test-name-pattern=M10 native PDF", "app/tests/integration/frontend_browser/test_frontend_browser_document_http_m10.js"],
+      "result": "0/1: actual downloaded bytes/hash exact; suggested Unicode name download.",
+      "screenshot": "browser-download.png"
+    },
+    {
+      "label": "browser-named",
+      "exit": 1,
+      "seconds": 33.782,
+      "log_sha256": "3920114dd3576037525ea11d2bc4dcb75b6be0ac5cca1bbf2f005d60f59eedd9",
+      "prefix": "browser",
+      "command": ["node", "--test", "--test-concurrency=1", "--test-name-pattern=M10", "app/tests/integration/frontend_browser/test_frontend_browser_document_http_m10.js"],
+      "result": "0/2: native download attribute has no effect (removed); external already adopted in reused fixture, no new adoption button.",
+      "screenshot": "browser-named.png"
+    },
+    {
+      "label": "http-2",
+      "exit": 0,
+      "seconds": 0.205,
+      "log_sha256": "d44ca2d40cdff583097975040bbd910cde7c34a518487a49021c998d2f08f77b",
+      "prefix": "http",
+      "result": "Owned HTTP fixture start; wait for __m6/state HTTP 200 before browser."
+    },
+    {
+      "label": "browser-final",
+      "exit": 1,
+      "seconds": 1.001,
+      "log_sha256": "f4c6386c01994dff4d15b581ef94f418ca59e488a839e63b4a5453fe10881eda",
+      "prefix": "browser",
+      "command": ["node", "--test", "--test-concurrency=1", "--test-name-pattern=M10", "app/tests/integration/frontend_browser/test_frontend_browser_document_http_m10.js"],
+      "result": "0/2: HTTP runner startup not awaited, connection refused. No product requests.",
+      "screenshot": "browser-final.png"
+    },
+    {
+      "label": "browser-ready",
+      "exit": 0,
+      "seconds": 34.675,
+      "log_sha256": "0096909d85b14d34d24b8c488cd5ca3d28d3d44ac70ce0693b8012e88c156c37",
+      "prefix": "browser",
+      "command": ["node", "--test", "--test-concurrency=1", "--test-name-pattern=M10", "app/tests/integration/frontend_browser/test_frontend_browser_document_http_m10.js"],
+      "result": "2/2 with fresh ready fixture and ASCII download filename, before pagination label correction.",
+      "screenshot": "browser-ready.png"
+    },
+    {
+      "label": "http-3",
+      "exit": 0,
+      "seconds": 0.201,
+      "log_sha256": "9eac08dd7cd46cce692547659dd9b2b4ae6b4c880ba815f3bcc6c3adb8e4b324",
+      "prefix": "http",
+      "result": "Owned HTTP fixture start; wait for __m6/state HTTP 200 before browser."
+    },
+    {
+      "label": "browser-verified",
+      "exit": 0,
+      "seconds": 35.099,
+      "log_sha256": "3898456aa3d3e542d921607ee210ea5bdd5e52833a7e8c55a393d1e58aeeece7",
+      "prefix": "browser",
+      "command": ["node", "--test", "--test-concurrency=1", "--test-name-pattern=M10", "app/tests/integration/frontend_browser/test_frontend_browser_document_http_m10.js"],
+      "result": "2/2 final native HTTP browser scenarios, correct pagination label; exact download stream bytes.",
+      "screenshot": "browser-verified.png"
+    },
+    {
+      "label": "final-python",
+      "exit": 1,
+      "seconds": 139.737,
+      "log_sha256": "00c2b222a98aba70b1d760667017dac865bc4fbaa1d0385366b8c6aabc3b7ba9",
+      "prefix": "python",
+      "command": ["python", "-B", "-m", "unittest", "-v", "tests.unit.core.test_document_workshop_pdf_m10", "tests.unit.core.test_document_workshop_docx_m9a", "tests.unit.core.test_document_workshop_envelope", "tests.unit.core.test_document_workshop_output_admission", "tests.test_server_document_workshop_contexts_contract", "tests.integration.document_workshop.test_pdf_m10_postgresql.PdfM10PostgresqlTests", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_real_create_explicit_copy_update_preserve_identity_histories_and_exact_bytes", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_m9b_external_update_real_pair_stable_identity_origin_and_subsequent_revision", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_migration_is_explicit_repeatable_preserves_existing_rows_and_pdf_stays_closed", "tests.integration.document_workshop.test_renderer_m8a_postgresql.RendererAdapterPostgresqlTests.test_unchanged_markdown_does_not_require_renderer_schema_or_socket", "tests.integration.document_workshop.test_copy_source_precondition_postgresql", "tests.unit.core.test_workspace_document_source_extraction_m2.CompleteDocumentSourceM2Tests.test_actual_pdf_over_twenty_pages_is_extracted_whole", "tests.unit.core.test_workspace_document_source_extraction_m2.CompleteDocumentSourceM2Tests.test_pdf_missing_text_encrypted_and_broken_never_return_partial_complete", "tests.unit.core.test_workspace_document_source_extraction_m2.CompleteDocumentSourceM2Tests.test_r3_passive_pdf_http_and_local_links_remain_data_without_destination_fetch", "tests.unit.core.test_document_renderer_contract.RendererContractTests.test_result_identity_and_pins_refused"],
+      "result": "50/52: only two source-reference tests fail on old hard-coded source line 166 vs 167. Business refusals correct."
+    },
+    {
+      "label": "final-copy-guards",
+      "exit": 0,
+      "seconds": 4.047,
+      "log_sha256": "206a66e812549a4f7a898edee871d8162a02be12937ea18a574308f2337bfb4a",
+      "prefix": "python",
+      "command": ["python", "-B", "-m", "unittest", "-v", "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_foreign_reference_still_rejected_at_same_guard", "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_target_only_copy_still_rejected_at_same_guard"],
+      "result": "2/2 after replacing line-number oracle with the actual raise statement."
+    },
+    {
+      "label": "causal-wrong-binary",
+      "exit": 1,
+      "seconds": 8.099,
+      "log_sha256": "b362d18f3690ff04208ddd61e733c4adfcb0b29d69652c35da74439e47d637a6",
+      "prefix": "python",
+      "command": ["python", "-B", "-m", "unittest", "-v", "tests.integration.document_workshop.test_pdf_m10_postgresql.PdfM10PostgresqlTests.test_pdf_create_update_exact_pair_bytes_identity_and_single_confirmation"],
+      "result": "Expected red: snapshot selection temporarily forced to DOCX; PDF execution refuses before success. Restored in finally."
+    },
+    {
+      "label": "causal-external-update",
+      "exit": 1,
+      "seconds": 3.192,
+      "log_sha256": "2a6fc086458ace75021d170855df602f6e96d8452a04b8a0dcc8704aa3a660d7",
+      "prefix": "python",
+      "command": ["python", "-B", "-m", "unittest", "-v", "tests.integration.document_workshop.test_pdf_m10_postgresql.PdfM10PostgresqlTests.test_external_pdf_refuses_update_then_explicit_selected_copy_to_docx_preserves_source"],
+      "result": "Expected red: removal of external-PDF preparation rejection allows pending proposal; assertRaises detects it. Restored in finally."
+    },
+    {
+      "label": "final-restored",
+      "exit": 0,
+      "seconds": 27.929,
+      "log_sha256": "d6db6d7a3b7e4e91e45dc24aa1afb251d2f25022d497c05d600ec7d6d7a6619b",
+      "prefix": "python",
+      "command": ["python", "-B", "-m", "unittest", "-v", "tests.integration.document_workshop.test_pdf_m10_postgresql.PdfM10PostgresqlTests.test_pdf_create_update_exact_pair_bytes_identity_and_single_confirmation", "tests.integration.document_workshop.test_pdf_m10_postgresql.PdfM10PostgresqlTests.test_external_pdf_refuses_update_then_explicit_selected_copy_to_docx_preserves_source", "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_foreign_reference_still_rejected_at_same_guard", "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_target_only_copy_still_rejected_at_same_guard"],
+      "result": "4/4 after exact restoration and final guard oracle (function name plus raise statement). Covers both causal cases and both source-reference tests."
+    },
+    {
+      "label": "schema",
+      "exit": 0,
+      "seconds": null,
+      "unittest_seconds": 0.192,
+      "log_sha256": "bf8a8a22d09efdf38bc2cec5e76f51eb2e61655aac47a0711be530e4847cb040",
+      "metadata_note": "Command recovered from the executed runner and successful schema.log; wall duration not preserved in shared summary. No rerun.",
+      "prefix": "schema",
+      "command": ["python3", "-B", "-m", "unittest", "-v", "tests.unit.core.test_document_workshop_output_schema"],
+      "result": "4/4 using installed host jsonschema/Python read-only in network-none runner; no install."
+    }
+  ],
+  "baseline": {
+    "count": 24,
+    "test_ids": ["tests.unit.core.test_document_workshop_docx_m9a.DocxPreparationTests.test_docx_create_copy_update_reach_existing_envelope_with_exact_target.test_docx_create_copy_update_reach_existing_envelope_with_exact_target", "tests.unit.core.test_document_workshop_docx_m9a.DocxPreparationTests.test_pdf_and_copy_without_explicit_source_stay_closed.test_pdf_and_copy_without_explicit_source_stay_closed", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_canonical_validation_and_volume_limits_are_reused.test_canonical_validation_and_volume_limits_are_reused", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_clarify_and_refuse_preserve_real_surface_without_action.test_clarify_and_refuse_preserve_real_surface_without_action", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_clarify_refuse_cannot_smuggle_a_proposal.test_clarify_refuse_cannot_smuggle_a_proposal", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_duplicate_fields_inside_canonical_are_not_repaired.test_duplicate_fields_inside_canonical_are_not_repaired", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_duplicate_keys_nonfinite_truncated_json_and_old_root_are_rejected.test_duplicate_keys_nonfinite_truncated_json_and_old_root_are_rejected", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_limitations_are_typed_unique_known_codes.test_limitations_are_typed_unique_known_codes", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_only_create_copy_markdown_can_be_prepared.test_only_create_copy_markdown_can_be_prepared", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_ordinary_surface_text_and_non_protocol_json_are_not_rewritten.test_ordinary_surface_text_and_non_protocol_json_are_not_rewritten", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_prepared_content_and_proposal_are_frozen_without_rewriting.test_prepared_content_and_proposal_are_frozen_without_rewriting", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_protocol_json_cannot_be_published_as_a_surface.test_protocol_json_cannot_be_published_as_a_surface", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_root_and_proposal_are_closed_with_strict_types.test_root_and_proposal_are_closed_with_strict_types", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_source_ids_are_uuid_unique_even_with_equivalent_spellings.test_source_ids_are_uuid_unique_even_with_equivalent_spellings", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_surface_codepoints_blank_controls_and_type_bounds.test_surface_codepoints_blank_controls_and_type_bounds", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_target_uses_m0_documents_path_authority.test_target_uses_m0_documents_path_authority", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_technical_envelope_bound_is_separate_and_never_truncates.test_technical_envelope_bound_is_separate_and_never_truncates", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_migration_is_explicit_repeatable_preserves_existing_rows_and_pdf_stays_closed.test_migration_is_explicit_repeatable_preserves_existing_rows_and_pdf_stays_closed", "tests.integration.document_workshop.test_renderer_m8a_postgresql.RendererAdapterPostgresqlTests.test_unchanged_markdown_does_not_require_renderer_schema_or_socket.test_unchanged_markdown_does_not_require_renderer_schema_or_socket", "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_explicit_source_copy_pending_with_only_selected_authority.test_explicit_source_copy_pending_with_only_selected_authority", "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_foreign_reference_still_rejected_at_same_guard.test_foreign_reference_still_rejected_at_same_guard", "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_target_only_clarify_has_measured_authority_instructions.test_target_only_clarify_has_measured_authority_instructions", "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_target_only_copy_still_rejected_at_same_guard.test_target_only_copy_still_rejected_at_same_guard", "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_target_only_update_pending_preserves_target_preconditions.test_target_only_update_pending_preserves_target_preconditions"],
+    "note": "Not added to final union. Old PDF-rejection unit renamed to copy-without-source rejection under M10; no claim of unchanged ID for that case."
+  },
+  "final": {
+    "distinct_total": 58,
+    "python_ids": ["tests.unit.core.test_document_workshop_pdf_m10.PdfPreparationTests.test_pdf_operations_use_existing_schema_and_envelope.test_pdf_operations_use_existing_schema_and_envelope", "tests.unit.core.test_document_workshop_docx_m9a.DocxPreparationTests.test_copy_without_explicit_source_stays_closed.test_copy_without_explicit_source_stays_closed", "tests.unit.core.test_document_workshop_docx_m9a.DocxPreparationTests.test_docx_create_copy_update_reach_existing_envelope_with_exact_target.test_docx_create_copy_update_reach_existing_envelope_with_exact_target", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_canonical_validation_and_volume_limits_are_reused.test_canonical_validation_and_volume_limits_are_reused", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_clarify_and_refuse_preserve_real_surface_without_action.test_clarify_and_refuse_preserve_real_surface_without_action", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_clarify_refuse_cannot_smuggle_a_proposal.test_clarify_refuse_cannot_smuggle_a_proposal", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_duplicate_fields_inside_canonical_are_not_repaired.test_duplicate_fields_inside_canonical_are_not_repaired", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_duplicate_keys_nonfinite_truncated_json_and_old_root_are_rejected.test_duplicate_keys_nonfinite_truncated_json_and_old_root_are_rejected", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_limitations_are_typed_unique_known_codes.test_limitations_are_typed_unique_known_codes", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_only_create_copy_markdown_can_be_prepared.test_only_create_copy_markdown_can_be_prepared", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_ordinary_surface_text_and_non_protocol_json_are_not_rewritten.test_ordinary_surface_text_and_non_protocol_json_are_not_rewritten", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_prepared_content_and_proposal_are_frozen_without_rewriting.test_prepared_content_and_proposal_are_frozen_without_rewriting", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_protocol_json_cannot_be_published_as_a_surface.test_protocol_json_cannot_be_published_as_a_surface", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_root_and_proposal_are_closed_with_strict_types.test_root_and_proposal_are_closed_with_strict_types", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_source_ids_are_uuid_unique_even_with_equivalent_spellings.test_source_ids_are_uuid_unique_even_with_equivalent_spellings", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_surface_codepoints_blank_controls_and_type_bounds.test_surface_codepoints_blank_controls_and_type_bounds", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_target_uses_m0_documents_path_authority.test_target_uses_m0_documents_path_authority", "tests.unit.core.test_document_workshop_envelope.DocumentEnvelopeTests.test_technical_envelope_bound_is_separate_and_never_truncates.test_technical_envelope_bound_is_separate_and_never_truncates", "tests.unit.core.test_document_workshop_output_admission.OutputAdmissionTests.test_competing_schema_is_refused_before_measure_or_transport_resolution.test_competing_schema_is_refused_before_measure_or_transport_resolution", "tests.unit.core.test_document_workshop_output_admission.OutputAdmissionTests.test_late_builder_and_schema_mutation_cannot_change_measured_body.test_late_builder_and_schema_mutation_cannot_change_measured_body", "tests.unit.core.test_document_workshop_output_admission.OutputAdmissionTests.test_normal_options_and_overrides_survive_documentary_local_omission.test_normal_options_and_overrides_survive_documentary_local_omission", "tests.unit.core.test_document_workshop_output_admission.OutputAdmissionTests.test_schema_cost_can_make_complete_input_exceed_unchanged_budget.test_schema_cost_can_make_complete_input_exceed_unchanged_budget", "tests.unit.core.test_document_workshop_output_admission.OutputAdmissionTests.test_schema_estimation_mutation_refused_before_transport_resolution.test_schema_estimation_mutation_refused_before_transport_resolution", "tests.test_server_document_workshop_contexts_contract.DocumentWorkshopRoutesTests.test_absent_deleted_or_inconsistent_resources_never_insert.test_absent_deleted_or_inconsistent_resources_never_insert", "tests.test_server_document_workshop_contexts_contract.DocumentWorkshopRoutesTests.test_create_and_get_editing_without_target_or_conversation_message.test_create_and_get_editing_without_target_or_conversation_message", "tests.test_server_document_workshop_contexts_contract.DocumentWorkshopRoutesTests.test_explicit_target_verified_and_server_path_preserved.test_explicit_target_verified_and_server_path_preserved", "tests.test_server_document_workshop_contexts_contract.DocumentWorkshopRoutesTests.test_frontend_authority_and_forged_identity_rejected.test_frontend_authority_and_forged_identity_rejected", "tests.test_server_document_workshop_contexts_contract.DocumentWorkshopRoutesTests.test_get_revalidates_conversation_folder_target_and_link_identity.test_get_revalidates_conversation_folder_target_and_link_identity", "tests.test_server_document_workshop_contexts_contract.DocumentWorkshopRoutesTests.test_incomplete_documentary_request_refused_before_reservation_or_provider.test_incomplete_documentary_request_refused_before_reservation_or_provider", "tests.test_server_document_workshop_contexts_contract.DocumentWorkshopRoutesTests.test_storage_or_inventory_error_is_content_free.test_storage_or_inventory_error_is_content_free", "tests.test_server_document_workshop_contexts_contract.DocumentWorkshopRoutesTests.test_target_absent_deleted_foreign_unsupported_or_unlinked_rejected.test_target_absent_deleted_foreign_unsupported_or_unlinked_rejected", "tests.integration.document_workshop.test_pdf_m10_postgresql.PdfM10PostgresqlTests.test_capability_migration_repeatable_and_missing_prerequisites_preserve_neighbors.test_capability_migration_repeatable_and_missing_prerequisites_preserve_neighbors", "tests.integration.document_workshop.test_pdf_m10_postgresql.PdfM10PostgresqlTests.test_external_pdf_refuses_update_then_explicit_selected_copy_to_docx_preserves_source.test_external_pdf_refuses_update_then_explicit_selected_copy_to_docx_preserves_source", "tests.integration.document_workshop.test_pdf_m10_postgresql.PdfM10PostgresqlTests.test_frida_missing_proof_fresh_bytes_canonical_revision_and_stale_etag_refuse.test_frida_missing_proof_fresh_bytes_canonical_revision_and_stale_etag_refuse", "tests.integration.document_workshop.test_pdf_m10_postgresql.PdfM10PostgresqlTests.test_pdf_create_update_exact_pair_bytes_identity_and_single_confirmation.test_pdf_create_update_exact_pair_bytes_identity_and_single_confirmation", "tests.integration.document_workshop.test_pdf_m10_postgresql.PdfM10PostgresqlTests.test_pdf_metadata_failure_precedes_put.test_pdf_metadata_failure_precedes_put", "tests.integration.document_workshop.test_pdf_m10_postgresql.PdfM10PostgresqlTests.test_pdf_partial_pair_wrong_revision_or_pages_refused_before_put.test_pdf_partial_pair_wrong_revision_or_pages_refused_before_put", "tests.integration.document_workshop.test_pdf_m10_postgresql.PdfM10PostgresqlTests.test_pdf_publication_rollback_repairs_metadata_without_second_put.test_pdf_publication_rollback_repairs_metadata_without_second_put", "tests.integration.document_workshop.test_pdf_m10_postgresql.PdfM10PostgresqlTests.test_unusable_external_pdf_rejected_by_complete_reader_without_put.test_unusable_external_pdf_rejected_by_complete_reader_without_put", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_real_create_explicit_copy_update_preserve_identity_histories_and_exact_bytes.test_real_create_explicit_copy_update_preserve_identity_histories_and_exact_bytes", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_m9b_external_update_real_pair_stable_identity_origin_and_subsequent_revision.test_m9b_external_update_real_pair_stable_identity_origin_and_subsequent_revision", "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_migration_is_explicit_repeatable_preserves_existing_rows_and_pdf_stays_closed.test_migration_is_explicit_repeatable_preserves_existing_rows_and_pdf_stays_closed", "tests.integration.document_workshop.test_renderer_m8a_postgresql.RendererAdapterPostgresqlTests.test_unchanged_markdown_does_not_require_renderer_schema_or_socket.test_unchanged_markdown_does_not_require_renderer_schema_or_socket", "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_explicit_source_copy_pending_with_only_selected_authority.test_explicit_source_copy_pending_with_only_selected_authority", "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_foreign_reference_still_rejected_at_same_guard.test_foreign_reference_still_rejected_at_same_guard", "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_target_only_clarify_has_measured_authority_instructions.test_target_only_clarify_has_measured_authority_instructions", "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_target_only_copy_still_rejected_at_same_guard.test_target_only_copy_still_rejected_at_same_guard", "tests.integration.document_workshop.test_copy_source_precondition_postgresql.CopySourcePreconditionTests.test_target_only_update_pending_preserves_target_preconditions.test_target_only_update_pending_preserves_target_preconditions", "tests.unit.core.test_workspace_document_source_extraction_m2.CompleteDocumentSourceM2Tests.test_actual_pdf_over_twenty_pages_is_extracted_whole.test_actual_pdf_over_twenty_pages_is_extracted_whole", "tests.unit.core.test_workspace_document_source_extraction_m2.CompleteDocumentSourceM2Tests.test_pdf_missing_text_encrypted_and_broken_never_return_partial_complete.test_pdf_missing_text_encrypted_and_broken_never_return_partial_complete", "tests.unit.core.test_workspace_document_source_extraction_m2.CompleteDocumentSourceM2Tests.test_r3_passive_pdf_http_and_local_links_remain_data_without_destination_fetch.test_r3_passive_pdf_http_and_local_links_remain_data_without_destination_fetch", "tests.unit.core.test_document_renderer_contract.RendererContractTests.test_result_identity_and_pins_refused.test_result_identity_and_pins_refused"],
+    "schema_ids": ["tests.unit.core.test_document_workshop_output_schema.DocumentOutputSchemaTests.test_all_statuses_operations_formats_blocks_and_rich_shapes.test_all_statuses_operations_formats_blocks_and_rich_shapes", "tests.unit.core.test_document_workshop_output_schema.DocumentOutputSchemaTests.test_closed_required_variants_enums_types_and_references.test_closed_required_variants_enums_types_and_references", "tests.unit.core.test_document_workshop_output_schema.DocumentOutputSchemaTests.test_schema_conformance_does_not_replace_local_business_guards.test_schema_conformance_does_not_replace_local_business_guards", "tests.unit.core.test_document_workshop_output_schema.DocumentOutputSchemaTests.test_schema_uses_only_documented_subset_and_fresh_owned_objects.test_schema_uses_only_documented_subset_and_fresh_owned_objects"],
+    "browser_ids": ["M10 native PDF card reauth human confirmation update rehydration exact download", "M10 native external PDF clarifies then explicitly selected copy to new PDF"],
+    "accounting": "Union, not a single 58-test run: final-python 50 passes + its two guard failures corrected in final-restored; schema 4; browser-verified 2. Repeated/causal runs never added."
+  },
+  "nominal_revision_proofs": [
+    {
+      "run": "final-python",
+      "revisions": [
+        {
+          "action_id": "efb4fed3-a20f-460a-b634-b98c8b2a75ff",
+          "revision_id": "35cc5453-a763-4f1c-b72c-46c370a0d2eb",
+          "receipt_id": "3012c1cb-553a-436f-b027-246964d3af82",
+          "file_id": "0cba5a83-bd8b-46f0-a0c5-bf422765ea32",
+          "canonical_sha256": "b151c7466c1d71147b10d355494353e73a5123dad301931e958bc772514fb8d6",
+          "pdf_sha256": "f38638baacce28ddb25230f340aa872c86a88c90105e4167fd7c8319f066aa8f",
+          "docx_sha256": "10143fe356a563857028cb1510479639c5da4a31260cbbed379fb884ca479db1",
+          "job_id": "34dba005-a2a8-4b70-b3f1-bb8f55b01a83",
+          "pages": 1
+        },
+        {
+          "action_id": "d6e24c02-8244-4ff0-95ad-68bb111d81cd",
+          "revision_id": "25992720-7ac7-491b-8757-8f58e9ba7840",
+          "receipt_id": "6f7ba984-0ad1-4ec0-ba07-72e748d1c54c",
+          "file_id": "0cba5a83-bd8b-46f0-a0c5-bf422765ea32",
+          "canonical_sha256": "942cde2642230475aa2087d8f998c21d68b5177b2d855c7a2d12bd2dc887a250",
+          "pdf_sha256": "b2fd9b58e68c518c919a6cc437f66394915ee9fafcbbc3823545945345e3af38",
+          "docx_sha256": "582e568f3062145efe65b61cca507bfc52f517763e03e6472c29dc9d9d9485ac",
+          "job_id": "8a12c785-7d8b-409f-aa8f-b6ce1d65deaf",
+          "pages": 1
+        }
+      ]
+    },
+    {
+      "run": "final-restored",
+      "revisions": [
+        {
+          "action_id": "8741d882-4da7-465f-8bcd-5f86e1048fa9",
+          "revision_id": "d6c3a758-f094-4a3f-8dd6-66cb5cba03ab",
+          "receipt_id": "b0eedbd2-f0d8-4b2a-8371-4bfd58a86345",
+          "file_id": "1c7d6a34-6591-4436-8332-28d81a8df1f0",
+          "canonical_sha256": "b151c7466c1d71147b10d355494353e73a5123dad301931e958bc772514fb8d6",
+          "pdf_sha256": "a8ad73ddefb4e2473813b97292336504e94ed2695a971812f6f481769db8f7e8",
+          "docx_sha256": "4bfa02744bc8da1ffd701bd1c6884a3f2d1949e1dd9c913074115c4c4f3b94f8",
+          "job_id": "6acd1794-4e0b-4362-b6bf-d33079cc5fe8",
+          "pages": 1
+        },
+        {
+          "action_id": "288e0f54-7794-456e-b196-23818ea1176b",
+          "revision_id": "12a63452-a488-476e-b6da-cbef8f27416b",
+          "receipt_id": "603ff3be-8e4d-47b4-8031-39dfb3f5d62c",
+          "file_id": "1c7d6a34-6591-4436-8332-28d81a8df1f0",
+          "canonical_sha256": "942cde2642230475aa2087d8f998c21d68b5177b2d855c7a2d12bd2dc887a250",
+          "pdf_sha256": "b16de828b4810a527b2fe8da711534e72d349e466c232f544d4514b195d47e80",
+          "docx_sha256": "f580c8ac68539c7bec6af05e5b14c12572d3f7da83fca55db94981b5d19f5554",
+          "job_id": "77400026-9149-4984-889f-62e410457187",
+          "pages": 1
+        }
+      ]
+    }
+  ],
+  "causal_controls": {
+    "wrong_binary": {
+      "file": "app/core/document_renderer_store.py",
+      "replace_from": "return row[5] if action['format']=='docx' else row[6]",
+      "replace_to": "return row[5]",
+      "run": "causal-wrong-binary"
+    },
+    "external_update": {
+      "file": "app/core/document_workshop_update_target.py",
+      "removed": "if source.source_extension=='.pdf' and proof is None: raise DocumentWorkshopError('document_update_target_invalid')",
+      "run": "causal-external-update"
+    },
+    "restoration": "Exact original text restored in finally; final-restored 4/4."
+  },
+  "inheritance": [
+    {
+      "source": "frida-v1-document-workshop-m9a-20261011.json",
+      "test_id": "tests.integration.document_workshop.test_docx_m9a_postgresql.DocxM9APostgresqlTests.test_twenty_writer_pages_accepted_twenty_one_refused_without_put",
+      "scope": "Actual qualified Writer 20/21 pages, not rerun. M10 invokes the same render_confirmed/RenderingSession/validate_result with format=pdf and checks exact PDF snapshot; divergent/21 manifest rejected in new test."
+    },
+    {
+      "source": "frida-v1-document-workshop-m9a-20261011.json",
+      "test_ids": ["tests.integration.document_workshop.test_renderer_m8a_postgresql.RendererAdapterPostgresqlTests.test_snapshot_committed_before_release_bound_to_action_revision_and_confirmation", "tests.integration.document_workshop.test_renderer_m8a_postgresql.RendererAdapterPostgresqlTests.test_fencing_at_release_ack_preserves_snapshot_but_never_returns_success"],
+      "scope": "Existing unchanged session/claim/release path; no repeated fencing campaign."
+    },
+    {
+      "source": "frida-v1-document-workshop-m9a-contract.md#candidate-et-attribution-plateforme",
+      "scope": "Qualified profile/fonts/layout and rich PDF correspondence attributed there to Codex/Sauron; not rerun as an M10 renderer campaign. Local nominal checks exact expected engine, page evidence and both hashes; text alone is not layout proof."
+    }
+  ],
+  "review": {
+    "internal": "Read-only skill-requested subagent review, no tests. Browser file conflict corrected by separate M10 scenarios. No new runtime defect established.",
+    "metadata_repair": "Inherited known-success SQL repair re-extracts PDF after the original PUT, but initial extraction precedes that PUT. New rollback test proves no second PUT/DELETE/render; not reported as no extraction ever after PUT.",
+    "external_codex": "Pending; this internal review does not replace it."
+  },
+  "screenshot": {
+    "file": "browser-verified.png",
+    "sha256": "12dbb07fcd6048ff99a26e9a56fc35b621ff3358ba4dbee76b3e9fdb19ee72da",
+    "observed": "1280x900 desktop; pending PDF/name/path, generic Writer 20-page limitation, enabled human confirm; capture inspected. Temporary only."
+  },
+  "unicode_download": {
+    "id": "M10-UNICODE-DOWNLOAD-OBS",
+    "status": "Requalified inherited/general HTTP filename behavior; exact browser cause unknown; no runtime workaround retained.",
+    "observed": "Actual downloaded PDF stream hash exact; Unicode name proposed as download. Same header on isolated peer: ascii-pdf Study.pdf; unicode-pdf download; ascii-binary Study.pdf; unicode-binary download; failures null.",
+    "server": "Preexisting send_file download_name unchanged; exact filename* Unicode header and MIME verified. Final native proof uses ASCII name and accented content; SQL nominal preserves Unicode target identity.",
+    "diagnostic_source": "const {chromium}=require('/workspace/node_modules/playwright');const http=require('http');\n(async()=>{const browser=await chromium.launch({headless:true});let peer;try{\nconst p=await browser.newPage();const base='http://127.0.0.1:8769';\nconst s=await (await p.request.get(base+'/__m6/state')).json();\nconst files=(await (await p.request.get(base+'/api/workspace-folders/'+s.folder+'/files')).json()).items;\nconst f=files.find(x=>x.display_name?.endsWith('.pdf')&&x.display_name!=='External.pdf');\nconst response=await p.request.get(base+'/api/workspace-folders/'+s.folder+'/files/'+f.id+'/content');const body=await response.body();\npeer=http.createServer((req,res)=>{res.setHeader('Content-Type',req.url.includes('binary')?'application/octet-stream':'application/pdf');res.setHeader('Content-Disposition',req.url.includes('ascii')?'attachment; filename=\"Study.pdf\"':response.headers()['content-disposition']);res.end(body);});await new Promise(r=>peer.listen(8777,'127.0.0.1',r));\nfor(const path of ['ascii-pdf','unicode-pdf','ascii-binary','unicode-binary']){\nawait p.goto(base);await p.setContent('<a href=\"http://127.0.0.1:8777/'+path+'\" download=\"Fixed.pdf\">Download</a>');const d=p.waitForEvent('download');await p.click('a');const a=await d;console.log(path,a.suggestedFilename(),await a.failure());}\n}finally{if(peer)peer.close();await browser.close();}})();\n",
+    "diagnostic_log_sha256": "0067447a2af06b40631dd124411f2fa982864f5a7e95a8da14f004b7ad0400e8",
+    "exit": 0
+  },
+  "runtime_files_sha256": {
+    "app/core/conversation_turn_claims.py": "bd323c62106f5e9ce1c7c205cae58db0d848dba5b3389568b77f476173901f03",
+    "app/core/document_renderer_store.py": "5e04c0bbd0211019dd76273c40a504790a2f359f1f8b99171c4b08af2668d3e4",
+    "app/core/document_workshop_actions.py": "d2c932bb8ebdff03de8eb35a58986f98127a8b29a27e47a3f1ff8e9fe9748d98",
+    "app/core/document_workshop_context_service.py": "467788fe420e07bb05970f8075cc70662378105db0f93d07026d18790976abb9",
+    "app/core/document_workshop_contexts.py": "248ce026c641347efd0505c3f1c926298e6c959c9b6c67118059787a54a10d27",
+    "app/core/document_workshop_envelope.py": "7b58e4a1ddd30184c488edfef41a5b62190b48a976b46532375e3e52acf982d6",
+    "app/core/document_workshop_execution_service.py": "ca8d057bb0b2343d47531079d70fd23bd463648bb35195d826429c228e6b4620",
+    "app/core/document_workshop_execution_store.py": "9401091c89978d26de9683e8afa76978d310494538c5de0295436d6288303c6d",
+    "app/core/document_workshop_executor.py": "688dfb7c944e3680b67d07c1e2e85644a97f5304ef652028573051647650a017",
+    "app/core/document_workshop_output_schema.py": "8f986a68d2161fc0b471e06dc327affcd13f528a40d28d6774ed71074a76267a",
+    "app/core/document_workshop_publication_proof.py": "d53960e2ad8b16c8e701fe0c1976a212ec14b8961ff61e836beaf58a142c7a68",
+    "app/core/document_workshop_runtime.py": "2881d61a0a734b26142c1fcd879711327ee168f50c6986f0d343336a21c86b4b",
+    "app/core/document_workshop_turn.py": "deb31fc5cd0d32410d4c89bd95071f4cc0bdeb23cc8994371fa2b9fd7769fd26",
+    "app/core/document_workshop_update_target.py": "541ac0ea4f3d09d0998ed8ab9eb2f271619a0913b4b194a935dd33506125c05b",
+    "app/core/workspace_document_adoption_store.py": "bd5f401515466d5ad0efab60732f45d3b4bbb6555c37dedf9e6e5256eb53fc89",
+    "app/core/workspace_document_content_service.py": "0fd59ebfadf03859bc5c10b0afcd4a4d74a06cee72e5cba62da6db3f84244cc1",
+    "app/document_workshop_routes.py": "835499015c02b7a9e211f6aa9ac3a5d6364f3190bce92145aca88bc94554c23d",
+    "app/web/chat_document_workshop.js": "4ca7d6a6a1dedd1936d320b06f46b72a4b65e256862e8cd408782350bbf17dfd"
+  },
+  "migrations": {
+    "new": ["app/core/sql/document_workshop_pdf_m10.sql"],
+    "sha256": "fa6fd216a1a394b98c5ad199d6ebb9d97ed06f193feddc6f2aca44307c7087e9",
+    "operator_applied": false,
+    "required_previous": "document_workshop_docx_m9a.sql and existing M1-M8 schemas"
+  },
+  "limits": ["No deployment, operator migration, rebuild, install, durable Writer/socket change, model/DAV live, canary or Z.", "Synthetic model responses prove application wiring only.", "Mutated ready manifests prove application refusal, not an actual partial/divergent Writer export.", "Unicode download filename in this Chromium remains a documented limitation; no Safari hardware proof.", "Existing hermetic fixture admin_log OSError and missing summary table diagnostics retained; baseline family, no new runtime defect inferred."],
+  "cleanup": {
+    "jobs_before_stop": 0,
+    "soffice_before_stop": 0,
+    "status": "complete: owned HTTP/test/browser containers already removed; owned PostgreSQL/Writer containers and temporary root removed",
+    "inspection_command": ["docker", "exec", "frida-m10-13-writer", "python3", "-c", "import json,pathlib; p=pathlib.Path('/tmp/renderer/jobs'); print(json.dumps({'jobs':len(list(p.iterdir())) if p.exists() else 0,'soffice_processes':sum('soffice.bin' in x.read_text() for x in pathlib.Path('/proc').glob('[0-9]*/comm'))}))"],
+    "commands": [
+      {
+        "argv": ["docker", "rm", "-f", "frida-m10-13-pg", "frida-m10-13-writer"],
+        "exit": 0
+      },
+      {
+        "argv": ["sudo", "-n", "rm", "-rf", "--", "/tmp/frida-m10-20261013-9u6k7qnz"],
+        "exit": 0
+      }
+    ],
+    "remaining_owned_containers": [],
+    "temporary_root_exists": false
+  }
+}

@@ -157,7 +157,7 @@ def read_document_envelope(raw: str) -> DocumentEnvelope:
     }, 'proposal_shape')
     if type(proposal["operation"]) is not str or proposal["operation"] not in {"create", "copy", "update"}:
         _invalid('operation')
-    if type(proposal["format"]) is not str or proposal["format"] not in {"markdown", "docx"}:
+    if type(proposal["format"]) is not str or proposal["format"] not in {"markdown", "docx", "pdf"}:
         _invalid('format')
     path = validate_document_path(proposal["relative_path"], format=proposal["format"])
     sources = _source_ids(proposal["source_file_ids"])
@@ -180,16 +180,19 @@ Do not put document/source content, canonical JSON or the response envelope in
 surface_text, including a JSON fence. The surface is speech, not a document preview.
 For clarify/refuse, proposal must be null: ask the necessary question or state the refusal.
 For prepared, proposal has exactly these required keys:
-{operation:"create"|"copy"|"update", format:"markdown"|"docx", relative_path:string,
+{operation:"create"|"copy"|"update", format:"markdown"|"docx"|"pdf", relative_path:string,
  source_file_ids:[UUID strings], limitations:[codes], canonical:object}.
 Update requires the explicitly selected server target and advertised capability.
 For update, use that exact target path/name; never choose another target or identity.
-PDF preparation is unavailable. Copy requires an explicit user request; never use
+PDF update requires a proven Frida revision. External PDF is a complete reading source only.
+A modification of an external PDF requires an explicitly accepted new document and new name;
+clarify if that intent or the reading selection is missing. Never update it in place.
+Copy requires an explicit user request; never use
 copy as an update fallback. The server proves any existing Frida revision.
 Simple external DOCX update requires complete Writer inspection and reformats in
 the V1 profile, without arbitrary layout preservation guarantees. Never discard
 unsupported content to obtain a result; preserve structures and all unmodified content.
-The path is exactly Documents/<optional subdirectories>/<name.md or name.docx>, relative to the selected folder:
+The path is exactly Documents/<optional subdirectories>/<name.md or name.docx or name.pdf>, relative to the selected folder:
 at most 8 subdirectories, 180 codepoints/255 UTF-8 bytes per segment, 1024 UTF-8
 bytes for the full path. No traversal, encoded separator or renamed/trimmed target.
 Use only explicitly supplied source file UUIDs, each at most once; copy requires

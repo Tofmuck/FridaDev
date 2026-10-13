@@ -33,7 +33,7 @@ def document_response_format() -> dict:
                              blocks=_array({'$ref': '#/$defs/block'})))
     proposal = _object(dict(
         operation=dict(type='string', enum=['create', 'copy', 'update']),
-        format=dict(type='string', enum=['markdown', 'docx']),
+        format=dict(type='string', enum=['markdown', 'docx', 'pdf']),
         relative_path=dict(type='string'), source_file_ids=_array(dict(type='string')),
         limitations=_array(dict(type='string', enum=sorted(DOCUMENT_LIMITATION_CODES))),
         canonical=canonical,

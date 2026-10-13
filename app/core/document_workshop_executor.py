@@ -17,31 +17,33 @@ class ExecutionResult:
 
 
 class DocumentExecutor:
-    def __init__(self,*,mutation_client,storage_root,source_reader=None,supports_update=False,renderer_session=None):
+    def __init__(self,*,mutation_client,storage_root,source_reader=None,supports_update=False,renderer_session=None,supports_pdf=False):
         if mutation_client is None or storage_root is None:
             raise DocumentWorkshopError('document_execution_unavailable')
         self.client,self.storage_root,self.source_reader=mutation_client,storage_root,source_reader
         self.supports_update=supports_update
         self.renderer_session=renderer_session
         self.supports_docx=renderer_session is not None
+        self.supports_pdf=self.supports_docx and supports_pdf
 
     def reconcile(self,action_id):
         from .document_workshop_update_reconciliation import reconcile
         reconcile(action_id,self)
 
     def _render(self,run):
-        if run.action['format']=='docx':
-            if not self.supports_docx:raise DocumentWorkshopError('document_format_unavailable')
+        if run.action['format'] in ('docx','pdf'):
+            if not getattr(self,'supports_'+run.action['format'],False):raise DocumentWorkshopError('document_format_unavailable')
             from .document_rendering import render_confirmed
             source=source_content=None
             if run.action['operation']=='update':
                 from .document_workshop_update_target import renderer_source
                 target=self.source_reader(run.action['workspace_folder_id'],run.action['target_version']['workspace_file_id'])
                 source=renderer_source(run,target);source_content=target.content
-            released=render_confirmed(run,'docx',self.renderer_session,source=source,source_content=source_content)
+            released=render_confirmed(run,run.action['format'],self.renderer_session,source=source,source_content=source_content)
             # Only collect's acknowledged release permits leaving this boundary.
-            if released.docx!=store.rendered(run)[0]:raise DocumentWorkshopError('document_render_invalid')
-            return released.docx
+            content=getattr(released,run.action['format'])
+            if content!=store.rendered(run)[0]:raise DocumentWorkshopError('document_render_invalid')
+            return content
         canonical=validate_canonical(run.revision['canonical'])
         content=serialize_markdown(canonical).encode('utf-8')
         if content!=store.rendered(run)[0]:
@@ -142,7 +144,7 @@ class DocumentExecutor:
             store.check(run);store.intent(run)
             folder=run.folder['nextcloud_target_name']
             result=self.client.update_document(folder,run.target,content,prepared_etag=version['etag'],
-                expected_file_id=version['remote_file_id'],**(dict(format='docx') if run.action['format']=='docx' else {}),before_mutation=lambda method,path:store.before_mutation(run,method,path))
+                expected_file_id=version['remote_file_id'],**(dict(format=run.action['format']) if run.action['format'] in ('docx','pdf') else {}),before_mutation=lambda method,path:store.before_mutation(run,method,path))
             store.observe(run,'remote_outcome',result)
             if result.state!='known_success':
                 state='remote_uncertain' if result.state=='remote_uncertain' else 'conflict' if result.http_status==412 else 'failed'

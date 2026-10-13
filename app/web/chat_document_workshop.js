@@ -44,7 +44,7 @@ const DOCUMENT_WORKSHOP_LIMITATION_LABELS = Object.freeze({
   markdown_pagination_reader_dependent: 'La pagination dépend du lecteur Markdown.',
   markdown_style_reader_dependent: 'La mise en forme dépend du lecteur Markdown.',
   write_confirmation_unavailable: 'L’écriture du document est indisponible.',
-  writer_pagination_20_pages: 'DOCX limité à 20 pages dans le Writer épinglé ; pagination vérifiée après confirmation.',
+  writer_pagination_20_pages: 'Document limité à 20 pages dans le Writer épinglé ; pagination vérifiée après confirmation.',
   external_docx_v1_reformat: 'Ce DOCX externe sera remis en forme dans le profil Writer V1. La conservation d’une mise en page arbitraire n’est pas garantie. Tout contenu non représentable ou import incomplet sera refusé.',
   pdf_unavailable: 'La publication PDF est indisponible.',
   docx_pdf_unavailable: 'Les formats DOCX et PDF sont indisponibles.',
@@ -521,8 +521,8 @@ function createDocumentWorkshopController({
     else panelEl.removeAttribute('data-state');
     if (action) panelEl.dataset.actionState = action.state;
     else delete panelEl.dataset.actionState;
-    const formats = ['markdown', 'docx'].filter(format => context?.capabilities?.formats?.includes(format))
-      .map(format => format === 'markdown' ? 'Markdown' : 'DOCX').join(' / ') || 'Format indisponible';
+    const formats = ['markdown', 'docx', 'pdf'].filter(format => context?.capabilities?.formats?.includes(format))
+      .map(format => format === 'markdown' ? 'Markdown' : format.toUpperCase()).join(' / ') || 'Format indisponible';
     statusEl.textContent = message || (context
       ? context.state !== 'editing' ? 'Cette préparation est terminée. Rouvrez l’atelier ou choisissez explicitement une cible pour une nouvelle demande. Votre brouillon est conservé.'
       : action?.state === 'preparing' ? preparationLabel(action)
@@ -561,7 +561,7 @@ function createDocumentWorkshopController({
     targetEl.appendChild(new Option('Nouveau document · aucune cible', ''));
     for (const file of getFiles(folderId)) {
       if (file.status === 'active' && file.content_kind === 'document' && file.media_kind === 'text'
-          && ['.md', '.docx'].includes(file.source_extension)
+          && ['.md', '.docx', '.pdf'].includes(file.source_extension)
           && file.document_nextcloud_sync_state === 'linked') {
         targetEl.appendChild(new Option(file.document_relative_path || file.display_name, file.id));
       }

@@ -19,8 +19,8 @@ class DocxPreparationTests(unittest.TestCase):
                 self.assertEqual(result.operation, operation)
                 self.assertEqual(result.relative_path, 'Documents/Étude.docx')
 
-    def test_pdf_and_copy_without_explicit_source_stay_closed(self):
-        for value in (envelope(format='pdf', relative_path='Documents/a.pdf'),
+    def test_copy_without_explicit_source_stays_closed(self):
+        for value in (envelope(operation='copy', format='pdf', relative_path='Documents/a.pdf'),
                       envelope(operation='copy', format='docx', relative_path='Documents/a.docx')):
             with self.assertRaises(DocumentWorkshopError):
                 read_document_envelope(json.dumps(value))

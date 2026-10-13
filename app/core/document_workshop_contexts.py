@@ -48,7 +48,7 @@ def create_context(*, conversation_id, workspace_folder_id, target_file_id=None,
                     SELECT wf.id FROM workspace_files wf JOIN workspace_file_nextcloud_links l ON l.workspace_file_id=wf.id
                     WHERE wf.id=%s::uuid AND wf.workspace_folder_id=%s::uuid AND wf.deleted_at IS NULL
                       AND wf.status='active' AND wf.content_kind='document' AND wf.media_kind='text'
-                      AND wf.source_extension IN ('.md','.docx') AND l.workspace_folder_id=wf.workspace_folder_id
+                      AND wf.source_extension IN ('.md','.docx','.pdf') AND l.workspace_folder_id=wf.workspace_folder_id
                       AND l.nextcloud_sync_state='linked' AND l.nextcloud_document_ref=%s
                       AND COALESCE(to_jsonb(l)->>'nextcloud_relative_path', 'Documents/' || l.nextcloud_target_name)=%s
                       AND ((to_jsonb(l)->>'nextcloud_scope_key') || ':' || (to_jsonb(l)->>'nextcloud_file_id')) IS NOT DISTINCT FROM %s
