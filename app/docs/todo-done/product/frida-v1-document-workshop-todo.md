@@ -16,7 +16,7 @@ avec M9-A puis M10. Code produit audité `82865d94…`, runtime M10 construit de
 `65437352…`, clôture M10 documentaire `6a2d60c25e28570ee61cf69e86a9e5bbea5a9576`.
 Cette archive ne constitue ni une nouvelle recette ni une observation runtime Z.
 
-## Incident après clôture — correction renderer du 14 octobre 2026
+## Incident après clôture — corrigé et clos le 14 octobre 2026
 
 La clôture historique M0–M10/Z du 13 octobre reste conservée. Un rejet de
 rendu PDF après clôture a été reproduit par Codex sur l'action
@@ -44,13 +44,50 @@ Livraison Sauron autorisée ensuite par Tof, sans rebuild ni rendu :
   zéro POST/DELETE ; santé, HTTP interne 200, protection publique Authelia 302,
   configuration/identités, 32 voisins et métadonnées documentaires capturées invariants.
 
-**Livraison runtime effectuée, contre-audit Codex attendu.** L'action historique
+**État historique à la remise Sauron : livraison runtime effectuée, contre-audit Codex alors attendu.** L'action historique
 reste failed ; aucun PDF publié, document relancé, modèle appelé, écriture
 Nextcloud, migration ou canari dans cette livraison. Les preuves acquises ne
 sont pas présentées comme rejouées. Repli Writer/pins de départ documenté,
 non exécuté ; archive root-only
 `/opt/platform/backups/writer-merged-runtime-20261014T092943Z`.
 Arrêt après livraison, sans reprise automatique de l'action.
+
+### Réussite sur le document de Tof et clôture de l'incident — 14 octobre 2026
+
+Le contre-audit runtime Codex du 14 octobre est favorable : renderer corrigé et
+pins actifs vérifiés, sans nouveau rendu dans cet audit. La reprise Safari a
+ensuite été explicitement autorisée par Tof, avec une seule tentative.
+L'ancienne action terminale `failed` n'a pas été réactivée : une nouvelle
+préparation a été effectuée dans la même conversation, puis sa carte et son
+état serveur ont été vérifiés avant la confirmation humaine unique.
+
+Preuves live acquises le 14 octobre, heures de Paris :
+
+- Action `fae5bbf9-b704-47e3-83b5-923f2df937ed`, révision
+  `999d1e22-7398-41f6-9e53-bb5f2f63cda7`, création PDF confirmée à 14:39:32,
+  terminée `succeeded/complete` à 14:39:43, sans raison d'erreur.
+- Snapshot figé avant le journal d'écriture ; un `put_intent`, un résultat
+  HTTP 201 `known_success/document_remote_created` et un reçu
+  `642da92d-83b3-4e87-a91c-429511a8528d`. PDF de 32 914 octets,
+  quatre pages concordantes Writer/PDF ; empreinte du PDF figé égale au reçu.
+- Safari affiche la création et le lien. Tof confirme avoir téléchargé,
+  ouvert et observé le PDF : résultat bon, mise en page basique acceptée.
+  Il valide la création et le téléchargement pour le DOCX et le PDF.
+- Le DOCX antérieur et l'action PDF échouée restent inchangés. Ce succès live
+  porte sur la nouvelle préparation ; les cinq pages de la révision historique
+  exacte restent une preuve isolée distincte, sans confusion des canonical.
+
+Attributions et preuves conservées au poste Codex :
+`audits/2026-10-14-renderer-merged-runtime-counteraudit/rapport.md` et
+`audits/2026-10-14-pdf-live-resumption/rapport.md`, sous
+`/Users/tof/codex-fridadev/`. Le second rapport conserve les captures SQL
+READ ONLY, les métadonnées de rendu et la validation visuelle attribuée à Tof.
+Aucun texte privé du document n'est recopié ici.
+
+**Incident clos sur correctif livré, succès live et validation de Tof.**
+La clôture de l'atelier reste acquise. Ce report documentaire ne relance aucun
+test, document, modèle ou canari et ne modifie aucun code, donnée ou runtime.
+Aucun chantier de mise en page ni lot supplémentaire n'est ouvert.
 
 **Résumé de remise antérieur à Z, conservé comme historique** (les réserves
 transitoires M4/M6 et live y décrivent les remises d'alors) :
@@ -5828,9 +5865,12 @@ nouvelle collecte ou recette dans Z ; le bilan ci-dessus fait autorité.
 
 - Récupération Nextcloud Versions non exercée ; 412 isolé seulement, distinct
   de l'invalidation live de préparation périmée M9-A. Pas de restauration automatique.
-- Recettes externes DOCX et PDF live/Safari, appel OpenRouter/DAV live PDF et nom
-  Unicode téléchargé non qualifiés. `download` reste l'observation Chromium du
-  harnais ; nom ASCII navigateur et identité Unicode serveur ont leurs preuves.
+- Recettes externes DOCX/PDF et nom Unicode téléchargé non qualifiés.
+  La création PDF live dans Safari et son téléchargement sont désormais validés
+  sur le document de Tof le 14 octobre, selon la clôture d'incident ci-dessus ;
+  aucune généralisation à tous les documents. `download` reste l'observation
+  Chromium du harnais ; nom ASCII navigateur et identité Unicode serveur ont
+  leurs preuves.
 - Sources longues admises selon l'entrée complète, sans plafond source 20 pages.
   Sortie Writer A4/12 points/1,5/2,5 cm et 20/21 pages/fonts/layout selon les preuves
   héritées ; aucune fidélité universelle Microsoft Word/éditeur/machine.
