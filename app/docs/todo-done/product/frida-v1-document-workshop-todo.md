@@ -16,6 +16,42 @@ avec M9-A puis M10. Code produit audité `82865d94…`, runtime M10 construit de
 `65437352…`, clôture M10 documentaire `6a2d60c25e28570ee61cf69e86a9e5bbea5a9576`.
 Cette archive ne constitue ni une nouvelle recette ni une observation runtime Z.
 
+## Incident après clôture — correction renderer du 14 octobre 2026
+
+La clôture historique M0–M10/Z du 13 octobre reste conservée. Un rejet de
+rendu PDF après clôture a été reproduit par Codex sur l'action
+`49ee9512-57b4-47b5-944f-60343056da9a`, révision
+`cfcf6aee-8200-480c-934b-7a8677345cbf` : après réouverture DOCX, Writer fusionne
+deux portions adjacentes de mêmes attributs sans changer le texte. La garde
+comparait leur découpage brut et refusait avant l'export PDF.
+
+Correctif renderer Sauron `b3901bc4c03ac0e814f61c27a479312a6c53b71b` :
+réutilisation de `merged()` par paragraphe, deux gardes et autres attributs
+conservés. Preuves isolées Sauron du 14 octobre : une soumission de cette
+révision, DOCX rechargé, PDF exporté, paire M8-C validée, cinq pages concordantes,
+77 paragraphes conservés et libération acquittée ; 14 comparaisons synthétiques
+(trois acceptations, onze différences refusées). Contre-audit Codex favorable
+borné le 14 octobre, sur code/identité et preuves conservées, sans rejeu.
+
+Livraison Sauron autorisée ensuite par Tof, sans rebuild ni rendu :
+
+- Writer actif `sha256:4d79a59a2e86908af217206e05aad803212df83d2f28bd8750627e1e7b1ad0ab` ;
+- OCI local contractuel `sha256:bcc1d388ccbb5604d219aeb278033ae3802f95b15a23eaa3616dd1d67814e55e` ;
+- pins complets SHA-256 `213f4514e4d1b993c928ad75c41f9c75c44458cbc26ab9feb7868879655a9530`, vérifiés dans Writer et FridaDev ;
+- seul Writer recréé ; FridaDev reste sur l'image `2c28bf3f…`, le même conteneur
+  et le même démarrage. Pins écrits en place, inode et chemins internes conservés ;
+- un GET capabilities via le client livré, validé contre les pins indépendants,
+  zéro POST/DELETE ; santé, HTTP interne 200, protection publique Authelia 302,
+  configuration/identités, 32 voisins et métadonnées documentaires capturées invariants.
+
+**Livraison runtime effectuée, contre-audit Codex attendu.** L'action historique
+reste failed ; aucun PDF publié, document relancé, modèle appelé, écriture
+Nextcloud, migration ou canari dans cette livraison. Les preuves acquises ne
+sont pas présentées comme rejouées. Repli Writer/pins de départ documenté,
+non exécuté ; archive root-only
+`/opt/platform/backups/writer-merged-runtime-20261014T092943Z`.
+Arrêt après livraison, sans reprise automatique de l'action.
+
 **Résumé de remise antérieur à Z, conservé comme historique** (les réserves
 transitoires M4/M6 et live y décrivent les remises d'alors) :
 
